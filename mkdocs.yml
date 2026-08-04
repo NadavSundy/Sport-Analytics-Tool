@@ -1,0 +1,49 @@
+site_name: Sport Analytics Tool
+site_description: Public documentation for the COMS3011A Sport Analytics Tool
+repo_name: Git Push Pray / Sport Analytics Tool
+repo_url: https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Local Setup: development/setup.md
+      - Repository Structure: architecture/repository-structure.md
+      - Testing: development/testing.md
+      - Dependencies: development/dependencies.md
+  - Design:
+      - Architecture: architecture/overview.md
+      - API: api/overview.md
+      - Database: database/overview.md
+      - Event Model: database/schema.md
+      - Security: security/overview.md
+  - Deployment:
+      - Overview: deployment/overview.md
+      - Azure Investigation: deployment/azure.md
+  - Methodology:
+      - Git Methodology: git-methodology.md
+      - Project Methodology: project_methodology.md
+  - AI Use: ai/usage.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
