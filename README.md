@@ -9,7 +9,7 @@ Project documentation is stored in the [`docs`](docs/) directory.
 ### Development Methodologies
 
 - [Git Methodology](docs/git-methodology.md)
-- [Project Methodology](docs/project-methodology.md)
+- [Project Methodology](docs/project_methodology.md)
 
 ## AI Usage
 
