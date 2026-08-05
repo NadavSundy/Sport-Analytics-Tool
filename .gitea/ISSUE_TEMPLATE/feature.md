@@ -1,9 +1,9 @@
 ---
 name: Feature
 about: Implement a user-visible or platform capability
-title: ""
-labels: "type: feature"
-assignees: ""
+title: ''
+labels: 'type: feature'
+assignees: ''
 ---
 
 ## Description
@@ -18,11 +18,11 @@ Explain why this feature is required and what project, stakeholder or user need 
 
 ### Included
 
-- 
+-
 
 ### Excluded
 
-- 
+-
 
 ## Acceptance Criteria
 
@@ -74,15 +74,15 @@ Describe any relevant considerations.
 
 ### Security
 
-- 
+-
 
 ### Accessibility
 
-- 
+-
 
 ### Responsiveness
 
-- 
+-
 
 If a section is not applicable, state why.
 

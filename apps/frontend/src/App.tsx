@@ -27,8 +27,8 @@ function App() {
         <p className="eyebrow">COMS3011A · Git Push Pray</p>
         <h1 id="page-title">Sport Analytics Tool</h1>
         <p>
-          A foundation for validated event submissions, traceable derived statistics, datasets, and a
-          public hand-written HTTP API.
+          A foundation for validated event submissions, traceable derived statistics, datasets, and
+          a public hand-written HTTP API.
         </p>
       </section>
 

@@ -13,16 +13,16 @@ Explain why the defect must be corrected and who or what is affected.
 
 ## Environment
 
-- **Application or service:**  
-- **Environment:**  
-- **Browser or client:**  
-- **Version or commit:**  
+- **Application or service:**
+- **Environment:**
+- **Browser or client:**
+- **Version or commit:**
 
 ## Steps to Reproduce
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Expected Behaviour
 
