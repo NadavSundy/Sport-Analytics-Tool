@@ -30,6 +30,15 @@ The scaffold contains:
 
 These prove the test runners are wired, not that the product is adequately tested.
 
+## Local CI verification
+
+Before opening or updating a Pull Request, validate the repository from a reproducible installation:
+
+```bash
+npm ci
+npm run check
+```
+
 ## CI expectation
 
 Pull Requests should fail when formatting, linting, type checking, tests, structure validation, or builds fail. Deployment jobs should run only from reviewed branches/tags and should use environment-specific secrets.

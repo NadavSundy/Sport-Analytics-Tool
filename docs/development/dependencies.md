@@ -28,4 +28,8 @@ Before each milestone:
 - record significant dependency decisions in an ADR; and
 - retest the application after upgrades.
 
-Exact installed versions will be recorded by `package-lock.json` after the first verified installation.
+Exact installed versions are recorded in the committed `package-lock.json`. Use `npm ci` rather than `npm install` when validating a clean checkout or running CI.
+
+## TypeScript compatibility
+
+TypeScript is pinned to version `5.5.4` because the current `@typescript-eslint` version supports TypeScript versions below `5.6.0`. TypeScript and `@typescript-eslint` should be reviewed and upgraded together.
