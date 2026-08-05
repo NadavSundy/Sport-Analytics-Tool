@@ -12,7 +12,7 @@
 ```bash
 git clone https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool.git
 cd Sport-Analytics-Tool
-npm install
+npm ci
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
 ```
@@ -46,7 +46,9 @@ mkdocs serve
 npm run check
 ```
 
-The first `npm install` should create and commit `package-lock.json`. Once it exists, CI should be changed from `npm install` to `npm ci` for reproducible installs.
+The committed `package-lock.json` defines the exact dependency versions. Use `npm ci` for clean, reproducible installations locally and in CI.
+
+The `npm run check` command runs the same structure, formatting, linting, type-checking, testing, and build checks used by the CI quality job.
 
 ## Configuration ownership
 
