@@ -11,7 +11,7 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
     headers: {
       Accept: 'application/json',
     },
-    signal,
+    signal: signal ?? null,
   });
 
   if (!response.ok) {
