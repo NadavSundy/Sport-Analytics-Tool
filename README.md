@@ -67,6 +67,12 @@ Important starting documents:
 - [Local Development Setup](docs/development/setup.md)
 - [Testing Strategy](docs/development/testing.md)
 
+The public documentation for this project is available at:
+
+https://sports-analytics-tool.pages.dev
+
+The documentation is generated using MkDocs and deployed via Cloudflare Pages.
+
 ## Development rules
 
 - Create a Gitea issue before significant work begins.
