@@ -1,15 +1,14 @@
 # Project Methodology
 
-| Document Information | Details |
-|---|---|
-| Project | Sport Analytics Tool |
-| Platform | Gitea |
-| Methodology | Lightweight Scrumban |
-| Document Version | 1.0 |
-| Date | 4 August 2026 |
-| Status | Approved for Use |
-| Team | Git Push Pray |
-
+| Document Information | Details              |
+| -------------------- | -------------------- |
+| Project              | Sport Analytics Tool |
+| Platform             | Gitea                |
+| Methodology          | Lightweight Scrumban |
+| Document Version     | 1.0                  |
+| Date                 | 4 August 2026        |
+| Status               | Approved for Use     |
+| Team                 | Git Push Pray        |
 
 ## 1. Purpose
 
@@ -29,7 +28,6 @@ The methodology establishes:
 The purpose of the methodology is to provide a consistent, visible and lightweight process for managing the project. It is intended to support effective collaboration without introducing unnecessary administrative work.
 
 All team members are required to follow this methodology consistently.
-
 
 ## 2. Selected Methodology
 
@@ -51,7 +49,6 @@ Pure Kanban was not selected because the project is structured around assessed s
 
 The selected methodology provides enough structure to demonstrate planning, stakeholder interaction, progress tracking and continuous improvement while remaining simple enough to follow consistently.
 
-
 ## 3. Project Management Platform
 
 Gitea will act as the team’s primary source of truth for project work.
@@ -65,7 +62,6 @@ The team will use:
 - **repository documentation** for meeting notes, decisions and methodology records.
 
 Important project decisions made in meetings, messages or informal discussions must be transferred to Gitea or the project documentation where they affect requirements, priorities, responsibilities or implementation.
-
 
 ## 4. Project Board
 
@@ -129,7 +125,6 @@ The `Done` column contains work that satisfies the team’s Definition of Done.
 
 An issue may not be moved to `Done` merely because implementation has started or a partial result exists.
 
-
 ## 5. Sprint Structure
 
 The project will be organised around the following formal milestones:
@@ -153,7 +148,6 @@ Every sprint will include:
 6. a brief sprint close-out.
 
 Each sprint will have a clear sprint goal that states the main outcome the team intends to achieve.
-
 
 ## 6. Sprint Planning
 
@@ -183,7 +177,7 @@ The record must include:
 
 **Sprint:**  
 **Date:**  
-**Attendees:**  
+**Attendees:**
 
 ## Sprint Goal
 
@@ -197,7 +191,6 @@ The record must include:
 ```
 
 A full transcript of the meeting is not required.
-
 
 ## 7. Weekly Stakeholder Meeting
 
@@ -225,7 +218,7 @@ A short stakeholder record must be saved after each meeting.
 
 **Date:**  
 **Attendees:**  
-**Purpose:**  
+**Purpose:**
 
 ## Progress Demonstrated
 
@@ -253,7 +246,6 @@ Stakeholder feedback that affects the project must result in one of the followin
 Requirements may not be changed silently.
 
 Where a Tuesday meeting cannot take place, the team may use a structured written update or arrange the meeting on another day during the same week.
-
 
 ## 8. Weekly Team Standup
 
@@ -291,7 +283,6 @@ The Gitea Project board must be updated throughout the week. The Thursday standu
 
 Additional short standups may be arranged during the final days before a milestone where necessary. These additional meetings are an exception and do not replace the standard weekly schedule.
 
-
 ## 9. Individual Responsibilities
 
 Each team member remains responsible for:
@@ -301,7 +292,6 @@ Each team member remains responsible for:
 - completing assigned work;
 - participating in reviews; and
 - following the agreed methodology.
-
 
 ## 10. Gitea Issues
 
@@ -386,8 +376,6 @@ status: blocked
 
 The team will avoid creating unnecessary labels that are not used consistently.
 
-
-
 ## 11. Task Size and Estimation
 
 The team will not use story points or formal velocity calculations.
@@ -405,8 +393,6 @@ An issue should be divided into smaller issues where:
 The team may use simple labels such as `small`, `medium` and `large` where this is useful, but these labels are optional.
 
 The purpose of task sizing is to keep work manageable rather than to produce detailed time estimates.
-
-
 
 ## 12. Prioritisation
 
@@ -436,8 +422,6 @@ For the Sport Analytics Tool, early priority will be given to:
 
 Priorities may change following stakeholder feedback, but the reason for any significant reprioritisation must be recorded.
 
-
-
 ## 13. Definition of Ready
 
 An issue may move from `Backlog` to `Ready` only when:
@@ -454,7 +438,6 @@ An issue may move from `Backlog` to `Ready` only when:
 A research issue may use a clearly defined output, such as a recommendation, prototype, technical comparison or documented decision, instead of software acceptance criteria.
 
 An issue that does not meet these conditions must remain in the backlog.
-
 
 ## 14. Definition of Done
 
@@ -482,8 +465,6 @@ For user-facing work, the team must also verify that the change is:
 
 For research or documentation issues, the agreed output must be complete, stored in the repository and reviewed where appropriate.
 
-
-
 ## 15. Handling Blocked Work
 
 An issue must be moved to `Blocked` where progress cannot continue.
@@ -496,7 +477,7 @@ The assignee must add a comment explaining:
 **Blocked by:**  
 **Required action:**  
 **Responsible person:**  
-**Review date:**  
+**Review date:**
 ```
 
 Blocked work must be reviewed during the Thursday standup.
@@ -511,7 +492,6 @@ Where an issue remains blocked for more than one week, the team must decide whet
 - replace it with an alternative approach;
 - move it to a later sprint; or
 - remove it from scope with a documented reason.
-
 
 ## 16. Sprint Close-Out
 
@@ -541,7 +521,7 @@ A short sprint close-out record will be saved in the repository.
 
 **Sprint:**  
 **Date:**  
-**Attendees:**  
+**Attendees:**
 
 ## Sprint Goal
 
@@ -569,8 +549,6 @@ Incomplete work must be:
 
 The agreed improvement must be reviewed during the following sprint to determine whether it was applied and whether it was effective.
 
-
-
 ## 17. Communication and Decision-Making
 
 Gitea and the project repository will contain the authoritative record of project work.
@@ -593,7 +571,7 @@ Technical decisions that significantly affect the project should be documented i
 
 **Decision:**  
 **Date:**  
-**Participants:**  
+**Participants:**
 
 ## Context
 
@@ -609,7 +587,6 @@ Technical decisions that significantly affect the project should be documented i
 ```
 
 Routine implementation choices do not require a separate decision record.
-
 
 ## 18. Methodology Review and Change Control
 
@@ -648,7 +625,6 @@ Work completed before the effective date of a change will remain governed by the
 
 Minor wording corrections that do not change the actual process may be made without following the full change procedure.
 
-
 ## 19. Evidence of Compliance
 
 The team will demonstrate that this methodology has been followed through evidence in Gitea and the project repository.
@@ -673,7 +649,6 @@ Evidence will include:
 The existence of this document alone will not be considered sufficient evidence of compliance.
 
 The team’s Gitea activity and repository documentation must demonstrate that the methodology was followed consistently.
-
 
 ## 20. Standard Weekly Workflow
 
@@ -709,7 +684,6 @@ The standard weekly process will be:
 
 This weekly structure may be adjusted around public holidays, assessment commitments or stakeholder availability, provided that stakeholder interaction and team coordination still take place during the same week where reasonably possible.
 
-
 ## 21. Summary of the Methodology
 
 The team will follow this process:
@@ -726,7 +700,6 @@ The team will follow this process:
 10. Record important decisions and stakeholder feedback.
 11. Change the methodology only where evidence shows that it is causing significant or repeated problems.
 12. Apply the methodology consistently throughout the project.
-
 
 ## AI Declaration
 

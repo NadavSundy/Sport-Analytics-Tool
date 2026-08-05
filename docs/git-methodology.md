@@ -1,14 +1,14 @@
 # Git Methodology
 
-| Document Information | Details |
-|---|---|
-| Project | Sport Analytics Tool |
-| Platform | Gitea |
-| Methodology | GitHub Flow adapted for Gitea |
-| Document Version | 1.0 |
-| Date | 4 August 2026 |
-| Status | Approved for Use |
-| Team | Git Push Pray |
+| Document Information | Details                       |
+| -------------------- | ----------------------------- |
+| Project              | Sport Analytics Tool          |
+| Platform             | Gitea                         |
+| Methodology          | GitHub Flow adapted for Gitea |
+| Document Version     | 1.0                           |
+| Date                 | 4 August 2026                 |
+| Status               | Approved for Use              |
+| Team                 | Git Push Pray                 |
 
 ## 1. Purpose
 
@@ -50,7 +50,6 @@ A more complex methodology, such as Git Flow, would require additional `develop`
 
 The selected methodology is therefore intended to remain lightweight enough to be followed consistently by all team members.
 
-
 ## 3. The `main` Branch
 
 The `main` branch represents the latest integrated, reviewed and working version of the project.
@@ -66,7 +65,6 @@ The following rules apply to `main`:
 - Milestone version tags may only be created from `main`.
 
 The `main` branch will be protected using Gitea’s branch-protection settings where these settings are available.
-
 
 ## 4. Gitea Issues and Traceability
 
@@ -112,7 +110,6 @@ PR body:      Closes #12
 
 This process allows the team to trace completed work back to its original requirement, implementation, review and final integration.
 
-
 ## 5. When to Create a Branch
 
 A branch must be created when a team member begins work on a Gitea issue involving code, tests, configuration or substantial documentation.
@@ -142,8 +139,6 @@ Branches must be short-lived. A normal branch should be completed within five wo
 
 If a branch becomes too large to review effectively, the work must be divided into smaller issues and branches.
 
-
-
 ## 6. How to Name Branches
 
 Branch names must follow this format:
@@ -154,15 +149,15 @@ Branch names must follow this format:
 
 The approved branch types are:
 
-| Type | Purpose |
-|---|---|
-| `feat` | New functionality |
-| `fix` | Correction of incorrect behaviour |
-| `docs` | Documentation changes |
-| `test` | Test creation or modification |
+| Type       | Purpose                                          |
+| ---------- | ------------------------------------------------ |
+| `feat`     | New functionality                                |
+| `fix`      | Correction of incorrect behaviour                |
+| `docs`     | Documentation changes                            |
+| `test`     | Test creation or modification                    |
 | `refactor` | Code restructuring without a change in behaviour |
-| `chore` | Maintenance, setup or configuration |
-| `ci` | Continuous integration or deployment changes |
+| `chore`    | Maintenance, setup or configuration              |
+| `ci`       | Continuous integration or deployment changes     |
 
 Examples include:
 
@@ -184,7 +179,6 @@ Branch names must:
 - contain no spaces;
 - use a concise but meaningful description; and
 - reflect the main purpose of the branch.
-
 
 ## 7. When to Commit
 
@@ -215,7 +209,6 @@ Developers must commit regularly and must not wait until an entire sprint or lar
 
 Temporary commits may be used while work is in progress. However, commits with unclear messages such as `WIP`, `fix stuff` or `more changes` must not remain in a branch submitted for final review.
 
-
 ## 8. How to Write Commit Messages
 
 The team will use a simplified Conventional Commit format.
@@ -234,15 +227,15 @@ The scope may be omitted when it does not provide useful additional information:
 
 ### 8.1 Approved Commit Types
 
-| Type | Purpose |
-|---|---|
-| `feat` | Adds new functionality |
-| `fix` | Corrects incorrect behaviour |
-| `docs` | Changes documentation only |
-| `test` | Adds or modifies tests |
-| `refactor` | Restructures code without changing behaviour |
-| `chore` | Changes maintenance, setup or configuration files |
-| `ci` | Changes the CI/CD process |
+| Type       | Purpose                                           |
+| ---------- | ------------------------------------------------- |
+| `feat`     | Adds new functionality                            |
+| `fix`      | Corrects incorrect behaviour                      |
+| `docs`     | Changes documentation only                        |
+| `test`     | Adds or modifies tests                            |
+| `refactor` | Restructures code without changing behaviour      |
+| `chore`    | Changes maintenance, setup or configuration files |
+| `ci`       | Changes the CI/CD process                         |
 
 ### 8.2 Commit Message Requirements
 
@@ -352,7 +345,6 @@ List any remaining limitations, or state that none are known.
 Closes #12
 ```
 
-
 ## 10. When to Merge
 
 A branch may only be merged after its Pull Request has completed the required review and verification process.
@@ -425,7 +417,6 @@ A Pull Request may be merged only when all the following requirements have been 
 
 A Pull Request that does not meet every applicable requirement must not be merged.
 
-
 ## 12. When to Create a Version
 
 A project version will be created when the team reaches a formal assessed milestone and the corresponding code has been reviewed and stabilised.
@@ -448,8 +439,6 @@ A version may only be created when:
 7. The repository documentation accurately reflects the submitted state.
 
 The version will be recorded using an annotated Git tag created from `main`.
-
-
 
 ## 13. How to Name Versions
 
@@ -475,8 +464,6 @@ An existing tag may not be moved, renamed or overwritten. A new tag must be crea
 
 Descriptive milestone versioning was selected because the project’s most significant development versions correspond directly with its assessed milestones. This makes versions clear to both the development team and project assessors.
 
-
-
 ## 14. Standard Development Workflow
 
 All significant work must follow the process below:
@@ -498,8 +485,6 @@ All significant work must follow the process below:
 15. Delete the completed branch.
 16. Move the Project board item to `Done`.
 17. Create a version tag when the relevant milestone is complete.
-
-
 
 ## 15. Methodology Review and Change Control
 
@@ -529,7 +514,6 @@ Before changing the methodology:
 Changes will not be applied retrospectively. Work completed before the effective date of a methodology change will remain governed by the version of the methodology in effect at that time.
 
 Minor wording corrections that do not alter the actual development process may be made without following the full change procedure.
-
 
 ## AI Declaration
 

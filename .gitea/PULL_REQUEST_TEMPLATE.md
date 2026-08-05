@@ -6,7 +6,7 @@ Explain why this change is required.
 
 Summarise the changes included in this Pull Request.
 
-- 
+-
 
 ## Testing and Verification
 

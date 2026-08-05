@@ -15,11 +15,11 @@ Explain why the work is required.
 
 ### Included
 
-- 
+-
 
 ### Excluded
 
-- 
+-
 
 ## Acceptance Criteria
 
