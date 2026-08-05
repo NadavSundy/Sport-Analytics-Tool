@@ -1,12 +1,19 @@
 # Security overview
 
-## Authentication
-
-Use an established authentication provider or maintained authentication library. The selected solution must support registration, login, password reset, and account deletion. The team must not implement password storage, session cryptography, reset-token generation, or OAuth protocols from scratch.
-
 ## Authorisation
 
-Authentication does not grant automatic submission access. The backend must enforce roles and competition/season/fixture scope for every protected operation. Approved submitters should only submit within their assigned scope.
+Authentication does not grant automatic submission access. The backend must enforce roles and competition, season and fixture scope for every protected operation. Final roles and sport-specific permissions remain subject to future stakeholder and product-flow decisions.
+
+## Authentication
+
+The project uses Google Cloud Identity Platform through Firebase Authentication. The React frontend will obtain a Firebase ID token through a managed sign-in flow, and the handwritten Express API validates that token using the Firebase Admin SDK.
+
+Authentication confirms identity only. It does not grant submission access, application roles or sport-specific permissions.
+
+See:
+
+- [Authentication foundation](authentication.md)
+- [Authentication provider comparison](auth-provider-comparison.md)
 
 ## Input and data protection
 

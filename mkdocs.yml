@@ -22,7 +22,10 @@ nav:
       - API: api/overview.md
       - Database: database/overview.md
       - Event Model: database/schema.md
-      - Security: security/overview.md
+      - Security:
+          - Overview: security/overview.md
+          - Authentication Foundation: security/authentication.md
+          - Provider Comparison: security/auth-provider-comparison.md
   - Deployment:
       - Overview: deployment/overview.md
       - Azure Investigation: deployment/azure.md
