@@ -6,16 +6,16 @@ A dependency must have a clear project purpose, an acceptable licence, active ma
 
 ## Initial dependencies
 
-| Area | Dependency | Purpose |
-|---|---|---|
-| Frontend | React | Component-based web user interface |
-| Frontend tooling | Vite | Development server and production build |
-| Backend | Express | Hand-written HTTP routing and middleware |
-| Validation | Zod | Runtime validation and TypeScript type derivation |
-| HTTP security | Helmet | Secure response-header defaults |
-| Logging | Pino HTTP | Structured request logging foundation |
-| Testing | Vitest, Testing Library, Supertest | Component, unit, and API integration tests |
-| Documentation | MkDocs Material | Public static documentation website |
+| Area             | Dependency                         | Purpose                                           |
+| ---------------- | ---------------------------------- | ------------------------------------------------- |
+| Frontend         | React                              | Component-based web user interface                |
+| Frontend tooling | Vite                               | Development server and production build           |
+| Backend          | Express                            | Hand-written HTTP routing and middleware          |
+| Validation       | Zod                                | Runtime validation and TypeScript type derivation |
+| HTTP security    | Helmet                             | Secure response-header defaults                   |
+| Logging          | Pino HTTP                          | Structured request logging foundation             |
+| Testing          | Vitest, Testing Library, Supertest | Component, unit, and API integration tests        |
+| Documentation    | MkDocs Material                    | Public static documentation website               |
 
 ## Review requirements
 

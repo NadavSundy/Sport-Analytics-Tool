@@ -26,7 +26,9 @@ for (const file of requiredFiles) {
 }
 
 if (missing.length > 0) {
-  console.error(`Missing required project files:\n${missing.map((file) => `- ${file}`).join('\n')}`);
+  console.error(
+    `Missing required project files:\n${missing.map((file) => `- ${file}`).join('\n')}`,
+  );
   process.exitCode = 1;
 } else {
   console.log(`Repository structure check passed (${requiredFiles.length} required files).`);
