@@ -120,5 +120,6 @@ The expected scope is:
 The generated data should remain absent from `git status` because the bulk archive, extracted matches, manifest and summary are ignored through `.gitignore`.
 
 ## AI Declaration
+
 The preceding issue was planned and generated with the assistance of
 ChatGPT-Web[GPT-5.6 Thinking].
