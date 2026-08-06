@@ -41,16 +41,41 @@ include a run out, which must not be credited to the bowler.
 | 1 | Kings XI Punjab | 132 | 9 | 20.0 | 5 |
 | 2 | Kolkata Knight Riders | 109 | 10 | 18.2 | 10 |
 
-Extras breakdown derived from the source file, pending confirmation against the
-published scorecard's extras line:
+Extras breakdown, derived by SQL from the database:
 
-- Kings XI Punjab: 1 no-ball, 1 wide, 2 leg byes, 1 bye
+- Kings XI Punjab: 1 wide, 1 no-ball, 1 bye, 2 leg byes
 - Kolkata Knight Riders: 5 wides, 5 leg byes
+
+## Fall of wickets — Kolkata Knight Riders
+
+The strongest single validation target. Reproducing all ten rows requires the
+delivery ordering, the run accumulation and the wicket attribution to be
+simultaneously correct.
+
+| Wicket | Score | Over | Batter dismissed (published) | Batter dismissed (source) |
+|---|---|---|---|---|
+| 1 | 13 | 2.4 | Manish Pandey | MK Pandey |
+| 2 | 19 | 4.1 | Gautam Gambhir | G Gambhir |
+| 3 | 19 | 5.1 | Jacques Kallis | JH Kallis |
+| 4 | 50 | 11.1 | Chris Lynn | CA Lynn |
+| 5 | 59 | 12.3 | Yusuf Pathan | YK Pathan |
+| 6 | 62 | 12.6 | Robin Uthappa | RV Uthappa |
+| 7 | 65 | 13.4 | Piyush Chawla | PP Chawla |
+| 8 | 85 | 15.6 | Sunil Narine | SP Narine |
+| 9 | 103 | 17.3 | Suryakumar Yadav | SA Yadav |
+| 10 | 109 | 18.2 | Umesh Yadav | UT Yadav |
+
+The two name columns are recorded deliberately. The published scorecard spells
+names in full while Cricsheet uses initials and surname. This is a further reason
+that names cannot serve as identity, beyond the renames and collisions recorded in
+the schema document: the same person is written differently by different sources.
+The database stores the registry identifier and reproduces the source form.
 
 ## Running score checkpoints
 
-These test that runs and extras accumulate at the correct point in the innings,
-not merely that the totals agree. Taken from the ESPNcricinfo match flow.
+Recorded from the ESPNcricinfo match flow but not yet asserted by the validation
+script. They would test that runs and extras accumulate at the correct point in
+the innings rather than merely summing correctly.
 
 | Innings | Milestone | Overs | Balls | Extras at that point |
 |---|---|---|---|---|
@@ -65,24 +90,14 @@ Powerplay figures:
 | 1 | Mandatory | 0.1 – 6.0 | 51 | 2 |
 | 2 | Mandatory | 0.1 – 6.0 | 24 | 3 |
 
-## Fall of wickets — Kolkata Knight Riders
+## Bowler credit
 
-The strongest single validation target. Reproducing all ten rows requires the
-delivery ordering, the run accumulation and the wicket attribution to be
-simultaneously correct.
+Seventeen dismissals are credited to nine bowlers. Two are not credited to any
+bowler: one run out and one further dismissal of a kind flagged
+`credits_bowler = false` in the `dismissal_kind` lookup.
 
-| Wicket | Score | Over | Batter dismissed |
-|---|---|---|---|
-| 1 | 13 | 2.4 | Manish Pandey |
-| 2 | 19 | 4.1 | Gautam Gambhir |
-| 3 | 19 | 5.1 | Jacques Kallis |
-| 4 | 50 | 11.1 | Chris Lynn |
-| 5 | 59 | 12.3 | Yusuf Pathan |
-| 6 | 62 | 12.6 | Robin Uthappa |
-| 7 | 65 | 13.4 | Piyush Chawla |
-| 8 | 85 | 15.6 | Sunil Narine |
-| 9 | 103 | 17.3 | Suryakumar Yadav |
-| 10 | 109 | 18.2 | Umesh Yadav |
+Sandeep Sharma's three wickets agree with the published player of the match line
+of 3 for 21, which corroborates the credit rule independently.
 
 ## Independent corroboration from the source
 
@@ -93,13 +108,29 @@ not detect a systematic error in the derivation rules.
 
 ## Validation status
 
+Validation is performed by `apps/backend/scripts/validate-match.ts`, which derives
+every figure by SQL over `delivery_current` and reads nothing from the source
+file. All twenty-two assertions pass.
+
 | Check | Status |
 |---|---|
 | Innings totals derived from the source file | Confirmed against published figures |
-| Innings totals derived from the database | Pending |
-| Running score checkpoints from the database | Pending |
-| Fall of wickets reproduced from the database | Pending |
-| Extras breakdown confirmed against the published extras line | Pending |
+| Innings totals derived from the database | Confirmed |
+| Wickets per innings | Confirmed |
+| Legal ball counts and overs | Confirmed |
+| Extras totals | Confirmed |
+| Extras breakdown by type | Derived from the database; see caveat below |
+| Fall of wickets | Confirmed, all ten rows |
+| Run outs excluded from bowler credit | Confirmed |
+| Idempotent resubmission | Confirmed: a second ingestion adds no rows |
+| Running score checkpoints | Recorded but not asserted |
+
+**Caveat on the extras breakdown.** The published scorecard's per-type extras line
+could not be read directly, because the site blocks automated access. The
+breakdown above is derived from the database and is consistent with the source
+file, and the extras totals of 5 and 10 match the published innings figures. The
+per-type split should be confirmed against the scorecard by hand before this
+document is treated as complete.
 
 ## AI Declaration
 
