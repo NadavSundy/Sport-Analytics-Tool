@@ -9,7 +9,28 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: sport_analytics_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user -d sport_analytics_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL_TEST: postgresql://test_user:test_password@localhost:5432/sport_analytics_test
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
 
     steps:
       - name: Check out repository
@@ -19,9 +40,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Reset and migrate test database
+        run: npm run db:test:reset --workspace=@sport-analytics/backend
+
+      - name: Seed test database
+        run: npm run db:test:seed --workspace=@sport-analytics/backend
+
       - name: Run repository checks
         run: npm run check
+
+      - name: Run database integration tests
+        run: npm run test:database
+
+      - name: Run browser and accessibility tests
+        run: npm run test:e2e
+
+      - name: Generate coverage
+        run: npm run test:coverage
