@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-The API is a primary product. It must be designed and implemented by the team as HTTP endpoints. Generated Firebase or Supabase database endpoints must not be used as the application API.
+The API is a primary product. It must be designed and implemented by the team as HTTP endpoints. Generated database endpoints must not be used as the application API. Supabase may provide managed authentication, but application data must pass through the handwritten backend.
 
 ## Initial conventions
 
@@ -37,7 +37,7 @@ This endpoint is scaffold infrastructure only.
 
 ```http
 GET /api/v1/auth/me
-Authorization: Bearer <firebase-id-token>
+Authorization: Bearer <supabase-access-token>
 ```
 
 Successful response:
@@ -45,7 +45,7 @@ Successful response:
 ```json
 {
   "identity": {
-    "subject": "<firebase-user-id>"
+    "subject": "<supabase-user-id>"
   }
 }
 ```

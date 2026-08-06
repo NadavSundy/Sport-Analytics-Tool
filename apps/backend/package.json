@@ -16,10 +16,10 @@
     "db:migrate:create": "node-pg-migrate create --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --migration-filename-format utc -j sql"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.1",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.1",
-    "firebase-admin": "^14.2.0",
     "helmet": "^8.0.0",
     "pg": "^8.22.0",
     "pino-http": "^10.3.0",

@@ -1,5 +1,5 @@
 import type { RequestHandler, Response } from 'express';
-import type { VerifyIdToken } from '../auth/firebase-auth';
+import type { VerifyAccessToken } from '../auth/supabase-auth';
 
 function rejectAuthentication(response: Response): void {
   response.setHeader('WWW-Authenticate', 'Bearer');
@@ -11,7 +11,7 @@ function rejectAuthentication(response: Response): void {
   });
 }
 
-export function requireAuthentication(verifyIdToken: VerifyIdToken): RequestHandler {
+export function requireAuthentication(verifyAccessToken: VerifyAccessToken): RequestHandler {
   return async (request, response, next) => {
     const authorization = request.get('authorization');
     const parts = authorization?.trim().split(/\s+/);
@@ -24,7 +24,7 @@ export function requireAuthentication(verifyIdToken: VerifyIdToken): RequestHand
     }
 
     try {
-      const identity = await verifyIdToken(token);
+      const identity = await verifyAccessToken(token);
       response.locals.authenticatedIdentity = identity;
       next();
     } catch {
