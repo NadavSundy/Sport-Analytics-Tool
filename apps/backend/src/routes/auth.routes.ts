@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import type { VerifiedIdentity, VerifyIdToken } from '../auth/firebase-auth';
+import type { VerifiedIdentity, VerifyAccessToken } from '../auth/supabase-auth';
 import { requireAuthentication } from '../middleware/require-authentication';
 
-export function createAuthRouter(verifyIdToken: VerifyIdToken): Router {
+export function createAuthRouter(verifyAccessToken: VerifyAccessToken): Router {
   const authRouter = Router();
 
-  authRouter.get('/me', requireAuthentication(verifyIdToken), (_request, response, next) => {
+  authRouter.get('/me', requireAuthentication(verifyAccessToken), (_request, response, next) => {
     const identity = response.locals.authenticatedIdentity as VerifiedIdentity | undefined;
 
     if (!identity) {

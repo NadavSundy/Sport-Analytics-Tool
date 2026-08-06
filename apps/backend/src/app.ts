@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
-import { createFirebaseTokenVerifier, type VerifyIdToken } from './auth/firebase-auth';
+import { createSupabaseTokenVerifier, type VerifyAccessToken } from './auth/supabase-auth';
 import { loadEnvironment, type Environment } from './config/env';
 import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
@@ -11,12 +11,13 @@ import { healthRouter } from './routes/health.routes';
 
 export interface AppDependencies {
   environment?: Environment;
-  verifyIdToken?: VerifyIdToken;
+  verifyAccessToken?: VerifyAccessToken;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
   const environment = dependencies.environment ?? loadEnvironment();
-  const verifyIdToken = dependencies.verifyIdToken ?? createFirebaseTokenVerifier(environment);
+  const verifyAccessToken =
+    dependencies.verifyAccessToken ?? createSupabaseTokenVerifier(environment);
 
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
@@ -40,7 +41,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   );
 
   app.use('/api/v1/health', healthRouter);
-  app.use('/api/v1/auth', createAuthRouter(verifyIdToken));
+  app.use('/api/v1/auth', createAuthRouter(verifyAccessToken));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
