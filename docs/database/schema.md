@@ -19,31 +19,31 @@ committed as `scripts/catalogue_cricsheet_fields.py` and
 `scripts/probe_cricsheet_edge_cases.py`, so every number below can be reproduced
 and checked rather than taken on trust.
 
-| # | Property | Consequence for the schema |
-|---|---|---|
-| O1 | The printed ball number repeats within an over in 20.4% of overs (104,818 of 514,380). One over holds nineteen deliveries, six of them labelled `5.1`. | Delivery identity is the position in the source array, never the printed number. |
-| O2 | 168 names map to more than one player identifier, and 40 identifiers map to more than one name. `Abdul Rahman` is three different people. | Players key on the registry identifier. Names are display text and never a join key. |
-| O3 | Extras types co-occur on a single delivery — a wide with byes. Five types appear: wides, leg byes, no-balls, byes and penalty. | Extras are separate nullable columns, not a type and a count. |
-| O4 | `wickets` is an array. 5,833 dismissals name multiple fielders, and 127 fielder records identify a substitute with no name at all. | Wickets and fielders need their own tables, and fielder identity must be nullable. |
-| O5 | 99 matches carry four innings rather than two; 204 innings are flagged as super overs. | Innings count per fixture is not fixed at two. |
-| O6 | 175 innings carry `miscounted_overs`, where an over legitimately holds five or seven legal balls. | No constraint may assume six legal balls per over. |
-| O7 | Penalty runs appear at innings level, belonging to no delivery. | A team total cannot be derived from deliveries alone. |
-| O8 | `outcome` takes seven distinct shapes, including a result with no winner, an eliminator and a bowl-out. | Outcome is not winner plus margin. |
+| #   | Property                                                                                                                                               | Consequence for the schema                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| O1  | The printed ball number repeats within an over in 20.4% of overs (104,818 of 514,380). One over holds nineteen deliveries, six of them labelled `5.1`. | Delivery identity is the position in the source array, never the printed number.     |
+| O2  | 168 names map to more than one player identifier, and 40 identifiers map to more than one name. `Abdul Rahman` is three different people.              | Players key on the registry identifier. Names are display text and never a join key. |
+| O3  | Extras types co-occur on a single delivery — a wide with byes. Five types appear: wides, leg byes, no-balls, byes and penalty.                         | Extras are separate nullable columns, not a type and a count.                        |
+| O4  | `wickets` is an array. 5,833 dismissals name multiple fielders, and 127 fielder records identify a substitute with no name at all.                     | Wickets and fielders need their own tables, and fielder identity must be nullable.   |
+| O5  | 99 matches carry four innings rather than two; 204 innings are flagged as super overs.                                                                 | Innings count per fixture is not fixed at two.                                       |
+| O6  | 175 innings carry `miscounted_overs`, where an over legitimately holds five or seven legal balls.                                                      | No constraint may assume six legal balls per over.                                   |
+| O7  | Penalty runs appear at innings level, belonging to no delivery.                                                                                        | A team total cannot be derived from deliveries alone.                                |
+| O8  | `outcome` takes seven distinct shapes, including a result with no winner, an eliminator and a bowl-out.                                                | Outcome is not winner plus margin.                                                   |
 
 ### 1.1 The case that decides delivery identity
 
 In match `1402765`, innings 0, over 5, seven consecutive deliveries carry the same
 printed number:
 
-| position | ball number | extras |
-|---|---|---|
-| 0 | 5.1 | no-ball |
-| 1 | 5.1 | no-ball |
-| 2 | 5.1 | no-ball |
-| 3 | 5.1 | no-ball |
-| 4 | 5.1 | no-ball |
-| 5 | 5.1 | no-ball |
-| 6 | 5.1 | — |
+| position | ball number | extras  |
+| -------- | ----------- | ------- |
+| 0        | 5.1         | no-ball |
+| 1        | 5.1         | no-ball |
+| 2        | 5.1         | no-ball |
+| 3        | 5.1         | no-ball |
+| 4        | 5.1         | no-ball |
+| 5        | 5.1         | no-ball |
+| 6        | 5.1         | —       |
 
 Only the array position distinguishes them.
 
