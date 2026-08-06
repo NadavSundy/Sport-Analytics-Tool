@@ -1,0 +1,2482 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Public documentation for the COMS3011A Sport Analytics Tool">
+      
+      
+      
+      
+        <link rel="prev" href="../git-methodology/">
+      
+      
+        <link rel="next" href="../ai/usage/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Project Methodology - Sport Analytics Tool</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#project-methodology" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Sport Analytics Tool" class="md-header__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sport Analytics Tool
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Project Methodology
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development/setup/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Design
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/overview/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../git-methodology/" class="md-tabs__link">
+          
+  
+  
+  Methodology
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai/usage/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  AI Use
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Sport Analytics Tool" class="md-nav__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Sport Analytics Tool
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/repository-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../database/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../database/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Investigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methodology
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Methodology
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Methodology
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-selected-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Selected Methodology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-project-management-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Project Management Platform
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-project-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Project Board
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Project Board">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-in-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 In Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-in-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 In Review
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Blocked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Done
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-sprint-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Sprint Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-sprint-planning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Sprint Planning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-weekly-stakeholder-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Weekly Stakeholder Meeting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-weekly-team-standup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Weekly Team Standup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-individual-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Individual Responsibilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-gitea-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Gitea Issues
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-task-size-and-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Task Size and Estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-prioritisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Prioritisation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-definition-of-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Definition of Ready
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-definition-of-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Definition of Done
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-handling-blocked-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Handling Blocked Work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-sprint-close-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Sprint Close-Out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-communication-and-decision-making" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Communication and Decision-Making
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-methodology-review-and-change-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Methodology Review and Change Control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-evidence-of-compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Evidence of Compliance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-standard-weekly-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Standard Weekly Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Standard Weekly Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tuesday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuesday
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wednesday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wednesday
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thursday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thursday
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#friday-to-monday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Friday to Monday
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-summary-of-the-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Summary of the Methodology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-selected-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Selected Methodology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-project-management-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Project Management Platform
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-project-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Project Board
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Project Board">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-in-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 In Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-in-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 In Review
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Blocked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Done
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-sprint-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Sprint Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-sprint-planning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Sprint Planning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-weekly-stakeholder-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Weekly Stakeholder Meeting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-weekly-team-standup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Weekly Team Standup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-individual-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Individual Responsibilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-gitea-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Gitea Issues
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-task-size-and-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Task Size and Estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-prioritisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Prioritisation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-definition-of-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Definition of Ready
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-definition-of-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Definition of Done
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-handling-blocked-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Handling Blocked Work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-sprint-close-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Sprint Close-Out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-communication-and-decision-making" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Communication and Decision-Making
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-methodology-review-and-change-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Methodology Review and Change Control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-evidence-of-compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Evidence of Compliance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-standard-weekly-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Standard Weekly Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Standard Weekly Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tuesday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuesday
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wednesday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wednesday
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thursday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thursday
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#friday-to-monday" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Friday to Monday
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-summary-of-the-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Summary of the Methodology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="project-methodology">Project Methodology<a class="headerlink" href="#project-methodology" title="Permanent link">&para;</a></h1>
+<table>
+<thead>
+<tr>
+<th>Document Information</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Project</td>
+<td>Sport Analytics Tool</td>
+</tr>
+<tr>
+<td>Platform</td>
+<td>Gitea</td>
+</tr>
+<tr>
+<td>Methodology</td>
+<td>Lightweight Scrumban</td>
+</tr>
+<tr>
+<td>Document Version</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>4 August 2026</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Approved for Use</td>
+</tr>
+<tr>
+<td>Team</td>
+<td>Git Push Pray</td>
+</tr>
+</tbody>
+</table>
+<h2 id="1-purpose">1. Purpose<a class="headerlink" href="#1-purpose" title="Permanent link">&para;</a></h2>
+<p>This document defines the project methodology that will be followed throughout the development of the Sport Analytics Tool.</p>
+<p>The methodology establishes:</p>
+<ul>
+<li>how project work will be planned;</li>
+<li>how tasks will be recorded and prioritised;</li>
+<li>how progress will be tracked;</li>
+<li>how the team will communicate internally;</li>
+<li>how stakeholder feedback will be collected and integrated;</li>
+<li>how each sprint will be reviewed and closed;</li>
+<li>how completed work will be verified; and</li>
+<li>how changes to the methodology will be controlled.</li>
+</ul>
+<p>The purpose of the methodology is to provide a consistent, visible and lightweight process for managing the project. It is intended to support effective collaboration without introducing unnecessary administrative work.</p>
+<p>All team members are required to follow this methodology consistently.</p>
+<h2 id="2-selected-methodology">2. Selected Methodology<a class="headerlink" href="#2-selected-methodology" title="Permanent link">&para;</a></h2>
+<p>The team will use a <strong>lightweight Scrumban methodology</strong>.</p>
+<p>Scrumban combines selected elements of Scrum and Kanban:</p>
+<ul>
+<li>fixed project sprints are used for planning and review;</li>
+<li>a visual Gitea Project board is used to track work continuously;</li>
+<li>stakeholder feedback is incorporated throughout development;</li>
+<li>work is completed in small, manageable tasks;</li>
+<li>unnecessary Scrum roles, story points and daily meetings are avoided.</li>
+</ul>
+<p>This methodology was selected because the project has formal sprint deadlines, while its detailed requirements and priorities may change following stakeholder feedback, technical investigation and testing.</p>
+<p>Full Scrum was not selected because daily standups, formal roles and detailed estimation would create unnecessary overhead for the size and duration of this project.</p>
+<p>Pure Kanban was not selected because the project is structured around assessed sprint milestones and therefore requires clear sprint planning, review and reflection.</p>
+<p>The selected methodology provides enough structure to demonstrate planning, stakeholder interaction, progress tracking and continuous improvement while remaining simple enough to follow consistently.</p>
+<h2 id="3-project-management-platform">3. Project Management Platform<a class="headerlink" href="#3-project-management-platform" title="Permanent link">&para;</a></h2>
+<p>Gitea will act as the team’s primary source of truth for project work.</p>
+<p>The team will use:</p>
+<ul>
+<li><strong>Gitea Issues</strong> for features, bugs, documentation, testing, research and technical tasks;</li>
+<li><strong>Gitea Projects</strong> for the visual work board;</li>
+<li><strong>Gitea Milestones</strong> for Sprint 1, Sprint 2, Sprint 3 and the Final Submission;</li>
+<li><strong>Gitea Pull Requests</strong> for implementation review;</li>
+<li><strong>repository documentation</strong> for meeting notes, decisions and methodology records.</li>
+</ul>
+<p>Important project decisions made in meetings, messages or informal discussions must be transferred to Gitea or the project documentation where they affect requirements, priorities, responsibilities or implementation.</p>
+<h2 id="4-project-board">4. Project Board<a class="headerlink" href="#4-project-board" title="Permanent link">&para;</a></h2>
+<p>The Gitea Project board will use the following columns:</p>
+<div class="highlight"><pre><span></span><code>Backlog
+Ready
+In Progress
+In Review
+Blocked
+Done
+</code></pre></div>
+<h3 id="41-backlog">4.1 Backlog<a class="headerlink" href="#41-backlog" title="Permanent link">&para;</a></h3>
+<p>The <code>Backlog</code> contains identified work that has not yet been selected for active development.</p>
+<p>An item may remain in the backlog where:</p>
+<ul>
+<li>it is not yet a current priority;</li>
+<li>further stakeholder clarification is required;</li>
+<li>the task is optional;</li>
+<li>the task belongs to a future sprint; or</li>
+<li>the task requires further investigation before it can be prepared.</li>
+</ul>
+<h3 id="42-ready">4.2 Ready<a class="headerlink" href="#42-ready" title="Permanent link">&para;</a></h3>
+<p>The <code>Ready</code> column contains work that is sufficiently defined and can be started.</p>
+<p>An issue may only move to <code>Ready</code> when it meets the team’s Definition of Ready.</p>
+<h3 id="43-in-progress">4.3 In Progress<a class="headerlink" href="#43-in-progress" title="Permanent link">&para;</a></h3>
+<p>The <code>In Progress</code> column contains work currently being completed.</p>
+<p>Each team member should normally have no more than one main issue in progress at a time. This work-in-progress limit is intended to encourage completion before additional work is started.</p>
+<p>A second small task may only be started where the primary issue is blocked or awaiting review.</p>
+<h3 id="44-in-review">4.4 In Review<a class="headerlink" href="#44-in-review" title="Permanent link">&para;</a></h3>
+<p>The <code>In Review</code> column contains work that has been completed by its assignee and is awaiting review, testing or approval.</p>
+<p>Code-related issues will normally enter this column once a Pull Request has been opened.</p>
+<h3 id="45-blocked">4.5 Blocked<a class="headerlink" href="#45-blocked" title="Permanent link">&para;</a></h3>
+<p>The <code>Blocked</code> column contains work that cannot continue.</p>
+<p>A blocked issue must include a comment explaining:</p>
+<ul>
+<li>what is preventing progress;</li>
+<li>what is required to remove the blocker;</li>
+<li>who is responsible for the next action; and</li>
+<li>when the issue will be reviewed again.</li>
+</ul>
+<h3 id="46-done">4.6 Done<a class="headerlink" href="#46-done" title="Permanent link">&para;</a></h3>
+<p>The <code>Done</code> column contains work that satisfies the team’s Definition of Done.</p>
+<p>An issue may not be moved to <code>Done</code> merely because implementation has started or a partial result exists.</p>
+<h2 id="5-sprint-structure">5. Sprint Structure<a class="headerlink" href="#5-sprint-structure" title="Permanent link">&para;</a></h2>
+<p>The project will be organised around the following formal milestones:</p>
+<div class="highlight"><pre><span></span><code>Sprint 1
+Sprint 2
+Sprint 3
+Final Submission
+</code></pre></div>
+<p>Each milestone period will be treated as a sprint.</p>
+<p>Every sprint will include:</p>
+<ol>
+<li>sprint planning;</li>
+<li>continuous work tracking;</li>
+<li>weekly stakeholder interaction;</li>
+<li>a weekly team standup;</li>
+<li>development and review; and</li>
+<li>a brief sprint close-out.</li>
+</ol>
+<p>Each sprint will have a clear sprint goal that states the main outcome the team intends to achieve.</p>
+<h2 id="6-sprint-planning">6. Sprint Planning<a class="headerlink" href="#6-sprint-planning" title="Permanent link">&para;</a></h2>
+<p>The team will hold one sprint-planning meeting at the beginning of each sprint.</p>
+<p>The meeting should normally last between 30 and 45 minutes.</p>
+<p>During sprint planning, the team will:</p>
+<ol>
+<li>agree on the sprint goal;</li>
+<li>review the project requirements;</li>
+<li>review stakeholder feedback;</li>
+<li>review incomplete work from the previous sprint;</li>
+<li>select issues from the backlog;</li>
+<li>confirm that selected issues meet the Definition of Ready;</li>
+<li>identify dependencies and technical risks;</li>
+<li>assign initial issue owners;</li>
+<li>allocate selected issues to the relevant Gitea milestone; and</li>
+<li>confirm the expected outcome of the sprint.</li>
+</ol>
+<p>A short sprint-planning record will be saved in the repository.</p>
+<p>The record must include:</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># Sprint Planning</span>
+
+<span class="gs">**Sprint:**</span>  
+<span class="gs">**Date:**</span>  
+<span class="gs">**Attendees:**</span>
+
+<span class="gu">## Sprint Goal</span>
+
+<span class="gu">## Selected Work</span>
+
+<span class="gu">## Key Risks and Dependencies</span>
+
+<span class="gu">## Decisions</span>
+
+<span class="gu">## Unresolved Questions</span>
+</code></pre></div>
+<p>A full transcript of the meeting is not required.</p>
+<h2 id="7-weekly-stakeholder-meeting">7. Weekly Stakeholder Meeting<a class="headerlink" href="#7-weekly-stakeholder-meeting" title="Permanent link">&para;</a></h2>
+<p>The team will meet with the assigned stakeholder or tutor every Tuesday, where reasonably possible.</p>
+<p>The meeting should normally last between 20 and 30 minutes.</p>
+<p>The purpose of the stakeholder meeting is to:</p>
+<ul>
+<li>demonstrate recent progress;</li>
+<li>clarify requirements;</li>
+<li>confirm priorities;</li>
+<li>ask questions;</li>
+<li>receive feedback;</li>
+<li>discuss proposed changes;</li>
+<li>identify missing requirements; and</li>
+<li>confirm whether completed work meets expectations.</li>
+</ul>
+<p>The team will prepare relevant demonstrations or questions before the meeting.</p>
+<p>A short stakeholder record must be saved after each meeting.</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># Stakeholder Meeting</span>
+
+<span class="gs">**Date:**</span>  
+<span class="gs">**Attendees:**</span>  
+<span class="gs">**Purpose:**</span>
+
+<span class="gu">## Progress Demonstrated</span>
+
+<span class="gu">## Requirements Discussed</span>
+
+<span class="gu">## Feedback Received</span>
+
+<span class="gu">## Decisions</span>
+
+<span class="gu">## Actions</span>
+
+<span class="gu">## Related Gitea Issues</span>
+
+<span class="k">-</span><span class="w"> </span>#...
+</code></pre></div>
+<p>Stakeholder feedback that affects the project must result in one of the following:</p>
+<ul>
+<li>an existing Gitea issue being updated;</li>
+<li>a new Gitea issue being created;</li>
+<li>an issue being reprioritised;</li>
+<li>an acceptance criterion being clarified; or</li>
+<li>a documented decision that no change will be made.</li>
+</ul>
+<p>Requirements may not be changed silently.</p>
+<p>Where a Tuesday meeting cannot take place, the team may use a structured written update or arrange the meeting on another day during the same week.</p>
+<h2 id="8-weekly-team-standup">8. Weekly Team Standup<a class="headerlink" href="#8-weekly-team-standup" title="Permanent link">&para;</a></h2>
+<p>The team will hold one internal standup every Thursday.</p>
+<p>The standup should normally last no longer than 15 minutes.</p>
+<p>Each team member will answer:</p>
+<ol>
+<li>What have I completed since the previous standup?</li>
+<li>What am I currently working on?</li>
+<li>What will I complete next?</li>
+<li>Is anything blocking my progress?</li>
+</ol>
+<p>The team will also briefly:</p>
+<ul>
+<li>review the Gitea Project board;</li>
+<li>check progress towards the sprint goal;</li>
+<li>review actions arising from Tuesday’s stakeholder meeting;</li>
+<li>identify delayed or blocked work;</li>
+<li>confirm whether responsibilities need to change; and</li>
+<li>identify any urgent issue requiring a separate discussion.</li>
+</ul>
+<p>The standup is intended for coordination rather than detailed technical problem-solving. Longer discussions must take place after the standup with only the relevant team members.</p>
+<p>Formal minutes are not required for every standup. A brief weekly note must record:</p>
+<ul>
+<li>important progress;</li>
+<li>blockers;</li>
+<li>decisions;</li>
+<li>changes to responsibility; and</li>
+<li>actions for the following week.</li>
+</ul>
+<p>The Gitea Project board must be updated throughout the week. The Thursday standup is not the only time at which issue statuses may be changed.</p>
+<p>Additional short standups may be arranged during the final days before a milestone where necessary. These additional meetings are an exception and do not replace the standard weekly schedule.</p>
+<h2 id="9-individual-responsibilities">9. Individual Responsibilities<a class="headerlink" href="#9-individual-responsibilities" title="Permanent link">&para;</a></h2>
+<p>Each team member remains responsible for:</p>
+<ul>
+<li>updating their own issues;</li>
+<li>communicating blockers;</li>
+<li>completing assigned work;</li>
+<li>participating in reviews; and</li>
+<li>following the agreed methodology.</li>
+</ul>
+<h2 id="10-gitea-issues">10. Gitea Issues<a class="headerlink" href="#10-gitea-issues" title="Permanent link">&para;</a></h2>
+<p>Every meaningful unit of project work must be recorded as a Gitea issue.</p>
+<p>Examples include:</p>
+<ul>
+<li>new features;</li>
+<li>bug fixes;</li>
+<li>database changes;</li>
+<li>API work;</li>
+<li>user-interface work;</li>
+<li>automated testing;</li>
+<li>documentation;</li>
+<li>CI/CD configuration;</li>
+<li>technical research;</li>
+<li>stakeholder-requested changes; and</li>
+<li>project risks requiring action.</li>
+</ul>
+<p>Each issue must contain:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Description</span>
+
+Explain what must be completed.
+
+<span class="gu">## Motivation</span>
+
+Explain why the work is required.
+
+<span class="gu">## Acceptance Criteria</span>
+
+<span class="k">- [ ]</span> Specific observable result
+<span class="k">- [ ]</span> Relevant tests pass
+<span class="k">- [ ]</span> Documentation is updated where applicable
+
+<span class="gu">## Dependencies</span>
+
+List related or blocking issues.
+
+<span class="gu">## Evidence</span>
+
+Link relevant designs, meeting notes, Pull Requests or test results.
+</code></pre></div>
+<p>Each issue must also have:</p>
+<ul>
+<li>a clear title;</li>
+<li>an assignee;</li>
+<li>a sprint milestone;</li>
+<li>an appropriate work-type label; and</li>
+<li>an area label where relevant.</li>
+</ul>
+<p>Suggested work-type labels are:</p>
+<div class="highlight"><pre><span></span><code>type: feature
+type: bug
+type: documentation
+type: testing
+type: research
+type: infrastructure
+</code></pre></div>
+<p>Suggested area labels are:</p>
+<div class="highlight"><pre><span></span><code>area: frontend
+area: api
+area: database
+area: data
+area: infrastructure
+area: documentation
+</code></pre></div>
+<p>Suggested additional labels are:</p>
+<div class="highlight"><pre><span></span><code>priority: high
+status: blocked
+</code></pre></div>
+<p>The team will avoid creating unnecessary labels that are not used consistently.</p>
+<h2 id="11-task-size-and-estimation">11. Task Size and Estimation<a class="headerlink" href="#11-task-size-and-estimation" title="Permanent link">&para;</a></h2>
+<p>The team will not use story points or formal velocity calculations.</p>
+<p>Issues should normally be small enough to complete within one to three working days.</p>
+<p>An issue should be divided into smaller issues where:</p>
+<ul>
+<li>it contains several independent outcomes;</li>
+<li>it is expected to take most of a sprint;</li>
+<li>it cannot be reviewed effectively as one unit;</li>
+<li>different team members can complete separate parts independently; or</li>
+<li>its acceptance criteria are too broad.</li>
+</ul>
+<p>The team may use simple labels such as <code>small</code>, <code>medium</code> and <code>large</code> where this is useful, but these labels are optional.</p>
+<p>The purpose of task sizing is to keep work manageable rather than to produce detailed time estimates.</p>
+<h2 id="12-prioritisation">12. Prioritisation<a class="headerlink" href="#12-prioritisation" title="Permanent link">&para;</a></h2>
+<p>Project work will be prioritised in the following order:</p>
+<ol>
+<li>mandatory project requirements;</li>
+<li>work required for the current sprint;</li>
+<li>issues blocking other work;</li>
+<li>stakeholder priorities;</li>
+<li>high-risk technical work;</li>
+<li>defects affecting core functionality;</li>
+<li>testing and documentation required to support completed features;</li>
+<li>optional enhancements.</li>
+</ol>
+<p>The team will prioritise a reliable implementation of the basic project requirements before committing significant effort to intermediate or advanced functionality.</p>
+<p>For the Sport Analytics Tool, early priority will be given to:</p>
+<ul>
+<li>event-data modelling;</li>
+<li>submission validation;</li>
+<li>event traceability;</li>
+<li>API design and implementation;</li>
+<li>statistic derivation;</li>
+<li>authentication and access control;</li>
+<li>database foundations; and</li>
+<li>project deployment and documentation foundations.</li>
+</ul>
+<p>Priorities may change following stakeholder feedback, but the reason for any significant reprioritisation must be recorded.</p>
+<h2 id="13-definition-of-ready">13. Definition of Ready<a class="headerlink" href="#13-definition-of-ready" title="Permanent link">&para;</a></h2>
+<p>An issue may move from <code>Backlog</code> to <code>Ready</code> only when:</p>
+<ul>
+<li>its purpose is clear;</li>
+<li>its expected outcome is understood;</li>
+<li>it contains acceptance criteria;</li>
+<li>important dependencies are identified;</li>
+<li>required stakeholder clarification has been obtained;</li>
+<li>the task is small enough to complete within the sprint;</li>
+<li>an appropriate assignee can be selected; and</li>
+<li>the team understands how completion will be tested or verified.</li>
+</ul>
+<p>A research issue may use a clearly defined output, such as a recommendation, prototype, technical comparison or documented decision, instead of software acceptance criteria.</p>
+<p>An issue that does not meet these conditions must remain in the backlog.</p>
+<h2 id="14-definition-of-done">14. Definition of Done<a class="headerlink" href="#14-definition-of-done" title="Permanent link">&para;</a></h2>
+<p>An issue may move to <code>Done</code> only when all applicable conditions have been satisfied.</p>
+<p>The issue must:</p>
+<ul>
+<li>meet all acceptance criteria;</li>
+<li>have the required implementation completed;</li>
+<li>have relevant tests added or updated;</li>
+<li>pass all applicable automated checks;</li>
+<li>have been reviewed by another team member where required;</li>
+<li>have no unresolved review comments;</li>
+<li>include updated documentation where necessary;</li>
+<li>be merged into <code>main</code> where code changes are involved;</li>
+<li>have any known limitations documented; and</li>
+<li>be closed in Gitea.</li>
+</ul>
+<p>For user-facing work, the team must also verify that the change is:</p>
+<ul>
+<li>usable;</li>
+<li>responsive;</li>
+<li>accessible; and</li>
+<li>consistent with the agreed design.</li>
+</ul>
+<p>For research or documentation issues, the agreed output must be complete, stored in the repository and reviewed where appropriate.</p>
+<h2 id="15-handling-blocked-work">15. Handling Blocked Work<a class="headerlink" href="#15-handling-blocked-work" title="Permanent link">&para;</a></h2>
+<p>An issue must be moved to <code>Blocked</code> where progress cannot continue.</p>
+<p>The assignee must add a comment explaining:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Blocker</span>
+
+<span class="gs">**Blocked by:**</span>  
+<span class="gs">**Required action:**</span>  
+<span class="gs">**Responsible person:**</span>  
+<span class="gs">**Review date:**</span>
+</code></pre></div>
+<p>Blocked work must be reviewed during the Thursday standup.</p>
+<p>Where the blocker depends on the stakeholder, it must be raised at the next Tuesday meeting or through written communication if the delay is urgent.</p>
+<p>Where an issue remains blocked for more than one week, the team must decide whether to:</p>
+<ul>
+<li>remove the blocker;</li>
+<li>reassign the issue;</li>
+<li>divide the issue;</li>
+<li>replace it with an alternative approach;</li>
+<li>move it to a later sprint; or</li>
+<li>remove it from scope with a documented reason.</li>
+</ul>
+<h2 id="16-sprint-close-out">16. Sprint Close-Out<a class="headerlink" href="#16-sprint-close-out" title="Permanent link">&para;</a></h2>
+<p>At the end of each sprint, the team will complete a brief sprint close-out.</p>
+<p>The Tuesday stakeholder meeting closest to the sprint deadline will be used to:</p>
+<ul>
+<li>demonstrate completed work;</li>
+<li>confirm whether completed work meets stakeholder expectations;</li>
+<li>collect final feedback for the sprint;</li>
+<li>identify incomplete work;</li>
+<li>identify known defects and limitations; and</li>
+<li>confirm how incomplete or changed work will be handled.</li>
+</ul>
+<p>During the final Thursday standup of the sprint, the team will briefly reflect on:</p>
+<ol>
+<li>what worked well;</li>
+<li>what caused difficulty; and</li>
+<li>one improvement that should be applied during the next sprint.</li>
+</ol>
+<p>The sprint close-out does not require a separate meeting.</p>
+<p>A short sprint close-out record will be saved in the repository.</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># Sprint Close-Out</span>
+
+<span class="gs">**Sprint:**</span>  
+<span class="gs">**Date:**</span>  
+<span class="gs">**Attendees:**</span>
+
+<span class="gu">## Sprint Goal</span>
+
+<span class="gu">## Completed Work</span>
+
+<span class="gu">## Incomplete Work</span>
+
+<span class="gu">## Stakeholder Feedback</span>
+
+<span class="gu">## Known Defects and Limitations</span>
+
+<span class="gu">## Decisions</span>
+
+<span class="gu">## Improvement for the Next Sprint</span>
+</code></pre></div>
+<p>Only issues that meet the Definition of Done may be reported as completed.</p>
+<p>Incomplete work must be:</p>
+<ul>
+<li>returned to the backlog;</li>
+<li>moved to the next sprint with a documented reason;</li>
+<li>divided into smaller issues; or</li>
+<li>removed from scope with justification.</li>
+</ul>
+<p>The agreed improvement must be reviewed during the following sprint to determine whether it was applied and whether it was effective.</p>
+<h2 id="17-communication-and-decision-making">17. Communication and Decision-Making<a class="headerlink" href="#17-communication-and-decision-making" title="Permanent link">&para;</a></h2>
+<p>Gitea and the project repository will contain the authoritative record of project work.</p>
+<p>Other communication platforms may be used for convenience, but important information must be recorded formally where it affects:</p>
+<ul>
+<li>requirements;</li>
+<li>issue priority;</li>
+<li>technical decisions;</li>
+<li>scope;</li>
+<li>deadlines;</li>
+<li>responsibilities;</li>
+<li>risks; or</li>
+<li>stakeholder feedback.</li>
+</ul>
+<p>Technical decisions that significantly affect the project should be documented in a short decision record.</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># Decision Record</span>
+
+<span class="gs">**Decision:**</span>  
+<span class="gs">**Date:**</span>  
+<span class="gs">**Participants:**</span>
+
+<span class="gu">## Context</span>
+
+<span class="gu">## Options Considered</span>
+
+<span class="gu">## Selected Option</span>
+
+<span class="gu">## Motivation</span>
+
+<span class="gu">## Consequences</span>
+
+<span class="gu">## Related Issues</span>
+</code></pre></div>
+<p>Routine implementation choices do not require a separate decision record.</p>
+<h2 id="18-methodology-review-and-change-control">18. Methodology Review and Change Control<a class="headerlink" href="#18-methodology-review-and-change-control" title="Permanent link">&para;</a></h2>
+<p>This methodology is intended to remain in use for the duration of the project.</p>
+<p>The team will not change the methodology merely because another process appears more convenient or because an individual team member prefers a different approach.</p>
+<p>Consistent use is necessary to maintain reliable project records and demonstrate how the team planned, tracked and reviewed its work.</p>
+<p>The methodology may only be changed where there is clear evidence that the current process is causing significant or repeated problems.</p>
+<p>Examples include:</p>
+<ul>
+<li>excessive meeting or documentation overhead;</li>
+<li>repeated delays caused by the process;</li>
+<li>difficulty tracking work;</li>
+<li>important tasks regularly becoming blocked;</li>
+<li>stakeholder feedback not being integrated effectively;</li>
+<li>a Gitea limitation preventing the methodology from being followed;</li>
+<li>repeated confusion about responsibilities; or</li>
+<li>a major project change that makes the current methodology unsuitable.</li>
+</ul>
+<p>Before changing the methodology:</p>
+<ol>
+<li>The problem must be discussed by the full team.</li>
+<li>Evidence of the problem must be identified.</li>
+<li>The proposed change and its expected benefit must be explained.</li>
+<li>The change must be approved by a majority of the team.</li>
+<li>The decision and motivation must be recorded.</li>
+<li>This document must be updated with a new version number and effective date.</li>
+<li>The revised methodology must be applied consistently from that date onward.</li>
+</ol>
+<p>Methodology changes will not be applied retrospectively.</p>
+<p>Work completed before the effective date of a change will remain governed by the methodology version in effect at that time.</p>
+<p>Minor wording corrections that do not change the actual process may be made without following the full change procedure.</p>
+<h2 id="19-evidence-of-compliance">19. Evidence of Compliance<a class="headerlink" href="#19-evidence-of-compliance" title="Permanent link">&para;</a></h2>
+<p>The team will demonstrate that this methodology has been followed through evidence in Gitea and the project repository.</p>
+<p>Evidence will include:</p>
+<ul>
+<li>a populated and actively maintained Gitea Project board;</li>
+<li>Gitea milestones for each sprint;</li>
+<li>issues with descriptions and acceptance criteria;</li>
+<li>assigned and labelled issues;</li>
+<li>visible movement of work across board columns;</li>
+<li>blocked issues with documented reasons;</li>
+<li>Tuesday stakeholder-meeting notes;</li>
+<li>Thursday standup summaries;</li>
+<li>sprint-planning records;</li>
+<li>sprint close-out records;</li>
+<li>documented improvements between sprints;</li>
+<li>linked Pull Requests and issue closures;</li>
+<li>contributions from all team members; and</li>
+<li>documented methodology changes where applicable.</li>
+</ul>
+<p>The existence of this document alone will not be considered sufficient evidence of compliance.</p>
+<p>The team’s Gitea activity and repository documentation must demonstrate that the methodology was followed consistently.</p>
+<h2 id="20-standard-weekly-workflow">20. Standard Weekly Workflow<a class="headerlink" href="#20-standard-weekly-workflow" title="Permanent link">&para;</a></h2>
+<p>The standard weekly process will be:</p>
+<h3 id="tuesday">Tuesday<a class="headerlink" href="#tuesday" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Meet with the stakeholder or tutor.</li>
+<li>Demonstrate progress.</li>
+<li>Clarify requirements.</li>
+<li>Record feedback and decisions.</li>
+<li>Create or update Gitea issues.</li>
+</ul>
+<h3 id="wednesday">Wednesday<a class="headerlink" href="#wednesday" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Incorporate stakeholder feedback into active work.</li>
+<li>Reprioritise issues where required.</li>
+<li>Update the Project board.</li>
+</ul>
+<h3 id="thursday">Thursday<a class="headerlink" href="#thursday" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Hold the internal team standup.</li>
+<li>Review progress towards the sprint goal.</li>
+<li>Identify blockers.</li>
+<li>Confirm next actions.</li>
+<li>Record a brief weekly summary.</li>
+</ul>
+<h3 id="friday-to-monday">Friday to Monday<a class="headerlink" href="#friday-to-monday" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Continue implementation, testing, review and documentation.</li>
+<li>Update Gitea issues whenever work status changes.</li>
+<li>Prepare demonstrations and questions for the next stakeholder meeting.</li>
+</ul>
+<p>This weekly structure may be adjusted around public holidays, assessment commitments or stakeholder availability, provided that stakeholder interaction and team coordination still take place during the same week where reasonably possible.</p>
+<h2 id="21-summary-of-the-methodology">21. Summary of the Methodology<a class="headerlink" href="#21-summary-of-the-methodology" title="Permanent link">&para;</a></h2>
+<p>The team will follow this process:</p>
+<ol>
+<li>Record meaningful work as Gitea issues.</li>
+<li>Define acceptance criteria before work begins.</li>
+<li>Prioritise work according to project requirements and sprint goals.</li>
+<li>Track work continuously on the Gitea Project board.</li>
+<li>Meet the stakeholder every Tuesday where reasonably possible.</li>
+<li>Hold an internal team standup every Thursday.</li>
+<li>Keep work small and limit each member to one main active issue.</li>
+<li>Review and verify work before marking it as done.</li>
+<li>Complete a brief close-out at the end of each sprint.</li>
+<li>Record important decisions and stakeholder feedback.</li>
+<li>Change the methodology only where evidence shows that it is causing significant or repeated problems.</li>
+<li>Apply the methodology consistently throughout the project.</li>
+</ol>
+<h2 id="ai-declaration">AI Declaration<a class="headerlink" href="#ai-declaration" title="Permanent link">&para;</a></h2>
+<p>The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Thinking].</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
