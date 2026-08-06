@@ -23,7 +23,7 @@ if (!connectionString) {
 // Do not set rejectUnauthorized to false to make this pass.
 const client = new Client({
   connectionString,
- ssl: {
+  ssl: {
     rejectUnauthorized: true,
     ca: readFileSync(new URL('../certs/supabase-ca.crt', import.meta.url), 'utf8'),
   },
@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   }>(
     `select current_database() as database,
             current_user      as user,
-            current_setting('server_version') as server_version`
+            current_setting('server_version') as server_version`,
   );
 
   const [info] = rows;
