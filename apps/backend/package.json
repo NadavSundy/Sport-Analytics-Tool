@@ -9,7 +9,11 @@
     "lint": "eslint src tests --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:check": "tsx --env-file=.env scripts/check-connection.ts"
+    "db:check": "tsx --env-file=.env scripts/check-connection.ts",
+    "db:migrate": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate up --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true",
+    "db:migrate:down": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate down --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true",
+    "db:migrate:dry": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate up --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true --dry-run",
+    "db:migrate:create": "node-pg-migrate create --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --migration-filename-format utc -j sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
@@ -27,6 +31,8 @@
     "@types/node": "^22.9.0",
     "@types/pg": "^8.20.4",
     "@types/supertest": "^6.0.2",
+    "cross-env": "^10.1.0",
+    "node-pg-migrate": "^9.0.0",
     "supertest": "^7.0.0",
     "tsx": "^4.19.2",
     "vitest": "^2.1.4"

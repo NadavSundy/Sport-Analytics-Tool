@@ -23,6 +23,48 @@ Copy-Item apps/frontend/.env.example apps/frontend/.env
 
 Do not place real secrets in committed files.
 
+## Database connection
+
+The development database is a hosted PostgreSQL instance. A few details are not
+obvious and will cost you time if you skip them.
+
+### Use the session pooler, not the direct connection
+
+The Supabase dashboard offers several connection strings. Use the **session
+pooler** on port 5432, whose host contains `pooler.supabase.com`.
+
+Do not use the direct connection. Its host publishes no IPv4 address, so it fails
+name resolution on most networks, including the campus network.
+
+Copy the string into `apps/backend/.env`, replacing the placeholder:
+
+```
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+```
+
+If your password contains `@`, `:`, `/`, `?`, `#` or `%`, percent-encode it or the
+URL will not parse.
+
+### Certificate verification
+
+The connection uses TLS and verifies the server certificate against the authority
+certificate committed at `apps/backend/certs/supabase-ca.crt`. No setup is
+required, but if you see `self-signed certificate in certificate chain`, the
+certificate is not being found.
+
+**Do not disable certificate verification to make the error go away.** Setting
+`rejectUnauthorized` to `false` accepts any certificate from any server and
+defeats the purpose of TLS.
+
+### Verify
+
+```bash
+npm run db:check --workspace=@sport-analytics/backend
+```
+
+A successful run reports the database name, the server version and that prepared
+statements are supported.
+
 ## Authentication setup
 
 Set the development Supabase project URL and publishable key in the ignored `apps/backend/.env` file:
@@ -39,12 +81,6 @@ The backend does not require a secret key or legacy `service_role` key for token
 Google OAuth is configured in the Supabase dashboard. Its client secret remains only in the Google and Supabase dashboards.
 
 See the [Authentication Foundation](../security/authentication.md) for architecture, verification, and security guidance.
-
-## Backend database setup
-
-Configure the selected development database connection in the ignored `apps/backend/.env` file. Follow the database documentation for the approved connection string and TLS configuration.
-
-Never commit the database password or a complete production connection string.
 
 ## Run
 
@@ -107,3 +143,14 @@ For a clean, reproducible installation, use `npm.cmd ci`. The committed `package
 - Environment variables must be validated when the backend starts.
 - Each variable must have a documented owner and deployment source.
 - Development and production configuration must remain separate.
+
+## Database rules
+
+- `apps/backend/.env` holds real credentials and is ignored by Git. Never commit it, and never paste a connection string into an issue, Pull Request, or group chat.
+- Schema changes are applied only through committed migrations. Do not use the hosting provider's SQL editor to create, alter, or drop database objects.
+- Do not disable TLS certificate verification.
+- The development project may pause after inactivity on the current plan. Restore the shared project instead of creating an uncoordinated replacement.
+
+## AI Declaration
+
+The preceding document was written with the assistance of Claude-Web[Claude Opus 5] and Codex[GPT-5].

@@ -33,3 +33,23 @@ See:
 ## Verification
 
 Security review must include automated dependency scanning, route-level authorisation tests, negative validation tests, secret scanning, deployment review, and manual threat-model updates for major features.
+
+## Database credentials
+
+- The hosted PostgreSQL connection string is a secret. It lives only in the
+  ignored `apps/backend/.env` locally, and in the deployment secret store
+  otherwise. It must never appear in an issue, a Pull Request, a commit or a group
+  chat.
+- The connection uses TLS with certificate verification enabled, against the
+  authority certificate committed at `apps/backend/certs/supabase-ca.crt`.
+  Certificate verification must not be disabled to resolve a connection error.
+- All six team members hold owner access on the hosted project. Schema changes are
+  therefore applied only through committed migrations, never through the
+  provider's SQL editor, so that the database and the migration history cannot
+  diverge without record.
+- If the connection string is exposed, rotate the database password from the
+  provider dashboard, update the deployment secret store, and notify the team. The
+  exposed value must be treated as compromised even if the exposure appears
+  contained.
+- The generated Data API is disabled on the instance. It must not be enabled, and
+  the Supabase client library must not be added to any workspace.
