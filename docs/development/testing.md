@@ -42,3 +42,43 @@ npm run check
 ## CI expectation
 
 Pull Requests should fail when formatting, linting, type checking, tests, structure validation, or builds fail. Deployment jobs should run only from reviewed branches/tags and should use environment-specific secrets.
+
+
+# Automated Testing
+
+The project uses a layered automated testing strategy covering utility and
+domain logic, frontend components, backend HTTP endpoints, shared API
+contracts, database integration and browser-level workflows.
+
+## Testing layers
+
+| Layer | Location | Tool | Purpose |
+|---|---|---|---|
+| Unit | `apps/backend/tests/unit/` | Vitest | Test statistic calculations, utilities and safety rules in isolation |
+| Frontend component | `apps/frontend/src/**/*.test.tsx` | Vitest and React Testing Library | Test accessible component behaviour from the user's perspective |
+| Backend API | `apps/backend/tests/api/` and existing backend test files | Vitest and Supertest | Test handwritten HTTP endpoints and middleware |
+| Database integration | `apps/backend/tests/database/` | Vitest and PostgreSQL | Test migrations, queries, transactions and rollback behaviour |
+| Shared contracts | `packages/contracts/src/tests/` | Vitest and Zod | Confirm API payloads conform to shared schemas |
+| End-to-end | `tests/e2e/` | Playwright | Test browser-level user journeys |
+| Accessibility | Component tests and `tests/e2e/` | Testing Library and Axe | Detect automated accessibility violations |
+
+Feature-specific tests remain part of their corresponding implementation issues.
+Issue #72 establishes the common test infrastructure and approved testing
+patterns.
+
+## Root commands
+
+Run commands from the repository root:
+
+```bash
+npm test
+npm run test:unit
+npm run test:frontend
+npm run test:api
+npm run test:contracts
+npm run test:database
+npm run test:e2e
+npm run test:coverage
+npm run test:ci
+npm run check
+```
