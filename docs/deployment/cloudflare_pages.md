@@ -3,29 +3,81 @@
 ## Prerequisites
 
 - Python
-- MkDocs
-- Cloudflare account
+- Node.js and npm
+- A Cloudflare account
+- Wrangler (run using `npx`)
 
-## Build
+## Install Documentation Dependencies
 
 ```bash
-mkdocs build --strict
+python -m pip install -r requirements-docs.txt
 ```
 
-## Preview locally
+## Build the Documentation
+
+Build the MkDocs site in strict mode to ensure there are no broken links or configuration errors.
 
 ```bash
-mkdocs serve
+python -m mkdocs build --strict
+```
+
+## Preview Locally
+
+To preview the documentation before deployment:
+
+```bash
+python -m mkdocs serve
+```
+
+Open your browser at:
+
+```
+http://127.0.0.1:8000
 ```
 
 ## Deploy
 
-1. Log in to Cloudflare.
-2. Navigate to Workers & Pages.
-3. Select the project.
-4. Upload the contents of the generated `site/` directory.
-5. Deploy.
+Wrangler can authenticate either by logging in interactively or by using a Cloudflare API token.
 
-The public documentation is available at:
+Deploy the generated `site/` directory:
+
+```bash
+npx wrangler pages deploy site --project-name=sports-analytics-tool
+```
+
+For automated deployments, authentication should be provided using the following environment variables or repository secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+## Public Documentation
+
+Cloudflare Pages Project:
+
+```
+sports-analytics-tool
+```
+
+Public documentation URL:
 
 https://sports-analytics-tool.pages.dev
+
+## Future Automated Deployment
+
+Once a Gitea Actions runner is available, the documentation deployment can be automated by:
+
+1. Checking out the repository.
+2. Installing the documentation dependencies.
+3. Building the documentation using:
+
+   ```bash
+   python -m mkdocs build --strict
+   ```
+
+4. Deploying the generated `site/` directory using Wrangler.
+5. Using the following repository secrets:
+
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+
+No Cloudflare credentials or API tokens should be committed to the repository.
