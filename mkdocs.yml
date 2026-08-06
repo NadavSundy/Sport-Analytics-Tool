@@ -19,6 +19,7 @@ nav:
       - Dependencies: development/dependencies.md
   - Design:
       - Architecture: architecture/overview.md
+      - System Architecture and Roadmap: architecture/system-architecture.md
       - API: api/overview.md
       - Database: database/overview.md
       - Event Model: database/schema.md
