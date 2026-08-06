@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 coverage/
+.venv/
 .env
 .env.*
 !.env.example
@@ -150,3 +151,13 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+
+# Downloaded Cricsheet data
+data/cricsheet/downloads/
+data/cricsheet/matches/
+data/cricsheet/manifest.json
+data/cricsheet/summary.json
+
+# Python-generated files
+__pycache__/
+*.py[cod]

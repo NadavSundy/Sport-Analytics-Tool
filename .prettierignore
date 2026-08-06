@@ -4,3 +4,4 @@ coverage
 site
 *.min.js
 package-lock.json
+.venv/

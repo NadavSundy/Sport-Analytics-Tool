@@ -4,6 +4,8 @@ const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().max(65_535).default(3000),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
+  SUPABASE_URL: z.string().trim().url('Supabase URL must be a valid URL'),
+  SUPABASE_PUBLISHABLE_KEY: z.string().trim().min(1, 'Supabase publishable key is required'),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

@@ -16,6 +16,8 @@ A dependency must have a clear project purpose, an acceptable licence, active ma
 | Logging          | Pino HTTP                          | Structured request logging foundation             |
 | Testing          | Vitest, Testing Library, Supertest | Component, unit, and API integration tests        |
 | Documentation    | MkDocs Material                    | Public static documentation website               |
+| Authentication   | `@supabase/supabase-js`            | Validate Supabase access tokens in the backend    |
+| Configuration    | dotenv                             | Load ignored local backend environment files      |
 
 ## Review requirements
 
@@ -29,6 +31,14 @@ Before each milestone:
 - retest the application after upgrades.
 
 Exact installed versions are recorded in the committed `package-lock.json`. Use `npm ci` rather than `npm install` when validating a clean checkout or running CI.
+
+## Authentication dependency review
+
+The backend uses the maintained `@supabase/supabase-js` client to validate access tokens through Supabase Auth.
+
+Dependency audit findings must be reviewed according to their actual dependency path and exploitability. Do not run `npm audit fix --force` without reviewing proposed breaking changes.
+
+The team must monitor Supabase client releases and rerun `npm audit --omit=dev` during dependency reviews.
 
 ## TypeScript compatibility
 

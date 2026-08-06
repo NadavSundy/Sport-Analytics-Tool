@@ -1,8 +1,8 @@
-# Sport Analytics Tool
+# Stat'sTheGame
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** Foundation scaffold. The repository structure and minimal health-check applications exist, but authentication, sport-specific event schemas, submissions, derivation, datasets, and the external API integration are not yet implemented.
+> **Current status:** Foundation scaffold with a Supabase Auth backend proof. The Express API validates Supabase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
 
 ## Repository structure
 
@@ -18,7 +18,7 @@ scripts              Repository validation scripts
 tests                Cross-application and non-unit testing assets
 ```
 
-The frontend and backend are separate applications. The frontend must access application data through the backend HTTP API. The database must not be exposed to the frontend through generated Supabase or Firebase data endpoints.
+The frontend and backend are separate applications. The frontend may contact Supabase Auth for managed sign-in, but all application data must pass through the handwritten backend HTTP API. Generated Supabase data endpoints must not be used as the application API.
 
 See [Repository Structure](docs/architecture/repository-structure.md) for the detailed tree and boundaries.
 
@@ -28,6 +28,8 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 - npm 10 or later
 - Python 3 and MkDocs Material for the documentation site
 - A PostgreSQL-compatible development database
+- Access to the shared development Supabase project
+- A Docker-compatible runtime if using the optional local Supabase stack
 
 ## Initial setup
 
@@ -45,10 +47,50 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+## Deployment
+
+The Sport Analytics Tool uses Microsoft Azure for hosting.
+
+### Backend
+
+URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/
+
+- Platform: Azure App Service (Linux)
+- Runtime: Node.js 22 LTS
+- Environment: Development
+- Deployment: Azure App Service
+- Configuration: Environment variables managed through Azure App Service
+
+### Frontend
+
+URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/
+
+- Platform: Azure App Service (Linux)
+- Runtime: Node.js 22 LTS
+- Environment: Development
+- Deployment: Azure App Service
+- Built using Vite.
+
+### CI/CD
+
+Deployment automation is configured using Gitea Actions.
+
+The deployment workflow will:
+
+1. Install dependencies
+2. Run project checks
+3. Build the application
+4. Deploy to Azure App Service
+
+Deployment credentials are stored securely using repository Action Secrets.
+
+No deployment credentials are committed to source control.
+
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
 - Backend health endpoint: `http://localhost:3000/api/v1/health`
+- Protected identity endpoint: `http://localhost:3000/api/v1/auth/me`
 
 ## Documentation
 
@@ -66,6 +108,14 @@ Important starting documents:
 - [Architecture Overview](docs/architecture/overview.md)
 - [Local Development Setup](docs/development/setup.md)
 - [Testing Strategy](docs/development/testing.md)
+- [Authentication Foundation](docs/security/authentication.md)
+- [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
+
+The public documentation for this project is available at:
+
+https://sports-analytics-tool.pages.dev
+
+The documentation is generated using MkDocs and deployed via Cloudflare Pages.
 
 ## Development rules
 
@@ -79,7 +129,7 @@ Important starting documents:
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking].
+This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking] and Codex[GPT-5].
 
 This repository does not currently use AI in-line editing tools.
 

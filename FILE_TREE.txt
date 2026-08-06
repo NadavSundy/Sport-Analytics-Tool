@@ -60,7 +60,16 @@ docs/index.md
 docs/project_methodology.md
 docs/security/overview.md
 evidence/README.md
+evidence/ai/README.md
 evidence/ai/ai-usage-register.csv
+evidence/ai/transcripts/README.md
+evidence/ai/transcripts/ben-swartz/README.md
+evidence/ai/transcripts/dean-feldman/2026-08-06-continuous-project-session.md
+evidence/ai/transcripts/dean-feldman/README.md
+evidence/ai/transcripts/gabriel-raz/README.md
+evidence/ai/transcripts/liora-rosenberg/README.md
+evidence/ai/transcripts/nadav-sundy/README.md
+evidence/ai/transcripts/shayna-unterslak/README.md
 evidence/decisions/ADR-000-template.md
 evidence/sprints/README.md
 evidence/stakeholder-meetings/README.md

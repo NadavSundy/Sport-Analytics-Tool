@@ -2,11 +2,16 @@
 
 ## Authentication
 
-Use an established authentication provider or maintained authentication library. The selected solution must support registration, login, password reset, and account deletion. The team must not implement password storage, session cryptography, reset-token generation, or OAuth protocols from scratch.
+The project uses Supabase Auth with Google as the initial OAuth provider. The React frontend will obtain a Supabase access token through a managed sign-in flow, and the handwritten Express API validates that identity using `@supabase/supabase-js`.
 
-## Authorisation
+The frontend may use Supabase for authentication, but application data remains behind the handwritten backend API.
 
-Authentication does not grant automatic submission access. The backend must enforce roles and competition/season/fixture scope for every protected operation. Approved submitters should only submit within their assigned scope.
+Authentication confirms identity only. It does not grant submission access, application roles or sport-specific permissions.
+
+See:
+
+- [Authentication foundation](authentication.md)
+- [Authentication provider comparison](auth-provider-comparison.md)
 
 ## Input and data protection
 
@@ -28,3 +33,23 @@ Authentication does not grant automatic submission access. The backend must enfo
 ## Verification
 
 Security review must include automated dependency scanning, route-level authorisation tests, negative validation tests, secret scanning, deployment review, and manual threat-model updates for major features.
+
+## Database credentials
+
+- The hosted PostgreSQL connection string is a secret. It lives only in the
+  ignored `apps/backend/.env` locally, and in the deployment secret store
+  otherwise. It must never appear in an issue, a Pull Request, a commit or a group
+  chat.
+- The connection uses TLS with certificate verification enabled, against the
+  authority certificate committed at `apps/backend/certs/supabase-ca.crt`.
+  Certificate verification must not be disabled to resolve a connection error.
+- All six team members hold owner access on the hosted project. Schema changes are
+  therefore applied only through committed migrations, never through the
+  provider's SQL editor, so that the database and the migration history cannot
+  diverge without record.
+- If the connection string is exposed, rotate the database password from the
+  provider dashboard, update the deployment secret store, and notify the team. The
+  exposed value must be treated as compromised even if the exposure appears
+  contained.
+- The generated Data API is disabled on the instance. It must not be enabled, and
+  the Supabase client library must not be added to any workspace.

@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-The API is a primary product. It must be designed and implemented by the team as HTTP endpoints. Generated Firebase or Supabase database endpoints must not be used as the application API.
+The API is a primary product. It must be designed and implemented by the team as HTTP endpoints. Generated database endpoints must not be used as the application API. Supabase may provide managed authentication, but application data must pass through the handwritten backend.
 
 ## Initial conventions
 
@@ -15,7 +15,7 @@ The API is a primary product. It must be designed and implemented by the team as
 - Authentication: established provider/library for users; separate API-consumer credentials when introduced
 - Versioning: URL major version initially, with a documented deprecation path before any retirement
 
-## Current endpoint
+## Current endpoints
 
 ```http
 GET /api/v1/health
@@ -32,6 +32,32 @@ Example response:
 ```
 
 This endpoint is scaffold infrastructure only.
+
+### Authenticated identity proof
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <supabase-access-token>
+```
+
+Successful response:
+
+```json
+{
+  "identity": {
+    "subject": "<supabase-user-id>"
+  }
+}
+```
+
+Missing, malformed, invalid, expired or revoked tokens receive:
+
+```http
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer
+```
+
+The endpoint proves authenticated identity only. It does not assign roles or sport-specific permissions.
 
 ## Required future API areas
 
