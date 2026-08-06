@@ -2,7 +2,7 @@
 
 **Status:** Target architecture; foundation components are implemented, while later-tier
 components are explicitly marked as planned.  
-**Related issue:** #38  
+**Related issues:** #38, #73
 **Last updated:** 6 August 2026
 
 ## 1. Purpose and architectural principles
@@ -34,19 +34,46 @@ The approved event model covers T20 cricket. The current data source is Cricshee
 agreed scope recorded in ADR-003 is eleven franchise competitions plus men's and women's T20
 internationals. The exact required statistic catalogue is still a dependency of issue #37.
 
-### Authentication provider clarification
+### Authentication provider
 
-Issue #38 originally named **Firebase Authentication**. That was the selection in ADR-002 and
-was successfully prototyped, but ADR-004 superseded it. The repository now implements
-**Supabase Auth** with Google as the initial OAuth provider. The architecture therefore shows
-Supabase Auth as the current provider and does not propose running Firebase and Supabase Auth
-at the same time.
+The project uses **Supabase Auth** as its managed authentication foundation, with
+**Google OAuth** as the initial sign-in provider.
 
-Authentication remains behind a provider boundary. Application users are keyed by
-`(auth_provider, provider_subject)`, so a formally approved return to Firebase would replace
-the frontend SDK and backend token verifier without changing role, event, or statistic data.
-The provider discrepancy and the scope of the client's Supabase compliance approval must be
-resolved before production; see [Risks and unresolved decisions](#12-risks-and-unresolved-decisions).
+ADR-004 supersedes the earlier Firebase decision in ADR-002. The repository now implements
+Supabase token verification in the Express backend using
+`supabase.auth.getUser(accessToken)`. Firebase Authentication is therefore not part of the
+current runtime architecture and must not be implemented alongside Supabase Auth.
+
+The authentication flow is:
+
+1. The React frontend initiates the managed Google OAuth flow through Supabase Auth.
+2. Supabase Auth issues a user session and access token.
+3. The frontend sends the access token to the handwritten Express API using a bearer token.
+4. The backend verifies the token with Supabase Auth.
+5. The backend maps the verified provider subject to the application's own account, role,
+   approval state and scoped permissions.
+
+Authentication and authorisation remain separate:
+
+- **Supabase Auth** proves the user's identity.
+- **The Sport Analytics backend** determines what the user is allowed to do.
+
+Application users are identified using the provider-neutral combination:
+
+```text
+(auth_provider, provider_subject)
+```
+
+This prevents authentication-provider details from becoming coupled to competition, event,
+submission or statistic data.
+
+The written lecturer ruling currently stored in the repository explicitly approves using
+Supabase as hosted PostgreSQL while avoiding its generated data API. It does not explicitly
+mention Supabase Auth.
+
+Supabase Auth is therefore the team's selected and implemented authentication foundation.
+Any required stakeholder or lecturer confirmation for its production use must remain
+recorded as an open compliance decision until confirmed.
 
 ## 3. High-level architecture
 
@@ -406,6 +433,191 @@ added without changing application architecture.
 
 ## 11. Development roadmap
 
+The roadmap is outcome-based and follows the project's lightweight Scrumban methodology.
+Issues move into active development only when their dependencies are understood, an assignee
+is available, and they satisfy the Definition of Ready.
+
+The team is targeting:
+
+- a working Basic vertical slice during Sprint 1;
+- complete Basic and Intermediate functionality by the end of Sprint 2;
+- Advanced feature completion by the end of Sprint 3; and
+- Final Submission work focused on hardening, evidence and release preparation.
+
+This is an ambitious target. Basic and Intermediate requirements remain non-negotiable.
+High-risk Advanced design work must begin early enough that it is not all deferred until
+Sprint 3.
+
+### Sprint 1 — deliver the working Basic vertical slice
+
+**Goal:** establish the project foundations and demonstrate the complete path from approved
+event submission to publicly viewable event-derived statistics.
+
+Planned outcomes include:
+
+- complete and prioritise the project backlog under #36;
+- confirm the T20 competition scope, event vocabulary and required statistic catalogue under
+  #37;
+- maintain the agreed architecture and roadmap through #38 and #73;
+- preserve the separate React frontend and handwritten Express backend;
+- use Supabase Auth with Google OAuth for managed identity;
+- implement application accounts, roles, approved-submitter status and scoped permissions;
+- implement repeatable PostgreSQL migrations and development seed data;
+- implement the approved cricket fixture and delivery-event model;
+- define the executable delivery-submission contract;
+- validate incoming event submissions and return actionable rejection messages;
+- allow only approved, in-scope submitters to upload delivery events;
+- retain submission, submitter, fixture and event provenance;
+- derive the first required fixture statistics from accepted delivery events;
+- expose fixtures, ordered events and derived statistics through the public API;
+- allow public users to browse fixtures, events and statistics without signing in;
+- establish frontend, backend, database, contract and browser testing foundations;
+- repair and verify frontend and backend deployment workflows;
+- maintain green CI, public documentation and AI-use evidence.
+
+**Exit evidence:**
+
+- a deployed public user can browse a fixture and view its ordered events and derived
+  statistics without signing in;
+- an administrator can approve a submitter and assign an appropriate scope;
+- an approved submitter can sign in and submit in-scope delivery events;
+- invalid submissions receive useful structured rejection messages;
+- valid submissions are stored with provenance;
+- required fixture statistics are derived from accepted events;
+- automated tests cover the main vertical-slice behaviour;
+- frontend, backend and documentation deployments are verifiable;
+- architecture, database, API, testing and setup documentation reflect the implemented state;
+- Sprint 1 review and retrospective evidence is recorded.
+
+### Sprint 2 — complete Basic and Intermediate functionality
+
+**Goal:** complete all remaining Basic requirements and extend the platform for reliable
+whole-season processing, aggregate statistics, API consumers and reproducible dataset
+releases.
+
+Planned outcomes include:
+
+- complete any unfinished Basic account, administration, correction, provenance and export
+  workflows;
+- complete public competition, season, fixture, competitor, participant, event and statistic
+  interfaces;
+- implement JSON and CSV file submissions through the shared validation pipeline;
+- implement authorised event corrections while retaining correction history;
+- automatically refresh statistics affected by accepted corrections;
+- provide clear statistic provenance and “how calculated” information;
+- integrate one relevant external API through an isolated adapter;
+- stage and validate whole-season and back-catalogue batches before publication;
+- report accepted and rejected batch records;
+- make repeated batch submissions idempotent;
+- resume failed batch processing from durable checkpoints;
+- introduce submission review and publication workflows;
+- detect impossible and conflicting data through documented validation rules;
+- derive season, career and competition-wide aggregates;
+- recompute only results affected by changed events;
+- compare derived figures against independently verified reference results;
+- create representative-scale performance data;
+- define and meet documented API response-time targets;
+- optimise database indexes, storage layout and query plans;
+- implement explicit API versioning;
+- issue, rotate and revoke API keys;
+- enforce consumer rate limits and quotas;
+- cache repeated reads where measurements justify caching;
+- publish versioned dataset releases with schemas, field descriptions and checksums;
+- complete Intermediate integration, correctness, performance and recovery tests;
+- publish complete Basic and Intermediate API, database, testing and third-party code
+  documentation.
+
+**Exit evidence:**
+
+- all mandatory Basic requirements are demonstrably complete;
+- representative whole-season batches can be staged, validated, resumed and safely
+  resubmitted;
+- corrections retain history and update only dependent results;
+- season and career aggregates match approved reference results;
+- API consumers use documented versioned endpoints and managed credentials;
+- representative performance targets pass;
+- reproducible versioned dataset releases can be downloaded and verified;
+- stakeholder and user feedback has been recorded and incorporated where appropriate.
+
+### Sprint 3 — complete Advanced functionality
+
+**Goal:** complete the Advanced event-processing, analyst-definition, temporal-query,
+compatibility and data-defence capabilities and bring the product to a near-release state.
+
+Planned outcomes include:
+
+- define a restricted and safe custom-statistic definition language;
+- validate and version analyst-defined statistic definitions;
+- execute custom definitions under resource and safety limits;
+- evaluate approved custom statistics across the full event history;
+- trace each result to its source events and definition version;
+- propagate accepted event corrections into affected custom-statistic results;
+- accept an authenticated live fixture-event feed;
+- handle duplicate, late and out-of-order live events deterministically;
+- replay the event pipeline and prove convergence with an equivalent ordered feed;
+- support as-of-date statistic queries;
+- compare two dataset releases and show what changed;
+- provide aggregate API queries beyond record retrieval;
+- hand large API requests to asynchronous jobs;
+- allow consumers to submit jobs, inspect status and collect completed results;
+- publish an event and dataset change feed for delta synchronisation;
+- implement and document API deprecation and safe version retirement;
+- add automated contract and backwards-compatibility tests;
+- provide per-consumer API usage information;
+- detect events that appear anomalous against historical data;
+- reconcile conflicting submitters through an auditable resolution workflow;
+- carry accepted corrections through aggregates, caches, custom statistics and dataset
+  releases;
+- complete representative-scale Advanced correctness and performance testing;
+- implement production observability, structured logs, metrics and health checks;
+- complete accessibility, responsiveness, security and failure-recovery reviews;
+- publish complete Advanced architecture, API, analyst and operations documentation;
+- run the Advanced stakeholder acceptance demonstration.
+
+**Exit evidence:**
+
+- approved custom statistic definitions run reproducibly without arbitrary code execution;
+- a disordered live feed converges on the same result as the equivalent ordered events;
+- consumers can query historical statistic state and compare dataset releases;
+- large requests complete through observable asynchronous jobs;
+- API compatibility and deprecation behaviour is tested;
+- anomalies and conflicting submissions can be reviewed and resolved with audit evidence;
+- accepted corrections reach every affected downstream result and release;
+- the deployed product is feature-complete for the Advanced tier and ready for final
+  hardening.
+
+### Final Submission — harden, evidence and release
+
+**Goal:** release a stable and reproducible product without introducing major new feature
+scope.
+
+Planned outcomes include:
+
+- resolve all release-blocking defects;
+- complete production database migrations, backups and restore verification;
+- verify production secrets, configuration and all deployed components;
+- run final performance, security, accessibility, recovery and cross-browser audits;
+- complete the requirements traceability matrix and limitations register;
+- complete database, third-party code, licence, testing and AI-use documentation;
+- prepare the reproducible demonstration dataset;
+- rehearse the complete product demonstration;
+- prepare the group report, individual reports, peer review and group presentation;
+- reconcile the final implementation with architecture diagrams, ADRs and API documentation;
+- publish release notes;
+- create the final annotated version tag;
+- assemble and verify the final submission package.
+
+**Exit evidence:**
+
+- all required automated and manual checks pass;
+- the frontend, API, database, documentation and supporting services are deployed and
+  verifiable;
+- every claimed requirement links to implementation, testing and documentation evidence;
+- known limitations are recorded honestly;
+- backup, restore and rollback procedures have been exercised;
+- the final demonstration is reproducible;
+- the exact submitted commit is tagged and documented.
+
 The roadmap is outcome-based rather than a promise that every stretch component will be
 delivered. Work moves only after its dependencies and acceptance tests are clear. Incomplete
 work returns to the backlog under the project's documented methodology.
@@ -510,21 +722,21 @@ undocumented critical limitation.
 
 ## 12. Risks and unresolved decisions
 
-| Risk or decision                                  | Impact                                                                                                                                                                                                                      | Required resolution or mitigation                                                                                                                                                         | Decision gate                                                |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Authentication source conflict                    | Issue #38 names Firebase; ADR-004 and runtime use Supabase Auth; ADR-003 says the client's narrow Supabase approval did not extend beyond PostgreSQL. An unconfirmed interpretation could create compliance or rework risk. | Obtain written stakeholder/lecturer confirmation for Supabase Auth, reconcile ADR-003/ADR-004, and use exactly one provider. Keep the provider adapter and provider-neutral identity key. | Before role implementation or production auth configuration. |
-| Required statistic catalogue (#37)                | Derivation contracts, provenance, indexes, and acceptance tests cannot be finalised.                                                                                                                                        | Approve names, formulas, scopes, rounding, tie/null rules, super-over handling, and reference examples.                                                                                   | Sprint 1; before Sprint 2 derivation.                        |
-| Competition scope and storage volume              | The measured corpus contains 3,193,996 deliveries; the selected database free plan may be too small and the Frankfurt database adds about 150 ms network latency from Johannesburg.                                         | Benchmark the real schema/indexes and representative queries; then pay, reduce scope, move provider/region, or separate large objects. Record an ADR.                                     | Before bulk ingestion.                                       |
-| Roles, approval, and review policy                | Over-broad submitter permissions or self-approval could corrupt trusted data.                                                                                                                                               | Approve the role/capability matrix, grant scopes, approver separation, expiry/revocation, and auto-accept versus review rules; test deny-by-default behaviour.                            | Before enabling submissions.                                 |
-| Object storage and retention                      | Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.                                                                                                   | Select a provider after measurement; define size/type limits, malware approach, signed links, retention, licence, and deletion behaviour.                                                 | Before large/public uploads or exports.                      |
-| Runtime external API is not selected              | The mandatory integration may have inadequate T20 coverage, quotas, licence, reliability, or correction semantics.                                                                                                          | Compare candidates using a thin adapter proof; preserve fixtures for offline tests and ensure graceful degradation.                                                                       | Sprint 1 selection; Sprint 2 implementation.                 |
-| Deployment workflows do not match monorepo paths  | Current filters and package/workspace references use `frontend`/`backend` rather than `apps/frontend`/`apps/backend`, so main changes may not deploy correctly.                                                             | Correct the workflows and prove them with deployment plus smoke-test evidence.                                                                                                            | Sprint 1.                                                    |
-| Database migration and recovery process           | Automatic or incompatible changes can break a running API; the current free database has no retained backups.                                                                                                               | Use reviewed SQL, explicit forward migration, backward-compatible rollout, tested dump/restore, and recorded ownership.                                                                   | Before event data becomes authoritative.                     |
-| Event and statistic correctness                   | Cricket edge cases can silently produce plausible but wrong aggregates.                                                                                                                                                     | Preserve the approved identities/revisions, use corpus edge cases and independent golden results, property-test invariants, and make formula versions visible.                            | Every event/statistic Pull Request.                          |
-| Queue/cache consistency                           | A lost job or stale cache can publish statistics from superseded events.                                                                                                                                                    | Use atomic outbox/job creation, idempotent workers, data/definition-version cache keys, invalidation tests, and reconciliation jobs. Avoid these components until needed.                 | Before Intermediate rollout.                                 |
-| Live feed ordering, correction, licence, and cost | Late or duplicate events can cause divergence; provider terms may prevent redistribution.                                                                                                                                   | Select a licensed provider, persist provider sequence/idempotency keys, pass live data through normal validation, and test replay/reconciliation.                                         | Optional Advanced gate.                                      |
-| Custom-statistic safety                           | Arbitrary expressions can cause code execution, data leakage, or unbounded workloads.                                                                                                                                       | Use a restricted declarative model, allow-listed operations, validation, cost/time limits, review/versioning, and isolated execution. Never evaluate arbitrary JavaScript or SQL.         | Optional Advanced gate.                                      |
-| Provider and secret availability                  | Auth, database, storage, or external-provider outage can affect multiple features; leaked credentials expand impact.                                                                                                        | Separate least-privilege credentials by environment, rotate and redact them, monitor providers, apply timeouts/circuit breakers, and document degraded modes.                             | Before production.                                           |
+| Risk or decision                                  | Impact                                                                                                                                                                                                                             | Required resolution or mitigation                                                                                                                                                                                                      | Decision gate                                                                                         |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Supabase Auth compliance confirmation             | The repository and ADR-004 use Supabase Auth with Google OAuth, but the written lecturer approval currently recorded in the repository explicitly covers Supabase-hosted PostgreSQL and does not separately confirm Supabase Auth. | Obtain written stakeholder or lecturer confirmation that Supabase Auth is acceptable for managed authentication. Continue using the provider-neutral application identity model and do not introduce Firebase alongside Supabase Auth. | Before production authentication is enabled or account and role functionality is considered complete. |
+| Required statistic catalogue (#37)                | Derivation contracts, provenance, indexes, and acceptance tests cannot be finalised.                                                                                                                                               | Approve names, formulas, scopes, rounding, tie/null rules, super-over handling, and reference examples.                                                                                                                                | Sprint 1; before Sprint 2 derivation.                                                                 |
+| Competition scope and storage volume              | The measured corpus contains 3,193,996 deliveries; the selected database free plan may be too small and the Frankfurt database adds about 150 ms network latency from Johannesburg.                                                | Benchmark the real schema/indexes and representative queries; then pay, reduce scope, move provider/region, or separate large objects. Record an ADR.                                                                                  | Before bulk ingestion.                                                                                |
+| Roles, approval, and review policy                | Over-broad submitter permissions or self-approval could corrupt trusted data.                                                                                                                                                      | Approve the role/capability matrix, grant scopes, approver separation, expiry/revocation, and auto-accept versus review rules; test deny-by-default behaviour.                                                                         | Before enabling submissions.                                                                          |
+| Object storage and retention                      | Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.                                                                                                          | Select a provider after measurement; define size/type limits, malware approach, signed links, retention, licence, and deletion behaviour.                                                                                              | Before large/public uploads or exports.                                                               |
+| Runtime external API is not selected              | The mandatory integration may have inadequate T20 coverage, quotas, licence, reliability, or correction semantics.                                                                                                                 | Compare candidates using a thin adapter proof; preserve fixtures for offline tests and ensure graceful degradation.                                                                                                                    | Sprint 1 selection; Sprint 2 implementation.                                                          |
+| Deployment workflows do not match monorepo paths  | Current filters and package/workspace references use `frontend`/`backend` rather than `apps/frontend`/`apps/backend`, so main changes may not deploy correctly.                                                                    | Correct the workflows and prove them with deployment plus smoke-test evidence.                                                                                                                                                         | Sprint 1.                                                                                             |
+| Database migration and recovery process           | Automatic or incompatible changes can break a running API; the current free database has no retained backups.                                                                                                                      | Use reviewed SQL, explicit forward migration, backward-compatible rollout, tested dump/restore, and recorded ownership.                                                                                                                | Before event data becomes authoritative.                                                              |
+| Event and statistic correctness                   | Cricket edge cases can silently produce plausible but wrong aggregates.                                                                                                                                                            | Preserve the approved identities/revisions, use corpus edge cases and independent golden results, property-test invariants, and make formula versions visible.                                                                         | Every event/statistic Pull Request.                                                                   |
+| Queue/cache consistency                           | A lost job or stale cache can publish statistics from superseded events.                                                                                                                                                           | Use atomic outbox/job creation, idempotent workers, data/definition-version cache keys, invalidation tests, and reconciliation jobs. Avoid these components until needed.                                                              | Before Intermediate rollout.                                                                          |
+| Live feed ordering, correction, licence, and cost | Late or duplicate events can cause divergence; provider terms may prevent redistribution.                                                                                                                                          | Select a licensed provider, persist provider sequence/idempotency keys, pass live data through normal validation, and test replay/reconciliation.                                                                                      | Optional Advanced gate.                                                                               |
+| Custom-statistic safety                           | Arbitrary expressions can cause code execution, data leakage, or unbounded workloads.                                                                                                                                              | Use a restricted declarative model, allow-listed operations, validation, cost/time limits, review/versioning, and isolated execution. Never evaluate arbitrary JavaScript or SQL.                                                      | Optional Advanced gate.                                                                               |
+| Provider and secret availability                  | Auth, database, storage, or external-provider outage can affect multiple features; leaked credentials expand impact.                                                                                                               | Separate least-privilege credentials by environment, rotate and redact them, monitor providers, apply timeouts/circuit breakers, and document degraded modes.                                                                          | Before production.                                                                                    |
 
 ## 13. Architecture verification checklist
 
@@ -563,3 +775,5 @@ The preceding document was planned, generated, and reviewed with the assistance 
 Codex[GPT-5]. The architecture was reconciled against the repository's implemented code,
 accepted decision records, workflows, and approved event-model documentation; it still
 requires the group review and Pull Request required by issue #38.
+
+The roadmap and authentication terminology were later reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Thinking].
