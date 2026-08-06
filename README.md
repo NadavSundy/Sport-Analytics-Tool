@@ -45,6 +45,46 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+## Deployment
+
+The Sport Analytics Tool uses Microsoft Azure for hosting.
+
+### Backend
+
+URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.scm.southafricanorth-01.azurewebsites.net:443/statsthegame-api-dev.git
+
+- Platform: Azure App Service (Linux)
+- Runtime: Node.js 22 LTS
+- Environment: Development
+- Deployment: Azure App Service
+- Configuration: Environment variables managed through Azure App Service
+
+### Frontend
+
+URL: https://statsthegame-web-dev-dngxgqb2esbudsce.scm.southafricanorth-01.azurewebsites.net:443/statsthegame-web-dev.git
+
+- Platform: Azure App Service (Linux)
+- Runtime: Node.js 22 LTS
+- Environment: Development
+- Deployment: Azure App Service
+- Built using Vite.
+
+### CI/CD
+
+Deployment automation is configured using Gitea Actions.
+
+The deployment workflow will:
+
+1. Install dependencies
+2. Run project checks
+3. Build the application
+4. Deploy to Azure App Service
+
+Deployment credentials are stored securely using repository Action Secrets.
+
+No deployment credentials are committed to source control.
+
+
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
