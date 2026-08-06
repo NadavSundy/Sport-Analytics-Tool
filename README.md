@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** Foundation scaffold. The repository structure and minimal health-check applications exist, but authentication, sport-specific event schemas, submissions, derivation, datasets, and the external API integration are not yet implemented.
+> **Current status:** Foundation scaffold with a Firebase Authentication backend proof. The Express API validates Firebase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
 
 ## Repository structure
 
@@ -28,6 +28,8 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 - npm 10 or later
 - Python 3 and MkDocs Material for the documentation site
 - A PostgreSQL-compatible development database
+- Java JDK 11 or later for the Firebase Emulator Suite
+- Access to the development Firebase project
 
 ## Initial setup
 
@@ -51,7 +53,7 @@ The Sport Analytics Tool uses Microsoft Azure for hosting.
 
 ### Backend
 
-URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.scm.southafricanorth-01.azurewebsites.net:443/statsthegame-api-dev.git
+URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/
 
 - Platform: Azure App Service (Linux)
 - Runtime: Node.js 22 LTS
@@ -61,7 +63,7 @@ URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.scm.southafricanorth-01.azure
 
 ### Frontend
 
-URL: https://statsthegame-web-dev-dngxgqb2esbudsce.scm.southafricanorth-01.azurewebsites.net:443/statsthegame-web-dev.git
+URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/
 
 - Platform: Azure App Service (Linux)
 - Runtime: Node.js 22 LTS
@@ -84,11 +86,12 @@ Deployment credentials are stored securely using repository Action Secrets.
 
 No deployment credentials are committed to source control.
 
-
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
 - Backend health endpoint: `http://localhost:3000/api/v1/health`
+- Protected identity endpoint: `http://localhost:3000/api/v1/auth/me`
+- Firebase Emulator UI: `http://127.0.0.1:4000`
 
 ## Documentation
 
@@ -106,6 +109,8 @@ Important starting documents:
 - [Architecture Overview](docs/architecture/overview.md)
 - [Local Development Setup](docs/development/setup.md)
 - [Testing Strategy](docs/development/testing.md)
+- [Authentication Foundation](docs/security/authentication.md)
+- [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
 
 The public documentation for this project is available at:
 
@@ -125,7 +130,7 @@ The documentation is generated using MkDocs and deployed via Cloudflare Pages.
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking].
+This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking] and Codex[GPT-5].
 
 This repository does not currently use AI in-line editing tools.
 
