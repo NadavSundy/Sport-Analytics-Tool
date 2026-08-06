@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** Foundation scaffold with a Supabase Auth backend foundation. The Express API validates Supabase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
+> **Current status:** Foundation scaffold with a Supabase Auth backend proof. The Express API validates Supabase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
 
 ## Repository structure
 
