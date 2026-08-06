@@ -111,11 +111,24 @@ Important starting documents:
 - [Authentication Foundation](docs/security/authentication.md)
 - [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
 
-The public documentation for this project is available at:
+The project documentation is publicly available at:
 
 https://sports-analytics-tool.pages.dev
 
-The documentation is generated using MkDocs and deployed via Cloudflare Pages.
+The documentation is built with MkDocs and deployed to Cloudflare Pages using Wrangler.
+
+To build locally:
+
+```bash
+python -m pip install -r requirements-docs.txt
+python -m mkdocs build --strict
+```
+
+To deploy:
+
+```bash
+npx wrangler pages deploy site --project-name=sports-analytics-tool
+```
 
 ## Development rules
 
