@@ -12,7 +12,15 @@ const requiredFiles = [
   'docs/project_methodology.md',
   'mkdocs.yml',
   '.gitea/workflows/ci.yml',
+  'evidence/ai/README.md',
   'evidence/ai/ai-usage-register.csv',
+  'evidence/ai/transcripts/README.md',
+  'evidence/ai/transcripts/ben-swartz/README.md',
+  'evidence/ai/transcripts/dean-feldman/README.md',
+  'evidence/ai/transcripts/gabriel-raz/README.md',
+  'evidence/ai/transcripts/liora-rosenberg/README.md',
+  'evidence/ai/transcripts/nadav-sundy/README.md',
+  'evidence/ai/transcripts/shayna-unterslak/README.md',
 ];
 
 const missing = [];
