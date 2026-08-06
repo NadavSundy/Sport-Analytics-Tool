@@ -51,7 +51,7 @@ The Sport Analytics Tool uses Microsoft Azure for hosting.
 
 ### Backend
 
-URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.scm.southafricanorth-01.azurewebsites.net:443/statsthegame-api-dev.git
+URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/
 
 - Platform: Azure App Service (Linux)
 - Runtime: Node.js 22 LTS
@@ -61,7 +61,7 @@ URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.scm.southafricanorth-01.azure
 
 ### Frontend
 
-URL: https://statsthegame-web-dev-dngxgqb2esbudsce.scm.southafricanorth-01.azurewebsites.net:443/statsthegame-web-dev.git
+URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/
 
 - Platform: Azure App Service (Linux)
 - Runtime: Node.js 22 LTS
