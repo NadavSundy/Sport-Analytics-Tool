@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** Foundation scaffold with a Firebase Authentication backend proof. The Express API validates Firebase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
+> **Current status:** Foundation scaffold with a Supabase Auth backend foundation. The Express API validates Supabase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
 
 ## Repository structure
 
@@ -18,7 +18,7 @@ scripts              Repository validation scripts
 tests                Cross-application and non-unit testing assets
 ```
 
-The frontend and backend are separate applications. The frontend must access application data through the backend HTTP API. The database must not be exposed to the frontend through generated Supabase or Firebase data endpoints.
+The frontend and backend are separate applications. The frontend may contact Supabase Auth for managed sign-in, but all application data must pass through the handwritten backend HTTP API. Generated Supabase data endpoints must not be used as the application API.
 
 See [Repository Structure](docs/architecture/repository-structure.md) for the detailed tree and boundaries.
 
@@ -28,8 +28,8 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 - npm 10 or later
 - Python 3 and MkDocs Material for the documentation site
 - A PostgreSQL-compatible development database
-- Java JDK 11 or later for the Firebase Emulator Suite
-- Access to the development Firebase project
+- Access to the shared development Supabase project
+- A Docker-compatible runtime if using the optional local Supabase stack
 
 ## Initial setup
 
@@ -91,7 +91,6 @@ Default local URLs:
 - Frontend: `http://localhost:5173`
 - Backend health endpoint: `http://localhost:3000/api/v1/health`
 - Protected identity endpoint: `http://localhost:3000/api/v1/auth/me`
-- Firebase Emulator UI: `http://127.0.0.1:4000`
 
 ## Documentation
 

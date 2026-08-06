@@ -16,7 +16,7 @@ A dependency must have a clear project purpose, an acceptable licence, active ma
 | Logging          | Pino HTTP                          | Structured request logging foundation             |
 | Testing          | Vitest, Testing Library, Supertest | Component, unit, and API integration tests        |
 | Documentation    | MkDocs Material                    | Public static documentation website               |
-| Authentication   | Firebase Admin SDK                 | Validate Firebase ID tokens in the backend        |
+| Authentication   | `@supabase/supabase-js`            | Validate Supabase access tokens in the backend    |
 | Configuration    | dotenv                             | Load ignored local backend environment files      |
 
 ## Review requirements
@@ -34,9 +34,11 @@ Exact installed versions are recorded in the committed `package-lock.json`. Use 
 
 ## Authentication dependency review
 
-The current Firebase Admin dependency includes six moderate transitive `uuid` audit findings through Google Cloud dependencies. The affected buffer-based UUID methods are not called directly by the authentication implementation.
+The backend uses the maintained `@supabase/supabase-js` client to validate access tokens through Supabase Auth.
 
-The project uses the latest compatible Firebase Admin release. A forced audit fix would downgrade Firebase Admin to an incompatible major version and must not be used. The team must monitor upstream releases and rerun `npm audit --omit=dev` during dependency reviews.
+Dependency audit findings must be reviewed according to their actual dependency path and exploitability. Do not run `npm audit fix --force` without reviewing proposed breaking changes.
+
+The team must monitor Supabase client releases and rerun `npm audit --omit=dev` during dependency reviews.
 
 ## TypeScript compatibility
 

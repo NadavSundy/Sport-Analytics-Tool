@@ -1,158 +1,161 @@
 # Authentication foundation
 
-## Scope
+## Overview
 
-The Sport Analytics Tool uses Google Cloud Identity Platform through Firebase Authentication as its managed identity provider.
+The Sport Analytics Tool uses **Supabase Auth** as its managed authentication provider.
 
-This foundation proves that the handwritten Express API can validate an authenticated Firebase identity. It does not implement final sign-up, sign-in, password-reset or account-deletion screens. It also does not define application roles, approved submitter permissions or sport-specific authorisation rules.
+Google is enabled as the initial OAuth identity provider in the shared development Supabase project.
 
-The provider selection is recorded in:
+The foundation proves that the handwritten Express API can validate an authenticated Supabase identity. It does not implement final account screens, roles, submission permissions or sport-specific authorisation.
 
-```text
-evidence/decisions/ADR-002-firebase-authentication-foundation.md
-```
+See:
+
+- [Authentication provider comparison](auth-provider-comparison.md)
+- `evidence/decisions/ADR-004-supabase-authentication-foundation.md`
+- superseded decision: `evidence/decisions/ADR-002-firebase-authentication-foundation.md`
 
 ## Architecture
 
 ```mermaid
 sequenceDiagram
-    actor User
+    participant User
     participant Frontend as React frontend
-    participant Firebase as Firebase Authentication
+    participant Supabase as Supabase Auth
     participant API as Express API
     participant Database as Supabase PostgreSQL
 
-    User->>Frontend: Start managed sign-in
-    Frontend->>Firebase: Google OAuth 2.0/OIDC flow
-    Firebase-->>Frontend: Firebase ID token
-    Frontend->>API: Authorization: Bearer token
-    API->>Firebase: Verify token with Admin SDK
-    Firebase-->>API: Verified Firebase uid
-    API->>Database: Server-side application query
-    Database-->>API: Application data
-    API-->>Frontend: Handwritten API response
+    User->>Frontend: Start Google sign-in
+    Frontend->>Supabase: Managed OAuth request
+    Supabase->>Supabase: Complete Google OAuth flow
+    Supabase-->>Frontend: Supabase session and access token
+    Frontend->>API: Authorization: Bearer access-token
+    API->>Supabase: getUser(access-token)
+    Supabase-->>API: Verified Supabase user
+    API-->>Frontend: Identity subject
+    API->>Database: Future authorised application operation
 ```
 
-Firebase manages identity. The Express API remains the trusted application boundary and the only application component that accesses Supabase-hosted PostgreSQL.
+Supabase manages authentication and identity.
 
-The frontend must not treat its local authentication state as proof of backend identity. Every protected backend request must include a token that the backend validates independently.
+The Express API remains the application’s trusted boundary. The frontend must access application data through the handwritten API rather than using generated Supabase data endpoints directly.
 
-## Provider configuration
+## Development project configuration
 
-The development Firebase project contains:
+The shared development Supabase project contains:
 
-- one registered web application for the React frontend;
-- Google enabled as the initial federated sign-in provider;
-- `localhost` authorised for local development; and
-- no production users or production credentials.
+- Supabase Auth;
+- Google enabled as a social provider;
+- the Google OAuth client ID and secret;
+- the development Site URL;
+- allowed development redirect URLs;
+- development identities only.
 
-Do not record the real project identifiers or Firebase configuration values in this document. Environment-specific values belong in ignored local files or deployment configuration.
-
-## Environment variables
-
-### Backend
-
-| Variable                      | Required   | Purpose                                                                                     |
-| ----------------------------- | ---------- | ------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                    | Yes        | Selects development, test or production safeguards.                                         |
-| `PORT`                        | Yes        | Backend HTTP port.                                                                          |
-| `CORS_ORIGINS`                | Yes        | Comma-separated frontend origins accepted by the API.                                       |
-| `FIREBASE_PROJECT_ID`         | Yes        | Expected Firebase token audience and project identity.                                      |
-| `FIREBASE_AUTH_EMULATOR_HOST` | Local only | Connects the Admin SDK to the Authentication Emulator using `host:port` without a protocol. |
-
-The backend rejects `FIREBASE_AUTH_EMULATOR_HOST` when `NODE_ENV=production`.
-
-### Frontend
-
-| Variable                    | Purpose                                     |
-| --------------------------- | ------------------------------------------- |
-| `VITE_API_BASE_URL`         | Base URL of the handwritten Express API.    |
-| `VITE_FIREBASE_API_KEY`     | Public Firebase web API identifier.         |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase-managed authentication domain.     |
-| `VITE_FIREBASE_PROJECT_ID`  | Public Firebase project identifier.         |
-| `VITE_FIREBASE_APP_ID`      | Public Firebase web application identifier. |
-
-Variables beginning with `VITE_` are included in the browser bundle. They must never contain private keys, service-account credentials, database passwords or administrative tokens.
-
-## Local setup
-
-### Prerequisites
-
-- Node.js 20 or later
-- npm 10 or later
-- Java JDK 11 or later
-- Firebase CLI or `npx firebase-tools`
-
-### Configure the backend
-
-Copy the safe example:
-
-```powershell
-Copy-Item -LiteralPath "apps/backend/.env.example" -Destination "apps/backend/.env"
-```
-
-Set the real development project ID only in the ignored file:
-
-```env
-NODE_ENV=development
-FIREBASE_PROJECT_ID=your-development-project-id
-FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
-```
-
-Confirm that Git ignores the file:
-
-```powershell
-git check-ignore -v apps/backend/.env
-```
-
-### Start the Authentication Emulator
-
-Use the development Firebase project ID without committing it to `firebase.json`:
-
-```powershell
-npx.cmd --yes firebase-tools@latest emulators:start --only auth --project YOUR_FIREBASE_PROJECT_ID
-```
-
-The configured local endpoints are:
-
-- Authentication Emulator: `http://127.0.0.1:9099`
-- Emulator UI: `http://127.0.0.1:4000`
-
-Keep the emulator terminal open.
-
-### Start the backend
-
-In a separate terminal:
-
-```powershell
-npm.cmd run dev:backend
-```
-
-The backend starts on `http://127.0.0.1:3000` by default.
-
-## Proof-of-concept endpoint
-
-The authentication proof endpoint is:
+The Google OAuth client is configured with:
 
 ```text
-GET /api/v1/auth/me
+Authorized JavaScript origin:
+http://localhost:5173
+
+Authorized redirect URI:
+https://YOUR-PROJECT-REF.supabase.co/auth/v1/callback
 ```
 
-An accepted identity returns:
+The redirect URI must exactly match the callback shown in the Supabase Google provider settings.
+
+The Google client secret is stored only in the Google and Supabase dashboards. It must not be placed in source control, frontend code, documentation or chat messages.
+
+## Backend environment configuration
+
+The backend requires:
+
+```env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+```
+
+The committed `apps/backend/.env.example` contains placeholders only.
+
+Real development values belong in:
+
+```text
+apps/backend/.env
+```
+
+That file is ignored by Git.
+
+The backend does not require a Supabase secret key or legacy `service_role` key to validate an access token.
+
+## Frontend environment configuration
+
+The future managed sign-in client will use:
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+```
+
+These values identify the public Supabase application.
+
+The final sign-in interface is outside the current task. No Supabase secret key, database password or OAuth client secret may be added to a `VITE_` variable.
+
+## Backend token validation
+
+The backend creates a server-side Supabase client using `@supabase/supabase-js`.
+
+Browser session behaviour is disabled:
+
+```ts
+auth: {
+  persistSession: false,
+  autoRefreshToken: false,
+  detectSessionInUrl: false,
+}
+```
+
+For a protected request, the backend extracts the bearer token and calls:
+
+```ts
+supabase.auth.getUser(accessToken);
+```
+
+Supabase Auth validates the submitted access token and returns the authenticated user or an error.
+
+The backend returns only the stable Supabase user ID:
 
 ```json
 {
   "identity": {
-    "subject": "<firebase-user-id>"
+    "subject": "<supabase-user-id>"
   }
 }
 ```
 
-Only the stable provider subject is returned. The endpoint does not expose email addresses, profile data, roles or sport-specific permissions.
+The API does not trust an unverified, manually decoded token.
 
-## Rejection behaviour
+## Protected endpoint
 
-A request without a valid bearer token receives:
+### Request
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <supabase-access-token>
+```
+
+### Successful response
+
+```http
+HTTP/1.1 200 OK
+```
+
+```json
+{
+  "identity": {
+    "subject": "<supabase-user-id>"
+  }
+}
+```
+
+### Missing or invalid token
 
 ```http
 HTTP/1.1 401 Unauthorized
@@ -168,79 +171,197 @@ WWW-Authenticate: Bearer
 }
 ```
 
-The same safe response is used for missing, malformed, invalid, expired or revoked tokens. Internal validation details are not returned to the caller.
+The error response deliberately does not reveal whether a token was malformed, expired, revoked or associated with a missing user.
 
-## Automated verification
+## Running the backend
 
-Run the backend tests:
+Install dependencies:
 
 ```powershell
+npm.cmd install
+```
+
+Copy the environment example:
+
+```powershell
+Copy-Item apps/backend/.env.example apps/backend/.env
+```
+
+Replace only the placeholders in the ignored `.env` file.
+
+Start the backend:
+
+```powershell
+npm.cmd run dev:backend
+```
+
+Verify the health endpoint:
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/v1/health"
+```
+
+## Unauthenticated proof
+
+Call the protected endpoint without a token:
+
+```powershell
+curl.exe -i http://127.0.0.1:3000/api/v1/auth/me
+```
+
+Expected result:
+
+```text
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer
+```
+
+## Authenticated development proof
+
+Use a disposable identity in the shared development Supabase project.
+
+Obtain an access token through a managed Supabase Auth sign-in flow. Keep the token only in memory and do not print, save, screenshot or commit it.
+
+Call the backend with:
+
+```powershell
+curl.exe -i `
+  -H "Authorization: Bearer YOUR_TEMPORARY_ACCESS_TOKEN" `
+  http://127.0.0.1:3000/api/v1/auth/me
+```
+
+Expected result:
+
+```text
+HTTP/1.1 200 OK
+```
+
+The response must contain the verified Supabase identity subject.
+
+Replace the token immediately after use and clear it from shell history where practical. Never include the real token in test evidence.
+
+## Automated tests
+
+The backend tests cover:
+
+1. a request without a bearer token returns `401`;
+2. a rejected token returns `401`;
+3. a verified token returns `200` with the identity subject.
+
+The test application injects a mock verifier. Automated tests therefore do not require live Supabase credentials or contact the hosted Auth service.
+
+The manual development proof separately exercises the real `supabase.auth.getUser()` validation path.
+
+Run the backend checks with:
+
+```powershell
+npm.cmd run typecheck --workspace @sport-analytics/backend
+npm.cmd run lint --workspace @sport-analytics/backend
 npm.cmd test --workspace @sport-analytics/backend
+npm.cmd run build --workspace @sport-analytics/backend
 ```
 
-The authentication tests prove that:
+## Local Supabase support
 
-- a request without a token receives `401`;
-- a token rejected by the verifier receives `401`;
-- a verified identity receives `200`; and
-- the response contains the verified Firebase subject.
+Supabase provides a CLI that can run the database, Auth service and supporting services locally.
 
-The test application injects a test verifier. It does not require live credentials or contact Firebase.
-
-The manual emulator proof additionally exercises the real Firebase Admin SDK verification path. Evidence must redact the issued token and Firebase user identifier.
-
-## Production credentials
-
-Use Application Default Credentials or the deployment platform's managed identity mechanism where supported.
-
-If a service-account credential is unavoidable during local deployment investigation:
-
-- store it outside the repository;
-- reference it through an ignored local environment or credential store;
-- grant only the permissions required;
-- never expose it to the frontend;
-- never paste it into issues, Pull Requests, logs or documentation; and
-- rotate it immediately if exposure is suspected.
-
-Do not configure `FIREBASE_AUTH_EMULATOR_HOST` in production.
-
-## Security controls
-
-- Use HTTPS outside local development.
-- Accept tokens only through the `Authorization` header.
-- Never place tokens in URLs or query strings.
-- Redact `Authorization` headers from request logs.
-- Validate every protected request in the backend.
-- Configure exact Firebase authorised domains and API CORS origins.
-- Keep development and production Firebase projects separate.
-- Keep Supabase database credentials backend-only.
-- Do not commit `.env` files, service-account JSON, private keys or tokens.
-- Do not infer application permissions from successful authentication.
-- Add final role and scope checks only after the product decisions are approved.
-
-## Dependency security note
-
-The selected `firebase-admin` release currently includes transitive `uuid` audit findings through Google Cloud dependencies. The affected buffer-based UUID methods are not called directly by this authentication implementation. The project must retain the latest compatible Firebase Admin release, monitor upstream updates and rerun the production dependency audit regularly.
-
-Do not use `npm audit fix --force` to downgrade Firebase Admin or force incompatible transitive dependency versions.
-
-Run the production dependency audit with:
+A project-scoped setup uses:
 
 ```powershell
-npm.cmd audit --omit=dev
+npm.cmd install --save-dev supabase
+npx.cmd supabase init
+npx.cmd supabase start
 ```
 
-## Deferred work
+The CLI requires a Docker-compatible runtime.
 
-The following work is intentionally outside Issue #14:
+Local Supabase configuration must be coordinated with the database workstream. Do not initialize or reset a shared database without team agreement.
 
-- final sign-up and sign-in pages;
-- password-reset and account-deletion screens;
-- application account persistence and provider-subject mapping;
-- approved submitter roles;
+A local stack is for development only. It has development credentials and must never be exposed publicly.
+
+## Password reset
+
+Supabase Auth provides managed password-reset operations and email flows.
+
+The final password-reset page, redirect handling, email templates and production SMTP configuration remain future work.
+
+The hosted default email service has development rate limits. Production use requires appropriate SMTP configuration and monitoring.
+
+## Account deletion
+
+Supabase provides administrative account deletion through its Auth Admin API.
+
+Deletion requires an elevated server-side key. Therefore:
+
+- deletion must never run directly in the browser;
+- a secret or legacy `service_role` key must never be exposed to the frontend;
+- the final endpoint must reauthenticate the user where appropriate;
+- associated application data retention and deletion must be defined;
+- the final workflow requires separate authorisation and auditing.
+
+Account deletion is not implemented by this foundation.
+
+## Authentication versus authorisation
+
+Authentication answers:
+
+> Who is making this request?
+
+Authorisation answers:
+
+> What is this identity allowed to do?
+
+A valid Supabase identity does not automatically grant:
+
+- administrator access;
+- approved-submitter status;
+- competition access;
+- season or fixture access;
+- event submission rights;
+- sport-specific permissions.
+
+Those rules depend on future stakeholder and product-flow decisions.
+
+## Security requirements
+
+- Use HTTPS in deployed environments.
+- Never log bearer access tokens.
+- Redact the `Authorization` header from request logs.
+- Keep Google OAuth client secrets in provider dashboards.
+- Never expose Supabase secret or `service_role` keys in frontend code.
+- Keep real environment files ignored.
+- Commit placeholders only.
+- Configure exact redirect URLs and CORS origins.
+- Use separate development and production configuration.
+- Return safe authentication errors.
+- Apply rate limiting before exposing sensitive production endpoints.
+- Define Row Level Security and backend authorisation separately.
+- Rotate credentials immediately if exposure is suspected.
+
+## Deferred scope
+
+This foundation intentionally does not implement:
+
+- final sign-up or sign-in pages;
+- final password-reset screens;
+- final account-deletion screens;
+- application profile persistence;
+- final roles;
+- approved-submitter permissions;
 - competition, season or fixture permissions;
-- sport-specific authorisation rules; and
-- production Firebase project creation.
+- sport-specific authorisation;
+- production Row Level Security policies.
+
+## References
+
+- [Supabase Auth](https://supabase.com/docs/guides/auth)
+- [Auth architecture](https://supabase.com/docs/guides/auth/architecture)
+- [Google login](https://supabase.com/docs/guides/auth/social-login/auth-google)
+- [`getUser`](https://supabase.com/docs/reference/javascript/auth-getuser)
+- [Password authentication](https://supabase.com/docs/guides/auth/passwords)
+- [Administrative user deletion](https://supabase.com/docs/reference/javascript/auth-admin-deleteuser)
+- [API keys](https://supabase.com/docs/guides/getting-started/api-keys)
+- [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
 
 ## AI Declaration
 

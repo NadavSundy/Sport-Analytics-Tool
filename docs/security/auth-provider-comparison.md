@@ -1,137 +1,208 @@
 # Authentication provider comparison
 
-- **Date:** 2026-08-05
-- **Related issue:** #14
-
 ## Purpose
 
-The Sport Analytics Tool requires an established authentication provider that supports sign-up, sign-in, password reset and account deletion. The team must not build its own password, session or token system.
+This comparison evaluates established managed authentication providers for the Sport Analytics Tool.
 
-This comparison considers Google Cloud Identity Platform using Firebase Authentication and Auth0. It does not define final application roles, submitter permissions or sport-specific authorisation rules.
+It considers:
 
-## Decision matrix
+- sign-up and sign-in;
+- password reset;
+- account deletion;
+- OAuth 2.0 and OpenID Connect;
+- React and Express integration;
+- pricing and free-tier limitations;
+- student access;
+- local development;
+- security and secret management.
 
-| Criterion              | Firebase Authentication           | Auth0                      |
-| ---------------------- | --------------------------------- | -------------------------- |
-| Sign-up and sign-in    | Strong: email/password and Google | Strong: Universal Login    |
-| Password reset         | Managed reset emails              | Managed hosted reset flow  |
-| Account deletion       | Client and Admin SDKs             | Management API required    |
-| OAuth 2.0/OIDC         | Google OAuth/OIDC                 | OAuth/OIDC with PKCE       |
-| React integration      | Firebase Web SDK                  | Auth0 React SDK            |
-| Express validation     | Firebase Admin SDK                | Auth0 JWT middleware       |
-| Local development      | Authentication Emulator           | Remote tenant required     |
-| Free allowance         | 50,000 Tier 1 MAU                 | 25,000 MAU                 |
-| Student access         | Free tier sufficient              | Free tier sufficient       |
-| Supabase compatibility | Compatible through backend        | Compatible through backend |
-| Secret management      | ADC or server credentials         | Server-side client secrets |
-| Overall fit            | **Selected**                      | Suitable alternative       |
+It does not define final application roles, approved-submitter permissions or sport-specific authorisation rules.
 
-## Account lifecycle
+Pricing was checked on 2026-08-06 and must be reviewed before production deployment.
 
-### Firebase Authentication
+## Summary
 
-Firebase Authentication supports email/password registration and federated registration through Google Sign-In. It provides managed password-reset emails and allows recently authenticated users to delete their own accounts. Administrative deletion is available through the Firebase Admin SDK.
+| Criterion                  | Supabase Auth                        | Firebase Authentication | Auth0                |
+| -------------------------- | ------------------------------------ | ----------------------- | -------------------- |
+| Managed sign-up/sign-in    | Yes                                  | Yes                     | Yes                  |
+| Password reset             | Yes                                  | Yes                     | Yes                  |
+| Account deletion           | Server-side Admin API                | Client/Admin SDK        | Management API       |
+| Google OAuth               | Yes                                  | Yes                     | Yes                  |
+| OAuth/OIDC support         | Yes                                  | Yes                     | Yes                  |
+| React integration          | `@supabase/supabase-js`              | Firebase Web SDK        | Auth0 React SDK      |
+| Express validation         | `getUser(token)` or JWT verification | Firebase Admin SDK      | JWT/JWKS middleware  |
+| Isolated local service     | Supabase CLI stack                   | Authentication Emulator | No full local tenant |
+| Existing project alignment | Strong                               | Additional platform     | Additional platform  |
+| Selected                   | **Yes**                              | No; superseded          | No                   |
 
-### Auth0
+## Supabase Auth
 
-Auth0 supports database, social, passwordless and federated authentication through Universal Login. It provides a hosted password-reset flow. Account deletion is available through the Dashboard or Management API, so an application-controlled deletion flow would require backend Management API integration.
+### Account lifecycle
 
-## OAuth 2.0 and OpenID Connect
+Supabase Auth supports managed email/password registration, sign-in, email verification, password reset, session refresh and social identity providers.
 
-Google Sign-In uses Google OAuth 2.0 and OpenID Connect. After authentication, Firebase issues a signed Firebase ID token representing the application identity.
+Administrative deletion is available through the Auth Admin API. It requires an elevated server-side key and must never be exposed through the browser.
 
-Auth0 implements OAuth 2.0 and OpenID Connect. Its React integration supports the Authorization Code Flow with PKCE.
+Final account-management screens remain outside the current task.
 
-In both designs, the frontend obtains a token and sends it to the handwritten Express API. The backend validates the token before trusting the identity.
+### OAuth 2.0 and OpenID Connect
 
-## Frontend and backend integration
+Supabase Auth supports Google social login through a managed OAuth flow. The frontend receives a Supabase session containing an access token representing the authenticated user.
 
-### Firebase Authentication
+Supabase can also act as an OAuth 2.1 and OpenID Connect provider. That capability is not required by the current proof, but demonstrates standards support.
 
-The React frontend can use the maintained Firebase Web SDK. The Express backend uses the maintained `firebase-admin` SDK and `verifyIdToken()` to validate the signature, issuer, audience, expiry and revocation state.
+### Frontend and backend integration
 
-### Auth0
+The React frontend can use `@supabase/supabase-js` with a project URL and publishable key.
 
-The React frontend can use `@auth0/auth0-react` and Universal Login. The Express backend can use Auth0 JWT middleware to validate the issuer, audience and public signing keys.
+The Express backend can validate a submitted access token with:
 
-Neither approach requires direct frontend database access. The backend remains responsible for accessing Supabase-hosted PostgreSQL and enforcing application rules.
+```ts
+supabase.auth.getUser(accessToken);
+```
 
-## Cost and student access
+This performs a request to the Supabase Auth server and returns an authenticated user or an error.
 
-Google Identity Platform currently provides up to 50,000 monthly active users at no cost for Tier 1 methods, including email and social providers. External OIDC and SAML federation use a separate Tier 2 pricing model.
+The frontend may use Supabase for managed authentication, but application data must still be accessed through the handwritten Express API.
 
-Auth0 currently provides up to 25,000 monthly active users on its Free plan.
+### Cost and student access
 
-Both free allowances are sufficient for development. The project does not depend on receiving an unconfirmed student, startup or institutional discount. Pricing must be reviewed again before production deployment.
+The Supabase Free plan currently includes:
 
-## Local development
+- 50,000 monthly active users;
+- social OAuth providers;
+- two active projects;
+- 500 MB database storage;
+- community support.
 
-Firebase provides an Authentication Emulator that can create disposable local identities and issue emulator tokens. The Firebase Admin SDK can validate these tokens when `FIREBASE_AUTH_EMULATOR_HOST` is configured.
+Free projects may pause after one week of inactivity.
 
-Auth0 supports localhost callback URLs, but normal integration testing still depends on a remote development tenant.
+No student-only entitlement is required or assumed. The project relies on the publicly available free plan, so it remains usable if student-specific access changes.
 
-Firebase therefore provides stronger isolated local-development support.
+### Local development
 
-## Security and secret management
+The Supabase CLI can run PostgreSQL, Auth, Storage and supporting services locally. It requires Node.js 20 or later when installed through npm and a Docker-compatible runtime.
 
-For Firebase:
+The shared hosted development project can also be used where running the full local stack is impractical.
 
-- Firebase web configuration contains public identifiers but remains environment-specific.
-- Service-account files, private keys and administrative credentials must never be committed.
-- Application Default Credentials should be used in supported deployments.
-- The Authentication Emulator must never be enabled in production.
-- Development and production must use separate Firebase projects.
+### Security
 
-For Auth0:
+- Publishable keys identify a public application and do not provide elevated access.
+- Secret and legacy `service_role` keys bypass Row Level Security and must never appear in frontend code.
+- Google OAuth client secrets belong only in Google and Supabase dashboard configuration.
+- User access tokens must not be logged or committed.
+- Row Level Security and final backend authorisation remain separate future decisions.
 
-- SPA client IDs, domains and audiences are public configuration.
-- Client secrets, Management API credentials and tokens must remain server-side.
-- Development and production tenants must remain separate.
+## Firebase Authentication
 
-For both providers:
+### Account lifecycle
 
-- Tokens must be sent through the `Authorization` header over HTTPS.
-- Tokens must not appear in URLs or logs.
-- Frontend authentication state must not be trusted by the backend.
-- Exact CORS origins and authorised domains must be configured.
-- Backend token validation is required on every protected endpoint.
+Firebase Authentication supports email/password and social registration, sign-in, password-reset emails and user deletion through client and Admin SDKs.
 
-## Selected provider
+### OAuth 2.0 and OpenID Connect
 
-The selected foundation is **Google Cloud Identity Platform using Firebase Authentication**, with Google enabled as the initial federated identity provider.
+Google Sign-In uses Google OAuth 2.0 and OpenID Connect. Firebase issues a signed Firebase ID token after authentication.
 
-The selection is motivated by:
+Identity Platform adds enterprise OIDC and SAML capabilities.
 
-- managed Google OAuth 2.0 and OpenID Connect support;
-- complete managed account-lifecycle capabilities;
-- maintained React and Node.js SDKs;
-- backend verification through `firebase-admin`;
-- isolated local testing through the Authentication Emulator;
-- compatibility with Supabase-hosted PostgreSQL;
-- sufficient free development capacity; and
-- preservation of the separate frontend, backend and handwritten API.
+### Frontend and backend integration
 
-The proof implementation validates Firebase identities in the Express backend and protects `GET /api/v1/auth/me`. It does not implement final login pages, roles or sport-specific permissions.
+The React frontend can use the Firebase Web SDK. The Express backend can validate ID tokens using the Firebase Admin SDK.
 
-## Sources
+The implementation was successfully proved in PR #24 but was superseded after the team clarified that authentication must use the existing Supabase platform.
 
-### Google and Firebase
+### Cost and student access
 
-- [Firebase Authentication overview](https://firebase.google.com/docs/auth)
-- [Google Sign-In for web](https://firebase.google.com/docs/auth/web/google-signin)
-- [Manage Firebase users](https://firebase.google.com/docs/auth/web/manage-users)
-- [Verify Firebase ID tokens](https://firebase.google.com/docs/auth/admin/verify-id-tokens)
-- [Firebase Authentication Emulator](https://firebase.google.com/docs/emulator-suite/connect_auth)
-- [Google Identity Platform pricing](https://cloud.google.com/identity-platform/pricing)
-- [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect)
-- [Supabase Firebase integration](https://supabase.com/docs/guides/auth/third-party/firebase-auth)
+Firebase provides the no-cost Spark plan without requiring payment details. Most social authentication options are available without charge, subject to product quotas.
+
+Firebase Authentication with Identity Platform has separate daily and monthly active-user limits.
+
+No student-specific entitlement is assumed.
+
+### Local development
+
+The Firebase Authentication Emulator provides isolated local identities and tokens. It requires the Firebase tooling and Java.
+
+### Security
+
+Firebase web configuration contains public identifiers. Admin SDK credentials and service-account private keys are server secrets and must never be committed.
+
+Firebase remains technically suitable, but retaining it would introduce a second managed identity platform and an additional identity-mapping boundary.
+
+## Auth0
+
+### Account lifecycle
+
+Auth0 supports hosted sign-up and sign-in, social providers, password reset and administrative account deletion through its Management API.
+
+### OAuth 2.0 and OpenID Connect
+
+Auth0 provides mature OAuth 2.0 and OpenID Connect support, discovery metadata, hosted login and standards-based API access tokens.
+
+### Frontend and backend integration
+
+The React frontend can use the maintained Auth0 React SDK. The Express backend can validate JWTs using maintained JWT/JWKS middleware.
+
+### Cost and student access
+
+The Auth0 Free plan currently provides up to 25,000 monthly active users and does not require a credit card.
+
+Paid tiers are required for higher limits and some production features.
+
+No currently verified student-specific entitlement is assumed. The evaluation therefore relies only on the public free plan.
+
+### Local development
+
+Auth0 supports localhost callback and logout URLs, but authentication still depends on a hosted Auth0 tenant. It does not provide a complete local identity service equivalent to the Supabase CLI or Firebase Emulator.
+
+### Security
+
+Auth0 domain and client ID values are public application configuration. Client secrets, signing credentials and Management API tokens are private server credentials.
+
+## Decision
+
+The selected provider is **Supabase Auth**, with Google enabled as the initial OAuth provider.
+
+The main reasons are:
+
+- the project already uses a shared Supabase project and PostgreSQL database;
+- it avoids introducing another identity platform;
+- it supports the required account lifecycle;
+- it provides maintained React and backend integration;
+- it provides Google OAuth support;
+- it offers suitable free-tier capacity for development;
+- it supports local development through the Supabase CLI;
+- it preserves the separate React frontend and handwritten Express API;
+- the backend can validate identity without defining final roles.
+
+Firebase remains a technically suitable alternative and provided a useful initial proof. Auth0 also remains suitable if the project later requires identity features not offered by Supabase.
+
+The selected foundation validates identity only. It does not grant application roles, submission access or sport-specific permissions.
+
+## References
+
+### Supabase
+
+- [Supabase Auth](https://supabase.com/docs/guides/auth)
+- [Auth architecture](https://supabase.com/docs/guides/auth/architecture)
+- [Google login](https://supabase.com/docs/guides/auth/social-login/auth-google)
+- [`getUser`](https://supabase.com/docs/reference/javascript/auth-getuser)
+- [Administrative user deletion](https://supabase.com/docs/reference/javascript/auth-admin-deleteuser)
+- [API keys](https://supabase.com/docs/guides/getting-started/api-keys)
+- [Local development](https://supabase.com/docs/guides/local-development/cli/getting-started)
+- [Supabase pricing](https://supabase.com/pricing)
+
+### Firebase
+
+- [Firebase Authentication](https://firebase.google.com/docs/auth)
+- [Firebase pricing](https://firebase.google.com/pricing)
+- [Authentication Emulator](https://firebase.google.com/docs/emulator-suite/connect_auth)
 
 ### Auth0
 
 - [Auth0 pricing](https://auth0.com/pricing)
 - [Auth0 React quickstart](https://auth0.com/docs/quickstart/spa/react)
-- [Auth0 Express API quickstart](https://auth0.com/docs/quickstart/backend/nodejs)
-- [Auth0 password change](https://auth0.com/docs/api/authentication/change-password/change-password)
+- [Auth0 Express quickstart](https://auth0.com/docs/quickstart/backend/nodejs)
 - [Auth0 user deletion](https://auth0.com/docs/api/management/v2/users/delete-users-by-id)
 
 ## AI Declaration

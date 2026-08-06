@@ -1,12 +1,10 @@
 # Security overview
 
-## Authorisation
-
-Authentication does not grant automatic submission access. The backend must enforce roles and competition, season and fixture scope for every protected operation. Final roles and sport-specific permissions remain subject to future stakeholder and product-flow decisions.
-
 ## Authentication
 
-The project uses Google Cloud Identity Platform through Firebase Authentication. The React frontend will obtain a Firebase ID token through a managed sign-in flow, and the handwritten Express API validates that token using the Firebase Admin SDK.
+The project uses Supabase Auth with Google as the initial OAuth provider. The React frontend will obtain a Supabase access token through a managed sign-in flow, and the handwritten Express API validates that identity using `@supabase/supabase-js`.
+
+The frontend may use Supabase for authentication, but application data remains behind the handwritten backend API.
 
 Authentication confirms identity only. It does not grant submission access, application roles or sport-specific permissions.
 

@@ -1,6 +1,6 @@
 # ADR-002: Firebase Authentication Foundation
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-004
 - **Date:** 2026-08-05
 - **Participants:** Gabriel Raz, Git Push Pray project team
 - **Related issues:** #14
