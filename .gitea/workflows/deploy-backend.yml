@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - "backend/**"
-      - ".gitea/workflows/deploy-backend.yml"
+      - 'backend/**'
+      - '.gitea/workflows/deploy-backend.yml'
 
 jobs:
   deploy:

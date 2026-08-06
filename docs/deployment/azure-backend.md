@@ -20,12 +20,12 @@ Development
 
 ## Environment Variables
 
-| Variable | Description |
-|-----------|-------------|
-| NODE_ENV | production |
-| API_VERSION | v1 |
+| Variable             | Description        |
+| -------------------- | ------------------ |
+| NODE_ENV             | production         |
+| API_VERSION          | v1                 |
 | CORS_ALLOWED_ORIGINS | Frontend Azure URL |
-| LOG_LEVEL | info |
+| LOG_LEVEL            | info               |
 
 Database credentials are configured through Azure App Service and are never committed.
 
