@@ -237,7 +237,45 @@ recorded on #27.
 
 ---
 
-## 8. Outstanding
+## 8. Source data questions resolved before implementation
+
+Three fields were identified in the corpus catalogue but not understood at the
+time of review. All three were investigated before the migration was written, by
+`scripts/probe_delivery_over_key.py` and `scripts/probe_match_metadata.py`.
+
+**A delivery-level `over` key** appears on 3,068 deliveries across 13 files. It is
+redundant: in every case it equals the number of the over object containing it,
+with zero disagreements across the full corpus. It is a generation artefact
+affecting 0.09% of matches. The parent over is authoritative and the field is
+ignored.
+
+**`supersubs`** appears on 42 matches, all in the Big Bash League, and maps a team
+to a single named player. It records the competition's substitute rule. It is a
+squad fact rather than an event, and is represented by a nullable role on
+`fixture_squad` rather than a table of its own.
+
+**`bowl_out`** appears on 2 matches, both from 2006 and 2007, and holds an ordered
+list of bowler and outcome pairs. It records the tie-breaking mechanism that
+preceded the super over, and the same bowler may appear more than once.
+
+The individual bowl-out attempts are **deliberately not modelled**. The rule is
+obsolete, the data covers two matches out of 13,953, and no statistic in scope is
+derived from it. The fixture outcome must still be able to record that a match was
+decided by a bowl-out, which a nullable outcome column provides. This is recorded
+as a known exclusion rather than an oversight; if a bowl-out statistic is later
+required, the source data remains available for a subsequent migration.
+
+## 9. Outstanding
+
+- Client confirmation of the super-over convention.
+- The storage benchmark: owner and date. The corpus is 3,193,996 deliveries,
+  which is two and a half times the subset the original projection was based on.
+- Whether the object-storage option changes the hosting decision in ADR-003.
+- The 320 matches classified `IT20` are not the international matches. Every match
+  in the T20 international archive carries `match_type: "T20"` with
+  `team_type: "international"`, and `match_type_number` is present on exactly
+  those 5,602 matches. Anything treating `IT20` as meaning international will
+  misclassify roughly 5,300 matches. Raised against the downloader.
 
 - Client confirmation of the super-over convention.
 - The storage benchmark: owner and date. The corpus is 3,193,996 deliveries,
