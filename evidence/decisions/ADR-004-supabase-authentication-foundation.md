@@ -4,7 +4,7 @@
 - **Date:** 2026-08-06
 - **Participants:** Gabriel Raz, Git Push Pray project team
 - **Related issues:** #14
-- **Related pull requests:** #24 and corrective follow-up Pull Request
+- **Related pull requests:** #24 and #34
 - **Supersedes:** ADR-002
 
 ## Context
