@@ -12,6 +12,7 @@ coverage/
 .idea/
 *.local
 
+test-results/
 
 # ---> Node
 # Logs
