@@ -301,9 +301,18 @@ async function main(): Promise<void> {
     let sequence = 0;
 
     for (const over of innings.overs ?? []) {
+     let legalBalls = 0;
+
       for (const [position, delivery] of (over.deliveries as Delivery[]).entries()) {
         sequence += 1;
         const extras = delivery.extras ?? {};
+
+        // The printed ball number counts legal deliveries only. Wides and
+        // no-balls do not advance it, so it repeats within an over. It is a
+        // label, never an identifier.
+        const isLegal = extras.wides === undefined && extras.noballs === undefined;
+        if (isLegal) legalBalls += 1;
+        const ballNumber = `${over.over}.${Math.max(legalBalls, 1)}`;
 
         const { rows } = await client.query(
           `INSERT INTO delivery (
@@ -322,7 +331,7 @@ async function main(): Promise<void> {
             over.over,
             position,
             sequence,
-            delivery.actual_delivery ?? `${over.over}.${position + 1}`,
+            ballNumber,            
             personId.get(delivery.batter),
             personId.get(delivery.non_striker),
             personId.get(delivery.bowler),
