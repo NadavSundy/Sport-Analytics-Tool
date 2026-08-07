@@ -12,7 +12,7 @@
     "test:unit": "vitest run tests/unit",
     "test:api": "vitest run tests/api tests/auth.test.ts tests/health.test.ts",
     "test:database": "vitest run tests/database",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage tests/unit tests/api tests/auth.test.ts tests/health.test.ts",
     "db:check": "tsx --env-file=.env scripts/check-connection.ts",
     "db:ingest": "tsx --env-file=.env scripts/ingest-match.ts",
     "db:validate": "tsx --env-file=.env scripts/validate-match.ts",
