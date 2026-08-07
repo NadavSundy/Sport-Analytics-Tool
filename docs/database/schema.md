@@ -78,7 +78,11 @@ A delivery is identified by:
 idempotency key: two submitted deliveries are the same delivery when these four
 values agree, which is what allows a feed to be replayed without double-counting.
 
-The printed ball number is stored for display only, and never used to join.
+TThe printed ball number is stored for display only, and never used to join. It is
+derived at ingestion from a count of legal deliveries within the over: wides and
+no-balls do not advance it, which is why it repeats. Storing the array position
+here instead would produce a value that never repeats, and the column would no
+longer demonstrate the property that makes `position_in_over` the identifier.
 
 ### 2.2 Players
 
@@ -208,7 +212,7 @@ recorded on #27.
 1. **Dismissal kind** is a lookup table, `dismissal_kind`, with the raw source
    value retained on `delivery_wicket` for provenance. The table carries a
    `credits_bowler` flag, so that the distinction between a bowler's wicket and a
-   run out lives in data rather than in application code. Fifteen kinds appear in
+   run out lives in data rather than in application code. Fourteen kinds appear in
    the corpus, two of which were absent from the earlier subset, which is itself
    the argument against an enumeration.
 2. **Officials** have their own table rather than being promoted to `person`. The

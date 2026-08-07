@@ -267,7 +267,11 @@ COMMENT ON TABLE innings_miscounted_over IS
      legal balls. The source supplies the ball count as a string in some matches
      and an integer in others; ingestion coerces it. This table explains an
      irregularity and is not a derivation input: legal balls are counted from the
-     delivery rows themselves.';
+     delivery rows themselves. Some source records also name the umpire
+     responsible. That name is deliberately not stored: it is attribution for an
+     officiating error that nothing in the platform derives from, and officials
+     carry no stable identifier by which it could be resolved reliably.';
+    
 
 -- ---------------------------------------------------------------------------
 -- Deliveries
