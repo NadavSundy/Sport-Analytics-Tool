@@ -18,6 +18,7 @@ nav:
       - Testing: development/testing.md
       - Dependencies: development/dependencies.md
   - Design:
+      - Brand Guidelines: design/brand-guidelines.md
       - Architecture: architecture/overview.md
       - System Architecture and Roadmap: architecture/system-architecture.md
       - API: api/overview.md
