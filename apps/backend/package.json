@@ -9,13 +9,20 @@
     "lint": "eslint src tests --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:api": "vitest run tests/api tests/auth.test.ts tests/health.test.ts",
+    "test:database": "vitest run tests/database",
+    "test:coverage": "vitest run --coverage tests/unit tests/api tests/auth.test.ts tests/health.test.ts",
     "db:check": "tsx --env-file=.env scripts/check-connection.ts",
     "db:ingest": "tsx --env-file=.env scripts/ingest-match.ts",
     "db:validate": "tsx --env-file=.env scripts/validate-match.ts",
     "db:migrate": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate up --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true",
     "db:migrate:down": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate down --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true",
     "db:migrate:dry": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate up --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true --dry-run",
-    "db:migrate:create": "node-pg-migrate create --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --migration-filename-format utc -j sql"
+    "db:migrate:create": "node-pg-migrate create --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --migration-filename-format utc -j sql",
+    "db:test:migrate": "cross-env NODE_ENV=test node-pg-migrate up --database-url-var DATABASE_URL_TEST --envPath .env.test --migrations-dir ../../database/migrations --ignore-pattern \"README.md\"",
+    "db:test:reset": "cross-env NODE_ENV=test tsx --env-file=.env.test scripts/reset-test-database.ts",
+    "db:test:seed": "cross-env NODE_ENV=test tsx --env-file=.env.test scripts/seed-test-database.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
