@@ -12,6 +12,10 @@ coverage/
 .idea/
 *.local
 
+playwright-report/
+test-results/
+coverage/
+test-results/
 
 # ---> Node
 # Logs
