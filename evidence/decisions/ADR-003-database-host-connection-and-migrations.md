@@ -100,8 +100,23 @@ once the compliance question had been settled in writing.
    and women's T20 internationals. The T20 international corpus alone is 1,266,835
    deliveries, which is approximately 500 MB once normalised with indexes. The full
    scope is likely to exceed the free plan's limit. The team must decide between
-   paying for additional storage, reducing scope, or moving provider, and the
-   decision must be recorded before ingestion begins.
+   paying for additional storage, reducing scope, or moving provider.
+
+   A partial measurement was taken on 7 August 2026 over four fixtures and 955
+   deliveries: `delivery` occupied 120 kB of heap, or approximately 128 bytes per
+   delivery. This figure is not sufficient to confirm the estimate above. Every
+   other table sat at the minimum single-page allocation Postgres makes, and index
+   sizes were at their floor rather than proportional to their contents, so neither
+   index growth nor the dependent tables can be projected from this sample. The
+   measured benchmark this record requires is therefore still outstanding.
+
+   A larger sample was not taken because single-match ingestion runs at
+   approximately 68 seconds per fixture, making a few hundred fixtures a multi-hour
+   operation. The measurement should be repeated once batch ingestion exists.
+
+   Fourteen fixtures have been loaded for schema validation, so ingestion has begun
+   in a limited form before this decision was recorded. The storage decision remains
+   outstanding and no bulk ingestion may proceed until it is taken.
 5. Because the plan retains no backups and all six members hold owner access on
    the project, a tested dump and restore procedure is required rather than
    optional.
