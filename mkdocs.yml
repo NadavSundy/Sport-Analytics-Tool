@@ -33,6 +33,7 @@ nav:
   - Methodology:
       - Git Methodology: git-methodology.md
       - Project Methodology: project_methodology.md
+      - Project Backlog and Milestone Plan: planning/project-backlog.md
   - AI Use: ai/usage.md
 
 markdown_extensions:
