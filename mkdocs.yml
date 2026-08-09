@@ -21,7 +21,9 @@ nav:
       - Brand Guidelines: design/brand-guidelines.md
       - Architecture: architecture/overview.md
       - System Architecture and Roadmap: architecture/system-architecture.md
-      - API: api/overview.md
+      - API:
+          - Overview: api/overview.md
+          - Shared Contracts: api/contracts.md
       - Database: database/overview.md
       - Event Model: database/schema.md
       - Security:
