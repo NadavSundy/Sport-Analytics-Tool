@@ -1,16 +1,24 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-test('home page has no serious accessibility violations', async ({ page }) => {
+test('landing page themes have no serious accessibility violations', async ({ page }) => {
   await page.goto('/');
 
-  const results = await new AxeBuilder({ page }).analyze();
+  for (const theme of ['day', 'night'] as const) {
+    await page.evaluate((selectedTheme) => {
+      document.documentElement.dataset.theme = selectedTheme;
+      document.documentElement.style.colorScheme = selectedTheme === 'night' ? 'dark' : 'light';
+    }, theme);
 
-  const seriousOrCriticalViolations = results.violations.filter(
-    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-  );
+    const results = await new AxeBuilder({ page }).analyze();
 
-  expect(seriousOrCriticalViolations, JSON.stringify(seriousOrCriticalViolations, null, 2)).toEqual(
-    [],
-  );
+    const seriousOrCriticalViolations = results.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    );
+
+    expect(
+      seriousOrCriticalViolations,
+      `${theme} theme: ${JSON.stringify(seriousOrCriticalViolations, null, 2)}`,
+    ).toEqual([]);
+  }
 });
