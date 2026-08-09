@@ -1,45 +1,43 @@
-import { Client } from 'pg';
+import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
+import { executeQuery, withTransaction } from '../../src/database';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 
-describe('PostgreSQL transaction behaviour', () => {
-  let client: Client | undefined;
+describe('database transaction helper', () => {
+  let pool: Pool | undefined;
 
-  function getClient(): Client {
-    if (!client) {
-      throw new Error('Test database client has not been initialised.');
+  function getPool(): Pool {
+    if (!pool) {
+      throw new Error('Test database pool has not been initialised.');
     }
 
-    return client;
+    return pool;
   }
 
-  beforeAll(async () => {
+  beforeAll(() => {
     const databaseUrl = assertSafeTestDatabase(
       process.env.DATABASE_URL_TEST,
       process.env.DATABASE_URL,
       process.env.NODE_ENV,
     );
 
-    client = new Client({
+    pool = new Pool({
       connectionString: databaseUrl.toString(),
     });
-
-    await client.connect();
   });
 
   afterAll(async () => {
-    if (client) {
-      await client.end();
+    if (pool) {
+      await pool.end();
     }
   });
 
-  test('rolls back changes made inside a transaction', async () => {
-    const databaseClient = getClient();
+  test('commits a successful multi-step transaction', async () => {
+    const databasePool = getPool();
 
-    const originalResult = await databaseClient.query<{
-      note: string;
-    }>(
+    const originalResult = await executeQuery<{ note: string }>(
+      databasePool,
       `
         SELECT note
         FROM database_health
@@ -50,83 +48,36 @@ describe('PostgreSQL transaction behaviour', () => {
     expect(originalResult.rowCount).toBe(1);
 
     const originalNote = originalResult.rows[0].note;
-    const temporaryNote = 'Temporary rollback test value.';
-
-    await databaseClient.query('BEGIN');
+    const committedNote = 'Temporary transaction commit test value.';
 
     try {
-      await databaseClient.query(
-        `
-          UPDATE database_health
-          SET note = $1
-          WHERE id = 1
-        `,
-        [temporaryNote],
-      );
+      const transactionResult = await withTransaction(databasePool, async (client) => {
+        await executeQuery(
+          client,
+          `
+            UPDATE database_health
+            SET note = $1
+            WHERE id = 1
+          `,
+          [committedNote],
+        );
 
-      const insideTransaction = await databaseClient.query<{
-        note: string;
-      }>(
-        `
-          SELECT note
-          FROM database_health
-          WHERE id = 1
-        `,
-      );
+        const insideTransaction = await executeQuery<{ note: string }>(
+          client,
+          `
+            SELECT note
+            FROM database_health
+            WHERE id = 1
+          `,
+        );
 
-      expect(insideTransaction.rows[0].note).toBe(temporaryNote);
-    } finally {
-      await databaseClient.query('ROLLBACK');
-    }
+        return insideTransaction.rows[0].note;
+      });
 
-    const afterRollback = await databaseClient.query<{
-      note: string;
-    }>(
-      `
-        SELECT note
-        FROM database_health
-        WHERE id = 1
-      `,
-    );
+      expect(transactionResult).toBe(committedNote);
 
-    expect(afterRollback.rows[0].note).toBe(originalNote);
-  });
-
-  test('commits changes made inside a transaction', async () => {
-    const databaseClient = getClient();
-
-    const originalResult = await databaseClient.query<{
-      note: string;
-    }>(
-      `
-        SELECT note
-        FROM database_health
-        WHERE id = 1
-      `,
-    );
-
-    expect(originalResult.rowCount).toBe(1);
-
-    const originalNote = originalResult.rows[0].note;
-    const committedNote = 'Temporary commit test value.';
-
-    try {
-      await databaseClient.query('BEGIN');
-
-      await databaseClient.query(
-        `
-          UPDATE database_health
-          SET note = $1
-          WHERE id = 1
-        `,
-        [committedNote],
-      );
-
-      await databaseClient.query('COMMIT');
-
-      const afterCommit = await databaseClient.query<{
-        note: string;
-      }>(
+      const afterCommit = await executeQuery<{ note: string }>(
+        databasePool,
         `
           SELECT note
           FROM database_health
@@ -136,8 +87,8 @@ describe('PostgreSQL transaction behaviour', () => {
 
       expect(afterCommit.rows[0].note).toBe(committedNote);
     } finally {
-      // Restore the original value so this test leaves no data behind.
-      await databaseClient.query(
+      await executeQuery(
+        databasePool,
         `
           UPDATE database_health
           SET note = $1
@@ -146,5 +97,61 @@ describe('PostgreSQL transaction behaviour', () => {
         [originalNote],
       );
     }
+  });
+
+  test('rolls back all changes when an operation fails', async () => {
+    const databasePool = getPool();
+
+    const originalResult = await executeQuery<{ note: string }>(
+      databasePool,
+      `
+        SELECT note
+        FROM database_health
+        WHERE id = 1
+      `,
+    );
+
+    expect(originalResult.rowCount).toBe(1);
+
+    const originalNote = originalResult.rows[0].note;
+    const temporaryNote = 'Temporary transaction rollback test value.';
+
+    await expect(
+      withTransaction(databasePool, async (client) => {
+        await executeQuery(
+          client,
+          `
+            UPDATE database_health
+            SET note = $1
+            WHERE id = 1
+          `,
+          [temporaryNote],
+        );
+
+        const insideTransaction = await executeQuery<{ note: string }>(
+          client,
+          `
+            SELECT note
+            FROM database_health
+            WHERE id = 1
+          `,
+        );
+
+        expect(insideTransaction.rows[0].note).toBe(temporaryNote);
+
+        throw new Error('Force transaction rollback.');
+      }),
+    ).rejects.toThrow('Force transaction rollback.');
+
+    const afterRollback = await executeQuery<{ note: string }>(
+      databasePool,
+      `
+        SELECT note
+        FROM database_health
+        WHERE id = 1
+      `,
+    );
+
+    expect(afterRollback.rows[0].note).toBe(originalNote);
   });
 });
