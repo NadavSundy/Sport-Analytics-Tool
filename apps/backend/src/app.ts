@@ -8,17 +8,23 @@ import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
 import { createAuthRouter } from './routes/auth.routes';
 import { healthRouter } from './routes/health.routes';
+import { createPublicReadRouter } from './modules/public-read/public-read.routes';
+import {
+  createPublicReadService,
+  type PublicReadService,
+} from './modules/public-read/public-read.service';
 
 export interface AppDependencies {
   environment?: Environment;
   verifyAccessToken?: VerifyAccessToken;
+  publicReadService?: PublicReadService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
   const environment = dependencies.environment ?? loadEnvironment();
   const verifyAccessToken =
     dependencies.verifyAccessToken ?? createSupabaseTokenVerifier(environment);
-
+  const publicReadService = dependencies.publicReadService ?? createPublicReadService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -42,6 +48,7 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(verifyAccessToken));
+  app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
