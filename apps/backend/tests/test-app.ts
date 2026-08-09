@@ -1,6 +1,7 @@
 import type { VerifyAccessToken } from '../src/auth/supabase-auth';
 import { createApp } from '../src/app';
 import type { Environment } from '../src/config/env';
+import type { PublicReadService } from '../src/modules/public-read/public-read.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -14,9 +15,13 @@ const acceptTestIdentity: VerifyAccessToken = async () => ({
   uid: 'test-user',
 });
 
-export function createTestApp(verifyAccessToken: VerifyAccessToken = acceptTestIdentity) {
+export function createTestApp(
+  verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
+  publicReadService?: PublicReadService,
+) {
   return createApp({
     environment: testEnvironment,
     verifyAccessToken,
+    ...(publicReadService !== undefined ? { publicReadService } : {}),
   });
 }
