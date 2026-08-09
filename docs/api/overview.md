@@ -78,6 +78,25 @@ WWW-Authenticate: Bearer
 
 The endpoint proves authenticated identity only. It does not assign roles or sport-specific permissions.
 
+### Public read
+
+The following endpoints are available without authentication:
+
+```text
+GET /api/v1/competitions
+GET /api/v1/competitions/{competitionId}
+GET /api/v1/seasons
+GET /api/v1/seasons/{seasonId}
+GET /api/v1/fixtures
+GET /api/v1/fixtures/{fixtureId}
+GET /api/v1/competitors
+GET /api/v1/competitors/{competitorId}
+GET /api/v1/participants
+GET /api/v1/participants/{participantId}
+```
+
+See [Public Read API](public-read.md) for filters, pagination, deterministic ordering and example responses.
+
 ## Required future API areas
 
 - accounts and role/scope information;

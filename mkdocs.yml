@@ -24,6 +24,7 @@ nav:
       - API:
           - Overview: api/overview.md
           - Shared Contracts: api/contracts.md
+          - Public Read API: api/public-read.md
           - OpenAPI Specification: api/openapi.md
           - Versioning and Deprecation: api/versioning.md
       - Database:
