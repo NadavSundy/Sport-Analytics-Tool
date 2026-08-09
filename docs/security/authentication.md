@@ -87,16 +87,49 @@ The backend does not require a Supabase secret key or legacy `service_role` key 
 
 ## Frontend environment configuration
 
-The future managed sign-in client will use:
+The managed frontend authentication client uses:
 
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 ```
 
-These values identify the public Supabase application.
+These values identify the public Supabase application. The frontend fails during application
+initialisation when either value is absent so that authentication is never configured with an
+invented fallback.
 
 The final sign-in interface is outside the current task. No Supabase secret key, database password or OAuth client secret may be added to a `VITE_` variable.
+
+## Frontend session state
+
+The React application creates one browser Supabase client and enables Supabase's managed session
+persistence, token refresh and redirect-session detection. Application code does not store access
+or refresh tokens separately.
+
+`AuthProvider` exposes the shared frontend identity state:
+
+- `isLoading` remains true while the existing Supabase session is requested;
+- `session` contains the current managed session or `null`;
+- `identity` contains the Supabase user from that session or `null`; and
+- `isAuthenticated` describes whether a session is present.
+
+The provider subscribes to Supabase authentication-state changes and unsubscribes when it is
+unmounted. Supabase sign-in, sign-out and managed token-refresh events therefore replace the shared
+session state. This identity state must not be interpreted as an application role, approved
+submitter status, administrator permission or scoped grant.
+
+## Frontend authenticated API requests
+
+`createAuthenticatedApiClient` sends application requests only to the configured handwritten API
+base URL. When its token provider has a current access token, the client sets
+`Authorization: Bearer <access-token>`. Without a token it removes the authorization header rather
+than fabricating or retaining a credential. `useAuthenticatedApiClient` connects this request
+client to the current session exposed by `AuthProvider`.
+
+Failed responses are exposed as `ApiResponseError` values. A backend `401` has the
+`unauthenticated` kind, while `403` has the distinct `forbidden` kind. The request client does not
+sign users out, redirect them or infer permissions from either response; those user journeys remain
+deferred to later route and interface work.
 
 ## Backend token validation
 
@@ -365,4 +398,6 @@ This foundation intentionally does not implement:
 
 ## AI Declaration
 
-The preceding document was planned and generated with the assistance of Codex[GPT-5].
+The preceding document was planned and generated with the assistance of Codex[GPT-5]. The
+frontend session-state and authenticated-request sections were later updated with the assistance of
+Codex[GPT-5.6 Sol].

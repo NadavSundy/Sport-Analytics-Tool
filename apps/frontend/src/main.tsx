@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { AuthProvider } from './features/auth/AuthProvider';
+import { supabase } from './features/auth/supabase-client';
 import './styles.css';
 
 const rootElement = document.getElementById('root');
@@ -11,6 +13,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <AuthProvider client={supabase.auth}>
+      <App />
+    </AuthProvider>
   </React.StrictMode>,
 );
