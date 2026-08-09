@@ -16,6 +16,12 @@ The API is a primary product. It must be designed and implemented by the team as
 - Authentication: established provider/library for users; separate API-consumer credentials when introduced
 - Versioning: URL major version initially, with a documented deprecation path before any retirement
 
+The version-controlled API contract is published in the
+[OpenAPI specification](openapi.md).
+
+See [API versioning and deprecation](versioning.md) for compatibility,
+deprecation and retirement rules.
+
 See [Shared API Contracts](contracts.md) for the complete identifier,
 response, error, filtering, sorting, date/time, event-ordering, and pagination conventions.
 
