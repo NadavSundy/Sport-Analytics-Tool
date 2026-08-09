@@ -24,9 +24,11 @@ nav:
       - API:
           - Overview: api/overview.md
           - Shared Contracts: api/contracts.md
+          - OpenAPI Specification: api/openapi.md
+          - Versioning and Deprecation: api/versioning.md
       - Database:
-        - Overview: database/overview.md
-        - Access and Transactions: database/access.md
+          - Overview: database/overview.md
+          - Access and Transactions: database/access.md
       - Event Model: database/schema.md
       - Security:
           - Overview: security/overview.md
