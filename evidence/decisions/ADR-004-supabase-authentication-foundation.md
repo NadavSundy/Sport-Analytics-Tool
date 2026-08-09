@@ -67,14 +67,16 @@ Account deletion requires an elevated server-side administrative key and must ne
 
 ## Frontend integration
 
-The React frontend will eventually use `@supabase/supabase-js` with:
+The React frontend uses `@supabase/supabase-js` with:
 
 - the Supabase project URL;
 - a publishable key;
 - a configured redirect allow list;
 - managed session storage and refresh behaviour.
 
-The current foundation does not implement the final sign-in interface.
+The frontend foundation obtains the existing managed session, subscribes to authentication-state
+changes and supplies current access tokens to the handwritten API client. It does not implement the
+final sign-in interface or infer application authorisation from Supabase identity data.
 
 ## Backend integration
 
@@ -208,4 +210,5 @@ This ADR does not decide:
 
 ## AI Declaration
 
-The preceding document was planned and generated with the assistance of Codex[GPT-5].
+The preceding document was planned and generated with the assistance of Codex[GPT-5]. The
+frontend implementation status was later updated with the assistance of Codex[GPT-5.6 Sol].
