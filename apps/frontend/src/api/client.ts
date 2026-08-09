@@ -12,11 +12,11 @@ export class ApiResponseError extends Error {
   readonly kind: ApiErrorKind;
   readonly status: number;
 
-  constructor(status: number) {
+  constructor(status: number, message = `API request failed with status ${status}`) {
     const kind =
       status === 401 ? 'unauthenticated' : status === 403 ? 'forbidden' : 'request-failed';
 
-    super(`API request failed with status ${status}`);
+    super(message);
     this.name = 'ApiResponseError';
     this.kind = kind;
     this.status = status;

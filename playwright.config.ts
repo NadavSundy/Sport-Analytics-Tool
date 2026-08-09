@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const testPort = process.env.PLAYWRIGHT_PORT ?? '4173';
+const baseURL = `http://127.0.0.1:${testPort}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.ts',
@@ -9,15 +12,19 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command:
-      'npm run build --workspace=@sport-analytics/frontend && npm run preview --workspace=@sport-analytics/frontend -- --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    command: `npm run build --workspace=@sport-analytics/frontend && npm run preview --workspace=@sport-analytics/frontend -- --host 127.0.0.1 --port ${testPort}`,
+    env: {
+      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? 'http://127.0.0.1:54321',
+      VITE_SUPABASE_PUBLISHABLE_KEY:
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_browser_test',
+    },
+    url: baseURL,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [
