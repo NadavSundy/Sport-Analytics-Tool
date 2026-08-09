@@ -9,6 +9,7 @@ A dependency must have a clear project purpose, an acceptable licence, active ma
 | Area             | Dependency                         | Purpose                                                     |
 | ---------------- | ---------------------------------- | ----------------------------------------------------------- |
 | Frontend         | React                              | Component-based web user interface                          |
+| Frontend routing | React Router                       | Accessible public route matching and navigation             |
 | Frontend tooling | Vite                               | Development server and production build                     |
 | Backend          | Express                            | Hand-written HTTP routing and middleware                    |
 | Validation       | Zod                                | Runtime validation and TypeScript type derivation           |
@@ -48,5 +49,5 @@ TypeScript is pinned to version `5.5.4` because the current `@typescript-eslint`
 
 ## AI Declaration
 
-The frontend authentication dependency documentation was updated with the assistance of
-Codex[GPT-5.6 Sol].
+The frontend authentication and routing dependency documentation was updated with the assistance
+of Codex[GPT-5.6 Sol].
