@@ -29,11 +29,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "structure:check": "node scripts/check-required-files.mjs",
-    "check": "npm run structure:check && npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+    "openapi:lint": "redocly lint docs/api/openapi.yaml",
+    "check": "npm run structure:check && npm run format:check && npm run lint && npm run typecheck && npm run test && npm run openapi:lint && npm run build"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.62.1",
+    "@redocly/cli": "^2.46.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitest/coverage-v8": "^2.1.9",
