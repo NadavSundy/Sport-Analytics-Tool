@@ -1,4 +1,5 @@
 @'
+
 # Invalid submission examples
 
 Each file is match 729307 with exactly one deliberate defect introduced. They are
@@ -9,11 +10,11 @@ leaves no partial data behind.
 They are produced by `scripts/make_invalid_seeds.py` from the valid file under
 `../matches`, so the defect is the only difference.
 
-| File | Defect | Rejected by |
-|---|---|---|
-| `unregistered-name.json` | The batter on the first delivery is a name absent from `info.registry.people`. | Application check in `ingest-match.ts`. Names are not identifiers; a name the registry omits cannot be resolved to anyone. |
-| `inconsistent-runs.json` | `runs.total` on the first delivery is 6 where batter plus extras is 4. | `delivery_runs_ck`. |
-| `striker-equals-non-striker.json` | The non-striker on the first delivery is the same person as the batter. | `delivery_striker_ck`. |
+| File                              | Defect                                                                         | Rejected by                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `unregistered-name.json`          | The batter on the first delivery is a name absent from `info.registry.people`. | Application check in `ingest-match.ts`. Names are not identifiers; a name the registry omits cannot be resolved to anyone. |
+| `inconsistent-runs.json`          | `runs.total` on the first delivery is 6 where batter plus extras is 4.         | `delivery_runs_ck`.                                                                                                        |
+| `striker-equals-non-striker.json` | The non-striker on the first delivery is the same person as the batter.        | `delivery_striker_ck`.                                                                                                     |
 
 Rejection happens at two layers: the application refuses input it cannot resolve,
 and the database refuses rows that violate its own rules. Neither layer is relied

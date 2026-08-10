@@ -39,7 +39,7 @@ for (const file of files) {
       resolve(__dirname, 'ingest-match.ts'),
       resolve(seedDir, file),
     ],
-    { stdio: 'inherit', cwd: resolve(__dirname, '..') }
+    { stdio: 'inherit', cwd: resolve(__dirname, '..') },
   );
 }
 
