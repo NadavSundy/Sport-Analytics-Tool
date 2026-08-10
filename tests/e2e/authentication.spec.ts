@@ -78,6 +78,69 @@ test('signed-out authentication pages are responsive and keyboard operable', asy
   expect((await oauthRequest).url()).toContain(encodeURIComponent('http://127.0.0.1:4173/'));
 });
 
+test('OAuth cancellation returns a safe signed-out callback state', async ({ page }) => {
+  await isolateSupabaseClientLock(page);
+
+  await page.goto('/auth/callback#error=access_denied&error_description=private+provider+detail');
+
+  await expect(page.getByRole('heading', { name: 'Completing Sign In' })).toBeVisible();
+
+  await expect(page.getByRole('alert')).toHaveText('Sign-in was cancelled. No changes were made.');
+
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+
+  await expect(page.getByText(/private provider detail/i)).toHaveCount(0);
+
+  await expect(page.getByRole('link', { name: 'Try Again' })).toHaveAttribute('href', '/sign-in');
+
+  await expect(page.getByRole('link', { name: 'Return Home' })).toHaveAttribute('href', '/');
+
+  await expect(
+    page.getByRole('navigation', { name: 'Account' }).getByRole('link', {
+      name: 'Sign In',
+    }),
+  ).toBeVisible();
+});
+
+test('OAuth provider failure returns a safe recoverable callback state', async ({ page }) => {
+  await isolateSupabaseClientLock(page);
+
+  await page.goto(
+    '/auth/callback?error=server_error&error_code=500&error_description=provider+secret+response',
+  );
+
+  await expect(page.getByRole('alert')).toHaveText(
+    'We could not complete sign-in. Please try again.',
+  );
+
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+
+  await expect(page.getByText(/provider secret response/i)).toHaveCount(0);
+
+  await expect(page.getByRole('link', { name: 'Try Again' })).toBeVisible();
+
+  await expect(page.getByRole('link', { name: 'Return Home' })).toBeVisible();
+});
+
+test('stored Supabase identity completes the callback and opens the account', async ({ page }) => {
+  await isolateSupabaseClientLock(page);
+
+  await page.addInitScript(({ key, value }) => window.localStorage.setItem(key, value), {
+    key: authStorageKey,
+    value: createStoredSession(),
+  });
+
+  await page.goto('/auth/callback');
+
+  await expect(page).toHaveURL(/\/account$/);
+
+  await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible();
+
+  await expect(page.getByText('browser@example.com')).toBeVisible();
+
+  await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
+});
+
 test('stored Supabase identity updates navigation and can sign out', async ({ page }) => {
   await isolateSupabaseClientLock(page);
   await page.addInitScript(({ key, value }) => window.localStorage.setItem(key, value), {
