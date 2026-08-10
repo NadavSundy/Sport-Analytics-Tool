@@ -43,23 +43,26 @@ function createStoredSession() {
 
 test('signed-out authentication pages are responsive and keyboard operable', async ({ page }) => {
   await isolateSupabaseClientLock(page);
-  await page.goto('/create-account');
+  await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Create Account' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-  await expect(
-    page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Sign In' }),
-  ).toBeVisible();
+  const accountNavigation = page.getByRole('navigation', { name: 'Account' });
+  const authenticationAction = accountNavigation.getByRole('link', {
+    name: 'Login or Sign up',
+  });
+  await expect(authenticationAction).toHaveAttribute('href', '/sign-in');
+  await expect(accountNavigation.getByRole('link')).toHaveCount(1);
+  await expect(accountNavigation.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
+  await expect(accountNavigation.getByRole('link', { name: 'Sign In' })).toHaveCount(0);
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   expect(hasHorizontalOverflow).toBe(false);
 
-  await page.goto('/sign-in');
+  await authenticationAction.click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole('heading', { name: 'Login or Sign up' })).toBeVisible();
+
   const googleAction = page.getByRole('button', { name: 'Continue with Google' });
   await googleAction.focus();
   await expect(googleAction).toBeFocused();
@@ -97,7 +100,7 @@ test('OAuth cancellation returns a safe signed-out callback state', async ({ pag
 
   await expect(
     page.getByRole('navigation', { name: 'Account' }).getByRole('link', {
-      name: 'Sign In',
+      name: 'Login or Sign up',
     }),
   ).toBeVisible();
 });
@@ -156,7 +159,7 @@ test('stored Supabase identity updates navigation and can sign out', async ({ pa
   await expect(page.getByRole('link', { name: 'Account' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
   await expect(page.getByText('browser@example.com')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Login or Sign up' })).toHaveCount(0);
 
   const signOut = page.getByRole('button', { name: 'Sign Out' });
   await signOut.focus();
@@ -164,7 +167,10 @@ test('stored Supabase identity updates navigation and can sign out', async ({ pa
   await page.keyboard.press('Enter');
 
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('link', { name: 'Create Account' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Sign In' })).toBeVisible();
+  const signedOutNavigation = page.getByRole('navigation', { name: 'Account' });
+  await expect(signedOutNavigation.getByRole('link', { name: 'Login or Sign up' })).toBeVisible();
+  await expect(signedOutNavigation.getByRole('link')).toHaveCount(1);
+  await expect(signedOutNavigation.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
+  await expect(signedOutNavigation.getByRole('link', { name: 'Sign In' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Sign Out' })).toHaveCount(0);
 });

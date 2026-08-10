@@ -2,10 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 
-interface AuthenticationPageProps {
-  mode: 'create-account' | 'sign-in';
-}
-
 type OAuthCallbackError = 'cancelled' | 'provider-error';
 
 function usePageTitle(title: string) {
@@ -42,12 +38,11 @@ function CallbackRecoveryLinks() {
   );
 }
 
-export function AuthenticationPage({ mode }: AuthenticationPageProps) {
+export function AuthenticationPage() {
   const { signInWithGoogle } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isCreatingAccount = mode === 'create-account';
-  const title = isCreatingAccount ? 'Create Account' : 'Sign In';
+  const title = 'Login or Sign up';
 
   usePageTitle(title);
 
@@ -69,9 +64,7 @@ export function AuthenticationPage({ mode }: AuthenticationPageProps) {
         <p className="eyebrow">Supabase managed authentication</p>
         <h1 id="auth-page-title">{title}</h1>
         <p className="auth-card__introduction">
-          {isCreatingAccount
-            ? 'Use your Google identity to create your authentication account.'
-            : 'Continue with your Google identity to sign in.'}
+          Continue with your Google identity. Supabase will securely handle your login or sign-up.
         </p>
         <button
           className="button button--primary"
@@ -86,17 +79,6 @@ export function AuthenticationPage({ mode }: AuthenticationPageProps) {
             {error}
           </p>
         ) : null}
-        <p className="auth-card__alternative">
-          {isCreatingAccount ? (
-            <>
-              Already have an account? <Link to="/sign-in">Sign In</Link>
-            </>
-          ) : (
-            <>
-              New to Stat&rsquo;sTheGame? <Link to="/create-account">Create Account</Link>
-            </>
-          )}
-        </p>
       </div>
     </section>
   );
@@ -191,7 +173,7 @@ export function AccountPage() {
           </dl>
         ) : (
           <p>
-            You are signed out. <Link to="/sign-in">Sign In</Link> to view your account.
+            You are signed out. <Link to="/sign-in">Login or Sign up</Link> to view your account.
           </p>
         )}
       </div>

@@ -114,8 +114,7 @@ export function PublicApp() {
         <Route path="/participants" element={<ParticipantsPage />} />
         <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
 
-        <Route path="/create-account" element={<AuthenticationPage mode="create-account" />} />
-        <Route path="/sign-in" element={<AuthenticationPage mode="sign-in" />} />
+        <Route path="/sign-in" element={<AuthenticationPage />} />
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
         <Route path="/account" element={<AccountPage />} />
 

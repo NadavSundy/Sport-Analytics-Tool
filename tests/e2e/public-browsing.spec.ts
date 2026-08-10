@@ -66,7 +66,9 @@ test('anonymous browsing preserves filters, pagination and keyboard navigation',
   await expect(page).toHaveURL(/\/fixtures\?gender=female&limit=25/);
   await expect(page.getByRole('link', { name: 'T20 fixture' })).toBeVisible({ timeout: 15_000 });
   await expect(
-    page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Sign In' }),
+    page
+      .getByRole('navigation', { name: 'Account' })
+      .getByRole('link', { name: 'Login or Sign up' }),
   ).toHaveAttribute('href', '/sign-in');
 
   const accessibilityResults = await new AxeBuilder({ page }).analyze();
