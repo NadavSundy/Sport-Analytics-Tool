@@ -22,11 +22,10 @@ state. Related public records are linked where their identifiers are present in 
 
 ## Authentication routes
 
-| Route             | Purpose                                                        |
-| ----------------- | -------------------------------------------------------------- |
-| `/create-account` | Starts managed Supabase Google OAuth for a new identity.       |
-| `/sign-in`        | Starts managed Supabase Google OAuth for an existing identity. |
-| `/account`        | Displays the signed-in Supabase identity email when available. |
+| Route      | Purpose                                                                    |
+| ---------- | -------------------------------------------------------------------------- |
+| `/sign-in` | Starts managed Supabase Google OAuth for either login or account creation. |
+| `/account` | Displays the signed-in Supabase identity email when available.             |
 
 The authentication routes use only Supabase session identity. They do not create application
 profiles or interpret roles, approved-submitter status, administrator permissions, or scoped
