@@ -1,4 +1,7 @@
 import { PublicShell } from './components/PublicShell';
+import { useEffect } from 'react';
+import { Route, Routes } from 'react-router-dom';
+import { AccountPage, AuthenticationPage } from './features/auth/AuthPages';
 
 function HeroLogo() {
   return (
@@ -17,9 +20,13 @@ function HeroLogo() {
   );
 }
 
-function App() {
+function LandingPage() {
+  useEffect(() => {
+    document.title = "Stat'sTheGame";
+  }, []);
+
   return (
-    <PublicShell>
+    <>
       <section className="hero" aria-labelledby="page-title">
         <HeroLogo />
         <div className="hero__content">
@@ -65,6 +72,20 @@ function App() {
           </div>
         </div>
       </section>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <PublicShell>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/create-account" element={<AuthenticationPage mode="create-account" />} />
+        <Route path="/sign-in" element={<AuthenticationPage mode="sign-in" />} />
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="*" element={<LandingPage />} />
+      </Routes>
     </PublicShell>
   );
 }
