@@ -24,6 +24,7 @@ nav:
       - API: api/overview.md
       - Database: database/overview.md
       - Event Model: database/schema.md
+      - Entity Relationships: database/erd.md
       - Security:
           - Overview: security/overview.md
           - Authentication Foundation: security/authentication.md
