@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('public and authentication page themes have no serious accessibility violations', async ({
   page,
 }) => {
-  for (const route of ['/', '/create-account', '/sign-in', '/account']) {
+  for (const route of ['/', '/sign-in', '/account']) {
     await page.goto(route);
 
     for (const theme of ['day', 'night'] as const) {

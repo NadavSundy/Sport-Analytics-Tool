@@ -63,10 +63,7 @@ function AuthenticationNavigation() {
             </button>
           </>
         ) : (
-          <>
-            <NavLink to="/create-account">Create Account</NavLink>
-            <NavLink to="/sign-in">Sign In</NavLink>
-          </>
+          <NavLink to="/sign-in">Login or Sign up</NavLink>
         )}
       </nav>
       {signOutError ? (
