@@ -54,6 +54,11 @@ function createAuthClient(sessionRequest: Promise<{ data: { session: Session | n
         },
       };
     }),
+    signInWithOAuth: vi.fn().mockResolvedValue({
+      data: { provider: 'google', url: null },
+      error: null,
+    }),
+    signOut: vi.fn().mockResolvedValue({ error: null }),
   } as unknown as AuthClient;
 
   return {
@@ -136,5 +141,41 @@ describe('AuthProvider', () => {
     act(() => emit('SIGNED_OUT', null));
     expect(screen.getByText('Identity').nextElementSibling).toHaveTextContent('none');
     expect(screen.getByText('Authenticated').nextElementSibling).toHaveTextContent('false');
+  });
+
+  it('exposes managed Google OAuth and sign-out actions', async () => {
+    const { client } = createAuthClient(Promise.resolve({ data: { session: null } }));
+
+    function AuthActionsProbe() {
+      const { signInWithGoogle, signOut } = useAuth();
+
+      return (
+        <>
+          <button type="button" onClick={() => void signInWithGoogle()}>
+            Authenticate
+          </button>
+          <button type="button" onClick={() => void signOut()}>
+            End session
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <AuthProvider client={client}>
+        <AuthActionsProbe />
+      </AuthProvider>,
+    );
+
+    screen.getByRole('button', { name: 'Authenticate' }).click();
+    screen.getByRole('button', { name: 'End session' }).click();
+
+    await waitFor(() =>
+      expect(client.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/` },
+      }),
+    );
+    expect(client.signOut).toHaveBeenCalledOnce();
   });
 });
