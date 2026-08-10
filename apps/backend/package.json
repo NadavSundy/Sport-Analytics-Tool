@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage tests/unit tests/api tests/auth.test.ts tests/health.test.ts",
     "db:check": "tsx --env-file=.env scripts/check-connection.ts",
     "db:seed": "tsx --env-file=.env scripts/seed.ts",
+    "db:latency": "tsx --env-file=.env scripts/latency.ts",
     "db:ingest": "tsx --env-file=.env scripts/ingest-match.ts",
     "db:validate": "tsx --env-file=.env scripts/validate-match.ts",
     "db:sql": "tsx --env-file=.env scripts/sql.ts",
