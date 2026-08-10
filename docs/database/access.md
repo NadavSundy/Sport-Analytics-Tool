@@ -49,10 +49,10 @@ SQL used by application features belongs behind repository boundaries.
 
 The initial repository boundaries are:
 
-| Application area | Database source |
-| --- | --- |
-| Competition | `competition` |
-| Fixture | `fixture` |
+| Application area    | Database source                   |
+| ------------------- | --------------------------------- |
+| Competition         | `competition`                     |
+| Fixture             | `fixture`                         |
 | Fixture participant | `person`, `fixture_squad`, `team` |
 
 The participant repository maps the existing sport-domain schema to an application participant record. It does not introduce or require a separate `participant` table.

@@ -28,7 +28,9 @@ let failures = 0;
 function check(label: string, actual: unknown, expected: unknown): void {
   const pass = String(actual) === String(expected);
   if (!pass) failures += 1;
-  console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${label}: ${actual}${pass ? '' : ` (expected ${expected})`}`);
+  console.log(
+    `  ${pass ? 'PASS' : 'FAIL'}  ${label}: ${actual}${pass ? '' : ` (expected ${expected})`}`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -53,7 +55,7 @@ async function main(): Promise<void> {
       WHERE f.source_ref = $1
       GROUP BY i.ordinal, t.name, i.penalty_pre, i.penalty_post
       ORDER BY i.ordinal`,
-    [sourceRef]
+    [sourceRef],
   );
 
   // A no-ball is a legal delivery for over-counting purposes only in the sense
@@ -67,7 +69,7 @@ async function main(): Promise<void> {
        JOIN delivery_current d ON d.innings_id = i.innings_id
       WHERE f.source_ref = $1
       GROUP BY i.ordinal ORDER BY i.ordinal`,
-    [sourceRef]
+    [sourceRef],
   );
 
   const wickets = await client.query(
@@ -78,7 +80,7 @@ async function main(): Promise<void> {
        LEFT JOIN delivery_wicket w ON w.delivery_id = d.delivery_id
       WHERE f.source_ref = $1
       GROUP BY i.ordinal ORDER BY i.ordinal`,
-    [sourceRef]
+    [sourceRef],
   );
 
   const extras = await client.query(
@@ -93,7 +95,7 @@ async function main(): Promise<void> {
        JOIN delivery_current d ON d.innings_id = i.innings_id
       WHERE f.source_ref = $1
       GROUP BY i.ordinal ORDER BY i.ordinal`,
-    [sourceRef]
+    [sourceRef],
   );
 
   const expected = [
@@ -140,7 +142,7 @@ async function main(): Promise<void> {
        JOIN delivery_wicket w ON w.delivery_id = d.delivery_id
        JOIN person p ON p.person_id = w.player_out_id
       ORDER BY d.innings_sequence`,
-    [sourceRef]
+    [sourceRef],
   );
 
   const expectedFow = [
@@ -159,13 +161,11 @@ async function main(): Promise<void> {
   for (const [index, row] of fow.rows.entries()) {
     const target = expectedFow[index];
     const pass =
-      Number(row.score) === target[0] &&
-      row.over === target[1] &&
-      row.player_out === target[2];
+      Number(row.score) === target[0] && row.over === target[1] && row.player_out === target[2];
     if (!pass) failures += 1;
     console.log(
       `  ${pass ? 'PASS' : 'FAIL'}  ${index + 1}-${row.score} (${row.over} ov) ${row.player_out}, ${row.kind}` +
-        (pass ? '' : `  expected ${target[0]} at ${target[1]} ${target[2]}`)
+        (pass ? '' : `  expected ${target[0]} at ${target[1]} ${target[2]}`),
     );
   }
 
@@ -186,7 +186,7 @@ async function main(): Promise<void> {
       WHERE f.source_ref = $1 AND k.credits_bowler
       GROUP BY p.display_name
       ORDER BY COUNT(*) DESC, p.display_name`,
-    [sourceRef]
+    [sourceRef],
   );
 
   for (const row of credited.rows) {
@@ -201,13 +201,11 @@ async function main(): Promise<void> {
        JOIN delivery_wicket w ON w.delivery_id = d.delivery_id
        JOIN dismissal_kind k ON k.code = w.kind
       WHERE f.source_ref = $1 AND NOT k.credits_bowler`,
-    [sourceRef]
+    [sourceRef],
   );
   console.log(`\n  ${runOuts.rows[0].n} dismissal(s) not credited to any bowler.`);
 
-  console.log(
-    `\n${failures === 0 ? 'All checks passed.' : `${failures} check(s) failed.`}`
-  );
+  console.log(`\n${failures === 0 ? 'All checks passed.' : `${failures} check(s) failed.`}`);
   if (failures > 0) process.exitCode = 1;
 }
 
