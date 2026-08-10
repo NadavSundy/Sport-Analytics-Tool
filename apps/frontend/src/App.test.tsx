@@ -1,5 +1,5 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -111,24 +111,38 @@ describe('public application and authentication interface', () => {
     renderApp();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Stat’sTheGame' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Create Account' })).toHaveAttribute(
-      'href',
-      '/create-account',
-    );
-    expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/sign-in');
+    const accountNavigation = await screen.findByRole('navigation', { name: 'Account' });
+    const authenticationCallToAction = within(accountNavigation).getByRole('link', {
+      name: 'Login or Sign up',
+    });
+    expect(within(accountNavigation).getAllByRole('link')).toHaveLength(1);
+    expect(authenticationCallToAction).toHaveAttribute('href', '/sign-in');
+    expect(within(accountNavigation).queryByRole('link', { name: 'Create Account' })).toBeNull();
+    expect(within(accountNavigation).queryByRole('link', { name: 'Sign In' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Account' })).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(authenticationCallToAction);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
   });
 
-  it.each([
-    ['/create-account', 'Create Account'],
-    ['/sign-in', 'Sign In'],
-  ])('renders the %s Google authentication page', async (path, title) => {
-    renderApp(path);
+  it('renders the unified Google authentication page without registration alternatives', async () => {
+    renderApp('/sign-in');
 
-    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: title })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Login or Sign up' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.queryByRole('link', { name: 'Create Account' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
   });
 
   it('starts managed Google OAuth with the callback return URL and shows progress', async () => {
@@ -158,7 +172,7 @@ describe('public application and authentication interface', () => {
   });
 
   it('shows a safe Google authentication error without provider details', async () => {
-    const auth = renderApp('/create-account');
+    const auth = renderApp('/sign-in');
     vi.mocked(auth.client.signInWithOAuth).mockResolvedValue({
       data: { provider: 'google', url: null },
       error: new Error('provider secret response') as never,
@@ -223,7 +237,7 @@ describe('public application and authentication interface', () => {
 
     expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'Sign Out' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Create Account' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Login or Sign up' })).not.toBeInTheDocument();
     expect(screen.getByText('person@example.com')).toBeInTheDocument();
     expect(
       screen.queryByText(/administrator|approved submitter|role|grant/i),
@@ -251,8 +265,13 @@ describe('public application and authentication interface', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Stat’sTheGame' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create Account' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Sign In' })).toBeInTheDocument();
+    const accountNavigation = screen.getByRole('navigation', { name: 'Account' });
+    expect(within(accountNavigation).getAllByRole('link')).toHaveLength(1);
+    expect(
+      within(accountNavigation).getByRole('link', { name: 'Login or Sign up' }),
+    ).toHaveAttribute('href', '/sign-in');
+    expect(within(accountNavigation).queryByRole('link', { name: 'Create Account' })).toBeNull();
+    expect(within(accountNavigation).queryByRole('link', { name: 'Sign In' })).toBeNull();
   });
 
   it('shows a safe sign-out error and remains signed in when Supabase rejects the action', async () => {

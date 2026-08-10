@@ -98,9 +98,9 @@ These values identify the public Supabase application. The frontend fails during
 initialisation when either value is absent so that authentication is never configured with an
 invented fallback.
 
-The frontend provides `/create-account` and `/sign-in` pages that both start the managed Google
-OAuth flow. Successful authentication returns to `/`. No Supabase secret key, database password
-or OAuth client secret may be added to a `VITE_` variable.
+The frontend provides one `/sign-in` page that starts the managed Google OAuth flow for either login
+or account creation. Successful authentication returns to `/`. No Supabase secret key, database
+password or OAuth client secret may be added to a `VITE_` variable.
 
 ## Frontend session state
 
@@ -120,7 +120,7 @@ unmounted. Supabase sign-in, sign-out and managed token-refresh events therefore
 session state. This identity state must not be interpreted as an application role, approved
 submitter status, administrator permission or scoped grant.
 
-Signed-out navigation exposes Create Account and Sign In. Signed-in navigation exposes Account and
+Signed-out navigation exposes one Login or Sign up action. Signed-in navigation exposes Account and
 Sign Out, and updates from the shared authentication state without a page reload. `/account`
 displays only the email already present on the Supabase session identity when available. Sign-out
 uses the managed Supabase operation and returns to `/`.
