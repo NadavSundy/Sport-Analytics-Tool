@@ -1,4 +1,5 @@
 @'
+
 # Entity relationship diagram
 
 The relationships below were read from the database with
