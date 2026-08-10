@@ -62,15 +62,6 @@ const client = new Client({
   },
 });
 
-/** Resolve a player name through this match's registry to a stable identifier. */
-function sourceRefFor(name: string): string {
-  const ref = registry[name];
-  if (!ref) {
-    throw new Error(`Name "${name}" is absent from this match's registry.`);
-  }
-  return ref;
-}
-
 async function scalar<T>(sql: string, values: unknown[] = []): Promise<T> {
   const { rows } = await client.query(sql, values);
   return rows[0][Object.keys(rows[0])[0]] as T;
@@ -105,6 +96,23 @@ async function main(): Promise<void> {
       [id, name, info.dates[0]]
     );
     personId.set(name, id);
+  }
+
+  /**
+   * Resolve a name to a person, refusing to proceed on a name the registry
+   * omits. Names are not identifiers: a name absent from info.registry.people
+   * cannot be resolved to anyone, and inserting a null in its place would
+   * produce a constraint error that says nothing about the real problem.
+   */
+  function requirePerson(name: string, role: string): number {
+    const id = personId.get(name);
+    if (id === undefined) {
+      throw new Error(
+        `The ${role} "${name}" is absent from this match's registry. ` +
+          `Every person referenced by a delivery must appear in info.registry.people.`
+      );
+    }
+    return id;
   }
 
   // ---- teams, venue, competition ---------------------------------------
@@ -301,7 +309,7 @@ async function main(): Promise<void> {
     let sequence = 0;
 
     for (const over of innings.overs ?? []) {
-     let legalBalls = 0;
+      let legalBalls = 0;
 
       for (const [position, delivery] of (over.deliveries as Delivery[]).entries()) {
         sequence += 1;
@@ -331,10 +339,10 @@ async function main(): Promise<void> {
             over.over,
             position,
             sequence,
-            ballNumber,            
-            personId.get(delivery.batter),
-            personId.get(delivery.non_striker),
-            personId.get(delivery.bowler),
+            ballNumber,
+            requirePerson(delivery.batter, 'batter'),
+            requirePerson(delivery.non_striker, 'non-striker'),
+            requirePerson(delivery.bowler, 'bowler'),
             delivery.runs.batter,
             delivery.runs.extras,
             delivery.runs.total,
@@ -357,7 +365,13 @@ async function main(): Promise<void> {
             `INSERT INTO delivery_wicket
                (delivery_id, ordinal, kind, source_kind, player_out_id)
              VALUES ($1,$2,$3,$4,$5) RETURNING wicket_id`,
-            [deliveryId, wicketOrdinal, wicket.kind, wicket.kind, personId.get(wicket.player_out)]
+            [
+              deliveryId,
+              wicketOrdinal,
+              wicket.kind,
+              wicket.kind,
+              requirePerson(wicket.player_out, 'dismissed player'),
+            ]
           );
 
           for (const [fielderOrdinal, fielder] of (wicket.fielders ?? []).entries()) {
@@ -406,7 +420,7 @@ async function main(): Promise<void> {
               [
                 deliveryId,
                 kind,
-                personId.get(replacement.in),
+                requirePerson(replacement.in, 'incoming replacement'),
                 replacement.out ? (personId.get(replacement.out) ?? null) : null,
                 replacement.reason ?? null,
                 (replacement as { role?: string }).role ?? null,
