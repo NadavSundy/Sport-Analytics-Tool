@@ -1,4 +1,5 @@
 # Investigate OAuth/OIDC foundation
+> Redaction note: One unnecessary public email address and two Supabase publishable-key values were replaced with visible markers because they are not required to understand or verify the work.
 
 > Continuing from [SDP Guidelines Saved](-- REDACTED --): Open and inspect the Sport Analytics Tool repository at -- REDACTED -- Help Gabe complete sprint task 5, “Investigate and establish the OAuth/OIDC authentication foundation,” step by step. First identify the current tech stack, repo structure, existing auth-related code, environment configuration, and deployment setup. Then propose the smallest rubric-aligned authentication foundation using established OAuth/OIDC libraries rather than custom auth. Preserve the project’s requirement for separate frontend/backend and a handwritten API. Include security considerations, environment variables, local setup, initial implementation, tests, documentation, and the required AI attribution in commits/README. Do not expose or commit secrets. Pause after each major step for Gabe’s confirmation.
 
@@ -5107,7 +5108,7 @@ Tell me **“dependencies passed”** when the type-check succeeds.
 > PS -- REDACTED --\Sport-Analytics-Tool> npm.cmd install firebase-admin dotenv --workspace @sport-analytics/backend
 > npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 > npm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-> npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+> npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting [REDACTED: unnecessary email address]
 >
 > added 159 packages, and audited 581 packages in 15s
 >
@@ -9952,7 +9953,7 @@ Then your ignored `apps/backend/.env` should contain:
 
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-real-value
+SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 ```
 
 Do not use or copy any of these:
@@ -13448,7 +13449,7 @@ Either grant them Supabase dashboard access so they can retrieve those two value
 >
 > ```env
 > VITE_SUPABASE_URL=https://dbxxxxxxxxxxjek.supabase.co
-> VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fxxxxxxxxxxxV
+> VITE_SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 > ```
 >
 > Please create or use your own development Auth user.
@@ -13505,14 +13506,14 @@ You may include the real URL and **publishable** key in the private team message
 >
 > ```env
 > SUPABASE_URL=https://xxxxx.supabase.co
-> SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxx
+> SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 > ```
 >
 > Frontend — `apps/frontend/.env`:
 >
 > ```env
 > VITE_SUPABASE_URL=https://xxxxx.supabase.co
-> VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxx
+> VITE_SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 > ```
 >
 > Please create or use your own development Auth user.
@@ -13537,14 +13538,14 @@ Backend — `apps/backend/.env`:
 
 ```env
 SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxx
+SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 ```
 
 Frontend — `apps/frontend/.env`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxx
+VITE_SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 ```
 
 Please create or use your own development Auth user.
@@ -13585,7 +13586,7 @@ Send the real values only through your private team channel.
 >
 > ```env
 > VITE_SUPABASE_URL=-- REDACTED --
-> VITE_SUPABASE_PUBLISHABLE_KEY=-- REDACTED --
+> VITE_SUPABASE_PUBLISHABLE_KEY=[REDACTED: Supabase publishable key]
 > ```
 >
 > Please create or use your own development Auth user.
