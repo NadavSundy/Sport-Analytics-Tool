@@ -173,7 +173,7 @@ describe('AuthProvider', () => {
     await waitFor(() =>
       expect(client.signInWithOAuth).toHaveBeenCalledWith({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/` },
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
       }),
     );
     expect(client.signOut).toHaveBeenCalledOnce();

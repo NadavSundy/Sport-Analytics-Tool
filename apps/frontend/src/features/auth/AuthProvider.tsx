@@ -88,7 +88,7 @@ export function AuthProvider({ children, client }: AuthProviderProps) {
     const { error } = await client.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
