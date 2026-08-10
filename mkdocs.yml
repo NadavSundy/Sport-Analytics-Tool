@@ -31,6 +31,7 @@ nav:
           - Overview: database/overview.md
           - Access and Transactions: database/access.md
       - Event Model: database/schema.md
+      - Entity Relationships: database/erd.md
       - Security:
           - Overview: security/overview.md
           - Authentication Foundation: security/authentication.md
