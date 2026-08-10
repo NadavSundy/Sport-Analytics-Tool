@@ -98,7 +98,9 @@ These values identify the public Supabase application. The frontend fails during
 initialisation when either value is absent so that authentication is never configured with an
 invented fallback.
 
-The final sign-in interface is outside the current task. No Supabase secret key, database password or OAuth client secret may be added to a `VITE_` variable.
+The frontend provides `/create-account` and `/sign-in` pages that both start the managed Google
+OAuth flow. Successful authentication returns to `/`. No Supabase secret key, database password
+or OAuth client secret may be added to a `VITE_` variable.
 
 ## Frontend session state
 
@@ -117,6 +119,11 @@ The provider subscribes to Supabase authentication-state changes and unsubscribe
 unmounted. Supabase sign-in, sign-out and managed token-refresh events therefore replace the shared
 session state. This identity state must not be interpreted as an application role, approved
 submitter status, administrator permission or scoped grant.
+
+Signed-out navigation exposes Create Account and Sign In. Signed-in navigation exposes Account and
+Sign Out, and updates from the shared authentication state without a page reload. `/account`
+displays only the email already present on the Supabase session identity when available. Sign-out
+uses the managed Supabase operation and returns to `/`.
 
 ## Frontend authenticated API requests
 
@@ -375,7 +382,6 @@ Those rules depend on future stakeholder and product-flow decisions.
 
 This foundation intentionally does not implement:
 
-- final sign-up or sign-in pages;
 - final password-reset screens;
 - final account-deletion screens;
 - application profile persistence;
