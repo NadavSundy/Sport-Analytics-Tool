@@ -85,7 +85,7 @@ paths:
         - Public Read
       summary: List competitions
       operationId: listCompetitions
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/Limit'
@@ -112,7 +112,7 @@ paths:
         - Public Read
       summary: Get a competition
       operationId: getCompetition
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/CompetitionId'
@@ -132,7 +132,7 @@ paths:
         - Public Read
       summary: List seasons
       operationId: listSeasons
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/Limit'
@@ -158,7 +158,7 @@ paths:
         - Public Read
       summary: Get a season
       operationId: getSeason
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/SeasonId'
@@ -178,7 +178,7 @@ paths:
         - Public Read
       summary: List fixtures
       operationId: listFixtures
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/Limit'
@@ -235,7 +235,7 @@ paths:
         - Public Read
       summary: Get a fixture
       operationId: getFixture
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/FixtureId'
@@ -255,7 +255,7 @@ paths:
         - Public Read
       summary: List competitors
       operationId: listCompetitors
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/Limit'
@@ -293,7 +293,7 @@ paths:
         - Public Read
       summary: Get a competitor
       operationId: getCompetitor
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/CompetitorId'
@@ -313,7 +313,7 @@ paths:
         - Public Read
       summary: List participants
       operationId: listParticipants
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/Limit'
@@ -351,7 +351,7 @@ paths:
         - Public Read
       summary: Get a participant
       operationId: getParticipant
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       parameters:
         - $ref: '#/components/parameters/ParticipantId'
@@ -634,11 +634,13 @@ components:
       required:
         - fixtureId
         - competitionId
+        - seasonId
         - season
         - matchType
         - teamType
         - gender
         - ballsPerOver
+        - scheduledOvers
         - startDate
         - endDate
       properties:
