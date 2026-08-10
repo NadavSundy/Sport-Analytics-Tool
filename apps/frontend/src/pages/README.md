@@ -1,6 +1,7 @@
 # Pages
 
-The public application routes use React Router and the reusable `PublicShell`.
+The public application uses React Router inside the reusable `PublicShell`. Public content remains
+available without an account; there is no global authentication gate.
 
 ## Public browsing routes
 
@@ -19,7 +20,19 @@ Collection pages preserve the API-supported filters, page size, and cursor in th
 string. Every route provides explicit loading and error states; collections also provide an empty
 state. Related public records are linked where their identifiers are present in the API response.
 
+## Authentication routes
+
+| Route             | Purpose                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| `/create-account` | Starts managed Supabase Google OAuth for a new identity.       |
+| `/sign-in`        | Starts managed Supabase Google OAuth for an existing identity. |
+| `/account`        | Displays the signed-in Supabase identity email when available. |
+
+The authentication routes use only Supabase session identity. They do not create application
+profiles or interpret roles, approved-submitter status, administrator permissions, or scoped
+grants.
+
 ## AI Declaration
 
-The public browsing route documentation was updated with the assistance of
-Codex[GPT-5.6 Sol].
+The public browsing and authentication route documentation was updated with the assistance of
+Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].

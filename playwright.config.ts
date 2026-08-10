@@ -26,6 +26,11 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      VITE_SUPABASE_URL: 'https://e2e.supabase.co',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-public-key',
+    },
   },
   projects: [
     {

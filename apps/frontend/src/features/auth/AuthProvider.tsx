@@ -1,13 +1,29 @@
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
-type SupabaseAuthClient = Pick<SupabaseClient['auth'], 'getSession' | 'onAuthStateChange'>;
+type SupabaseAuthClient = Pick<
+  SupabaseClient['auth'],
+  'getSession' | 'onAuthStateChange' | 'signInWithOAuth' | 'signOut'
+>;
 
 export interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   session: Session | null;
   identity: User | null;
+}
+
+interface AuthContextValue extends AuthState {
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 interface AuthProviderProps {
@@ -22,7 +38,7 @@ const initialAuthState: AuthState = {
   identity: null,
 };
 
-const AuthContext = createContext<AuthState | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function resolveAuthState(session: Session | null): AuthState {
   return {
@@ -68,12 +84,36 @@ export function AuthProvider({ children, client }: AuthProviderProps) {
     };
   }, [client]);
 
-  const value = useMemo(() => authState, [authState]);
+  const signInWithGoogle = useCallback(async () => {
+    const { error } = await client.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      throw new Error('Google authentication could not be started.');
+    }
+  }, [client]);
+
+  const signOut = useCallback(async () => {
+    const { error } = await client.signOut();
+
+    if (error) {
+      throw new Error('Sign-out could not be completed.');
+    }
+  }, [client]);
+
+  const value = useMemo(
+    () => ({ ...authState, signInWithGoogle, signOut }),
+    [authState, signInWithGoogle, signOut],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth(): AuthState {
+export function useAuth(): AuthContextValue {
   const authState = useContext(AuthContext);
 
   if (!authState) {

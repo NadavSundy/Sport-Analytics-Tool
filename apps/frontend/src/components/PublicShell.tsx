@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../features/auth/AuthProvider';
 import { ThemeToggle } from './ThemeToggle';
 
 interface PublicShellProps {
@@ -23,6 +24,60 @@ function BrandWordmark() {
   );
 }
 
+function AuthenticationNavigation() {
+  const { isAuthenticated, isLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    setSignOutError(null);
+
+    try {
+      await signOut();
+      navigate('/', { replace: true });
+    } catch {
+      setSignOutError('We could not sign you out. Please try again.');
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <p className="auth-navigation__status" role="status">
+        Checking account…
+      </p>
+    );
+  }
+
+  return (
+    <div className="auth-navigation-wrap">
+      <nav className="auth-navigation" aria-label="Account">
+        {isAuthenticated ? (
+          <>
+            <NavLink to="/account">Account</NavLink>
+            <button type="button" onClick={handleSignOut} disabled={isSigningOut}>
+              {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+            </button>
+          </>
+        ) : (
+          <>
+            <NavLink to="/create-account">Create Account</NavLink>
+            <NavLink to="/sign-in">Sign In</NavLink>
+          </>
+        )}
+      </nav>
+      {signOutError ? (
+        <p className="auth-navigation__error" role="alert">
+          {signOutError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function PublicShell({ children }: PublicShellProps) {
   return (
     <div className="public-shell">
@@ -42,7 +97,10 @@ export function PublicShell({ children }: PublicShellProps) {
             <NavLink to="/competitors">Competitors</NavLink>
             <NavLink to="/participants">Participants</NavLink>
           </nav>
-          <ThemeToggle />
+          <div className="site-header__controls">
+            <AuthenticationNavigation />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
