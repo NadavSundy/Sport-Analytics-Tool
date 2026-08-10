@@ -1,15 +1,45 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 
 interface AuthenticationPageProps {
   mode: 'create-account' | 'sign-in';
 }
 
+type OAuthCallbackError = 'cancelled' | 'provider-error';
+
 function usePageTitle(title: string) {
   useEffect(() => {
     document.title = `${title} | Stat'sTheGame`;
   }, [title]);
+}
+
+function getOAuthCallbackError(search: string, hash: string): OAuthCallbackError | null {
+  const searchParameters = new URLSearchParams(search);
+  const hashParameters = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+
+  const error = searchParameters.get('error') ?? hashParameters.get('error');
+
+  const hasError =
+    error !== null ||
+    searchParameters.has('error_code') ||
+    searchParameters.has('error_description') ||
+    hashParameters.has('error_code') ||
+    hashParameters.has('error_description');
+
+  if (!hasError) {
+    return null;
+  }
+
+  return error === 'access_denied' ? 'cancelled' : 'provider-error';
+}
+
+function CallbackRecoveryLinks() {
+  return (
+    <p className="auth-card__alternative">
+      <Link to="/sign-in">Try Again</Link> or <Link to="/">Return Home</Link>
+    </p>
+  );
 }
 
 export function AuthenticationPage({ mode }: AuthenticationPageProps) {
@@ -67,6 +97,74 @@ export function AuthenticationPage({ mode }: AuthenticationPageProps) {
             </>
           )}
         </p>
+      </div>
+    </section>
+  );
+}
+
+export function AuthenticationCallbackPage() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [callbackError] = useState<OAuthCallbackError | null>(() =>
+    getOAuthCallbackError(location.search, location.hash),
+  );
+
+  usePageTitle('Completing Sign In');
+
+  useEffect(() => {
+    if (callbackError && (location.search || location.hash)) {
+      navigate('/auth/callback', { replace: true });
+    }
+  }, [callbackError, location.hash, location.search, navigate]);
+  useEffect(() => {
+    if (!callbackError && !isLoading && isAuthenticated) {
+      navigate('/account', { replace: true });
+    }
+  }, [callbackError, isAuthenticated, isLoading, navigate]);
+
+  let callbackContent;
+
+  if (callbackError === 'cancelled') {
+    callbackContent = (
+      <>
+        <p className="auth-error" role="alert">
+          Sign-in was cancelled. No changes were made.
+        </p>
+        <CallbackRecoveryLinks />
+      </>
+    );
+  } else if (callbackError === 'provider-error') {
+    callbackContent = (
+      <>
+        <p className="auth-error" role="alert">
+          We could not complete sign-in. Please try again.
+        </p>
+        <CallbackRecoveryLinks />
+      </>
+    );
+  } else if (isLoading) {
+    callbackContent = <p role="status">Completing sign-in…</p>;
+  } else if (isAuthenticated) {
+    callbackContent = <p role="status">Sign-in complete. Opening your account…</p>;
+  } else {
+    callbackContent = (
+      <>
+        <p className="auth-error" role="alert">
+          We could not establish a signed-in session. Please try again.
+        </p>
+        <CallbackRecoveryLinks />
+      </>
+    );
+  }
+
+  return (
+    <section className="auth-page content-boundary" aria-labelledby="auth-callback-title">
+      <div className="auth-card">
+        <p className="eyebrow">Supabase managed authentication</p>
+        <h1 id="auth-callback-title">Completing Sign In</h1>
+        {callbackContent}
       </div>
     </section>
   );

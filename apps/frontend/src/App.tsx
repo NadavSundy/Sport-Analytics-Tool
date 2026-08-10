@@ -14,7 +14,11 @@ import {
   SeasonsPage,
 } from './pages/PublicBrowsePages';
 import { useEffect } from 'react';
-import { AccountPage, AuthenticationPage } from './features/auth/AuthPages';
+import {
+  AccountPage,
+  AuthenticationCallbackPage,
+  AuthenticationPage,
+} from './features/auth/AuthPages';
 
 function HeroLogo() {
   return (
@@ -112,6 +116,7 @@ export function PublicApp() {
 
         <Route path="/create-account" element={<AuthenticationPage mode="create-account" />} />
         <Route path="/sign-in" element={<AuthenticationPage mode="sign-in" />} />
+        <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
         <Route path="/account" element={<AccountPage />} />
 
         <Route path="*" element={<NotFoundPage />} />

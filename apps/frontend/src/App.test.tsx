@@ -131,7 +131,7 @@ describe('public application and authentication interface', () => {
     expect(screen.getByRole('link', { name: title })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('starts managed Google OAuth with the root return URL and shows progress', async () => {
+  it('starts managed Google OAuth with the callback return URL and shows progress', async () => {
     type OAuthResult = Awaited<ReturnType<AuthClient['signInWithOAuth']>>;
     let resolveAuthentication!: (value: OAuthResult) => void;
     const pendingAuthentication = new Promise<OAuthResult>((resolve) => {
@@ -146,7 +146,7 @@ describe('public application and authentication interface', () => {
     expect(screen.getByRole('button', { name: 'Connecting to Google…' })).toBeDisabled();
     expect(auth.client.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
 
     await act(async () =>
@@ -170,6 +170,47 @@ describe('public application and authentication interface', () => {
       'We could not connect to Google. Please try again.',
     );
     expect(screen.queryByText(/provider secret response/i)).not.toBeInTheDocument();
+  });
+
+  it('recognises an authenticated callback and opens the account page', async () => {
+    renderApp('/auth/callback', createSession());
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
+    expect(screen.getByText('person@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign Out' })).toBeInTheDocument();
+  });
+
+  it('handles OAuth cancellation without exposing provider details', async () => {
+    renderApp('/auth/callback#error=access_denied&error_description=private+provider+detail');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Sign-in was cancelled. No changes were made.',
+    );
+    expect(screen.queryByText(/private provider detail/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Try Again' })).toHaveAttribute('href', '/sign-in');
+    expect(screen.getByRole('link', { name: 'Return Home' })).toHaveAttribute('href', '/');
+  });
+
+  it('handles OAuth provider errors without exposing provider details', async () => {
+    renderApp(
+      '/auth/callback?error=server_error&error_code=500&error_description=provider+secret+response',
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not complete sign-in. Please try again.',
+    );
+    expect(screen.queryByText(/provider secret response/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Try Again' })).toBeInTheDocument();
+  });
+
+  it('shows a recoverable error when the callback produces no session', async () => {
+    renderApp('/auth/callback');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not establish a signed-in session. Please try again.',
+    );
+    expect(screen.getByRole('link', { name: 'Try Again' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Return Home' })).toBeInTheDocument();
   });
 
   it('updates to signed-in navigation and displays only session identity information', async () => {
