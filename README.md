@@ -142,7 +142,7 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], and Codex[GPT-5].
+This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5] and Claude.ai (chat, Claude Sonnet 5).
 
 This repository does not currently use AI in-line editing tools.
 
