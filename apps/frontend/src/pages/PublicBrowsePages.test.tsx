@@ -1,7 +1,13 @@
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicApp } from '../App';
+import { AuthProvider } from '../features/auth/AuthProvider';
+
+type AuthClient = ComponentProps<typeof AuthProvider>['client'];
+type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
 
 function response(status: number, body: unknown): Response {
   return {
@@ -31,11 +37,32 @@ function useSystemTheme() {
   );
 }
 
+function createSignedOutAuthClient() {
+  return {
+    getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    onAuthStateChange: vi.fn((listener: AuthStateListener) => ({
+      data: {
+        subscription: {
+          id: 'public-browse-test-subscription',
+          callback: listener,
+          unsubscribe: vi.fn(),
+        },
+      },
+    })),
+    signInWithOAuth: vi
+      .fn()
+      .mockResolvedValue({ data: { provider: 'google', url: null }, error: null }),
+    signOut: vi.fn().mockResolvedValue({ error: null }),
+  } as unknown as AuthClient;
+}
+
 function renderRoute(route: string) {
   return render(
-    <MemoryRouter initialEntries={[route]}>
-      <PublicApp />
-    </MemoryRouter>,
+    <AuthProvider client={createSignedOutAuthClient()}>
+      <MemoryRouter initialEntries={[route]}>
+        <PublicApp />
+      </MemoryRouter>
+    </AuthProvider>,
   );
 }
 
@@ -62,7 +89,9 @@ describe('public browsing pages', () => {
 
     renderRoute('/competitions');
 
-    expect(screen.getByRole('status')).toHaveTextContent('Loading competitions');
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Loading competitions' }).parentElement,
+    ).toHaveAttribute('role', 'status');
 
     resolveRequest(
       collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }]),

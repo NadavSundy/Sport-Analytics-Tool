@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
 import {
   CompetitionDetailPage,
@@ -14,7 +14,6 @@ import {
   SeasonsPage,
 } from './pages/PublicBrowsePages';
 import { useEffect } from 'react';
-import { Route, Routes } from 'react-router-dom';
 import { AccountPage, AuthenticationPage } from './features/auth/AuthPages';
 
 function HeroLogo() {
@@ -95,42 +94,34 @@ export function PublicApp() {
     <PublicShell>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+
         <Route path="/competitions" element={<CompetitionsPage />} />
         <Route path="/competitions/:competitionId" element={<CompetitionDetailPage />} />
+
         <Route path="/seasons" element={<SeasonsPage />} />
         <Route path="/seasons/:seasonId" element={<SeasonDetailPage />} />
+
         <Route path="/fixtures" element={<FixturesPage />} />
         <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
+
         <Route path="/competitors" element={<CompetitorsPage />} />
         <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
+
         <Route path="/participants" element={<ParticipantsPage />} />
         <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </>
-  );
-}
 
-function App() {
-  return (
-    <PublicShell>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
         <Route path="/create-account" element={<AuthenticationPage mode="create-account" />} />
         <Route path="/sign-in" element={<AuthenticationPage mode="sign-in" />} />
         <Route path="/account" element={<AccountPage />} />
-        <Route path="*" element={<LandingPage />} />
+
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </PublicShell>
   );
 }
 
 function App() {
-  return (
-    <BrowserRouter>
-      <PublicApp />
-    </BrowserRouter>
-  );
+  return <PublicApp />;
 }
 
 export default App;
