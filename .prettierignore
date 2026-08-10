@@ -5,3 +5,5 @@ site
 *.min.js
 package-lock.json
 .venv/
+# Preserve AI transcript evidence verbatim
+evidence/ai/transcripts/

@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sport-analytics/contracts": "^0.1.0",
     "@supabase/supabase-js": "^2.112.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

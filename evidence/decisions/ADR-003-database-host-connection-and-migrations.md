@@ -117,6 +117,7 @@ once the compliance question had been settled in writing.
    Fourteen fixtures have been loaded for schema validation, so ingestion has begun
    in a limited form before this decision was recorded. The storage decision remains
    outstanding and no bulk ingestion may proceed until it is taken.
+
 5. Because the plan retains no backups and all six members hold owner access on
    the project, a tested dump and restore procedure is required rather than
    optional.

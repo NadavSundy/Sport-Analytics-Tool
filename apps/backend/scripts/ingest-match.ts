@@ -87,7 +87,7 @@ async function main(): Promise<void> {
     `INSERT INTO submission (source_filename, source_sha256, status)
      VALUES ($1, $2, 'accepted')
      RETURNING submission_id`,
-    [basename(matchPath), createHash('sha256').update(raw).digest('hex')]
+    [basename(matchPath), createHash('sha256').update(raw).digest('hex')],
   );
 
   // ---- people -----------------------------------------------------------
@@ -97,12 +97,12 @@ async function main(): Promise<void> {
       `INSERT INTO person (source_ref, display_name) VALUES ($1, $2)
        ON CONFLICT (source_ref) DO UPDATE SET display_name = EXCLUDED.display_name
        RETURNING person_id`,
-      [ref, name]
+      [ref, name],
     );
     await client.query(
       `INSERT INTO person_alias (person_id, name, first_seen) VALUES ($1, $2, $3)
        ON CONFLICT DO NOTHING`,
-      [id, name, info.dates[0]]
+      [id, name, info.dates[0]],
     );
     personId.set(name, id);
   }
@@ -116,8 +116,8 @@ async function main(): Promise<void> {
         `INSERT INTO team (name) VALUES ($1)
          ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
          RETURNING team_id`,
-        [name]
-      )
+        [name],
+      ),
     );
   }
 
@@ -125,7 +125,7 @@ async function main(): Promise<void> {
     `INSERT INTO venue (name, city) VALUES ($1, $2)
      ON CONFLICT ON CONSTRAINT venue_name_city_key DO UPDATE SET name = EXCLUDED.name
      RETURNING venue_id`,
-    [info.venue, info.city ?? null]
+    [info.venue, info.city ?? null],
   );
 
   let competitionId: number | null = null;
@@ -134,7 +134,7 @@ async function main(): Promise<void> {
       `INSERT INTO competition (name) VALUES ($1)
        ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
        RETURNING competition_id`,
-      [info.event.name]
+      [info.event.name],
     );
   }
 
@@ -187,19 +187,18 @@ async function main(): Promise<void> {
       meta.data_version ?? 'unknown',
       meta.revision ?? 0,
       submissionId,
-    ]
+    ],
   );
 
-  const fixtureId = await scalar<number>(
-    'SELECT fixture_id FROM fixture WHERE source_ref = $1',
-    [sourceRef]
-  );
+  const fixtureId = await scalar<number>('SELECT fixture_id FROM fixture WHERE source_ref = $1', [
+    sourceRef,
+  ]);
 
   for (const [ordinal, name] of (info.teams as string[]).entries()) {
     await client.query(
       `INSERT INTO fixture_team (fixture_id, team_id, ordinal) VALUES ($1,$2,$3)
        ON CONFLICT DO NOTHING`,
-      [fixtureId, teamId.get(name), ordinal + 1]
+      [fixtureId, teamId.get(name), ordinal + 1],
     );
   }
 
@@ -213,7 +212,7 @@ async function main(): Promise<void> {
           personId.get(name),
           teamId.get(team),
           info.supersubs?.[team] === name ? 'supersub' : null,
-        ]
+        ],
       );
     }
   }
@@ -223,14 +222,14 @@ async function main(): Promise<void> {
       const officialId = await scalar<number>(
         `INSERT INTO official (display_name) VALUES ($1)
          ON CONFLICT DO NOTHING RETURNING official_id`,
-        [name]
+        [name],
       ).catch(async () =>
-        scalar<number>('SELECT official_id FROM official WHERE display_name = $1', [name])
+        scalar<number>('SELECT official_id FROM official WHERE display_name = $1', [name]),
       );
       await client.query(
         `INSERT INTO fixture_official (fixture_id, official_id, role)
          VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-        [fixtureId, officialId, role]
+        [fixtureId, officialId, role],
       );
     }
   }
@@ -239,7 +238,7 @@ async function main(): Promise<void> {
     await client.query(
       `INSERT INTO fixture_player_of_match (fixture_id, person_id) VALUES ($1,$2)
        ON CONFLICT DO NOTHING`,
-      [fixtureId, personId.get(name)]
+      [fixtureId, personId.get(name)],
     );
   }
 
@@ -264,19 +263,19 @@ async function main(): Promise<void> {
         innings.target?.overs ?? null,
         innings.penalty_runs?.pre ?? null,
         innings.penalty_runs?.post ?? null,
-      ]
+      ],
     );
 
     const inningsId = await scalar<number>(
       'SELECT innings_id FROM innings WHERE fixture_id = $1 AND ordinal = $2',
-      [fixtureId, ordinal]
+      [fixtureId, ordinal],
     );
 
     for (const powerplay of innings.powerplays ?? []) {
       await client.query(
         `INSERT INTO innings_powerplay (innings_id, from_ball, to_ball, type)
          VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-        [inningsId, powerplay.from, powerplay.to, powerplay.type]
+        [inningsId, powerplay.from, powerplay.to, powerplay.type],
       );
     }
 
@@ -284,7 +283,7 @@ async function main(): Promise<void> {
       await client.query(
         `INSERT INTO innings_absent (innings_id, person_id) VALUES ($1,$2)
          ON CONFLICT DO NOTHING`,
-        [inningsId, personId.get(name)]
+        [inningsId, personId.get(name)],
       );
     }
 
@@ -294,14 +293,14 @@ async function main(): Promise<void> {
       await client.query(
         `INSERT INTO innings_miscounted_over (innings_id, over_number, balls)
          VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-        [inningsId, Number(over), Number((detail as { balls: string | number }).balls)]
+        [inningsId, Number(over), Number((detail as { balls: string | number }).balls)],
       );
     }
 
     let sequence = 0;
 
     for (const over of innings.overs ?? []) {
-     let legalBalls = 0;
+      let legalBalls = 0;
 
       for (const [position, delivery] of (over.deliveries as Delivery[]).entries()) {
         sequence += 1;
@@ -331,7 +330,7 @@ async function main(): Promise<void> {
             over.over,
             position,
             sequence,
-            ballNumber,            
+            ballNumber,
             personId.get(delivery.batter),
             personId.get(delivery.non_striker),
             personId.get(delivery.bowler),
@@ -345,7 +344,7 @@ async function main(): Promise<void> {
             extras.legbyes ?? null,
             extras.penalty ?? null,
             submissionId,
-          ]
+          ],
         );
 
         if (rows.length === 0) continue; // already present; nothing further to insert
@@ -357,7 +356,7 @@ async function main(): Promise<void> {
             `INSERT INTO delivery_wicket
                (delivery_id, ordinal, kind, source_kind, player_out_id)
              VALUES ($1,$2,$3,$4,$5) RETURNING wicket_id`,
-            [deliveryId, wicketOrdinal, wicket.kind, wicket.kind, personId.get(wicket.player_out)]
+            [deliveryId, wicketOrdinal, wicket.kind, wicket.kind, personId.get(wicket.player_out)],
           );
 
           for (const [fielderOrdinal, fielder] of (wicket.fielders ?? []).entries()) {
@@ -370,7 +369,7 @@ async function main(): Promise<void> {
                 fielderOrdinal,
                 fielder.name ? (personId.get(fielder.name) ?? null) : null,
                 Boolean(fielder.substitute),
-              ]
+              ],
             );
           }
         }
@@ -379,7 +378,7 @@ async function main(): Promise<void> {
           const umpire = delivery.review.umpire
             ? await scalar<number | null>(
                 'SELECT official_id FROM official WHERE display_name = $1',
-                [delivery.review.umpire]
+                [delivery.review.umpire],
               ).catch(() => null)
             : null;
           await client.query(
@@ -393,7 +392,7 @@ async function main(): Promise<void> {
               delivery.review.batter ? (personId.get(delivery.review.batter) ?? null) : null,
               delivery.review.decision,
               delivery.review.type ?? null,
-            ]
+            ],
           );
         }
 
@@ -410,7 +409,7 @@ async function main(): Promise<void> {
                 replacement.out ? (personId.get(replacement.out) ?? null) : null,
                 replacement.reason ?? null,
                 (replacement as { role?: string }).role ?? null,
-              ]
+              ],
             );
           }
         }

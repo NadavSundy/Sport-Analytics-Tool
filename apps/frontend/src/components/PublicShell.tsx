@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { Link, NavLink } from 'react-router-dom';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthProvider';
 import { ThemeToggle } from './ThemeToggle';
@@ -87,9 +88,16 @@ export function PublicShell({ children }: PublicShellProps) {
 
       <header className="site-header">
         <div className="site-header__inner">
-          <a className="brand-link" href="/" aria-label="Stat'sTheGame home">
+          <Link className="brand-link" to="/" aria-label="Stat'sTheGame home">
             <BrandWordmark />
-          </a>
+          </Link>
+          <nav aria-label="Public records" className="site-navigation">
+            <NavLink to="/competitions">Competitions</NavLink>
+            <NavLink to="/seasons">Seasons</NavLink>
+            <NavLink to="/fixtures">Fixtures</NavLink>
+            <NavLink to="/competitors">Competitors</NavLink>
+            <NavLink to="/participants">Participants</NavLink>
+          </nav>
           <div className="site-header__controls">
             <AuthenticationNavigation />
             <ThemeToggle />

@@ -1,4 +1,18 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
+import {
+  CompetitionDetailPage,
+  CompetitionsPage,
+  CompetitorDetailPage,
+  CompetitorsPage,
+  FixtureDetailPage,
+  FixturesPage,
+  NotFoundPage,
+  ParticipantDetailPage,
+  ParticipantsPage,
+  SeasonDetailPage,
+  SeasonsPage,
+} from './pages/PublicBrowsePages';
 import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { AccountPage, AuthenticationPage } from './features/auth/AuthPages';
@@ -76,6 +90,27 @@ function LandingPage() {
   );
 }
 
+export function PublicApp() {
+  return (
+    <PublicShell>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/competitions" element={<CompetitionsPage />} />
+        <Route path="/competitions/:competitionId" element={<CompetitionDetailPage />} />
+        <Route path="/seasons" element={<SeasonsPage />} />
+        <Route path="/seasons/:seasonId" element={<SeasonDetailPage />} />
+        <Route path="/fixtures" element={<FixturesPage />} />
+        <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
+        <Route path="/competitors" element={<CompetitorsPage />} />
+        <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
+        <Route path="/participants" element={<ParticipantsPage />} />
+        <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </>
+  );
+}
+
 function App() {
   return (
     <PublicShell>
@@ -87,6 +122,14 @@ function App() {
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </PublicShell>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <PublicApp />
+    </BrowserRouter>
   );
 }
 

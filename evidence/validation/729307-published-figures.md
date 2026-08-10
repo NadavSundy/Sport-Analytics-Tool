@@ -27,19 +27,19 @@ include a run out, which must not be credited to the bowler.
 
 ## Result
 
-| | |
-|---|---|
-| Kings XI Punjab | 132/9 (20 overs) |
+|                       |                                       |
+| --------------------- | ------------------------------------- |
+| Kings XI Punjab       | 132/9 (20 overs)                      |
 | Kolkata Knight Riders | 109 all out (18.2 overs), chasing 133 |
-| Result | Kings XI Punjab won by 23 runs |
-| Player of the match | Sandeep Sharma (3/21) |
+| Result                | Kings XI Punjab won by 23 runs        |
+| Player of the match   | Sandeep Sharma (3/21)                 |
 
 ## Innings totals
 
-| Innings | Team | Runs | Wickets | Overs | Extras |
-|---|---|---|---|---|---|
-| 1 | Kings XI Punjab | 132 | 9 | 20.0 | 5 |
-| 2 | Kolkata Knight Riders | 109 | 10 | 18.2 | 10 |
+| Innings | Team                  | Runs | Wickets | Overs | Extras |
+| ------- | --------------------- | ---- | ------- | ----- | ------ |
+| 1       | Kings XI Punjab       | 132  | 9       | 20.0  | 5      |
+| 2       | Kolkata Knight Riders | 109  | 10      | 18.2  | 10     |
 
 Extras breakdown, derived by SQL from the database:
 
@@ -53,17 +53,17 @@ delivery ordering, the run accumulation and the wicket attribution to be
 simultaneously correct.
 
 | Wicket | Score | Over | Batter dismissed (published) | Batter dismissed (source) |
-|---|---|---|---|---|
-| 1 | 13 | 2.4 | Manish Pandey | MK Pandey |
-| 2 | 19 | 4.1 | Gautam Gambhir | G Gambhir |
-| 3 | 19 | 5.1 | Jacques Kallis | JH Kallis |
-| 4 | 50 | 11.1 | Chris Lynn | CA Lynn |
-| 5 | 59 | 12.3 | Yusuf Pathan | YK Pathan |
-| 6 | 62 | 12.6 | Robin Uthappa | RV Uthappa |
-| 7 | 65 | 13.4 | Piyush Chawla | PP Chawla |
-| 8 | 85 | 15.6 | Sunil Narine | SP Narine |
-| 9 | 103 | 17.3 | Suryakumar Yadav | SA Yadav |
-| 10 | 109 | 18.2 | Umesh Yadav | UT Yadav |
+| ------ | ----- | ---- | ---------------------------- | ------------------------- |
+| 1      | 13    | 2.4  | Manish Pandey                | MK Pandey                 |
+| 2      | 19    | 4.1  | Gautam Gambhir               | G Gambhir                 |
+| 3      | 19    | 5.1  | Jacques Kallis               | JH Kallis                 |
+| 4      | 50    | 11.1 | Chris Lynn                   | CA Lynn                   |
+| 5      | 59    | 12.3 | Yusuf Pathan                 | YK Pathan                 |
+| 6      | 62    | 12.6 | Robin Uthappa                | RV Uthappa                |
+| 7      | 65    | 13.4 | Piyush Chawla                | PP Chawla                 |
+| 8      | 85    | 15.6 | Sunil Narine                 | SP Narine                 |
+| 9      | 103   | 17.3 | Suryakumar Yadav             | SA Yadav                  |
+| 10     | 109   | 18.2 | Umesh Yadav                  | UT Yadav                  |
 
 The two name columns are recorded deliberately. The published scorecard spells
 names in full while Cricsheet uses initials and surname. This is a further reason
@@ -78,17 +78,17 @@ script. They would test that runs and extras accumulate at the correct point in
 the innings rather than merely summing correctly.
 
 | Innings | Milestone | Overs | Balls | Extras at that point |
-|---|---|---|---|---|
-| 1 | 50 runs | 5.5 | 36 | 4 |
-| 1 | 100 runs | 13.1 | 80 | 4 |
-| 2 | 50 runs | 10.5 | 65 | 5 |
+| ------- | --------- | ----- | ----- | -------------------- |
+| 1       | 50 runs   | 5.5   | 36    | 4                    |
+| 1       | 100 runs  | 13.1  | 80    | 4                    |
+| 2       | 50 runs   | 10.5  | 65    | 5                    |
 
 Powerplay figures:
 
-| Innings | Powerplay | Overs | Runs | Wickets |
-|---|---|---|---|---|
-| 1 | Mandatory | 0.1 – 6.0 | 51 | 2 |
-| 2 | Mandatory | 0.1 – 6.0 | 24 | 3 |
+| Innings | Powerplay | Overs     | Runs | Wickets |
+| ------- | --------- | --------- | ---- | ------- |
+| 1       | Mandatory | 0.1 – 6.0 | 51   | 2       |
+| 2       | Mandatory | 0.1 – 6.0 | 24   | 3       |
 
 ## Bowler credit
 
@@ -112,18 +112,18 @@ Validation is performed by `apps/backend/scripts/validate-match.ts`, which deriv
 every figure by SQL over `delivery_current` and reads nothing from the source
 file. All twenty-two assertions pass.
 
-| Check | Status |
-|---|---|
-| Innings totals derived from the source file | Confirmed against published figures |
-| Innings totals derived from the database | Confirmed |
-| Wickets per innings | Confirmed |
-| Legal ball counts and overs | Confirmed |
-| Extras totals | Confirmed |
-| Extras breakdown by type | Derived from the database; see caveat below |
-| Fall of wickets | Confirmed, all ten rows |
-| Run outs excluded from bowler credit | Confirmed |
-| Idempotent resubmission | Confirmed: a second ingestion adds no rows |
-| Running score checkpoints | Recorded but not asserted |
+| Check                                       | Status                                      |
+| ------------------------------------------- | ------------------------------------------- |
+| Innings totals derived from the source file | Confirmed against published figures         |
+| Innings totals derived from the database    | Confirmed                                   |
+| Wickets per innings                         | Confirmed                                   |
+| Legal ball counts and overs                 | Confirmed                                   |
+| Extras totals                               | Confirmed                                   |
+| Extras breakdown by type                    | Derived from the database; see caveat below |
+| Fall of wickets                             | Confirmed, all ten rows                     |
+| Run outs excluded from bowler credit        | Confirmed                                   |
+| Idempotent resubmission                     | Confirmed: a second ingestion adds no rows  |
+| Running score checkpoints                   | Recorded but not asserted                   |
 
 **Caveat on the extras breakdown.** The published scorecard's per-type extras line
 could not be read directly, because the site blocks automated access. The
