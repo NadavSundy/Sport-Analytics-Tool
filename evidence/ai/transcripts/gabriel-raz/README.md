@@ -10,7 +10,7 @@ This folder contains AI transcripts retained as evidence for work completed by G
 
 Each transcript stored here must have a corresponding entry in:
 
-`evidence/ai/ai-usage-register.csv`
+`evidence/ai/registers/gabriel-raz.csv`
 
 ## Requirements
 
