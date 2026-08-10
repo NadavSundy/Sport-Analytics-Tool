@@ -7,3 +7,7 @@ package-lock.json
 .venv/
 # Preserve AI transcript evidence verbatim
 evidence/ai/transcripts/
+# Third-party source data. These files are committed verbatim so that the
+# submission hash matches what the source published. They must not be reformatted.
+database/seeds/matches/
+database/seeds/invalid/*.json
