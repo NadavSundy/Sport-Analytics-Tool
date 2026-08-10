@@ -6,18 +6,19 @@ A dependency must have a clear project purpose, an acceptable licence, active ma
 
 ## Initial dependencies
 
-| Area             | Dependency                         | Purpose                                           |
-| ---------------- | ---------------------------------- | ------------------------------------------------- |
-| Frontend         | React                              | Component-based web user interface                |
-| Frontend tooling | Vite                               | Development server and production build           |
-| Backend          | Express                            | Hand-written HTTP routing and middleware          |
-| Validation       | Zod                                | Runtime validation and TypeScript type derivation |
-| HTTP security    | Helmet                             | Secure response-header defaults                   |
-| Logging          | Pino HTTP                          | Structured request logging foundation             |
-| Testing          | Vitest, Testing Library, Supertest | Component, unit, and API integration tests        |
-| Documentation    | MkDocs Material                    | Public static documentation website               |
-| Authentication   | `@supabase/supabase-js`            | Validate Supabase access tokens in the backend    |
-| Configuration    | dotenv                             | Load ignored local backend environment files      |
+| Area             | Dependency                         | Purpose                                                     |
+| ---------------- | ---------------------------------- | ----------------------------------------------------------- |
+| Frontend         | React                              | Component-based web user interface                          |
+| Frontend routing | React Router                       | Accessible public route matching and navigation             |
+| Frontend tooling | Vite                               | Development server and production build                     |
+| Backend          | Express                            | Hand-written HTTP routing and middleware                    |
+| Validation       | Zod                                | Runtime validation and TypeScript type derivation           |
+| HTTP security    | Helmet                             | Secure response-header defaults                             |
+| Logging          | Pino HTTP                          | Structured request logging foundation                       |
+| Testing          | Vitest, Testing Library, Supertest | Component, unit, and API integration tests                  |
+| Documentation    | MkDocs Material                    | Public static documentation website                         |
+| Authentication   | `@supabase/supabase-js`            | Manage frontend sessions and validate backend access tokens |
+| Configuration    | dotenv                             | Load ignored local backend environment files                |
 
 ## Review requirements
 
@@ -34,7 +35,9 @@ Exact installed versions are recorded in the committed `package-lock.json`. Use 
 
 ## Authentication dependency review
 
-The backend uses the maintained `@supabase/supabase-js` client to validate access tokens through Supabase Auth.
+The frontend uses the maintained `@supabase/supabase-js` client for managed browser sessions. The
+backend uses the same library without browser persistence to validate access tokens through
+Supabase Auth.
 
 Dependency audit findings must be reviewed according to their actual dependency path and exploitability. Do not run `npm audit fix --force` without reviewing proposed breaking changes.
 
@@ -43,3 +46,8 @@ The team must monitor Supabase client releases and rerun `npm audit --omit=dev` 
 ## TypeScript compatibility
 
 TypeScript is pinned to version `5.5.4` because the current `@typescript-eslint` version supports TypeScript versions below `5.6.0`. TypeScript and `@typescript-eslint` should be reviewed and upgraded together.
+
+## AI Declaration
+
+The frontend authentication and routing dependency documentation was updated with the assistance
+of Codex[GPT-5.6 Sol].

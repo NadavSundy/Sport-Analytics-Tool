@@ -21,8 +21,15 @@ nav:
       - Brand Guidelines: design/brand-guidelines.md
       - Architecture: architecture/overview.md
       - System Architecture and Roadmap: architecture/system-architecture.md
-      - API: api/overview.md
-      - Database: database/overview.md
+      - API:
+          - Overview: api/overview.md
+          - Shared Contracts: api/contracts.md
+          - Public Read API: api/public-read.md
+          - OpenAPI Specification: api/openapi.md
+          - Versioning and Deprecation: api/versioning.md
+      - Database:
+          - Overview: database/overview.md
+          - Access and Transactions: database/access.md
       - Event Model: database/schema.md
       - Entity Relationships: database/erd.md
       - Security:

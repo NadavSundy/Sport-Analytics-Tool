@@ -8,6 +8,25 @@ The API is a primary product. It must be designed and implemented by the team as
 
 - Base path: `/api/v1`
 - Format: JSON unless returning a documented dataset file
+- Stable identifiers: opaque, immutable, non-recycled string identifiers
+- Pagination: cursor pagination for Basic collection endpoints
+- Filtering: explicit documented camelCase query parameters
+- Sorting: endpoint-specific whitelisted fields with deterministic tie-breaking
+- Errors: consistent machine-readable code, safe message, and optional field or event details
+- Authentication: established provider/library for users; separate API-consumer credentials when introduced
+- Versioning: URL major version initially, with a documented deprecation path before any retirement
+
+The version-controlled API contract is published in the
+[OpenAPI specification](openapi.md).
+
+See [API versioning and deprecation](versioning.md) for compatibility,
+deprecation and retirement rules.
+
+See [Shared API Contracts](contracts.md) for the complete identifier,
+response, error, filtering, sorting, date/time, event-ordering, and pagination conventions.
+
+- Base path: `/api/v1`
+- Format: JSON unless returning a documented dataset file
 - Stable identifiers: opaque, non-recycled IDs
 - Pagination: cursor pagination for large or changing collections where practical
 - Filtering: explicit documented query parameters
@@ -59,6 +78,25 @@ WWW-Authenticate: Bearer
 
 The endpoint proves authenticated identity only. It does not assign roles or sport-specific permissions.
 
+### Public read
+
+The following endpoints are available without authentication:
+
+```text
+GET /api/v1/competitions
+GET /api/v1/competitions/{competitionId}
+GET /api/v1/seasons
+GET /api/v1/seasons/{seasonId}
+GET /api/v1/fixtures
+GET /api/v1/fixtures/{fixtureId}
+GET /api/v1/competitors
+GET /api/v1/competitors/{competitorId}
+GET /api/v1/participants
+GET /api/v1/participants/{participantId}
+```
+
+See [Public Read API](public-read.md) for filters, pagination, deterministic ordering and example responses.
+
 ## Required future API areas
 
 - accounts and role/scope information;
@@ -73,3 +111,7 @@ The endpoint proves authenticated identity only. It does not assign roles or spo
 - change feeds and release differences for the advanced tier.
 
 An OpenAPI specification should be maintained alongside implementation and verified by contract tests. Do not generate backend behaviour from a third-party database platform.
+
+## AI Declaration
+
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

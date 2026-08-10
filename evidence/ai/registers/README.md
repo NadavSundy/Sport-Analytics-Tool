@@ -10,17 +10,17 @@ own, after which the shared register is removed.
 
 ## Columns
 
-| Column | Content |
-|---|---|
-| Date | The date the work was done, as `YYYY-MM-DD`. |
-| Team member | The member who used the tool. |
-| Tool | The tool used, for example `Claude Web` or `ChatGPT Web`. |
-| Model | The model used, for example `Claude Opus 5` or `GPT-5.6 Thinking`. |
-| Purpose | The kinds of use, separated by semicolons. |
-| Brief task | What the work was, including the issue number where applicable. |
-| Output used | What was produced and actually used. |
-| Verification or adaptation | How the output was checked, tested or changed before use. |
-| Related evidence | Transcript paths, issue numbers and Pull Requests. |
+| Column                     | Content                                                            |
+| -------------------------- | ------------------------------------------------------------------ |
+| Date                       | The date the work was done, as `YYYY-MM-DD`.                       |
+| Team member                | The member who used the tool.                                      |
+| Tool                       | The tool used, for example `Claude Web` or `ChatGPT Web`.          |
+| Model                      | The model used, for example `Claude Opus 5` or `GPT-5.6 Thinking`. |
+| Purpose                    | The kinds of use, separated by semicolons.                         |
+| Brief task                 | What the work was, including the issue number where applicable.    |
+| Output used                | What was produced and actually used.                               |
+| Verification or adaptation | How the output was checked, tested or changed before use.          |
+| Related evidence           | Transcript paths, issue numbers and Pull Requests.                 |
 
 ## Rules
 

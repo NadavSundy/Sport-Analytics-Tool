@@ -25,7 +25,7 @@
     "db:test:migrate": "cross-env NODE_ENV=test node-pg-migrate up --database-url-var DATABASE_URL_TEST --envPath .env.test --migrations-dir ../../database/migrations --ignore-pattern \"README.md\"",
     "db:test:reset": "cross-env NODE_ENV=test tsx --env-file=.env.test scripts/reset-test-database.ts",
     "db:test:seed": "cross-env NODE_ENV=test tsx --env-file=.env.test scripts/seed-test-database.ts"
-    },
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
     "cors": "^2.8.5",
@@ -34,6 +34,7 @@
     "helmet": "^8.0.0",
     "pg": "^8.22.0",
     "pino-http": "^10.3.0",
+    "@sport-analytics/contracts": "0.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -1,0 +1,887 @@
+openapi: 3.1.0
+
+info:
+  title: Sport Analytics API
+  version: 1.0.0
+  description: |
+    Version-controlled contract for the handwritten Sport Analytics backend API.
+
+    Operations marked with `x-implementation-status: planned` document agreed
+    contracts that are not yet implemented. Implemented operations describe
+    current backend behaviour.
+x-ai-declaration: >-
+  The preceding OpenAPI document was planned, generated, reviewed and edited
+  with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+servers:
+  - url: statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
+    description: Development API
+
+security: []
+
+tags:
+  - name: Health
+    description: Service health and availability.
+
+  - name: Authentication and Profile
+    description: Managed-authentication identity and profile-related operations.
+
+  - name: Public Read
+    description: Anonymous sport-reference and fixture reads.
+
+  - name: Submissions
+    description: Approved-submitter event-submission operations.
+
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: Check API health
+      operationId: getHealth
+      x-implementation-status: implemented
+      security: []
+      responses:
+        '200':
+          description: API is running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                service: sport-analytics-api
+                timestamp: '2026-08-09T14:00:00.000Z'
+
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Authentication and Profile
+      summary: Return the verified authenticated identity
+      description: |
+        Current identity-proof endpoint.
+
+        The bearer token is verified through Supabase Auth and the response
+        currently contains only the stable managed-provider subject.
+
+        Application roles, approval and submission scope are not represented
+        by the current proof endpoint.
+      operationId: getAuthenticatedIdentity
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verified authenticated identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedIdentityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/competitions:
+    get:
+      tags:
+        - Public Read
+      summary: List competitions
+      operationId: listCompetitions
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: name
+          in: query
+          description: Optional competition-name filter.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Paginated competitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetitionCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/competitions/{competitionId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get a competition
+      operationId: getCompetition
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CompetitionId'
+      responses:
+        '200':
+          description: Competition detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetitionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/seasons:
+    get:
+      tags:
+        - Public Read
+      summary: List seasons
+      operationId: listSeasons
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: competitionId
+          in: query
+          description: Limit results to one competition.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+      responses:
+        '200':
+          description: Paginated seasons.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeasonCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/seasons/{seasonId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get a season
+      operationId: getSeason
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SeasonId'
+      responses:
+        '200':
+          description: Season detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeasonResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/fixtures:
+    get:
+      tags:
+        - Public Read
+      summary: List fixtures
+      operationId: listFixtures
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+
+        - name: competitionId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: seasonId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: competitorId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: gender
+          in: query
+          schema:
+            type: string
+            minLength: 1
+
+        - name: startDateFrom
+          in: query
+          description: Inclusive lower fixture-date bound.
+          schema:
+            type: string
+            format: date
+
+        - name: startDateTo
+          in: query
+          description: Inclusive upper fixture-date bound.
+          schema:
+            type: string
+            format: date
+
+      responses:
+        '200':
+          description: Paginated fixtures.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/fixtures/{fixtureId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get a fixture
+      operationId: getFixture
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+      responses:
+        '200':
+          description: Fixture detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/competitors:
+    get:
+      tags:
+        - Public Read
+      summary: List competitors
+      operationId: listCompetitors
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+
+        - name: competitionId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: seasonId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: name
+          in: query
+          schema:
+            type: string
+            minLength: 1
+
+      responses:
+        '200':
+          description: Paginated competitors.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetitorCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/competitors/{competitorId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get a competitor
+      operationId: getCompetitor
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CompetitorId'
+      responses:
+        '200':
+          description: Competitor detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetitorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/participants:
+    get:
+      tags:
+        - Public Read
+      summary: List participants
+      operationId: listParticipants
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+
+        - name: fixtureId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: competitorId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+
+        - name: name
+          in: query
+          schema:
+            type: string
+            minLength: 1
+
+      responses:
+        '200':
+          description: Paginated participants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/participants/{participantId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get a participant
+      operationId: getParticipant
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+      responses:
+        '200':
+          description: Participant detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/submissions:
+    post:
+      tags:
+        - Submissions
+      summary: Submit fixture event data
+      description: |
+        Baseline contract for an approved submitter to send fixture event data
+        through the handwritten backend API.
+
+        The executable cricket event schema is intentionally not frozen by
+        this baseline and will be refined by the event/submission implementation.
+      operationId: createSubmission
+      x-implementation-status: planned
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionRequest'
+      responses:
+        '202':
+          description: Submission received for validation or processing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Submission failed contract or domain validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Supabase access token
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: Maximum records to return. Default 50; maximum 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor returned by the previous collection response.
+      schema:
+        type: string
+        minLength: 1
+
+    CompetitionId:
+      name: competitionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+    SeasonId:
+      name: seasonId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+    FixtureId:
+      name: fixtureId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+    CompetitorId:
+      name: competitorId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+    ParticipantId:
+      name: participantId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+  responses:
+    BadRequest:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    Unauthorized:
+      description: A valid authentication token is required.
+      headers:
+        WWW-Authenticate:
+          description: Bearer authentication challenge.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    Forbidden:
+      description: The authenticated account is not permitted to perform this operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    NotFound:
+      description: The requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+  schemas:
+    ApiIdentifier:
+      type: string
+      minLength: 1
+      description: |
+        Stable opaque resource identifier. Consumers must not infer business
+        meaning from its representation.
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - service
+        - timestamp
+      properties:
+        status:
+          type: string
+          const: ok
+        service:
+          type: string
+          minLength: 1
+        timestamp:
+          type: string
+          format: date-time
+
+    AuthenticatedIdentityResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - identity
+      properties:
+        identity:
+          type: object
+          additionalProperties: false
+          required:
+            - subject
+          properties:
+            subject:
+              type: string
+              minLength: 1
+
+    ApiErrorDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+        message:
+          type: string
+          minLength: 1
+        field:
+          type: string
+          minLength: 1
+        eventIndex:
+          type: integer
+          minimum: 0
+
+    ApiErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              pattern: '^[A-Z][A-Z0-9_]*$'
+            message:
+              type: string
+              minLength: 1
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ApiErrorDetail'
+
+    PaginationMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - nextCursor
+      properties:
+        nextCursor:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+
+    Competition:
+      type: object
+      additionalProperties: false
+      required:
+        - competitionId
+        - name
+      properties:
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        name:
+          type: string
+          minLength: 1
+
+    Season:
+      type: object
+      additionalProperties: false
+      required:
+        - seasonId
+        - competitionId
+        - label
+      properties:
+        seasonId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        label:
+          type: string
+          minLength: 1
+
+    Fixture:
+      type: object
+      additionalProperties: false
+      required:
+        - fixtureId
+        - competitionId
+        - seasonId
+        - season
+        - matchType
+        - teamType
+        - gender
+        - ballsPerOver
+        - scheduledOvers
+        - startDate
+        - endDate
+      properties:
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+
+        seasonId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+
+        season:
+          type: string
+          minLength: 1
+
+        matchType:
+          type: string
+          minLength: 1
+
+        teamType:
+          type: string
+          minLength: 1
+
+        gender:
+          type: string
+          minLength: 1
+
+        ballsPerOver:
+          type: integer
+          minimum: 1
+
+        scheduledOvers:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+
+        startDate:
+          type: string
+          format: date
+
+        endDate:
+          type: string
+          format: date
+
+    Competitor:
+      type: object
+      additionalProperties: false
+      required:
+        - competitorId
+        - name
+      properties:
+        competitorId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        name:
+          type: string
+          minLength: 1
+
+    Participant:
+      type: object
+      additionalProperties: false
+      required:
+        - participantId
+        - displayName
+      properties:
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        displayName:
+          type: string
+          minLength: 1
+
+    CompetitionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Competition'
+
+    CompetitionCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competition'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    SeasonResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Season'
+
+    SeasonCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Season'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    FixtureResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Fixture'
+
+    FixtureCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fixture'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    CompetitorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Competitor'
+
+    CompetitorCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competitor'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    ParticipantResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Participant'
+
+    ParticipantCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    SubmissionEvent:
+      type: object
+      description: |
+        Sport-specific event payload.
+
+        The executable cricket event schema is intentionally not frozen by this
+        baseline and will be refined by the submission/event implementation.
+      additionalProperties: true
+
+    SubmissionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fixtureId
+        - schemaVersion
+        - events
+      properties:
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+
+        schemaVersion:
+          type: string
+          minLength: 1
+
+        events:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SubmissionEvent'
+
+    Submission:
+      type: object
+      additionalProperties: false
+      required:
+        - submissionId
+        - status
+      properties:
+        submissionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+
+        status:
+          type: string
+          minLength: 1
+          description: Current submission validation or processing status.
+
+    SubmissionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Submission'
