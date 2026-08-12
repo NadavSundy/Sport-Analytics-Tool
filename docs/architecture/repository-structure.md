@@ -40,7 +40,8 @@ Sport-Analytics-Tool/
 │   ├── decisions/
 │   ├── stakeholder-meetings/
 │   ├── sprints/
-│   └── user-testing/
+│   ├── user-testing/
+│   └── validation/
 ├── infra/
 │   └── azure/
 ├── scripts/
@@ -75,3 +76,8 @@ The uploaded repository contained the following files. They remain in their orig
 ## Consequences
 
 The monorepo reduces setup overhead and supports coordinated changes, but the team must review Pull Requests for boundary violations. A shared repository does not make the application monolithic as long as the frontend and backend remain independent deployable applications with HTTP between them.
+
+## AI Declaration
+
+The validation-evidence directory was added to the documented repository tree with the assistance
+of Codex[GPT-5.6 Sol].

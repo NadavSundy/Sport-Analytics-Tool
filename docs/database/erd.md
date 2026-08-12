@@ -1,5 +1,3 @@
-@'
-
 # Entity relationship diagram
 
 The relationships below were read from the database with
@@ -13,13 +11,16 @@ migrated, not a separate design document. Column detail is in
 ```mermaid
 erDiagram
     app_user ||--o{ submission : submits
+    app_user ||--o{ submitter_competition_scope : receives
+    competition ||--o{ submitter_competition_scope : grants
     submission ||--o{ fixture : "first seen in"
     submission ||--o{ delivery : supplies
     person ||--o{ person_alias : "known as"
 ```
 
-Every fixture and every delivery carries the submission it arrived in. A person
-is identified by their registry reference; the names they have appeared under are
+Every fixture and every delivery carries the submission it arrived in. Application accounts are
+mapped to their managed-auth provider subject and receive only explicit server-owned competition
+grants. A person is identified by their registry reference; the names they have appeared under are
 kept separately and are never a join key.
 
 ## Match structure
@@ -77,5 +78,6 @@ rows not yet superseded.
 
 ## AI Declaration
 
-The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
-'@ | Set-Content -Path docs\database\erd.md -Encoding utf8
+The preceding document was generated with the assistance of Claude-Web[Claude Opus 5]. The
+application-account scope relationships and source-file cleanup were updated with the assistance of
+Codex[GPT-5.6 Sol].

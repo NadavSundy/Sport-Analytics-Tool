@@ -56,28 +56,28 @@ paths:
     get:
       tags:
         - Authentication and Profile
-      summary: Return the verified authenticated identity
+      summary: Return the current application user profile
       description: |
-        Current identity-proof endpoint.
+        Verifies the bearer token through Supabase Auth, creates or synchronizes
+        the provider-neutral application account, and returns server-owned role,
+        submitter-approval and competition-scope state.
 
-        The bearer token is verified through Supabase Auth and the response
-        currently contains only the stable managed-provider subject.
-
-        Application roles, approval and submission scope are not represented
-        by the current proof endpoint.
-      operationId: getAuthenticatedIdentity
+        Authentication never grants or changes approval, role or scope.
+      operationId: getCurrentUserProfile
       x-implementation-status: implemented
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Verified authenticated identity.
+          description: Current synchronized application user profile.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthenticatedIdentityResponse'
+                $ref: '#/components/schemas/CurrentUserProfileResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /api/v1/competitions:
     get:
@@ -527,21 +527,50 @@ components:
           type: string
           format: date-time
 
-    AuthenticatedIdentityResponse:
+    CurrentUserProfileResponse:
       type: object
       additionalProperties: false
       required:
-        - identity
+        - user
       properties:
-        identity:
+        user:
           type: object
           additionalProperties: false
           required:
+            - id
             - subject
+            - displayName
+            - role
+            - approvalState
+            - competitionIds
           properties:
+            id:
+              $ref: '#/components/schemas/ApiIdentifier'
             subject:
               type: string
               minLength: 1
+            displayName:
+              oneOf:
+                - type: string
+                  minLength: 1
+                - type: 'null'
+            role:
+              type: string
+              enum:
+                - viewer
+                - administrator
+            approvalState:
+              type: string
+              enum:
+                - not_requested
+                - pending
+                - approved
+                - rejected
+            competitionIds:
+              type: array
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/ApiIdentifier'
 
     ApiErrorDetail:
       type: object

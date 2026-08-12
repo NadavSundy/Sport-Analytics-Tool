@@ -6,6 +6,10 @@ import { createSupabaseTokenVerifier, type VerifyAccessToken } from './auth/supa
 import { loadEnvironment, type Environment } from './config/env';
 import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
+import {
+  createAccountSynchronizer,
+  type SynchronizeAccount,
+} from './modules/accounts/account.service';
 import { createAuthRouter } from './routes/auth.routes';
 import { healthRouter } from './routes/health.routes';
 import { createPublicReadRouter } from './modules/public-read/public-read.routes';
@@ -17,6 +21,7 @@ import {
 export interface AppDependencies {
   environment?: Environment;
   verifyAccessToken?: VerifyAccessToken;
+  synchronizeAccount?: SynchronizeAccount;
   publicReadService?: PublicReadService;
 }
 
@@ -24,6 +29,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   const environment = dependencies.environment ?? loadEnvironment();
   const verifyAccessToken =
     dependencies.verifyAccessToken ?? createSupabaseTokenVerifier(environment);
+  const synchronizeAccount = dependencies.synchronizeAccount ?? createAccountSynchronizer();
   const publicReadService = dependencies.publicReadService ?? createPublicReadService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
@@ -47,7 +53,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   );
 
   app.use('/api/v1/health', healthRouter);
-  app.use('/api/v1/auth', createAuthRouter(verifyAccessToken));
+  app.use('/api/v1/auth', createAuthRouter(verifyAccessToken, synchronizeAccount));
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);

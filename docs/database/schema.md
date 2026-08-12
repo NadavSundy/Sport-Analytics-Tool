@@ -132,10 +132,10 @@ which is why it is settled here rather than deferred.
 
 **Identity.** `app_user`, keyed on the authentication provider and that provider's
 subject identifier rather than on any provider-specific column, so that the schema
-does not depend on the current choice of provider. Holds the display name and the
-application role. Personal data remains with the authentication provider; this
-table exists so that submissions have an owner and authorisation state has
-somewhere to live.
+does not depend on the current choice of provider. Holds the display name, application role,
+submitter-approval state, disabled state, and last-authenticated time. Personal data remains with
+the authentication provider. `submitter_competition_scope` grants an approved account access to a
+specific competition; authentication never creates a grant.
 
 **Provenance.** `submission`, recording who submitted what, when, from which
 source file, with what checksum, and whether it was accepted.
@@ -231,8 +231,9 @@ recorded on #27.
    separately scoped statistics available for them. The exclusion must eventually
    be a property of the statistic definition rather than a condition in query
    code. The convention is still to be confirmed with the client.
-6. **`app_user`** is included here in minimal form. The authentication issue
-   extends this record; it does not redefine submission ownership.
+6. **`app_user`** is included here in minimal form. Issue #44 extends the record with approval and
+   synchronization state and adds competition-scoped grants; it does not redefine submission
+   ownership.
 7. **Storage** is not permitted to shape the schema. A measured benchmark against
    the real schema and indexes is required before the hosting question is
    resolved, and the option of holding source files and dataset releases in object
@@ -300,4 +301,5 @@ required, the source data remains available for a subsequent migration.
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of
-Claude-Web[Claude Opus 5], from an analysis of the Cricsheet T20 corpus.
+Claude-Web[Claude Opus 5], from an analysis of the Cricsheet T20 corpus. The issue #44 application
+account and scope description was updated with the assistance of Codex[GPT-5.6 Sol].

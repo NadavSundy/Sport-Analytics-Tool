@@ -17,7 +17,7 @@ Assisted-by: ChatGPT-Web[GPT-5.6 Thinking]
 
 ## Task-level register
 
-Record each material use in `evidence/ai/ai-usage-register.csv` with:
+Record each material use in the team member's CSV under `evidence/ai/registers/` with:
 
 - date;
 - team member;
@@ -28,3 +28,7 @@ Record each material use in `evidence/ai/ai-usage-register.csv` with:
 - related issue, Pull Request, commit, or document.
 
 Do not claim that AI output was verified until a team member has actually understood, tested, reviewed, and adapted it.
+
+## AI Declaration
+
+The per-member register location was updated with the assistance of Codex[GPT-5.6 Sol].

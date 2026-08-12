@@ -2,10 +2,12 @@ import type { VerifiedIdentity, VerifyAccessToken } from '../../src/auth/supabas
 
 export const approvedSubmitterIdentity: VerifiedIdentity = {
   uid: 'approved-submitter-test-user',
+  displayName: 'Approved Submitter',
 };
 
 export const administratorIdentity: VerifiedIdentity = {
   uid: 'administrator-test-user',
+  displayName: 'Administrator',
 };
 
 export function acceptingTokenVerifier(

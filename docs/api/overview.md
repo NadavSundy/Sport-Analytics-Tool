@@ -52,7 +52,7 @@ Example response:
 
 This endpoint is scaffold infrastructure only.
 
-### Authenticated identity proof
+### Current user profile
 
 ```http
 GET /api/v1/auth/me
@@ -63,8 +63,13 @@ Successful response:
 
 ```json
 {
-  "identity": {
-    "subject": "<supabase-user-id>"
+  "user": {
+    "id": "42",
+    "subject": "<supabase-user-id>",
+    "displayName": "Example User",
+    "role": "viewer",
+    "approvalState": "approved",
+    "competitionIds": ["7", "12"]
   }
 }
 ```
@@ -76,7 +81,9 @@ HTTP/1.1 401 Unauthorized
 WWW-Authenticate: Bearer
 ```
 
-The endpoint proves authenticated identity only. It does not assign roles or sport-specific permissions.
+The API verifies the Supabase identity, creates or synchronizes the local account, and returns
+server-owned authorization state. Authentication does not promote a user, approve submission, or
+grant competition scope. A disabled account receives `403 Forbidden`.
 
 ### Public read
 
@@ -99,7 +106,6 @@ See [Public Read API](public-read.md) for filters, pagination, deterministic ord
 
 ## Required future API areas
 
-- accounts and role/scope information;
 - competitions, seasons, competitors, and fixtures;
 - event schemas and validated submissions;
 - review, rejection, correction, and audit history;

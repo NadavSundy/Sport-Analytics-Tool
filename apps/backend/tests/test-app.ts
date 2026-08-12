@@ -1,6 +1,8 @@
 import type { VerifyAccessToken } from '../src/auth/supabase-auth';
 import { createApp } from '../src/app';
 import type { Environment } from '../src/config/env';
+import type { ApplicationAccount } from '../src/modules/accounts/account';
+import type { SynchronizeAccount } from '../src/modules/accounts/account.service';
 import type { PublicReadService } from '../src/modules/public-read/public-read.service';
 
 const testEnvironment: Environment = {
@@ -13,15 +15,41 @@ const testEnvironment: Environment = {
 
 const acceptTestIdentity: VerifyAccessToken = async () => ({
   uid: 'test-user',
+  displayName: 'Test User',
+});
+
+const synchronizeTestAccount: SynchronizeAccount = async (identity) => ({
+  accountId: '1',
+  subject: identity.uid,
+  displayName: identity.displayName ?? null,
+  role: 'viewer',
+  approvalState: 'not_requested',
+  competitionIds: [],
+  disabled: false,
 });
 
 export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
   publicReadService?: PublicReadService,
+  synchronizeAccount: SynchronizeAccount = synchronizeTestAccount,
 ) {
   return createApp({
     environment: testEnvironment,
     verifyAccessToken,
+    synchronizeAccount,
     ...(publicReadService !== undefined ? { publicReadService } : {}),
   });
+}
+
+export function createTestAccount(overrides: Partial<ApplicationAccount> = {}): ApplicationAccount {
+  return {
+    accountId: '1',
+    subject: 'test-user',
+    displayName: 'Test User',
+    role: 'viewer',
+    approvalState: 'not_requested',
+    competitionIds: [],
+    disabled: false,
+    ...overrides,
+  };
 }

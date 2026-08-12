@@ -49,11 +49,12 @@ SQL used by application features belongs behind repository boundaries.
 
 The initial repository boundaries are:
 
-| Application area    | Database source                   |
-| ------------------- | --------------------------------- |
-| Competition         | `competition`                     |
-| Fixture             | `fixture`                         |
-| Fixture participant | `person`, `fixture_squad`, `team` |
+| Application area    | Database source                           |
+| ------------------- | ----------------------------------------- |
+| Application account | `app_user`, `submitter_competition_scope` |
+| Competition         | `competition`                             |
+| Fixture             | `fixture`                                 |
+| Fixture participant | `person`, `fixture_squad`, `team`         |
 
 The participant repository maps the existing sport-domain schema to an application participant record. It does not introduce or require a separate `participant` table.
 
@@ -165,7 +166,7 @@ Checked-out transaction clients are released in a `finally` block so successful 
 
 ## Testing
 
-Unit tests verify database error translation.
+Unit tests verify database error translation and application-account synchronization mapping.
 
 Database integration tests verify the reusable transaction helper against the isolated test database.
 
@@ -190,4 +191,6 @@ Competition, fixture and participant HTTP reads are implemented separately throu
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol]. The application-account repository section was updated with the
+assistance of Codex[GPT-5.6 Sol].

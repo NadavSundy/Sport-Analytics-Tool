@@ -1,7 +1,8 @@
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import type { VerifyAccessToken } from '../src/auth/supabase-auth';
-import { createTestApp } from './test-app';
+import type { SynchronizeAccount } from '../src/modules/accounts/account.service';
+import { createTestAccount, createTestApp } from './test-app';
 
 describe('GET /api/v1/auth/me', () => {
   it('rejects a request without a bearer token', async () => {
@@ -36,20 +37,77 @@ describe('GET /api/v1/auth/me', () => {
     expect(response.body.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('returns the verified identity for a valid token', async () => {
+  it('returns the synchronized application profile for a valid token', async () => {
     const verifyAccessToken = vi
       .fn<VerifyAccessToken>()
-      .mockResolvedValue({ uid: 'supabase-user-123' });
+      .mockResolvedValue({ uid: 'supabase-user-123', displayName: 'Supabase User' });
+    const synchronizeAccount = vi.fn<SynchronizeAccount>().mockResolvedValue(
+      createTestAccount({
+        accountId: '42',
+        subject: 'supabase-user-123',
+        displayName: 'Supabase User',
+        role: 'administrator',
+        approvalState: 'approved',
+        competitionIds: ['7', '12'],
+      }),
+    );
 
-    const response = await request(createTestApp(verifyAccessToken))
+    const response = await request(createTestApp(verifyAccessToken, undefined, synchronizeAccount))
       .get('/api/v1/auth/me')
       .set('Authorization', 'Bearer valid-test-token')
       .expect(200);
 
     expect(verifyAccessToken).toHaveBeenCalledWith('valid-test-token');
+    expect(synchronizeAccount).toHaveBeenCalledWith({
+      uid: 'supabase-user-123',
+      displayName: 'Supabase User',
+    });
     expect(response.body).toEqual({
-      identity: {
+      user: {
+        id: '42',
         subject: 'supabase-user-123',
+        displayName: 'Supabase User',
+        role: 'administrator',
+        approvalState: 'approved',
+        competitionIds: ['7', '12'],
+      },
+    });
+  });
+
+  it('does not classify an expired token as an authorization failure', async () => {
+    const verifyAccessToken = vi
+      .fn<VerifyAccessToken>()
+      .mockRejectedValue(new Error('Token expired'));
+    const synchronizeAccount = vi.fn<SynchronizeAccount>();
+
+    const response = await request(createTestApp(verifyAccessToken, undefined, synchronizeAccount))
+      .get('/api/v1/auth/me')
+      .set('Authorization', 'Bearer expired-test-token')
+      .expect('WWW-Authenticate', 'Bearer')
+      .expect(401);
+
+    expect(synchronizeAccount).not.toHaveBeenCalled();
+    expect(response.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('rejects a disabled synchronized account with a consistent forbidden response', async () => {
+    const verifyAccessToken = vi.fn<VerifyAccessToken>().mockResolvedValue({
+      uid: 'disabled-user',
+      displayName: null,
+    });
+    const synchronizeAccount = vi
+      .fn<SynchronizeAccount>()
+      .mockResolvedValue(createTestAccount({ disabled: true }));
+
+    const response = await request(createTestApp(verifyAccessToken, undefined, synchronizeAccount))
+      .get('/api/v1/auth/me')
+      .set('Authorization', 'Bearer disabled-user-token')
+      .expect(403);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'The authenticated account is not permitted to perform this operation.',
       },
     });
   });

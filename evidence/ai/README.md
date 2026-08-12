@@ -11,6 +11,7 @@ for the resulting work away from the team.
 evidence/ai/
 ├── README.md
 ├── ai-usage-register.csv
+├── registers/
 └── transcripts/
     ├── README.md
     ├── ben-swartz/
@@ -21,10 +22,10 @@ evidence/ai/
     └── shayna-unterslak/
 ```
 
-The task-level AI usage register is stored at
-`evidence/ai/ai-usage-register.csv`. Individual transcript files are stored in
-the relevant team member's lowercase kebab-case folder under
-`evidence/ai/transcripts/`.
+Current task-level AI usage is recorded in each team member's CSV under
+`evidence/ai/registers/`. The earlier shared `evidence/ai/ai-usage-register.csv` is retained while
+entries are migrated. Individual transcript files are stored in the relevant team member's
+lowercase kebab-case folder under `evidence/ai/transcripts/`.
 
 ## Transcript naming convention
 
