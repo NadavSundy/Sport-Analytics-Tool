@@ -66,6 +66,11 @@ test database, and runs database integration tests for the Pull Request.
 
 No real access token, user credential, or production identity was used or recorded.
 
+## Pull Request
+
+- [Pull Request #123](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/123)
+- Implementation commit: `da1b29f70064b32aabe5953d54020f431f946d43`
+
 ## Documentation and evidence updated
 
 - root project status and local endpoint guidance;
