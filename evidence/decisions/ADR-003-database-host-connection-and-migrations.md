@@ -118,6 +118,12 @@ once the compliance question had been settled in writing.
    in a limited form before this decision was recorded. The storage decision remains
    outstanding and no bulk ingestion may proceed until it is taken.
 
+   **Superseded on 11 August 2026 by ADR-005.** The database moved to a project
+   in an organisation holding a paid plan, resolving the storage constraint. The
+   measured benchmark this record requires remains outstanding, but is no longer
+   blocked. The latency consequence recorded above stands unchanged: the new
+   project is in `eu-west-2` and the median round trip is 173 ms.
+
 5. Because the plan retains no backups and all six members hold owner access on
    the project, a tested dump and restore procedure is required rather than
    optional.
