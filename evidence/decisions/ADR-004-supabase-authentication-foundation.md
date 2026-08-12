@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-06
 - **Participants:** Gabriel Raz, Git Push Pray project team
-- **Related issues:** #14
+- **Related issues:** #14, #44
 - **Related pull requests:** #24 and #34
 - **Supersedes:** ADR-002
 
@@ -198,6 +198,18 @@ This ADR does not decide:
 - application profile schema;
 - production Row Level Security policies.
 
+## Later implementation note — 12 August 2026
+
+Issue #44 implements several items intentionally deferred by this foundation decision without
+changing the selected authentication provider. The backend now maps each verified Supabase subject
+to `app_user`, returns the synchronized application profile, and enforces reusable administrator,
+approved-submitter, and competition-scope policies. Roles, approval, and grants remain server-owned
+application data and are never inferred from Supabase user metadata or frontend state.
+
+The historical identity-only examples above describe the scope and acceptance evidence of issue
+#14 at the time this ADR was accepted. The current endpoint contract and authorization behavior are
+documented in `docs/security/authentication.md` and `docs/api/openapi.yaml`.
+
 ## References
 
 - [Supabase Auth](https://supabase.com/docs/guides/auth)
@@ -211,4 +223,5 @@ This ADR does not decide:
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of Codex[GPT-5]. The
-frontend implementation status was later updated with the assistance of Codex[GPT-5.6 Sol].
+frontend implementation status and the issue #44 implementation note were later updated with the
+assistance of Codex[GPT-5.6 Sol].

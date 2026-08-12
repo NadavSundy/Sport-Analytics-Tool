@@ -1,4 +1,4 @@
-# Authentication foundation
+# Authentication, accounts and authorisation
 
 ## Overview
 
@@ -6,7 +6,9 @@ The Sport Analytics Tool uses **Supabase Auth** as its managed authentication pr
 
 Google is enabled as the initial OAuth identity provider in the shared development Supabase project.
 
-The foundation proves that the handwritten Express API can validate an authenticated Supabase identity. It does not implement final account screens, roles, submission permissions or sport-specific authorisation.
+The handwritten Express API validates authenticated Supabase identities, synchronizes them to
+provider-neutral application accounts, and enforces server-owned role, submitter-approval and
+competition-scope rules. Authentication by itself grants no application permission.
 
 See:
 
@@ -31,8 +33,9 @@ sequenceDiagram
     Frontend->>API: Authorization: Bearer access-token
     API->>Supabase: getUser(access-token)
     Supabase-->>API: Verified Supabase user
-    API-->>Frontend: Identity subject
-    API->>Database: Future authorised application operation
+    API->>Database: Upsert app_user and load role, approval and scope
+    Database-->>API: Application account profile
+    API-->>Frontend: Current user profile
 ```
 
 Supabase manages authentication and identity.
@@ -160,17 +163,50 @@ supabase.auth.getUser(accessToken);
 
 Supabase Auth validates the submitted access token and returns the authenticated user or an error.
 
-The backend returns only the stable Supabase user ID:
+The API then upserts the verified provider subject into `app_user`. A first request creates a
+`viewer` account with `not_requested` submission approval and no competition grants. Later requests
+refresh the verified display name and `last_authenticated_at`; they never accept role, approval or
+scope from the frontend.
+
+The profile response combines the verified identity with server-owned application state:
 
 ```json
 {
-  "identity": {
-    "subject": "<supabase-user-id>"
+  "user": {
+    "id": "42",
+    "subject": "<supabase-user-id>",
+    "displayName": "Example User",
+    "role": "viewer",
+    "approvalState": "approved",
+    "competitionIds": ["7", "12"]
   }
 }
 ```
 
 The API does not trust an unverified, manually decoded token.
+
+## Application authorisation model
+
+Roles and submission approval are deliberately separate:
+
+- `viewer` is the default role;
+- `administrator` is required by administrator-only middleware;
+- `not_requested`, `pending`, `approved`, and `rejected` describe submitter approval; and
+- an approved submitter must also have a `submitter_competition_scope` row for the target
+  competition.
+
+Protected routes compose reusable middleware in this order:
+
+```ts
+requireAuthentication(verifyAccessToken, synchronizeAccount);
+requireApprovedSubmitter();
+requireCompetitionScope((request) => request.params.competitionId);
+```
+
+Administrator routes use `requireAdministrator()`. Competition resolvers may be asynchronous so a
+future fixture or submission route can load the trusted target competition before checking scope.
+Missing or invalid credentials return `401`; authenticated but disabled, unapproved, incorrectly
+roled, or out-of-scope accounts return the same non-disclosing `403` response.
 
 ## Protected endpoint
 
@@ -189,8 +225,13 @@ HTTP/1.1 200 OK
 
 ```json
 {
-  "identity": {
-    "subject": "<supabase-user-id>"
+  "user": {
+    "id": "42",
+    "subject": "<supabase-user-id>",
+    "displayName": "Example User",
+    "role": "viewer",
+    "approvalState": "not_requested",
+    "competitionIds": []
   }
 }
 ```
@@ -212,6 +253,21 @@ WWW-Authenticate: Bearer
 ```
 
 The error response deliberately does not reveal whether a token was malformed, expired, revoked or associated with a missing user.
+
+### Authenticated but forbidden
+
+```http
+HTTP/1.1 403 Forbidden
+```
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "The authenticated account is not permitted to perform this operation."
+  }
+}
+```
 
 ## Running the backend
 
@@ -276,7 +332,8 @@ Expected result:
 HTTP/1.1 200 OK
 ```
 
-The response must contain the verified Supabase identity subject.
+The response must contain the synchronized application profile. Verify role, approval and scope
+against the database rather than against token claims or frontend state.
 
 Replace the token immediately after use and clear it from shell history where practical. Never include the real token in test evidence.
 
@@ -284,9 +341,14 @@ Replace the token immediately after use and clear it from shell history where pr
 
 The backend tests cover:
 
-1. a request without a bearer token returns `401`;
-2. a rejected token returns `401`;
-3. a verified token returns `200` with the identity subject.
+1. missing, invalid and expired bearer tokens return `401`;
+2. a valid token synchronizes and returns the application profile;
+3. a disabled account and denied role/approval/scope checks return `403`;
+4. a normal signed-in user cannot access administrator or upload policies;
+5. an approved in-scope submitter passes upload policies;
+6. an approved out-of-scope submitter is denied;
+7. an administrator passes administrator policy; and
+8. public reads do not invoke authentication.
 
 The test application injects a mock verifier. Automated tests therefore do not require live Supabase credentials or contact the hosted Auth service.
 
@@ -360,7 +422,8 @@ A valid Supabase identity does not automatically grant:
 - event submission rights;
 - sport-specific permissions.
 
-Those rules depend on future stakeholder and product-flow decisions.
+The backend enforces those rules from application database state. Administrator approval
+management, submitter access requests and event-submission routes remain separate workflows.
 
 ## Security requirements
 
@@ -374,6 +437,8 @@ Those rules depend on future stakeholder and product-flow decisions.
 - Configure exact redirect URLs and CORS origins.
 - Use separate development and production configuration.
 - Return safe authentication errors.
+- Fail closed when persisted role or approval values are unsupported.
+- Never accept role, approval or granted competition scopes from a request or token claim.
 - Apply rate limiting before exposing sensitive production endpoints.
 - Define Row Level Security and backend authorisation separately.
 - Rotate credentials immediately if exposure is suspected.
@@ -384,10 +449,10 @@ This foundation intentionally does not implement:
 
 - final password-reset screens;
 - final account-deletion screens;
-- application profile persistence;
-- final roles;
-- approved-submitter permissions;
-- competition, season or fixture permissions;
+- administrator approval-management routes and interfaces;
+- submitter access-request routes and interfaces;
+- event-submission routes;
+- season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;
 - production Row Level Security policies.
 
@@ -406,4 +471,5 @@ This foundation intentionally does not implement:
 
 The preceding document was planned and generated with the assistance of Codex[GPT-5]. The
 frontend session-state and authenticated-request sections were later updated with the assistance of
-Codex[GPT-5.6 Sol].
+Codex[GPT-5.6 Sol]. The account synchronization, profile, and authorization sections were updated
+with the assistance of Codex[GPT-5.6 Sol].

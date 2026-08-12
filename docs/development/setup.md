@@ -100,7 +100,7 @@ Default local endpoints:
 
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:3000/api/v1/health`
-- Protected identity: `http://localhost:3000/api/v1/auth/me`
+- Current user profile: `http://localhost:3000/api/v1/auth/me`
 
 ## Optional local Supabase stack
 
@@ -153,4 +153,5 @@ For a clean, reproducible installation, use `npm.cmd ci`. The committed `package
 
 ## AI Declaration
 
-The preceding document was written with the assistance of Claude-Web[Claude Opus 5] and Codex[GPT-5].
+The preceding document was written with the assistance of Claude-Web[Claude Opus 5], Codex[GPT-5],
+and Codex[GPT-5.6 Sol].

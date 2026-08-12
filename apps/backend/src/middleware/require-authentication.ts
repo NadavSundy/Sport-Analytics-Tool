@@ -1,5 +1,7 @@
 import type { RequestHandler, Response } from 'express';
 import type { VerifyAccessToken } from '../auth/supabase-auth';
+import type { SynchronizeAccount } from '../modules/accounts/account.service';
+import { rejectAuthorization } from './authorization-response';
 
 function rejectAuthentication(response: Response): void {
   response.setHeader('WWW-Authenticate', 'Bearer');
@@ -11,7 +13,10 @@ function rejectAuthentication(response: Response): void {
   });
 }
 
-export function requireAuthentication(verifyAccessToken: VerifyAccessToken): RequestHandler {
+export function requireAuthentication(
+  verifyAccessToken: VerifyAccessToken,
+  synchronizeAccount: SynchronizeAccount,
+): RequestHandler {
   return async (request, response, next) => {
     const authorization = request.get('authorization');
     const parts = authorization?.trim().split(/\s+/);
@@ -23,13 +28,29 @@ export function requireAuthentication(verifyAccessToken: VerifyAccessToken): Req
       return;
     }
 
+    let identity;
+
     try {
-      const identity = await verifyAccessToken(token);
-      response.locals.authenticatedIdentity = identity;
-      next();
+      identity = await verifyAccessToken(token);
     } catch {
       // Do not reveal token-validation details or log the submitted token.
       rejectAuthentication(response);
+      return;
+    }
+
+    try {
+      const account = await synchronizeAccount(identity);
+
+      if (account.disabled) {
+        rejectAuthorization(response);
+        return;
+      }
+
+      response.locals.authenticatedIdentity = identity;
+      response.locals.authenticatedAccount = account;
+      next();
+    } catch (error) {
+      next(error);
     }
   };
 }

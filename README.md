@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** Foundation scaffold with a Supabase Auth backend proof. The Express API validates Supabase identities and protects one proof-of-concept endpoint. Final account screens, roles, sport-specific event schemas, submissions, derivation, datasets, and external API integration are not yet implemented.
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and provides reusable administrator, approved-submitter, and competition-scope authorization policies. Public reference-data browsing remains anonymous. Administrator management screens, event submission, derivation, datasets, and external API integration are not yet implemented.
 
 ## Repository structure
 
@@ -90,7 +90,7 @@ Default local URLs:
 
 - Frontend: `http://localhost:5173`
 - Backend health endpoint: `http://localhost:3000/api/v1/health`
-- Protected identity endpoint: `http://localhost:3000/api/v1/auth/me`
+- Current user profile endpoint: `http://localhost:3000/api/v1/auth/me`
 
 ## Documentation
 
@@ -142,10 +142,11 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5] and Claude.ai (chat, Claude Sonnet 5).
+This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude.ai (chat, Claude Sonnet 5).
 
 This repository does not currently use AI in-line editing tools.
 
 This repository does not currently use AI code review.
 
-See [`evidence/ai/ai-usage-register.csv`](evidence/ai/ai-usage-register.csv) for task-level records.
+See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level records. The earlier
+shared register remains available while its entries are migrated.

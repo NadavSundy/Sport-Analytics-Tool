@@ -3,7 +3,7 @@
 **Status:** Target architecture; foundation components are implemented, while later-tier
 components are explicitly marked as planned.  
 **Related issues:** #38, #73
-**Last updated:** 6 August 2026
+**Last updated:** 12 August 2026
 
 ## 1. Purpose and architectural principles
 
@@ -61,7 +61,7 @@ Authentication and authorisation remain separate:
 Application users are identified using the provider-neutral combination:
 
 ```text
-(auth_provider, provider_subject)
+(auth_provider, auth_subject)
 ```
 
 This prevents authentication-provider details from becoming coupled to competition, event,
@@ -144,23 +144,23 @@ Its provider has not yet been selected.
 
 ## 4. Component responsibilities
 
-| Component                               | Responsibility                                                                                                                                                                                                                                          | Delivery tier and state                                                                            |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| React frontend (`apps/frontend`)        | Render responsive and accessible search, dashboard, authentication, submission, review, and export journeys. Perform helpful client validation and send application data only to the backend.                                                           | Basic; application scaffold exists, product journeys are planned.                                  |
-| Express backend (`apps/backend`)        | Own `/api/v1`, authoritative validation, authentication middleware, role and scope checks, event ingestion, derivation orchestration, queries, exports, external integrations, audit logs, and safe error responses.                                    | Basic; health and identity-proof endpoints exist, domain modules are planned.                      |
-| Shared contracts (`packages/contracts`) | Hold versioned request/response schemas and TypeScript types shared by the applications. It contains no secrets, database access, or authorisation decisions.                                                                                           | Basic; health contract exists and domain contracts are planned.                                    |
-| Supabase Auth                           | Manage Google OAuth and future approved account lifecycle flows; issue tokens that the backend verifies. It proves identity only.                                                                                                                       | Basic; selected and backend verification is proved.                                                |
-| Backend authorisation                   | Map the verified provider subject to `app_user`, enforce account status, application role, approved-submitter state, and scoped grants on every protected route.                                                                                        | Basic; model and middleware are planned.                                                           |
-| PostgreSQL                              | Store identity mappings, grants, reference data, submissions, immutable event revisions, review and correction history, statistic definitions/results, export metadata, and audit records. Enforce integrity with constraints and transactions.         | Basic; hosted connection and event model are approved, full migrations are planned.                |
-| Submission and validation service       | Accept manual JSON and file submissions, identify duplicates, apply versioned structural and cricket-domain rules, normalise source data, and produce actionable validation results.                                                                    | Basic.                                                                                             |
-| Derivation service                      | Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.                                                                                  | Basic for required statistics; versioned/custom definitions are Advanced.                          |
-| File and export service                 | Enforce upload type/size limits, calculate checksums, retain source provenance, create immutable release manifests, and provide authorised downloads.                                                                                                   | Basic for small synchronous files; object storage and asynchronous large exports are Intermediate. |
-| External integration adapter            | Isolate provider formats and credentials; apply timeouts, bounded retries, rate limits, schema validation, idempotency, and source/retrieval metadata. Cricsheet is the current historical file source; the required runtime external API is undecided. | Basic adapter and one integration required.                                                        |
-| Worker and job queue                    | Process large imports, recomputation, exports, and scheduled synchronisation outside request timeouts. Jobs are idempotent, retryable, observable, and dead-lettered after bounded failures.                                                            | Intermediate.                                                                                      |
-| Cache                                   | Reduce repeated reads of published statistics and reference data. Cache entries are keyed by data and definition version and invalidated after accepted corrections or recalculation.                                                                   | Intermediate; introduce only after measurement.                                                    |
-| Live ingestion adapter                  | Receive or poll live events, order and deduplicate them, handle late corrections, and pass them through the same validation and acceptance path as file submissions.                                                                                    | Advanced.                                                                                          |
-| Custom statistic engine                 | Store reviewed, versioned definitions and calculate results in a restricted expression model. It must not execute arbitrary user code or unbounded database queries.                                                                                    | Advanced.                                                                                          |
-| MkDocs site                             | Publish architecture, API, database, security, deployment, testing, methodology, and data-source documentation independently of the product applications.                                                                                               | Basic; deployed separately to Cloudflare Pages.                                                    |
+| Component                               | Responsibility                                                                                                                                                                                                                                          | Delivery tier and state                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| React frontend (`apps/frontend`)        | Render responsive and accessible search, dashboard, authentication, submission, review, and export journeys. Perform helpful client validation and send application data only to the backend.                                                           | Basic; application scaffold exists, product journeys are planned.                                            |
+| Express backend (`apps/backend`)        | Own `/api/v1`, authoritative validation, authentication middleware, role and scope checks, event ingestion, derivation orchestration, queries, exports, external integrations, audit logs, and safe error responses.                                    | Basic; health, current-profile, and public-read endpoints exist; later domain modules are planned.           |
+| Shared contracts (`packages/contracts`) | Hold versioned request/response schemas and TypeScript types shared by the applications. It contains no secrets, database access, or authorisation decisions.                                                                                           | Basic; health contract exists and domain contracts are planned.                                              |
+| Supabase Auth                           | Manage Google OAuth and identity lifecycle flows; issue tokens that the backend verifies. It proves identity but grants no application permission.                                                                                                      | Basic; selected and backend verification is implemented.                                                     |
+| Backend authorisation                   | Map the verified provider subject to `app_user`, enforce account status, application role, approved-submitter state, and scoped grants on every protected route.                                                                                        | Basic; account synchronization, profile, administrator, submitter, and competition policies are implemented. |
+| PostgreSQL                              | Store identity mappings, grants, reference data, submissions, immutable event revisions, review and correction history, statistic definitions/results, export metadata, and audit records. Enforce integrity with constraints and transactions.         | Basic; hosted connection and event model are approved, full migrations are planned.                          |
+| Submission and validation service       | Accept manual JSON and file submissions, identify duplicates, apply versioned structural and cricket-domain rules, normalise source data, and produce actionable validation results.                                                                    | Basic.                                                                                                       |
+| Derivation service                      | Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.                                                                                  | Basic for required statistics; versioned/custom definitions are Advanced.                                    |
+| File and export service                 | Enforce upload type/size limits, calculate checksums, retain source provenance, create immutable release manifests, and provide authorised downloads.                                                                                                   | Basic for small synchronous files; object storage and asynchronous large exports are Intermediate.           |
+| External integration adapter            | Isolate provider formats and credentials; apply timeouts, bounded retries, rate limits, schema validation, idempotency, and source/retrieval metadata. Cricsheet is the current historical file source; the required runtime external API is undecided. | Basic adapter and one integration required.                                                                  |
+| Worker and job queue                    | Process large imports, recomputation, exports, and scheduled synchronisation outside request timeouts. Jobs are idempotent, retryable, observable, and dead-lettered after bounded failures.                                                            | Intermediate.                                                                                                |
+| Cache                                   | Reduce repeated reads of published statistics and reference data. Cache entries are keyed by data and definition version and invalidated after accepted corrections or recalculation.                                                                   | Intermediate; introduce only after measurement.                                                              |
+| Live ingestion adapter                  | Receive or poll live events, order and deduplicate them, handle late corrections, and pass them through the same validation and acceptance path as file submissions.                                                                                    | Advanced.                                                                                                    |
+| Custom statistic engine                 | Store reviewed, versioned definitions and calculate results in a restricted expression model. It must not execute arbitrary user code or unbounded database queries.                                                                                    | Advanced.                                                                                                    |
+| MkDocs site                             | Publish architecture, API, database, security, deployment, testing, methodology, and data-source documentation independently of the product applications.                                                                                               | Basic; deployed separately to Cloudflare Pages.                                                              |
 
 ## 5. Authorisation model
 
@@ -187,11 +187,12 @@ AND active scoped grant covering the target competition/season/fixture
 AND route-specific permission
 ```
 
-The target persistence model extends `app_user` with auditable grant records containing a
-scope, status, approver, reason, creation time, and optional expiry. Denied checks return
-`403 Forbidden`; missing, invalid, expired, or revoked identity tokens return
-`401 Unauthorized`. The frontend may hide unavailable actions for usability, but frontend
-state is never an authorisation control.
+The implemented persistence foundation extends `app_user` with submitter approval state and
+last-authenticated time, plus `submitter_competition_scope` grants. Approval-management work may
+later add approver, reason, revocation, and expiry audit fields without changing the route-policy
+boundary. Denied checks return `403 Forbidden`; missing, invalid, expired, or revoked identity
+tokens return `401 Unauthorized`. The frontend may hide unavailable actions for usability, but
+frontend state is never an authorisation control.
 
 ## 6. Authentication and authorisation flow
 
@@ -212,7 +213,7 @@ sequenceDiagram
         API-->>UI: 401 Unauthorized
     else Verified provider identity
         Auth-->>API: Stable provider subject
-        API->>DB: Load app_user, status, role, and scoped grants
+        API->>DB: Upsert app_user; load status, role, approval, and scoped grants
         alt Account or permission check fails
             API-->>UI: 403 Forbidden
         else Route and resource scope allowed
@@ -633,7 +634,7 @@ later rework.
 - Review this architecture as a group and record provider, role, submission-review, external
   API, file-storage, and statistic decisions that require ADRs.
 - Retain separate React and Express applications, shared versioned contracts, health checks,
-  and the Supabase Auth identity proof.
+  Supabase token verification, synchronized profiles, and backend authorization policies.
 - Convert the approved event model into reviewed PostgreSQL migrations and reproducible seed
   data; measure storage and representative query performance against real Cricsheet volume.
 - Define the minimum role and scoped-grant schema, OpenAPI conventions, validation error
@@ -644,16 +645,16 @@ later rework.
   an initial risk register.
 
 **Exit evidence:** approved architecture and ADRs, green CI, independent deployed health and
-identity proof, migrated development database, measured storage result, and sprint review
-records.
+current-profile verification, migrated development database, measured storage result, and sprint
+review records.
 
 ### Sprint 2 — deliver the Basic event-to-statistic path
 
 **Goal:** provide one complete, usable vertical slice from approved submission to trusted
 statistics.
 
-- Implement account mapping, administrative submitter approval, scoped grants, and backend
-  policy middleware with positive and negative tests.
+- Build administrative submitter approval and audited grant management on the implemented account
+  mapping, competition-grant foundation, and backend policy middleware.
 - Implement competition, team, player, fixture, innings, delivery, wicket, correction, and
   submission repositories from the approved schema.
 - Publish versioned contracts and OpenAPI documentation for reference data, submission,
@@ -727,7 +728,7 @@ undocumented critical limitation.
 | Supabase Auth compliance confirmation             | The repository and ADR-004 use Supabase Auth with Google OAuth, but the written lecturer approval currently recorded in the repository explicitly covers Supabase-hosted PostgreSQL and does not separately confirm Supabase Auth. | Obtain written stakeholder or lecturer confirmation that Supabase Auth is acceptable for managed authentication. Continue using the provider-neutral application identity model and do not introduce Firebase alongside Supabase Auth. | Before production authentication is enabled or account and role functionality is considered complete. |
 | Required statistic catalogue (#37)                | Derivation contracts, provenance, indexes, and acceptance tests cannot be finalised.                                                                                                                                               | Approve names, formulas, scopes, rounding, tie/null rules, super-over handling, and reference examples.                                                                                                                                | Sprint 1; before Sprint 2 derivation.                                                                 |
 | Competition scope and storage volume              | The measured corpus contains 3,193,996 deliveries; the selected database free plan may be too small and the Frankfurt database adds about 150 ms network latency from Johannesburg.                                                | Benchmark the real schema/indexes and representative queries; then pay, reduce scope, move provider/region, or separate large objects. Record an ADR.                                                                                  | Before bulk ingestion.                                                                                |
-| Roles, approval, and review policy                | Over-broad submitter permissions or self-approval could corrupt trusted data.                                                                                                                                                      | Approve the role/capability matrix, grant scopes, approver separation, expiry/revocation, and auto-accept versus review rules; test deny-by-default behaviour.                                                                         | Before enabling submissions.                                                                          |
+| Approval administration and review policy         | The deny-by-default role, approval, and competition checks are implemented, but over-broad grant management or self-approval could still corrupt trusted data.                                                                     | Define approver separation, grant reason/audit fields, expiry/revocation, and auto-accept versus review rules; preserve the tested deny-by-default route policies.                                                                     | Before enabling submissions.                                                                          |
 | Object storage and retention                      | Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.                                                                                                          | Select a provider after measurement; define size/type limits, malware approach, signed links, retention, licence, and deletion behaviour.                                                                                              | Before large/public uploads or exports.                                                               |
 | Runtime external API is not selected              | The mandatory integration may have inadequate T20 coverage, quotas, licence, reliability, or correction semantics.                                                                                                                 | Compare candidates using a thin adapter proof; preserve fixtures for offline tests and ensure graceful degradation.                                                                                                                    | Sprint 1 selection; Sprint 2 implementation.                                                          |
 | Deployment workflows do not match monorepo paths  | Current filters and package/workspace references use `frontend`/`backend` rather than `apps/frontend`/`apps/backend`, so main changes may not deploy correctly.                                                                    | Correct the workflows and prove them with deployment plus smoke-test evidence.                                                                                                                                                         | Sprint 1.                                                                                             |
@@ -776,4 +777,6 @@ Codex[GPT-5]. The architecture was reconciled against the repository's implement
 accepted decision records, workflows, and approved event-model documentation; it still
 requires the group review and Pull Request required by issue #38.
 
-The roadmap and authentication terminology were later reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Thinking].
+The roadmap and authentication terminology were later reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Thinking]. The issue #44 implementation status was reconciled with the
+repository and updated with the assistance of Codex[GPT-5.6 Sol].

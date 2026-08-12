@@ -192,19 +192,16 @@ This is the inverse of §7, for traceability:
   Intermediate statistic; retained for provenance and future Advanced-tier
   reconciliation work.
 
-## 9. Submitter scope proposal
+## 9. Submitter scope foundation
 
 - Submission ownership is recorded on `submission`, referencing `app_user`,
   which is keyed on the authentication provider and that provider's subject
   identifier rather than any provider-specific column (schema.md §4, §7
   decision #6).
-- **Proposed scope model:** an approved submitter is authorised for a defined
-  subset of the competition space — e.g. a specific competition, a date
-  range, or a specific set of fixtures — rather than being globally
-  authorised to submit any fixture in the system. The exact authorisation
-  table is not yet designed (it extends `app_user`/`submission`, per schema.md
-  §7 decision #6) and is flagged as an open item for the authentication/
-  authorisation issue rather than settled here.
+- The implemented minimum scope model authorises an approved submitter for explicit competitions
+  through `submitter_competition_scope`. A verified identity with no approved state or no matching
+  grant cannot pass upload-route policy. More granular date, season, or fixture grants remain a
+  future extension and must preserve this deny-by-default boundary.
 - Validation/review state (accepted, rejected, pending) is expected to live
   on `submission`, which already carries a status column; a richer
   reviewer-workflow (who reviewed, when, against which rule) is deferred
@@ -336,8 +333,13 @@ belong properly to this domain-definition issue:
   review and stakeholder sign-off as required by #37's Definition of Done.
   Because the underlying schema decision already has six-person approval,
   this document's review can focus on the parts that were not previously
-  written down explicitly: the submitter scope proposal (§9), the statistic
+  written down explicitly: the submitter scope foundation (§9), the statistic
   requirement-tier assignments (§7), and the open questions (§12).
 - **Outstanding before this issue can close:** team review, stakeholder
   review (or explicit recording of unresolved questions per §12), and a
   merged Pull Request per the Git workflow specified in #37.
+
+## AI Declaration
+
+The submitter-scope implementation status was updated with the assistance of
+Codex[GPT-5.6 Sol].

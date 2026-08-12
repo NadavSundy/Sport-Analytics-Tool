@@ -2,15 +2,23 @@
 
 ## Authentication
 
-The project uses Supabase Auth with Google as the initial OAuth provider. The React frontend will obtain a Supabase access token through a managed sign-in flow, and the handwritten Express API validates that identity using `@supabase/supabase-js`.
+The project uses Supabase Auth with Google as the initial OAuth provider. The React frontend obtains
+a Supabase access token through a managed sign-in flow, and the handwritten Express API validates
+that identity using `@supabase/supabase-js`.
 
 The frontend may use Supabase for authentication, but application data remains behind the handwritten backend API.
 
-Authentication confirms identity only. It does not grant submission access, application roles or sport-specific permissions.
+After verification, the backend creates or synchronizes a provider-neutral `app_user` record and
+loads role, submitter-approval state, disabled state, and granted competition scopes from
+PostgreSQL. Authentication alone never grants or changes those values.
+
+Reusable backend policies protect administrator routes, approved-submitter routes, and target
+competition scope. Missing or invalid credentials receive `401`; authenticated accounts that fail
+a policy receive a consistent, non-disclosing `403`. Public read routes do not use authentication.
 
 See:
 
-- [Authentication foundation](authentication.md)
+- [Authentication, accounts and authorisation](authentication.md)
 - [Authentication provider comparison](auth-provider-comparison.md)
 
 ## Input and data protection
@@ -53,3 +61,8 @@ Security review must include automated dependency scanning, route-level authoris
   contained.
 - The generated Data API is disabled on the instance. It must not be enabled, and
   the Supabase client library must not be added to any workspace.
+
+## AI Declaration
+
+The authentication and authorization status was updated with the assistance of
+Codex[GPT-5.6 Sol].
