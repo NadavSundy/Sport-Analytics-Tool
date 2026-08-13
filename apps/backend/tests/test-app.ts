@@ -4,6 +4,7 @@ import type { Environment } from '../src/config/env';
 import type { ApplicationAccount } from '../src/modules/accounts/account';
 import type { SynchronizeAccount } from '../src/modules/accounts/account.service';
 import type { PublicReadService } from '../src/modules/public-read/public-read.service';
+import type { SubmissionService } from '../src/modules/submissions/submission.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -32,12 +33,14 @@ export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
   publicReadService?: PublicReadService,
   synchronizeAccount: SynchronizeAccount = synchronizeTestAccount,
+  submissionService?: SubmissionService,
 ) {
   return createApp({
     environment: testEnvironment,
     verifyAccessToken,
     synchronizeAccount,
     ...(publicReadService !== undefined ? { publicReadService } : {}),
+    ...(submissionService !== undefined ? { submissionService } : {}),
   });
 }
 

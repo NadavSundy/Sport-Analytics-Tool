@@ -104,10 +104,20 @@ GET /api/v1/participants/{participantId}
 
 See [Public Read API](public-read.md) for filters, pagination, deterministic ordering and example responses.
 
+### Direct event submission
+
+Approved submitters can send scoped, ordered cricket delivery events through:
+
+```text
+POST /api/v1/submissions
+```
+
+See [Direct Event Submissions](submissions.md) for the versioned request schema, provenance response,
+validation errors, payload limit, and rate limit.
+
 ## Required future API areas
 
 - competitions, seasons, competitors, and fixtures;
-- event schemas and validated submissions;
 - review, rejection, correction, and audit history;
 - events and derived fixture/season/career statistics;
 - filtered exports and dataset releases;

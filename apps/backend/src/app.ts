@@ -17,12 +17,18 @@ import {
   createPublicReadService,
   type PublicReadService,
 } from './modules/public-read/public-read.service';
+import { createSubmissionRouter } from './modules/submissions/submission.routes';
+import {
+  createSubmissionService,
+  type SubmissionService,
+} from './modules/submissions/submission.service';
 
 export interface AppDependencies {
   environment?: Environment;
   verifyAccessToken?: VerifyAccessToken;
   synchronizeAccount?: SynchronizeAccount;
   publicReadService?: PublicReadService;
+  submissionService?: SubmissionService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -31,6 +37,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.verifyAccessToken ?? createSupabaseTokenVerifier(environment);
   const synchronizeAccount = dependencies.synchronizeAccount ?? createAccountSynchronizer();
   const publicReadService = dependencies.publicReadService ?? createPublicReadService();
+  const submissionService = dependencies.submissionService ?? createSubmissionService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -54,6 +61,10 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(verifyAccessToken, synchronizeAccount));
+  app.use(
+    '/api/v1',
+    createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
+  );
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);
