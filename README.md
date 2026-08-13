@@ -26,15 +26,15 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 
 - Node.js 20 or later
 - npm 10 or later
-- Python 3 and MkDocs Material for the documentation site
-- A PostgreSQL-compatible development database
-- Access to the shared development Supabase project
+- Python 3.10 or later and MkDocs Material for the documentation site
+- Access to the current Supabase-hosted PostgreSQL development database
+- Access to the shared Supabase Auth project
 - A Docker-compatible runtime if using the optional local Supabase stack
 
 ## Initial setup
 
 ```bash
-npm install
+npm ci
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
 npm run check
@@ -107,6 +107,11 @@ Important starting documents:
 - [Project Methodology](docs/project_methodology.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Local Development Setup](docs/development/setup.md)
+- [Technology Stack](docs/development/technology-stack.md)
+- [Frontend README](apps/frontend/README.md)
+- [Backend README](apps/backend/README.md)
+- [Shared Contracts README](packages/contracts/README.md)
+- [Environment Variables](docs/environment.md)
 - [Testing Strategy](docs/development/testing.md)
 - [Authentication Foundation](docs/security/authentication.md)
 - [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
