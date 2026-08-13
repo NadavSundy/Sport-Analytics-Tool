@@ -147,11 +147,11 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude.ai (chat, Claude Sonnet 5).
+This repository makes use of AI code generation using the following tools recorded in the AI registers: ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Earlier planning/documentation sessions also record ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Thinking] and Claude.ai[Claude Sonnet 5].
 
-This repository does not currently use AI in-line editing tools.
+This repository does not currently use AI in-line editing/autocomplete tools as a repository workflow.
 
-This repository does not currently use AI code review.
+This repository makes use of AI-assisted code review using tools recorded in the task-level registers, including Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Human review, testing and responsibility remain required.
 
 See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level records. The earlier
 shared register remains available while its entries are migrated.
