@@ -14,6 +14,8 @@ nav:
   - Home: index.md
   - Getting Started:
       - Local Setup: development/setup.md
+      - Technology Stack: development/technology-stack.md
+      - Environment Variables: environment.md
       - Repository Structure: architecture/repository-structure.md
       - Testing: development/testing.md
       - Dependencies: development/dependencies.md
@@ -39,7 +41,10 @@ nav:
           - Provider Comparison: security/auth-provider-comparison.md
   - Deployment:
       - Overview: deployment/overview.md
-      - Azure Investigation: deployment/azure.md
+      - Azure Application Hosting: deployment/azure.md
+      - Azure Backend: deployment/azure-backend.md
+      - Azure Frontend: deployment/azure-fronted.md
+      - Cloudflare Documentation: deployment/cloudflare_pages.md
   - Methodology:
       - Git Methodology: git-methodology.md
       - Project Methodology: project_methodology.md
