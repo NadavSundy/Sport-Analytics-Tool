@@ -62,8 +62,7 @@ rather than pointed at the hosted development database.
 
 Implementation branch: `feat/51-approved-submitter-submissions`.
 
-Add the Gitea pull-request URL here after the branch is pushed. The current environment could not
-authenticate to the Gitea remote, so it did not create or modify a remote pull request.
+Pull request: [#134 Implement approved-submitter event submissions with provenance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/134).
 
 ## AI Declaration
 
