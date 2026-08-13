@@ -19,6 +19,7 @@ The public API exposes:
 - competitions;
 - seasons;
 - fixtures;
+- fixture statistics;
 - competitors; and
 - participants.
 
@@ -125,6 +126,76 @@ Deterministic fixture ordering:
 startDate ASC
 fixtureId ASC
 ```
+
+## Fixture statistics endpoints
+
+```http
+GET /api/v1/fixtures/{fixtureId}/statistics
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}
+```
+
+Both endpoints are public. Only fixtures and delivery revisions belonging to accepted submissions
+are eligible for publication. The collection returns stable, opaque statistic identifiers for each
+innings team-total resource and each participant fixture-statistics resource. A resource identifier
+can be used on the detail endpoint and remains stable when the same accepted event state is replayed.
+
+The default response is compact: it gives `sourceEventCount` but omits the delivery records. Add the
+following query only when a trace is required:
+
+```text
+includeContributors=true
+```
+
+When requested, `contributingEvents` contains the accepted delivery records in innings and
+`inningsSequence` order. Superseded or pending/rejected delivery revisions are never exposed.
+
+Example compact response:
+
+```json
+{
+  "data": {
+    "fixtureId": "481",
+    "status": "complete",
+    "scope": {
+      "superOversIncluded": false
+    },
+    "outcome": {
+      "kind": "won",
+      "winnerCompetitorId": "20",
+      "eliminatorCompetitorId": null,
+      "margin": {
+        "type": "wickets",
+        "value": 8
+      },
+      "method": null,
+      "decidedByBowlOut": false
+    },
+    "warnings": [],
+    "statistics": [
+      {
+        "statisticId": "stat_opaque-value",
+        "fixtureId": "481",
+        "scope": "innings",
+        "statisticCode": "team_total",
+        "inningsId": "900",
+        "inningsOrdinal": 0,
+        "competitorId": "20",
+        "sourceEventCount": 120,
+        "metrics": {
+          "deliveryRuns": 154,
+          "penaltyRuns": 5,
+          "totalRuns": 159
+        }
+      }
+    ]
+  }
+}
+```
+
+`status` is `partial` rather than failing the request when accepted source data is incomplete. The
+`warnings` array then gives stable warning codes, and rate metrics with a zero denominator are
+`null`. See [Fixture statistic calculations](../statistics/fixture-statistics.md) for the complete
+mapping and trace rules.
 
 ## Competitor endpoints
 

@@ -35,6 +35,20 @@ npm run openapi:lint
 The recorded issue #44 result is in
 `evidence/validation/issue-44-authorisation-tests.md` at the repository root.
 
+## Fixture statistics coverage
+
+The Basic fixture-statistics suite includes a manually verified golden fixture, deterministic replay,
+accepted-revision repository checks, anonymous API access, stable statistic detail lookup, opt-in
+event traces, incomplete-data behaviour and shared contract validation.
+
+Run the focused checks with:
+
+```text
+npm run test:unit --workspace=@sport-analytics/backend
+npm run test:api --workspace=@sport-analytics/backend
+npm run test --workspace=@sport-analytics/contracts
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of

@@ -17,12 +17,18 @@ import {
   createPublicReadService,
   type PublicReadService,
 } from './modules/public-read/public-read.service';
+import { createFixtureStatisticsRouter } from './modules/statistics/fixture-statistics.routes';
+import {
+  createFixtureStatisticsService,
+  type FixtureStatisticsService,
+} from './modules/statistics/fixture-statistics.service';
 
 export interface AppDependencies {
   environment?: Environment;
   verifyAccessToken?: VerifyAccessToken;
   synchronizeAccount?: SynchronizeAccount;
   publicReadService?: PublicReadService;
+  fixtureStatisticsService?: FixtureStatisticsService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -31,6 +37,8 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.verifyAccessToken ?? createSupabaseTokenVerifier(environment);
   const synchronizeAccount = dependencies.synchronizeAccount ?? createAccountSynchronizer();
   const publicReadService = dependencies.publicReadService ?? createPublicReadService();
+  const fixtureStatisticsService =
+    dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -54,6 +62,7 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(verifyAccessToken, synchronizeAccount));
+  app.use('/api/v1', createFixtureStatisticsRouter(fixtureStatisticsService));
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);
