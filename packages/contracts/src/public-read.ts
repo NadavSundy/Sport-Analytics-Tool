@@ -45,6 +45,7 @@ export const participantSchema = z.object({
   displayName: z.string().min(1),
 });
 
+
 export const competitionListQuerySchema = paginationQuerySchema.extend({
   name: filterTextSchema.optional(),
 });
