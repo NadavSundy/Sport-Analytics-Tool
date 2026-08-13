@@ -26,15 +26,15 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 
 - Node.js 20 or later
 - npm 10 or later
-- Python 3 and MkDocs Material for the documentation site
-- A PostgreSQL-compatible development database
-- Access to the shared development Supabase project
+- Python 3.10 or later and MkDocs Material for the documentation site
+- Access to the current Supabase-hosted PostgreSQL development database
+- Access to the shared Supabase Auth project
 - A Docker-compatible runtime if using the optional local Supabase stack
 
 ## Initial setup
 
 ```bash
-npm install
+npm ci
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
 npm run check
@@ -107,6 +107,11 @@ Important starting documents:
 - [Project Methodology](docs/project_methodology.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Local Development Setup](docs/development/setup.md)
+- [Technology Stack](docs/development/technology-stack.md)
+- [Frontend README](apps/frontend/README.md)
+- [Backend README](apps/backend/README.md)
+- [Shared Contracts README](packages/contracts/README.md)
+- [Environment Variables](docs/environment.md)
 - [Testing Strategy](docs/development/testing.md)
 - [Authentication Foundation](docs/security/authentication.md)
 - [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
@@ -142,11 +147,11 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 ## AI usage
 
-This repository makes use of AI code generation using the following tools: ChatGPT-Web[GPT-5.6 Thinking], ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude.ai (chat, Claude Sonnet 5).
+This repository makes use of AI code generation using the following tools recorded in the AI registers: ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Earlier planning/documentation sessions also record ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Thinking] and Claude.ai[Claude Sonnet 5].
 
-This repository does not currently use AI in-line editing tools.
+This repository does not currently use AI in-line editing/autocomplete tools as a repository workflow.
 
-This repository does not currently use AI code review.
+This repository makes use of AI-assisted code review using tools recorded in the task-level registers, including Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Human review, testing and responsibility remain required.
 
 See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level records. The earlier
 shared register remains available while its entries are migrated.

@@ -11,6 +11,8 @@ This site currently documents the project foundation and intended boundaries. Pa
 - [Architecture overview](architecture/overview.md)
 - [Repository structure](architecture/repository-structure.md)
 - [Local setup](development/setup.md)
+- [Technology stack](development/technology-stack.md)
+- [Environment variables](environment.md)
 - [Git methodology](git-methodology.md)
 - [Project methodology](project_methodology.md)
 - [Testing strategy](development/testing.md)

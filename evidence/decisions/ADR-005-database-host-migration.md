@@ -137,5 +137,3 @@ hosting organisation is withdrawn.
 
 The preceding document was planned, generated, reviewed and edited with the
 assistance of Claude-Web[Claude Opus 5].
-
-

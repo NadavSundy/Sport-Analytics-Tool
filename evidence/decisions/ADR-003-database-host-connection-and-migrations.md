@@ -148,4 +148,3 @@ latency in the first disadvantage becomes measurable.
 
 The preceding document was planned and generated with the assistance of
 Claude-Web[Claude Opus 5].
-
