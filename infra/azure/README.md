@@ -1,26 +1,19 @@
-# Azure deployment planning
+# Azure infrastructure notes
 
-No Azure service choice is approved by this scaffold. Create an ADR after the team validates cost, student credits, deployment complexity, logs, custom domains, secret management, database connectivity, preview environments, and rollback support.
+Azure App Service (Linux) is the accepted hosting platform for the React frontend and Express backend. The decision is recorded in `docs/adr/0003-azure-hosting.md`.
 
-## Candidate mapping to investigate
+Current deployment boundaries are:
 
-- Static frontend hosting suitable for Vite output
-- Container or managed Node.js hosting for the backend API
-- Supabase-hosted PostgreSQL or an Azure PostgreSQL option
-- Static hosting for MkDocs documentation
-- Azure Key Vault or platform secret configuration
-- Gitea Actions runner access to the selected deployment targets
+- frontend application: Azure App Service;
+- backend API: Azure App Service;
+- PostgreSQL database: Supabase-hosted PostgreSQL;
+- managed authentication: Supabase Auth;
+- public documentation: Cloudflare Pages.
 
-## Early risk prototype
+This directory is for Azure-specific infrastructure and operational notes. It must not contain subscription credentials, publish profiles, database passwords, API tokens or other secrets.
 
-Before Milestone 1, deploy the health-check frontend, API, and docs site, then record:
+Deployment workflow verification, health checks, rollback evidence and any future infrastructure changes should be recorded through the relevant Gitea issue and Pull Request rather than by silently changing these notes.
 
-- exact commands and configuration;
-- public URLs;
-- environment variable handling;
-- CORS and HTTPS behaviour;
-- logs and health monitoring;
-- failed deployment recovery; and
-- cost/credit impact.
+## AI Declaration
 
-Do not place subscription credentials or deployment secrets in this directory.
+The preceding document was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
