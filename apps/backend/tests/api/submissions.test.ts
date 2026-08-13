@@ -63,7 +63,9 @@ describe('direct event submission API', () => {
     const verifyAccessToken = vi.fn<VerifyAccessToken>();
     const service = mockSubmissionService();
 
-    const response = await request(createTestApp(verifyAccessToken, undefined, undefined, service))
+    const response = await request(
+      createTestApp(verifyAccessToken, undefined, undefined, undefined, service),
+    )
       .post('/api/v1/submissions')
       .send(validPayload)
       .expect('WWW-Authenticate', 'Bearer')
@@ -81,6 +83,7 @@ describe('direct event submission API', () => {
         acceptToken,
         undefined,
         synchronizeWith(createTestAccount({ approvalState: 'pending' })),
+        undefined,
         service,
       ),
     )
@@ -101,7 +104,7 @@ describe('direct event submission API', () => {
     });
 
     const response = await request(
-      createTestApp(acceptToken, undefined, synchronizeWith(account), service),
+      createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
     )
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer approved-token')
@@ -143,6 +146,7 @@ describe('direct event submission API', () => {
         acceptToken,
         undefined,
         synchronizeWith(createTestAccount({ approvalState: 'approved', competitionIds: ['6'] })),
+        undefined,
         service,
       ),
     )
@@ -163,6 +167,7 @@ describe('direct event submission API', () => {
         acceptToken,
         undefined,
         synchronizeWith(createTestAccount({ approvalState: 'approved' })),
+        undefined,
         service,
       ),
     )
@@ -197,6 +202,7 @@ describe('direct event submission API', () => {
       acceptToken,
       undefined,
       synchronizeWith(createTestAccount({ approvalState: 'approved' })),
+      undefined,
       service,
     );
 
@@ -225,6 +231,7 @@ describe('direct event submission API', () => {
       acceptToken,
       undefined,
       synchronizeWith(createTestAccount({ approvalState: 'approved' })),
+      undefined,
       service,
     );
 

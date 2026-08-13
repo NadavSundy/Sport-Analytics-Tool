@@ -4,7 +4,7 @@ AI use is permitted and encouraged, but every output remains the team’s respon
 
 ## Repository declarations
 
-The root README records whether the repository uses AI code generation, inline editing, and code review. Code-generation commits must include an `Assisted-by` trailer.
+The root README records whether the repository uses AI code generation, inline editing/autocomplete, and AI-assisted code review. The declaration must be reconciled with the task-level registers rather than relying on memory. Code-generation commits must include an `Assisted-by` trailer.
 
 Example:
 

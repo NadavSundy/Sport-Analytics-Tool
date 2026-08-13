@@ -224,7 +224,7 @@ describe.sequential('direct submission database integration', () => {
     const synchronizeAccount: SynchronizeAccount = async () => account;
     const service = createSubmissionService(createSubmissionRepository(databasePool()));
 
-    return createTestApp(undefined, undefined, synchronizeAccount, service);
+    return createTestApp(undefined, undefined, synchronizeAccount, undefined, service);
   }
 
   test('stores a valid submission and its ordered event provenance atomically', async () => {

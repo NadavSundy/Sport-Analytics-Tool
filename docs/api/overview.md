@@ -96,6 +96,8 @@ GET /api/v1/seasons
 GET /api/v1/seasons/{seasonId}
 GET /api/v1/fixtures
 GET /api/v1/fixtures/{fixtureId}
+GET /api/v1/fixtures/{fixtureId}/statistics
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}
 GET /api/v1/competitors
 GET /api/v1/competitors/{competitorId}
 GET /api/v1/participants
@@ -119,7 +121,7 @@ validation errors, payload limit, and rate limit.
 
 - competitions, seasons, competitors, and fixtures;
 - review, rejection, correction, and audit history;
-- events and derived fixture/season/career statistics;
+- public ordered-event endpoints and derived season/career statistics;
 - filtered exports and dataset releases;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
