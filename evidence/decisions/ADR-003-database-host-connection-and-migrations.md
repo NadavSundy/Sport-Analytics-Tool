@@ -1,4 +1,4 @@
-# ADR-003: Hosted PostgreSQL provider, connection method and migration tooling
+﻿# ADR-003: Hosted PostgreSQL provider, connection method and migration tooling
 
 - **Status:** Accepted
 - **Date:** 2026-08-06
@@ -118,7 +118,7 @@ once the compliance question had been settled in writing.
    in a limited form before this decision was recorded. The storage decision remains
    outstanding and no bulk ingestion may proceed until it is taken.
 
-   **Superseded on 11 August 2026 by ADR-005.** The database moved to a project
+   **Superseded on 12 August 2026 by ADR-005.** The database moved to a project
    in an organisation holding a paid plan, resolving the storage constraint. The
    measured benchmark this record requires remains outstanding, but is no longer
    blocked. The latency consequence recorded above stands unchanged: the new
@@ -148,3 +148,4 @@ latency in the first disadvantage becomes measurable.
 
 The preceding document was planned and generated with the assistance of
 Claude-Web[Claude Opus 5].
+
