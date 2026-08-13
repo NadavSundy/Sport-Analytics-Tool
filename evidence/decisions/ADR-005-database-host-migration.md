@@ -1,7 +1,7 @@
 ﻿# ADR-005: Move the database to a Supabase project with sufficient storage
 
 - **Status:** Accepted
-- **Date:** 2026-08-11
+- **Date:** 2026-08-12
 - **Participants:** Ben Swartz
 - **Related issues:** #121, #105, #27, #13
 
@@ -123,7 +123,7 @@ record.
 
 ## Verification and review date
 
-Verified on 11 August 2026 against the new database: both migrations applied from
+Verified on 12 August 2026 against the new database: both migrations applied from
 empty; the development seed loaded 955 deliveries across four fixtures; reference
 fixture 729307 passed all twenty-two assertions against the published scorecard,
 including the complete ten-row fall of wickets and the exclusion of run outs from
@@ -137,4 +137,5 @@ hosting organisation is withdrawn.
 
 The preceding document was planned, generated, reviewed and edited with the
 assistance of Claude-Web[Claude Opus 5].
+
 
