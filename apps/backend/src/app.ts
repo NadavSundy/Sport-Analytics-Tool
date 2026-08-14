@@ -22,6 +22,11 @@ import {
   createFixtureStatisticsService,
   type FixtureStatisticsService,
 } from './modules/statistics/fixture-statistics.service';
+import { createSubmissionRouter } from './modules/submissions/submission.routes';
+import {
+  createSubmissionService,
+  type SubmissionService,
+} from './modules/submissions/submission.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -29,6 +34,7 @@ export interface AppDependencies {
   synchronizeAccount?: SynchronizeAccount;
   publicReadService?: PublicReadService;
   fixtureStatisticsService?: FixtureStatisticsService;
+  submissionService?: SubmissionService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -39,6 +45,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   const publicReadService = dependencies.publicReadService ?? createPublicReadService();
   const fixtureStatisticsService =
     dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
+  const submissionService = dependencies.submissionService ?? createSubmissionService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -63,6 +70,10 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(verifyAccessToken, synchronizeAccount));
   app.use('/api/v1', createFixtureStatisticsRouter(fixtureStatisticsService));
+  app.use(
+    '/api/v1',
+    createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
+  );
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);

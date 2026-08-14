@@ -35,6 +35,26 @@ npm run openapi:lint
 The recorded issue #44 result is in
 `evidence/validation/issue-44-authorisation-tests.md` at the repository root.
 
+## Direct submission coverage
+
+The contract and API suites cover the versioned delivery schema, anonymous and unapproved users,
+in-scope and out-of-scope submitters, detailed invalid-event responses, the JSON payload limit, and
+the per-account rate limit. PostgreSQL integration tests verify stored provenance, submitted order,
+duplicate event-ID rejection, and full rollback when a later event conflicts after an earlier insert.
+
+Run the focused checks with:
+
+```text
+npm run test --workspace=@sport-analytics/contracts
+npm run test:api --workspace=@sport-analytics/backend
+npm run db:test:reset --workspace=@sport-analytics/backend
+npm run test:database --workspace=@sport-analytics/backend
+npm run openapi:lint
+```
+
+The issue #51 verification record is in
+`evidence/validation/issue-51-direct-event-submission.md` at the repository root.
+
 ## Fixture statistics coverage
 
 The Basic fixture-statistics suite includes a manually verified golden fixture, deterministic replay,

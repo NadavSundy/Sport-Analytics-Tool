@@ -27,6 +27,7 @@ nav:
           - Overview: api/overview.md
           - Shared Contracts: api/contracts.md
           - Public Read API: api/public-read.md
+          - Direct Event Submissions: api/submissions.md
           - Fixture Statistic Calculations: statistics/fixture-statistics.md
           - OpenAPI Specification: api/openapi.md
           - Versioning and Deprecation: api/versioning.md
