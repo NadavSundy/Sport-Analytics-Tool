@@ -75,12 +75,16 @@ describe.sequential('application account authorization schema', () => {
     const authorizationSchema = await migrationSections(
       '20260812120000000_account-authorisation.sql',
     );
+    const accountTimestampSchema = await migrationSections(
+      '20260815133241837_add-app-user-updated-at.sql',
+    );
 
     try {
       await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
       await client.query(`SET search_path TO ${quotedSchemaName}`);
       await client.query(deliverySchema.up);
       await client.query(authorizationSchema.up);
+      await client.query(accountTimestampSchema.up);
 
       const applied = await client.query<{ scopeExists: boolean }>(
         `SELECT to_regclass($1) IS NOT NULL AS "scopeExists"`,
@@ -88,11 +92,13 @@ describe.sequential('application account authorization schema', () => {
       );
       expect(applied.rows[0].scopeExists).toBe(true);
 
+      await client.query(accountTimestampSchema.down);
       await client.query(authorizationSchema.down);
 
       const rolledBack = await client.query<{
         approvalColumnCount: number;
         scopeExists: boolean;
+        updatedAtColumnCount: number;
       }>(
         `
           SELECT
@@ -103,17 +109,30 @@ describe.sequential('application account authorization schema', () => {
               WHERE table_schema = $2
                 AND table_name = 'app_user'
                 AND column_name = 'submitter_approval_state'
-            ) AS "approvalColumnCount"
+            ) AS "approvalColumnCount",
+            (
+              SELECT count(*)::int
+              FROM information_schema.columns
+              WHERE table_schema = $2
+                AND table_name = 'app_user'
+                AND column_name = 'updated_at'
+            ) AS "updatedAtColumnCount"
         `,
         [`${schemaName}.submitter_competition_scope`, schemaName],
       );
-      expect(rolledBack.rows[0]).toEqual({ scopeExists: false, approvalColumnCount: 0 });
+      expect(rolledBack.rows[0]).toEqual({
+        scopeExists: false,
+        approvalColumnCount: 0,
+        updatedAtColumnCount: 0,
+      });
 
       await client.query(authorizationSchema.up);
+      await client.query(accountTimestampSchema.up);
 
       const reapplied = await client.query<{
         approvalColumnCount: number;
         scopeExists: boolean;
+        updatedAtColumnCount: number;
       }>(
         `
           SELECT
@@ -124,13 +143,21 @@ describe.sequential('application account authorization schema', () => {
               WHERE table_schema = $2
                 AND table_name = 'app_user'
                 AND column_name = 'submitter_approval_state'
-            ) AS "approvalColumnCount"
+            ) AS "approvalColumnCount",
+            (
+              SELECT count(*)::int
+              FROM information_schema.columns
+              WHERE table_schema = $2
+                AND table_name = 'app_user'
+                AND column_name = 'updated_at'
+            ) AS "updatedAtColumnCount"
         `,
         [`${schemaName}.submitter_competition_scope`, schemaName],
       );
       expect(reapplied.rows[0]).toEqual({
         scopeExists: true,
         approvalColumnCount: 1,
+        updatedAtColumnCount: 1,
       });
     } finally {
       await client.query('RESET search_path');
@@ -160,7 +187,8 @@ describe.sequential('application account authorization schema', () => {
               'application_role',
               'submitter_approval_state',
               'created_at',
-              'last_authenticated_at'
+              'last_authenticated_at',
+              'updated_at'
             ))
             OR
             (table_name = 'submitter_competition_scope' AND column_name IN (
@@ -180,6 +208,7 @@ describe.sequential('application account authorization schema', () => {
       { tableName: 'app_user', columnName: 'created_at', nullable: 'NO' },
       { tableName: 'app_user', columnName: 'last_authenticated_at', nullable: 'NO' },
       { tableName: 'app_user', columnName: 'submitter_approval_state', nullable: 'NO' },
+      { tableName: 'app_user', columnName: 'updated_at', nullable: 'NO' },
       {
         tableName: 'submitter_competition_scope',
         columnName: 'app_user_id',
@@ -329,6 +358,42 @@ describe.sequential('application account authorization schema', () => {
         approvalState: 'rejected',
         subject: `${sourcePrefix}-approval-lifecycle`,
       });
+    });
+  });
+
+  test('tracks the most recent application-account update', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const account = await executeQuery<{ accountId: string; updatedAt: Date }>(
+        client,
+        `
+          INSERT INTO app_user (
+            auth_provider,
+            auth_subject,
+            submitter_approval_state,
+            updated_at
+          )
+          VALUES ('supabase', $1, 'pending', TIMESTAMPTZ '2000-01-01 00:00:00+00')
+          RETURNING
+            app_user_id::text AS "accountId",
+            updated_at AS "updatedAt"
+        `,
+        [`${sourcePrefix}-updated-at`],
+      );
+
+      const updated = await executeQuery<{ updatedAt: Date }>(
+        client,
+        `
+          UPDATE app_user
+          SET submitter_approval_state = 'approved'
+          WHERE app_user_id = $1
+          RETURNING updated_at AS "updatedAt"
+        `,
+        [account.rows[0].accountId],
+      );
+
+      expect(updated.rows[0].updatedAt.getTime()).toBeGreaterThan(
+        account.rows[0].updatedAt.getTime(),
+      );
     });
   });
 

@@ -27,6 +27,7 @@ The PostgreSQL integration suite additionally verifies the migrated application-
 - provider-neutral identity uniqueness;
 - allowed role and approval-state constraints;
 - approval and revocation transitions;
+- automatic application-account update timestamps;
 - competition-grant uniqueness and foreign keys;
 - account-to-grant cascade behaviour; and
 - the indexes required for account-first and competition-first scope lookups.

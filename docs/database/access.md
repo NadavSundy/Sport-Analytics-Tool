@@ -190,6 +190,7 @@ The account-schema integration tests cover:
 - provider-neutral identity mapping;
 - valid role and submitter-approval values;
 - approval and revocation updates;
+- automatic application-account update timestamps;
 - unique competition grants;
 - invalid account and competition references; and
 - cascade removal of grants when an account or competition is deleted.

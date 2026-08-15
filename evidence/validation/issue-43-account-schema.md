@@ -2,8 +2,8 @@
 
 **Date:** 15 August 2026  
 **Scope:** provider-neutral application accounts, roles, submitter approval,
-competition-scoped grants, constraints, indexes, migration rollback definition,
-database documentation, and regression coverage.
+competition-scoped grants, created and updated timestamps, constraints, indexes,
+migration rollback definition, database documentation, and regression coverage.
 
 ## Implementation reconciliation
 
@@ -18,8 +18,10 @@ landed before this verification task:
 - issue #51 / Pull Request #134 exercised approval and competition scope in the
   direct-submission path.
 
-No existing applied migration was edited and no duplicate replacement migration
-was introduced for issue #43.
+This branch adds a focused forward and rollback migration for `app_user.updated_at`.
+A PostgreSQL trigger maintains that value for every account update, including role,
+approval, disabled-state, display-name, and authentication-time changes. No existing
+applied migration was edited and no duplicate replacement migration was introduced.
 
 ## Added database verification
 
@@ -28,14 +30,15 @@ migrated isolated PostgreSQL test database that:
 
 - required account, approval, scope, and timestamp columns exist and are not
   nullable;
-- the account-authorisation migration applies, rolls back, and reapplies inside
-  a dedicated temporary PostgreSQL schema;
+- the account-authorisation and account-timestamp migrations apply, roll back,
+  and reapply inside a dedicated temporary PostgreSQL schema;
 - named checks, uniqueness constraints, foreign keys, primary keys, and scope
   indexes exist;
 - one provider identity maps to one application account while the same subject
   may exist under a different provider;
 - approval can be granted and revoked without replacing the authentication
   identity;
+- account updates automatically advance `updated_at`;
 - unsupported roles and approval values are rejected;
 - duplicate grants and invalid foreign-key references are rejected; and
 - deleting an account or competition cascades to its grants.
@@ -82,14 +85,14 @@ npm.cmd run test:database --workspace=@sport-analytics/backend
 
 Result: passed against a local PostgreSQL 16 Docker container after exporting
 `NODE_ENV=test` and `DATABASE_URL_TEST` into the Vitest process. All 3 database
-test files and all 16 tests passed, including the 11 issue #43 tests and the
+test files and all 17 tests passed, including the 12 issue #43 tests and the
 isolated migration apply/down/reapply round trip.
 
 ## Acceptance-criteria mapping
 
 | Criterion                                    | Evidence                                                                        |
 | -------------------------------------------- | ------------------------------------------------------------------------------- |
-| Account, role, approval, and scope migration | Existing reviewed migrations plus migrated-schema introspection test            |
+| Account, role, approval, and scope migration | Existing reviewed migrations plus focused timestamp migration and schema test   |
 | One account per Supabase identity            | Composite identity uniqueness test                                              |
 | Approval can be granted and revoked          | Approval lifecycle database test                                                |
 | Competition-scoped submitters                | Scope table, foreign keys, and direct-submission coverage                       |
