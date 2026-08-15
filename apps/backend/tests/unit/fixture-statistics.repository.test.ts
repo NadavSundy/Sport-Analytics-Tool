@@ -45,6 +45,13 @@ describe('fixture statistics repository', () => {
 
     expect(source?.fixtureId).toBe('9');
     expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[0]?.[0]).toContain('i.is_super_over = false');
+
+    expect(query.mock.calls[1]?.[0]).toContain('d.innings_id = ANY($1::bigint[])');
+
+    expect(query.mock.calls[1]?.[0]).not.toContain('is_super_over');
+
+    expect(query.mock.calls[1]?.[1]).toEqual([['11']]);
     expect(query.mock.calls[0]?.[0]).toContain("publication.status = 'accepted'");
     expect(query.mock.calls[1]?.[0]).toContain("source_submission.status = 'accepted'");
     expect(query.mock.calls[1]?.[0]).toContain(

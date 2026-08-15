@@ -14,8 +14,32 @@ The derivation repository applies these rules before calculation:
    accepted revision.
 3. Events are ordered by innings ordinal and then `innings_sequence`. `ball_number` is display-only
    and is never used for order.
-4. Standard fixture statistics exclude innings marked `is_super_over`. The response makes this
-   scope explicit with `superOversIncluded: false`.
+4. Standard fixture batting, bowling and team aggregates exclude innings marked
+   `is_super_over`. A super over is a tie-breaking procedure rather than a standard
+   match innings, so including it would distort ordinary player and team statistics.
+   The response makes this scope explicit with `superOversIncluded: false`.
+
+## Super-over scopes
+
+These scope names describe possible future API behavior; they are not currently
+implemented or recorded as client-approved requirements.
+
+The current fixture-statistics response represents standard aggregates and excludes
+all super-over innings.
+
+A future `super-over-only` scope may calculate statistics exclusively from innings
+marked `is_super_over`. A future `standard-and-super-over-combined` scope may include
+both types, but it must be explicitly named and requested; it must never become the
+default.
+
+Fixture outcome information may still identify an eliminator winner even when the
+super-over deliveries are excluded from batting and bowling aggregates. Future
+season, competition and career aggregates must consume the same standard-innings
+boundary.
+
+This is the team's current implementation default for Issue #104. Client confirmation
+of the convention for future season, competition and career aggregates remains
+pending.
 
 ## Basic calculations
 

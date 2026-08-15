@@ -228,10 +228,13 @@ recorded on #27.
 4. **The within-innings sequence** is assigned at ingestion, not derived on read,
    because the API must return events in occurrence order with pagination. A
    correction inherits the sequence of the revision it supersedes.
-5. **Super-over innings** are excluded from standard aggregates by default, with
-   separately scoped statistics available for them. The exclusion must eventually
-   be a property of the statistic definition rather than a condition in query
-   code. The convention is still to be confirmed with the client.
+5. **Super-over innings** are excluded from standard aggregates. Separately scoped
+   `super-over-only` statistics may be provided explicitly. A combined
+   `standard-and-super-over-combined` scope may be introduced in future, but it must
+   never be the default. The exclusion must eventually become a property of a
+   versioned statistic definition.
+   The current implementation follows this default under Issue #104, while final
+   client confirmation remains open.
 6. **`app_user`** is included here in minimal form. Issue #44 extends the record with approval and
    synchronization state and adds competition-scoped grants; it does not redefine submission
    ownership.
