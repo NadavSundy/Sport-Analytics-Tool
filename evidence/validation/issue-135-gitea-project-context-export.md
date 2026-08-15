@@ -82,18 +82,22 @@ binary. The script was adapted to normalise these values, after which the pagina
 tests passed. The final authentication test also confirmed that streaming the authorization header
 to `curl` through standard input was accepted by the mock server.
 
-## Live Wits Gitea validation still required
+## Live Wits Gitea validation
 
-No real Wits Gitea token was supplied to this development session. The following acceptance checks
-must therefore be performed by a team member before Issue #135 is closed:
+The exporter was run successfully against `git-push-pray/Sport-Analytics-Tool` using the cached
+credential only in process memory. The live snapshot contained 69 issues: 30 open, matching the
+repository's displayed open-issue count, and 39 closed. It contained 41 comments; issue #13 had the
+largest exported comment set with three comments.
 
-- run with a valid personal token carrying `read:issue` permission;
-- compare the exported count with the live repository's open and closed issue count;
-- inspect representative live descriptions and an issue with several comments;
-- test a real expired or invalid token and, if available, an insufficiently scoped token; and
-- confirm that no generated snapshot appears in normal `git status --short` output.
+All 211 generated JSON files parsed successfully, all 69 issue directories contained `issue.json`,
+`comments.json` and `complete.json`, and the CSV parsed with 69 data rows. Every exported issue had
+the current detail response and a body field. Pull Request payloads were absent. The credential was
+not present in any generated file, normal `git status --short` remained clean, and `git check-ignore`
+resolved the output through `/gitea-export/`.
 
-This record does not claim those live checks have occurred. Gitea remains the source of truth.
+The valid live-token run complements the localhost invalid-token, multi-page, rerun-replacement and
+failure-preservation tests above. No separate real account with an insufficiently scoped token was
+available; that optional account-specific check was not claimed. Gitea remains the source of truth.
 
 ## Traceability
 
