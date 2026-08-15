@@ -378,4 +378,6 @@ describe('direct event submission API', () => {
     });
     expect(service.submit).not.toHaveBeenCalled();
   });
+
+  
 });
