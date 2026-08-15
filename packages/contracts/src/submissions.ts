@@ -55,7 +55,18 @@ export const submissionEventSchema = z
     sequenceNumber: z.number().int().positive().max(2_147_483_647),
     overNumber: smallNonNegativeIntegerSchema,
     positionInOver: smallNonNegativeIntegerSchema,
-    ballNumber: z.string().min(1).max(32),
+    // The printed ball number is display only: it is never unique and never used
+    // to join, because it counts legal deliveries and so repeats within an over.
+    // The identifying columns are overNumber and positionInOver. Constrained to
+    // the printed form so that a submitted label cannot be arbitrary text, but
+    // the platform does not currently verify that it agrees with the position it
+    // describes.
+    ballNumber: z
+      .string()
+      .regex(
+        /^\d{1,3}\.\d{1,2}$/,
+        'A printed ball number takes the form <over>.<ball>, for example 5.1.',
+      ),
     strikerId: databaseIdentifierSchema,
     nonStrikerId: databaseIdentifierSchema,
     bowlerId: databaseIdentifierSchema,

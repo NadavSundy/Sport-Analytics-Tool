@@ -351,4 +351,31 @@ describe('direct event submission API', () => {
       })
       .expect(201);
   });
+
+  test('rejects a printed ball number that is not in the published form', async () => {
+    const service = mockSubmissionService();
+
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ approvalState: 'approved' })),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer approved-token')
+      .send({
+        ...validPayload,
+        events: [{ ...validPayload.events[0], ballNumber: 'first ball of the over' }],
+      })
+      .expect(422);
+
+    expect(response.body.error.details[0]).toMatchObject({
+      field: 'events.0.ballNumber',
+      eventIndex: 0,
+    });
+    expect(service.submit).not.toHaveBeenCalled();
+  });
 });
