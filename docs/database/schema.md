@@ -133,9 +133,10 @@ which is why it is settled here rather than deferred.
 **Identity.** `app_user`, keyed on the authentication provider and that provider's
 subject identifier rather than on any provider-specific column, so that the schema
 does not depend on the current choice of provider. Holds the display name, application role,
-submitter-approval state, disabled state, and last-authenticated time. Personal data remains with
-the authentication provider. `submitter_competition_scope` grants an approved account access to a
-specific competition; authentication never creates a grant.
+submitter-approval state, disabled state, created time, last-updated time, and
+last-authenticated time. The database maintains the last-updated time for every account change.
+Personal data remains with the authentication provider. `submitter_competition_scope` grants an
+approved account access to a specific competition; authentication never creates a grant.
 
 **Provenance.** `submission`, recording who submitted what, when, from which
 source file, with what checksum, and whether it was accepted.
