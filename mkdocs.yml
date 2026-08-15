@@ -32,6 +32,8 @@ nav:
           - Fixture Statistic Calculations: statistics/fixture-statistics.md
           - OpenAPI Specification: api/openapi.md
           - Versioning and Deprecation: api/versioning.md
+      - Submission field mapping: api/submission-field-mapping.md
+      - Event to statistic mapping: api/event-statistic-mapping.md
       - Database:
           - Overview: database/overview.md
           - Access and Transactions: database/access.md
