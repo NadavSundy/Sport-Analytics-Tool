@@ -7,10 +7,23 @@ export const DIRECT_SUBMISSION_SCHEMA_VERSION = '1.0' as const;
 const databaseIdentifierSchema = apiIdentifierSchema
   .regex(/^[1-9]\d*$/, 'Expected a positive database identifier.')
   .max(19)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n, {
-    message: 'Database identifier is outside the supported range.',
-  });
+  // Zod runs every check on a string rather than stopping at the first failure,
+  // so this refinement sees values the regex has already rejected. BigInt throws
+  // on those, which escapes safeParse and surfaces as an unexplained server
+  // error rather than a validation failure.
+  .refine(
+    (value) => {
+      if (!/^\d+$/.test(value)) {
+        return true;
+      }
 
+      return BigInt(value) <= 9_223_372_036_854_775_807n;
+    },
+    {
+      message: 'Database identifier is outside the supported range.',
+    },
+  );
+  
 const smallNonNegativeIntegerSchema = z.number().int().min(0).max(32_767);
 
 export const submissionEventIdSchema = z
@@ -121,6 +134,8 @@ export const submissionEventSchema = z
       });
     }
   });
+
+  
 
 export const submissionRequestSchema = z
   .object({
