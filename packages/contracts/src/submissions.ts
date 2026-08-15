@@ -19,22 +19,17 @@ export const submissionEventIdSchema = z
 
 export const submissionWicketSchema = z
   .object({
-    kind: z.enum([
-      'caught',
-      'bowled',
-      'lbw',
-      'stumped',
-      'caught and bowled',
-      'hit wicket',
-      'run out',
-      'obstructing the field',
-      'timed out',
-      'hit the ball twice',
-      'handled the ball',
-      'retired hurt',
-      'retired out',
-      'retired not out',
-    ]),
+    // The dismissal vocabulary is held in the dismissal_kind lookup table rather
+    // than enumerated here. The set is open: two kinds present in the full corpus
+    // were absent from the earlier subset, and the migration records that
+    // extending an enumeration would require a migration. The contract therefore
+    // constrains the shape and the service resolves the value against the table,
+    // so a new kind needs a row and no code change.
+    kind: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z][a-z ]*$/, 'A dismissal kind is lower-case words separated by spaces.'),
     playerOutId: databaseIdentifierSchema,
     fielders: z
       .array(
