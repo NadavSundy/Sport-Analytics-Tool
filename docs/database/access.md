@@ -168,7 +168,8 @@ Checked-out transaction clients are released in a `finally` block so successful 
 
 Unit tests verify database error translation and application-account synchronization mapping.
 
-Database integration tests verify the reusable transaction helper against the isolated test database.
+Database integration tests verify the reusable transaction helper and application-account
+authorisation schema against the isolated test database.
 
 Run:
 
@@ -182,6 +183,17 @@ The transaction integration tests cover:
 
 - successful commit; and
 - rollback after a failed operation.
+
+The account-schema integration tests cover:
+
+- one application account per provider identity;
+- provider-neutral identity mapping;
+- valid role and submitter-approval values;
+- approval and revocation updates;
+- automatic application-account update timestamps;
+- unique competition grants;
+- invalid account and competition references; and
+- cascade removal of grants when an account or competition is deleted.
 
 ## Scope
 
