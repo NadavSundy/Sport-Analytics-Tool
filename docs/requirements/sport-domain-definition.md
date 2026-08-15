@@ -317,9 +317,7 @@ belong properly to this domain-definition issue:
 4. **`IT20` misclassification (§10, item 8):** raised against the downloader
    but not yet fixed; needs a decision on whether to patch the downloader's
    classification logic or handle it in ingestion/validation instead.
-5. **Submitter scope granularity (§9):** competition-level vs. fixture-level
-   vs. date-range authorisation has not been decided with the client.
-6. **Review/DRS event usage:** the `Review` event is defined for provenance
+5. **Review/DRS event usage:** the `Review` event is defined for provenance
    but has no statistic consuming it yet; confirm whether any Basic/
    Intermediate statistic should use it before Advanced-tier work begins.
 
@@ -329,6 +327,10 @@ belong properly to this domain-definition issue:
   and international competitions, per §1 — consistent with, and formalising,
   the corpus scope already approved in `schema.md` (approved by all six team
   members on 6 August 2026, per #27).
+- **Submitter scope:** Competition-level grants are the implemented Basic-tier
+  boundary. Fixture, season, and date-range grants remain possible future
+  extensions, but are not prerequisites for issue #43 or the direct-submission
+  flow.
 - **This document's own approval status:** draft, pending explicit team
   review and stakeholder sign-off as required by #37's Definition of Done.
   Because the underlying schema decision already has six-person approval,
