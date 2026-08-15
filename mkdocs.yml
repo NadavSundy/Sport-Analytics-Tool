@@ -19,6 +19,7 @@ nav:
       - Repository Structure: architecture/repository-structure.md
       - Testing: development/testing.md
       - Dependencies: development/dependencies.md
+      - Gitea Issue Export: development/gitea-issue-export.md
   - Design:
       - Brand Guidelines: design/brand-guidelines.md
       - Architecture: architecture/overview.md
