@@ -15,12 +15,12 @@ This document records the Azure deployment problems encountered while deploying 
 
 The immediate deployment is currently operational:
 
-* the frontend is publicly reachable;
-* the handwritten backend API is publicly reachable;
-* the backend can connect to the PostgreSQL database;
-* public competition data can be retrieved through the API;
-* the deployed frontend can retrieve data from the deployed backend;
-* CORS is configured for the deployed frontend origin.
+- the frontend is publicly reachable;
+- the handwritten backend API is publicly reachable;
+- the backend can connect to the PostgreSQL database;
+- public competition data can be retrieved through the API;
+- the deployed frontend can retrieve data from the deployed backend;
+- CORS is configured for the deployed frontend origin.
 
 The current backend deployment is **not yet considered a permanent CI/CD solution** because startup currently contains a workaround for an npm workspace dependency.
 
@@ -185,11 +185,11 @@ HTTP 200 OK
 
 This proved that the following underlying Azure functionality was working:
 
-* the App Service instance could run Node;
-* Azure public routing worked;
-* the application could listen on the Azure-provided port;
-* requests could reach the application;
-* the F1 platform itself was capable of serving the application.
+- the App Service instance could run Node;
+- Azure public routing worked;
+- the application could listen on the Azure-provided port;
+- requests could reach the application;
+- the F1 platform itself was capable of serving the application.
 
 This was important because it separated an Azure infrastructure problem from a problem in the real backend deployment.
 
@@ -367,10 +367,10 @@ with a response similar to:
 
 This proved that:
 
-* Azure routing worked;
-* Node was running;
-* Express had started;
-* the backend startup workaround allowed the application to load.
+- Azure routing worked;
+- Node was running;
+- Express had started;
+- the backend startup workaround allowed the application to load.
 
 ---
 
@@ -492,9 +492,9 @@ Connection Timed Out
 
 However, subsequent HTTP tests showed that:
 
-* the application hostname was reachable;
-* the SCM hostname was reachable;
-* SCM access restrictions allowed access.
+- the application hostname was reachable;
+- the SCM hostname was reachable;
+- SCM access restrictions allowed access.
 
 The SSH timeout was therefore treated as a management/tunnel issue rather than evidence that the public application was down.
 
@@ -777,20 +777,20 @@ The exact packaging method should be selected and documented through an Architec
 
 The permanent deployment task is complete only when:
 
-* CI builds `@sport-analytics/contracts`;
-* CI builds the backend;
-* a clean deployment artifact is generated;
-* the artifact contains all runtime dependencies;
-* `@sport-analytics/contracts` resolves without an Azure startup symlink repair;
-* the artifact passes a local/CI production startup smoke test;
-* Gitea automatically deploys it;
-* Azure starts using a normal backend startup command;
-* `/api/v1/health` returns `200`;
-* `/api/v1/competitions` returns database data;
-* the deployed frontend can access the API;
-* CORS is verified;
-* deployment documentation is updated;
-* no secrets are committed.
+- CI builds `@sport-analytics/contracts`;
+- CI builds the backend;
+- a clean deployment artifact is generated;
+- the artifact contains all runtime dependencies;
+- `@sport-analytics/contracts` resolves without an Azure startup symlink repair;
+- the artifact passes a local/CI production startup smoke test;
+- Gitea automatically deploys it;
+- Azure starts using a normal backend startup command;
+- `/api/v1/health` returns `200`;
+- `/api/v1/competitions` returns database data;
+- the deployed frontend can access the API;
+- CORS is verified;
+- deployment documentation is updated;
+- no secrets are committed.
 
 Only after all of these conditions are met should the temporary Azure startup workaround be removed.
 
@@ -1012,20 +1012,20 @@ When diagnosing the application, prefer direct runtime evidence such as health/A
 
 The team should retain evidence of this incident and recovery, including:
 
-* Azure state showing the earlier quota condition;
-* startup logs showing the `@sport-analytics/contracts` module error;
-* the diagnostic server returning `200`;
-* the temporary startup command;
-* `/api/v1/health` returning `200`;
-* `/api/v1/competitions` returning real database records;
-* pagination test results;
-* browser screenshot showing the CORS failure;
-* CORS matrix showing the corrected origin;
-* a screenshot of the now-working deployed competitions page;
-* relevant Gitea issues;
-* pull requests that implement the permanent deployment fix;
-* Gitea Actions runs demonstrating successful CI/CD;
-* deployment/configuration documentation changes.
+- Azure state showing the earlier quota condition;
+- startup logs showing the `@sport-analytics/contracts` module error;
+- the diagnostic server returning `200`;
+- the temporary startup command;
+- `/api/v1/health` returning `200`;
+- `/api/v1/competitions` returning real database records;
+- pagination test results;
+- browser screenshot showing the CORS failure;
+- CORS matrix showing the corrected origin;
+- a screenshot of the now-working deployed competitions page;
+- relevant Gitea issues;
+- pull requests that implement the permanent deployment fix;
+- Gitea Actions runs demonstrating successful CI/CD;
+- deployment/configuration documentation changes.
 
 Do not create or alter evidence retrospectively. Preserve the actual commands, screenshots, logs, commits, pull requests and workflow runs produced during the work.
 
@@ -1035,39 +1035,39 @@ Do not create or alter evidence retrospectively. Preserve the actual commands, s
 
 ### High priority
 
-* Replace the runtime workspace-symlink repair with a self-contained backend deployment artifact.
-* Verify and repair the Gitea backend deployment workflow.
-* Verify and repair the Gitea frontend deployment workflow.
-* Ensure changes to `packages/contracts` trigger backend validation/build/deployment where appropriate.
-* Remove the obsolete `CORS_ALLOWED_ORIGINS` example if it remains unused.
-* Verify frontend build-time environment variables in Gitea.
-* Add post-deployment health checks.
-* Add deployment failure handling to CI/CD.
-* Capture evidence of successful automated deployments.
+- Replace the runtime workspace-symlink repair with a self-contained backend deployment artifact.
+- Verify and repair the Gitea backend deployment workflow.
+- Verify and repair the Gitea frontend deployment workflow.
+- Ensure changes to `packages/contracts` trigger backend validation/build/deployment where appropriate.
+- Remove the obsolete `CORS_ALLOWED_ORIGINS` example if it remains unused.
+- Verify frontend build-time environment variables in Gitea.
+- Add post-deployment health checks.
+- Add deployment failure handling to CI/CD.
+- Capture evidence of successful automated deployments.
 
 ### Before Milestone 2
 
-* Ensure the public API remains externally available.
-* Publish/update API documentation.
-* Add meaningful automated API tests.
-* Add meaningful UI tests.
-* Continue database documentation.
-* Document third-party dependencies/integrations.
-* Ensure deployment is reproducible by CI rather than dependent on manual Azure repair.
-* Record deployment bugs and fixes in the issue tracker.
+- Ensure the public API remains externally available.
+- Publish/update API documentation.
+- Add meaningful automated API tests.
+- Add meaningful UI tests.
+- Continue database documentation.
+- Document third-party dependencies/integrations.
+- Ensure deployment is reproducible by CI rather than dependent on manual Azure repair.
+- Record deployment bugs and fixes in the issue tracker.
 
 ### Before final submission
 
-* Remove temporary recovery configuration.
-* Verify frontend, backend, database and documentation deployments.
-* Verify authentication journeys.
-* Verify CORS and secret handling.
-* Verify external API integration and failure handling.
-* Run accessibility and responsive-design checks.
-* Run performance tests.
-* Verify production error handling.
-* Run automated deployment smoke tests.
-* Review all deployment documentation against the real production configuration.
+- Remove temporary recovery configuration.
+- Verify frontend, backend, database and documentation deployments.
+- Verify authentication journeys.
+- Verify CORS and secret handling.
+- Verify external API integration and failure handling.
+- Run accessibility and responsive-design checks.
+- Run performance tests.
+- Verify production error handling.
+- Run automated deployment smoke tests.
+- Review all deployment documentation against the real production configuration.
 
 ---
 
