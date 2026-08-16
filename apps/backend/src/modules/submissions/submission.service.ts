@@ -40,9 +40,7 @@ export function createSubmissionService(
 
       if (submittedWickets.length > 0) {
         const recognisedKinds = await repository.findDismissalKinds();
-        const unrecognised = submittedWickets.filter(
-          (wicket) => !recognisedKinds.has(wicket.kind),
-        );
+        const unrecognised = submittedWickets.filter((wicket) => !recognisedKinds.has(wicket.kind));
 
         if (unrecognised.length > 0) {
           throw new SubmissionValidationError(
