@@ -139,11 +139,7 @@ describe('direct submission contract', () => {
             {
               kind: 'run out',
               playerOutId: '20',
-              fielders: [
-                { participantId: '30' },
-                { participantId: '31' },
-                { substitute: true },
-              ],
+              fielders: [{ participantId: '30' }, { participantId: '31' }, { substitute: true }],
             },
           ],
         },

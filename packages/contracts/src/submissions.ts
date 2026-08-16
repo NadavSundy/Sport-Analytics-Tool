@@ -23,7 +23,7 @@ const databaseIdentifierSchema = apiIdentifierSchema
       message: 'Database identifier is outside the supported range.',
     },
   );
-  
+
 const smallNonNegativeIntegerSchema = z.number().int().min(0).max(32_767);
 
 export const submissionEventIdSchema = z
@@ -134,8 +134,6 @@ export const submissionEventSchema = z
       });
     }
   });
-
-  
 
 export const submissionRequestSchema = z
   .object({
