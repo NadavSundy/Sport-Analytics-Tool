@@ -1,3 +1,4 @@
+import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -114,8 +115,20 @@ function useSystemTheme() {
   );
 }
 
-function currentUser(approvalState: string, competitionIds: string[] = []) {
-  return response(200, { user: { approvalState, competitionIds } });
+function currentUser(
+  approvalState: CurrentUserProfile['approvalState'],
+  competitionIds: string[] = [],
+) {
+  return response(200, {
+    user: {
+      id: '17',
+      subject: 'approved-user',
+      displayName: 'Submitter User',
+      role: 'viewer',
+      approvalState,
+      competitionIds,
+    },
+  });
 }
 
 function fixtures(data: unknown[]) {
@@ -155,6 +168,35 @@ describe('approved-submitter event submission page', () => {
     expect(screen.getByText(/pending approval/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Submit events' })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails safely when the current-user response does not match the shared contract', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      response(200, {
+        user: {
+          approvalState: 'approved',
+          competitionIds: ['5'],
+        },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Submission access could not be checked',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        'Your submitter approval and fixture scope could not be loaded. Please try again.',
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Submit events' })).not.toBeInTheDocument();
   });
 
   it('lists only fixtures returned for the approved submitter competition scope', async () => {

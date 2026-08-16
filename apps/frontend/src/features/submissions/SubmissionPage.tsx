@@ -1,4 +1,9 @@
-import type { ApiErrorDetail, Fixture, SubmissionResponse } from '@sport-analytics/contracts';
+import type {
+  ApiErrorDetail,
+  CurrentUserProfile,
+  Fixture,
+  SubmissionResponse,
+} from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
@@ -9,7 +14,6 @@ import {
   listScopedFixtures,
   SubmissionInputError,
   submitEvents,
-  type CurrentUserProfile,
 } from './submission-api';
 
 const EMPTY_EVENTS = '[]';
