@@ -202,6 +202,32 @@ Roles and submission approval are deliberately separate:
 - an approved submitter must also have a `submitter_competition_scope` row for the target
   competition.
 
+### Requesting submitter access
+
+Authentication does not itself grant submission permission. An authenticated application account may explicitly request submitter access through:
+
+```http
+POST /api/v1/submitter-access-requests
+Authorization: Bearer <supabase-access-token>
+```
+
+The backend uses the authenticated and synchronized `app_user` account rather than accepting an account identifier from the client.
+
+Eligible state transitions are:
+
+```text
+not_requested -> pending
+rejected      -> pending
+```
+
+An existing `pending` request is rejected with `409 Conflict`, preventing duplicate active requests.
+
+An `approved` submitter is also rejected with `409 Conflict` because no additional request is necessary.
+
+The state transition is performed with a conditional PostgreSQL update so that concurrent duplicate requests cannot both create a new active request.
+
+Administrator approval and competition-scope assignment remain separate server-owned operations.
+
 Protected routes compose reusable middleware in this order:
 
 ```ts
@@ -457,7 +483,7 @@ This foundation intentionally does not implement:
 - final password-reset screens;
 - final account-deletion screens;
 - administrator approval-management routes and interfaces;
-- submitter access-request routes and interfaces;
+- submitter access-request frontend interface;
 - event correction and file or batch upload interfaces;
 - season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;
@@ -468,7 +494,7 @@ This foundation intentionally does not implement:
 - [Supabase Auth](https://supabase.com/docs/guides/auth)
 - [Auth architecture](https://supabase.com/docs/guides/auth/architecture)
 - [Google login](https://supabase.com/docs/guides/auth/social-login/auth-google)
-- [`getUser`](https://supabase.com/docs/reference/javascript/auth-getuser)
+- [getUser](https://supabase.com/docs/reference/javascript/auth-getuser)
 - [Password authentication](https://supabase.com/docs/guides/auth/passwords)
 - [Administrative user deletion](https://supabase.com/docs/reference/javascript/auth-admin-deleteuser)
 - [API keys](https://supabase.com/docs/guides/getting-started/api-keys)
@@ -481,3 +507,4 @@ frontend session-state and authenticated-request sections were later updated wit
 Codex[GPT-5.6 Sol]. The account synchronization, profile, and authorization sections were updated
 with the assistance of Codex[GPT-5.6 Sol]. The protected event-submission journey was documented
 with the assistance of Codex[GPT-5.6 Sol].
+The submitter access-request section was documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].

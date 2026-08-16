@@ -48,6 +48,32 @@ The schema verification for issue #43 is recorded in
 `evidence/validation/issue-43-account-schema.md`. The recorded issue #44 API-authorisation result is in
 `evidence/validation/issue-44-authorisation-tests.md` at the repository root.
 
+## Submitter access request coverage
+
+The submitter-access API and repository suites cover:
+
+- anonymous requests being rejected before request processing;
+- an authenticated application account creating a `pending` request;
+- the authenticated account being passed to the request service;
+- duplicate `pending` requests returning a conflict;
+- already-approved submitters returning a conflict;
+- eligible state changes being implemented as a conditional database update; and
+- unsupported persisted approval states failing closed.
+
+The PostgreSQL integration suite additionally verifies that `not_requested` and previously `rejected` accounts persist as `pending`, a second active request is rejected, and an already-approved account is not modified.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm run typecheck --workspace=@sport-analytics/backend
+npm exec --workspace=@sport-analytics/backend -- vitest run tests/api/submitter-access-request.test.ts
+npm exec --workspace=@sport-analytics/backend -- vitest run tests/unit/submitter-access.repository.test.ts
+npm run test:database --workspace=@sport-analytics/backend
+```
+
+Database integration tests require `NODE_ENV=test` and a dedicated `DATABASE_URL_TEST`. They must not be run against the shared development or production database.
+
 ## Direct submission coverage
 
 The contract and API suites cover the versioned delivery schema, anonymous and unapproved users,

@@ -31,6 +31,9 @@ tags:
   - name: Submissions
     description: Approved-submitter event-submission operations.
 
+  - name: Submitter Access
+    description: Authenticated submitter-access request operations.
+
 paths:
   /api/v1/health:
     get:
@@ -78,7 +81,37 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/submitter-access-requests:
+    post:
+      tags:
+        - Submitter Access
+      summary: Request submitter access
+      description: |
+        Creates a submitter-access request for the authenticated application
+        account by transitioning an eligible server-owned approval state to
+        `pending`.
 
+        Accounts already in `pending` or `approved` state cannot create another
+        active request. A previously rejected account may request access again.
+      operationId: requestSubmitterAccess
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Submitter access request created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitterAccessRequestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The account already has a pending request or is already approved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/competitions:
     get:
       tags:
@@ -668,7 +701,25 @@ components:
               uniqueItems: true
               items:
                 $ref: '#/components/schemas/ApiIdentifier'
-
+    SubmitterAccessRequestResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - accountId
+            - approvalState
+          properties:
+            accountId:
+              $ref: '#/components/schemas/ApiIdentifier'
+            approvalState:
+              type: string
+              enum:
+                - pending
     ApiErrorDetail:
       type: object
       additionalProperties: false

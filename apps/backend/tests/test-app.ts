@@ -6,6 +6,7 @@ import type { SynchronizeAccount } from '../src/modules/accounts/account.service
 import type { PublicReadService } from '../src/modules/public-read/public-read.service';
 import type { FixtureStatisticsService } from '../src/modules/statistics/fixture-statistics.service';
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
+import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -36,6 +37,7 @@ export function createTestApp(
   synchronizeAccount: SynchronizeAccount = synchronizeTestAccount,
   fixtureStatisticsService?: FixtureStatisticsService,
   submissionService?: SubmissionService,
+  submitterAccessService?: SubmitterAccessService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -44,6 +46,7 @@ export function createTestApp(
     ...(publicReadService !== undefined ? { publicReadService } : {}),
     ...(fixtureStatisticsService !== undefined ? { fixtureStatisticsService } : {}),
     ...(submissionService !== undefined ? { submissionService } : {}),
+    ...(submitterAccessService !== undefined ? { submitterAccessService } : {}),
   });
 }
 
