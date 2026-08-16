@@ -1,6 +1,4 @@
-import type { Pool } from 'pg';
-
-import { executeQuery, getDatabasePool } from '../../database';
+import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 import { isSubmitterApprovalState } from '../accounts/account';
 import { SubmitterAccessConflictError } from './submitter-access.errors';
 
@@ -19,16 +17,13 @@ interface SubmitterAccessRow {
   disabledAt: Date | null;
 }
 
-export function createSubmitterAccessRepository(pool?: Pool): SubmitterAccessRepository {
+export function createSubmitterAccessRepository(
+  executor: QueryExecutor = getDatabasePool(),
+): SubmitterAccessRepository {
   return {
     async requestAccess(accountId) {
-      const databasePool = pool ?? getDatabasePool();
-
-      // This conditional UPDATE is the concurrency guard. PostgreSQL re-checks
-      // the WHERE condition after waiting on a concurrently updated row, so
-      // only one request can transition an eligible account to pending.
       const updated = await executeQuery<SubmitterAccessRow>(
-        databasePool,
+        executor,
         `
           UPDATE app_user
           SET submitter_approval_state = 'pending'
@@ -53,7 +48,7 @@ export function createSubmitterAccessRepository(pool?: Pool): SubmitterAccessRep
       }
 
       const current = await executeQuery<SubmitterAccessRow>(
-        databasePool,
+        executor,
         `
           SELECT
             app_user_id::text AS "accountId",
