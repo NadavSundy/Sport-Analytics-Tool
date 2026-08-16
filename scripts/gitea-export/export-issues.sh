@@ -245,8 +245,14 @@ write_markdown_issue() {
 
   jq -r '
     def username($user):
-      if $user == null then "unknown"
-      else ($user.full_name // $user.login // "unknown")
+      if $user == null then
+        "unknown"
+      elif (($user.full_name // "") | length) > 0 then
+        $user.full_name
+      elif (($user.login // "") | length) > 0 then
+        $user.login
+      else
+        "unknown"
       end;
     def text_or($value; $fallback):
       if $value == null or $value == "" then $fallback else $value end;
@@ -258,7 +264,19 @@ write_markdown_issue() {
     "## #\($issue.number): \($issue.title)\n\n" +
     "- **State:** \($issue.state)\n" +
     "- **Author:** \(username($issue.user))\n" +
-    "- **Assignees:** \(joined_or([($issue.assignees // [])[] | username(.)]; "None"))\n" +
+    "- **Assignees:** \(joined_or([
+      (
+        if (($issue.assignees // []) | length) > 0 then
+          $issue.assignees[]
+        elif $issue.assignee != null then
+          $issue.assignee
+        else
+          empty
+        end
+      )
+      | username(.)
+    ]; "None"))\n" +
+    
     "- **Labels:** \(joined_or([($issue.labels // [])[] | .name]; "None"))\n" +
     "- **Milestone:** \(if $issue.milestone == null then "None" else $issue.milestone.title end)\n" +
     "- **Created:** \($issue.created_at // "Unknown")\n" +
