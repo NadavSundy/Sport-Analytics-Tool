@@ -6,6 +6,8 @@ import {
   competitorResponseSchema,
   fixtureCollectionResponseSchema,
   fixtureResponseSchema,
+  fixtureStatisticResponseSchema,
+  fixtureStatisticsResponseSchema,
   participantCollectionResponseSchema,
   participantResponseSchema,
   seasonCollectionResponseSchema,
@@ -13,6 +15,8 @@ import {
   type Competition,
   type Competitor,
   type Fixture,
+  type FixtureStatistic,
+  type FixtureStatistics,
   type PaginationMetadata,
   type Participant,
   type Season,
@@ -111,6 +115,20 @@ export const publicReadApi = {
     return requestPublicApi<{ data: Fixture }>(
       `/fixtures/${encodeURIComponent(fixtureId)}`,
       fixtureResponseSchema,
+      signal,
+    );
+  },
+  getFixtureStatistics(fixtureId: string, signal?: AbortSignal) {
+    return requestPublicApi<{ data: FixtureStatistics }>(
+      `/fixtures/${encodeURIComponent(fixtureId)}/statistics`,
+      fixtureStatisticsResponseSchema,
+      signal,
+    );
+  },
+  getFixtureStatistic(fixtureId: string, statisticId: string, signal?: AbortSignal) {
+    return requestPublicApi<{ data: FixtureStatistic }>(
+      `/fixtures/${encodeURIComponent(fixtureId)}/statistics/${encodeURIComponent(statisticId)}?includeContributors=true`,
+      fixtureStatisticResponseSchema,
       signal,
     );
   },
