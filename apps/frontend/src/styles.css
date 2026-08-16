@@ -438,6 +438,81 @@ main {
   overflow-wrap: anywhere;
 }
 
+.account-deletion {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  border: 1px solid var(--colour-error);
+  border-radius: 6px;
+  background: var(--colour-error-soft);
+}
+
+.account-deletion h2 {
+  max-width: none;
+  font-size: 1.75rem;
+}
+
+.account-deletion > p:not(.eyebrow, .auth-error) {
+  max-width: 40rem;
+  margin: 1rem 0 0;
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.account-deletion__form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.account-deletion__acknowledgement {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  line-height: 1.5;
+}
+
+.account-deletion__acknowledgement input {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+}
+
+.account-deletion__confirmation {
+  display: grid;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.account-deletion__confirmation input {
+  width: min(100%, 20rem);
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  font: inherit;
+}
+
+.account-deletion input:focus-visible,
+.button--danger:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 3px;
+}
+
+.button--danger {
+  justify-self: start;
+  border-color: var(--colour-error);
+  background: var(--colour-error);
+  color: #fff;
+}
+
+.account-deletion__status {
+  margin: 1rem 0 0;
+  font-weight: 600;
+}
+
 .submission-page {
   min-height: 38rem;
   padding-bottom: 5rem;
@@ -1342,6 +1417,16 @@ h3 {
 
   .auth-card {
     padding: 2rem 1.25rem;
+  }
+
+  .account-deletion {
+    margin-inline: -0.5rem;
+    padding: 1.25rem;
+  }
+
+  .account-deletion .button--danger,
+  .account-deletion__confirmation input {
+    width: 100%;
   }
 
   .hero::before {

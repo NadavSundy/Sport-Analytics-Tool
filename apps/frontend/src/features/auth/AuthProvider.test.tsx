@@ -147,7 +147,7 @@ describe('AuthProvider', () => {
     const { client } = createAuthClient(Promise.resolve({ data: { session: null } }));
 
     function AuthActionsProbe() {
-      const { signInWithGoogle, signOut } = useAuth();
+      const { clearLocalSession, signInWithGoogle, signOut } = useAuth();
 
       return (
         <>
@@ -156,6 +156,9 @@ describe('AuthProvider', () => {
           </button>
           <button type="button" onClick={() => void signOut()}>
             End session
+          </button>
+          <button type="button" onClick={() => void clearLocalSession()}>
+            Clear local session
           </button>
         </>
       );
@@ -169,6 +172,7 @@ describe('AuthProvider', () => {
 
     screen.getByRole('button', { name: 'Authenticate' }).click();
     screen.getByRole('button', { name: 'End session' }).click();
+    screen.getByRole('button', { name: 'Clear local session' }).click();
 
     await waitFor(() =>
       expect(client.signInWithOAuth).toHaveBeenCalledWith({
@@ -176,6 +180,8 @@ describe('AuthProvider', () => {
         options: { redirectTo: `${window.location.origin}/auth/callback` },
       }),
     );
-    expect(client.signOut).toHaveBeenCalledOnce();
+    expect(client.signOut).toHaveBeenCalledTimes(2);
+    expect(client.signOut).toHaveBeenCalledWith();
+    expect(client.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 });
