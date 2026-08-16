@@ -1,12 +1,5 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
-
-export type AccountDeletionState =
-  | 'active'
-  | 'auth_pending'
-  | 'auth_failed'
-  | 'finalization_pending'
-  | 'finalization_failed'
-  | 'deleted';
+import { isAccountDeletionState, type AccountDeletionState } from '../accounts/account';
 
 export interface PreparedAccountDeletion {
   authSubject: string;
@@ -24,17 +17,6 @@ export interface AccountDeletionRepository {
 interface DeletionStateRow {
   authSubject: string;
   state: string;
-}
-
-function isAccountDeletionState(value: string): value is AccountDeletionState {
-  return [
-    'active',
-    'auth_pending',
-    'auth_failed',
-    'finalization_pending',
-    'finalization_failed',
-    'deleted',
-  ].includes(value);
 }
 
 function readDeletionState(row: DeletionStateRow | undefined): PreparedAccountDeletion {

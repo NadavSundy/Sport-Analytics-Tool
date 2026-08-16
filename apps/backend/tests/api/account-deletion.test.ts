@@ -88,6 +88,27 @@ describe('DELETE /api/v1/account', () => {
     });
   });
 
+  it('allows the owner to retry a disabled deletion-pending account', async () => {
+    const deleteAccount = vi.fn<AccountDeletionService['deleteAccount']>().mockResolvedValue({
+      data: { status: 'deleted', retainedCricketData: true },
+    });
+    const synchronizeAccount: SynchronizeAccount = async () =>
+      createTestAccount({
+        accountId: '42',
+        subject: 'account-owner',
+        disabled: true,
+        deletionState: 'auth_failed',
+      });
+
+    await request(appWithDeletionService({ deleteAccount }, undefined, synchronizeAccount))
+      .delete('/api/v1/account')
+      .set('Authorization', 'Bearer valid-test-token')
+      .send({ confirmation: 'DELETE' })
+      .expect(200);
+
+    expect(deleteAccount).toHaveBeenCalledOnce();
+  });
+
   it('returns a safe recent-authentication requirement', async () => {
     const service: AccountDeletionService = {
       deleteAccount: vi.fn().mockRejectedValue(new RecentAuthenticationRequiredError()),

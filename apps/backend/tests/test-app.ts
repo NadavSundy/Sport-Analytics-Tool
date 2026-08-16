@@ -31,6 +31,7 @@ const synchronizeTestAccount: SynchronizeAccount = async (identity) => ({
   approvalState: 'not_requested',
   competitionIds: [],
   disabled: false,
+  deletionState: 'active',
 });
 
 const requestTestSubmitterAccess: SubmitterAccessService = {
@@ -85,6 +86,7 @@ export function createTestAccount(overrides: Partial<ApplicationAccount> = {}): 
     approvalState: 'not_requested',
     competitionIds: [],
     disabled: false,
+    deletionState: 'active',
     ...overrides,
   };
 }

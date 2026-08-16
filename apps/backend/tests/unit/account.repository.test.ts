@@ -6,7 +6,7 @@ import { hashAuthenticationSubject } from '../../src/modules/accounts/account-su
 function createExecutor(row: Record<string, unknown>): QueryExecutor {
   return {
     query: vi.fn().mockResolvedValue({
-      rows: [row],
+      rows: [{ deletionState: 'active', ...row }],
       rowCount: 1,
       command: 'SELECT',
       oid: 0,
@@ -52,6 +52,7 @@ describe('application account repository', () => {
       approvalState: 'approved',
       competitionIds: ['7', '9'],
       disabled: false,
+      deletionState: 'active',
     });
   });
   test.each(['not_requested', 'pending', 'approved', 'rejected'] as const)(
@@ -67,6 +68,7 @@ describe('application account repository', () => {
             approvalState,
             competitionIds: [],
             disabledAt: null,
+            deletionState: 'active',
           },
         ],
         rowCount: 1,
@@ -142,6 +144,7 @@ describe('application account repository', () => {
       approvalState: 'not_requested',
       competitionIds: [],
       disabledAt: new Date('2026-08-16T12:00:00.000Z'),
+      deletionState: 'deleted',
     });
 
     const account = await synchronizeApplicationAccount(
@@ -156,6 +159,7 @@ describe('application account repository', () => {
       subject: 'deleted:tombstone',
       displayName: null,
       disabled: true,
+      deletionState: 'deleted',
     });
   });
 });

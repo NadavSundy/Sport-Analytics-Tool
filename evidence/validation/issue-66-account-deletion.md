@@ -30,7 +30,7 @@ identity, shared development database, or production system was mutated.
 - repository structure and Prettier formatting: passed;
 - backend, frontend, and shared-contract lint and type checking: passed;
 - backend unit tests: 41 passed in 9 files;
-- backend API tests: 49 passed in 8 files;
+- backend API tests: 50 passed in 8 files, including a disabled deletion-pending retry;
 - frontend tests: 46 passed in 7 files;
 - shared-contract tests: 53 passed in 5 files;
 - OpenAPI lint: passed; and

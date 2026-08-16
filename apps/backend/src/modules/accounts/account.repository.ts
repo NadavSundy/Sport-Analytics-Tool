@@ -1,6 +1,11 @@
 import type { VerifiedIdentity } from '../../auth/supabase-auth';
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
-import { isApplicationRole, isSubmitterApprovalState, type ApplicationAccount } from './account';
+import {
+  isAccountDeletionState,
+  isApplicationRole,
+  isSubmitterApprovalState,
+  type ApplicationAccount,
+} from './account';
 import { hashAuthenticationSubject } from './account-subject';
 
 interface ApplicationAccountRow {
@@ -11,6 +16,7 @@ interface ApplicationAccountRow {
   approvalState: string;
   competitionIds: string[];
   disabledAt: Date | null;
+  deletionState: string;
 }
 
 export async function synchronizeApplicationAccount(
@@ -28,7 +34,8 @@ export async function synchronizeApplicationAccount(
           display_name,
           application_role,
           submitter_approval_state,
-          disabled_at
+          disabled_at,
+          deletion_state
         FROM app_user
         WHERE auth_provider = $1
           AND deleted_auth_subject_hash = $4
@@ -60,7 +67,8 @@ export async function synchronizeApplicationAccount(
           display_name,
           application_role,
           submitter_approval_state,
-          disabled_at
+          disabled_at,
+          deletion_state
       ),
       resolved_account AS (
         SELECT * FROM deleted_account
@@ -78,7 +86,8 @@ export async function synchronizeApplicationAccount(
             FILTER (WHERE scope.competition_id IS NOT NULL),
           ARRAY[]::text[]
         ) AS "competitionIds",
-        account.disabled_at AS "disabledAt"
+        account.disabled_at AS "disabledAt",
+        account.deletion_state AS "deletionState"
       FROM resolved_account account
       LEFT JOIN submitter_competition_scope scope
         ON scope.app_user_id = account.app_user_id
@@ -88,7 +97,8 @@ export async function synchronizeApplicationAccount(
         account.display_name,
         account.application_role,
         account.submitter_approval_state,
-        account.disabled_at
+        account.disabled_at,
+        account.deletion_state
     `,
     ['supabase', identity.uid, identity.displayName ?? null, subjectHash],
   );
@@ -107,6 +117,10 @@ export async function synchronizeApplicationAccount(
     throw new Error('Application account has an unsupported approval state');
   }
 
+  if (!isAccountDeletionState(account.deletionState)) {
+    throw new Error('Application account has an unsupported deletion state');
+  }
+
   return {
     accountId: account.accountId,
     subject: account.subject,
@@ -115,5 +129,6 @@ export async function synchronizeApplicationAccount(
     approvalState: account.approvalState,
     competitionIds: account.competitionIds,
     disabled: account.disabledAt !== null,
+    deletionState: account.deletionState,
   };
 }

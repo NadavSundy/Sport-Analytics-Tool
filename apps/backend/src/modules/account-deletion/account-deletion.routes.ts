@@ -15,7 +15,9 @@ export function createAccountDeletionRouter(
 
   router.delete(
     '/account',
-    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireAuthentication(verifyAccessToken, synchronizeAccount, {
+      allowDisabledAccount: (account) => account.deletionState !== 'active',
+    }),
     createAccountDeletionController(service),
   );
 

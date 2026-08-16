@@ -50,7 +50,7 @@ export function createAccountDeletionService(
 ): AccountDeletionService {
   return {
     async deleteAccount(account, identity) {
-      if (identity.uid !== account.subject) {
+      if (identity.uid !== account.subject && account.deletionState !== 'deleted') {
         throw new Error('Authenticated identity does not own the application account');
       }
 

@@ -15,6 +15,7 @@ const account: ApplicationAccount = {
   approvalState: 'approved',
   competitionIds: ['7'],
   disabled: false,
+  deletionState: 'active',
 };
 const recentIdentity: VerifiedIdentity = {
   uid: 'supabase-user-42',
@@ -160,8 +161,14 @@ describe('account deletion service', () => {
   test('treats an already deleted account as an idempotent success', async () => {
     const repo = repository('deleted');
     const service = createAccountDeletionService(deleteAuthUser, repo, () => now);
+    const deletedAccount: ApplicationAccount = {
+      ...account,
+      subject: 'deleted:tombstone',
+      disabled: true,
+      deletionState: 'deleted',
+    };
 
-    await expect(service.deleteAccount(account, recentIdentity)).resolves.toEqual({
+    await expect(service.deleteAccount(deletedAccount, recentIdentity)).resolves.toEqual({
       data: { status: 'deleted', retainedCricketData: true },
     });
     expect(deleteAuthUser).not.toHaveBeenCalled();
