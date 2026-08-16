@@ -25,7 +25,7 @@ export function requireAdministrator(): RequestHandler {
       return;
     }
 
-    if (account.role !== 'administrator') {
+    if (account.role !== 'admin') {
       rejectAuthorization(response);
       return;
     }
@@ -34,7 +34,7 @@ export function requireAdministrator(): RequestHandler {
   };
 }
 
-export function requireApprovedSubmitter(): RequestHandler {
+export function requireSubmitter(): RequestHandler {
   return (_request, response, next) => {
     let account: ApplicationAccount;
 
@@ -45,7 +45,7 @@ export function requireApprovedSubmitter(): RequestHandler {
       return;
     }
 
-    if (account.approvalState !== 'approved') {
+    if (account.role !== 'submitter' && account.role !== 'admin') {
       rejectAuthorization(response);
       return;
     }

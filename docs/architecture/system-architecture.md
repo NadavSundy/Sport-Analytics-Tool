@@ -150,7 +150,7 @@ Its provider has not yet been selected.
 | Express backend (`apps/backend`)        | Own `/api/v1`, authoritative validation, authentication middleware, role and scope checks, event ingestion, derivation orchestration, queries, exports, external integrations, audit logs, and safe error responses.                                    | Basic; health, current-profile, and public-read endpoints exist; later domain modules are planned.           |
 | Shared contracts (`packages/contracts`) | Hold versioned request/response schemas and TypeScript types shared by the applications. It contains no secrets, database access, or authorisation decisions.                                                                                           | Basic; health contract exists and domain contracts are planned.                                              |
 | Supabase Auth                           | Manage Google OAuth and identity lifecycle flows; issue tokens that the backend verifies. It proves identity but grants no application permission.                                                                                                      | Basic; selected and backend verification is implemented.                                                     |
-| Backend authorisation                   | Map the verified provider subject to `app_user`, enforce account status, application role, approved-submitter state, and scoped grants on every protected route.                                                                                        | Basic; account synchronization, profile, administrator, submitter, and competition policies are implemented. |
+| Backend authorisation                   | Map the verified provider subject to `app_user`, enforce account status, one of the `viewer`, `submitter`, or `admin` roles, and scoped grants on every protected route.                                                                                | Basic; account synchronization, profile, administrator, submitter, and competition policies are implemented. |
 | PostgreSQL                              | Store identity mappings, grants, reference data, submissions, immutable event revisions, review and correction history, statistic definitions/results, export metadata, and audit records. Enforce integrity with constraints and transactions.         | Basic; hosted connection and event model are approved, full migrations are planned.                          |
 | Submission and validation service       | Accept manual JSON and file submissions, identify duplicates, apply versioned structural and cricket-domain rules, normalise source data, and produce actionable validation results.                                                                    | Basic.                                                                                                       |
 | Derivation service                      | Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.                                                                                  | Basic for required statistics; versioned/custom definitions are Advanced.                                    |
@@ -168,31 +168,32 @@ The minimum target model combines role-based access control with scoped grants. 
 remain subject to group approval, but the capabilities and separation of duties below should
 be preserved.
 
-| Actor              | Typical permissions                                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public viewer      | Read published fixtures, statistics, and public dataset-release metadata.                                                                          |
-| Registered user    | Public-viewer access plus account functions and their own submission history where applicable.                                                     |
-| Approved submitter | Create submissions only within explicit competition, season, and optionally fixture grants; view their own validation results; submit corrections. |
-| Reviewer           | Inspect validation evidence and accept or reject submissions within assigned scope; cannot silently rewrite source events.                         |
-| Administrator      | Approve or suspend submitters, manage roles and scoped grants, and audit decisions. Administrative actions are themselves audited.                 |
-| API consumer       | Read only the endpoints and datasets allowed by its API credential and quota; it receives no user or submission privilege by default.              |
+| Actor           | Typical permissions                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public viewer   | Read published fixtures, statistics, and public dataset-release metadata.                                                                          |
+| Registered user | Public-viewer access plus account functions and their own submission history where applicable.                                                     |
+| Submitter       | Create submissions only within explicit competition, season, and optionally fixture grants; view their own validation results; submit corrections. |
+| Reviewer        | Inspect validation evidence and accept or reject submissions within assigned scope; cannot silently rewrite source events.                         |
+| Administrator   | Approve or suspend submitters, manage roles and scoped grants, and audit decisions. Administrative actions are themselves audited.                 |
+| API consumer    | Read only the endpoints and datasets allowed by its API credential and quota; it receives no user or submission privilege by default.              |
 
-An approved submitter is not just a role. The backend must require all of the following:
+A submission-capable account must satisfy all of the following:
 
 ```text
 verified identity
 AND active application account
-AND approved-submitter capability
+AND application role = submitter OR admin
 AND active scoped grant covering the target competition/season/fixture
 AND route-specific permission
 ```
 
-The implemented persistence foundation extends `app_user` with submitter approval state and
-last-authenticated time, plus `submitter_competition_scope` grants. Approval-management work may
-later add approver, reason, revocation, and expiry audit fields without changing the route-policy
-boundary. Denied checks return `403 Forbidden`; missing, invalid, expired, or revoked identity
-tokens return `401 Unauthorized`. The frontend may hide unavailable actions for usability, but
-frontend state is never an authorisation control.
+The implemented persistence foundation extends `app_user` with a three-value application role and
+last-authenticated time, plus `submitter_competition_scope` grants. The older submitter-approval
+state remains only as deprecated request-workflow data. Approval-management work may later add
+approver, reason, revocation, and expiry audit fields without changing the route-policy boundary.
+Denied checks return `403 Forbidden`; missing, invalid, expired, or revoked identity tokens return
+`401 Unauthorized`. The frontend may hide unavailable actions for usability, but frontend state is
+never an authorisation control.
 
 ## 6. Authentication and authorisation flow
 
@@ -213,7 +214,7 @@ sequenceDiagram
         API-->>UI: 401 Unauthorized
     else Verified provider identity
         Auth-->>API: Stable provider subject
-        API->>DB: Upsert app_user; load status, role, approval, and scoped grants
+        API->>DB: Upsert app_user; load status, role, and scoped grants
         alt Account or permission check fails
             API-->>UI: 403 Forbidden
         else Route and resource scope allowed
@@ -364,11 +365,11 @@ not health checks, historical statistics, or unrelated API routes.
 
 ## 9. Basic, Intermediate, and Advanced evolution
 
-| Tier         | Architecture need                                                                                                                                                                                                                                                                                                                               | Completion signal                                                                                                                                                       |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Basic        | Separate responsive frontend and handwritten versioned backend; PostgreSQL persistence; managed identity; backend roles and approved-submitter scopes; event/file submission; layered validation; traceable corrections; required derived statistics; one external integration; small exports; automated tests; CI/CD and public documentation. | A user can submit in-scope T20 events, see validation outcomes, and retrieve independently verified statistics and a documented dataset/API from deployed applications. |
-| Intermediate | Durable background jobs for batch ingestion, large recalculation and exports; object storage; job status and retries; caching of measured hot reads; richer review workflow; API credentials/quotas; observability, backup/restore, and performance testing.                                                                                    | Large real-data operations complete outside HTTP timeouts, survive retries without duplication, expose useful status, and meet agreed performance/recovery targets.     |
-| Advanced     | Live event ingestion and correction handling; versioned custom statistic definitions; dependency-aware incremental recomputation; safe expression limits; change feeds/release differences; stronger scaling and cache invalidation.                                                                                                            | Live corrections converge on auditable results, and approved custom definitions calculate reproducibly without arbitrary code execution or unbounded resource use.      |
+| Tier         | Architecture need                                                                                                                                                                                                                                                                                                                                  | Completion signal                                                                                                                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Basic        | Separate responsive frontend and handwritten versioned backend; PostgreSQL persistence; managed identity; backend roles and submitter competition scopes; event/file submission; layered validation; traceable corrections; required derived statistics; one external integration; small exports; automated tests; CI/CD and public documentation. | A user can submit in-scope T20 events, see validation outcomes, and retrieve independently verified statistics and a documented dataset/API from deployed applications. |
+| Intermediate | Durable background jobs for batch ingestion, large recalculation and exports; object storage; job status and retries; caching of measured hot reads; richer review workflow; API credentials/quotas; observability, backup/restore, and performance testing.                                                                                       | Large real-data operations complete outside HTTP timeouts, survive retries without duplication, expose useful status, and meet agreed performance/recovery targets.     |
+| Advanced     | Live event ingestion and correction handling; versioned custom statistic definitions; dependency-aware incremental recomputation; safe expression limits; change feeds/release differences; stronger scaling and cache invalidation.                                                                                                               | Live corrections converge on auditable results, and approved custom definitions calculate reproducibly without arbitrary code execution or unbounded resource use.      |
 
 Promotion to a later tier is evidence-based. Batch processing is introduced when request-time
 work exceeds agreed limits; caching is introduced after profiling; live ingestion depends on a
@@ -462,7 +463,7 @@ Planned outcomes include:
 - maintain the agreed architecture and roadmap through #38 and #73;
 - preserve the separate React frontend and handwritten Express backend;
 - use Supabase Auth with Google OAuth for managed identity;
-- implement application accounts, roles, approved-submitter status and scoped permissions;
+- implement application accounts, `viewer | submitter | admin` roles and scoped permissions;
 - implement repeatable PostgreSQL migrations and development seed data;
 - implement the approved cricket fixture and delivery-event model;
 - define the executable delivery-submission contract;
@@ -481,7 +482,7 @@ Planned outcomes include:
 - a deployed public user can browse a fixture and view its ordered events and derived
   statistics without signing in;
 - an administrator can approve a submitter and assign an appropriate scope;
-- an approved submitter can sign in and submit in-scope delivery events;
+- a user with the `submitter` role can sign in and submit in-scope delivery events;
 - invalid submissions receive useful structured rejection messages;
 - valid submissions are stored with provenance;
 - required fixture statistics are derived from accepted events;
@@ -670,7 +671,7 @@ statistics.
 - Add integration and end-to-end tests for 401, 403, invalid, duplicate, correction, accepted,
   and recalculated paths.
 
-**Exit evidence:** a deployed approved submitter can submit a scoped fixture, invalid data is
+**Exit evidence:** a deployed submitter can submit a scoped fixture, invalid data is
 rejected safely, accepted events produce verified statistics, and public users can retrieve
 the result through frontend and API.
 
@@ -728,7 +729,7 @@ undocumented critical limitation.
 | Supabase Auth compliance confirmation             | The repository and ADR-004 use Supabase Auth with Google OAuth, but the written lecturer approval currently recorded in the repository explicitly covers Supabase-hosted PostgreSQL and does not separately confirm Supabase Auth. | Obtain written stakeholder or lecturer confirmation that Supabase Auth is acceptable for managed authentication. Continue using the provider-neutral application identity model and do not introduce Firebase alongside Supabase Auth. | Before production authentication is enabled or account and role functionality is considered complete. |
 | Required statistic catalogue (#37)                | Derivation contracts, provenance, indexes, and acceptance tests cannot be finalised.                                                                                                                                               | Approve names, formulas, scopes, rounding, tie/null rules, super-over handling, and reference examples.                                                                                                                                | Sprint 1; before Sprint 2 derivation.                                                                 |
 | Competition scope and storage volume              | The measured corpus contains 3,193,996 deliveries; the selected database free plan may be too small and the Frankfurt database adds about 150 ms network latency from Johannesburg.                                                | Benchmark the real schema/indexes and representative queries; then pay, reduce scope, move provider/region, or separate large objects. Record an ADR.                                                                                  | Before bulk ingestion.                                                                                |
-| Approval administration and review policy         | The deny-by-default role, approval, and competition checks are implemented, but over-broad grant management or self-approval could still corrupt trusted data.                                                                     | Define approver separation, grant reason/audit fields, expiry/revocation, and auto-accept versus review rules; preserve the tested deny-by-default route policies.                                                                     | Before enabling submissions.                                                                          |
+| Role administration and review policy             | The deny-by-default role and competition checks are implemented, but over-broad grant management or self-promotion could still corrupt trusted data.                                                                               | Define approver separation, grant reason/audit fields, expiry/revocation, and auto-accept versus review rules; preserve the tested deny-by-default route policies.                                                                     | Before enabling submissions.                                                                          |
 | Object storage and retention                      | Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.                                                                                                          | Select a provider after measurement; define size/type limits, malware approach, signed links, retention, licence, and deletion behaviour.                                                                                              | Before large/public uploads or exports.                                                               |
 | Runtime external API is not selected              | The mandatory integration may have inadequate T20 coverage, quotas, licence, reliability, or correction semantics.                                                                                                                 | Compare candidates using a thin adapter proof; preserve fixtures for offline tests and ensure graceful degradation.                                                                                                                    | Sprint 1 selection; Sprint 2 implementation.                                                          |
 | Deployment workflows do not match monorepo paths  | Current filters and package/workspace references use `frontend`/`backend` rather than `apps/frontend`/`apps/backend`, so main changes may not deploy correctly.                                                                    | Correct the workflows and prove them with deployment plus smoke-test evidence.                                                                                                                                                         | Sprint 1.                                                                                             |

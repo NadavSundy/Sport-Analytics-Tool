@@ -210,6 +210,7 @@ describe('public application and authentication interface', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
     expect(screen.getByText('person@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign Out' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Submit Events' })).not.toBeInTheDocument();
   });
 
   it('handles OAuth cancellation without exposing provider details', async () => {

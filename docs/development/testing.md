@@ -19,13 +19,14 @@ npm run check
 ## Account and authorization coverage
 
 The backend API suite covers missing, invalid and expired credentials; account synchronization;
-the `/api/v1/auth/me` profile; disabled accounts; viewers; approved in-scope and out-of-scope
-submitters; administrators; and anonymous public reads.
+the `/api/v1/auth/me` profile; disabled accounts; viewers; in-scope and out-of-scope submitters;
+submitters denied from admin routes; admins allowed through administrator and permitted submission
+policies; attempted role self-promotion; and anonymous public reads.
 
 The PostgreSQL integration suite additionally verifies the migrated application-account schema:
 
 - provider-neutral identity uniqueness;
-- allowed role and approval-state constraints;
+- the `viewer | submitter | admin` role constraint and deprecated request-state constraint;
 - approval and revocation transitions;
 - automatic application-account update timestamps;
 - competition-grant uniqueness and foreign keys;
@@ -56,7 +57,7 @@ The submitter-access API and repository suites cover:
 - an authenticated application account creating a `pending` request;
 - the authenticated account being passed to the request service;
 - duplicate `pending` requests returning a conflict;
-- already-approved submitters returning a conflict;
+- accounts with the legacy `approved` request state returning a conflict;
 - eligible state changes being implemented as a conditional database update; and
 - unsupported persisted approval states failing closed.
 
@@ -109,7 +110,8 @@ The Account-page suite verifies the complete user-facing request workflow:
 - successful requests reload the persisted `pending` profile;
 - a remount restores `pending` without offering another request;
 - stale eligible views refresh after the backend reports an active-request conflict;
-- approved users receive submission access without a request action;
+- `submitter` and `admin` roles receive submission access without a request action;
+- a legacy `approved` request state on a viewer does not grant submission access;
 - rejected or revoked users receive a clear state and may request another review; and
 - malformed profiles and backend request failures produce safe, actionable feedback.
 
@@ -128,8 +130,9 @@ npm run test:e2e -- tests/e2e/submitter-access.spec.ts --workers=1
 
 ## Direct submission coverage
 
-The contract and API suites cover the versioned delivery schema, anonymous and unapproved users,
-in-scope and out-of-scope submitters, detailed invalid-event responses, the JSON payload limit, and
+The contract and API suites cover the versioned delivery schema, anonymous users and viewers,
+in-scope and out-of-scope submitters, permitted admin submission, detailed invalid-event responses,
+the JSON payload limit, and
 the per-account rate limit. PostgreSQL integration tests verify stored provenance, submitted order,
 duplicate event-ID rejection, and full rollback when a later event conflicts after an earlier insert.
 
@@ -148,9 +151,10 @@ The issue #51 verification record is in
 
 ## Submitter interface coverage
 
-The frontend suite covers anonymous redirection, persisted unapproved access, competition-scoped
-fixture selection, valid submissions, event- and field-specific validation results, invalid JSON,
-and backend failures. Browser tests additionally verify keyboard order, focus movement to results,
+The frontend suite covers anonymous redirection, role-denied viewers, submitter/admin role gates,
+competition-scoped fixture selection, valid submissions, event- and field-specific validation
+results, invalid JSON, and backend failures. Browser tests additionally verify keyboard order,
+focus movement to results,
 error association, narrow-screen overflow, and serious or critical Axe findings.
 
 Run the focused checks with:

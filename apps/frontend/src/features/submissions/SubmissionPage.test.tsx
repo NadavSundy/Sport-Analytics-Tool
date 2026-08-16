@@ -1,4 +1,4 @@
-import type { CurrentUserProfile } from '@sport-analytics/contracts';
+import type { ApplicationRole, CurrentUserProfile } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -116,6 +116,7 @@ function useSystemTheme() {
 }
 
 function currentUser(
+  role: ApplicationRole,
   approvalState: CurrentUserProfile['approvalState'],
   competitionIds: string[] = [],
 ) {
@@ -124,7 +125,7 @@ function currentUser(
       id: '17',
       subject: 'approved-user',
       displayName: 'Submitter User',
-      role: 'viewer',
+      role,
       approvalState,
       competitionIds,
     },
@@ -135,7 +136,7 @@ function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null } });
 }
 
-describe('approved-submitter event submission page', () => {
+describe('role-gated event submission page', () => {
   beforeEach(() => {
     window.localStorage.clear();
     useSystemTheme();
@@ -158,15 +159,26 @@ describe('approved-submitter event submission page', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('blocks a signed-in user whose persisted approval is pending', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(currentUser('pending'));
+  it('blocks a viewer whose submitter request is pending', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(currentUser('viewer', 'pending'));
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
 
-    expect(await screen.findByText('Submitter approval required')).toBeInTheDocument();
+    expect(await screen.findByText('Submitter role required')).toBeInTheDocument();
     expect(screen.getByText(/pending approval/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Submit events' })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not treat a legacy approved viewer as a submitter', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(currentUser('viewer', 'approved', ['5']));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+
+    expect(await screen.findByText('Submitter role required')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Fixture')).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -192,7 +204,7 @@ describe('approved-submitter event submission page', () => {
 
     expect(
       screen.getByText(
-        'Your submitter approval and fixture scope could not be loaded. Please try again.',
+        'Your application role and fixture scope could not be loaded. Please try again.',
       ),
     ).toBeInTheDocument();
 
@@ -210,7 +222,7 @@ describe('approved-submitter event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('approved', ['5', '6']));
+        return Promise.resolve(currentUser('submitter', 'approved', ['5', '6']));
       }
       if (url.includes('competitionId=5')) {
         return Promise.resolve(fixtures([fixture, outsideScopeFixture]));
@@ -237,7 +249,7 @@ describe('approved-submitter event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('approved', ['5']));
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
@@ -298,7 +310,7 @@ describe('approved-submitter event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('approved', ['5']));
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
@@ -348,7 +360,7 @@ describe('approved-submitter event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('approved', ['5']));
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));

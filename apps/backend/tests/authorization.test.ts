@@ -6,8 +6,8 @@ import { errorHandler } from '../src/middleware/error-handler';
 import { requireAuthentication } from '../src/middleware/require-authentication';
 import {
   requireAdministrator,
-  requireApprovedSubmitter,
   requireCompetitionScope,
+  requireSubmitter,
 } from '../src/middleware/require-authorization';
 import type { ApplicationAccount } from '../src/modules/accounts/account';
 import type { SynchronizeAccount } from '../src/modules/accounts/account.service';
@@ -26,14 +26,14 @@ function createAuthorizationTestApp(
   const authenticate = requireAuthentication(verifyAccessToken, synchronizeAccount);
   const app = express();
 
-  app.get('/administrator', authenticate, requireAdministrator(), (_request, response) => {
+  app.get('/admin', authenticate, requireAdministrator(), (_request, response) => {
     response.sendStatus(204);
   });
 
   app.post(
     '/upload/:competitionId',
     authenticate,
-    requireApprovedSubmitter(),
+    requireSubmitter(),
     requireCompetitionScope((request_) => request_.params.competitionId),
     (_request, response) => {
       response.sendStatus(204);
@@ -60,8 +60,12 @@ describe('role and scope authorization', () => {
     expect(response.body.error.code).toBe('UNAUTHORIZED');
   });
 
-  test('rejects a normal signed-in user from an upload route', async () => {
-    const response = await request(createAuthorizationTestApp(createTestAccount()))
+  test('rejects a viewer from an upload route even when legacy approval is approved', async () => {
+    const response = await request(
+      createAuthorizationTestApp(
+        createTestAccount({ approvalState: 'approved', competitionIds: ['7'] }),
+      ),
+    )
       .post('/upload/7')
       .set('Authorization', 'Bearer viewer-token')
       .expect(403);
@@ -69,9 +73,9 @@ describe('role and scope authorization', () => {
     expect(response.body.error.code).toBe('FORBIDDEN');
   });
 
-  test('allows an approved submitter within an assigned competition scope', async () => {
+  test('allows a submitter within an assigned competition scope', async () => {
     const account = createTestAccount({
-      approvalState: 'approved',
+      role: 'submitter',
       competitionIds: ['7'],
     });
 
@@ -81,9 +85,9 @@ describe('role and scope authorization', () => {
       .expect(204);
   });
 
-  test('rejects an approved submitter outside an assigned competition scope', async () => {
+  test('rejects a submitter outside an assigned competition scope', async () => {
     const account = createTestAccount({
-      approvalState: 'approved',
+      role: 'submitter',
       competitionIds: ['8'],
     });
 
@@ -100,21 +104,41 @@ describe('role and scope authorization', () => {
     });
   });
 
-  test('allows an administrator through an administrator-only route', async () => {
-    const account = createTestAccount({ role: 'administrator' });
+  test('allows an admin through an admin-only route', async () => {
+    const account = createTestAccount({ role: 'admin' });
 
     await request(createAuthorizationTestApp(account))
-      .get('/administrator')
-      .set('Authorization', 'Bearer administrator-token')
+      .get('/admin')
+      .set('Authorization', 'Bearer admin-token')
       .expect(204);
   });
 
-  test('rejects a non-administrator from an administrator-only route', async () => {
+  test('rejects a viewer from an admin-only route', async () => {
     const response = await request(createAuthorizationTestApp(createTestAccount()))
-      .get('/administrator')
+      .get('/admin')
       .set('Authorization', 'Bearer viewer-token')
       .expect(403);
 
     expect(response.body.error.code).toBe('FORBIDDEN');
+  });
+
+  test('rejects a submitter from an admin-only route', async () => {
+    const response = await request(
+      createAuthorizationTestApp(createTestAccount({ role: 'submitter' })),
+    )
+      .get('/admin')
+      .set('Authorization', 'Bearer submitter-token')
+      .expect(403);
+
+    expect(response.body.error.code).toBe('FORBIDDEN');
+  });
+
+  test('allows an admin to submit within an assigned competition scope', async () => {
+    const account = createTestAccount({ role: 'admin', competitionIds: ['7'] });
+
+    await request(createAuthorizationTestApp(account))
+      .post('/upload/7')
+      .set('Authorization', 'Bearer admin-token')
+      .expect(204);
   });
 });

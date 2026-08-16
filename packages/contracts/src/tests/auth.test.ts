@@ -1,10 +1,25 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  APPLICATION_ROLES,
+  applicationRoleSchema,
   currentUserProfileResponseSchema,
   submitterAccessRequestResponseSchema,
   submitterApprovalStateSchema,
 } from '../auth';
+
+describe('application role contract', () => {
+  test.each(APPLICATION_ROLES)('accepts the %s role', (role) => {
+    expect(applicationRoleSchema.parse(role)).toBe(role);
+  });
+
+  test.each(['administrator', 'approved_submitter', 'owner'])(
+    'rejects the unsupported %s role',
+    (role) => {
+      expect(applicationRoleSchema.safeParse(role).success).toBe(false);
+    },
+  );
+});
 
 describe('submitter approval state contract', () => {
   test.each(['not_requested', 'pending', 'approved', 'rejected'] as const)(
@@ -38,7 +53,7 @@ describe('current user profile response contract', () => {
     },
   );
 
-  test('accepts an approved submitter with competition scope', () => {
+  test('retains a legacy approved request state separately from the viewer role', () => {
     const result = currentUserProfileResponseSchema.safeParse({
       user: {
         id: '42',

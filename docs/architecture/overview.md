@@ -60,7 +60,7 @@ A background worker is shown as a future deployment boundary for batch imports, 
 
 ## Data flow
 
-1. An approved submitter uploads or sends event data to the backend API.
+1. An account with the `submitter` or `admin` role uploads or sends event data to the backend API.
 2. The backend authenticates the submitter and checks their authorised competition scope.
 3. The backend validates the payload against the versioned event schema.
 4. Valid data is staged or stored transactionally; invalid data returns actionable errors.

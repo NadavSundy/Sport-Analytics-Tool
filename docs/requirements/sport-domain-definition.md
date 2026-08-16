@@ -198,10 +198,10 @@ This is the inverse of §7, for traceability:
   which is keyed on the authentication provider and that provider's subject
   identifier rather than any provider-specific column (schema.md §4, §7
   decision #6).
-- The implemented minimum scope model authorises an approved submitter for explicit competitions
-  through `submitter_competition_scope`. A verified identity with no approved state or no matching
-  grant cannot pass upload-route policy. More granular date, season, or fixture grants remain a
-  future extension and must preserve this deny-by-default boundary.
+- The implemented minimum scope model authorises an account with the `submitter` or `admin` role
+  for explicit competitions through `submitter_competition_scope`. A verified identity with the
+  `viewer` role or no matching grant cannot pass upload-route policy. More granular date, season,
+  or fixture grants remain a future extension and must preserve this deny-by-default boundary.
 - Validation/review state (accepted, rejected, pending) is expected to live
   on `submission`, which already carries a status column; a richer
   reviewer-workflow (who reviewed, when, against which rule) is deferred

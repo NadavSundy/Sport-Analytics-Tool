@@ -5,7 +5,7 @@ directories include `auth`, `browse`, `statistics`, `submissions`, and `submitte
 statistics feature provides anonymous fixture totals, participant batting and bowling figures, and
 accepted-event calculation traces. The submitter-access feature provides persisted account status,
 request submission, stale-state refresh, and user feedback. The submission feature provides the
-approved-submitter access gate, scoped fixture selection, Basic delivery-event JSON editor, and
+`submitter`/`admin` role gate, scoped fixture selection, Basic delivery-event JSON editor, and
 structured result display. Suggested future feature directories include `datasets` and
 `api-consumers`.
 

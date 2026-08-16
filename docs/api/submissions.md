@@ -1,6 +1,7 @@
 # Direct event submissions
 
-`POST /api/v1/submissions` accepts JSON from an authenticated, approved submitter. The backend
+`POST /api/v1/submissions` accepts JSON from an authenticated account whose server-owned role is
+`submitter` or `admin`. The backend
 looks up the fixture's competition and compares it with the account's server-owned competition
 scope. Client-supplied roles or scope values are ignored.
 
@@ -67,7 +68,7 @@ and zero-based event-array position. A globally unique event UUID protects again
 or replay. If any event is invalid or conflicts, the transaction rolls back and stores neither the
 submission nor any of its events.
 
-Responses are `401` for missing or invalid authentication, `403` for unapproved or out-of-scope
+Responses are `401` for missing or invalid authentication, `403` for a viewer or out-of-scope
 accounts, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for contract or reference
 validation, and `429` after 30 requests from one account in 60 seconds. Validation details include a
 field path and `eventIndex` where applicable.
@@ -102,16 +103,16 @@ without discovering its faults one at a time.
 
 ### Response codes
 
-| Status | Code                    | Meaning                                                                                                              |
-| ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 400    | `INVALID_JSON`          | The request body is not valid JSON.                                                                                  |
-| 401    | `UNAUTHORIZED`          | Authentication is missing or could not be verified.                                                                  |
-| 403    | `FORBIDDEN`             | The account is authenticated but is not an approved submitter, or the fixture falls outside its competition scope.   |
-| 409    | `DUPLICATE_EVENT_ID`    | One or more event identifiers have already been accepted. The submission is a replay rather than an invalid payload. |
-| 413    | `PAYLOAD_TOO_LARGE`     | The request exceeds the 1 MB limit.                                                                                  |
-| 422    | `VALIDATION_FAILED`     | The submission is structurally or referentially invalid. See `details`.                                              |
-| 429    | `RATE_LIMIT_EXCEEDED`   | More than 30 requests from one account in 60 seconds. `Retry-After` gives the wait in seconds.                       |
-| 500    | `INTERNAL_SERVER_ERROR` | An unexpected failure. No detail is returned, and the cause is recorded server-side.                                 |
+| Status | Code                    | Meaning                                                                                                                  |
+| ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 400    | `INVALID_JSON`          | The request body is not valid JSON.                                                                                      |
+| 401    | `UNAUTHORIZED`          | Authentication is missing or could not be verified.                                                                      |
+| 403    | `FORBIDDEN`             | The account is authenticated but lacks the `submitter`/`admin` role, or the fixture falls outside its competition scope. |
+| 409    | `DUPLICATE_EVENT_ID`    | One or more event identifiers have already been accepted. The submission is a replay rather than an invalid payload.     |
+| 413    | `PAYLOAD_TOO_LARGE`     | The request exceeds the 1 MB limit.                                                                                      |
+| 422    | `VALIDATION_FAILED`     | The submission is structurally or referentially invalid. See `details`.                                                  |
+| 429    | `RATE_LIMIT_EXCEEDED`   | More than 30 requests from one account in 60 seconds. `Retry-After` gives the wait in seconds.                           |
+| 500    | `INTERNAL_SERVER_ERROR` | An unexpected failure. No detail is returned, and the cause is recorded server-side.                                     |
 
 ### Detail codes
 
