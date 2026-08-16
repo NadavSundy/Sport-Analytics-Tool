@@ -226,6 +226,14 @@ An `approved` submitter is also rejected with `409 Conflict` because no addition
 
 The state transition is performed with a conditional PostgreSQL update so that concurrent duplicate requests cannot both create a new active request.
 
+The signed-in Account page loads `/api/v1/auth/me` whenever it mounts and displays the persisted
+state. `not_requested` and `rejected` accounts receive the request action, `pending` accounts see an
+awaiting-review state without another action, and `approved` accounts receive a link to the scoped
+submission interface. The request action has explicit progress, success and error feedback. After a
+successful request, or a `409 Conflict` caused by a stale eligible view, the frontend reloads the
+current-user profile so refreshes and later authenticated sessions continue from server-owned
+state.
+
 Administrator approval and competition-scope assignment remain separate server-owned operations.
 
 Protected routes compose reusable middleware in this order:
@@ -497,7 +505,6 @@ This foundation intentionally does not implement:
 
 - final password-reset screens;
 - administrator approval-management routes and interfaces;
-- submitter access-request frontend interface;
 - event correction and file or batch upload interfaces;
 - season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;
@@ -523,3 +530,4 @@ with the assistance of Codex[GPT-5.6 Sol]. The protected event-submission journe
 with the assistance of Codex[GPT-5.6 Sol].
 The submitter access-request section was documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The account-deletion security and recovery flow was documented with the assistance of Codex[GPT-5].
+The submitter access-request frontend workflow was documented with the assistance of Codex[GPT-5].

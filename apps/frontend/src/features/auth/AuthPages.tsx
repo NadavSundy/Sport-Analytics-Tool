@@ -2,6 +2,7 @@ import type { AccountDeletionResponse } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
+import { SubmitterAccessPanel } from '../submitter-access/SubmitterAccessPanel';
 import { useAuth } from './AuthProvider';
 import { useAuthenticatedApiClient } from './useAuthenticatedApiClient';
 
@@ -298,6 +299,7 @@ export function AccountPage() {
                 <dd>{identity.email ?? 'Not available'}</dd>
               </div>
             </dl>
+            <SubmitterAccessPanel />
             <AccountDeletionForm />
           </>
         ) : (

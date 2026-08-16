@@ -81,6 +81,18 @@ http://localhost:5173
 
 The backend should normally be running at the same time.
 
+## Submitter access workflow
+
+After authentication, `/account` loads the current application profile from the handwritten
+backend. The page shows the persisted `not_requested`, `pending`, `approved`, or `rejected`
+submitter state rather than inferring permission from the Supabase identity.
+
+Eligible users can send a request through `POST /api/v1/submitter-access-requests`. The interface
+disables the action while it is in progress, reloads `/api/v1/auth/me` after success or a stale
+conflict, and does not offer another request while the persisted state is `pending` or `approved`.
+Approved accounts can continue to the scoped event-submission interface. The backend remains the
+authorisation boundary for every request and submission.
+
 ## Checks
 
 From the repository root:
@@ -139,5 +151,7 @@ Return to the repository root and run `npm ci` so the install matches the commit
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol]. The submitter access workflow section was updated with the assistance of
+Codex[GPT-5].
 The account-deletion interface behavior was documented with the assistance of Codex[GPT-5].

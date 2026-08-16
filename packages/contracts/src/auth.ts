@@ -49,9 +49,21 @@ export const accountDeletionResponseSchema = z
   })
   .strict();
 
+export const submitterAccessRequestResponseSchema = z
+  .object({
+    data: z
+      .object({
+        accountId: apiIdentifierSchema,
+        approvalState: z.literal('pending'),
+      })
+      .strict(),
+  })
+  .strict();
+
 export type ApplicationRole = z.infer<typeof applicationRoleSchema>;
 export type SubmitterApprovalState = z.infer<typeof submitterApprovalStateSchema>;
 export type CurrentUserProfile = z.infer<typeof currentUserProfileSchema>;
 export type CurrentUserProfileResponse = z.infer<typeof currentUserProfileResponseSchema>;
 export type AccountDeletionRequest = z.infer<typeof accountDeletionRequestSchema>;
 export type AccountDeletionResponse = z.infer<typeof accountDeletionResponseSchema>;
+export type SubmitterAccessRequestResponse = z.infer<typeof submitterAccessRequestResponseSchema>;

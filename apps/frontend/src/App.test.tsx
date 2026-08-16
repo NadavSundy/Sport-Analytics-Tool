@@ -31,6 +31,23 @@ function createSession(): Session {
   };
 }
 
+function currentUserResponse(approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected') {
+  return {
+    ok: true,
+    status: 200,
+    json: vi.fn().mockResolvedValue({
+      user: {
+        id: '17',
+        subject: 'user-123',
+        displayName: 'Example User',
+        role: 'viewer',
+        approvalState,
+        competitionIds: approvalState === 'approved' ? ['5'] : [],
+      },
+    }),
+  } as unknown as Response;
+}
+
 function createAuthClient(session: Session | null) {
   let listener: AuthStateListener | undefined;
   const client = {
@@ -195,6 +212,7 @@ describe('public application and authentication interface', () => {
   });
 
   it('recognises an authenticated callback and opens the account page', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     renderApp('/auth/callback', createSession());
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
@@ -235,7 +253,8 @@ describe('public application and authentication interface', () => {
     expect(screen.getByRole('link', { name: 'Return Home' })).toBeInTheDocument();
   });
 
-  it('updates to signed-in navigation and displays only session identity information', async () => {
+  it('updates to signed-in navigation and loads the application account status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     const session = createSession();
     const auth = renderApp('/account');
 
@@ -250,10 +269,14 @@ describe('public application and authentication interface', () => {
     expect(
       screen.queryByText(/administrator|approved submitter|role|grant/i),
     ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Request submitter access' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Delete account' })).toBeInTheDocument();
   });
 
   it('requires deliberate account-deletion confirmation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     renderApp('/account', createSession());
 
     const deleteButton = await screen.findByRole('button', {
@@ -287,7 +310,19 @@ describe('public application and authentication interface', () => {
     const signOut = new Promise<SignOutResult>((resolve) => {
       resolveSignOut = resolve;
     });
-    const fetchMock = vi.fn().mockReturnValue(request);
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+
+      if (path.endsWith('/auth/me')) {
+        return Promise.resolve(currentUserResponse('not_requested'));
+      }
+
+      if (path.endsWith('/account')) {
+        return request;
+      }
+
+      throw new Error(`Unexpected request: ${path}`);
+    });
     vi.stubGlobal('fetch', fetchMock);
     const auth = renderApp('/account', createSession());
     vi.mocked(auth.client.signOut).mockReturnValue(signOut);
@@ -305,8 +340,8 @@ describe('public application and authentication interface', () => {
     fireEvent.click(deleteButton);
 
     expect(screen.getByRole('button', { name: 'Deleting account…' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Deleting your account…');
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(screen.getByText('Deleting your account…')).toHaveAttribute('role', 'status');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:3000/api/v1/account',
       expect.objectContaining({ method: 'DELETE' }),
@@ -316,8 +351,9 @@ describe('public application and authentication interface', () => {
       resolveRequest(apiResponse(200, { data: { status: 'deleted', retainedCricketData: true } }));
     });
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Account deleted. Clearing this browser session…',
+    expect(screen.getByText('Account deleted. Clearing this browser session…')).toHaveAttribute(
+      'role',
+      'status',
     );
     expect(auth.client.signOut).toHaveBeenCalledWith({ scope: 'local' });
 
@@ -332,14 +368,26 @@ describe('public application and authentication interface', () => {
   it('announces a safe deletion error and allows retry', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        apiResponse(503, {
-          error: {
-            code: 'ACCOUNT_DELETION_INCOMPLETE',
-            message: 'provider details must not be displayed',
-          },
-        }),
-      ),
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+
+        if (path.endsWith('/auth/me')) {
+          return Promise.resolve(currentUserResponse('not_requested'));
+        }
+
+        if (path.endsWith('/account')) {
+          return Promise.resolve(
+            apiResponse(503, {
+              error: {
+                code: 'ACCOUNT_DELETION_INCOMPLETE',
+                message: 'provider details must not be displayed',
+              },
+            }),
+          );
+        }
+
+        throw new Error(`Unexpected request: ${path}`);
+      }),
     );
     renderApp('/account', createSession());
 
@@ -353,14 +401,15 @@ describe('public application and authentication interface', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Permanently delete account' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Your account is disabled and the operation can be retried safely.',
-    );
+    expect(
+      await screen.findByText(/Your account is disabled and the operation can be retried safely\./),
+    ).toHaveAttribute('role', 'alert');
     expect(screen.queryByText(/provider details/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Permanently delete account' })).toBeEnabled();
   });
 
   it('signs out through Supabase, returns home, and restores signed-out navigation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     type SignOutResult = Awaited<ReturnType<AuthClient['signOut']>>;
     let resolveSignOut!: (value: SignOutResult) => void;
     const pendingSignOut = new Promise<SignOutResult>((resolve) => {
@@ -391,6 +440,7 @@ describe('public application and authentication interface', () => {
   });
 
   it('shows a safe sign-out error and remains signed in when Supabase rejects the action', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     const auth = renderApp('/account', createSession());
     vi.mocked(auth.client.signOut).mockResolvedValue({
       error: new Error('token internals') as never,

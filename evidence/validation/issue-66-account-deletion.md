@@ -31,12 +31,13 @@ identity, shared development database, or production system was mutated.
 - backend, frontend, and shared-contract lint and type checking: passed;
 - backend unit tests: 41 passed in 9 files;
 - backend API tests: 50 passed in 8 files, including a disabled deletion-pending retry;
-- frontend tests: 46 passed in 7 files;
-- shared-contract tests: 53 passed in 5 files;
+- frontend tests: 53 passed in 8 files, including the account page with both deletion and
+  submitter-access controls;
+- shared-contract tests: 57 passed in 5 files;
 - OpenAPI lint: passed; and
 - contracts, backend, and frontend production builds: passed.
 
-The frontend production build reports the existing advisory that its approximately 535 kB
+The frontend production build reports the existing advisory that its approximately 539 kB
 minified JavaScript chunk exceeds Vite's 500 kB warning threshold. This is not an account-deletion
 failure.
 

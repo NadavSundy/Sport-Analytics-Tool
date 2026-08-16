@@ -99,12 +99,39 @@ Coverage includes:
 
 Run the focused checks with:
 
-````text
+```text
 npm run build --workspace=@sport-analytics/contracts
 npm run test --workspace=@sport-analytics/contracts
 npm run test:unit --workspace=@sport-analytics/backend
 npm run test:api --workspace=@sport-analytics/backend
 npm run test --workspace=@sport-analytics/frontend
+```
+
+## Submitter access frontend coverage
+
+The Account-page suite verifies the complete user-facing request workflow:
+
+- signed-out users do not load application account data;
+- eligible users can request access and see an in-progress state;
+- successful requests reload the persisted `pending` profile;
+- a remount restores `pending` without offering another request;
+- stale eligible views refresh after the backend reports an active-request conflict;
+- approved users receive submission access without a request action;
+- rejected or revoked users receive a clear state and may request another review; and
+- malformed profiles and backend request failures produce safe, actionable feedback.
+
+The request-response contract suite additionally verifies that only a persisted `pending` result is
+accepted from the submitter-access endpoint. The browser suite verifies keyboard activation,
+pending state after reload, narrow-screen overflow, and serious or critical Axe findings.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/frontend
+npm run test:e2e -- tests/e2e/submitter-access.spec.ts --workers=1
+```
 
 ## Direct submission coverage
 
@@ -121,7 +148,7 @@ npm run test:api --workspace=@sport-analytics/backend
 npm run db:test:reset --workspace=@sport-analytics/backend
 npm run test:database --workspace=@sport-analytics/backend
 npm run openapi:lint
-````
+```
 
 The issue #51 verification record is in
 `evidence/validation/issue-51-direct-event-submission.md` at the repository root.
@@ -178,3 +205,5 @@ Codex[GPT-5.6 Sol].
 The current-user submitter status coverage section was generated with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
 The account-deletion testing section was documented with the assistance of Codex[GPT-5].
+The submitter access frontend coverage section and corrected code fences were updated with the
+assistance of Codex[GPT-5].
