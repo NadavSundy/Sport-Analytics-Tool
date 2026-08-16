@@ -62,7 +62,14 @@ test.beforeEach(async ({ page }) => {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        user: { approvalState: 'approved', competitionIds: ['5'] },
+        user: {
+          id: '17',
+          subject: 'approved-user',
+          displayName: 'Approved Submitter',
+          role: 'viewer',
+          approvalState: 'approved',
+          competitionIds: ['5'],
+        },
       }),
     });
   });

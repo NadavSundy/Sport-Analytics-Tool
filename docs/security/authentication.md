@@ -456,8 +456,12 @@ account during the token's remaining lifetime. The browser's local sign-out does
 the backend revocation check.
 
 Cricket submissions, deliveries, fixtures and derived statistics remain available without the
-deleted display name or reusable Auth subject. See [Privacy and retention](privacy-retention.md) and
-[ADR-006](../../evidence/decisions/ADR-006-account-deletion-retention.md).
+deleted display name or reusable Auth subject.
+
+See:
+
+- [Privacy and retention](privacy-retention.md)
+- `evidence/decisions/ADR-006-account-deletion-retention.md`
 
 ## Authentication versus authorisation
 
