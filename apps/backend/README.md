@@ -90,6 +90,7 @@ Default endpoints include:
 - `http://localhost:3000/api/v1/auth/me`
 - `DELETE http://localhost:3000/api/v1/account`
 - `http://localhost:3000/api/v1/admin/users` (administrator only)
+- `http://localhost:3000/api/v1/fixtures/{fixtureId}/events` (public accepted events)
 
 ## Administrator user management
 
@@ -180,5 +181,5 @@ The root `npm run check` already performs that contracts build before repository
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
-The account-deletion runtime configuration was documented with the assistance of Codex[GPT-5].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].

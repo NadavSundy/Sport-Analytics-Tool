@@ -4,9 +4,11 @@ import type {
   Competitor,
   CompetitorListQuery,
   Fixture,
+  FixtureEventListQuery,
   FixtureListQuery,
   Participant,
   ParticipantListQuery,
+  PublicEvent,
   Season,
   SeasonListQuery,
 } from '@sport-analytics/contracts';
@@ -20,6 +22,10 @@ import {
   findCompetitorById,
   listCompetitors as listCompetitorRecords,
 } from '../competitors/competitor.repository';
+import {
+  createPublicEventRepository,
+  type PublicEventRepository,
+} from '../events/event.repository';
 import {
   findFixtureById,
   listFixtures as listFixtureRecords,
@@ -59,6 +65,13 @@ const competitorCursorSchema = z.object({
 const participantCursorSchema = z.object({
   displayName: z.string(),
   participantId: databaseIdSchema,
+});
+
+const eventCursorSchema = z.object({
+  fixtureId: databaseIdSchema,
+  inningsOrdinal: z.number().int().nonnegative(),
+  sequenceNumber: z.number().int().positive(),
+  eventId: databaseIdSchema,
 });
 
 export interface PublicReadService {
@@ -106,6 +119,18 @@ export interface PublicReadService {
   }>;
 
   getParticipant(participantId: string): Promise<Participant | null>;
+
+  listFixtureEvents(
+    fixtureId: string,
+    query: FixtureEventListQuery,
+  ): Promise<{
+    data: PublicEvent[];
+    pagination: {
+      nextCursor: string | null;
+    };
+  } | null>;
+
+  getFixtureEvent(fixtureId: string, eventId: string): Promise<PublicEvent | null>;
 }
 
 function isDatabaseId(value: string): boolean {
@@ -195,7 +220,9 @@ function resolveSeasonFilter(
   };
 }
 
-export function createPublicReadService(): PublicReadService {
+export function createPublicReadService(
+  eventRepository: PublicEventRepository = createPublicEventRepository(),
+): PublicReadService {
   return {
     async listCompetitions(query) {
       const after = decodeCursor(query.cursor, competitionCursorSchema);
@@ -389,6 +416,68 @@ export function createPublicReadService(): PublicReadService {
       }
 
       return findParticipantById(participantId);
+    },
+
+    async listFixtureEvents(fixtureId, query) {
+      if (!isDatabaseId(fixtureId)) {
+        return null;
+      }
+
+      assertDatabaseFilter(query.inningsId, 'inningsId');
+      assertDatabaseFilter(query.competitorId, 'competitorId');
+      assertDatabaseFilter(query.participantId, 'participantId');
+
+      const fixtureExists = await eventRepository.fixtureExists(fixtureId);
+      if (!fixtureExists) {
+        return null;
+      }
+
+      const after = decodeCursor(query.cursor, eventCursorSchema);
+      if (after && after.fixtureId !== fixtureId) {
+        throw new PublicReadInputError(
+          'INVALID_CURSOR',
+          'The pagination cursor does not belong to this fixture.',
+        );
+      }
+
+      const page = await eventRepository.listAcceptedFixtureEvents({
+        fixtureId,
+        limit: query.limit,
+        ...(query.inningsId !== undefined ? { inningsId: query.inningsId } : {}),
+        ...(query.competitorId !== undefined ? { competitorId: query.competitorId } : {}),
+        ...(query.participantId !== undefined ? { participantId: query.participantId } : {}),
+        ...(query.overNumber !== undefined ? { overNumber: query.overNumber } : {}),
+        ...(query.wicketKind !== undefined ? { wicketKind: query.wicketKind } : {}),
+        ...(after !== undefined
+          ? {
+              after: {
+                inningsOrdinal: after.inningsOrdinal,
+                sequenceNumber: after.sequenceNumber,
+                eventId: after.eventId,
+              },
+            }
+          : {}),
+      });
+
+      return {
+        data: page.records,
+        pagination: {
+          nextCursor: createNextCursor(page.hasMore, page.records, (record) => ({
+            fixtureId: record.fixtureId,
+            inningsOrdinal: record.inningsOrdinal,
+            sequenceNumber: record.sequenceNumber,
+            eventId: record.eventId,
+          })),
+        },
+      };
+    },
+
+    async getFixtureEvent(fixtureId, eventId) {
+      if (!isDatabaseId(fixtureId) || !isDatabaseId(eventId)) {
+        return null;
+      }
+
+      return eventRepository.findAcceptedFixtureEvent(fixtureId, eventId);
     },
   };
 }

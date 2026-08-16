@@ -19,6 +19,10 @@ export function createPublicReadRouter(service: PublicReadService): Router {
 
   router.get('/fixtures/:fixtureId', controller.getFixture);
 
+  router.get('/fixtures/:fixtureId/events', controller.listFixtureEvents);
+
+  router.get('/fixtures/:fixtureId/events/:eventId', controller.getFixtureEvent);
+
   router.get('/competitors', controller.listCompetitors);
 
   router.get('/competitors/:competitorId', controller.getCompetitor);

@@ -45,6 +45,48 @@ export const participantSchema = z.object({
   displayName: z.string().min(1),
 });
 
+export const publicEventFielderSchema = z.object({
+  participantId: apiIdentifierSchema.nullable(),
+  isSubstitute: z.boolean(),
+});
+
+export const publicEventWicketSchema = z.object({
+  wicketId: apiIdentifierSchema,
+  kind: z.string().min(1),
+  playerOutParticipantId: apiIdentifierSchema,
+  fielders: z.array(publicEventFielderSchema),
+});
+
+export const publicEventSchema = z.object({
+  eventId: apiIdentifierSchema,
+  fixtureId: apiIdentifierSchema,
+  inningsId: apiIdentifierSchema,
+  inningsOrdinal: z.number().int().nonnegative(),
+  sequenceNumber: z.number().int().positive(),
+  overNumber: z.number().int().nonnegative(),
+  positionInOver: z.number().int().nonnegative(),
+  ballNumber: z.string().min(1),
+  battingCompetitorId: apiIdentifierSchema,
+  bowlingCompetitorId: apiIdentifierSchema.nullable(),
+  strikerParticipantId: apiIdentifierSchema,
+  nonStrikerParticipantId: apiIdentifierSchema,
+  bowlerParticipantId: apiIdentifierSchema,
+  runs: z.object({
+    offBat: z.number().int().nonnegative(),
+    extras: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    nonBoundary: z.boolean(),
+  }),
+  extras: z.object({
+    wides: z.number().int().nonnegative().nullable(),
+    noBalls: z.number().int().nonnegative().nullable(),
+    byes: z.number().int().nonnegative().nullable(),
+    legByes: z.number().int().nonnegative().nullable(),
+    penalty: z.number().int().nonnegative().nullable(),
+  }),
+  wickets: z.array(publicEventWicketSchema),
+});
+
 export const statisticContributingEventSchema = z.object({
   eventId: apiIdentifierSchema,
   fixtureId: apiIdentifierSchema,
@@ -197,6 +239,14 @@ export const participantListQuerySchema = paginationQuerySchema.extend({
   name: filterTextSchema.optional(),
 });
 
+export const fixtureEventListQuerySchema = paginationQuerySchema.extend({
+  inningsId: apiIdentifierSchema.optional(),
+  competitorId: apiIdentifierSchema.optional(),
+  participantId: apiIdentifierSchema.optional(),
+  overNumber: z.coerce.number().int().nonnegative().max(32_767).optional(),
+  wicketKind: filterTextSchema.optional(),
+});
+
 export const fixtureStatisticsQuerySchema = z.object({
   includeContributors: z
     .enum(['true', 'false'])
@@ -226,6 +276,11 @@ export const participantResponseSchema = createResourceResponseSchema(participan
 export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
+export const publicEventResponseSchema = createResourceResponseSchema(publicEventSchema);
+
+export const publicEventCollectionResponseSchema =
+  createCollectionResponseSchema(publicEventSchema);
+
 export const fixtureStatisticsResponseSchema =
   createResourceResponseSchema(fixtureStatisticsSchema);
 
@@ -236,6 +291,7 @@ export type Season = z.infer<typeof seasonSchema>;
 export type Fixture = z.infer<typeof fixtureSchema>;
 export type Competitor = z.infer<typeof competitorSchema>;
 export type Participant = z.infer<typeof participantSchema>;
+export type PublicEvent = z.infer<typeof publicEventSchema>;
 export type StatisticContributingEvent = z.infer<typeof statisticContributingEventSchema>;
 export type InningsTeamStatistic = z.infer<typeof inningsTeamStatisticSchema>;
 export type ParticipantFixtureStatistic = z.infer<typeof participantFixtureStatisticSchema>;
@@ -249,4 +305,5 @@ export type SeasonListQuery = z.infer<typeof seasonListQuerySchema>;
 export type FixtureListQuery = z.infer<typeof fixtureListQuerySchema>;
 export type CompetitorListQuery = z.infer<typeof competitorListQuerySchema>;
 export type ParticipantListQuery = z.infer<typeof participantListQuerySchema>;
+export type FixtureEventListQuery = z.infer<typeof fixtureEventListQuerySchema>;
 export type FixtureStatisticsQuery = z.infer<typeof fixtureStatisticsQuerySchema>;
