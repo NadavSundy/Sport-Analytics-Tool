@@ -40,11 +40,11 @@ The frontend production build reports the existing advisory that its approximate
 minified JavaScript chunk exceeds Vite's 500 kB warning threshold. This is not an account-deletion
 failure.
 
-The database suite is configured for a dedicated local test database whose name passes the
-repository safety rule. Its PostgreSQL service was unavailable at `localhost:5433`, so migration
-application and database integration execution were blocked with `ECONNREFUSED`. The new isolated
-retention test typechecks and lints but still requires a running dedicated test database before
-merge. The shared development and production databases were not reset or mutated.
+The database was reset, migrated, and seeded successfully in the dedicated
+`sport_analytics_test` database provided by a disposable PostgreSQL 16 Alpine container on
+`localhost:5433`. The focused account-schema suite passed all 13 tests, including migration
+round-trip and retention after tombstoning. The complete database suite then passed all 22 tests
+across 5 files. The shared development and production databases were not reset or mutated.
 
 MkDocs strict rendering could not run because MkDocs is not installed in the current Python
 environment. OpenAPI and Markdown formatting checks passed.
@@ -62,8 +62,6 @@ error announcements, local Supabase sign-out, and navigation to the public home 
 
 ## Known limitations and human checks
 
-- Start the dedicated test PostgreSQL service, apply migrations to that database, and run
-  `npm run test:database` before merge.
 - A reviewer should confirm deployment secrets include `SUPABASE_SECRET_KEY` only on the backend.
 - Supabase Storage objects owned by a user can block Auth deletion. The product currently creates no
   such objects; reassess this workflow before adding user-owned storage.

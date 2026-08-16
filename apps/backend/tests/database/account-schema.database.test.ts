@@ -198,7 +198,7 @@ describe.sequential('application account authorization schema', () => {
             application_role,
             submitter_approval_state
           )
-          VALUES ('supabase', 'issue-66-subject', 'Delete Me', 'submitter', 'approved')
+          VALUES ('supabase', 'issue-66-subject', 'Delete Me', 'viewer', 'approved')
           RETURNING app_user_id::text AS "accountId"
         `,
       );
