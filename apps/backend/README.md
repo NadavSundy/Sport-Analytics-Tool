@@ -87,6 +87,19 @@ Default endpoints include:
 
 - `http://localhost:3000/api/v1/health`
 - `http://localhost:3000/api/v1/auth/me`
+- `http://localhost:3000/api/v1/admin/users` (administrator only)
+
+## Administrator user management
+
+`GET /api/v1/admin/users` returns registered application accounts, their authoritative role,
+legacy request state, assigned competition scopes, valid scope choices, and the latest submitter
+access audit fields. `PATCH /api/v1/admin/users/:userId/submitter-access` approves or revokes a
+submitter and replaces their complete competition scope in one database transaction.
+
+Both operations require a synchronized `admin` account. Approving requires at least one existing
+competition. Revocation assigns `viewer`, records the request state as `rejected`, and removes all
+scope rows. Administrator and disabled accounts are protected from this submitter-specific update,
+and administrators cannot update themselves through this route.
 
 ## Checks
 

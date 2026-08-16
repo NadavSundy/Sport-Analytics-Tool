@@ -34,6 +34,9 @@ tags:
   - name: Submitter Access
     description: Authenticated submitter-access request operations.
 
+  - name: Administration
+    description: Administrator-only application-account and submitter-scope operations.
+
 paths:
   /api/v1/health:
     get:
@@ -112,6 +115,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/admin/users:
+    get:
+      tags:
+        - Administration
+      summary: List registered users and competition scope choices
+      description: |
+        Returns every registered application account with its authoritative role,
+        compatibility approval state, current named competition scopes, account
+        state and latest submitter-access audit. Only an `admin` may call this
+        operation.
+      operationId: listAdministratorUsers
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Registered users and valid competition scopes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdministratorUserManagementResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/users/{userId}/submitter-access:
+    patch:
+      tags:
+        - Administration
+      summary: Approve, re-scope, or revoke a submitter
+      description: |
+        Atomically changes the target account's authoritative submission role,
+        compatibility approval state, complete competition scope and latest
+        access audit. Approval requires at least one existing competition;
+        revocation requires an empty scope and removes every existing grant.
+
+        Administrator accounts, disabled accounts and the acting administrator's
+        own account cannot be changed through this operation.
+      operationId: updateAdministratorSubmitterAccess
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DatabaseIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdministratorSubmitterAccessUpdate'
+      responses:
+        '200':
+          description: Effective submitter access after the atomic update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The target application account does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: The target is the acting administrator, another administrator, or disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The update shape or one of the requested competition scopes is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
   /api/v1/competitions:
     get:
       tags:
@@ -723,6 +812,142 @@ components:
               type: string
               enum:
                 - pending
+
+    AdministratorCompetitionScope:
+      type: object
+      additionalProperties: false
+      required:
+        - competitionId
+        - name
+      properties:
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        name:
+          type: string
+          minLength: 1
+
+    AdministratorAuditActor:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          $ref: '#/components/schemas/ApiIdentifier'
+        displayName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+
+    AdministratorManagedUser:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+        - role
+        - approvalState
+        - competitionScopes
+        - disabled
+        - updatedAt
+        - submitterAccessUpdatedAt
+        - submitterAccessUpdatedBy
+      properties:
+        id:
+          $ref: '#/components/schemas/ApiIdentifier'
+        displayName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        role:
+          type: string
+          enum:
+            - viewer
+            - submitter
+            - admin
+        approvalState:
+          type: string
+          deprecated: true
+          description: Compatibility state for the submitter-request workflow.
+          enum:
+            - not_requested
+            - pending
+            - approved
+            - rejected
+        competitionScopes:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AdministratorCompetitionScope'
+        disabled:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+        submitterAccessUpdatedAt:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        submitterAccessUpdatedBy:
+          oneOf:
+            - $ref: '#/components/schemas/AdministratorAuditActor'
+            - type: 'null'
+
+    AdministratorUserManagementResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - users
+            - availableScopes
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdministratorManagedUser'
+            availableScopes:
+              type: array
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/AdministratorCompetitionScope'
+
+    AdministratorSubmitterAccessUpdate:
+      type: object
+      additionalProperties: false
+      required:
+        - approved
+        - competitionIds
+      properties:
+        approved:
+          type: boolean
+          description: True grants the submitter role; false revokes it.
+        competitionIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ApiIdentifier'
+      description: |
+        When `approved` is true, `competitionIds` must contain at least one item.
+        When false, the array must be empty.
+
+    AdministratorSubmitterAccessResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AdministratorManagedUser'
+
     ApiErrorDetail:
       type: object
       additionalProperties: false

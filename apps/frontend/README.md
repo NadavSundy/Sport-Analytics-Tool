@@ -61,6 +61,12 @@ From the repository root:
 npm run dev:frontend
 ```
 
+The explicit application form is also supported from the repository root:
+
+```bash
+npm run dev frontend
+```
+
 or from this workspace:
 
 ```bash
@@ -88,6 +94,19 @@ conflict, and does not offer another request while the persisted state is `pendi
 Accounts with the `submitter` or `admin` role can continue to the scoped event-submission
 interface. The deprecated approval state alone never exposes the submission interface. The backend
 remains the authorisation boundary for every request and submission.
+
+## Administrator user management
+
+An authenticated administrator can open `/admin/users` from the account page. The responsive user
+cards expose each account's role, request state, current competition scope, account state, and most
+recent submitter-access audit. Labelled checkboxes allow an administrator to approve a pending or
+other eligible viewer, replace an existing submitter's scope, or revoke access.
+
+The page checks the current application role before requesting management data, but that check is
+only a user-interface guard. The handwritten backend independently requires the `admin` role for
+both list and update operations. Successful updates replace the displayed user immediately; loading,
+empty, forbidden, validation, request-failure, and success states remain available to assistive
+technology through status or alert regions.
 
 ## Checks
 

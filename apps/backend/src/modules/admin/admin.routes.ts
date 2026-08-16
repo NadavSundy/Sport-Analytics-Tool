@@ -1,0 +1,31 @@
+import { Router } from 'express';
+
+import type { VerifyAccessToken } from '../../auth/supabase-auth';
+import { requireAuthentication } from '../../middleware/require-authentication';
+import { requireAdministrator } from '../../middleware/require-authorization';
+import type { SynchronizeAccount } from '../accounts/account.service';
+import {
+  createAdminListUsersController,
+  createAdminUpdateSubmitterAccessController,
+} from './admin.controller';
+import type { AdminService } from './admin.service';
+
+export function createAdminRouter(
+  verifyAccessToken: VerifyAccessToken,
+  synchronizeAccount: SynchronizeAccount,
+  service: AdminService,
+): Router {
+  const router = Router();
+  const authenticate = requireAuthentication(verifyAccessToken, synchronizeAccount);
+  const authorize = requireAdministrator();
+
+  router.get('/admin/users', authenticate, authorize, createAdminListUsersController(service));
+  router.patch(
+    '/admin/users/:userId/submitter-access',
+    authenticate,
+    authorize,
+    createAdminUpdateSubmitterAccessController(service),
+  );
+
+  return router;
+}

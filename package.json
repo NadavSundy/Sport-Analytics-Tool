@@ -11,9 +11,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "npm run dev --workspace=@sport-analytics/frontend",
-    "dev:frontend": "npm run dev --workspace=@sport-analytics/frontend",
-    "dev:backend": "npm run dev --workspace=@sport-analytics/backend",
+    "dev": "node scripts/run-development-app.mjs",
+    "dev:frontend": "node scripts/run-development-app.mjs frontend",
+    "dev:backend": "node scripts/run-development-app.mjs backend",
     "build": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/backend && npm run build --workspace=@sport-analytics/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

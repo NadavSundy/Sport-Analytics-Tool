@@ -24,6 +24,7 @@ import {
   FixtureStatisticDetailPage,
   FixtureStatisticsPage,
 } from './features/statistics/StatisticsPages';
+import { AdminUsersPage } from './features/admin/AdminUsersPage';
 
 function HeroLogo() {
   return (
@@ -128,6 +129,7 @@ export function PublicApp() {
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/submissions/new" element={<SubmissionPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
