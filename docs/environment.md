@@ -16,14 +16,15 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 
 ## Backend application runtime
 
-| Variable                   | Required by current code                | Secret | Purpose                                                    |
-| -------------------------- | --------------------------------------- | ------ | ---------------------------------------------------------- |
-| `NODE_ENV`                 | No; defaults to `development`           | No     | Runtime mode: `development`, `test` or `production`.       |
-| `PORT`                     | No; defaults to `3000`                  | No     | Backend HTTP port. Hosting platforms may provide it.       |
-| `CORS_ORIGINS`             | No; defaults to `http://localhost:5173` | No     | Comma-separated list of allowed browser origins.           |
-| `SUPABASE_URL`             | Yes                                     | No     | Supabase Auth project URL used for token verification.     |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes                                     | No     | Publishable key used for backend `getUser()` verification. |
-| `DATABASE_URL`             | Required when database access is used   | Yes    | Hosted PostgreSQL session-pooler connection string.        |
+| Variable                   | Required by current code                | Secret | Purpose                                                            |
+| -------------------------- | --------------------------------------- | ------ | ------------------------------------------------------------------ |
+| `NODE_ENV`                 | No; defaults to `development`           | No     | Runtime mode: `development`, `test` or `production`.               |
+| `PORT`                     | No; defaults to `3000`                  | No     | Backend HTTP port. Hosting platforms may provide it.               |
+| `CORS_ORIGINS`             | No; defaults to `http://localhost:5173` | No     | Comma-separated list of allowed browser origins.                   |
+| `SUPABASE_URL`             | Yes                                     | No     | Supabase Auth project URL used for token verification.             |
+| `SUPABASE_PUBLISHABLE_KEY` | Yes                                     | No     | Publishable key used for backend `getUser()` verification.         |
+| `SUPABASE_SECRET_KEY`      | Yes                                     | Yes    | Server-only key used by the Auth Admin account-deletion operation. |
+| `DATABASE_URL`             | Required when database access is used   | Yes    | Hosted PostgreSQL session-pooler connection string.                |
 
 ## Test and support-script variables
 
@@ -58,3 +59,4 @@ Repository-hosted deployment secrets must be stored using the relevant platform 
 ## AI Declaration
 
 The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion secret-key requirement was documented with the assistance of Codex[GPT-5].

@@ -32,6 +32,13 @@ The PostgreSQL integration suite additionally verifies the migrated application-
 - account-to-grant cascade behaviour; and
 - the indexes required for account-first and competition-first scope lookups.
 
+Account-deletion coverage verifies exact confirmation, recent authentication, owner-only targeting,
+immediate disabling, authorization revocation, idempotent recovery across Auth/database partial
+failures, local session clearing, and accessible loading/error states. The isolated PostgreSQL
+retention test additionally proves that tombstoning preserves the stable account provenance key,
+submission, fixture, delivery and derived run total; it also verifies the non-cascading submission
+foreign key and guarded migration rollback.
+
 Run the focused checks with:
 
 ```text
@@ -170,3 +177,4 @@ Codex[GPT-5.6 Sol]. The submitter interface coverage was documented with the ass
 Codex[GPT-5.6 Sol].
 The current-user submitter status coverage section was generated with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion testing section was documented with the assistance of Codex[GPT-5].

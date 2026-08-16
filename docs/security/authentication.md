@@ -424,17 +424,32 @@ The hosted default email service has development rate limits. Production use req
 
 ## Account deletion
 
-Supabase provides administrative account deletion through its Auth Admin API.
+Authenticated users can delete their own account with `DELETE /api/v1/account`. The endpoint accepts
+no target account ID and requires both an exact `DELETE` confirmation and a Supabase
+`last_sign_in_at` no more than 15 minutes old. Older sessions receive `403
+RECENT_AUTHENTICATION_REQUIRED` and must sign in again.
 
-Deletion requires an elevated server-side key. Therefore:
+Deletion runs only on the backend with `SUPABASE_SECRET_KEY`. The key must be a Supabase secret key
+or legacy `service_role` key and must never use a `VITE_` prefix or enter browser code. The backend
+uses the Auth Admin API for a hard deletion.
 
-- deletion must never run directly in the browser;
-- a secret or legacy `service_role` key must never be exposed to the frontend;
-- the final endpoint must reauthenticate the user where appropriate;
-- associated application data retention and deletion must be defined;
-- the final workflow requires separate authorisation and auditing.
+The local workflow is a recoverable state machine:
 
-Account deletion is not implemented by this foundation.
+1. disable the application account and remove role, approval and competition grants;
+2. hard-delete the Supabase Auth user;
+3. replace the local Auth subject and display name with a non-reusable tombstone while retaining the
+   stable `app_user_id` provenance key; and
+4. clear the browser's local Supabase session after the backend confirms success.
+
+An Auth or database failure returns `503 ACCOUNT_DELETION_INCOMPLETE`. The local account remains
+disabled, and retry either repeats the idempotent Auth deletion or resumes finalization. A hash of
+the former high-entropy Auth subject prevents an already-issued JWT from synchronizing a replacement
+account during the token's remaining lifetime. The browser's local sign-out does not substitute for
+the backend revocation check.
+
+Cricket submissions, deliveries, fixtures and derived statistics remain available without the
+deleted display name or reusable Auth subject. See [Privacy and retention](privacy-retention.md) and
+[ADR-006](../../evidence/decisions/ADR-006-account-deletion-retention.md).
 
 ## Authentication versus authorisation
 
@@ -481,7 +496,6 @@ management, submitter access requests and event-submission routes remain separat
 This foundation intentionally does not implement:
 
 - final password-reset screens;
-- final account-deletion screens;
 - administrator approval-management routes and interfaces;
 - submitter access-request frontend interface;
 - event correction and file or batch upload interfaces;
@@ -508,3 +522,4 @@ Codex[GPT-5.6 Sol]. The account synchronization, profile, and authorization sect
 with the assistance of Codex[GPT-5.6 Sol]. The protected event-submission journey was documented
 with the assistance of Codex[GPT-5.6 Sol].
 The submitter access-request section was documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion security and recovery flow was documented with the assistance of Codex[GPT-5].

@@ -52,6 +52,7 @@ Current runtime variables are:
 | `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)    | No     | Comma-separated browser origins allowed by Express CORS middleware.                         |
 | `SUPABASE_URL`             | Yes                                         | No     | Supabase project URL used by backend token verification.                                    |
 | `SUPABASE_PUBLISHABLE_KEY` | Yes                                         | No     | Publishable key used with `supabase.auth.getUser(accessToken)`.                             |
+| `SUPABASE_SECRET_KEY`      | Yes                                         | Yes    | Server-only key used for administrative Auth account deletion. Never expose it to Vite.     |
 | `DATABASE_URL`             | Required for database-backed routes/scripts | Yes    | PostgreSQL session-pooler connection string.                                                |
 | `DATABASE_URL_TEST`        | Required for database integration tests     | Yes    | Dedicated isolated test PostgreSQL database. Must never point to development or production. |
 
@@ -87,6 +88,7 @@ Default endpoints include:
 
 - `http://localhost:3000/api/v1/health`
 - `http://localhost:3000/api/v1/auth/me`
+- `DELETE http://localhost:3000/api/v1/account`
 
 ## Checks
 
@@ -139,7 +141,7 @@ The backend is hosted on Azure App Service.
 
 ### Backend fails immediately with invalid environment configuration
 
-Populate `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The environment schema validates these values at startup.
+Populate `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. The environment schema validates these values at startup. The secret key must stay on the backend and may be a current Supabase secret key or a legacy `service_role` key during migration.
 
 ### `DATABASE_URL is not configured`
 
@@ -166,3 +168,4 @@ The root `npm run check` already performs that contracts build before repository
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion runtime configuration was documented with the assistance of Codex[GPT-5].

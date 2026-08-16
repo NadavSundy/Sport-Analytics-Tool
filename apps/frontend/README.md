@@ -53,6 +53,12 @@ Configure:
 
 Only public-safe values may use the `VITE_` prefix. Never place a database password, OAuth client secret, Supabase secret/service-role key or other server credential in a frontend environment file.
 
+The authenticated Account page includes a danger zone for permanent self-deletion. It explains
+that personal identity and access are removed while cricket submissions and statistics are retained
+without the former display name. The action requires an explicit checkbox, exact `DELETE` text and a
+recent sign-in. After backend success, the frontend clears only its local Supabase session and
+returns to the public home page.
+
 ## Run locally
 
 From the repository root:
@@ -134,3 +140,4 @@ Return to the repository root and run `npm ci` so the install matches the commit
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion interface behavior was documented with the assistance of Codex[GPT-5].
