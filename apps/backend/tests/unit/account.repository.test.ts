@@ -21,7 +21,7 @@ describe('application account repository', () => {
       accountId: '42',
       subject: 'supabase-user-42',
       displayName: 'Verified Name',
-      role: 'viewer',
+      role: 'submitter',
       approvalState: 'approved',
       competitionIds: ['7', '9'],
       disabledAt: null,
@@ -48,7 +48,7 @@ describe('application account repository', () => {
       accountId: '42',
       subject: 'supabase-user-42',
       displayName: 'Verified Name',
-      role: 'viewer',
+      role: 'submitter',
       approvalState: 'approved',
       competitionIds: ['7', '9'],
       disabled: false,
@@ -112,6 +112,78 @@ describe('application account repository', () => {
       expect(account.approvalState).toBe(approvalState);
     },
   );
+
+  test('ignores user-controlled role metadata and explicitly creates viewers', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          accountId: '42',
+          subject: 'supabase-user-42',
+          displayName: 'Verified Name',
+          role: 'viewer',
+          approvalState: 'not_requested',
+          deletionState: 'active',
+          competitionIds: [],
+          disabledAt: null,
+        },
+      ],
+      rowCount: 1,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    });
+    const executor = { query } as unknown as QueryExecutor;
+    const identityWithUntrustedMetadata = {
+      uid: 'supabase-user-42',
+      displayName: 'Verified Name',
+      applicationRole: 'admin',
+    };
+
+    const account = await synchronizeApplicationAccount(identityWithUntrustedMetadata, executor);
+    const sql = query.mock.calls[0]?.[0];
+
+    expect(sql).toEqual(expect.any(String));
+
+    if (typeof sql !== 'string') {
+      throw new Error('Expected account synchronization to execute SQL.');
+    }
+
+    expect(sql).toMatch(
+      /INSERT INTO app_user\s*\([\s\S]*application_role[\s\S]*\)\s*SELECT \$1, \$2, \$3, 'viewer', now\(\)/,
+    );
+    expect(sql.match(/ON CONFLICT[\s\S]*?DO UPDATE\s+SET([\s\S]*?)RETURNING/)?.[1]).not.toContain(
+      'application_role',
+    );
+    expect(query).toHaveBeenCalledWith(expect.any(String), [
+      'supabase',
+      'supabase-user-42',
+      'Verified Name',
+      hashAuthenticationSubject('supabase-user-42'),
+    ]);
+    expect(account.role).toBe('viewer');
+  });
+
+  test('preserves a persisted admin role during re-authentication', async () => {
+    const executor = createExecutor({
+      accountId: '42',
+      subject: 'supabase-admin-42',
+      displayName: 'Admin User',
+      role: 'admin',
+      approvalState: 'not_requested',
+      competitionIds: [],
+      disabledAt: null,
+    });
+
+    const account = await synchronizeApplicationAccount(
+      {
+        uid: 'supabase-admin-42',
+        displayName: 'Refreshed Admin Name',
+      },
+      executor,
+    );
+
+    expect(account.role).toBe('admin');
+  });
 
   test('fails closed when persisted authorization state is unsupported', async () => {
     const executor = createExecutor({

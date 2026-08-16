@@ -188,7 +188,10 @@ The account-schema integration tests cover:
 
 - one application account per provider identity;
 - provider-neutral identity mapping;
-- valid role and submitter-approval values;
+- the `viewer` default and the `viewer | submitter | admin` role constraint;
+- guarded migration of approved submitters and legacy `administrator` accounts without coercing
+  unknown roles or losing competition scopes;
+- valid submitter-approval values;
 - approval and revocation updates;
 - automatic application-account update timestamps;
 - unique competition grants;

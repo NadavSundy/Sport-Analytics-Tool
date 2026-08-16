@@ -9,16 +9,17 @@ that identity using `@supabase/supabase-js`.
 The frontend may use Supabase for authentication, but application data remains behind the handwritten backend API.
 
 After verification, the backend creates or synchronizes a provider-neutral `app_user` record and
-loads role, submitter-approval state, disabled state, and granted competition scopes from
+loads role, deprecated submitter-request state, disabled state, and granted competition scopes from
 PostgreSQL. Authentication alone never grants or changes those values.
 
-Reusable backend policies protect administrator routes, approved-submitter routes, and target
+Reusable backend policies protect `admin` routes, `submitter`/`admin` routes, and target
 competition scope. Missing or invalid credentials receive `401`; authenticated accounts that fail
 a policy receive a consistent, non-disclosing `403`. Public read routes do not use authentication.
 
 See:
 
 - [Authentication, accounts and authorisation](authentication.md)
+- [Roles and permissions](roles-and-permissions.md)
 - [Authentication provider comparison](auth-provider-comparison.md)
 - [Privacy and retention](privacy-retention.md)
 

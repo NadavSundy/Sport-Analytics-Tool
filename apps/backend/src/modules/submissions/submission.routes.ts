@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
-import { requireApprovedSubmitter } from '../../middleware/require-authorization';
+import { requireSubmitter } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import { createSubmissionController } from './submission.controller';
 import { createSubmissionRateLimit } from './submission-rate-limit';
@@ -18,7 +18,7 @@ export function createSubmissionRouter(
   router.post(
     '/submissions',
     requireAuthentication(verifyAccessToken, synchronizeAccount),
-    requireApprovedSubmitter(),
+    requireSubmitter(),
     createSubmissionRateLimit(),
     createSubmissionController(service),
   );

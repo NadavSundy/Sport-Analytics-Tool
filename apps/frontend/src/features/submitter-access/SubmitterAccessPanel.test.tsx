@@ -1,4 +1,4 @@
-import type { SubmitterApprovalState } from '@sport-analytics/contracts';
+import type { ApplicationRole, SubmitterApprovalState } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -58,15 +58,18 @@ function createAuthClient(session: Session | null = createSession()) {
   } as unknown as AuthClient;
 }
 
-function currentUser(approvalState: SubmitterApprovalState): Response {
+function currentUser(
+  approvalState: SubmitterApprovalState,
+  role: ApplicationRole = 'viewer',
+): Response {
   return jsonResponse(200, {
     user: {
       id: '17',
       subject: 'requesting-user',
       displayName: 'Requesting User',
-      role: 'viewer',
+      role,
       approvalState,
-      competitionIds: approvalState === 'approved' ? ['5'] : [],
+      competitionIds: role === 'submitter' || role === 'admin' ? ['5'] : [],
     },
   });
 }
@@ -211,17 +214,38 @@ describe('submitter access request and status interface', () => {
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
   });
 
-  it('shows approved access without a request action', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('approved')));
+  it('shows submitter access from the role without a request action', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('approved', 'submitter')));
 
     renderAccountPage();
 
-    expect(await screen.findByText('Approved')).toBeInTheDocument();
+    expect(await screen.findByText('Submitter')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Submit events' })).toHaveAttribute(
       'href',
       '/submissions/new',
     );
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
+  });
+
+  it('exposes submission access to an admin regardless of legacy approval state', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('not_requested', 'admin')));
+
+    renderAccountPage();
+
+    expect(await screen.findByText('Admin')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Submit events' })).toHaveAttribute(
+      'href',
+      '/submissions/new',
+    );
+  });
+
+  it('does not expose submission access from the deprecated approval state alone', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('approved')));
+
+    renderAccountPage();
+
+    expect(await screen.findByText(/legacy approval record is approved/i)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Submit events' })).toBeNull();
   });
 
   it('explains rejected or revoked access and permits a new request', async () => {

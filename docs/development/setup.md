@@ -138,6 +138,10 @@ Start the frontend in a second terminal:
 npm run dev:frontend
 ```
 
+The root dispatcher also supports `npm run dev backend` and
+`npm run dev frontend`. Arguments after `--` are forwarded to the selected
+application, such as `npm run dev frontend -- --host 0.0.0.0`.
+
 Default local endpoints:
 
 - frontend: `http://localhost:5173`

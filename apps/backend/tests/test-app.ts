@@ -8,6 +8,7 @@ import type { FixtureStatisticsService } from '../src/modules/statistics/fixture
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
 import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
+import type { AdminService } from '../src/modules/admin/admin.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -56,6 +57,15 @@ const deleteTestAccount: AccountDeletionService = {
   },
 };
 
+const testAdminService: AdminService = {
+  async listUsers() {
+    return { data: { users: [], availableScopes: [] } };
+  },
+  async updateSubmitterAccess() {
+    throw new Error('The test administrator service was not configured for an update.');
+  },
+};
+
 export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
   publicReadService?: PublicReadService,
@@ -64,6 +74,7 @@ export function createTestApp(
   submissionService?: SubmissionService,
   submitterAccessService: SubmitterAccessService = requestTestSubmitterAccess,
   accountDeletionService: AccountDeletionService = deleteTestAccount,
+  adminService: AdminService = testAdminService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -74,6 +85,7 @@ export function createTestApp(
     ...(submissionService !== undefined ? { submissionService } : {}),
     submitterAccessService,
     accountDeletionService,
+    adminService,
   });
 }
 

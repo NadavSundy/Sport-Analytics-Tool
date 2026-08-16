@@ -72,6 +72,36 @@ so pagination remains deterministic.
 
 Event endpoints always use event occurrence order.
 
+Administrator submitter access
+------------------------------
+
+`GET /api/v1/admin/users` and
+`PATCH /api/v1/admin/users/{userId}/submitter-access` require the authoritative `admin` role.
+
+Approval replaces the complete competition scope and requires one or more unique, existing
+competition identifiers:
+
+```json
+{
+  "approved": true,
+  "competitionIds": ["12", "18"]
+}
+```
+
+Revocation always sends an empty scope:
+
+```json
+{
+  "approved": false,
+  "competitionIds": []
+}
+```
+
+The returned user includes the effective role, compatibility approval state, named competition
+scopes, and the latest submitter-access change actor/time. `403` means the caller is not an
+administrator; malformed or nonexistent scopes return `422`; protected or self-targeted changes
+return `409`.
+
 Errors
 ──────
 {

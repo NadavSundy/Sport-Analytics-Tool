@@ -218,6 +218,7 @@ describe.sequential('direct submission database integration', () => {
     const current = testRecords();
     const account = createTestAccount({
       accountId: current.accountId,
+      role: 'submitter',
       approvalState: 'approved',
       competitionIds: [current.competitionId],
     });

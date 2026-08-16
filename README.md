@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and provides reusable administrator, approved-submitter, and competition-scope authorization policies. Public reference-data browsing remains anonymous. Administrator management screens, event submission, derivation, datasets, and external API integration are not yet implemented.
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and atomically approve, re-scope, or revoke submitters. Public reference-data browsing remains anonymous. Datasets and external API integration remain future work.
 
 ## Repository structure
 
@@ -46,6 +46,11 @@ Run the applications in separate terminals:
 npm run dev:backend
 npm run dev:frontend
 ```
+
+The root development dispatcher also accepts the application name, so
+`npm run dev frontend` and `npm run dev backend` are equivalent. Additional
+arguments are forwarded to the selected workspace after `--`, for example
+`npm run dev frontend -- --host 0.0.0.0`.
 
 ## Deployment
 

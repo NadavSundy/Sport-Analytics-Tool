@@ -41,6 +41,8 @@ import {
   createAccountDeletionService,
   type AccountDeletionService,
 } from './modules/account-deletion/account-deletion.service';
+import { createAdminRouter } from './modules/admin/admin.routes';
+import { createAdminService, type AdminService } from './modules/admin/admin.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -51,6 +53,7 @@ export interface AppDependencies {
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
+  adminService?: AdminService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -67,6 +70,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   const accountDeletionService =
     dependencies.accountDeletionService ??
     createAccountDeletionService(createSupabaseAdminUserDeleter(environment));
+  const adminService = dependencies.adminService ?? createAdminService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -103,6 +107,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     '/api/v1',
     createAccountDeletionRouter(verifyAccessToken, synchronizeAccount, accountDeletionService),
   );
+  app.use('/api/v1', createAdminRouter(verifyAccessToken, synchronizeAccount, adminService));
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);

@@ -45,9 +45,10 @@ export async function synchronizeApplicationAccount(
           auth_provider,
           auth_subject,
           display_name,
+          application_role,
           last_authenticated_at
         )
-        SELECT $1, $2, $3, now()
+        SELECT $1, $2, $3, 'viewer', now()
         WHERE NOT EXISTS (SELECT 1 FROM deleted_account)
         ON CONFLICT (auth_provider, auth_subject) DO UPDATE
         SET

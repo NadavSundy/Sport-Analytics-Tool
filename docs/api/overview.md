@@ -67,7 +67,7 @@ Successful response:
     "id": "42",
     "subject": "<supabase-user-id>",
     "displayName": "Example User",
-    "role": "viewer",
+    "role": "submitter",
     "approvalState": "approved",
     "competitionIds": ["7", "12"]
   }
@@ -116,9 +116,15 @@ remain. The former display name and reusable Auth subject do not. If the externa
 local finalization fails, the API returns `503`; the account remains disabled and retry is
 idempotent. See [Privacy and retention](../security/privacy-retention.md).
 
+Application registration is handled by Supabase Auth; there is no backend registration or profile
+mutation endpoint that accepts `application_role`. New application accounts are synchronized as
+`viewer`, and only a trusted administrative backend process may change the role to `submitter` or
+`admin`.
+
 ### Submitter access requests
 
-An authenticated application user who is not already an approved submitter can request submitter access through:
+An authenticated viewer who does not already hold a submission-capable role can request submitter
+access through:
 
 ```http
 POST /api/v1/submitter-access-requests
@@ -138,9 +144,14 @@ A successful request changes the authenticated application account's server-owne
 
 The endpoint returns `401 Unauthorized` when no valid authentication is supplied.
 
-A `409 Conflict` is returned when the account already has a pending request or is already an approved submitter. A previously rejected account may submit a new request.
+A `409 Conflict` is returned when the account already has a pending request, has the legacy
+`approved` request state, or already holds the `submitter`/`admin` role. A previously rejected
+viewer may submit a new request.
 
-The request state is stored on the provider-neutral application account and can subsequently be consumed by the administrator approval and competition-scope workflow.
+The request state is stored on the provider-neutral application account and can subsequently be
+consumed by the administrator approval and competition-scope workflow. The request state is not an
+authorization grant: approval must assign `application_role = submitter`, and the backend uses that
+role plus competition scope for submission decisions.
 
 ### Public read
 
