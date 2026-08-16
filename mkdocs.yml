@@ -42,6 +42,7 @@ nav:
       - Security:
           - Overview: security/overview.md
           - Authentication and Authorisation: security/authentication.md
+          - Privacy and Retention: security/privacy-retention.md
           - Provider Comparison: security/auth-provider-comparison.md
   - Deployment:
       - Overview: deployment/overview.md
