@@ -1,7 +1,12 @@
 import type { RequestHandler, Response } from 'express';
 import type { VerifyAccessToken } from '../auth/supabase-auth';
+import type { ApplicationAccount } from '../modules/accounts/account';
 import type { SynchronizeAccount } from '../modules/accounts/account.service';
 import { rejectAuthorization } from './authorization-response';
+
+interface AuthenticationOptions {
+  allowDisabledAccount?: (account: ApplicationAccount) => boolean;
+}
 
 function rejectAuthentication(response: Response): void {
   response.setHeader('WWW-Authenticate', 'Bearer');
@@ -16,6 +21,7 @@ function rejectAuthentication(response: Response): void {
 export function requireAuthentication(
   verifyAccessToken: VerifyAccessToken,
   synchronizeAccount: SynchronizeAccount,
+  options: AuthenticationOptions = {},
 ): RequestHandler {
   return async (request, response, next) => {
     const authorization = request.get('authorization');
@@ -41,7 +47,7 @@ export function requireAuthentication(
     try {
       const account = await synchronizeAccount(identity);
 
-      if (account.disabled) {
+      if (account.disabled && !options.allowDisabledAccount?.(account)) {
         rejectAuthorization(response);
         return;
       }

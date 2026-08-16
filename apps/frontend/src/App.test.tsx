@@ -78,6 +78,14 @@ function createAuthClient(session: Session | null) {
   };
 }
 
+function apiResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(body),
+  } as unknown as Response;
+}
+
 function renderApp(path = '/', session: Session | null = null) {
   const auth = createAuthClient(session);
 
@@ -260,8 +268,145 @@ describe('public application and authentication interface', () => {
     expect(screen.queryByRole('link', { name: 'Login or Sign up' })).not.toBeInTheDocument();
     expect(screen.getByText('person@example.com')).toBeInTheDocument();
     expect(
+      screen.queryByText(/administrator|approved submitter|role|grant/i),
+    ).not.toBeInTheDocument();
+    expect(
       await screen.findByRole('button', { name: 'Request submitter access' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Delete account' })).toBeInTheDocument();
+  });
+
+  it('requires deliberate account-deletion confirmation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
+    renderApp('/account', createSession());
+
+    const deleteButton = await screen.findByRole('button', {
+      name: 'Permanently delete account',
+    });
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'I understand that account deletion is permanent.',
+      }),
+    );
+    fireEvent.change(screen.getByLabelText(/type DELETE to confirm/i), {
+      target: { value: 'delete' },
+    });
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/type DELETE to confirm/i), {
+      target: { value: 'DELETE' },
+    });
+    expect(deleteButton).toBeEnabled();
+  });
+
+  it('prevents duplicate deletion requests, signs out locally, and returns home on success', async () => {
+    let resolveRequest!: (response: Response) => void;
+    const request = new Promise<Response>((resolve) => {
+      resolveRequest = resolve;
+    });
+    type SignOutResult = Awaited<ReturnType<AuthClient['signOut']>>;
+    let resolveSignOut!: (result: SignOutResult) => void;
+    const signOut = new Promise<SignOutResult>((resolve) => {
+      resolveSignOut = resolve;
+    });
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+
+      if (path.endsWith('/auth/me')) {
+        return Promise.resolve(currentUserResponse('not_requested'));
+      }
+
+      if (path.endsWith('/account')) {
+        return request;
+      }
+
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const auth = renderApp('/account', createSession());
+    vi.mocked(auth.client.signOut).mockReturnValue(signOut);
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: 'I understand that account deletion is permanent.',
+      }),
+    );
+    fireEvent.change(screen.getByLabelText(/type DELETE to confirm/i), {
+      target: { value: 'DELETE' },
+    });
+    const deleteButton = screen.getByRole('button', { name: 'Permanently delete account' });
+    fireEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
+
+    expect(screen.getByRole('button', { name: 'Deleting account…' })).toBeDisabled();
+    expect(screen.getByText('Deleting your account…')).toHaveAttribute('role', 'status');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/v1/account',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+
+    await act(async () => {
+      resolveRequest(apiResponse(200, { data: { status: 'deleted', retainedCricketData: true } }));
+    });
+
+    expect(screen.getByText('Account deleted. Clearing this browser session…')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    expect(auth.client.signOut).toHaveBeenCalledWith({ scope: 'local' });
+
+    await act(async () => resolveSignOut({ error: null }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Stat’sTheGame' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Login or Sign up' })).toBeInTheDocument();
+  });
+
+  it('announces a safe deletion error and allows retry', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+
+        if (path.endsWith('/auth/me')) {
+          return Promise.resolve(currentUserResponse('not_requested'));
+        }
+
+        if (path.endsWith('/account')) {
+          return Promise.resolve(
+            apiResponse(503, {
+              error: {
+                code: 'ACCOUNT_DELETION_INCOMPLETE',
+                message: 'provider details must not be displayed',
+              },
+            }),
+          );
+        }
+
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    renderApp('/account', createSession());
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: 'I understand that account deletion is permanent.',
+      }),
+    );
+    fireEvent.change(screen.getByLabelText(/type DELETE to confirm/i), {
+      target: { value: 'DELETE' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Permanently delete account' }));
+
+    expect(
+      await screen.findByText(/Your account is disabled and the operation can be retried safely\./),
+    ).toHaveAttribute('role', 'alert');
+    expect(screen.queryByText(/provider details/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Permanently delete account' })).toBeEnabled();
   });
 
   it('signs out through Supabase, returns home, and restores signed-out navigation', async () => {

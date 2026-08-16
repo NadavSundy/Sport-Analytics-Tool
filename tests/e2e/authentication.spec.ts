@@ -137,7 +137,7 @@ test('stored Supabase identity completes the callback and opens the account', as
 
   await expect(page).toHaveURL(/\/account$/);
 
-  await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
 
   await expect(page.getByText('browser@example.com')).toBeVisible();
 

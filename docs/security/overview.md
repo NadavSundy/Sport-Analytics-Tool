@@ -21,6 +21,18 @@ See:
 - [Authentication, accounts and authorisation](authentication.md)
 - [Roles and permissions](roles-and-permissions.md)
 - [Authentication provider comparison](auth-provider-comparison.md)
+- [Privacy and retention](privacy-retention.md)
+
+## Account deletion and retention
+
+Deleting an account removes the managed Supabase identity and personal application-account
+identifiers, permissions, approval, and scopes. Accepted cricket data is not personal profile data
+and remains necessary to reproduce published statistics and preserve submission provenance.
+
+The application therefore retains a permanently disabled, non-identifying `app_user` tombstone and
+its stable internal identifier. Submissions, fixtures, deliveries, statistics, corrections, source
+metadata, and audit relationships do not cascade from `app_user`. See the privacy and retention
+policy for failure handling and limitations.
 
 ## Input and data protection
 

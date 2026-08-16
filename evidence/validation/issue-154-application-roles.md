@@ -1,6 +1,6 @@
 # Issue #154 application-role verification
 
-**Date:** 16 August 2026  
+**Date:** 16 August 2026
 **Scope:** revised `viewer | submitter | admin` application roles, guarded legacy-data migration,
 submission and administrator policies, frontend role gates, privilege-escalation protection,
 documentation, and WSL frontend startup.

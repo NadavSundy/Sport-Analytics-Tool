@@ -333,6 +333,227 @@ describe.sequential('application account authorization schema', () => {
     }
   });
 
+  test('retains cricket provenance and statistics after an account is tombstoned', async () => {
+    const client = await databasePool().connect();
+    const schemaName = `issue66_retention_${process.pid}`;
+    const quotedSchemaName = `"${schemaName}"`;
+    const deliverySchema = await migrationSections('20260806150357535_delivery-event-schema.sql');
+    const authorizationSchema = await migrationSections(
+      '20260812120000000_account-authorisation.sql',
+    );
+    const accountTimestampSchema = await migrationSections(
+      '20260815133241837_add-app-user-updated-at.sql',
+    );
+    const applicationRoleSchema = await migrationSections(
+      '20260816120000000_standardise-application-role.sql',
+    );
+    const deletionSchema = await migrationSections(
+      '20260816160000000_account-deletion-tombstone.sql',
+    );
+
+    try {
+      await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
+      await client.query(`SET search_path TO ${quotedSchemaName}`);
+      await client.query(deliverySchema.up);
+      await client.query(authorizationSchema.up);
+      await client.query(accountTimestampSchema.up);
+      await client.query(applicationRoleSchema.up);
+      await client.query(deletionSchema.up);
+
+      const account = await client.query<{ accountId: string }>(
+        `
+          INSERT INTO app_user (
+            auth_provider,
+            auth_subject,
+            display_name,
+            application_role,
+            submitter_approval_state
+          )
+          VALUES ('supabase', 'issue-66-subject', 'Delete Me', 'viewer', 'approved')
+          RETURNING app_user_id::text AS "accountId"
+        `,
+      );
+      const accountId = account.rows[0].accountId;
+      const competition = await client.query<{ competitionId: string }>(
+        `INSERT INTO competition (name) VALUES ('Issue 66 Competition')
+         RETURNING competition_id::text AS "competitionId"`,
+      );
+      const teams = await client.query<{ teamId: string }>(
+        `INSERT INTO team (name) VALUES ('Issue 66 Batting'), ('Issue 66 Bowling')
+         RETURNING team_id::text AS "teamId"`,
+      );
+      const people = await client.query<{ personId: string }>(
+        `
+          INSERT INTO person (source_ref, display_name)
+          VALUES
+            ('issue-66-striker', 'Striker'),
+            ('issue-66-non-striker', 'Non-striker'),
+            ('issue-66-bowler', 'Bowler')
+          RETURNING person_id::text AS "personId"
+        `,
+      );
+      const submission = await client.query<{ submissionId: string }>(
+        `INSERT INTO submission (submitted_by, status)
+         VALUES ($1, 'accepted')
+         RETURNING submission_id::text AS "submissionId"`,
+        [accountId],
+      );
+      const fixture = await client.query<{ fixtureId: string }>(
+        `
+          INSERT INTO fixture (
+            source_ref,
+            competition_id,
+            season,
+            match_type,
+            team_type,
+            gender,
+            balls_per_over,
+            start_date,
+            end_date,
+            outcome,
+            source_version,
+            source_revision,
+            first_seen_in
+          )
+          VALUES (
+            'issue-66-fixture', $1, '2026', 'T20', 'club', 'mixed', 6,
+            CURRENT_DATE, CURRENT_DATE, 'tie', '1.0', 1, $2
+          )
+          RETURNING fixture_id::text AS "fixtureId"
+        `,
+        [competition.rows[0].competitionId, submission.rows[0].submissionId],
+      );
+      const innings = await client.query<{ inningsId: string }>(
+        `INSERT INTO innings (fixture_id, ordinal, batting_team_id)
+         VALUES ($1, 0, $2)
+         RETURNING innings_id::text AS "inningsId"`,
+        [fixture.rows[0].fixtureId, teams.rows[0].teamId],
+      );
+
+      await client.query(
+        `
+          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+          VALUES ($1, $2)
+        `,
+        [accountId, competition.rows[0].competitionId],
+      );
+      await client.query(
+        `
+          INSERT INTO delivery (
+            innings_id,
+            over_number,
+            position_in_over,
+            innings_sequence,
+            ball_number,
+            striker_id,
+            non_striker_id,
+            bowler_id,
+            runs_off_bat,
+            runs_extras,
+            runs_total,
+            submission_id
+          )
+          VALUES ($1, 0, 0, 1, '0.1', $2, $3, $4, 4, 0, 4, $5)
+        `,
+        [
+          innings.rows[0].inningsId,
+          people.rows[0].personId,
+          people.rows[1].personId,
+          people.rows[2].personId,
+          submission.rows[0].submissionId,
+        ],
+      );
+
+      const before = await client.query<{ deliveries: number; runs: number }>(
+        `SELECT count(*)::int AS deliveries, sum(runs_total)::int AS runs FROM delivery_current`,
+      );
+
+      await client.query(`DELETE FROM submitter_competition_scope WHERE app_user_id = $1`, [
+        accountId,
+      ]);
+      await client.query(
+        `
+          UPDATE app_user
+          SET
+            auth_subject = 'deleted:123e4567-e89b-42d3-a456-426614174066',
+            display_name = NULL,
+            application_role = 'viewer',
+            submitter_approval_state = 'not_requested',
+            disabled_at = now(),
+            deletion_state = 'deleted',
+            deletion_requested_at = now(),
+            auth_deleted_at = now(),
+            deleted_at = now(),
+            deleted_auth_subject_hash = repeat('a', 64)
+          WHERE app_user_id = $1
+        `,
+        [accountId],
+      );
+
+      const retained = await client.query<{
+        accountId: string;
+        approvalState: string;
+        deliveryCount: number;
+        displayName: string | null;
+        fixtureCount: number;
+        role: string;
+        runs: number;
+        scopeCount: number;
+        submissionCount: number;
+        subject: string;
+      }>(
+        `
+          SELECT
+            u.app_user_id::text AS "accountId",
+            u.auth_subject AS subject,
+            u.display_name AS "displayName",
+            u.application_role AS role,
+            u.submitter_approval_state AS "approvalState",
+            (SELECT count(*)::int FROM submitter_competition_scope WHERE app_user_id = u.app_user_id) AS "scopeCount",
+            (SELECT count(*)::int FROM submission WHERE submitted_by = u.app_user_id) AS "submissionCount",
+            (SELECT count(*)::int FROM fixture WHERE first_seen_in = $2) AS "fixtureCount",
+            (SELECT count(*)::int FROM delivery_current WHERE submission_id = $2) AS "deliveryCount",
+            (SELECT sum(runs_total)::int FROM delivery_current WHERE submission_id = $2) AS runs
+          FROM app_user u
+          WHERE u.app_user_id = $1
+        `,
+        [accountId, submission.rows[0].submissionId],
+      );
+
+      expect(before.rows[0]).toEqual({ deliveries: 1, runs: 4 });
+      expect(retained.rows[0]).toEqual({
+        accountId,
+        approvalState: 'not_requested',
+        deliveryCount: 1,
+        displayName: null,
+        fixtureCount: 1,
+        role: 'viewer',
+        runs: 4,
+        scopeCount: 0,
+        submissionCount: 1,
+        subject: 'deleted:123e4567-e89b-42d3-a456-426614174066',
+      });
+
+      const submissionForeignKey = await client.query<{ deleteAction: string }>(
+        `
+          SELECT confdeltype AS "deleteAction"
+          FROM pg_constraint
+          WHERE conrelid = 'submission'::regclass
+            AND conname = 'submission_submitted_by_fkey'
+        `,
+      );
+      expect(submissionForeignKey.rows[0].deleteAction).toBe('a');
+
+      await expect(client.query(deletionSchema.down)).rejects.toThrow(
+        'Cannot roll back account deletion schema while deletion state exists',
+      );
+    } finally {
+      await client.query('RESET search_path');
+      await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);
+      client.release();
+    }
+  });
+
   test('exposes the migrated account, approval, and competition-scope structures', async () => {
     const columns = await executeQuery<{
       tableName: string;

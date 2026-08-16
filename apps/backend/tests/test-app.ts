@@ -7,6 +7,7 @@ import type { PublicReadService } from '../src/modules/public-read/public-read.s
 import type { FixtureStatisticsService } from '../src/modules/statistics/fixture-statistics.service';
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
+import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
 import type { AdminService } from '../src/modules/admin/admin.service';
 
 const testEnvironment: Environment = {
@@ -15,6 +16,7 @@ const testEnvironment: Environment = {
   CORS_ORIGINS: 'http://localhost:5173',
   SUPABASE_URL: 'https://test-project.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+  SUPABASE_SECRET_KEY: 'test-server-only-secret-key',
 };
 
 const acceptTestIdentity: VerifyAccessToken = async () => ({
@@ -30,6 +32,7 @@ const synchronizeTestAccount: SynchronizeAccount = async (identity) => ({
   approvalState: 'not_requested',
   competitionIds: [],
   disabled: false,
+  deletionState: 'active',
 });
 
 const requestTestSubmitterAccess: SubmitterAccessService = {
@@ -38,6 +41,17 @@ const requestTestSubmitterAccess: SubmitterAccessService = {
       data: {
         accountId: account.accountId,
         approvalState: 'pending',
+      },
+    };
+  },
+};
+
+const deleteTestAccount: AccountDeletionService = {
+  async deleteAccount() {
+    return {
+      data: {
+        status: 'deleted',
+        retainedCricketData: true,
       },
     };
   },
@@ -59,6 +73,7 @@ export function createTestApp(
   fixtureStatisticsService?: FixtureStatisticsService,
   submissionService?: SubmissionService,
   submitterAccessService: SubmitterAccessService = requestTestSubmitterAccess,
+  accountDeletionService: AccountDeletionService = deleteTestAccount,
   adminService: AdminService = testAdminService,
 ) {
   return createApp({
@@ -69,6 +84,7 @@ export function createTestApp(
     ...(fixtureStatisticsService !== undefined ? { fixtureStatisticsService } : {}),
     ...(submissionService !== undefined ? { submissionService } : {}),
     submitterAccessService,
+    accountDeletionService,
     adminService,
   });
 }
@@ -82,6 +98,7 @@ export function createTestAccount(overrides: Partial<ApplicationAccount> = {}): 
     approvalState: 'not_requested',
     competitionIds: [],
     disabled: false,
+    deletionState: 'active',
     ...overrides,
   };
 }

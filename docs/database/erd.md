@@ -23,6 +23,9 @@ mapped to their managed-auth provider subject and receive only explicit server-o
 grants. A person is identified by their registry reference; the names they have appeared under are
 kept separately and are never a join key.
 
+Deleting an account tombstones `app_user` in place. The `submission.submitted_by` relationship is
+retained and does not cascade; only the account's competition-scope rows are removed.
+
 ## Match structure
 
 ```mermaid

@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  accountDeletionRequestSchema,
+  accountDeletionResponseSchema,
   APPLICATION_ROLES,
   administratorSubmitterAccessUpdateSchema,
   administratorUserManagementResponseSchema,
@@ -101,6 +103,27 @@ describe('submitter approval state contract', () => {
 
   test('rejects an unsupported approval state', () => {
     expect(submitterApprovalStateSchema.safeParse('revoked').success).toBe(false);
+  });
+});
+
+describe('account deletion contracts', () => {
+  test('requires the exact explicit confirmation value', () => {
+    expect(accountDeletionRequestSchema.parse({ confirmation: 'DELETE' })).toEqual({
+      confirmation: 'DELETE',
+    });
+    expect(accountDeletionRequestSchema.safeParse({ confirmation: 'delete' }).success).toBe(false);
+    expect(
+      accountDeletionRequestSchema.safeParse({ confirmation: 'DELETE', accountId: 'another-user' })
+        .success,
+    ).toBe(false);
+  });
+
+  test('describes successful deletion and retained cricket data', () => {
+    expect(
+      accountDeletionResponseSchema.parse({
+        data: { status: 'deleted', retainedCricketData: true },
+      }),
+    ).toEqual({ data: { status: 'deleted', retainedCricketData: true } });
   });
 });
 
