@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 
 import {
   APPLICATION_ROLES,
+  administratorSubmitterAccessUpdateSchema,
+  administratorUserManagementResponseSchema,
   applicationRoleSchema,
   currentUserProfileResponseSchema,
   submitterAccessRequestResponseSchema,
@@ -19,6 +21,74 @@ describe('application role contract', () => {
       expect(applicationRoleSchema.safeParse(role).success).toBe(false);
     },
   );
+});
+
+describe('administrator user-management contracts', () => {
+  test('accepts users, scope choices, and access audit data', () => {
+    expect(
+      administratorUserManagementResponseSchema.parse({
+        data: {
+          users: [
+            {
+              id: '42',
+              displayName: 'Contributor',
+              role: 'submitter',
+              approvalState: 'approved',
+              competitionScopes: [{ competitionId: '7', name: 'Premier T20' }],
+              disabled: false,
+              updatedAt: '2026-08-16T12:00:00.000Z',
+              submitterAccessUpdatedAt: '2026-08-16T12:00:00.000Z',
+              submitterAccessUpdatedBy: {
+                id: '1',
+                displayName: 'Administrator',
+              },
+            },
+          ],
+          availableScopes: [{ competitionId: '7', name: 'Premier T20' }],
+        },
+      }),
+    ).toMatchObject({
+      data: {
+        users: [{ id: '42', role: 'submitter' }],
+      },
+    });
+  });
+
+  test('requires at least one unique competition scope for approval', () => {
+    expect(
+      administratorSubmitterAccessUpdateSchema.safeParse({
+        approved: true,
+        competitionIds: [],
+      }).success,
+    ).toBe(false);
+    expect(
+      administratorSubmitterAccessUpdateSchema.safeParse({
+        approved: true,
+        competitionIds: ['7', '7'],
+      }).success,
+    ).toBe(false);
+    expect(
+      administratorSubmitterAccessUpdateSchema.safeParse({
+        approved: true,
+        competitionIds: ['7'],
+      }).success,
+    ).toBe(true);
+  });
+
+  test('does not allow revoked access to retain competition scopes', () => {
+    expect(
+      administratorSubmitterAccessUpdateSchema.safeParse({
+        approved: false,
+        competitionIds: ['7'],
+      }).success,
+    ).toBe(false);
+    expect(
+      administratorSubmitterAccessUpdateSchema.safeParse({
+        approved: false,
+        competitionIds: [],
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe('submitter approval state contract', () => {

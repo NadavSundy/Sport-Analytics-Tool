@@ -133,14 +133,16 @@ which is why it is settled here rather than deferred.
 **Identity.** `app_user`, keyed on the authentication provider and that provider's
 subject identifier rather than on any provider-specific column, so that the schema
 does not depend on the current choice of provider. Holds the display name, application role,
-submitter-approval state, disabled state, created time, last-updated time, and
-last-authenticated time. `application_role` is non-null, defaults to `viewer`, and accepts only
+submitter-approval state, disabled state, created time, last-updated time, last-authenticated time,
+and the administrator account/time for the latest submitter-access change. `application_role` is
+non-null, defaults to `viewer`, and accepts only
 `viewer`, `submitter`, or `admin`. The database maintains the last-updated time for every account
 change. Personal data remains with the authentication provider. The role is authoritative for
 submission capability, while `submitter_competition_scope` remains separate and limits a submitter
 or admin to a specific competition. The legacy `submitter_approval_state` column is retained as
 deprecated request-workflow data and is not used for submission authorization. Authentication
-never creates a privileged role or competition grant.
+never creates a privileged role or competition grant. Administrator approval, scope replacement,
+revocation, and access-audit attribution are written in one transaction.
 
 **Provenance.** `submission`, recording who submitted what, when, from which
 source file, with what checksum, and whether it was accepted.

@@ -32,6 +32,8 @@ import {
   createSubmitterAccessService,
   type SubmitterAccessService,
 } from './modules/submitter-access/submitter-access.service';
+import { createAdminRouter } from './modules/admin/admin.routes';
+import { createAdminService, type AdminService } from './modules/admin/admin.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -41,6 +43,7 @@ export interface AppDependencies {
   fixtureStatisticsService?: FixtureStatisticsService;
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
+  adminService?: AdminService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -54,6 +57,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
+  const adminService = dependencies.adminService ?? createAdminService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -86,6 +90,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     '/api/v1',
     createSubmitterAccessRouter(verifyAccessToken, synchronizeAccount, submitterAccessService),
   );
+  app.use('/api/v1', createAdminRouter(verifyAccessToken, synchronizeAccount, adminService));
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
   app.use(notFoundHandler);

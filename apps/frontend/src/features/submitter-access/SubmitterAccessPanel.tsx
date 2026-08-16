@@ -182,9 +182,16 @@ export function SubmitterAccessPanel() {
             Your account has submission access. Submissions remain limited to the competitions
             assigned by an administrator.
           </p>
-          <Link className="button button--primary" to="/submissions/new">
-            Submit events
-          </Link>
+          <div className="submitter-access-panel__actions">
+            <Link className="button button--primary" to="/submissions/new">
+              Submit events
+            </Link>
+            {profileState.profile.role === 'admin' ? (
+              <Link className="button button--secondary" to="/admin/users">
+                Manage users
+              </Link>
+            ) : null}
+          </div>
         </div>
       ) : profileState.profile.approvalState === 'pending' ? (
         <p className="submitter-access-panel__message" role="status">

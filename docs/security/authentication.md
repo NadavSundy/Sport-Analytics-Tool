@@ -503,7 +503,6 @@ This foundation intentionally does not implement:
 
 - final password-reset screens;
 - final account-deletion screens;
-- administrator approval-management routes and interfaces;
 - event correction and file or batch upload interfaces;
 - season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;

@@ -52,6 +52,34 @@ must assign `application_role = submitter` and the intended competition scopes t
 administrative process. The column should be removed in a later migration once no workflow depends
 on it.
 
+## Administrator submitter workflow
+
+Only an account whose authoritative role is `admin` may call the user-management endpoints. The
+backend does not accept an administrator role from token claims or profile metadata; it uses the
+synchronized PostgreSQL account attached by authentication middleware.
+
+Approval and scope assignment are one operation. An approval is valid only when at least one
+requested competition exists. In one transaction the backend:
+
+1. locks and checks the target account;
+2. validates every requested competition;
+3. assigns `application_role = submitter` and the compatibility state `approved`;
+4. replaces the target account's complete `submitter_competition_scope`; and
+5. records the administrator and change time.
+
+Revocation assigns `application_role = viewer`, records the compatibility state `rejected`, and
+removes every competition scope in the same transaction. The changed role and scope therefore take
+effect on the user's next authenticated API request. An invalid scope rolls the transaction back
+without partially changing permission.
+
+The submitter-access operation cannot modify an `admin` account, a disabled account, or the acting
+administrator's own account. A viewer or submitter receives `403 Forbidden` before request-body
+processing and therefore cannot approve themselves.
+
+`app_user.submitter_access_updated_by` and `submitter_access_updated_at` identify the most recent
+administrator access change. The actor foreign key uses `ON DELETE SET NULL`: the change time
+remains visible if the administrator account is later removed.
+
 ## Security boundary
 
 - The backend reads roles and scopes from PostgreSQL after verifying identity.
@@ -60,4 +88,5 @@ on it.
 - Re-authentication may refresh the display name and last-authenticated time, but it never updates
   the persisted role or scopes.
 - Only a trusted administrative backend process may change `application_role`.
+- Approval, scope replacement, audit attribution, and revocation are committed atomically.
 - Frontend visibility checks may improve the interface, but they are never the security boundary.
