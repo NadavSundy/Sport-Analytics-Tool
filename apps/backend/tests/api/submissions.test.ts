@@ -267,9 +267,7 @@ describe('direct event submission API', () => {
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(
-          createTestAccount({ approvalState: 'approved', competitionIds: ['5'] }),
-        ),
+        synchronizeWith(createTestAccount({ approvalState: 'approved', competitionIds: ['5'] })),
         undefined,
         service,
       ),
@@ -331,9 +329,7 @@ describe('direct event submission API', () => {
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(
-          createTestAccount({ approvalState: 'approved', competitionIds: ['5'] }),
-        ),
+        synchronizeWith(createTestAccount({ approvalState: 'approved', competitionIds: ['5'] })),
         undefined,
         service,
       ),
@@ -378,6 +374,4 @@ describe('direct event submission API', () => {
     });
     expect(service.submit).not.toHaveBeenCalled();
   });
-
-  
 });
