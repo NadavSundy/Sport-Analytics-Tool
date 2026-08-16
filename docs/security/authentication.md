@@ -124,9 +124,16 @@ session state. This identity state must not be interpreted as an application rol
 submitter status, administrator permission or scoped grant.
 
 Signed-out navigation exposes one Login or Sign up action. Signed-in navigation exposes Account and
-Sign Out, and updates from the shared authentication state without a page reload. `/account`
+Submit Events, and Sign Out, and updates from the shared authentication state without a page reload. `/account`
 displays only the email already present on the Supabase session identity when available. Sign-out
 uses the managed Supabase operation and returns to `/`.
+
+`/submissions/new` is a protected frontend journey. Anonymous users are redirected to sign in. A
+signed-in user must also have a persisted `approved` submitter state before the event editor is
+shown. The fixture selector is populated from public fixture queries constrained by the competition
+IDs returned from `/auth/me`. These frontend checks improve the experience but are not an
+authorisation boundary: `POST /api/v1/submissions` repeats authentication, approval, and target
+fixture-scope checks on the backend.
 
 ## Frontend authenticated API requests
 
@@ -451,7 +458,7 @@ This foundation intentionally does not implement:
 - final account-deletion screens;
 - administrator approval-management routes and interfaces;
 - submitter access-request routes and interfaces;
-- event-submission routes;
+- event correction and file or batch upload interfaces;
 - season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;
 - production Row Level Security policies.
@@ -472,4 +479,5 @@ This foundation intentionally does not implement:
 The preceding document was planned and generated with the assistance of Codex[GPT-5]. The
 frontend session-state and authenticated-request sections were later updated with the assistance of
 Codex[GPT-5.6 Sol]. The account synchronization, profile, and authorization sections were updated
+with the assistance of Codex[GPT-5.6 Sol]. The protected event-submission journey was documented
 with the assistance of Codex[GPT-5.6 Sol].

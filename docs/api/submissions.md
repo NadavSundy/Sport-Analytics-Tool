@@ -72,6 +72,68 @@ accounts, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for 
 validation, and `429` after 30 requests from one account in 60 seconds. Validation details include a
 field path and `eventIndex` where applicable.
 
+## Rejection format
+
+A rejected submission returns an `error` object carrying a code, a human-readable
+message, and — where the failure can be attributed to a particular field or event
+— a `details` array. Every detail names the field path that failed and, for a
+failure inside a submitted event, the zero-based index of that event.
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "The submission is invalid.",
+    "details": [
+      {
+        "code": "INVALID_PARTICIPANT",
+        "message": "The participant does not belong to the submitted fixture.",
+        "field": "wickets.0.fielders.2.participantId",
+        "eventIndex": 3
+      }
+    ]
+  }
+}
+```
+
+Validation does not stop at the first failure. Every problem the platform can
+detect in one pass is returned together, so a submitter can correct a submission
+without discovering its faults one at a time.
+
+### Response codes
+
+| Status | Code                    | Meaning                                                                                                              |
+| ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 400    | `INVALID_JSON`          | The request body is not valid JSON.                                                                                  |
+| 401    | `UNAUTHORIZED`          | Authentication is missing or could not be verified.                                                                  |
+| 403    | `FORBIDDEN`             | The account is authenticated but is not an approved submitter, or the fixture falls outside its competition scope.   |
+| 409    | `DUPLICATE_EVENT_ID`    | One or more event identifiers have already been accepted. The submission is a replay rather than an invalid payload. |
+| 413    | `PAYLOAD_TOO_LARGE`     | The request exceeds the 1 MB limit.                                                                                  |
+| 422    | `VALIDATION_FAILED`     | The submission is structurally or referentially invalid. See `details`.                                              |
+| 429    | `RATE_LIMIT_EXCEEDED`   | More than 30 requests from one account in 60 seconds. `Retry-After` gives the wait in seconds.                       |
+| 500    | `INTERNAL_SERVER_ERROR` | An unexpected failure. No detail is returned, and the cause is recorded server-side.                                 |
+
+### Detail codes
+
+Returned inside `details` on a 422.
+
+| Code                     | Field                                                                                                     | Raised when                                                                                                                                                                                                                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `INVALID_FIELD`          | The path that failed                                                                                      | The payload does not satisfy the submission contract: a missing or mistyped field, a value outside the supported range, an unexpected field, a printed ball number not in the published form, or an ordering rule broken within the submission. The message is the contract's own.                                                   |
+| `FIXTURE_NOT_FOUND`      | `fixtureId`                                                                                               | The submitted fixture does not exist.                                                                                                                                                                                                                                                                                                |
+| `INVALID_INNINGS`        | `inningsId`                                                                                               | The innings does not exist, or belongs to a different fixture. The check is scoped to the submitted fixture, so an innings identifier from elsewhere is rejected rather than accepted.                                                                                                                                               |
+| `INVALID_PARTICIPANT`    | `strikerId`, `nonStrikerId`, `bowlerId`, `wickets.N.playerOutId`, or `wickets.N.fielders.M.participantId` | The participant is not in the squad for the submitted fixture. Existing as a person is not sufficient.                                                                                                                                                                                                                               |
+| `UNKNOWN_DISMISSAL_KIND` | `wickets.kind`                                                                                            | The dismissal kind is absent from the `dismissal_kind` lookup table. The vocabulary is held in that table rather than in the contract, so a new kind requires a row and no code change.                                                                                                                                              |
+| `DUPLICATE_EVENT_ID`     | `eventId`                                                                                                 | The event identifier has already been accepted. Also returned as the top-level code on a 409.                                                                                                                                                                                                                                        |
+| 409                      | `EVENT_CONFLICT`                                                                                          | A delivery position, within-innings sequence, or event identifier conflicts with data already accepted. Unlike `DUPLICATE_EVENT_ID`, this is raised by the database rather than the pre-submission checks: it means the conflicting data was accepted between validation and storage, or that another submission holds the position. |
+
+### Atomicity
+
+A rejected submission stores nothing. Validation and storage share one
+transaction, so a failure at any point leaves neither the submission record nor
+any of its events behind. A submitter may correct and resubmit without first
+removing a partial result.
+
 ## AI Declaration
 
 The direct submission API documentation was generated with the assistance of Codex[GPT-5.6 Sol].

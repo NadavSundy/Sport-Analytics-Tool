@@ -53,4 +53,34 @@ describe('authenticated API client', () => {
     await expect(request).rejects.toBeInstanceOf(ApiResponseError);
     await expect(request).rejects.toMatchObject({ kind, status });
   });
+
+  it('preserves structured validation details from an API error response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(422, {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'The submission is invalid.',
+            details: [
+              {
+                code: 'INVALID_FIELD',
+                message: 'Total runs do not match.',
+                field: 'events.0.runs.total',
+                eventIndex: 0,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    const client = createAuthenticatedApiClient(() => 'current-access-token');
+
+    await expect(client.request('/submissions')).rejects.toMatchObject({
+      status: 422,
+      code: 'VALIDATION_FAILED',
+      message: 'The submission is invalid.',
+      details: [expect.objectContaining({ field: 'events.0.runs.total', eventIndex: 0 })],
+    });
+  });
 });

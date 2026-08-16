@@ -68,6 +68,21 @@ npm run openapi:lint
 The issue #51 verification record is in
 `evidence/validation/issue-51-direct-event-submission.md` at the repository root.
 
+## Submitter interface coverage
+
+The frontend suite covers anonymous redirection, persisted unapproved access, competition-scoped
+fixture selection, valid submissions, event- and field-specific validation results, invalid JSON,
+and backend failures. Browser tests additionally verify keyboard order, focus movement to results,
+error association, narrow-screen overflow, and serious or critical Axe findings.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/frontend
+npm run test:e2e -- tests/e2e/submissions.spec.ts --workers=1
+```
+
 ## Fixture statistics coverage
 
 The Basic fixture-statistics suite includes a manually verified golden fixture, deterministic replay,
@@ -85,4 +100,5 @@ npm run test --workspace=@sport-analytics/contracts
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
+Codex[GPT-5.6 Sol]. The submitter interface coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].

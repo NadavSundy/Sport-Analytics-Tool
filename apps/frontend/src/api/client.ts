@@ -1,3 +1,5 @@
+import { apiErrorResponseSchema, type ApiErrorDetail } from '@sport-analytics/contracts';
+
 export interface HealthResponse {
   status: 'ok';
   service: string;
@@ -11,8 +13,17 @@ export type ApiErrorKind = 'unauthenticated' | 'forbidden' | 'request-failed';
 export class ApiResponseError extends Error {
   readonly kind: ApiErrorKind;
   readonly status: number;
+  readonly code: string | undefined;
+  readonly details: ApiErrorDetail[] | undefined;
 
-  constructor(status: number, message = `API request failed with status ${status}`) {
+  constructor(
+    status: number,
+    message = `API request failed with status ${status}`,
+    options: {
+      code?: string | undefined;
+      details?: ApiErrorDetail[] | undefined;
+    } = {},
+  ) {
     const kind =
       status === 401 ? 'unauthenticated' : status === 403 ? 'forbidden' : 'request-failed';
 
@@ -20,6 +31,8 @@ export class ApiResponseError extends Error {
     this.name = 'ApiResponseError';
     this.kind = kind;
     this.status = status;
+    this.code = options.code;
+    this.details = options.details;
   }
 }
 
@@ -54,6 +67,24 @@ export function createAuthenticatedApiClient(
       });
 
       if (!response.ok) {
+        let body: unknown = null;
+
+        try {
+          body = await response.json();
+        } catch {
+          // Some infrastructure failures have no JSON body. The status-based
+          // fallback below still gives the interface a safe error state.
+        }
+
+        const errorResponse = apiErrorResponseSchema.safeParse(body);
+
+        if (errorResponse.success) {
+          throw new ApiResponseError(response.status, errorResponse.data.error.message, {
+            code: errorResponse.data.error.code,
+            details: errorResponse.data.error.details,
+          });
+        }
+
         throw new ApiResponseError(response.status);
       }
 
