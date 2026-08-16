@@ -138,6 +138,11 @@ last-authenticated time. The database maintains the last-updated time for every 
 Personal data remains with the authentication provider. `submitter_competition_scope` grants an
 approved account access to a specific competition; authentication never creates a grant.
 
+Account deletion does not remove this row. A deletion state machine records the external Auth and
+local finalisation stages; the subject becomes a random tombstone, the display name is cleared, and
+a one-way former-subject revocation marker prevents unexpired JWTs from recreating an active local
+account. The internal identifier and submission relationship remain for provenance.
+
 **Provenance.** `submission`, recording who submitted what, when, from which
 source file, with what checksum, and whether it was accepted.
 
@@ -237,7 +242,8 @@ recorded on #27.
    client confirmation remains open.
 6. **`app_user`** is included here in minimal form. Issue #44 extends the record with approval and
    synchronization state and adds competition-scoped grants; it does not redefine submission
-   ownership.
+   ownership. Issue #66 adds recoverable deletion state and non-identifying tombstoning without
+   changing that ownership relationship.
 7. **Storage** is not permitted to shape the schema. A measured benchmark against
    the real schema and indexes is required before the hosting question is
    resolved, and the option of holding source files and dataset releases in object

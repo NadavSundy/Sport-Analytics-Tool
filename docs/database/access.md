@@ -195,6 +195,12 @@ The account-schema integration tests cover:
 - invalid account and competition references; and
 - cascade removal of grants when an account or competition is deleted.
 
+Account deletion does not execute `DELETE FROM app_user`. It updates the account through a
+fail-closed deletion state machine and removes its scope rows. `submission.submitted_by` remains a
+non-cascading foreign key so accepted submissions, deliveries, statistics, and provenance survive
+the personal-account deletion request. A rollback guard prevents removal of the deletion columns
+after any account has entered that lifecycle.
+
 ## Scope
 
 This database foundation does not implement public HTTP endpoints.
