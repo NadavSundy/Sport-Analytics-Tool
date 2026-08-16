@@ -1,21 +1,14 @@
 import {
+  currentUserProfileResponseSchema,
   DIRECT_SUBMISSION_SCHEMA_VERSION,
   submissionResponseSchema,
+  type CurrentUserProfile,
   type Fixture,
   type SubmissionEvent,
   type SubmissionResponse,
 } from '@sport-analytics/contracts';
 import type { AuthenticatedApiClient } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
-
-export interface CurrentUserProfile {
-  approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected';
-  competitionIds: string[];
-}
-
-interface CurrentUserResponse {
-  user: CurrentUserProfile;
-}
 
 export class SubmissionInterfaceContractError extends Error {
   constructor() {
@@ -31,35 +24,18 @@ export class SubmissionInputError extends Error {
   }
 }
 
-function isCurrentUserResponse(value: unknown): value is CurrentUserResponse {
-  if (!value || typeof value !== 'object' || !('user' in value)) {
-    return false;
-  }
-
-  const user = value.user;
-
-  return (
-    user !== null &&
-    typeof user === 'object' &&
-    'approvalState' in user &&
-    ['not_requested', 'pending', 'approved', 'rejected'].includes(String(user.approvalState)) &&
-    'competitionIds' in user &&
-    Array.isArray(user.competitionIds) &&
-    user.competitionIds.every((competitionId) => typeof competitionId === 'string')
-  );
-}
-
 export async function getCurrentUserProfile(
   client: AuthenticatedApiClient,
   signal?: AbortSignal,
 ): Promise<CurrentUserProfile> {
   const response = await client.request<unknown>('/auth/me', signal ? { signal } : {});
+  const parsed = currentUserProfileResponseSchema.safeParse(response);
 
-  if (!isCurrentUserResponse(response)) {
+  if (!parsed.success) {
     throw new SubmissionInterfaceContractError();
   }
 
-  return response.user;
+  return parsed.data.user;
 }
 
 async function listCompetitionFixtures(

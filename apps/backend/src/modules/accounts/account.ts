@@ -1,13 +1,11 @@
-export const APPLICATION_ROLES = ['viewer', 'administrator'] as const;
-export type ApplicationRole = (typeof APPLICATION_ROLES)[number];
+import {
+  applicationRoleSchema,
+  submitterApprovalStateSchema,
+  type ApplicationRole,
+  type SubmitterApprovalState,
+} from '@sport-analytics/contracts';
 
-export const SUBMITTER_APPROVAL_STATES = [
-  'not_requested',
-  'pending',
-  'approved',
-  'rejected',
-] as const;
-export type SubmitterApprovalState = (typeof SUBMITTER_APPROVAL_STATES)[number];
+export type { ApplicationRole, SubmitterApprovalState } from '@sport-analytics/contracts';
 
 export interface ApplicationAccount {
   accountId: string;
@@ -20,9 +18,9 @@ export interface ApplicationAccount {
 }
 
 export function isApplicationRole(value: string): value is ApplicationRole {
-  return APPLICATION_ROLES.some((role) => role === value);
+  return applicationRoleSchema.safeParse(value).success;
 }
 
 export function isSubmitterApprovalState(value: string): value is SubmitterApprovalState {
-  return SUBMITTER_APPROVAL_STATES.some((state) => state === value);
+  return submitterApprovalStateSchema.safeParse(value).success;
 }
