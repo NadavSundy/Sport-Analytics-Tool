@@ -32,7 +32,26 @@ export const currentUserProfileResponseSchema = z
   })
   .strict();
 
+export const accountDeletionRequestSchema = z
+  .object({
+    confirmation: z.literal('DELETE'),
+  })
+  .strict();
+
+export const accountDeletionResponseSchema = z
+  .object({
+    data: z
+      .object({
+        status: z.literal('deleted'),
+        retainedCricketData: z.literal(true),
+      })
+      .strict(),
+  })
+  .strict();
+
 export type ApplicationRole = z.infer<typeof applicationRoleSchema>;
 export type SubmitterApprovalState = z.infer<typeof submitterApprovalStateSchema>;
 export type CurrentUserProfile = z.infer<typeof currentUserProfileSchema>;
 export type CurrentUserProfileResponse = z.infer<typeof currentUserProfileResponseSchema>;
+export type AccountDeletionRequest = z.infer<typeof accountDeletionRequestSchema>;
+export type AccountDeletionResponse = z.infer<typeof accountDeletionResponseSchema>;

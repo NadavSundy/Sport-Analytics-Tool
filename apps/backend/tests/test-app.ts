@@ -7,6 +7,7 @@ import type { PublicReadService } from '../src/modules/public-read/public-read.s
 import type { FixtureStatisticsService } from '../src/modules/statistics/fixture-statistics.service';
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
+import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -14,6 +15,7 @@ const testEnvironment: Environment = {
   CORS_ORIGINS: 'http://localhost:5173',
   SUPABASE_URL: 'https://test-project.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+  SUPABASE_SECRET_KEY: 'test-server-only-secret-key',
 };
 
 const acceptTestIdentity: VerifyAccessToken = async () => ({
@@ -42,6 +44,17 @@ const requestTestSubmitterAccess: SubmitterAccessService = {
   },
 };
 
+const deleteTestAccount: AccountDeletionService = {
+  async deleteAccount() {
+    return {
+      data: {
+        status: 'deleted',
+        retainedCricketData: true,
+      },
+    };
+  },
+};
+
 export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
   publicReadService?: PublicReadService,
@@ -49,6 +62,7 @@ export function createTestApp(
   fixtureStatisticsService?: FixtureStatisticsService,
   submissionService?: SubmissionService,
   submitterAccessService: SubmitterAccessService = requestTestSubmitterAccess,
+  accountDeletionService: AccountDeletionService = deleteTestAccount,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -58,6 +72,7 @@ export function createTestApp(
     ...(fixtureStatisticsService !== undefined ? { fixtureStatisticsService } : {}),
     ...(submissionService !== undefined ? { submissionService } : {}),
     submitterAccessService,
+    accountDeletionService,
   });
 }
 
