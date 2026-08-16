@@ -165,3 +165,7 @@ data/cricsheet/summary.json
 # Python-generated files
 __pycache__/
 *.py[cod]
+
+# Local Gitea issue snapshots (may contain internal project information)
+/gitea-export/
+/.gitea-export.tmp.*/

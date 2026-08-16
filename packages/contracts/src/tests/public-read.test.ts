@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'vitest';
 
-import { fixtureListQuerySchema, participantListQuerySchema, seasonSchema } from '../public-read';
+import {
+  fixtureListQuerySchema,
+  fixtureStatisticsQuerySchema,
+  fixtureStatisticsResponseSchema,
+  participantListQuerySchema,
+  seasonSchema,
+} from '../public-read';
 
 describe('public read contracts', () => {
   test('validates a season with a stable opaque identifier', () => {
@@ -46,5 +52,40 @@ describe('public read contracts', () => {
         startDateTo: '2026-01-01',
       }).success,
     ).toBe(false);
+  });
+
+  test('parses the opt-in statistic contributor expansion', () => {
+    expect(fixtureStatisticsQuerySchema.parse({})).toEqual({
+      includeContributors: false,
+    });
+    expect(
+      fixtureStatisticsQuerySchema.parse({
+        includeContributors: 'true',
+      }),
+    ).toEqual({
+      includeContributors: true,
+    });
+  });
+
+  test('validates a fixture statistics response', () => {
+    expect(
+      fixtureStatisticsResponseSchema.safeParse({
+        data: {
+          fixtureId: '9',
+          status: 'complete',
+          scope: { superOversIncluded: false },
+          outcome: {
+            kind: 'tie',
+            winnerCompetitorId: null,
+            eliminatorCompetitorId: null,
+            margin: null,
+            method: null,
+            decidedByBowlOut: false,
+          },
+          warnings: [],
+          statistics: [],
+        },
+      }).success,
+    ).toBe(true);
   });
 });

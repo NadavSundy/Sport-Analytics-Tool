@@ -249,6 +249,60 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/fixtures/{fixtureId}/statistics:
+    get:
+      tags:
+        - Public Read
+      summary: Get derived fixture statistics
+      description: |
+        Derives standard fixture, innings and participant statistics from the
+        latest accepted revision of each ordered delivery event. Super-over
+        innings are excluded from this Basic standard scope.
+      operationId: getFixtureStatistics
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/IncludeStatisticContributors'
+      responses:
+        '200':
+          description: Derived fixture statistics and completeness state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureStatisticsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/fixtures/{fixtureId}/statistics/{statisticId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get one derived fixture statistic resource
+      description: |
+        Resolves a stable statistic identifier returned by the fixture
+        statistics endpoint. Contributing accepted event records are opt-in.
+      operationId: getFixtureStatistic
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+        - $ref: '#/components/parameters/IncludeStatisticContributors'
+      responses:
+        '200':
+          description: One derived fixture statistic resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureStatisticResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/competitors:
     get:
       tags:
@@ -371,13 +425,12 @@ paths:
         - Submissions
       summary: Submit fixture event data
       description: |
-        Baseline contract for an approved submitter to send fixture event data
-        through the handwritten backend API.
-
-        The executable cricket event schema is intentionally not frozen by
-        this baseline and will be refined by the event/submission implementation.
+        Accept an ordered set of cricket delivery events. The bearer identity
+        must belong to an approved submitter and the fixture's competition must
+        be in that account's server-owned scope. Validation and storage are
+        synchronous and atomic; clients submit events, never statistic totals.
       operationId: createSubmission
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security:
         - bearerAuth: []
       requestBody:
@@ -387,8 +440,8 @@ paths:
             schema:
               $ref: '#/components/schemas/SubmissionRequest'
       responses:
-        '202':
-          description: Submission received for validation or processing.
+        '201':
+          description: Submission and all ordered events were accepted and stored.
           content:
             application/json:
               schema:
@@ -399,8 +452,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          description: An event ID, innings sequence, or delivery position conflicts with accepted data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON payload exceeds 1 MB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '422':
           description: Submission failed contract or domain validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: The approved submitter exceeded 30 submission requests in 60 seconds.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until the current rate-limit window ends.
           content:
             application/json:
               schema:
@@ -452,6 +528,21 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/ApiIdentifier'
+
+    StatisticId:
+      name: statisticId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+    IncludeStatisticContributors:
+      name: includeContributors
+      in: query
+      description: Include the ordered accepted delivery records that contributed to the result.
+      schema:
+        type: boolean
+        default: false
 
     CompetitorId:
       name: competitorId
@@ -508,6 +599,12 @@ components:
       description: |
         Stable opaque resource identifier. Consumers must not infer business
         meaning from its representation.
+
+    DatabaseIdentifier:
+      type: string
+      pattern: '^[1-9]\d*$'
+      maxLength: 19
+      description: A positive database identifier represented as a JSON string.
 
     HealthResponse:
       type: object
@@ -746,6 +843,382 @@ components:
           type: string
           minLength: 1
 
+    StatisticContributingEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - fixtureId
+        - inningsId
+        - inningsOrdinal
+        - sequenceNumber
+        - strikerParticipantId
+        - bowlerParticipantId
+        - runs
+        - extras
+        - nonBoundary
+        - bowlerWickets
+      properties:
+        eventId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        inningsId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        inningsOrdinal:
+          type: integer
+          minimum: 0
+        sequenceNumber:
+          type: integer
+          minimum: 1
+        strikerParticipantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        bowlerParticipantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        runs:
+          type: object
+          additionalProperties: false
+          required:
+            - offBat
+            - extras
+            - total
+          properties:
+            offBat:
+              type: integer
+              minimum: 0
+            extras:
+              type: integer
+              minimum: 0
+            total:
+              type: integer
+              minimum: 0
+        extras:
+          type: object
+          additionalProperties: false
+          required:
+            - wides
+            - noBalls
+            - byes
+            - legByes
+            - penalty
+          properties:
+            wides:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            noBalls:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            byes:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            legByes:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            penalty:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+        nonBoundary:
+          type: boolean
+        bowlerWickets:
+          type: integer
+          minimum: 0
+
+    FixtureStatisticCommon:
+      type: object
+      required:
+        - statisticId
+        - fixtureId
+        - sourceEventCount
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        contributingEvents:
+          type: array
+          description: Present only when includeContributors=true.
+          items:
+            $ref: '#/components/schemas/StatisticContributingEvent'
+
+    InningsTeamStatistic:
+      allOf:
+        - $ref: '#/components/schemas/FixtureStatisticCommon'
+        - type: object
+          required:
+            - scope
+            - statisticCode
+            - inningsId
+            - inningsOrdinal
+            - competitorId
+            - metrics
+          properties:
+            scope:
+              type: string
+              const: innings
+            statisticCode:
+              type: string
+              const: team_total
+            inningsId:
+              $ref: '#/components/schemas/ApiIdentifier'
+            inningsOrdinal:
+              type: integer
+              minimum: 0
+            competitorId:
+              $ref: '#/components/schemas/ApiIdentifier'
+            metrics:
+              type: object
+              additionalProperties: false
+              required:
+                - deliveryRuns
+                - penaltyRuns
+                - totalRuns
+              properties:
+                deliveryRuns:
+                  type: integer
+                  minimum: 0
+                penaltyRuns:
+                  type: integer
+                  minimum: 0
+                totalRuns:
+                  type: integer
+                  minimum: 0
+
+    ParticipantFixtureStatistic:
+      allOf:
+        - $ref: '#/components/schemas/FixtureStatisticCommon'
+        - type: object
+          required:
+            - scope
+            - statisticCode
+            - participantId
+            - competitorId
+            - batting
+            - bowling
+          properties:
+            scope:
+              type: string
+              const: participant
+            statisticCode:
+              type: string
+              const: participant_fixture
+            participantId:
+              $ref: '#/components/schemas/ApiIdentifier'
+            competitorId:
+              oneOf:
+                - $ref: '#/components/schemas/ApiIdentifier'
+                - type: 'null'
+            batting:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - runsScored
+                    - ballsFaced
+                    - strikeRate
+                    - fours
+                    - sixes
+                  properties:
+                    runsScored:
+                      type: integer
+                      minimum: 0
+                    ballsFaced:
+                      type: integer
+                      minimum: 0
+                    strikeRate:
+                      oneOf:
+                        - type: number
+                          minimum: 0
+                        - type: 'null'
+                    fours:
+                      type: integer
+                      minimum: 0
+                    sixes:
+                      type: integer
+                      minimum: 0
+                - type: 'null'
+            bowling:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - runsConceded
+                    - legalBallsBowled
+                    - oversBowled
+                    - economyRate
+                    - wicketsTaken
+                  properties:
+                    runsConceded:
+                      type: integer
+                      minimum: 0
+                    legalBallsBowled:
+                      type: integer
+                      minimum: 0
+                    oversBowled:
+                      type: string
+                      pattern: '^\d+\.\d+$'
+                    economyRate:
+                      oneOf:
+                        - type: number
+                          minimum: 0
+                        - type: 'null'
+                    wicketsTaken:
+                      type: integer
+                      minimum: 0
+                - type: 'null'
+
+    FixtureStatistic:
+      oneOf:
+        - $ref: '#/components/schemas/InningsTeamStatistic'
+        - $ref: '#/components/schemas/ParticipantFixtureStatistic'
+
+    FixtureStatisticsWarning:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - SOURCE_DATA_INCOMPLETE
+            - NO_STANDARD_INNINGS
+            - NO_ACCEPTED_EVENTS
+            - INNINGS_WITHOUT_ACCEPTED_EVENTS
+            - PARTICIPANT_COMPETITOR_UNKNOWN
+        message:
+          type: string
+          minLength: 1
+        inningsId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        fields:
+          type: array
+          items:
+            type: string
+            minLength: 1
+
+    FixtureOutcome:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - winnerCompetitorId
+        - eliminatorCompetitorId
+        - margin
+        - method
+        - decidedByBowlOut
+      properties:
+        kind:
+          type: string
+          enum:
+            - won
+            - tie
+            - draw
+            - no_result
+        winnerCompetitorId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        eliminatorCompetitorId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        margin:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required:
+                - type
+                - value
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - runs
+                    - wickets
+                value:
+                  type: integer
+                  minimum: 0
+            - type: 'null'
+        method:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        decidedByBowlOut:
+          type: boolean
+
+    FixtureStatistics:
+      type: object
+      additionalProperties: false
+      required:
+        - fixtureId
+        - status
+        - scope
+        - outcome
+        - warnings
+        - statistics
+      properties:
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        status:
+          type: string
+          enum:
+            - complete
+            - partial
+        scope:
+          type: object
+          additionalProperties: false
+          required:
+            - superOversIncluded
+          properties:
+            superOversIncluded:
+              type: boolean
+              const: false
+        outcome:
+          $ref: '#/components/schemas/FixtureOutcome'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixtureStatisticsWarning'
+        statistics:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixtureStatistic'
+
+    FixtureStatisticsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/FixtureStatistics'
+
+    FixtureStatisticResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/FixtureStatistic'
+
     CompetitionResponse:
       type: object
       additionalProperties: false
@@ -861,14 +1334,148 @@ components:
         pagination:
           $ref: '#/components/schemas/PaginationMetadata'
 
+    SubmissionFielder:
+      type: object
+      additionalProperties: false
+      properties:
+        participantId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        substitute:
+          type: boolean
+          default: false
+
+    SubmissionWicket:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - playerOutId
+      properties:
+        kind:
+          type: string
+          enum:
+            - caught
+            - bowled
+            - lbw
+            - stumped
+            - caught and bowled
+            - hit wicket
+            - run out
+            - obstructing the field
+            - timed out
+            - hit the ball twice
+            - handled the ball
+            - retired hurt
+            - retired out
+            - retired not out
+        playerOutId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        fielders:
+          type: array
+          maxItems: 11
+          default: []
+          items:
+            $ref: '#/components/schemas/SubmissionFielder'
+
     SubmissionEvent:
       type: object
-      description: |
-        Sport-specific event payload.
-
-        The executable cricket event schema is intentionally not frozen by this
-        baseline and will be refined by the submission/event implementation.
-      additionalProperties: true
+      description: A single ordered cricket delivery event, not a statistic total.
+      additionalProperties: false
+      required:
+        - eventId
+        - inningsId
+        - sequenceNumber
+        - overNumber
+        - positionInOver
+        - ballNumber
+        - strikerId
+        - nonStrikerId
+        - bowlerId
+        - runs
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Globally unique client-generated identifier used to detect retries.
+        inningsId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        sequenceNumber:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        overNumber:
+          type: integer
+          minimum: 0
+          maximum: 32767
+        positionInOver:
+          type: integer
+          minimum: 0
+          maximum: 32767
+          description: Zero-based position in the over; unlike the display ball number, this cannot repeat.
+        ballNumber:
+          type: string
+          minLength: 1
+          maxLength: 32
+        strikerId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        nonStrikerId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        bowlerId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        runs:
+          type: object
+          additionalProperties: false
+          required:
+            - offBat
+            - extras
+            - total
+          properties:
+            offBat:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            extras:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            total:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            nonBoundary:
+              type: boolean
+              default: false
+        extras:
+          type: object
+          additionalProperties: false
+          default: {}
+          properties:
+            wides:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            noBalls:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            byes:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            legByes:
+              type: integer
+              minimum: 0
+              maximum: 32767
+            penalty:
+              type: integer
+              minimum: 0
+              maximum: 32767
+        wickets:
+          type: array
+          maxItems: 2
+          default: []
+          items:
+            $ref: '#/components/schemas/SubmissionWicket'
 
     SubmissionRequest:
       type: object
@@ -879,15 +1486,17 @@ components:
         - events
       properties:
         fixtureId:
-          $ref: '#/components/schemas/ApiIdentifier'
+          $ref: '#/components/schemas/DatabaseIdentifier'
 
         schemaVersion:
           type: string
-          minLength: 1
+          const: '1.0'
 
         events:
           type: array
+          description: Events for each innings must appear in ascending sequenceNumber order.
           minItems: 1
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/SubmissionEvent'
 
@@ -896,15 +1505,31 @@ components:
       additionalProperties: false
       required:
         - submissionId
+        - fixtureId
+        - submitterId
         - status
+        - receivedAt
+        - schemaVersion
+        - eventCount
       properties:
         submissionId:
           $ref: '#/components/schemas/ApiIdentifier'
-
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        submitterId:
+          $ref: '#/components/schemas/ApiIdentifier'
         status:
           type: string
-          minLength: 1
-          description: Current submission validation or processing status.
+          const: accepted
+        receivedAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: string
+          const: '1.0'
+        eventCount:
+          type: integer
+          minimum: 1
 
     SubmissionResponse:
       type: object

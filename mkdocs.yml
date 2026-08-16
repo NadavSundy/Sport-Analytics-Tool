@@ -19,6 +19,7 @@ nav:
       - Repository Structure: architecture/repository-structure.md
       - Testing: development/testing.md
       - Dependencies: development/dependencies.md
+      - Gitea Issue Export: development/gitea-issue-export.md
   - Design:
       - Brand Guidelines: design/brand-guidelines.md
       - Architecture: architecture/overview.md
@@ -27,8 +28,12 @@ nav:
           - Overview: api/overview.md
           - Shared Contracts: api/contracts.md
           - Public Read API: api/public-read.md
+          - Direct Event Submissions: api/submissions.md
+          - Fixture Statistic Calculations: statistics/fixture-statistics.md
           - OpenAPI Specification: api/openapi.md
           - Versioning and Deprecation: api/versioning.md
+      - Submission field mapping: api/submission-field-mapping.md
+      - Event to statistic mapping: api/event-statistic-mapping.md
       - Database:
           - Overview: database/overview.md
           - Access and Transactions: database/access.md
