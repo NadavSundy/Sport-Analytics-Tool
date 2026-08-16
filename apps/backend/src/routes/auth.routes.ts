@@ -1,3 +1,4 @@
+import { currentUserProfileResponseSchema } from '@sport-analytics/contracts';
 import { Router } from 'express';
 import type { VerifyAccessToken } from '../auth/supabase-auth';
 import { requireAuthentication } from '../middleware/require-authentication';
@@ -21,7 +22,7 @@ export function createAuthRouter(
         return;
       }
 
-      response.status(200).json({
+      const responseBody = currentUserProfileResponseSchema.parse({
         user: {
           id: account.accountId,
           subject: account.subject,
@@ -31,6 +32,8 @@ export function createAuthRouter(
           competitionIds: account.competitionIds,
         },
       });
+
+      response.status(200).json(responseBody);
     },
   );
 
