@@ -85,6 +85,32 @@ The API verifies the Supabase identity, creates or synchronizes the local accoun
 server-owned authorization state. Authentication does not promote a user, approve submission, or
 grant competition scope. A disabled account receives `403 Forbidden`.
 
+### Submitter access requests
+
+An authenticated application user who is not already an approved submitter can request submitter access through:
+
+```http
+POST /api/v1/submitter-access-requests
+Authorization: Bearer <supabase-access-token>
+```
+
+A successful request changes the authenticated application account's server-owned approval state to `pending`:
+
+```json
+{
+  "data": {
+    "accountId": "42",
+    "approvalState": "pending"
+  }
+}
+```
+
+The endpoint returns `401 Unauthorized` when no valid authentication is supplied.
+
+A `409 Conflict` is returned when the account already has a pending request or is already an approved submitter. A previously rejected account may submit a new request.
+
+The request state is stored on the provider-neutral application account and can subsequently be consumed by the administrator approval and competition-scope workflow.
+
 ### Public read
 
 The following endpoints are available without authentication:

@@ -27,6 +27,11 @@ import {
   createSubmissionService,
   type SubmissionService,
 } from './modules/submissions/submission.service';
+import { createSubmitterAccessRouter } from './modules/submitter-access/submitter-access.routes';
+import {
+  createSubmitterAccessService,
+  type SubmitterAccessService,
+} from './modules/submitter-access/submitter-access.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -35,6 +40,7 @@ export interface AppDependencies {
   publicReadService?: PublicReadService;
   fixtureStatisticsService?: FixtureStatisticsService;
   submissionService?: SubmissionService;
+  submitterAccessService?: SubmitterAccessService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -46,6 +52,8 @@ export function createApp(dependencies: AppDependencies = {}) {
   const fixtureStatisticsService =
     dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
   const submissionService = dependencies.submissionService ?? createSubmissionService();
+  const submitterAccessService =
+    dependencies.submitterAccessService ?? createSubmitterAccessService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -73,6 +81,10 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(
     '/api/v1',
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
+  );
+  app.use(
+    '/api/v1',
+    createSubmitterAccessRouter(verifyAccessToken, synchronizeAccount, submitterAccessService),
   );
   app.use('/api/v1', createPublicReadRouter(publicReadService));
 
