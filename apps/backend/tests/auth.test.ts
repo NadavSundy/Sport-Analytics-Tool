@@ -73,6 +73,33 @@ describe('GET /api/v1/auth/me', () => {
       },
     });
   });
+  it.each(['not_requested', 'pending', 'rejected'] as const)(
+    'returns the synchronized %s submitter access state',
+    async (approvalState) => {
+      const verifyAccessToken = vi.fn<VerifyAccessToken>().mockResolvedValue({
+        uid: `supabase-user-${approvalState}`,
+        displayName: 'Supabase User',
+      });
+
+      const synchronizeAccount = vi.fn<SynchronizeAccount>().mockResolvedValue(
+        createTestAccount({
+          subject: `supabase-user-${approvalState}`,
+          displayName: 'Supabase User',
+          approvalState,
+          competitionIds: [],
+        }),
+      );
+
+      const response = await request(
+        createTestApp(verifyAccessToken, undefined, synchronizeAccount),
+      )
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${approvalState}-test-token`)
+        .expect(200);
+
+      expect(response.body.user.approvalState).toBe(approvalState);
+    },
+  );
 
   it('does not classify an expired token as an authorization failure', async () => {
     const verifyAccessToken = vi
