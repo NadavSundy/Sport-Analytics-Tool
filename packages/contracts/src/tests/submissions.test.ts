@@ -82,4 +82,218 @@ describe('direct submission contract', () => {
       }).success,
     ).toBe(false);
   });
+  test('accepts a wide and a no-ball, which are legal deliveries that do not advance the over', () => {
+    const wide = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          runs: { offBat: 0, extras: 1, total: 1 },
+          extras: { wides: 1 },
+        },
+      ],
+    });
+    expect(wide.success).toBe(true);
+
+    const noBall = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          runs: { offBat: 4, extras: 1, total: 5 },
+          extras: { noBalls: 1 },
+        },
+      ],
+    });
+    expect(noBall.success).toBe(true);
+  });
+
+  test('accepts extras types that co-occur on one delivery', () => {
+    // A wide with byes. The schema records a run count per type rather than a
+    // type and a count, because more than one type can apply to a delivery.
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          runs: { offBat: 0, extras: 5, total: 5 },
+          extras: { wides: 1, byes: 4 },
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('accepts a wicket naming several fielders and one unnamed substitute', () => {
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          wickets: [
+            {
+              kind: 'run out',
+              playerOutId: '20',
+              fielders: [
+                { participantId: '30' },
+                { participantId: '31' },
+                { substitute: true },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('rejects a fielder who is neither identified nor marked as a substitute', () => {
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          wickets: [{ kind: 'caught', playerOutId: '20', fielders: [{}] }],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('treats a super-over delivery as any other delivery', () => {
+    // The super-over flag belongs to the innings, not the delivery. A submission
+    // references an innings by identifier, so the contract is deliberately
+    // agnostic: the same delivery is valid whichever innings it belongs to, and
+    // whether that innings is a super over is resolved server-side.
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [{ ...validEvent(), inningsId: '99' }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('rejects each missing required field for the field that is missing', () => {
+    const required = [
+      'eventId',
+      'inningsId',
+      'sequenceNumber',
+      'overNumber',
+      'positionInOver',
+      'ballNumber',
+      'strikerId',
+      'nonStrikerId',
+      'bowlerId',
+      'runs',
+    ] as const;
+
+    for (const field of required) {
+      const event: Record<string, unknown> = validEvent();
+      delete event[field];
+
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [event],
+      });
+
+      expect(result.success, `omitting ${field} should fail`).toBe(false);
+      expect(
+        result.error?.issues.some((issue) => issue.path.includes(field)),
+        `the failure for ${field} should name that field`,
+      ).toBe(true);
+    }
+  });
+
+  test('rejects identifiers that are not positive database identifiers', () => {
+    const invalidIdentifiers = ['0', '-1', 'abc', '1.5', '', '9223372036854775808'];
+
+    for (const identifier of invalidIdentifiers) {
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [{ ...validEvent(), strikerId: identifier }],
+      });
+
+      expect(result.success, `"${identifier}" should be rejected`).toBe(false);
+    }
+  });
+
+  test('rejects an event identifier that is not a UUID', () => {
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [{ ...validEvent(), eventId: 'event-1' }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('rejects fields supplied with the wrong type', () => {
+    const wrongTypes = [
+      { overNumber: '0' },
+      { positionInOver: null },
+      { sequenceNumber: 1.5 },
+      { ballNumber: 1 },
+      { wickets: {} },
+      { runs: { offBat: '4', extras: 0, total: 4 } },
+    ];
+
+    for (const override of wrongTypes) {
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [{ ...validEvent(), ...override }],
+      });
+
+      expect(result.success, `${JSON.stringify(override)} should be rejected`).toBe(false);
+    }
+  });
+
+  test('rejects values beyond the supported ranges', () => {
+    const oversized = [
+      { overNumber: 32_768 },
+      { positionInOver: 32_768 },
+      { sequenceNumber: 2_147_483_648 },
+      { ballNumber: '1'.repeat(40) },
+      { runs: { offBat: 32_768, extras: 0, total: 32_768 } },
+    ];
+
+    for (const override of oversized) {
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [{ ...validEvent(), ...override }],
+      });
+
+      expect(result.success, `${JSON.stringify(override)} should be rejected`).toBe(false);
+    }
+  });
+
+  test('rejects a submission carrying more events than the contract permits', () => {
+    const events = Array.from({ length: 1_001 }, (_unused, index) => ({
+      ...validEvent(),
+      eventId: `123e4567-e89b-42d3-a456-${String(index).padStart(12, '0')}`,
+      sequenceNumber: index + 1,
+      positionInOver: index % 6,
+      overNumber: Math.floor(index / 6),
+    }));
+
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events,
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

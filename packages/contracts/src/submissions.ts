@@ -7,10 +7,23 @@ export const DIRECT_SUBMISSION_SCHEMA_VERSION = '1.0' as const;
 const databaseIdentifierSchema = apiIdentifierSchema
   .regex(/^[1-9]\d*$/, 'Expected a positive database identifier.')
   .max(19)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n, {
-    message: 'Database identifier is outside the supported range.',
-  });
+  // Zod runs every check on a string rather than stopping at the first failure,
+  // so this refinement sees values the regex has already rejected. BigInt throws
+  // on those, which escapes safeParse and surfaces as an unexplained server
+  // error rather than a validation failure.
+  .refine(
+    (value) => {
+      if (!/^\d+$/.test(value)) {
+        return true;
+      }
 
+      return BigInt(value) <= 9_223_372_036_854_775_807n;
+    },
+    {
+      message: 'Database identifier is outside the supported range.',
+    },
+  );
+  
 const smallNonNegativeIntegerSchema = z.number().int().min(0).max(32_767);
 
 export const submissionEventIdSchema = z
@@ -19,22 +32,17 @@ export const submissionEventIdSchema = z
 
 export const submissionWicketSchema = z
   .object({
-    kind: z.enum([
-      'caught',
-      'bowled',
-      'lbw',
-      'stumped',
-      'caught and bowled',
-      'hit wicket',
-      'run out',
-      'obstructing the field',
-      'timed out',
-      'hit the ball twice',
-      'handled the ball',
-      'retired hurt',
-      'retired out',
-      'retired not out',
-    ]),
+    // The dismissal vocabulary is held in the dismissal_kind lookup table rather
+    // than enumerated here. The set is open: two kinds present in the full corpus
+    // were absent from the earlier subset, and the migration records that
+    // extending an enumeration would require a migration. The contract therefore
+    // constrains the shape and the service resolves the value against the table,
+    // so a new kind needs a row and no code change.
+    kind: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z][a-z ]*$/, 'A dismissal kind is lower-case words separated by spaces.'),
     playerOutId: databaseIdentifierSchema,
     fielders: z
       .array(
@@ -60,7 +68,18 @@ export const submissionEventSchema = z
     sequenceNumber: z.number().int().positive().max(2_147_483_647),
     overNumber: smallNonNegativeIntegerSchema,
     positionInOver: smallNonNegativeIntegerSchema,
-    ballNumber: z.string().min(1).max(32),
+    // The printed ball number is display only: it is never unique and never used
+    // to join, because it counts legal deliveries and so repeats within an over.
+    // The identifying columns are overNumber and positionInOver. Constrained to
+    // the printed form so that a submitted label cannot be arbitrary text, but
+    // the platform does not currently verify that it agrees with the position it
+    // describes.
+    ballNumber: z
+      .string()
+      .regex(
+        /^\d{1,3}\.\d{1,2}$/,
+        'A printed ball number takes the form <over>.<ball>, for example 5.1.',
+      ),
     strikerId: databaseIdentifierSchema,
     nonStrikerId: databaseIdentifierSchema,
     bowlerId: databaseIdentifierSchema,
@@ -115,6 +134,8 @@ export const submissionEventSchema = z
       });
     }
   });
+
+  
 
 export const submissionRequestSchema = z
   .object({

@@ -250,4 +250,134 @@ describe('direct event submission API', () => {
       .expect(413);
     expect(oversized.body.error.code).toBe('PAYLOAD_TOO_LARGE');
   });
+  test('rejects an unrecognised dismissal kind with the field and value that caused it', async () => {
+    const storeAcceptedSubmission = vi.fn<SubmissionRepository['storeAcceptedSubmission']>();
+    const repository: SubmissionRepository = {
+      async findFixtureScope() {
+        return { fixtureId: '7', competitionId: '5' };
+      },
+      async findDismissalKinds() {
+        return new Set(['caught', 'bowled', 'run out']);
+      },
+      storeAcceptedSubmission,
+    };
+    const service = createSubmissionService(repository);
+
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(
+          createTestAccount({ approvalState: 'approved', competitionIds: ['5'] }),
+        ),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer approved-token')
+      .send({
+        ...validPayload,
+        events: [
+          {
+            ...validPayload.events[0],
+            wickets: [
+              {
+                kind: 'dismissed by vibes',
+                playerOutId: '20',
+              },
+            ],
+          },
+        ],
+      })
+      .expect(422);
+
+    expect(response.body.error.details).toHaveLength(1);
+    expect(response.body.error.details[0]).toMatchObject({
+      code: 'UNKNOWN_DISMISSAL_KIND',
+      field: 'wickets.kind',
+      eventIndex: 0,
+    });
+    expect(response.body.error.details[0].message).toContain('dismissed by vibes');
+    expect(storeAcceptedSubmission).not.toHaveBeenCalled();
+  });
+
+  test('accepts a dismissal kind held in the lookup table without a contract change', async () => {
+    const repository: SubmissionRepository = {
+      async findFixtureScope() {
+        return { fixtureId: '7', competitionId: '5' };
+      },
+      // A kind absent from any enumeration in the contract. The vocabulary is
+      // held in dismissal_kind precisely so that adding one needs a row, not a
+      // code change.
+      async findDismissalKinds() {
+        return new Set(['caught', 'bowled', 'retired not out']);
+      },
+      async storeAcceptedSubmission() {
+        return {
+          submissionId: '30',
+          fixtureId: '7',
+          submitterId: '1',
+          status: 'accepted' as const,
+          receivedAt: '2026-08-13T16:00:00.000Z',
+          schemaVersion: '1.0' as const,
+          eventCount: 1,
+        };
+      },
+    };
+    const service = createSubmissionService(repository);
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(
+          createTestAccount({ approvalState: 'approved', competitionIds: ['5'] }),
+        ),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer approved-token')
+      .send({
+        ...validPayload,
+        events: [
+          {
+            ...validPayload.events[0],
+            wickets: [{ kind: 'retired not out', playerOutId: '20' }],
+          },
+        ],
+      })
+      .expect(201);
+  });
+
+  test('rejects a printed ball number that is not in the published form', async () => {
+    const service = mockSubmissionService();
+
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ approvalState: 'approved' })),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer approved-token')
+      .send({
+        ...validPayload,
+        events: [{ ...validPayload.events[0], ballNumber: 'first ball of the over' }],
+      })
+      .expect(422);
+
+    expect(response.body.error.details[0]).toMatchObject({
+      field: 'events.0.ballNumber',
+      eventIndex: 0,
+    });
+    expect(service.submit).not.toHaveBeenCalled();
+  });
+
+  
 });

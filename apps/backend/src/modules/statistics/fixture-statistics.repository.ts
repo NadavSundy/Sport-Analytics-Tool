@@ -82,6 +82,8 @@ export async function loadFixtureStatisticsSource(
     ];
   });
 
+  const standardInningsIds = innings.map((inningsRecord) => inningsRecord.inningsId);
+
   const deliveryResult = await executeQuery<DeliveryRow>(
     executor,
     `
@@ -89,12 +91,10 @@ export async function loadFixtureStatisticsSource(
         SELECT DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)
           d.*
         FROM delivery d
-        JOIN innings accepted_innings ON accepted_innings.innings_id = d.innings_id
         JOIN submission source_submission
           ON source_submission.submission_id = d.submission_id
          AND source_submission.status = 'accepted'
-        WHERE accepted_innings.fixture_id = $1::bigint
-          AND accepted_innings.is_super_over = false
+        WHERE d.innings_id = ANY($1::bigint[])
         ORDER BY
           d.innings_id ASC,
           d.over_number ASC,
@@ -138,7 +138,7 @@ export async function loadFixtureStatisticsSource(
       JOIN innings i ON i.innings_id = d.innings_id
       ORDER BY i.ordinal ASC, d.innings_sequence ASC, d.delivery_id ASC
     `,
-    [fixtureId],
+    [standardInningsIds],
   );
 
   return {

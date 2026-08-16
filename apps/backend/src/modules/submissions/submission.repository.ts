@@ -34,6 +34,7 @@ export interface AcceptedSubmission {
 
 export interface SubmissionRepository {
   findFixtureScope(fixtureId: string): Promise<FixtureSubmissionScope | null>;
+  findDismissalKinds(): Promise<Set<string>>;
   storeAcceptedSubmission(
     submission: SubmissionRequest,
     submitterId: string,
@@ -360,6 +361,19 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
       );
 
       return result.rows[0] ?? null;
+    },
+
+    async findDismissalKinds() {
+      const databasePool = pool ?? getDatabasePool();
+      const result = await executeQuery<{ code: string }>(
+        databasePool,
+        `
+          SELECT code
+          FROM dismissal_kind
+        `,
+      );
+
+      return new Set(result.rows.map((row) => row.code));
     },
 
     async storeAcceptedSubmission(submission, submitterId) {
