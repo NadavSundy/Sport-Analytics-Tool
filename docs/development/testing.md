@@ -97,6 +97,21 @@ npm run test:api --workspace=@sport-analytics/backend
 npm run test --workspace=@sport-analytics/contracts
 ```
 
+The public frontend suite covers anonymous access, known Basic fixture and participant results,
+partial and empty fixtures, API failure and retry, related-record links, and contributing-event
+traces. Its browser test additionally covers keyboard navigation, desktop and mobile overflow, and
+serious or critical Axe findings.
+
+Run the focused frontend checks with:
+
+```text
+npm run test --workspace=@sport-analytics/frontend
+npm run test:e2e -- tests/e2e/statistics.spec.ts --workers=1
+```
+
+The issue #54 frontend verification and screenshots are recorded in
+`evidence/validation/issue-54-public-statistics.md`.
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of

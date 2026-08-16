@@ -76,6 +76,19 @@ For an innings total, `metrics.deliveryRuns` is traceable to delivery event IDs 
 `metrics.penaltyRuns` is traceable to the returned `inningsId`, because the approved schema records
 pre/post penalties at innings level rather than inventing a delivery for them.
 
+## Public frontend
+
+Anonymous users can open a fixture's Basic statistics at
+`/fixtures/{fixtureId}/statistics`. The page shows the typed fixture outcome, completeness state,
+warnings, innings competitor totals, and available participant batting and bowling metrics. Each
+competitor and participant identifier links to its corresponding public record.
+
+Each result links to `/fixtures/{fixtureId}/statistics/{statisticId}`. That route opts into
+`includeContributors=true` and presents the accepted delivery references and run components used by
+the calculation. It does not expose submission ownership, account information, pending or rejected
+events, or internal audit data. Because there is no standalone public event-detail endpoint, event
+IDs are displayed as trace references rather than links to an unsupported route.
+
 ## Incomplete data
 
 An accepted but incomplete fixture returns HTTP `200` with `status: partial`. Warning codes cover:
@@ -98,5 +111,5 @@ result, while the repository test verifies accepted-revision filtering and occur
 
 ## AI Declaration
 
-The preceding calculation and API documentation was generated and verified with the assistance of
-Codex[GPT-5.6 Sol].
+The preceding calculation, API and public-interface documentation was generated and verified with
+the assistance of Codex[GPT-5.6 Sol].
