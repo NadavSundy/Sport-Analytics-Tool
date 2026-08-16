@@ -1,8 +1,6 @@
 import {
-  currentUserProfileResponseSchema,
   DIRECT_SUBMISSION_SCHEMA_VERSION,
   submissionResponseSchema,
-  type CurrentUserProfile,
   type Fixture,
   type SubmissionEvent,
   type SubmissionResponse,
@@ -22,20 +20,6 @@ export class SubmissionInputError extends Error {
     super(message);
     this.name = 'SubmissionInputError';
   }
-}
-
-export async function getCurrentUserProfile(
-  client: AuthenticatedApiClient,
-  signal?: AbortSignal,
-): Promise<CurrentUserProfile> {
-  const response = await client.request<unknown>('/auth/me', signal ? { signal } : {});
-  const parsed = currentUserProfileResponseSchema.safeParse(response);
-
-  if (!parsed.success) {
-    throw new SubmissionInterfaceContractError();
-  }
-
-  return parsed.data.user;
 }
 
 async function listCompetitionFixtures(

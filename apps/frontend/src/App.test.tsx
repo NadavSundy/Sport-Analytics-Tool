@@ -31,6 +31,23 @@ function createSession(): Session {
   };
 }
 
+function currentUserResponse(approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected') {
+  return {
+    ok: true,
+    status: 200,
+    json: vi.fn().mockResolvedValue({
+      user: {
+        id: '17',
+        subject: 'user-123',
+        displayName: 'Example User',
+        role: 'viewer',
+        approvalState,
+        competitionIds: approvalState === 'approved' ? ['5'] : [],
+      },
+    }),
+  } as unknown as Response;
+}
+
 function createAuthClient(session: Session | null) {
   let listener: AuthStateListener | undefined;
   const client = {
@@ -187,6 +204,7 @@ describe('public application and authentication interface', () => {
   });
 
   it('recognises an authenticated callback and opens the account page', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     renderApp('/auth/callback', createSession());
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
@@ -227,7 +245,8 @@ describe('public application and authentication interface', () => {
     expect(screen.getByRole('link', { name: 'Return Home' })).toBeInTheDocument();
   });
 
-  it('updates to signed-in navigation and displays only session identity information', async () => {
+  it('updates to signed-in navigation and loads the application account status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     const session = createSession();
     const auth = renderApp('/account');
 
@@ -240,11 +259,12 @@ describe('public application and authentication interface', () => {
     expect(screen.queryByRole('link', { name: 'Login or Sign up' })).not.toBeInTheDocument();
     expect(screen.getByText('person@example.com')).toBeInTheDocument();
     expect(
-      screen.queryByText(/administrator|approved submitter|role|grant/i),
-    ).not.toBeInTheDocument();
+      await screen.findByRole('button', { name: 'Request submitter access' }),
+    ).toBeInTheDocument();
   });
 
   it('signs out through Supabase, returns home, and restores signed-out navigation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     type SignOutResult = Awaited<ReturnType<AuthClient['signOut']>>;
     let resolveSignOut!: (value: SignOutResult) => void;
     const pendingSignOut = new Promise<SignOutResult>((resolve) => {
@@ -275,6 +295,7 @@ describe('public application and authentication interface', () => {
   });
 
   it('shows a safe sign-out error and remains signed in when Supabase rejects the action', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUserResponse('not_requested')));
     const auth = renderApp('/account', createSession());
     vi.mocked(auth.client.signOut).mockResolvedValue({
       error: new Error('token internals') as never,
