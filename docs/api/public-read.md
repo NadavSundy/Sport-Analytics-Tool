@@ -19,6 +19,7 @@ The public API exposes:
 - competitions;
 - seasons;
 - fixtures;
+- accepted fixture events;
 - fixture statistics;
 - competitors; and
 - participants.
@@ -126,6 +127,94 @@ Deterministic fixture ordering:
 startDate ASC
 fixtureId ASC
 ```
+
+## Fixture event endpoints
+
+```http
+GET /api/v1/fixtures/{fixtureId}/events
+GET /api/v1/fixtures/{fixtureId}/events/{eventId}
+```
+
+Both endpoints are public. They return only the current accepted revision of each cricket delivery
+event. Events from pending or rejected submissions, superseded accepted revisions, submitter
+accounts, submission identifiers, source event identifiers, revision numbers and audit timestamps
+are not exposed.
+
+The collection supports these filters:
+
+```text
+inningsId
+competitorId
+participantId
+overNumber
+wicketKind
+```
+
+`competitorId` selects innings in which that competitor bats. `participantId` matches any event in
+which the participant is the striker, non-striker, bowler, dismissed player or an identified
+fielder. `overNumber` is zero-based. `wicketKind` uses the cricket dismissal code stored by the
+event model, such as `caught` or `run_out`.
+
+Example request:
+
+```http
+GET /api/v1/fixtures/481/events?participantId=30&overNumber=4&limit=2
+```
+
+Example response:
+
+```json
+{
+  "data": [
+    {
+      "eventId": "7021",
+      "fixtureId": "481",
+      "inningsId": "900",
+      "inningsOrdinal": 0,
+      "sequenceNumber": 25,
+      "overNumber": 4,
+      "positionInOver": 0,
+      "ballNumber": "4.1",
+      "battingCompetitorId": "20",
+      "bowlingCompetitorId": "21",
+      "strikerParticipantId": "30",
+      "nonStrikerParticipantId": "31",
+      "bowlerParticipantId": "42",
+      "runs": {
+        "offBat": 4,
+        "extras": 0,
+        "total": 4,
+        "nonBoundary": false
+      },
+      "extras": {
+        "wides": null,
+        "noBalls": null,
+        "byes": null,
+        "legByes": null,
+        "penalty": null
+      },
+      "wickets": []
+    }
+  ],
+  "pagination": {
+    "nextCursor": "opaque-next-cursor"
+  }
+}
+```
+
+The occurrence order is fixed and cannot be overridden:
+
+```text
+inningsOrdinal ASC
+sequenceNumber ASC
+eventId ASC
+```
+
+The event identifier is the stable API identifier for that accepted delivery revision and can be
+used with the detail endpoint. `ballNumber` is display-only and never controls identity or order.
+An event cursor is bound to its fixture; using it for another fixture returns `INVALID_CURSOR`.
+A known fixture with no accepted events returns an empty collection, while an unknown fixture or
+event returns HTTP `404`.
 
 ## Fixture statistics endpoints
 
@@ -312,4 +401,5 @@ The machine-readable specification is documented in the [OpenAPI specification](
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
