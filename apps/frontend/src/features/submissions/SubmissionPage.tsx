@@ -8,13 +8,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
+import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import {
-  getCurrentUserProfile,
-  listScopedFixtures,
-  SubmissionInputError,
-  submitEvents,
-} from './submission-api';
+import { listScopedFixtures, SubmissionInputError, submitEvents } from './submission-api';
 
 const EMPTY_EVENTS = '[]';
 

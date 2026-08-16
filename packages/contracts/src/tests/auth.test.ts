@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import { currentUserProfileResponseSchema, submitterApprovalStateSchema } from '../auth';
+import {
+  currentUserProfileResponseSchema,
+  submitterAccessRequestResponseSchema,
+  submitterApprovalStateSchema,
+} from '../auth';
 
 describe('submitter approval state contract', () => {
   test.each(['not_requested', 'pending', 'approved', 'rejected'] as const)(
@@ -92,4 +96,36 @@ describe('current user profile response contract', () => {
 
     expect(result.success).toBe(false);
   });
+});
+
+describe('submitter access request response contract', () => {
+  test('accepts the persisted pending request response', () => {
+    expect(
+      submitterAccessRequestResponseSchema.parse({
+        data: {
+          accountId: '42',
+          approvalState: 'pending',
+        },
+      }),
+    ).toEqual({
+      data: {
+        accountId: '42',
+        approvalState: 'pending',
+      },
+    });
+  });
+
+  test.each(['not_requested', 'approved', 'rejected'])(
+    'rejects the non-pending %s state',
+    (approvalState) => {
+      expect(
+        submitterAccessRequestResponseSchema.safeParse({
+          data: {
+            accountId: '42',
+            approvalState,
+          },
+        }).success,
+      ).toBe(false);
+    },
+  );
 });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { SubmitterAccessPanel } from '../submitter-access/SubmitterAccessPanel';
 import { useAuth } from './AuthProvider';
 
 type OAuthCallbackError = 'cancelled' | 'provider-error';
@@ -165,12 +166,15 @@ export function AccountPage() {
         {isLoading ? (
           <p role="status">Loading account…</p>
         ) : isAuthenticated && identity ? (
-          <dl className="identity-details">
-            <div>
-              <dt>Email</dt>
-              <dd>{identity.email ?? 'Not available'}</dd>
-            </div>
-          </dl>
+          <>
+            <dl className="identity-details">
+              <div>
+                <dt>Email</dt>
+                <dd>{identity.email ?? 'Not available'}</dd>
+              </div>
+            </dl>
+            <SubmitterAccessPanel />
+          </>
         ) : (
           <p>
             You are signed out. <Link to="/sign-in">Login or Sign up</Link> to view your account.
