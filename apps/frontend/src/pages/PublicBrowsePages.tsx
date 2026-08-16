@@ -335,6 +335,9 @@ export function FixtureDetailPage() {
               />
             </RecordFacts>
             <RelatedLinks>
+              <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`}>
+                View statistics
+              </Link>
               {fixture.competitionId ? (
                 <Link to={`/competitions/${encodeURIComponent(fixture.competitionId)}`}>
                   Open competition

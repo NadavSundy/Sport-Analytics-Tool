@@ -220,6 +220,10 @@ describe('public browsing pages', () => {
       'href',
       '/participants?fixtureId=fixture-1',
     );
+    expect(screen.getByRole('link', { name: 'View statistics' })).toHaveAttribute(
+      'href',
+      '/fixtures/fixture-1/statistics',
+    );
   });
 
   it.each([

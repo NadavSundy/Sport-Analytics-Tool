@@ -20,6 +20,10 @@ import {
   AuthenticationPage,
 } from './features/auth/AuthPages';
 import { SubmissionPage } from './features/submissions/SubmissionPage';
+import {
+  FixtureStatisticDetailPage,
+  FixtureStatisticsPage,
+} from './features/statistics/StatisticsPages';
 
 function HeroLogo() {
   return (
@@ -108,6 +112,11 @@ export function PublicApp() {
 
         <Route path="/fixtures" element={<FixturesPage />} />
         <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
+        <Route path="/fixtures/:fixtureId/statistics" element={<FixtureStatisticsPage />} />
+        <Route
+          path="/fixtures/:fixtureId/statistics/:statisticId"
+          element={<FixtureStatisticDetailPage />}
+        />
 
         <Route path="/competitors" element={<CompetitorsPage />} />
         <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
