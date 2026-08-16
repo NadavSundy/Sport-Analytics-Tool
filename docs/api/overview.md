@@ -133,6 +133,8 @@ GET /api/v1/seasons
 GET /api/v1/seasons/{seasonId}
 GET /api/v1/fixtures
 GET /api/v1/fixtures/{fixtureId}
+GET /api/v1/fixtures/{fixtureId}/events
+GET /api/v1/fixtures/{fixtureId}/events/{eventId}
 GET /api/v1/fixtures/{fixtureId}/statistics
 GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}
 GET /api/v1/competitors
@@ -158,7 +160,7 @@ validation errors, payload limit, and rate limit.
 
 - competitions, seasons, competitors, and fixtures;
 - review, rejection, correction, and audit history;
-- public ordered-event endpoints and derived season/career statistics;
+- derived season/career statistics;
 - filtered exports and dataset releases;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
@@ -169,4 +171,5 @@ An OpenAPI specification should be maintained alongside implementation and verif
 
 ## AI Declaration
 
-The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]
+and Codex[GPT-5].

@@ -11,7 +11,7 @@ info:
     current backend behaviour.
 x-ai-declaration: >-
   The preceding OpenAPI document was planned, generated, reviewed and edited
-  with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+  with the assistance of ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
 servers:
   - url: statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
     description: Development API
@@ -26,7 +26,7 @@ tags:
     description: Managed-authentication identity and profile-related operations.
 
   - name: Public Read
-    description: Anonymous sport-reference and fixture reads.
+    description: Anonymous sport-reference, fixture, accepted-event and statistic reads.
 
   - name: Submissions
     description: Approved-submitter event-submission operations.
@@ -371,6 +371,85 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/fixtures/{fixtureId}/events:
+    get:
+      tags:
+        - Public Read
+      summary: List accepted fixture events
+      description: |
+        Returns the current accepted revisions of cricket delivery events in
+        deterministic innings and sequence order. Submission ownership,
+        revision history and internal audit fields are not exposed.
+      operationId: listFixtureEvents
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: |
+            Limit events to those involving this participant as striker,
+            non-striker, bowler, dismissed player or identified fielder.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Paginated accepted fixture events in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/fixtures/{fixtureId}/events/{eventId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get an accepted fixture event
+      operationId: getFixtureEvent
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: One current accepted fixture event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/fixtures/{fixtureId}/statistics:
     get:
       tags:
@@ -646,6 +725,13 @@ components:
 
     FixtureId:
       name: fixtureId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ApiIdentifier'
+
+    EventId:
+      name: eventId
       in: path
       required: true
       schema:
@@ -1122,6 +1208,156 @@ components:
           type: string
           minLength: 1
 
+    PublicEventFielder:
+      type: object
+      additionalProperties: false
+      required:
+        - participantId
+        - isSubstitute
+      properties:
+        participantId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        isSubstitute:
+          type: boolean
+
+    PublicEventWicket:
+      type: object
+      additionalProperties: false
+      required:
+        - wicketId
+        - kind
+        - playerOutParticipantId
+        - fielders
+      properties:
+        wicketId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        kind:
+          type: string
+          minLength: 1
+        playerOutParticipantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        fielders:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicEventFielder'
+
+    PublicEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - fixtureId
+        - inningsId
+        - inningsOrdinal
+        - sequenceNumber
+        - overNumber
+        - positionInOver
+        - ballNumber
+        - battingCompetitorId
+        - bowlingCompetitorId
+        - strikerParticipantId
+        - nonStrikerParticipantId
+        - bowlerParticipantId
+        - runs
+        - extras
+        - wickets
+      properties:
+        eventId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        inningsId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        inningsOrdinal:
+          type: integer
+          minimum: 0
+        sequenceNumber:
+          type: integer
+          minimum: 1
+        overNumber:
+          type: integer
+          minimum: 0
+        positionInOver:
+          type: integer
+          minimum: 0
+        ballNumber:
+          type: string
+          minLength: 1
+          description: Display label only; never used for ordering or identity.
+        battingCompetitorId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        bowlingCompetitorId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        strikerParticipantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        nonStrikerParticipantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        bowlerParticipantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        runs:
+          type: object
+          additionalProperties: false
+          required:
+            - offBat
+            - extras
+            - total
+            - nonBoundary
+          properties:
+            offBat:
+              type: integer
+              minimum: 0
+            extras:
+              type: integer
+              minimum: 0
+            total:
+              type: integer
+              minimum: 0
+            nonBoundary:
+              type: boolean
+        extras:
+          type: object
+          additionalProperties: false
+          required:
+            - wides
+            - noBalls
+            - byes
+            - legByes
+            - penalty
+          properties:
+            wides:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            noBalls:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            byes:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            legByes:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+            penalty:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: 'null'
+        wickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicEventWicket'
+
     StatisticContributingEvent:
       type: object
       additionalProperties: false
@@ -1564,6 +1800,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Fixture'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    PublicEventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PublicEvent'
+
+    PublicEventCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicEvent'
         pagination:
           $ref: '#/components/schemas/PaginationMetadata'
 

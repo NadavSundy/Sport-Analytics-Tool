@@ -1,6 +1,7 @@
 import {
   competitionListQuerySchema,
   competitorListQuerySchema,
+  fixtureEventListQuerySchema,
   fixtureListQuerySchema,
   participantListQuerySchema,
   seasonListQuerySchema,
@@ -146,6 +147,39 @@ export function createPublicReadController(service: PublicReadService) {
 
       response.status(200).json({
         data: fixture,
+      });
+    }),
+
+    listFixtureEvents: wrapPublicHandler(async (request, response) => {
+      const query = parseQuery(fixtureEventListQuerySchema, request, response);
+
+      if (!query) {
+        return;
+      }
+
+      const result = await service.listFixtureEvents(getPathParameter(request, 'fixtureId'), query);
+
+      if (!result) {
+        sendNotFound(response, 'Fixture');
+        return;
+      }
+
+      response.status(200).json(result);
+    }),
+
+    getFixtureEvent: wrapPublicHandler(async (request, response) => {
+      const event = await service.getFixtureEvent(
+        getPathParameter(request, 'fixtureId'),
+        getPathParameter(request, 'eventId'),
+      );
+
+      if (!event) {
+        sendNotFound(response, 'Event');
+        return;
+      }
+
+      response.status(200).json({
+        data: event,
       });
     }),
 
