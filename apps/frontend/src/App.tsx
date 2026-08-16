@@ -19,6 +19,7 @@ import {
   AuthenticationCallbackPage,
   AuthenticationPage,
 } from './features/auth/AuthPages';
+import { SubmissionPage } from './features/submissions/SubmissionPage';
 
 function HeroLogo() {
   return (
@@ -117,6 +118,7 @@ export function PublicApp() {
         <Route path="/sign-in" element={<AuthenticationPage />} />
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/submissions/new" element={<SubmissionPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

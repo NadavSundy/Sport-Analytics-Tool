@@ -22,14 +22,16 @@ state. Related public records are linked where their identifiers are present in 
 
 ## Authentication routes
 
-| Route      | Purpose                                                                    |
-| ---------- | -------------------------------------------------------------------------- |
-| `/sign-in` | Starts managed Supabase Google OAuth for either login or account creation. |
-| `/account` | Displays the signed-in Supabase identity email when available.             |
+| Route              | Purpose                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| `/sign-in`         | Starts managed Supabase Google OAuth for either login or account creation.                  |
+| `/account`         | Displays the signed-in Supabase identity email when available.                              |
+| `/submissions/new` | Lets an approved submitter select an in-scope fixture and submit Basic delivery-event JSON. |
 
-The authentication routes use only Supabase session identity. They do not create application
-profiles or interpret roles, approved-submitter status, administrator permissions, or scoped
-grants.
+The sign-in and account routes use only Supabase session identity. The protected submission route
+loads approval and competition scope from the handwritten API's current-user profile. That state
+controls presentation only: the backend independently enforces approval and fixture scope for every
+submission.
 
 ## AI Declaration
 
