@@ -58,7 +58,6 @@ function AuthenticationNavigation() {
         {isAuthenticated ? (
           <>
             <NavLink to="/account">Account</NavLink>
-            <NavLink to="/submissions/new">Submit Events</NavLink>
             <button type="button" onClick={handleSignOut} disabled={isSigningOut}>
               {isSigningOut ? 'Signing Out…' : 'Sign Out'}
             </button>

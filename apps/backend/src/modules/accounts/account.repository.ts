@@ -24,9 +24,10 @@ export async function synchronizeApplicationAccount(
           auth_provider,
           auth_subject,
           display_name,
+          application_role,
           last_authenticated_at
         )
-        VALUES ($1, $2, $3, now())
+        VALUES ($1, $2, $3, 'viewer', now())
         ON CONFLICT (auth_provider, auth_subject) DO UPDATE
         SET
           display_name = COALESCE(EXCLUDED.display_name, app_user.display_name),

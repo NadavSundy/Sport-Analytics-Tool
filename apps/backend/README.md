@@ -7,7 +7,7 @@ The backend is the handwritten Express HTTP API for Stat'sTheGame. It is the aut
 - expose versioned HTTP endpoints under `/api/v1`;
 - validate Supabase identities on protected routes;
 - synchronize provider-neutral application accounts;
-- enforce server-owned roles, submitter approval and competition scope;
+- enforce server-owned `viewer | submitter | admin` roles and competition scope;
 - access PostgreSQL through the `pg` driver;
 - return safe errors and structured request logs; and
 - keep generated Supabase data endpoints outside the application architecture.

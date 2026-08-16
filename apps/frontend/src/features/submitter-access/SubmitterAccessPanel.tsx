@@ -13,6 +13,10 @@ type ProfileState =
 
 type Feedback = { kind: 'success' | 'error'; message: string } | null;
 
+function hasSubmissionRole(profile: CurrentUserProfile): boolean {
+  return profile.role === 'submitter' || profile.role === 'admin';
+}
+
 function profileErrorMessage(error: unknown): string {
   if (error instanceof ApiResponseError && error.kind === 'unauthenticated') {
     return 'Your session is no longer valid. Sign in again to check your submitter status.';
@@ -105,6 +109,7 @@ export function SubmitterAccessPanel() {
           setProfileState({ kind: 'ready', profile: persistedProfile });
 
           if (
+            hasSubmissionRole(persistedProfile) ||
             persistedProfile.approvalState === 'pending' ||
             persistedProfile.approvalState === 'approved'
           ) {
@@ -135,15 +140,23 @@ export function SubmitterAccessPanel() {
         </div>
         {profileState.kind === 'ready' ? (
           <p
-            className={`submitter-access-state submitter-access-state--${profileState.profile.approvalState}`}
+            className={`submitter-access-state submitter-access-state--${
+              profileState.profile.role === 'viewer'
+                ? profileState.profile.approvalState
+                : profileState.profile.role
+            }`}
           >
-            {profileState.profile.approvalState === 'not_requested'
-              ? 'Not requested'
-              : profileState.profile.approvalState === 'pending'
-                ? 'Pending approval'
-                : profileState.profile.approvalState === 'approved'
-                  ? 'Approved'
-                  : 'Not approved'}
+            {profileState.profile.role === 'admin'
+              ? 'Admin'
+              : profileState.profile.role === 'submitter'
+                ? 'Submitter'
+                : profileState.profile.approvalState === 'not_requested'
+                  ? 'Not requested'
+                  : profileState.profile.approvalState === 'pending'
+                    ? 'Pending approval'
+                    : profileState.profile.approvalState === 'approved'
+                      ? 'Approved'
+                      : 'Not approved'}
           </p>
         ) : null}
       </div>
@@ -163,11 +176,11 @@ export function SubmitterAccessPanel() {
             Retry status check
           </button>
         </div>
-      ) : profileState.profile.approvalState === 'approved' ? (
+      ) : hasSubmissionRole(profileState.profile) ? (
         <div className="submitter-access-panel__message">
           <p>
-            Your account is approved. Submission access remains limited to the competitions assigned
-            by an administrator.
+            Your account has submission access. Submissions remain limited to the competitions
+            assigned by an administrator.
           </p>
           <Link className="button button--primary" to="/submissions/new">
             Submit events
@@ -177,6 +190,11 @@ export function SubmitterAccessPanel() {
         <p className="submitter-access-panel__message" role="status">
           Your request is awaiting administrator review. You cannot submit another request while
           this one is pending.
+        </p>
+      ) : profileState.profile.approvalState === 'approved' ? (
+        <p className="submitter-access-panel__message" role="status">
+          Your legacy approval record is approved, but your account role does not currently permit
+          submissions. Ask an administrator to review your role.
         </p>
       ) : (
         <div className="submitter-access-panel__message">

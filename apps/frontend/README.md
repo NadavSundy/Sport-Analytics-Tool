@@ -79,13 +79,15 @@ The backend should normally be running at the same time.
 
 After authentication, `/account` loads the current application profile from the handwritten
 backend. The page shows the persisted `not_requested`, `pending`, `approved`, or `rejected`
-submitter state rather than inferring permission from the Supabase identity.
+request state and the server-owned `viewer | submitter | admin` application role rather than
+inferring permission from the Supabase identity.
 
 Eligible users can send a request through `POST /api/v1/submitter-access-requests`. The interface
 disables the action while it is in progress, reloads `/api/v1/auth/me` after success or a stale
 conflict, and does not offer another request while the persisted state is `pending` or `approved`.
-Approved accounts can continue to the scoped event-submission interface. The backend remains the
-authorisation boundary for every request and submission.
+Accounts with the `submitter` or `admin` role can continue to the scoped event-submission
+interface. The deprecated approval state alone never exposes the submission interface. The backend
+remains the authorisation boundary for every request and submission.
 
 ## Checks
 
@@ -142,6 +144,22 @@ Confirm that the backend is running and that `VITE_API_BASE_URL` points to its `
 ### Tests behave differently after dependency changes
 
 Return to the repository root and run `npm ci` so the install matches the committed `package-lock.json`.
+
+### Rollup native module is missing in WSL
+
+`node_modules` contains platform-specific optional packages. A dependency tree installed from
+Windows may contain Rollup's Windows binary but not `@rollup/rollup-linux-x64-gnu`, which Vite needs
+inside WSL. From a WSL login shell, repair the root workspace install with:
+
+```bash
+cd /mnt/c/Users/deanf/Downloads/Sport-Analytics-Tool
+npm install --include=optional
+```
+
+Install and run the project consistently from the same operating-system environment. If switching
+between Windows and WSL regularly, keep a separate WSL checkout (for example under `~/src`) so the
+two environments do not replace each other's native optional packages. Do not delete or regenerate
+the committed lockfile to fix this error.
 
 ## AI Declaration
 

@@ -1,5 +1,6 @@
 import type { SubmitterAccessRequestResponse } from '@sport-analytics/contracts';
 import type { ApplicationAccount } from '../accounts/account';
+import { SubmitterAccessConflictError } from './submitter-access.errors';
 import {
   createSubmitterAccessRepository,
   type SubmitterAccessRepository,
@@ -16,6 +17,13 @@ export function createSubmitterAccessService(
 
   return {
     async requestAccess(account) {
+      if (account.role === 'submitter' || account.role === 'admin') {
+        throw new SubmitterAccessConflictError(
+          'SUBMITTER_ALREADY_APPROVED',
+          'The authenticated account already has submission access.',
+        );
+      }
+
       resolvedRepository ??= createSubmitterAccessRepository();
       const request = await resolvedRepository.requestAccess(account.accountId);
 

@@ -2,8 +2,11 @@ import { z } from 'zod';
 
 import { apiIdentifierSchema } from './api';
 
-export const applicationRoleSchema = z.enum(['viewer', 'administrator']);
+export const APPLICATION_ROLES = ['viewer', 'submitter', 'admin'] as const;
 
+export const applicationRoleSchema = z.enum(APPLICATION_ROLES);
+
+/** @deprecated Request-workflow state only. Use applicationRoleSchema for authorization. */
 export const submitterApprovalStateSchema = z.enum([
   'not_requested',
   'pending',
@@ -44,6 +47,7 @@ export const submitterAccessRequestResponseSchema = z
   .strict();
 
 export type ApplicationRole = z.infer<typeof applicationRoleSchema>;
+/** @deprecated Request-workflow state only. Use ApplicationRole for authorization. */
 export type SubmitterApprovalState = z.infer<typeof submitterApprovalStateSchema>;
 export type CurrentUserProfile = z.infer<typeof currentUserProfileSchema>;
 export type CurrentUserProfileResponse = z.infer<typeof currentUserProfileResponseSchema>;

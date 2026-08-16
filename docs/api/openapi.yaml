@@ -459,7 +459,7 @@ paths:
       summary: Submit fixture event data
       description: |
         Accept an ordered set of cricket delivery events. The bearer identity
-        must belong to an approved submitter and the fixture's competition must
+        must have the `submitter` or `admin` application role and the fixture's competition must
         be in that account's server-owned scope. Validation and storage are
         synchronous and atomic; clients submit events, never statistic totals.
       operationId: createSubmission
@@ -504,7 +504,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '429':
-          description: The approved submitter exceeded 30 submission requests in 60 seconds.
+          description: The submission-capable account exceeded 30 requests in 60 seconds.
           headers:
             Retry-After:
               schema:
@@ -688,9 +688,12 @@ components:
               type: string
               enum:
                 - viewer
-                - administrator
+                - submitter
+                - admin
             approvalState:
               type: string
+              deprecated: true
+              description: Legacy submitter-request workflow state; not an authorization grant.
               enum:
                 - not_requested
                 - pending
