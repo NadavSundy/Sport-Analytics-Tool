@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  fixtureEventListQuerySchema,
   fixtureListQuerySchema,
   fixtureStatisticsQuerySchema,
   fixtureStatisticsResponseSchema,
   participantListQuerySchema,
+  publicEventCollectionResponseSchema,
   seasonSchema,
 } from '../public-read';
 
@@ -52,6 +54,66 @@ describe('public read contracts', () => {
         startDateTo: '2026-01-01',
       }).success,
     ).toBe(false);
+  });
+
+  test('accepts cricket event filters and applies pagination defaults', () => {
+    expect(
+      fixtureEventListQuerySchema.parse({
+        inningsId: '10',
+        competitorId: '20',
+        participantId: '30',
+        overNumber: '4',
+        wicketKind: 'caught',
+      }),
+    ).toEqual({
+      inningsId: '10',
+      competitorId: '20',
+      participantId: '30',
+      overNumber: 4,
+      wicketKind: 'caught',
+      limit: 50,
+    });
+  });
+
+  test('validates a public event collection without submission audit fields', () => {
+    const result = publicEventCollectionResponseSchema.safeParse({
+      data: [
+        {
+          eventId: '500',
+          fixtureId: '100',
+          inningsId: '200',
+          inningsOrdinal: 0,
+          sequenceNumber: 1,
+          overNumber: 0,
+          positionInOver: 0,
+          ballNumber: '0.1',
+          battingCompetitorId: '20',
+          bowlingCompetitorId: '21',
+          strikerParticipantId: '30',
+          nonStrikerParticipantId: '31',
+          bowlerParticipantId: '32',
+          runs: {
+            offBat: 1,
+            extras: 0,
+            total: 1,
+            nonBoundary: false,
+          },
+          extras: {
+            wides: null,
+            noBalls: null,
+            byes: null,
+            legByes: null,
+            penalty: null,
+          },
+          wickets: [],
+        },
+      ],
+      pagination: {
+        nextCursor: null,
+      },
+    });
+
+    expect(result.success).toBe(true);
   });
 
   test('parses the opt-in statistic contributor expansion', () => {
