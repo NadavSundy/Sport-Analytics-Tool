@@ -31,13 +31,24 @@ const synchronizeTestAccount: SynchronizeAccount = async (identity) => ({
   disabled: false,
 });
 
+const requestTestSubmitterAccess: SubmitterAccessService = {
+  async requestAccess(account) {
+    return {
+      data: {
+        accountId: account.accountId,
+        approvalState: 'pending',
+      },
+    };
+  },
+};
+
 export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
   publicReadService?: PublicReadService,
   synchronizeAccount: SynchronizeAccount = synchronizeTestAccount,
   fixtureStatisticsService?: FixtureStatisticsService,
   submissionService?: SubmissionService,
-  submitterAccessService?: SubmitterAccessService,
+  submitterAccessService: SubmitterAccessService = requestTestSubmitterAccess,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -46,7 +57,7 @@ export function createTestApp(
     ...(publicReadService !== undefined ? { publicReadService } : {}),
     ...(fixtureStatisticsService !== undefined ? { fixtureStatisticsService } : {}),
     ...(submissionService !== undefined ? { submissionService } : {}),
-    ...(submitterAccessService !== undefined ? { submitterAccessService } : {}),
+    submitterAccessService,
   });
 }
 
