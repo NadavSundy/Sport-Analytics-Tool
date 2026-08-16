@@ -74,6 +74,31 @@ npm run test:database --workspace=@sport-analytics/backend
 
 Database integration tests require `NODE_ENV=test` and a dedicated `DATABASE_URL_TEST`. They must not be run against the shared development or production database.
 
+## Current-user submitter status coverage
+
+The current-user profile contract and authentication suites verify that `/api/v1/auth/me`
+exposes persisted submitter-access state for authenticated application accounts.
+
+Coverage includes:
+
+- `not_requested`, `pending`, `approved`, and `rejected` approval states;
+- shared runtime validation of the complete current-user response through
+  `@sport-analytics/contracts`;
+- API responses reflecting the synchronized account approval state;
+- account re-authentication updating identity metadata without overwriting persisted role or
+  submitter approval state; and
+- frontend rejection of malformed current-user responses rather than inferring access from
+  incomplete data.
+
+Run the focused checks with:
+
+````text
+npm run build --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/contracts
+npm run test:unit --workspace=@sport-analytics/backend
+npm run test:api --workspace=@sport-analytics/backend
+npm run test --workspace=@sport-analytics/frontend
+
 ## Direct submission coverage
 
 The contract and API suites cover the versioned delivery schema, anonymous and unapproved users,
@@ -89,7 +114,7 @@ npm run test:api --workspace=@sport-analytics/backend
 npm run db:test:reset --workspace=@sport-analytics/backend
 npm run test:database --workspace=@sport-analytics/backend
 npm run openapi:lint
-```
+````
 
 The issue #51 verification record is in
 `evidence/validation/issue-51-direct-event-submission.md` at the repository root.
@@ -128,3 +153,5 @@ npm run test --workspace=@sport-analytics/contracts
 The account and authorization testing section was generated with the assistance of
 Codex[GPT-5.6 Sol]. The submitter interface coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The current-user submitter status coverage section was generated with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].
