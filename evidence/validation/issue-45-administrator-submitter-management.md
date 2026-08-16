@@ -1,6 +1,7 @@
 # Issue #45 administrator submitter management verification
 
-**Date:** 16 August 2026  
+**Date:** 16 August 2026
+
 **Scope:** administrator-only user listing, submitter approval and revocation, competition-scope
 assignment, audit fields, responsive management UI, frontend development command repair,
 documentation, and automated tests.
@@ -93,13 +94,23 @@ npm run dev frontend
 ```
 
 `npm run dev frontend -- --help` exited successfully and showed `vite --help` from the frontend
-workspace. A timed live launch also remained running until the verification timeout, confirming that
-the development server starts. `npm run dev backend` and additional arguments after `--` use the
-same cross-platform dispatcher.
+workspace. `npm run dev backend` and additional arguments after `--` use the same cross-platform
+dispatcher.
+
+The reported WSL failure was also reproduced: a dependency tree installed on Windows did not
+contain Rollup's lockfile-declared Linux native package. The repair was run from the user's Node
+24.18.0/npm 11.16.0 WSL login shell with `npm install --include=optional`. npm initially encountered
+stale NTFS/WSL target-directory state, so only the exact missing `@esbuild/linux-x64` and
+`@rollup/rollup-linux-x64-gnu` directories were pre-created; no lockfile or source dependency was
+deleted. The exact command from `apps/frontend` then reached Vite 5.4.21 ready state in 1067 ms at
+`http://127.0.0.1:5175/`.
 
 ## Pull Request
 
-Pull Request link pending creation after the verified commit is pushed.
+[Pull Request #157](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/157) was
+opened from `feat/45-admin-submitter-management` into the still-open prerequisite role branch
+`feat/154-application-roles`. It should be retargeted to `main` after prerequisite Pull Request #156
+merges. CI database verification and independent human review remain required.
 
 ## AI declaration
 

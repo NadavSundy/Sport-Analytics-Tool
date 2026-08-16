@@ -172,8 +172,15 @@ inside WSL. From a WSL login shell, repair the root workspace install with:
 
 ```bash
 cd /mnt/c/Users/deanf/Downloads/Sport-Analytics-Tool
+node --version
 npm install --include=optional
 ```
+
+Use the Node 20-or-newer login-shell installation that will also run Vite. If npm reports `ENOENT`
+while creating the Linux `@esbuild` or `@rollup` target in a checkout under `/mnt/c`, close Windows
+Node processes, create the exact missing directory reported by npm from Windows PowerShell, and run
+the WSL install again. This works around stale NTFS/WSL directory state without deleting the
+lockfile.
 
 Install and run the project consistently from the same operating-system environment. If switching
 between Windows and WSL regularly, keep a separate WSL checkout (for example under `~/src`) so the
