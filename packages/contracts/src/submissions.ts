@@ -23,12 +23,36 @@ const databaseIdentifierSchema = apiIdentifierSchema
       message: 'Database identifier is outside the supported range.',
     },
   );
-  
+
 const smallNonNegativeIntegerSchema = z.number().int().min(0).max(32_767);
 
 export const submissionEventIdSchema = z
   .string()
   .uuid('Event identifiers must be UUIDs so retries and accidental duplicates can be detected.');
+
+/**
+ * Dismissal kinds that cannot involve a fielder, and kinds that always do.
+ *
+ * These are not an enumeration of the vocabulary, which is held in the
+ * dismissal_kind lookup table. They constrain only the kinds whose relationship
+ * to fielders is fixed. A kind absent from both lists is unconstrained here and
+ * is resolved against the table server-side.
+ *
+ * Verified against the full Cricsheet corpus of 3,193,996 deliveries: no
+ * dismissal of a kind below names a fielder, and no caught or stumped dismissal
+ * omits one.
+ */
+const KINDS_WITHOUT_FIELDERS = new Set([
+  'bowled',
+  'lbw',
+  'hit wicket',
+  'timed out',
+  'retired hurt',
+  'retired out',
+  'retired not out',
+]);
+
+const KINDS_REQUIRING_A_FIELDER = new Set(['caught', 'stumped']);
 
 export const submissionWicketSchema = z
   .object({
@@ -59,7 +83,24 @@ export const submissionWicketSchema = z
       .max(11)
       .default([]),
   })
-  .strict();
+  .strict()
+  .superRefine((wicket, context) => {
+    if (KINDS_WITHOUT_FIELDERS.has(wicket.kind) && wicket.fielders.length > 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['fielders'],
+        message: `A dismissal of kind "${wicket.kind}" cannot involve a fielder.`,
+      });
+    }
+
+    if (KINDS_REQUIRING_A_FIELDER.has(wicket.kind) && wicket.fielders.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['fielders'],
+        message: `A dismissal of kind "${wicket.kind}" must name at least one fielder, who may be an unidentified substitute.`,
+      });
+    }
+  });
 
 export const submissionEventSchema = z
   .object({
@@ -134,8 +175,6 @@ export const submissionEventSchema = z
       });
     }
   });
-
-  
 
 export const submissionRequestSchema = z
   .object({

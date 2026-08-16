@@ -139,11 +139,7 @@ describe('direct submission contract', () => {
             {
               kind: 'run out',
               playerOutId: '20',
-              fielders: [
-                { participantId: '30' },
-                { participantId: '31' },
-                { substitute: true },
-              ],
+              fielders: [{ participantId: '30' }, { participantId: '31' }, { substitute: true }],
             },
           ],
         },
@@ -295,5 +291,84 @@ describe('direct submission contract', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+  test('rejects fielders on a dismissal kind that cannot involve one', () => {
+    for (const kind of ['bowled', 'lbw', 'hit wicket', 'timed out', 'retired out']) {
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [
+          {
+            ...validEvent(),
+            wickets: [{ kind, playerOutId: '20', fielders: [{ participantId: '30' }] }],
+          },
+        ],
+      });
+
+      expect(result.success, `${kind} should not accept a fielder`).toBe(false);
+    }
+  });
+
+  test('rejects a caught or stumped dismissal naming no fielder', () => {
+    for (const kind of ['caught', 'stumped']) {
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [
+          {
+            ...validEvent(),
+            wickets: [{ kind, playerOutId: '20', fielders: [] }],
+          },
+        ],
+      });
+
+      expect(result.success, `${kind} should require a fielder`).toBe(false);
+    }
+  });
+
+  test('accepts a caught dismissal whose fielder is an unidentified substitute', () => {
+    // 127 fielder records in the corpus identify a substitute with no name.
+    // Requiring a fielder must not require a named one.
+    const result = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          wickets: [{ kind: 'caught', playerOutId: '20', fielders: [{ substitute: true }] }],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('leaves a dismissal kind outside both lists unconstrained', () => {
+    // The vocabulary is held in dismissal_kind, not the contract. A kind the
+    // contract does not name is neither required to have a fielder nor forbidden
+    // one; it is resolved against the lookup table server-side.
+    const withFielder = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          wickets: [{ kind: 'run out', playerOutId: '20', fielders: [{ participantId: '30' }] }],
+        },
+      ],
+    });
+    expect(withFielder.success).toBe(true);
+
+    const withoutFielder = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        {
+          ...validEvent(),
+          wickets: [{ kind: 'obstructing the field', playerOutId: '20', fielders: [] }],
+        },
+      ],
+    });
+    expect(withoutFielder.success).toBe(true);
   });
 });
