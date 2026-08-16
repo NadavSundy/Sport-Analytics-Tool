@@ -79,7 +79,9 @@ repository documentation files did pass the Prettier and link/navigation inputs 
 
 ## Pull Request
 
-Pending. CI, human review, and Pull Request evidence remain required before merge.
+[Pull Request #156](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/156) was
+opened from `feat/154-application-roles` into `main`. CI and independent human review remain
+required before merge.
 
 ## AI declaration
 
