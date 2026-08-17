@@ -2,8 +2,10 @@ import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
+import { createApp } from '../../src/app';
 import {
   AccountDeletionIncompleteError,
+  AccountDeletionUnavailableError,
   RecentAuthenticationRequiredError,
 } from '../../src/modules/account-deletion/account-deletion.errors';
 import type { AccountDeletionService } from '../../src/modules/account-deletion/account-deletion.service';
@@ -34,6 +36,29 @@ function appWithDeletionService(
 }
 
 describe('DELETE /api/v1/account', () => {
+  it('uses the safe unavailable service in the publishable-only production composition', async () => {
+    const app = createApp({
+      environment: {
+        NODE_ENV: 'test',
+        PORT: 3000,
+        CORS_ORIGINS: 'http://localhost:5173',
+        SUPABASE_URL: 'https://test-project.supabase.co',
+        SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+      },
+      verifyAccessToken: async () => recentIdentity,
+      synchronizeAccount: async () =>
+        createTestAccount({ accountId: '42', subject: 'account-owner' }),
+    });
+
+    const response = await request(app)
+      .delete('/api/v1/account')
+      .set('Authorization', 'Bearer valid-test-token')
+      .send({ confirmation: 'DELETE' })
+      .expect(501);
+
+    expect(response.body.error.code).toBe('ACCOUNT_DELETION_UNAVAILABLE');
+  });
+
   it('rejects unauthenticated requests without calling deletion', async () => {
     const service = { deleteAccount: vi.fn() } as unknown as AccountDeletionService;
     const verifyAccessToken = vi.fn<VerifyAccessToken>();
@@ -139,5 +164,22 @@ describe('DELETE /api/v1/account', () => {
 
     expect(response.body.error.code).toBe('ACCOUNT_DELETION_INCOMPLETE');
     expect(JSON.stringify(response.body)).not.toMatch(/supabase|database|secret/i);
+  });
+
+  it('reports publishable-only provider administration as unavailable', async () => {
+    const service: AccountDeletionService = {
+      deleteAccount: vi.fn().mockRejectedValue(new AccountDeletionUnavailableError()),
+    };
+
+    const response = await request(appWithDeletionService(service))
+      .delete('/api/v1/account')
+      .set('Authorization', 'Bearer valid-test-token')
+      .send({ confirmation: 'DELETE' })
+      .expect(501);
+
+    expect(response.body.error).toEqual({
+      code: 'ACCOUNT_DELETION_UNAVAILABLE',
+      message: 'Account deletion is unavailable with publishable-only Supabase access.',
+    });
   });
 });

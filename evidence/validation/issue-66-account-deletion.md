@@ -1,5 +1,9 @@
 # Issue #66 secure account-deletion validation
 
+> **Current runtime note (17 August 2026):** This record describes the original issue #66
+> implementation. The production composition now uses publishable-only Supabase access and returns
+> `501 ACCOUNT_DELETION_UNAVAILABLE` before entering the validated state machine.
+
 ## Scope
 
 Issue #66 adds permanent self-service account deletion across the handwritten API, Supabase Auth,
@@ -63,7 +67,7 @@ error announcements, local Supabase sign-out, and navigation to the public home 
 
 ## Known limitations and human checks
 
-- A reviewer should confirm deployment secrets include `SUPABASE_SECRET_KEY` only on the backend.
+- The original provider-administration integration is not enabled in the publishable-only runtime.
 - Supabase Storage objects owned by a user can block Auth deletion. The product currently creates no
   such objects; reassess this workflow before adding user-owned storage.
 - A rare failure after Auth deletion and before any local success-stage write requires operator

@@ -2,10 +2,13 @@
 
 ## Account deletion policy
 
-A signed-in user may permanently delete their login identity and personal application-account
-information. Deletion removes the Supabase Auth identity, display name, roles, submitter approval,
-and competition scopes. The application keeps a disabled, non-identifying `app_user` tombstone with
-the same internal identifier.
+The current publishable-only runtime does not perform Supabase Auth account deletion. The reserved
+HTTP route returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing local deletion state. The
+policy below records the retained design for a future provider-capable implementation.
+
+Under that design, deletion removes the Supabase Auth identity, display name, roles, submitter
+approval, and competition scopes. The application keeps a disabled, non-identifying `app_user`
+tombstone with the same internal identifier.
 
 The following cricket and audit data is retained:
 
@@ -44,13 +47,15 @@ messages.
 
 ## User experience
 
-The account page explains the retained-data policy before deletion. The user must deliberately
-confirm the operation, and the backend requires a recent managed-authentication sign-in. After
-success, the browser clears its managed local session and returns to the public home page.
+The retained interface design explains the retained-data policy before deletion. The user must
+deliberately confirm the operation, and a provider-capable backend requires a recent
+managed-authentication sign-in. After success, the browser clears its managed local session and
+returns to the public home page.
 
 ## Known limitations
 
-- Account deletion cannot be rolled back from the product interface.
+- Account deletion is unavailable in the current publishable-only runtime.
+- A completed deletion cannot be rolled back from the product interface.
 - Very rare failures after Auth deletion may require operator reconciliation of a disabled pending
   tombstone.
 - Supabase Storage prevents Auth deletion while the user owns stored objects. The current product

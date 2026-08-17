@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import type { Environment } from '../config/env';
 
 type SupabaseEnvironment = Pick<Environment, 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY'>;
-type SupabaseAdminEnvironment = Pick<Environment, 'SUPABASE_URL' | 'SUPABASE_SECRET_KEY'>;
 
 export interface VerifiedIdentity {
   uid: string;
@@ -38,34 +37,6 @@ export function createSupabaseTokenVerifier(environment: SupabaseEnvironment): V
       displayName: resolveDisplayName(user.user_metadata),
       lastSignInAt: parseDate(user.last_sign_in_at),
     };
-  };
-}
-
-export function createSupabaseAdminUserDeleter(
-  environment: SupabaseAdminEnvironment,
-): DeleteAuthUser {
-  const supabaseAdmin = createClient(environment.SUPABASE_URL, environment.SUPABASE_SECRET_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
-
-  return async (authSubject) => {
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(authSubject, false);
-
-    if (!error) {
-      return 'deleted';
-    }
-
-    if ('code' in error && error.code === 'user_not_found') {
-      return 'not_found';
-    }
-
-    // Provider details can contain internal information. Keep them out of logs
-    // and public error responses by raising a stable local failure instead.
-    throw new Error('Supabase Auth administrative deletion failed');
   };
 }
 

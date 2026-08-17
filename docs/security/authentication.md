@@ -445,16 +445,16 @@ The hosted default email service has development rate limits. Production use req
 
 ## Account deletion
 
-Authenticated users can delete their own account with `DELETE /api/v1/account`. The endpoint accepts
-no target account ID and requires both an exact `DELETE` confirmation and a Supabase
-`last_sign_in_at` no more than 15 minutes old. Older sessions receive `403
-RECENT_AUTHENTICATION_REQUIRED` and must sign in again.
+The backend is configured with `SUPABASE_PUBLISHABLE_KEY` only. Because Supabase Auth user deletion
+is an administrative operation, `DELETE /api/v1/account` currently returns `501
+ACCOUNT_DELETION_UNAVAILABLE`. The rejection happens before the account-deletion state machine
+changes application data.
 
-Deletion runs only on the backend with `SUPABASE_SECRET_KEY`. The key must be a Supabase secret key
-or legacy `service_role` key and must never use a `VITE_` prefix or enter browser code. The backend
-uses the Auth Admin API for a hard deletion.
+The endpoint still accepts no target account ID and validates the exact `DELETE` confirmation. Its
+recoverable deletion implementation remains isolated behind an injected service for automated
+verification, but it is not enabled in the production application composition.
 
-The local workflow is a recoverable state machine:
+The retained provider-capable workflow design is a recoverable state machine:
 
 1. disable the application account and remove role, approval and competition grants;
 2. hard-delete the Supabase Auth user;
@@ -462,11 +462,11 @@ The local workflow is a recoverable state machine:
    stable `app_user_id` provenance key; and
 4. clear the browser's local Supabase session after the backend confirms success.
 
-An Auth or database failure returns `503 ACCOUNT_DELETION_INCOMPLETE`. The local account remains
-disabled, and retry either repeats the idempotent Auth deletion or resumes finalization. A hash of
-the former high-entropy Auth subject prevents an already-issued JWT from synchronizing a replacement
-account during the token's remaining lifetime. The browser's local sign-out does not substitute for
-the backend revocation check.
+When a provider-capable deletion integration is supplied, an Auth or database failure returns `503
+ACCOUNT_DELETION_INCOMPLETE`. The local account remains disabled, and retry either repeats the
+idempotent Auth deletion or resumes finalization. A hash of the former high-entropy Auth subject
+prevents an already-issued JWT from synchronizing a replacement account during the token's remaining
+lifetime. The browser's local sign-out does not substitute for the backend revocation check.
 
 Cricket submissions, deliveries, fixtures and derived statistics remain available without the
 deleted display name or reusable Auth subject.

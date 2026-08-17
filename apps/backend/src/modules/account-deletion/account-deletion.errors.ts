@@ -17,3 +17,12 @@ export class AccountDeletionIncompleteError extends Error {
     this.name = 'AccountDeletionIncompleteError';
   }
 }
+
+export class AccountDeletionUnavailableError extends Error {
+  readonly code = 'ACCOUNT_DELETION_UNAVAILABLE';
+
+  constructor() {
+    super('Account deletion is unavailable with publishable-only Supabase access.');
+    this.name = 'AccountDeletionUnavailableError';
+  }
+}

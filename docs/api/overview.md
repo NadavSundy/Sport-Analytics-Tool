@@ -87,7 +87,11 @@ grant competition scope. A disabled account receives `403 Forbidden`.
 
 ### Account deletion
 
-An authenticated user can permanently delete their own account through:
+The current backend uses publishable-only Supabase access. Supabase Auth user deletion requires an
+administrative provider operation, so account deletion is not part of the current published API
+contract.
+
+The reserved route:
 
 ```http
 DELETE /api/v1/account
@@ -97,24 +101,12 @@ Content-Type: application/json
 {"confirmation":"DELETE"}
 ```
 
-The endpoint accepts no target account identifier, requires a sign-in no more than 15 minutes old,
-and returns `422` unless the confirmation is exactly `DELETE`. A successful request disables the
-local account, revokes its role, approval and competition grants, hard-deletes the Supabase Auth
-user, and replaces local identity fields with a tombstone.
+accepts no target account identifier and returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing
+account-deletion state or identity data. It is retained temporarily so existing frontend clients
+receive a stable, explicit failure instead of initiating a partial deletion workflow.
 
-```json
-{
-  "data": {
-    "status": "deleted",
-    "retainedCricketData": true
-  }
-}
-```
-
-Submissions, fixtures, deliveries, derived statistics and their stable `app_user_id` provenance
-remain. The former display name and reusable Auth subject do not. If the external Auth deletion or
-local finalization fails, the API returns `503`; the account remains disabled and retry is
-idempotent. See [Privacy and retention](../security/privacy-retention.md).
+The earlier provider-capable design and its retention rules remain recorded in [Privacy and
+retention](../security/privacy-retention.md) and ADR-006 for historical context.
 
 Application registration is handled by Supabase Auth; there is no backend registration or profile
 mutation endpoint that accepts `application_role`. New application accounts are synchronized as

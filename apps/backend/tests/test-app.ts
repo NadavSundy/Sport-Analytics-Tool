@@ -16,7 +16,6 @@ const testEnvironment: Environment = {
   CORS_ORIGINS: 'http://localhost:5173',
   SUPABASE_URL: 'https://test-project.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
-  SUPABASE_SECRET_KEY: 'test-server-only-secret-key',
 };
 
 const acceptTestIdentity: VerifyAccessToken = async () => ({
