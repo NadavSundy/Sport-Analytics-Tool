@@ -148,13 +148,17 @@ paths:
         - Administration
       summary: Approve, re-scope, or revoke a submitter
       description: |
-        Atomically approves or rejects a pending viewer request, re-scopes an
-        approved submitter, or revokes submitter access. Approval requires at
-        least one existing competition; rejection and revocation require an
-        empty scope and remove every existing grant.
+        Atomically approves a pending viewer request, re-scopes an approved
+        submitter, or revokes approved submitter access. Approval and scope
+        replacement require at least one existing competition. Revocation
+        requires an empty scope and removes every existing grant while retaining
+        the request's historical `approved` decision state.
 
         A viewer in `not_requested` or `rejected` cannot be approved directly
         and must create a new request before an administrator can act.
+
+        Rejecting a pending request is a separate operation at
+        `POST /api/v1/admin/users/{userId}/submitter-access/rejection`.
 
         Administrator accounts, disabled accounts and the acting administrator's
         own account cannot be changed through this operation.
@@ -192,13 +196,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
-          description: The target has no pending request, is the acting administrator, is another administrator, or is disabled.
+          description: The requested transition is invalid, or the target is the acting administrator, another administrator, or disabled. Invalid lifecycle transitions use `INVALID_SUBMITTER_ACCESS_TRANSITION`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '422':
           description: The update shape or one of the requested competition scopes is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/admin/users/{userId}/submitter-access/rejection:
+    post:
+      tags:
+        - Administration
+      summary: Reject a pending submitter-access request
+      description: |
+        Rejects only a genuine pending viewer request. The atomic decision keeps
+        the authoritative role as `viewer`, changes the request state to
+        `rejected`, removes any submitter competition scopes, and records the
+        acting administrator and decision time.
+
+        This operation is distinct from revocation, which removes access from an
+        existing approved submitter through the PATCH operation. A rejected viewer
+        may create a new request and return to `pending`.
+      operationId: rejectAdministratorSubmitterAccessRequest
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DatabaseIdentifier'
+      responses:
+        '200':
+          description: Updated viewer account with a rejected request and no competition scopes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The target application account does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: The target is not a pending viewer, is the acting administrator, is another administrator, or is disabled. Invalid lifecycle transitions use `INVALID_SUBMITTER_ACCESS_TRANSITION`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The target user identifier is malformed.
           content:
             application/json:
               schema:

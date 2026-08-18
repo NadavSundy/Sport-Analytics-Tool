@@ -44,6 +44,15 @@ function mockAdminService(): AdminService {
         submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
       }),
     }),
+    rejectSubmitterAccessRequest: vi
+      .fn<AdminService['rejectSubmitterAccessRequest']>()
+      .mockResolvedValue({
+        data: managedUser({
+          approvalState: 'rejected',
+          submitterAccessUpdatedAt: updatedAt,
+          submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
+        }),
+      }),
   };
 }
 
@@ -135,7 +144,7 @@ describe('administrator user-management API', () => {
   test('revokes submitter access and all scopes', async () => {
     const service = mockAdminService();
     vi.mocked(service.updateSubmitterAccess).mockResolvedValue({
-      data: managedUser({ approvalState: 'rejected' }),
+      data: managedUser({ approvalState: 'approved' }),
     });
 
     const response = await request(appWithAdminService(service))
@@ -150,8 +159,71 @@ describe('administrator user-management API', () => {
     });
     expect(response.body.data).toMatchObject({
       role: 'viewer',
+      approvalState: 'approved',
+      competitionScopes: [],
+    });
+  });
+
+  test('rejects a pending submitter access request through the explicit action', async () => {
+    const service = mockAdminService();
+    const administrator = createTestAccount({ accountId: '1', role: 'admin' });
+
+    const response = await request(appWithAdminService(service, administrator))
+      .post('/api/v1/admin/users/42/submitter-access/rejection')
+      .set('Authorization', 'Bearer admin-token')
+      .expect(200);
+
+    expect(service.rejectSubmitterAccessRequest).toHaveBeenCalledWith(administrator, '42');
+    expect(response.body.data).toMatchObject({
+      id: '42',
+      role: 'viewer',
       approvalState: 'rejected',
       competitionScopes: [],
+    });
+  });
+
+  test('requires an administrator for the rejection action', async () => {
+    const service = mockAdminService();
+
+    await request(appWithAdminService(service, createTestAccount({ role: 'viewer' })))
+      .post('/api/v1/admin/users/42/submitter-access/rejection')
+      .set('Authorization', 'Bearer viewer-token')
+      .expect(403);
+
+    expect(service.rejectSubmitterAccessRequest).not.toHaveBeenCalled();
+  });
+
+  test('requires authentication for the rejection action', async () => {
+    const verifyAccessToken = vi.fn<VerifyAccessToken>();
+    const service = mockAdminService();
+
+    await request(appWithAdminService(service, undefined, verifyAccessToken))
+      .post('/api/v1/admin/users/42/submitter-access/rejection')
+      .expect('WWW-Authenticate', 'Bearer')
+      .expect(401);
+
+    expect(verifyAccessToken).not.toHaveBeenCalled();
+    expect(service.rejectSubmitterAccessRequest).not.toHaveBeenCalled();
+  });
+
+  test('returns a stable conflict for an invalid rejection transition', async () => {
+    const service = mockAdminService();
+    vi.mocked(service.rejectSubmitterAccessRequest).mockRejectedValue(
+      new AdminManagementConflictError(
+        'INVALID_SUBMITTER_ACCESS_TRANSITION',
+        "The requested submitter access transition is not valid for the account's current state.",
+      ),
+    );
+
+    const response = await request(appWithAdminService(service))
+      .post('/api/v1/admin/users/42/submitter-access/rejection')
+      .set('Authorization', 'Bearer admin-token')
+      .expect(409);
+
+    expect(response.body.error).toEqual({
+      code: 'INVALID_SUBMITTER_ACCESS_TRANSITION',
+      message:
+        "The requested submitter access transition is not valid for the account's current state.",
     });
   });
 
@@ -199,11 +271,11 @@ describe('administrator user-management API', () => {
     ],
     [
       new AdminManagementConflictError(
-        'SUBMITTER_REQUEST_NOT_PENDING',
-        'This account does not have a pending submitter access request.',
+        'INVALID_SUBMITTER_ACCESS_TRANSITION',
+        "The requested submitter access transition is not valid for the account's current state.",
       ),
       409,
-      'SUBMITTER_REQUEST_NOT_PENDING',
+      'INVALID_SUBMITTER_ACCESS_TRANSITION',
     ],
   ])('returns a useful management failure', async (error, status, code) => {
     const service = mockAdminService();

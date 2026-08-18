@@ -15,6 +15,10 @@ export interface AdminService {
     targetAccountId: string,
     update: AdministratorSubmitterAccessUpdate,
   ): Promise<AdministratorSubmitterAccessResponse>;
+  rejectSubmitterAccessRequest(
+    administrator: ApplicationAccount,
+    targetAccountId: string,
+  ): Promise<AdministratorSubmitterAccessResponse>;
 }
 
 export function createAdminService(repository?: AdminRepository): AdminService {
@@ -25,23 +29,41 @@ export function createAdminService(repository?: AdminRepository): AdminService {
     return resolvedRepository;
   }
 
+  function prohibitSelfManagement(
+    administrator: ApplicationAccount,
+    targetAccountId: string,
+  ): void {
+    if (administrator.accountId === targetAccountId) {
+      throw new AdminManagementConflictError(
+        'SELF_MANAGEMENT_NOT_ALLOWED',
+        'Administrators cannot change their own submitter access.',
+      );
+    }
+  }
+
   return {
     async listUsers() {
       return { data: await getRepository().listUserManagementData() };
     },
 
     async updateSubmitterAccess(administrator, targetAccountId, update) {
-      if (administrator.accountId === targetAccountId) {
-        throw new AdminManagementConflictError(
-          'SELF_MANAGEMENT_NOT_ALLOWED',
-          'Administrators cannot change their own submitter access.',
-        );
-      }
+      prohibitSelfManagement(administrator, targetAccountId);
 
       const user = await getRepository().updateSubmitterAccess(
         targetAccountId,
         administrator.accountId,
         update,
+      );
+
+      return { data: user };
+    },
+
+    async rejectSubmitterAccessRequest(administrator, targetAccountId) {
+      prohibitSelfManagement(administrator, targetAccountId);
+
+      const user = await getRepository().rejectSubmitterAccessRequest(
+        targetAccountId,
+        administrator.accountId,
       );
 
       return { data: user };

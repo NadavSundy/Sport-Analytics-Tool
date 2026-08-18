@@ -145,6 +145,25 @@ consumed by the administrator approval and competition-scope workflow. The reque
 authorization grant: approval must assign `application_role = submitter`, and the backend uses that
 role plus competition scope for submission decisions.
 
+### Administrator submitter-access decisions
+
+Only an authoritative `admin` may manage another active, non-administrator account. Approval and
+scope replacement use `PATCH /api/v1/admin/users/{userId}/submitter-access`; approval requires a
+pending viewer and at least one valid competition scope, while scope replacement requires an
+approved submitter. Sending `approved: false` revokes an approved submitter, removes every scope,
+and retains the historical `approved` request decision.
+
+Rejecting a pending request is a separate action:
+
+```http
+POST /api/v1/admin/users/{userId}/submitter-access/rejection
+Authorization: Bearer <supabase-access-token>
+```
+
+Rejection keeps the account as a viewer, writes `rejected`, clears all scopes, and allows the user
+to request again. Invalid lifecycle changes return `409 INVALID_SUBMITTER_ACCESS_TRANSITION` and
+leave the account's role, request state, scopes, and audit fields unchanged.
+
 ### Public read
 
 The following endpoints are available without authentication:

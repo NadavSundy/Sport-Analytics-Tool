@@ -3,9 +3,18 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
 import { createAdminRepository } from '../../src/modules/admin/admin.repository';
+import { createSubmitterAccessRepository } from '../../src/modules/submitter-access/submitter-access.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 
 const sourcePrefix = `admin-management-test-${process.pid}`;
+
+interface PersistedSubmitterAccess {
+  role: string;
+  approvalState: string;
+  competitionIds: string[];
+  submitterAccessUpdatedAt: Date | null;
+  submitterAccessUpdatedBy: string | null;
+}
 
 describe.sequential('administrator user-management database integration', () => {
   let pool: Pool | undefined;
@@ -16,6 +25,32 @@ describe.sequential('administrator user-management database integration', () => 
     }
 
     return pool;
+  }
+
+  async function loadPersistedAccess(accountId: string): Promise<PersistedSubmitterAccess> {
+    const result = await executeQuery<PersistedSubmitterAccess>(
+      databasePool(),
+      `
+        SELECT
+          account.application_role AS role,
+          account.submitter_approval_state AS "approvalState",
+          COALESCE(
+            array_agg(scope.competition_id::text ORDER BY scope.competition_id)
+              FILTER (WHERE scope.competition_id IS NOT NULL),
+            ARRAY[]::text[]
+          ) AS "competitionIds",
+          account.submitter_access_updated_at AS "submitterAccessUpdatedAt",
+          account.submitter_access_updated_by::text AS "submitterAccessUpdatedBy"
+        FROM app_user account
+        LEFT JOIN submitter_competition_scope scope
+          ON scope.app_user_id = account.app_user_id
+        WHERE account.app_user_id = $1
+        GROUP BY account.app_user_id
+      `,
+      [accountId],
+    );
+
+    return result.rows[0]!;
   }
 
   beforeAll(() => {
@@ -126,6 +161,8 @@ describe.sequential('administrator user-management database integration', () => 
       { competitionId: universityScope.competitionId, name: universityScope.name },
     ]);
 
+    const beforeInvalidScope = await loadPersistedAccess(contributorId);
+
     await expect(
       repository.updateSubmitterAccess(contributorId, administratorId, {
         approved: true,
@@ -133,10 +170,7 @@ describe.sequential('administrator user-management database integration', () => 
       }),
     ).rejects.toMatchObject({ competitionIds: ['9223372036854775806'] });
 
-    const afterInvalidScope = await repository.listUserManagementData();
-    expect(
-      afterInvalidScope.users.find((user) => user.id === contributorId)?.competitionScopes,
-    ).toEqual([{ competitionId: universityScope.competitionId, name: universityScope.name }]);
+    await expect(loadPersistedAccess(contributorId)).resolves.toEqual(beforeInvalidScope);
 
     const revoked = await repository.updateSubmitterAccess(contributorId, administratorId, {
       approved: false,
@@ -144,13 +178,22 @@ describe.sequential('administrator user-management database integration', () => 
     });
     expect(revoked).toMatchObject({
       role: 'viewer',
-      approvalState: 'rejected',
+      approvalState: 'approved',
       competitionScopes: [],
       submitterAccessUpdatedBy: { id: administratorId },
     });
+
+    const afterRevocation = await loadPersistedAccess(contributorId);
+    await expect(
+      repository.updateSubmitterAccess(contributorId, administratorId, {
+        approved: false,
+        competitionIds: [],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_SUBMITTER_ACCESS_TRANSITION' });
+    await expect(loadPersistedAccess(contributorId)).resolves.toEqual(afterRevocation);
   });
 
-  test('rejects approval unless a viewer has a pending request', async () => {
+  test('rejects invalid approvals without changing persisted access', async () => {
     const accounts = await executeQuery<{ accountId: string; subject: string }>(
       databasePool(),
       `
@@ -187,12 +230,17 @@ describe.sequential('administrator user-management database integration', () => 
     const repository = createAdminRepository(databasePool());
 
     for (const suffix of ['-not-requested', '-rejected']) {
+      const targetId = accountId(suffix);
+      const before = await loadPersistedAccess(targetId);
+
       await expect(
-        repository.updateSubmitterAccess(accountId(suffix), administratorId, {
+        repository.updateSubmitterAccess(targetId, administratorId, {
           approved: true,
           competitionIds: [competitionId],
         }),
-      ).rejects.toMatchObject({ code: 'SUBMITTER_REQUEST_NOT_PENDING' });
+      ).rejects.toMatchObject({ code: 'INVALID_SUBMITTER_ACCESS_TRANSITION' });
+
+      await expect(loadPersistedAccess(targetId)).resolves.toEqual(before);
     }
 
     await expect(
@@ -205,5 +253,133 @@ describe.sequential('administrator user-management database integration', () => 
       approvalState: 'approved',
       competitionScopes: [{ competitionId }],
     });
+  });
+
+  test('rejects only a pending request, clears scopes, and permits a new request', async () => {
+    const accounts = await executeQuery<{ accountId: string; subject: string }>(
+      databasePool(),
+      `
+        INSERT INTO app_user (
+          auth_provider,
+          auth_subject,
+          display_name,
+          application_role,
+          submitter_approval_state
+        )
+        VALUES
+          ('test', $1, 'Rejection Administrator', 'admin', 'not_requested'),
+          ('test', $2, 'Pending Rejection', 'viewer', 'pending'),
+          ('test', $3, 'Existing Submitter', 'submitter', 'approved'),
+          ('test', $4, 'No Revoke Viewer', 'viewer', 'not_requested')
+        RETURNING app_user_id::text AS "accountId", auth_subject AS subject
+      `,
+      [
+        `${sourcePrefix}-rejection-admin`,
+        `${sourcePrefix}-pending-rejection`,
+        `${sourcePrefix}-existing-submitter`,
+        `${sourcePrefix}-no-revoke-viewer`,
+      ],
+    );
+    const accountId = (suffix: string) =>
+      accounts.rows.find((row) => row.subject.endsWith(suffix))!.accountId;
+    const competition = await executeQuery<{ competitionId: string }>(
+      databasePool(),
+      'INSERT INTO competition (name) VALUES ($1) RETURNING competition_id::text AS "competitionId"',
+      [`${sourcePrefix}-Rejection League`],
+    );
+    const competitionId = competition.rows[0]!.competitionId;
+    const administratorId = accountId('-rejection-admin');
+    const pendingId = accountId('-pending-rejection');
+    const submitterId = accountId('-existing-submitter');
+    const viewerId = accountId('-no-revoke-viewer');
+    const repository = createAdminRepository(databasePool());
+
+    await executeQuery(
+      databasePool(),
+      `
+        INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+        VALUES ($1, $2), ($3, $2)
+      `,
+      [pendingId, competitionId, submitterId],
+    );
+
+    const rejected = await repository.rejectSubmitterAccessRequest(pendingId, administratorId);
+    expect(rejected).toMatchObject({
+      id: pendingId,
+      role: 'viewer',
+      approvalState: 'rejected',
+      competitionScopes: [],
+      submitterAccessUpdatedBy: { id: administratorId },
+    });
+    expect(rejected.submitterAccessUpdatedAt).not.toBeNull();
+
+    const beforeInvalidRejection = await loadPersistedAccess(submitterId);
+    await expect(
+      repository.rejectSubmitterAccessRequest(submitterId, administratorId),
+    ).rejects.toMatchObject({ code: 'INVALID_SUBMITTER_ACCESS_TRANSITION' });
+    await expect(loadPersistedAccess(submitterId)).resolves.toEqual(beforeInvalidRejection);
+
+    const beforeInvalidRevocation = await loadPersistedAccess(viewerId);
+    await expect(
+      repository.updateSubmitterAccess(viewerId, administratorId, {
+        approved: false,
+        competitionIds: [],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_SUBMITTER_ACCESS_TRANSITION' });
+    await expect(loadPersistedAccess(viewerId)).resolves.toEqual(beforeInvalidRevocation);
+
+    const requestRepository = createSubmitterAccessRepository(databasePool());
+    await expect(requestRepository.requestAccess(pendingId)).resolves.toEqual({
+      accountId: pendingId,
+      approvalState: 'pending',
+    });
+    await expect(loadPersistedAccess(pendingId)).resolves.toMatchObject({
+      role: 'viewer',
+      approvalState: 'pending',
+      competitionIds: [],
+    });
+  });
+
+  test('protects administrator and disabled targets without changing persisted access', async () => {
+    const accounts = await executeQuery<{ accountId: string; subject: string }>(
+      databasePool(),
+      `
+        INSERT INTO app_user (
+          auth_provider,
+          auth_subject,
+          display_name,
+          application_role,
+          submitter_approval_state,
+          disabled_at
+        )
+        VALUES
+          ('test', $1, 'Protection Administrator', 'admin', 'not_requested', NULL),
+          ('test', $2, 'Other Administrator', 'admin', 'pending', NULL),
+          ('test', $3, 'Disabled Request', 'viewer', 'pending', now())
+        RETURNING app_user_id::text AS "accountId", auth_subject AS subject
+      `,
+      [
+        `${sourcePrefix}-protection-admin`,
+        `${sourcePrefix}-other-admin`,
+        `${sourcePrefix}-disabled-request`,
+      ],
+    );
+    const accountId = (suffix: string) =>
+      accounts.rows.find((row) => row.subject.endsWith(suffix))!.accountId;
+    const administratorId = accountId('-protection-admin');
+    const repository = createAdminRepository(databasePool());
+
+    for (const [suffix, code] of [
+      ['-other-admin', 'ADMIN_ACCOUNT_NOT_MANAGEABLE'],
+      ['-disabled-request', 'DISABLED_ACCOUNT_NOT_MANAGEABLE'],
+    ] as const) {
+      const targetId = accountId(suffix);
+      const before = await loadPersistedAccess(targetId);
+
+      await expect(
+        repository.rejectSubmitterAccessRequest(targetId, administratorId),
+      ).rejects.toMatchObject({ code });
+      await expect(loadPersistedAccess(targetId)).resolves.toEqual(before);
+    }
   });
 });

@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and atomically approve, re-scope, or revoke submitters. Public reference data, accepted fixture events, and derived fixture statistics remain anonymous. Datasets and external API integration remain future work.
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and atomically approve or reject pending requests, re-scope approved submitters, or revoke access. Public reference data, accepted fixture events, and derived fixture statistics remain anonymous. Datasets and external API integration remain future work.
 
 ## Repository structure
 
