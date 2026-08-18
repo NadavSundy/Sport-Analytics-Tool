@@ -112,9 +112,14 @@ The backend needs:
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+# Optional locally; required to exercise account deletion.
+# SUPABASE_SECRET_KEY=your-server-only-supabase-secret-key
 ```
 
-These are public/publishable project values, not elevated secret keys. Never commit database passwords, OAuth client secrets, user access tokens, Supabase secret keys or legacy `service_role` keys.
+The URL and publishable key are public project values. The optional secret key is backend-only and
+must remain in the ignored environment file or deployment secret store. Never commit database
+passwords, OAuth client secrets, user access tokens, Supabase secret keys or legacy `service_role`
+keys.
 
 Google OAuth is configured in the Google and Supabase dashboards. Its client secret remains outside the repository.
 

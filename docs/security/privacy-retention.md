@@ -2,13 +2,13 @@
 
 ## Account deletion policy
 
-The current publishable-only runtime does not perform Supabase Auth account deletion. The reserved
-HTTP route returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing local deletion state. The
-policy below records the retained design for a future provider-capable implementation.
+When the backend has its optional server-only Supabase secret, deletion removes the Supabase Auth
+identity, display name, roles, submitter approval, and competition scopes. The application keeps a
+disabled, non-identifying `app_user` tombstone with the same internal identifier.
 
-Under that design, deletion removes the Supabase Auth identity, display name, roles, submitter
-approval, and competition scopes. The application keeps a disabled, non-identifying `app_user`
-tombstone with the same internal identifier.
+If the secret is not configured, the HTTP route returns `501 ACCOUNT_DELETION_UNAVAILABLE` before
+changing local deletion state. This fail-closed fallback does not prevent the backend from starting
+or serving unrelated routes.
 
 The following cricket and audit data is retained:
 
@@ -54,7 +54,7 @@ returns to the public home page.
 
 ## Known limitations
 
-- Account deletion is unavailable in the current publishable-only runtime.
+- Account deletion requires a server-only Supabase secret in the backend deployment environment.
 - A completed deletion cannot be rolled back from the product interface.
 - Very rare failures after Auth deletion may require operator reconciliation of a disabled pending
   tombstone.
