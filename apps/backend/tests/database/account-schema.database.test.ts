@@ -4,6 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
+import { synchronizeApplicationAccount } from '../../src/modules/accounts/account.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 
 const sourcePrefix = `account-schema-test-${process.pid}`;
@@ -286,6 +287,84 @@ describe.sequential('application account authorization schema', () => {
         { subject: 'legacy-approved-submitter', role: 'viewer' },
         { subject: 'legacy-viewer', role: 'viewer' },
       ]);
+    } finally {
+      await client.query('RESET search_path');
+      await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);
+      client.release();
+    }
+  });
+
+  test('resolves current-user access while role and deletion migrations are pending', async () => {
+    const client = await databasePool().connect();
+    const schemaName = `issue166_status_compatibility_${process.pid}`;
+    const quotedSchemaName = `"${schemaName}"`;
+    const deliverySchema = await migrationSections('20260806150357535_delivery-event-schema.sql');
+    const authorizationSchema = await migrationSections(
+      '20260812120000000_account-authorisation.sql',
+    );
+
+    try {
+      await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
+      await client.query(`SET search_path TO ${quotedSchemaName}`);
+      await client.query(deliverySchema.up);
+      await client.query(authorizationSchema.up);
+      await client.query(
+        `
+          INSERT INTO app_user (
+            auth_provider,
+            auth_subject,
+            display_name,
+            application_role,
+            submitter_approval_state
+          )
+          VALUES
+            ('supabase', 'legacy-approved-submitter', 'Approved Submitter', 'viewer', 'approved'),
+            ('supabase', 'legacy-administrator', 'Administrator', 'administrator', 'approved'),
+            ('supabase', 'legacy-viewer', 'Viewer', 'viewer', 'not_requested')
+        `,
+      );
+      await client.query("INSERT INTO competition (name) VALUES ('Legacy competition')");
+      await client.query(
+        `
+          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+          SELECT app_user_id, competition_id
+          FROM app_user
+          CROSS JOIN competition
+          WHERE auth_subject = 'legacy-approved-submitter'
+            AND competition.name = 'Legacy competition'
+        `,
+      );
+
+      const approvedSubmitter = await synchronizeApplicationAccount(
+        { uid: 'legacy-approved-submitter', displayName: 'Approved Submitter' },
+        client,
+      );
+      const administrator = await synchronizeApplicationAccount(
+        { uid: 'legacy-administrator', displayName: 'Administrator' },
+        client,
+      );
+      const viewer = await synchronizeApplicationAccount(
+        { uid: 'legacy-viewer', displayName: 'Viewer' },
+        client,
+      );
+
+      expect(approvedSubmitter).toMatchObject({
+        role: 'submitter',
+        approvalState: 'approved',
+        competitionIds: ['1'],
+        deletionState: 'active',
+      });
+      expect(administrator).toMatchObject({
+        role: 'admin',
+        approvalState: 'approved',
+        deletionState: 'active',
+      });
+      expect(viewer).toMatchObject({
+        role: 'viewer',
+        approvalState: 'not_requested',
+        competitionIds: [],
+        deletionState: 'active',
+      });
     } finally {
       await client.query('RESET search_path');
       await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);

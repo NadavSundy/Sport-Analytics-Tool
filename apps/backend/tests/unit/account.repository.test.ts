@@ -102,7 +102,7 @@ describe('application account repository', () => {
       )?.[1];
 
       expect(conflictUpdate).toBeDefined();
-      expect(conflictUpdate).toContain("app_user.deletion_state = 'active'");
+      expect(conflictUpdate).toContain("to_jsonb(app_user) ->> 'deletion_state'");
       expect(conflictUpdate).toContain('THEN COALESCE(EXCLUDED.display_name');
       expect(conflictUpdate).toContain('THEN now()');
 
@@ -185,6 +185,39 @@ describe('application account repository', () => {
     expect(account.role).toBe('admin');
   });
 
+  test('resolves account state across the role and deletion migration rollout', async () => {
+    const executor = createExecutor({
+      accountId: '42',
+      subject: 'supabase-admin-42',
+      displayName: 'Admin User',
+      role: 'admin',
+      approvalState: 'approved',
+      competitionIds: ['7'],
+      disabledAt: null,
+    });
+
+    await synchronizeApplicationAccount(
+      {
+        uid: 'supabase-admin-42',
+        displayName: 'Admin User',
+      },
+      executor,
+    );
+
+    const sql = vi.mocked(executor.query).mock.calls[0]?.[0];
+    expect(sql).toEqual(expect.any(String));
+
+    if (typeof sql !== 'string') {
+      throw new Error('Expected account synchronization to execute SQL.');
+    }
+
+    expect(sql).toContain("to_jsonb(app_user) ->> 'deleted_auth_subject_hash'");
+    expect(sql).toContain("COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active')");
+    expect(sql).toContain('account_schema."usesCurrentRoleModel"');
+    expect(sql).toContain("account.application_role = 'administrator' THEN 'admin'");
+    expect(sql).toContain("account.submitter_approval_state = 'approved' THEN 'submitter'");
+  });
+
   test('fails closed when persisted authorization state is unsupported', async () => {
     const executor = createExecutor({
       accountId: '42',
@@ -225,7 +258,7 @@ describe('application account repository', () => {
     );
 
     const sql = vi.mocked(executor.query).mock.calls[0]?.[0];
-    expect(sql).toContain('deleted_auth_subject_hash = $4');
+    expect(sql).toContain("to_jsonb(app_user) ->> 'deleted_auth_subject_hash' = $4");
     expect(sql).toContain('WHERE NOT EXISTS (SELECT 1 FROM deleted_account)');
     expect(account).toMatchObject({
       subject: 'deleted:tombstone',
