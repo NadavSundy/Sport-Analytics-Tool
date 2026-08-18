@@ -2,7 +2,11 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
-import { createSupabaseTokenVerifier, type VerifyAccessToken } from './auth/supabase-auth';
+import {
+  createSupabaseAdminUserDeleter,
+  createSupabaseTokenVerifier,
+  type VerifyAccessToken,
+} from './auth/supabase-auth';
 import { loadEnvironment, type Environment } from './config/env';
 import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
@@ -34,6 +38,7 @@ import {
 } from './modules/submitter-access/submitter-access.service';
 import { createAccountDeletionRouter } from './modules/account-deletion/account-deletion.routes';
 import {
+  createAccountDeletionService,
   createUnavailableAccountDeletionService,
   type AccountDeletionService,
 } from './modules/account-deletion/account-deletion.service';
@@ -64,7 +69,15 @@ export function createApp(dependencies: AppDependencies = {}) {
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
   const accountDeletionService =
-    dependencies.accountDeletionService ?? createUnavailableAccountDeletionService();
+    dependencies.accountDeletionService ??
+    (environment.SUPABASE_SECRET_KEY
+      ? createAccountDeletionService(
+          createSupabaseAdminUserDeleter({
+            SUPABASE_URL: environment.SUPABASE_URL,
+            SUPABASE_SECRET_KEY: environment.SUPABASE_SECRET_KEY,
+          }),
+        )
+      : createUnavailableAccountDeletionService());
   const adminService = dependencies.adminService ?? createAdminService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())

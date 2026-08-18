@@ -53,10 +53,17 @@ async function bestEffort(operation: () => Promise<void>): Promise<void> {
 
 export function createAccountDeletionService(
   deleteAuthUser: DeleteAuthUser,
-  repository: AccountDeletionRepository = createAccountDeletionRepository(),
+  repository?: AccountDeletionRepository,
   now: () => Date = () => new Date(),
   createTombstoneSubject: () => string = () => `deleted:${randomUUID()}`,
 ): AccountDeletionService {
+  let resolvedRepository = repository;
+
+  function getRepository(): AccountDeletionRepository {
+    resolvedRepository ??= createAccountDeletionRepository();
+    return resolvedRepository;
+  }
+
   return {
     async deleteAccount(account, identity) {
       if (identity.uid !== account.subject && account.deletionState !== 'deleted') {
@@ -67,7 +74,8 @@ export function createAccountDeletionService(
         throw new RecentAuthenticationRequiredError();
       }
 
-      const prepared = await repository.prepare(account.accountId);
+      const accountDeletionRepository = getRepository();
+      const prepared = await accountDeletionRepository.prepare(account.accountId);
 
       if (prepared.state === 'deleted') {
         return {
@@ -82,25 +90,27 @@ export function createAccountDeletionService(
         try {
           await deleteAuthUser(prepared.authSubject);
         } catch {
-          await bestEffort(() => repository.markAuthDeletionFailed(account.accountId));
+          await bestEffort(() =>
+            accountDeletionRepository.markAuthDeletionFailed(account.accountId),
+          );
           throw new AccountDeletionIncompleteError();
         }
 
         try {
-          await repository.markAuthDeleted(account.accountId);
+          await accountDeletionRepository.markAuthDeleted(account.accountId);
         } catch {
           throw new AccountDeletionIncompleteError();
         }
       }
 
       try {
-        await repository.finalize(
+        await accountDeletionRepository.finalize(
           account.accountId,
           createTombstoneSubject(),
           hashAuthenticationSubject(prepared.authSubject),
         );
       } catch {
-        await bestEffort(() => repository.markFinalizationFailed(account.accountId));
+        await bestEffort(() => accountDeletionRepository.markFinalizationFailed(account.accountId));
         throw new AccountDeletionIncompleteError();
       }
 
