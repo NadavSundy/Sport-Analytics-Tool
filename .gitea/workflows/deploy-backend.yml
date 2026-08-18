@@ -5,38 +5,95 @@ on:
     branches:
       - main
     paths:
-      - 'backend/**'
+      - 'apps/backend/**'
+      - 'packages/contracts/**'
+      - 'scripts/prepare-backend-deployment.mjs'
+      - 'scripts/smoke-check-backend-artifact.mjs'
+      - 'scripts/smoke-check-deployment.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
       - '.gitea/workflows/deploy-backend.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Install root workspace dependencies
         run: npm ci
 
-      - name: Check backend
-        run: npm run check --workspace=backend
+      - name: Validate deployment secret
+        env:
+          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+        run: |
+          if [ -z "$AZURE_BACKEND_PUBLISH_PROFILE" ]; then
+            echo "::error::Required Gitea secret AZURE_BACKEND_PUBLISH_PROFILE is not configured."
+            exit 1
+          fi
 
-      - name: Test backend
-        run: npm test --workspace=backend
+      - name: Verify shared contracts
+        run: |
+          npm run lint --workspace=@sport-analytics/contracts
+          npm run typecheck --workspace=@sport-analytics/contracts
+          npm run test:contracts
+          npm run build --workspace=@sport-analytics/contracts
 
-      - name: Build backend
-        run: npm run build --workspace=backend
+      - name: Verify backend workspace
+        run: |
+          npm run lint --workspace=@sport-analytics/backend
+          npm run typecheck --workspace=@sport-analytics/backend
+          npm run test:unit
+          npm run test:api
+          npm run build --workspace=@sport-analytics/backend
+
+      - name: Prepare backend deployment artifact
+        run: npm run deploy:prepare:backend
+
+      - name: Smoke check backend deployment artifact
+        run: node scripts/smoke-check-backend-artifact.mjs
 
       - name: Deploy backend
-        uses: Azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v3
         with:
           app-name: statsthegame-api-dev
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-          package: backend
+          package: .deployment/backend
+          clean: true
+          restart: true
+
+      - name: Smoke check deployed backend health
+        env:
+          SMOKE_CHECK_ATTEMPTS: 18
+          SMOKE_CHECK_DELAY_MS: 10000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed backend health"
+          "$BACKEND_URL/api/v1/health"
+          "sport-analytics-api"
+
+      - name: Smoke check deployed database access
+        env:
+          SMOKE_CHECK_ATTEMPTS: 6
+          SMOKE_CHECK_DELAY_MS: 5000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed backend database access"
+          "$BACKEND_URL/api/v1/competitions?limit=1"
+          "pagination"

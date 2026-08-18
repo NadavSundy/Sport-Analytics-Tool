@@ -10,10 +10,24 @@ npm run test:unit
 npm run test:frontend
 npm run test:api
 npm run test:contracts
+npm run test:deployment
 npm run test:database
 npm run test:e2e
 npm run test:coverage
 npm run check
+```
+
+## Deployment workflow helper coverage
+
+The deployment helper suite verifies that HTTP smoke checks accept a successful response only when
+its expected content is present, retry transient HTTP failures, preserve the final status/body in a
+terminal error and reject non-HTTP targets. The backend workflow additionally assembles its generated
+runtime artifact and starts it for a health check before Azure deployment.
+
+Run the helper unit suite with:
+
+```text
+npm run test:deployment
 ```
 
 ## Account and authorization coverage
@@ -221,3 +235,4 @@ ChatGPT-Web[GPT-5.6 Sol] and updated for issue #166 with the assistance of Codex
 The account-deletion testing section was documented with the assistance of Codex[GPT-5].
 The submitter access frontend coverage section and corrected code fences were updated with the
 assistance of Codex[GPT-5].
+The deployment workflow helper coverage was documented with the assistance of Codex[GPT-5].

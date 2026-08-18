@@ -45,10 +45,20 @@ Reason not selected for the current foundation:
 
 - would introduce a separate hosting/deployment path while the team selected App Service for both application components.
 
-## Verification still required
+## Deployment verification
 
-Deployment workflow correctness, smoke checks, rollback evidence and runner availability are tracked separately from this technology-selection document. The existence of an Azure workflow file must not be presented as proof that automated deployment has successfully executed.
+The frontend and backend Gitea workflows build from the root npm workspace, deploy the current
+monorepo application paths and run post-deployment checks. The frontend check verifies the expected
+HTML response. The backend checks verify both `/api/v1/health` and a read-only database-backed
+competition request.
+
+Workflow definitions are not evidence of a successful release by themselves. Each release must
+retain the corresponding passing Gitea Action link and smoke-check output. Rollback evidence and
+runner availability remain operational evidence rather than claims made by this technology-selection
+document.
 
 ## AI Declaration
 
-The preceding document was reviewed and aligned with the accepted Azure ADR with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and aligned with the accepted Azure ADR with the assistance of
+ChatGPT-Web[GPT-5.6 Sol] and updated for the automated deployment checks with the assistance of
+Codex[GPT-5].

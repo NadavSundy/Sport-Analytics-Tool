@@ -169,3 +169,6 @@ __pycache__/
 # Local Gitea issue snapshots (may contain internal project information)
 /gitea-export/
 /.gitea-export.tmp.*/
+
+# Generated Azure deployment artifacts
+/.deployment/

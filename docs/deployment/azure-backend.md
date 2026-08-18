@@ -37,7 +37,45 @@ The Express application uses Pino HTTP for structured request logging. Azure App
 
 ## Deployment
 
-The repository contains a Gitea Actions workflow intended to automate backend deployment to Azure App Service.
+`.gitea/workflows/deploy-backend.yml` deploys the backend after a push to `main` changes the backend
+workspace, shared contracts, root npm manifests, shared TypeScript configuration, either deployment
+helper or the workflow itself. It can also be started manually with `workflow_dispatch`.
+
+The workflow runs from the repository root and:
+
+1. installs the complete workspace reproducibly with `npm ci`;
+2. lints, type-checks, tests and builds `@sport-analytics/contracts`;
+3. lints, type-checks, runs the non-database backend unit/API suites and builds
+   `@sport-analytics/backend`;
+4. creates `.deployment/backend` from the root lockfile with production dependencies, compiled
+   backend output, the runtime CA certificate and a physical copy of the compiled contracts package;
+5. starts that artifact with non-secret smoke configuration and verifies its local health endpoint;
+6. deploys the artifact to `statsthegame-api-dev`, cleaning the old deployment first; and
+7. retries the deployed health endpoint before checking the read-only
+   `/api/v1/competitions?limit=1` database path.
+
+The local artifact check proves that the compiled server and runtime dependency tree can start before
+Azure is changed. The deployed checks report every failed attempt and fail the Action when the service
+does not recover within the configured limit.
+
+## Gitea Action secrets
+
+`AZURE_BACKEND_PUBLISH_PROFILE` is the only backend secret consumed by the workflow. It is passed
+directly from the Gitea `secrets` context to the Azure deployment action and is never printed. A
+validation step reports the secret name and stops before verification when it is not configured.
+
+Backend application secrets such as `DATABASE_URL` and Supabase configuration remain Azure App
+Service settings. They are not copied into the deployment artifact or exposed to the workflow's
+local artifact check.
+
+## Current startup limitation
+
+The App Service still has the workspace-link recovery startup command recorded in
+`docs/deployment/azure-app-service-recovery.md`. The prepared artifact now includes a physical
+`node_modules/@sport-analytics/contracts` directory, but the Azure startup command must not be removed
+until a merged deployment run proves the artifact on the live service and the normal startup command
+is changed deliberately. That remaining Azure configuration change is not performed by a publish
+profile deployment.
 
 ## Rollback
 
@@ -45,4 +83,5 @@ Azure supports redeploying a previous successful application package/workflow re
 
 ## AI Declaration
 
-The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol]
+and updated for the automated deployment checks with the assistance of Codex[GPT-5].

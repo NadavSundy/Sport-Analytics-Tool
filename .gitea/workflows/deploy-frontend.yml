@@ -5,37 +5,88 @@ on:
     branches:
       - main
     paths:
-      - 'frontend/**'
+      - 'apps/frontend/**'
+      - 'packages/contracts/**'
+      - 'scripts/smoke-check-deployment.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
       - '.gitea/workflows/deploy-frontend.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      FRONTEND_URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Install root workspace dependencies
         run: npm ci
 
-      - name: Check frontend
-        run: npm run check --workspace=frontend
+      - name: Validate deployment secrets
+        env:
+          AZURE_FRONTEND_PUBLISH_PROFILE: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        run: |
+          missing=0
+          for name in AZURE_FRONTEND_PUBLISH_PROFILE VITE_API_BASE_URL VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
 
-      - name: Build frontend
-        run: npm run build --workspace=frontend
+      - name: Verify shared contracts
+        run: |
+          npm run lint --workspace=@sport-analytics/contracts
+          npm run typecheck --workspace=@sport-analytics/contracts
+          npm run test:contracts
+          npm run build --workspace=@sport-analytics/contracts
+
+      - name: Verify frontend workspace
+        run: |
+          npm run lint --workspace=@sport-analytics/frontend
+          npm run typecheck --workspace=@sport-analytics/frontend
+          npm run test:frontend
+
+      - name: Build frontend deployment bundle
+        run: npm run build --workspace=@sport-analytics/frontend
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Deploy frontend
-        uses: Azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v3
         with:
           app-name: statsthegame-web-dev
           publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
-          package: frontend/dist
+          package: apps/frontend/dist
+          clean: true
+          restart: true
+
+      - name: Smoke check deployed frontend
+        env:
+          SMOKE_CHECK_ATTEMPTS: 18
+          SMOKE_CHECK_DELAY_MS: 10000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed frontend"
+          "$FRONTEND_URL"
+          "<title>Stat'sTheGame</title>"
