@@ -24,10 +24,25 @@ export async function synchronizeApplicationAccount(
   executor: QueryExecutor = getDatabasePool(),
 ): Promise<ApplicationAccount> {
   const subjectHash = hashAuthenticationSubject(identity.uid);
+
+  // Optional rollout columns are read through the row JSON representation so
+  // account status remains resolvable while the ordered migrations are applied.
+  // The role constraint distinguishes the legacy approval-based model from the
+  // current authoritative viewer | submitter | admin model.
   const result = await executeQuery<ApplicationAccountRow>(
     executor,
     `
-      WITH deleted_account AS (
+      WITH account_schema AS (
+        SELECT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conrelid = 'app_user'::regclass
+            AND conname = 'app_user_application_role_ck'
+            AND pg_get_constraintdef(oid) LIKE '%submitter%'
+            AND pg_get_constraintdef(oid) LIKE '%admin%'
+        ) AS "usesCurrentRoleModel"
+      ),
+      deleted_account AS (
         SELECT
           app_user_id,
           auth_subject,
@@ -35,10 +50,10 @@ export async function synchronizeApplicationAccount(
           application_role,
           submitter_approval_state,
           disabled_at,
-          deletion_state
+          COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active') AS deletion_state
         FROM app_user
         WHERE auth_provider = $1
-          AND deleted_auth_subject_hash = $4
+          AND to_jsonb(app_user) ->> 'deleted_auth_subject_hash' = $4
       ),
       synchronized_account AS (
         INSERT INTO app_user (
@@ -53,12 +68,14 @@ export async function synchronizeApplicationAccount(
         ON CONFLICT (auth_provider, auth_subject) DO UPDATE
         SET
           display_name = CASE
-            WHEN app_user.deletion_state = 'active' AND app_user.disabled_at IS NULL
+            WHEN COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active') = 'active'
+              AND app_user.disabled_at IS NULL
               THEN COALESCE(EXCLUDED.display_name, app_user.display_name)
             ELSE app_user.display_name
           END,
           last_authenticated_at = CASE
-            WHEN app_user.deletion_state = 'active' AND app_user.disabled_at IS NULL
+            WHEN COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active') = 'active'
+              AND app_user.disabled_at IS NULL
               THEN now()
             ELSE app_user.last_authenticated_at
           END
@@ -69,7 +86,7 @@ export async function synchronizeApplicationAccount(
           application_role,
           submitter_approval_state,
           disabled_at,
-          deletion_state
+          COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active') AS deletion_state
       ),
       resolved_account AS (
         SELECT * FROM deleted_account
@@ -80,7 +97,13 @@ export async function synchronizeApplicationAccount(
         account.app_user_id::text AS "accountId",
         account.auth_subject AS subject,
         account.display_name AS "displayName",
-        account.application_role AS role,
+        CASE
+          WHEN account_schema."usesCurrentRoleModel" THEN account.application_role
+          WHEN account.application_role = 'administrator' THEN 'admin'
+          WHEN account.application_role = 'viewer'
+            AND account.submitter_approval_state = 'approved' THEN 'submitter'
+          ELSE account.application_role
+        END AS role,
         account.submitter_approval_state AS "approvalState",
         COALESCE(
           array_agg(scope.competition_id::text ORDER BY scope.competition_id)
@@ -90,6 +113,7 @@ export async function synchronizeApplicationAccount(
         account.disabled_at AS "disabledAt",
         account.deletion_state AS "deletionState"
       FROM resolved_account account
+      CROSS JOIN account_schema
       LEFT JOIN submitter_competition_scope scope
         ON scope.app_user_id = account.app_user_id
       GROUP BY
@@ -99,7 +123,8 @@ export async function synchronizeApplicationAccount(
         account.application_role,
         account.submitter_approval_state,
         account.disabled_at,
-        account.deletion_state
+        account.deletion_state,
+        account_schema."usesCurrentRoleModel"
     `,
     ['supabase', identity.uid, identity.displayName ?? null, subjectHash],
   );

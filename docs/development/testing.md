@@ -94,9 +94,13 @@ Coverage includes:
   `@sport-analytics/contracts`;
 - API responses reflecting the synchronized account approval state;
 - account re-authentication updating identity metadata without overwriting persisted role or
-  submitter approval state; and
+  submitter approval state;
+- current-user resolution during the ordered role and account-deletion migration rollout, including
+  legacy approved submitters and administrators;
 - frontend rejection of malformed current-user responses rather than inferring access from
-  incomplete data.
+  incomplete data;
+- explicit unauthenticated and server-error status states; and
+- a successful retry after a transient status-loading failure.
 
 Run the focused checks with:
 
@@ -207,7 +211,7 @@ The account and authorization testing section was generated with the assistance 
 Codex[GPT-5.6 Sol]. The submitter interface coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The current-user submitter status coverage section was generated with the assistance of
-ChatGPT-Web[GPT-5.6 Sol].
+ChatGPT-Web[GPT-5.6 Sol] and updated for issue #166 with the assistance of Codex[GPT-5.6 Sol].
 The account-deletion testing section was documented with the assistance of Codex[GPT-5].
 The submitter access frontend coverage section and corrected code fences were updated with the
 assistance of Codex[GPT-5].

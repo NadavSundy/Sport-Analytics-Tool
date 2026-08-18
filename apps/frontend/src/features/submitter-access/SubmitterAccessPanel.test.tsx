@@ -258,6 +258,55 @@ describe('submitter access request and status interface', () => {
     expect(screen.getByRole('button', { name: 'Request submitter access' })).toBeEnabled();
   });
 
+  it('reports an unauthenticated status response as an expired session', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(401, {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'A valid authentication token is required.',
+          },
+        }),
+      ),
+    );
+
+    renderAccountPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your session is no longer valid. Sign in again to check your submitter status.',
+    );
+  });
+
+  it('retries a server-error status response and renders the resolved access state', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(500, {
+          error: {
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'The server could not complete the request.',
+          },
+        }),
+      )
+      .mockResolvedValueOnce(currentUser('approved', 'submitter'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderAccountPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your submitter status could not be loaded. Please try again.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry status check' }));
+
+    expect(await screen.findByText('Submitter')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Submit events' })).toHaveAttribute(
+      'href',
+      '/submissions/new',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('communicates profile and request failures and leaves retry available', async () => {
     const fetchMock = vi
       .fn()

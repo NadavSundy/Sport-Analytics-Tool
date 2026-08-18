@@ -139,6 +139,29 @@ describe('GET /api/v1/auth/me', () => {
     });
   });
 
+  it('returns a safe server error when account status cannot be resolved', async () => {
+    const verifyAccessToken = vi.fn<VerifyAccessToken>().mockResolvedValue({
+      uid: 'database-error-user',
+      displayName: 'Database Error User',
+    });
+    const synchronizeAccount = vi
+      .fn<SynchronizeAccount>()
+      .mockRejectedValue(new Error('Internal database detail'));
+
+    const response = await request(createTestApp(verifyAccessToken, undefined, synchronizeAccount))
+      .get('/api/v1/auth/me')
+      .set('Authorization', 'Bearer valid-test-token')
+      .expect(500);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'An unexpected server error occurred.',
+      },
+    });
+    expect(JSON.stringify(response.body)).not.toContain('Internal database detail');
+  });
+
   it.each(['submitter', 'admin'] as const)(
     'does not expose a user-controlled application-role update endpoint for %s',
     async (applicationRole) => {
