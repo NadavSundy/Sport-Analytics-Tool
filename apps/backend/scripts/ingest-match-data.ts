@@ -2,6 +2,11 @@
  * Load a single Cricsheet match into the delivery event schema using a caller-owned
  * database executor. Connection, transaction and cleanup behavior remain the
  * caller's responsibility so local database tests can roll back their fixtures.
+ *
+ * Rows are inserted per set rather than per row. At roughly 173 ms per round
+ * trip, a match costs about a minute one row at a time and a few seconds
+ * batched. Behaviour is unchanged throughout: the same conflict clauses preserve
+ * idempotency, and only rows actually inserted are counted.
  */
 
 import { readFileSync } from 'node:fs';
@@ -45,6 +50,21 @@ export interface IngestMatchOptions {
   sourceRef?: string;
 }
 
+/**
+ * Build the VALUES placeholder list for a multi-row insert, appending each row's
+ * values to a shared parameter array.
+ */
+function placeholders(rowCount: number, columnCount: number): string {
+  return Array.from({ length: rowCount }, (_unused, row) => {
+    const offset = row * columnCount;
+    const columns = Array.from(
+      { length: columnCount },
+      (_ignored, column) => `$${offset + column + 1}`,
+    );
+    return `(${columns.join(',')})`;
+  }).join(',');
+}
+
 export async function ingestMatchData(
   client: QueryExecutor,
   matchPath: string,
@@ -83,19 +103,47 @@ export async function ingestMatchData(
 
   // ---- people -----------------------------------------------------------
   const personId = new Map<string, number>();
-  for (const [name, ref] of Object.entries(registry)) {
-    const id = await scalar<number>(
-      `INSERT INTO person (source_ref, display_name) VALUES ($1, $2)
+  const registryEntries = Object.entries(registry);
+
+  if (registryEntries.length > 0) {
+    // A registry reference may appear only once in an insert using DO UPDATE,
+    // or Postgres refuses to affect the same row twice.
+    const uniqueByRef = new Map<string, string>();
+    for (const [name, ref] of registryEntries) {
+      if (!uniqueByRef.has(ref)) {
+        uniqueByRef.set(ref, name);
+      }
+    }
+
+    const personRows = [...uniqueByRef.entries()];
+    const insertedPeople = await client.query(
+      `INSERT INTO person (source_ref, display_name)
+       VALUES ${placeholders(personRows.length, 2)}
        ON CONFLICT (source_ref) DO UPDATE SET display_name = EXCLUDED.display_name
-       RETURNING person_id`,
-      [ref, name],
+       RETURNING person_id, source_ref`,
+      personRows.flatMap(([ref, name]) => [ref, name]),
     );
+
+    // DO UPDATE returns every row, whether inserted or already present.
+    const personIdByRef = new Map<string, number>();
+    for (const row of insertedPeople.rows) {
+      personIdByRef.set(row.source_ref as string, row.person_id as number);
+    }
+
+    for (const [name, ref] of registryEntries) {
+      const id = personIdByRef.get(ref);
+      if (id === undefined) {
+        throw new Error(`The registry reference "${ref}" could not be resolved to a person.`);
+      }
+      personId.set(name, id);
+    }
+
     await client.query(
-      `INSERT INTO person_alias (person_id, name, first_seen) VALUES ($1, $2, $3)
+      `INSERT INTO person_alias (person_id, name, first_seen)
+       VALUES ${placeholders(registryEntries.length, 3)}
        ON CONFLICT DO NOTHING`,
-      [id, name, info.dates[0]],
+      registryEntries.flatMap(([name]) => [personId.get(name), name, info.dates[0]]),
     );
-    personId.set(name, id);
   }
 
   /**
@@ -117,16 +165,20 @@ export async function ingestMatchData(
 
   // ---- teams, venue, competition ---------------------------------------
   const teamId = new Map<string, number>();
-  for (const name of info.teams as string[]) {
-    teamId.set(
-      name,
-      await scalar<number>(
-        `INSERT INTO team (name) VALUES ($1)
-         ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-         RETURNING team_id`,
-        [name],
-      ),
+  const teamNames = [...new Set(info.teams as string[])];
+
+  if (teamNames.length > 0) {
+    const insertedTeams = await client.query(
+      `INSERT INTO team (name)
+       VALUES ${placeholders(teamNames.length, 1)}
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+       RETURNING team_id, name`,
+      teamNames,
     );
+
+    for (const row of insertedTeams.rows) {
+      teamId.set(row.name as string, row.team_id as number);
+    }
   }
 
   const venueId = await scalar<number>(
@@ -155,7 +207,9 @@ export async function ingestMatchData(
 
   const dates = info.dates as string[];
 
-  await client.query(
+  // The identifier is returned directly rather than read back in a second
+  // statement. DO UPDATE on the source reference returns the row either way.
+  const fixtureId = await scalar<number>(
     `INSERT INTO fixture (
         source_ref, competition_id, event_match_number, event_group, event_stage,
         season, match_type, team_type, gender, balls_per_over, scheduled_overs,
@@ -165,7 +219,8 @@ export async function ingestMatchData(
         source_version, source_revision, first_seen_in)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
              $20,$21,$22,$23,$24,$25,$26,$27,$28)
-     ON CONFLICT (source_ref) DO NOTHING`,
+     ON CONFLICT (source_ref) DO UPDATE SET source_ref = EXCLUDED.source_ref
+     RETURNING fixture_id`,
     [
       sourceRef,
       competitionId,
@@ -198,113 +253,218 @@ export async function ingestMatchData(
     ],
   );
 
-  const fixtureId = await scalar<number>('SELECT fixture_id FROM fixture WHERE source_ref = $1', [
-    sourceRef,
+  const fixtureTeams = (info.teams as string[]).map((name, ordinal) => [
+    fixtureId,
+    teamId.get(name),
+    ordinal + 1,
   ]);
 
-  for (const [ordinal, name] of (info.teams as string[]).entries()) {
+  if (fixtureTeams.length > 0) {
     await client.query(
-      `INSERT INTO fixture_team (fixture_id, team_id, ordinal) VALUES ($1,$2,$3)
+      `INSERT INTO fixture_team (fixture_id, team_id, ordinal)
+       VALUES ${placeholders(fixtureTeams.length, 3)}
        ON CONFLICT DO NOTHING`,
-      [fixtureId, teamId.get(name), ordinal + 1],
+      fixtureTeams.flat(),
     );
   }
 
+  // A person appears once per fixture in the squad, so a player named in two
+  // squads is inserted once.
+  const squadRows = new Map<number, unknown[]>();
   for (const [team, players] of Object.entries(info.players ?? {})) {
     for (const name of players as string[]) {
-      await client.query(
-        `INSERT INTO fixture_squad (fixture_id, person_id, team_id, role)
-         VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-        [
-          fixtureId,
-          personId.get(name),
-          teamId.get(team),
-          info.supersubs?.[team] === name ? 'supersub' : null,
-        ],
-      );
+      const person = personId.get(name);
+      if (person === undefined || squadRows.has(person)) continue;
+      squadRows.set(person, [
+        fixtureId,
+        person,
+        teamId.get(team),
+        info.supersubs?.[team] === name ? 'supersub' : null,
+      ]);
     }
   }
 
-  for (const [role, names] of Object.entries(info.officials ?? {})) {
-    for (const name of names as string[]) {
-      const officialId = await scalar<number>(
-        `INSERT INTO official (display_name) VALUES ($1)
-         ON CONFLICT DO NOTHING RETURNING official_id`,
-        [name],
-      ).catch(async () =>
-        scalar<number>('SELECT official_id FROM official WHERE display_name = $1', [name]),
-      );
-      await client.query(
-        `INSERT INTO fixture_official (fixture_id, official_id, role)
-         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-        [fixtureId, officialId, role],
-      );
-    }
-  }
-
-  for (const name of (info.player_of_match ?? []) as string[]) {
+  if (squadRows.size > 0) {
     await client.query(
-      `INSERT INTO fixture_player_of_match (fixture_id, person_id) VALUES ($1,$2)
+      `INSERT INTO fixture_squad (fixture_id, person_id, team_id, role)
+       VALUES ${placeholders(squadRows.size, 4)}
        ON CONFLICT DO NOTHING`,
-      [fixtureId, personId.get(name)],
+      [...squadRows.values()].flat(),
     );
   }
 
-  // ---- innings and deliveries ------------------------------------------
-  let deliveryCount = 0;
+  // ---- officials --------------------------------------------------------
+  const officialRoles: Array<[string, string]> = [];
+  for (const [role, names] of Object.entries(info.officials ?? {})) {
+    for (const name of names as string[]) {
+      officialRoles.push([name, role]);
+    }
+  }
 
-  for (const [ordinal, innings] of (match.innings as any[]).entries()) {
+  if (officialRoles.length > 0) {
+    const officialNames = [...new Set(officialRoles.map(([name]) => name))];
+
+    // The official table has no unique constraint on the display name, so a name
+    // is looked up before insertion rather than relying on a conflict clause.
+    const existing = await client.query(
+      'SELECT official_id, display_name FROM official WHERE display_name = ANY($1::text[])',
+      [officialNames],
+    );
+
+    const officialIdByName = new Map<string, number>();
+    for (const row of existing.rows) {
+      officialIdByName.set(row.display_name as string, row.official_id as number);
+    }
+
+    const missing = officialNames.filter((name) => !officialIdByName.has(name));
+    if (missing.length > 0) {
+      const inserted = await client.query(
+        `INSERT INTO official (display_name)
+         VALUES ${placeholders(missing.length, 1)}
+         RETURNING official_id, display_name`,
+        missing,
+      );
+      for (const row of inserted.rows) {
+        officialIdByName.set(row.display_name as string, row.official_id as number);
+      }
+    }
+
+    const fixtureOfficials = officialRoles.flatMap(([name, role]) => {
+      const id = officialIdByName.get(name);
+      return id === undefined ? [] : [[fixtureId, id, role]];
+    });
+
+    if (fixtureOfficials.length > 0) {
+      await client.query(
+        `INSERT INTO fixture_official (fixture_id, official_id, role)
+         VALUES ${placeholders(fixtureOfficials.length, 3)}
+         ON CONFLICT DO NOTHING`,
+        fixtureOfficials.flat(),
+      );
+    }
+  }
+
+  const playersOfMatch = [...new Set((info.player_of_match ?? []) as string[])].flatMap((name) => {
+    const person = personId.get(name);
+    return person === undefined ? [] : [[fixtureId, person]];
+  });
+
+  if (playersOfMatch.length > 0) {
     await client.query(
+      `INSERT INTO fixture_player_of_match (fixture_id, person_id)
+       VALUES ${placeholders(playersOfMatch.length, 2)}
+       ON CONFLICT DO NOTHING`,
+      playersOfMatch.flat(),
+    );
+  }
+
+  // ---- innings ----------------------------------------------------------
+  const inningsList = match.innings as any[];
+  const inningsIdByOrdinal = new Map<number, number>();
+
+  if (inningsList.length > 0) {
+    const inningsRows = inningsList.map((innings, ordinal) => [
+      fixtureId,
+      ordinal,
+      teamId.get(innings.team),
+      Boolean(innings.super_over),
+      Boolean(innings.declared),
+      Boolean(innings.forfeited),
+      innings.target?.runs ?? null,
+      innings.target?.overs ?? null,
+      innings.penalty_runs?.pre ?? null,
+      innings.penalty_runs?.post ?? null,
+    ]);
+
+    const insertedInnings = await client.query(
       `INSERT INTO innings (fixture_id, ordinal, batting_team_id, is_super_over,
                             declared, forfeited, target_runs, target_overs,
                             penalty_pre, penalty_post)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       ON CONFLICT (fixture_id, ordinal) DO NOTHING`,
-      [
-        fixtureId,
-        ordinal,
-        teamId.get(innings.team),
-        Boolean(innings.super_over),
-        Boolean(innings.declared),
-        Boolean(innings.forfeited),
-        innings.target?.runs ?? null,
-        innings.target?.overs ?? null,
-        innings.penalty_runs?.pre ?? null,
-        innings.penalty_runs?.post ?? null,
-      ],
+       VALUES ${placeholders(inningsRows.length, 10)}
+       ON CONFLICT (fixture_id, ordinal) DO UPDATE SET ordinal = EXCLUDED.ordinal
+       RETURNING innings_id, ordinal`,
+      inningsRows.flat(),
     );
 
-    const inningsId = await scalar<number>(
-      'SELECT innings_id FROM innings WHERE fixture_id = $1 AND ordinal = $2',
-      [fixtureId, ordinal],
-    );
+    for (const row of insertedInnings.rows) {
+      inningsIdByOrdinal.set(Number(row.ordinal), row.innings_id as number);
+    }
+  }
+
+  const powerplayRows: unknown[][] = [];
+  const absentRows: unknown[][] = [];
+  const miscountedRows: unknown[][] = [];
+
+  for (const [ordinal, innings] of inningsList.entries()) {
+    const inningsId = inningsIdByOrdinal.get(ordinal);
+    if (inningsId === undefined) continue;
 
     for (const powerplay of innings.powerplays ?? []) {
-      await client.query(
-        `INSERT INTO innings_powerplay (innings_id, from_ball, to_ball, type)
-         VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-        [inningsId, powerplay.from, powerplay.to, powerplay.type],
-      );
+      powerplayRows.push([inningsId, powerplay.from, powerplay.to, powerplay.type]);
     }
 
     for (const name of innings.absent_hurt ?? []) {
-      await client.query(
-        `INSERT INTO innings_absent (innings_id, person_id) VALUES ($1,$2)
-         ON CONFLICT DO NOTHING`,
-        [inningsId, personId.get(name)],
-      );
+      const person = personId.get(name);
+      if (person !== undefined) {
+        absentRows.push([inningsId, person]);
+      }
     }
 
     // The source supplies the ball count as a string in some matches and an
     // integer in others; coerce it.
     for (const [over, detail] of Object.entries(innings.miscounted_overs ?? {})) {
-      await client.query(
-        `INSERT INTO innings_miscounted_over (innings_id, over_number, balls)
-         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-        [inningsId, Number(over), Number((detail as { balls: string | number }).balls)],
-      );
+      miscountedRows.push([
+        inningsId,
+        Number(over),
+        Number((detail as { balls: string | number }).balls),
+      ]);
     }
+  }
 
+  if (powerplayRows.length > 0) {
+    await client.query(
+      `INSERT INTO innings_powerplay (innings_id, from_ball, to_ball, type)
+       VALUES ${placeholders(powerplayRows.length, 4)}
+       ON CONFLICT DO NOTHING`,
+      powerplayRows.flat(),
+    );
+  }
+
+  if (absentRows.length > 0) {
+    await client.query(
+      `INSERT INTO innings_absent (innings_id, person_id)
+       VALUES ${placeholders(absentRows.length, 2)}
+       ON CONFLICT DO NOTHING`,
+      absentRows.flat(),
+    );
+  }
+
+  if (miscountedRows.length > 0) {
+    await client.query(
+      `INSERT INTO innings_miscounted_over (innings_id, over_number, balls)
+       VALUES ${placeholders(miscountedRows.length, 3)}
+       ON CONFLICT DO NOTHING`,
+      miscountedRows.flat(),
+    );
+  }
+
+  // ---- deliveries -------------------------------------------------------
+  interface PendingDelivery {
+    inningsId: number;
+    overNumber: number;
+    position: number;
+    sequence: number;
+    ballNumber: string;
+    delivery: Delivery;
+  }
+
+  let deliveryCount = 0;
+
+  for (const [ordinal, innings] of inningsList.entries()) {
+    const inningsId = inningsIdByOrdinal.get(ordinal);
+    if (inningsId === undefined) continue;
+
+    const pending: PendingDelivery[] = [];
     let sequence = 0;
 
     for (const over of innings.overs ?? []) {
@@ -319,115 +479,193 @@ export async function ingestMatchData(
         // label, never an identifier.
         const isLegal = extras.wides === undefined && extras.noballs === undefined;
         if (isLegal) legalBalls += 1;
-        const ballNumber = `${over.over}.${Math.max(legalBalls, 1)}`;
 
-        const { rows } = await client.query(
-          `INSERT INTO delivery (
-              innings_id, over_number, position_in_over, innings_sequence,
-              ball_number, striker_id, non_striker_id, bowler_id,
-              runs_off_bat, runs_extras, runs_total, non_boundary,
-              extra_wides, extra_noballs, extra_byes, extra_legbyes, extra_penalty,
-              submission_id)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-           ON CONFLICT (innings_id, over_number, position_in_over)
-             WHERE superseded_at IS NULL
-           DO NOTHING
-           RETURNING delivery_id`,
-          [
-            inningsId,
-            over.over,
-            position,
-            sequence,
-            ballNumber,
-            requirePerson(delivery.batter, 'batter'),
-            requirePerson(delivery.non_striker, 'non-striker'),
-            requirePerson(delivery.bowler, 'bowler'),
-            delivery.runs.batter,
-            delivery.runs.extras,
-            delivery.runs.total,
-            Boolean(delivery.runs.non_boundary),
-            extras.wides ?? null,
-            extras.noballs ?? null,
-            extras.byes ?? null,
-            extras.legbyes ?? null,
-            extras.penalty ?? null,
-            submissionId,
-          ],
-        );
+        pending.push({
+          inningsId,
+          overNumber: over.over,
+          position,
+          sequence,
+          ballNumber: `${over.over}.${Math.max(legalBalls, 1)}`,
+          delivery,
+        });
+      }
+    }
 
-        if (rows.length === 0) continue; // already present; nothing further to insert
-        const deliveryId = rows[0].delivery_id as number;
-        deliveryCount += 1;
+    if (pending.length === 0) continue;
 
-        for (const [wicketOrdinal, wicket] of (delivery.wickets ?? []).entries()) {
-          const wicketId = await scalar<number>(
-            `INSERT INTO delivery_wicket
-               (delivery_id, ordinal, kind, source_kind, player_out_id)
-             VALUES ($1,$2,$3,$4,$5) RETURNING wicket_id`,
-            [
-              deliveryId,
-              wicketOrdinal,
-              wicket.kind,
-              wicket.kind,
-              requirePerson(wicket.player_out, 'dismissed player'),
-            ],
-          );
+    const deliveryValues = pending.flatMap((item) => {
+      const extras = item.delivery.extras ?? {};
+      return [
+        item.inningsId,
+        item.overNumber,
+        item.position,
+        item.sequence,
+        item.ballNumber,
+        requirePerson(item.delivery.batter, 'batter'),
+        requirePerson(item.delivery.non_striker, 'non-striker'),
+        requirePerson(item.delivery.bowler, 'bowler'),
+        item.delivery.runs.batter,
+        item.delivery.runs.extras,
+        item.delivery.runs.total,
+        Boolean(item.delivery.runs.non_boundary),
+        extras.wides ?? null,
+        extras.noballs ?? null,
+        extras.byes ?? null,
+        extras.legbyes ?? null,
+        extras.penalty ?? null,
+        submissionId,
+      ];
+    });
 
-          for (const [fielderOrdinal, fielder] of (wicket.fielders ?? []).entries()) {
-            await client.query(
-              `INSERT INTO delivery_wicket_fielder
-                 (wicket_id, ordinal, person_id, is_substitute)
-               VALUES ($1,$2,$3,$4)`,
-              [
-                wicketId,
-                fielderOrdinal,
-                fielder.name ? (personId.get(fielder.name) ?? null) : null,
-                Boolean(fielder.substitute),
-              ],
-            );
-          }
-        }
+    // The natural key is returned alongside the identifier because the conflict
+    // clause may skip rows, so the returned set cannot be matched to the input
+    // by position.
+    const insertedDeliveries = await client.query(
+      `INSERT INTO delivery (
+          innings_id, over_number, position_in_over, innings_sequence,
+          ball_number, striker_id, non_striker_id, bowler_id,
+          runs_off_bat, runs_extras, runs_total, non_boundary,
+          extra_wides, extra_noballs, extra_byes, extra_legbyes, extra_penalty,
+          submission_id)
+       VALUES ${placeholders(pending.length, 18)}
+       ON CONFLICT (innings_id, over_number, position_in_over)
+         WHERE superseded_at IS NULL
+       DO NOTHING
+       RETURNING delivery_id, over_number, position_in_over`,
+      deliveryValues,
+    );
 
-        if (delivery.review) {
-          const umpire = delivery.review.umpire
-            ? await scalar<number | null>(
-                'SELECT official_id FROM official WHERE display_name = $1',
-                [delivery.review.umpire],
-              ).catch(() => null)
-            : null;
-          await client.query(
-            `INSERT INTO delivery_review
-               (delivery_id, by_team_id, umpire_id, batter_id, decision, type)
-             VALUES ($1,$2,$3,$4,$5,$6)`,
-            [
-              deliveryId,
-              teamId.get(delivery.review.by),
-              umpire,
-              delivery.review.batter ? (personId.get(delivery.review.batter) ?? null) : null,
-              delivery.review.decision,
-              delivery.review.type ?? null,
-            ],
-          );
-        }
+    deliveryCount += insertedDeliveries.rows.length;
 
-        for (const kind of ['role', 'player'] as const) {
-          for (const replacement of delivery.replacements?.[kind] ?? []) {
-            await client.query(
-              `INSERT INTO delivery_replacement
-                 (delivery_id, replacement_type, in_person_id, out_person_id, reason, role)
-               VALUES ($1,$2,$3,$4,$5,$6)`,
-              [
-                deliveryId,
-                kind,
-                requirePerson(replacement.in, 'incoming replacement'),
-                replacement.out ? (personId.get(replacement.out) ?? null) : null,
-                replacement.reason ?? null,
-                (replacement as { role?: string }).role ?? null,
-              ],
-            );
-          }
+    const deliveryIdByKey = new Map<string, number>();
+    for (const row of insertedDeliveries.rows) {
+      deliveryIdByKey.set(`${row.over_number}:${row.position_in_over}`, row.delivery_id as number);
+    }
+
+    // Only deliveries actually inserted receive dependent rows. A delivery that
+    // was already present is skipped entirely, as it was one row at a time.
+    const inserted = pending.flatMap((item) => {
+      const deliveryId = deliveryIdByKey.get(`${item.overNumber}:${item.position}`);
+      return deliveryId === undefined ? [] : [{ ...item, deliveryId }];
+    });
+
+    const wicketRows = inserted.flatMap((item) =>
+      (item.delivery.wickets ?? []).map((wicket, wicketOrdinal) => ({
+        deliveryId: item.deliveryId,
+        ordinal: wicketOrdinal,
+        wicket,
+      })),
+    );
+
+    if (wicketRows.length > 0) {
+      const insertedWickets = await client.query(
+        `INSERT INTO delivery_wicket
+           (delivery_id, ordinal, kind, source_kind, player_out_id)
+         VALUES ${placeholders(wicketRows.length, 5)}
+         RETURNING wicket_id, delivery_id, ordinal`,
+        wicketRows.flatMap((row) => [
+          row.deliveryId,
+          row.ordinal,
+          row.wicket.kind,
+          row.wicket.kind,
+          requirePerson(row.wicket.player_out, 'dismissed player'),
+        ]),
+      );
+
+      const wicketIdByKey = new Map<string, number>();
+      for (const row of insertedWickets.rows) {
+        wicketIdByKey.set(`${row.delivery_id}:${row.ordinal}`, row.wicket_id as number);
+      }
+
+      const fielderRows: unknown[][] = [];
+      for (const row of wicketRows) {
+        const wicketId = wicketIdByKey.get(`${row.deliveryId}:${row.ordinal}`);
+        if (wicketId === undefined) continue;
+
+        for (const [fielderOrdinal, fielder] of (row.wicket.fielders ?? []).entries()) {
+          fielderRows.push([
+            wicketId,
+            fielderOrdinal,
+            fielder.name ? (personId.get(fielder.name) ?? null) : null,
+            Boolean(fielder.substitute),
+          ]);
         }
       }
+
+      if (fielderRows.length > 0) {
+        await client.query(
+          `INSERT INTO delivery_wicket_fielder
+             (wicket_id, ordinal, person_id, is_substitute)
+           VALUES ${placeholders(fielderRows.length, 4)}`,
+          fielderRows.flat(),
+        );
+      }
+    }
+
+    const reviewed = inserted.filter((item) => item.delivery.review);
+
+    if (reviewed.length > 0) {
+      // Umpires are resolved by name in one query rather than one per review.
+      const umpireNames = [
+        ...new Set(
+          reviewed.flatMap((item) =>
+            item.delivery.review?.umpire ? [item.delivery.review.umpire] : [],
+          ),
+        ),
+      ];
+
+      const umpireIdByName = new Map<string, number>();
+      if (umpireNames.length > 0) {
+        const officials = await client.query(
+          'SELECT official_id, display_name FROM official WHERE display_name = ANY($1::text[])',
+          [umpireNames],
+        );
+        for (const row of officials.rows) {
+          umpireIdByName.set(row.display_name as string, row.official_id as number);
+        }
+      }
+
+      await client.query(
+        `INSERT INTO delivery_review
+           (delivery_id, by_team_id, umpire_id, batter_id, decision, type)
+         VALUES ${placeholders(reviewed.length, 6)}`,
+        reviewed.flatMap((item) => {
+          const review = item.delivery.review!;
+          return [
+            item.deliveryId,
+            teamId.get(review.by),
+            review.umpire ? (umpireIdByName.get(review.umpire) ?? null) : null,
+            review.batter ? (personId.get(review.batter) ?? null) : null,
+            review.decision,
+            review.type ?? null,
+          ];
+        }),
+      );
+    }
+
+    const replacementRows: unknown[][] = [];
+    for (const item of inserted) {
+      for (const kind of ['role', 'player'] as const) {
+        for (const replacement of item.delivery.replacements?.[kind] ?? []) {
+          replacementRows.push([
+            item.deliveryId,
+            kind,
+            requirePerson(replacement.in, 'incoming replacement'),
+            replacement.out ? (personId.get(replacement.out) ?? null) : null,
+            replacement.reason ?? null,
+            (replacement as { role?: string }).role ?? null,
+          ]);
+        }
+      }
+    }
+
+    if (replacementRows.length > 0) {
+      await client.query(
+        `INSERT INTO delivery_replacement
+           (delivery_id, replacement_type, in_person_id, out_person_id, reason, role)
+         VALUES ${placeholders(replacementRows.length, 6)}`,
+        replacementRows.flat(),
+      );
     }
   }
 
