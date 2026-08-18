@@ -13,6 +13,25 @@ because they have forgotten their Google Account password must use
 This provider-managed recovery satisfies the password-recovery requirement without duplicating a
 security-sensitive identity workflow inside the application.
 
+## Project requirement alignment
+
+The project brief requires users to be able to sign up, sign in, reset their passwords and delete
+their accounts. It also prohibits the team from writing its own authentication system and requires
+the use of established practices and libraries.
+
+The selected architecture satisfies those requirements by using:
+
+- Google OAuth 2.0 as the established federated sign-in practice;
+- Supabase Auth and its maintained `@supabase/supabase-js` library to broker authentication and
+  manage application sessions; and
+- Google's established account-recovery process to reset the Google Account credential.
+
+The password-reset requirement does not mean the application must own a password-reset screen. It
+means that users must have an established recovery path appropriate to the selected authentication
+method. For Google OAuth identities, that path is Google Account recovery. Building custom password
+handling would cross the provider boundary and conflict with the requirement to rely on established
+authentication practices and libraries.
+
 ## Credential ownership
 
 | Component            | Responsibility                                                                 |
