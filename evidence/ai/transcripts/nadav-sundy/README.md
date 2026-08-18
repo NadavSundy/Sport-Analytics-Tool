@@ -1,10 +1,25 @@
 # AI transcripts: Nadav Sundy
 
 This folder contains AI transcripts retained as evidence for work completed by Nadav Sundy.
-
 ## Naming convention
 
+For work associated with a specific issue:
+
 `YYYY-MM-DD-issue-<number>-<short-description>.<extension>`
+
+For project work that is not associated with one specific Gitea issue:
+
+`YYYY-MM-DD-general-<short-description>.<extension>`
+
+Do not invent an issue number solely to satisfy the filename convention.
+
+For a continuous transcript covering several tasks, use:
+
+`YYYY-MM-DD-continuous-project-session.<extension>`
+
+or:
+
+`YYYY-MM-DD-to-YYYY-MM-DD-continuous-project-session.<extension>`
 
 ## Register
 
