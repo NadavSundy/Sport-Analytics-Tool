@@ -6,6 +6,10 @@ const nodeMajorVersion = Number(process.versions.node.split('.')[0]);
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
+    // The contracts workspace publishes compiled CommonJS. Rebuild its Vite
+    // optimization on each development start so newly exported API contracts
+    // cannot be hidden by an optimization produced from an older dist build.
+    force: true,
     include: ['@sport-analytics/contracts'],
   },
   build: {
