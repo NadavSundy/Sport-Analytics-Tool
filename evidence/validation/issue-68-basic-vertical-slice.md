@@ -22,9 +22,9 @@ migrations, seeds the isolated database, executes the suite, and removes the tem
 `DATABASE_URL_TEST` is explicitly configured, the same command uses that safety-checked database.
 
 This makes database execution available on a locked-down development machine without Docker,
-administrator rights, or a personal hosted database. It also prevents `npm run check` from
-succeeding without executing the database integration criteria because `test:database` is now part
-of the root test chain.
+administrator rights, or a personal hosted database. The database suite remains explicit and
+separate from the normal `npm run test` and `npm run check` commands; Pull Request CI runs it as its
+own required step against the workflow's PostgreSQL 16 service.
 
 ## Automated results
 
@@ -33,13 +33,12 @@ Recorded locally on 18 August 2026:
 ```text
 npm run test:database
 Test Files  7 passed (7)
-Tests       30 passed (30)
+Tests       31 passed (31)
 
 VITE_API_BASE_URL=http://localhost:3000/api/v1 npm run check
-Backend unit tests       56 passed
-Frontend tests           65 passed
-Backend API tests        76 passed
-Database tests           30 passed
+Backend unit tests       67 passed
+Frontend tests           68 passed
+Backend API tests        77 passed
 Shared contract tests    68 passed
 Deployment helper tests   4 passed
 ```
@@ -48,9 +47,10 @@ The passing database run includes the reference fixture 423788 derivation, submi
 mid-transaction rollback, duplicate-event rejection, anonymous accepted-event reads, schema
 constraints, account transitions, and transaction-helper behavior.
 
-The consolidated check also passed repository structure, formatting, workspace lint, workspace
-type-checking, OpenAPI lint, and the contracts, backend, and frontend production builds. The focused
-database suite was rerun after the migration child-process cleanup and again passed all 30 tests.
+The database-independent check also passed repository structure, formatting, workspace lint,
+workspace type-checking, OpenAPI lint, and the contracts, backend, and frontend production builds.
+The focused database suite was rerun separately after the migration child-process cleanup and again
+passed all 31 tests.
 
 ## Remaining Definition of Done steps
 

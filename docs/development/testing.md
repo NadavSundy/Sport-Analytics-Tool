@@ -1,7 +1,8 @@
 # Testing
 
-The repository keeps fast application tests and PostgreSQL integration tests in separate suites,
-then runs both through the normal repository quality gate.
+The repository keeps fast application tests and PostgreSQL integration tests in separate suites.
+The normal repository quality gate remains database-independent, while CI runs the database suite
+as its own required step.
 
 ## Quick start
 
@@ -11,11 +12,6 @@ Install the committed dependency graph:
 npm ci
 npm run check
 ```
-
-`npm run check` includes the complete PostgreSQL integration suite. When `DATABASE_URL_TEST` is not
-set, the database runner starts a disposable PostgreSQL 16 cluster on an available loopback port,
-resets and migrates it, loads deterministic seed data, runs every database test, and removes the
-cluster. This default path requires neither Docker nor administrator rights.
 
 Run the database suite directly with:
 
@@ -56,19 +52,19 @@ tooling never falls back to the normal `DATABASE_URL`.
 
 | Command                       | Purpose                                                                                    | PostgreSQL provisioning          | Docker required |
 | ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------- | --------------- |
-| `npm run test`                | Unit, frontend, API, database, contract, and deployment-helper suites                      | Automatic or `DATABASE_URL_TEST` | No              |
+| `npm run test`                | Unit, frontend, API, contract, and deployment-helper suites                                | None                             | No              |
 | `npm run test:deployment`     | Deployment workflow helper tests                                                           | None                             | No              |
 | `npm run test:database`       | Provision and run the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
 | `npm run test:database:local` | Provision, prepare, and test against the repository-managed PostgreSQL 16 Docker container | Automatic Docker connection      | Yes             |
 | `npm run test:e2e`            | Playwright browser and accessibility tests                                                 | No dedicated database workflow   | No              |
 | `npm run test:coverage`       | Current configured coverage suites                                                         | None                             | No              |
-| `npm run check`               | Structure, format, lint, types, all normal tests, OpenAPI, and production builds           | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:ci`             | Normal quality suites plus browser tests                                                   | CI supplies `DATABASE_URL_TEST`  | No              |
+| `npm run check`               | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds | None                             | No              |
+| `npm run test:ci`             | Normal tests, database integration tests, and browser tests                                | CI supplies `DATABASE_URL_TEST`  | No              |
 
 When `DATABASE_URL_TEST` is supplied, it must pass the safety checks and be reachable; the command
-fails rather than silently skipping database criteria. CI provisions its own PostgreSQL 16 service
-and supplies that connection directly. Set `DATABASE_TEST_VERBOSE=1` only when diagnostics from the
-default embedded server are needed.
+fails rather than falling back to another database. CI provisions its own PostgreSQL 16 service,
+supplies that connection directly, and runs `npm run test:database` as an explicit step. Set
+`DATABASE_TEST_VERBOSE=1` only when diagnostics from the default embedded server are needed.
 
 ## Deployment workflow helper coverage
 

@@ -47,13 +47,19 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-The normal test suite includes PostgreSQL integration coverage and does not require Docker:
+The normal database-independent test suite is:
 
 ```bash
 npm run test
 ```
 
-When no isolated `DATABASE_URL_TEST` is configured, the command provisions a disposable local
+Run PostgreSQL integration coverage explicitly with:
+
+```bash
+npm run test:database
+```
+
+When no isolated `DATABASE_URL_TEST` is configured, that command provisions a disposable local
 PostgreSQL 16 cluster automatically. An explicit Docker Compose alternative is available:
 
 ```bash

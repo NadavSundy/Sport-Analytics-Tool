@@ -125,8 +125,8 @@ npm run test:database
 ```
 
 The default workflow uses an available loopback port and removes its temporary data when the suite
-finishes. It requires neither Docker nor administrator rights. Database tests are included in the
-root `npm run check` gate.
+finishes. It requires neither Docker nor administrator rights. Database tests remain separate from
+the normal root `npm run test` and `npm run check` commands and run explicitly in CI.
 
 An explicit Docker Compose workflow remains available for parity with the PostgreSQL 16 CI service:
 
