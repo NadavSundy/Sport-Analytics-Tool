@@ -3,9 +3,6 @@
 ```text
 npm ci
 
-npm run db:test:reset --workspace=@sport-analytics/backend
-npm run db:test:seed --workspace=@sport-analytics/backend
-
 npm run test:unit
 npm run test:frontend
 npm run test:api
@@ -16,6 +13,28 @@ npm run test:e2e
 npm run test:coverage
 npm run check
 ```
+
+`npm run test:database` needs no local database setup by default. When `DATABASE_URL_TEST` is not
+set, the runner starts a real disposable PostgreSQL 16 cluster on an available loopback port,
+applies every migration, seeds the health record, runs the database suite, and removes the cluster.
+It does not require Docker, administrator rights, or a hosted database account.
+
+When `DATABASE_URL_TEST` is already set, the runner uses that isolated database instead. Reset and
+seed an explicitly configured database before running the suite:
+
+```text
+npm run db:test:reset --workspace=@sport-analytics/backend
+npm run db:test:seed --workspace=@sport-analytics/backend
+npm run test:database
+```
+
+The configured URL must pass the existing safety checks: `NODE_ENV=test`, a database name containing
+`test`, and a value different from `DATABASE_URL`. The runner never falls back to the development
+database. Set `DATABASE_TEST_VERBOSE=1` only when PostgreSQL startup diagnostics are needed.
+
+Database integration tests are part of `npm run test` and therefore `npm run check`. Missing or
+unreachable configured infrastructure fails the command; it cannot produce a successful check with
+the database criteria unexecuted. CI continues to use its PostgreSQL 16 service container.
 
 ## Deployment workflow helper coverage
 
@@ -94,7 +113,9 @@ npm exec --workspace=@sport-analytics/backend -- vitest run tests/unit/submitter
 npm run test:database --workspace=@sport-analytics/backend
 ```
 
-Database integration tests require `NODE_ENV=test` and a dedicated `DATABASE_URL_TEST`. They must not be run against the shared development or production database.
+An explicitly configured database integration run requires `NODE_ENV=test` and a dedicated
+`DATABASE_URL_TEST`. It must not run against the shared development or production database. With no
+configured URL, the disposable local workflow described above is used.
 
 ## Current-user submitter status coverage
 
@@ -230,3 +251,5 @@ The account-deletion testing section was documented with the assistance of Codex
 The submitter access frontend coverage section and corrected code fences were updated with the
 assistance of Codex[GPT-5].
 The deployment workflow helper coverage was documented with the assistance of Codex[GPT-5].
+The disposable PostgreSQL workflow and Basic vertical-slice check integration were documented with
+the assistance of Codex[GPT-5].

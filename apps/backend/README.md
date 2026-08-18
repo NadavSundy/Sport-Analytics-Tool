@@ -45,15 +45,15 @@ cp apps/backend/.env.example apps/backend/.env
 
 Current runtime variables are:
 
-| Variable                   | Required by current runtime                 | Secret | Purpose                                                                                     |
-| -------------------------- | ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                 | No (defaults to `development`)              | No     | Runtime mode: `development`, `test` or `production`.                                        |
-| `PORT`                     | No (defaults to `3000`)                     | No     | HTTP listen port. Azure may provide this value.                                             |
-| `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)    | No     | Comma-separated browser origins allowed by Express CORS middleware.                         |
-| `SUPABASE_URL`             | Yes                                         | No     | Supabase project URL used by backend token verification.                                    |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes                                         | No     | Publishable key used with `supabase.auth.getUser(accessToken)`.                             |
-| `DATABASE_URL`             | Required for database-backed routes/scripts | Yes    | PostgreSQL session-pooler connection string.                                                |
-| `DATABASE_URL_TEST`        | Required for database integration tests     | Yes    | Dedicated isolated test PostgreSQL database. Must never point to development or production. |
+| Variable                   | Required by current runtime                 | Secret | Purpose                                                                                                                                                      |
+| -------------------------- | ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                 | No (defaults to `development`)              | No     | Runtime mode: `development`, `test` or `production`.                                                                                                         |
+| `PORT`                     | No (defaults to `3000`)                     | No     | HTTP listen port. Azure may provide this value.                                                                                                              |
+| `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)    | No     | Comma-separated browser origins allowed by Express CORS middleware.                                                                                          |
+| `SUPABASE_URL`             | Yes                                         | No     | Supabase project URL used by backend token verification.                                                                                                     |
+| `SUPABASE_PUBLISHABLE_KEY` | Yes                                         | No     | Publishable key used with `supabase.auth.getUser(accessToken)`.                                                                                              |
+| `DATABASE_URL`             | Required for database-backed routes/scripts | Yes    | PostgreSQL session-pooler connection string.                                                                                                                 |
+| `DATABASE_URL_TEST`        | Optional test-runner override               | Yes    | Dedicated isolated test PostgreSQL database. When absent, tests use a disposable local PostgreSQL 16 cluster. Must never point to development or production. |
 
 The current `.env.example` also contains reserved placeholders (`EXTERNAL_API_KEY`, `API_VERSION`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`) that are not read by the current application runtime. Do not treat a reserved placeholder as an implemented configuration option. `CORS_ORIGINS` is the variable used by the code today.
 
@@ -113,13 +113,24 @@ npm run test:api
 npm run build --workspace=@sport-analytics/backend
 ```
 
-Database integration tests require an isolated test database:
+Database integration tests start a disposable local PostgreSQL 16 cluster when
+`DATABASE_URL_TEST` is absent:
+
+```bash
+npm run test:database
+```
+
+To use an explicitly configured isolated database instead, reset and seed it first:
 
 ```bash
 npm run db:test:reset --workspace=@sport-analytics/backend
 npm run db:test:seed --workspace=@sport-analytics/backend
 npm run test:database
 ```
+
+The default workflow uses an available loopback port and removes its temporary data when the suite
+finishes. It requires neither Docker nor administrator rights. Database tests are included in the
+root `npm run check` gate.
 
 For the full repository gate:
 

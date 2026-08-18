@@ -78,16 +78,17 @@ ADR-005 records the database host and authentication service as separate Supabas
 
 ## Testing and verification
 
-| Technology / dependency           | Declared version           | Purpose                                                | Motivation / notes                                                                                 |
-| --------------------------------- | -------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Vitest                            | `^2.1.4`                   | Frontend, backend and contract unit/integration tests. | One test runner across TypeScript workspaces reduces duplicated configuration.                     |
-| React Testing Library             | `^16.0.1`                  | React component behaviour tests.                       | Encourages testing through user-observable component behaviour rather than implementation details. |
-| `@testing-library/jest-dom`       | `^6.6.3`                   | DOM-specific assertions.                               | Improves readability of frontend tests.                                                            |
-| jsdom                             | `^25.0.1`                  | Browser-like DOM environment for Vitest.               | Allows React tests to run without launching a full browser.                                        |
-| Supertest                         | `^7.0.0`                   | HTTP assertions against the Express application.       | Exercises API behaviour through HTTP without requiring a separately deployed server.               |
-| Playwright                        | `@playwright/test ^1.62.1` | Browser end-to-end testing.                            | Verifies actual navigation and user flows in a real browser engine.                                |
-| axe-core / `@axe-core/playwright` | `^4.13.0` / `^4.12.1`      | Automated accessibility checks.                        | Adds repeatable detection of serious accessibility violations to browser-level verification.       |
-| `@vitest/coverage-v8`             | `^2.1.9`                   | Test coverage reporting.                               | Uses V8 coverage with the existing Vitest test runner.                                             |
+| Technology / dependency           | Declared version           | Purpose                                                  | Motivation / notes                                                                                                                            |
+| --------------------------------- | -------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vitest                            | `^2.1.4`                   | Frontend, backend and contract unit/integration tests.   | One test runner across TypeScript workspaces reduces duplicated configuration.                                                                |
+| React Testing Library             | `^16.0.1`                  | React component behaviour tests.                         | Encourages testing through user-observable component behaviour rather than implementation details.                                            |
+| `@testing-library/jest-dom`       | `^6.6.3`                   | DOM-specific assertions.                                 | Improves readability of frontend tests.                                                                                                       |
+| jsdom                             | `^25.0.1`                  | Browser-like DOM environment for Vitest.                 | Allows React tests to run without launching a full browser.                                                                                   |
+| Supertest                         | `^7.0.0`                   | HTTP assertions against the Express application.         | Exercises API behaviour through HTTP without requiring a separately deployed server.                                                          |
+| `embedded-postgres`               | `^16.14.0-beta.17`         | Disposable local PostgreSQL 16 integration-test runtime. | Runs the real database suite without Docker, administrator rights, or a hosted test database while preserving the configured CI service path. |
+| Playwright                        | `@playwright/test ^1.62.1` | Browser end-to-end testing.                              | Verifies actual navigation and user flows in a real browser engine.                                                                           |
+| axe-core / `@axe-core/playwright` | `^4.13.0` / `^4.12.1`      | Automated accessibility checks.                          | Adds repeatable detection of serious accessibility violations to browser-level verification.                                                  |
+| `@vitest/coverage-v8`             | `^2.1.9`                   | Test coverage reporting.                                 | Uses V8 coverage with the existing Vitest test runner.                                                                                        |
 
 ## Code quality and build tooling
 

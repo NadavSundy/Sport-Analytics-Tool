@@ -27,9 +27,9 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 
 ## Test and support-script variables
 
-| Variable            | Required                           | Secret | Purpose                                                                                          |
-| ------------------- | ---------------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL_TEST` | Yes for database integration tests | Yes    | Dedicated isolated test database. It must never identify the development or production database. |
+| Variable            | Required                            | Secret | Purpose                                                                                                                                                                                    |
+| ------------------- | ----------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL_TEST` | No; optional database-test override | Yes    | Dedicated isolated test database. When absent, `npm run test:database` provisions a disposable local PostgreSQL 16 cluster. It must never identify the development or production database. |
 
 The committed backend `.env.example` currently also contains the following placeholders that are **reserved for future/other tooling and are not read by the current backend application runtime**:
 
