@@ -10,16 +10,15 @@ This is the canonical onboarding guide for a clean checkout of the Sport Analyti
 | Node.js | 20 or later                                              | Backend runtime and all JavaScript/TypeScript tooling. Azure currently uses Node.js 22 LTS. |
 | npm     | 10 or later                                              | Workspace installation and repository scripts.                                              |
 | Python  | 3.10 or later                                            | MkDocs documentation and the Cricsheet downloader.                                          |
-| Docker  | Docker Desktop or compatible Docker runtime with Compose | Required only for the recommended disposable local PostgreSQL integration-test workflow.    |
+| Docker  | Docker Desktop or compatible Docker runtime with Compose | Optional explicit PostgreSQL integration-test workflow.                                     |
 
 Optional:
 
 - the Supabase CLI/local Supabase stack, only if the team deliberately chooses to use it;
 - an editor/IDE of your choice. The repository does not require VS Code, Qoder or any other editor.
 
-Docker is **not** required to run the application, `npm run test`, or `npm run check`.
-It is required for the recommended `npm run test:database:local` workflow because that command
-creates an isolated PostgreSQL 16 test database automatically.
+Docker is **not** required to run the application, `npm run test`, or `npm run check`. It is required
+only for the explicit `npm run test:database:local` alternative.
 
 Record the exact versions used during onboarding:
 
@@ -170,7 +169,7 @@ It currently runs, in order:
 3. ESLint;
 4. shared-contract build;
 5. TypeScript type-checking;
-6. unit/frontend/API/contract tests;
+6. unit/frontend/API/PostgreSQL/contract/deployment-helper tests;
 7. OpenAPI linting; and
 8. production builds for contracts, backend and frontend.
 
@@ -186,16 +185,27 @@ npm run openapi:lint
 npm run build
 ```
 
-The extended CI/testing suite also includes the isolated PostgreSQL integration tests, Playwright browser/accessibility tests and coverage generation. See [Testing](testing.md).
+The extended CI/testing suite also includes Playwright browser/accessibility tests and coverage
+generation. See [Testing](testing.md).
 
 ## 9. Local PostgreSQL integration tests
 
-Database integration tests exercise the application against a real PostgreSQL database. The
-recommended local workflow uses a disposable PostgreSQL 16 container so that developers do not
-need to create a test Supabase project, install PostgreSQL manually, share database credentials, or
-prepare their own database.
+Database integration tests exercise the application against a real PostgreSQL database. The default
+`npm run test:database` command provisions a disposable PostgreSQL 16 cluster without Docker. The
+steps below describe the optional Docker Compose workflow, which is useful for parity with CI.
 
-### Start Docker Desktop
+From the repository root, run the default workflow with:
+
+```bash
+npm run test:database
+```
+
+The runner chooses an available loopback port, applies migrations and deterministic seed data, runs
+the database suite, and removes its temporary cluster after the tests finish.
+
+### Optional Docker workflow
+
+Start Docker Desktop before using `npm run test:database:local`.
 
 On Windows:
 
@@ -289,7 +299,8 @@ The next `npm run test:database:local` command recreates the environment automat
 
 ### Using a different test database
 
-Docker is the recommended workflow, but it is not mandatory for the underlying database test suite.
+A manually managed database is another alternative to the default embedded and explicit Docker
+workflows.
 
 A developer who already has a dedicated PostgreSQL test database may supply a safe
 `DATABASE_URL_TEST` and run:
@@ -429,8 +440,7 @@ docker --version
 docker compose version
 ```
 
-Docker is needed only for `npm run test:database:local`; normal application development and
-`npm run test` do not require it.
+Docker is needed only for the explicit `npm run test:database:local` alternative.
 
 ### Docker cannot connect to the engine
 
@@ -453,7 +463,7 @@ workflow. Do not change the test workflow to point at an unknown existing databa
 Do not bypass the safety check. Confirm that the command is using a dedicated test database and that
 `DATABASE_URL_TEST` does not resolve to the same PostgreSQL database as `DATABASE_URL`.
 
-For the normal Docker workflow, do not manually set `DATABASE_URL_TEST`; run:
+For the Docker workflow, do not manually set `DATABASE_URL_TEST`; run:
 
 ```bash
 npm run test:database:local

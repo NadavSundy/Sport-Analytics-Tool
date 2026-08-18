@@ -1,7 +1,8 @@
 # Testing
 
-The repository separates fast application tests from PostgreSQL integration tests so that normal
-development does not require a database test environment.
+The repository keeps fast application tests and PostgreSQL integration tests in separate suites.
+The normal repository quality gate remains database-independent, while CI runs the database suite
+as its own required step.
 
 ## Quick start
 
@@ -9,23 +10,24 @@ Install the committed dependency graph:
 
 ```bash
 npm ci
+npm run check
 ```
 
-Run the normal repository test suite:
+Run the database suite directly with:
 
 ```bash
-npm run test
+npm run test:database
 ```
 
-Run the complete PostgreSQL integration suite with the recommended local workflow:
+An explicit Docker Compose path is also available for parity with the CI PostgreSQL service:
 
 ```bash
 npm run test:database:local
 ```
 
-The local database command requires Docker Desktop, or another Docker runtime supporting
-`docker compose`. It does **not** require a Supabase test project, a shared test password, a manually
-created PostgreSQL database, a local `.env.test` file, or a manually configured `NODE_ENV`.
+That command requires Docker Desktop or another runtime supporting `docker compose`. It does not
+require a Supabase test project, shared test password, manually created database, local `.env.test`
+file, or manually configured `NODE_ENV`.
 
 The command automatically:
 
@@ -43,25 +45,26 @@ The local container uses the dedicated database `sport_analytics_test` on
 `127.0.0.1:55432`. Port `55432` is used to reduce conflicts with PostgreSQL installations already
 using the normal `5432` port.
 
-The local database is completely separate from the Supabase-hosted development database.
-The Docker workflow supplies its own test connection and must never reset or modify the application's
-normal `DATABASE_URL`.
+Both local workflows are completely separate from the Supabase-hosted development database. Test
+tooling never falls back to the normal `DATABASE_URL`.
 
 ## Test command overview
 
-| Command                       | Purpose                                                                                 | Database required              | Docker required |
-| ----------------------------- | --------------------------------------------------------------------------------------- | ------------------------------ | --------------- |
-| `npm run test`                | Normal repository test suite                                                            | No                             | No              |
-| `npm run test:deployment`     | Deployment workflow helper tests                                                        | No                             | No              |
-| `npm run test:database`       | Database suite against an already prepared test database                                | Yes                            | No              |
-| `npm run test:database:local` | Provision, prepare and test against the repository-managed local PostgreSQL 16 database | Automatic                      | Yes             |
-| `npm run test:e2e`            | Playwright browser and accessibility tests                                              | No dedicated database workflow | No              |
-| `npm run test:coverage`       | Current configured coverage suites                                                      | No                             | No              |
-| `npm run check`               | Formatting, linting, contracts, types, normal tests, OpenAPI and builds                 | No database integration suite  | No              |
-| `npm run test:ci`             | Normal tests, database integration tests and browser tests                              | Yes                            | CI provides it  |
+| Command                       | Purpose                                                                                    | PostgreSQL provisioning          | Docker required |
+| ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------- | --------------- |
+| `npm run test`                | Unit, frontend, API, contract, and deployment-helper suites                                | None                             | No              |
+| `npm run test:deployment`     | Deployment workflow helper tests                                                           | None                             | No              |
+| `npm run test:database`       | Provision and run the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
+| `npm run test:database:local` | Provision, prepare, and test against the repository-managed PostgreSQL 16 Docker container | Automatic Docker connection      | Yes             |
+| `npm run test:e2e`            | Playwright browser and accessibility tests                                                 | No dedicated database workflow   | No              |
+| `npm run test:coverage`       | Current configured coverage suites                                                         | None                             | No              |
+| `npm run check`               | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds | None                             | No              |
+| `npm run test:ci`             | Normal tests, database integration tests, and browser tests                                | CI supplies `DATABASE_URL_TEST`  | No              |
 
-CI does not use the local Docker Compose workflow. Gitea Actions provisions its own temporary
-PostgreSQL 16 service and supplies `DATABASE_URL_TEST` directly.
+When `DATABASE_URL_TEST` is supplied, it must pass the safety checks and be reachable; the command
+fails rather than falling back to another database. CI provisions its own PostgreSQL 16 service,
+supplies that connection directly, and runs `npm run test:database` as an explicit step. Set
+`DATABASE_TEST_VERBOSE=1` only when diagnostics from the default embedded server are needed.
 
 ## Deployment workflow helper coverage
 
@@ -78,7 +81,7 @@ npm run test:deployment
 
 ## Local database lifecycle
 
-The PostgreSQL container and its isolated test volume are intentionally reusable between runs.
+The explicit Docker PostgreSQL container and its isolated test volume are reusable between runs.
 Every `npm run test:database:local` invocation resets the schema before migrations and seeding, so
 reusing the container does not make the tests depend on data from a previous run.
 
@@ -110,8 +113,8 @@ not need to change `NODE_ENV` manually in their terminal.
 
 ## Optional manually managed test database
 
-`npm run test:database:local` is the recommended workflow. A developer may instead use another
-dedicated PostgreSQL test database if there is a specific reason not to use Docker.
+The automatic `npm run test:database` workflow is the default. A developer may instead use another
+dedicated PostgreSQL test database or the explicit Docker workflow.
 
 In that case, supply a safe `DATABASE_URL_TEST` through the shell or approved local secret
 configuration before running the database commands. The committed
@@ -199,7 +202,11 @@ npm exec --workspace=@sport-analytics/backend -- vitest run tests/unit/submitter
 npm run test:database --workspace=@sport-analytics/backend
 ```
 
-For normal local development, run `npm run test:database:local`. The supported database-test scripts set `NODE_ENV=test` automatically, and destructive operations validate that `DATABASE_URL_TEST` identifies a dedicated test database rather than the development database.
+An explicitly configured database integration run requires `NODE_ENV=test` and a dedicated
+`DATABASE_URL_TEST`. It must not run against the shared development or production database. With no
+configured URL, the embedded disposable workflow described above is used. The supported scripts set
+`NODE_ENV=test` automatically, and destructive operations validate that the target is isolated from
+the development database.
 
 ## Current-user submitter status coverage
 
@@ -341,5 +348,7 @@ The account-deletion testing section was documented with the assistance of Codex
 The submitter access frontend coverage section and corrected code fences were updated with the
 assistance of Codex[GPT-5].
 The deployment workflow helper coverage was documented with the assistance of Codex[GPT-5].
+The disposable PostgreSQL workflow and Basic vertical-slice check integration were documented with
+the assistance of Codex[GPT-5].
 The disposable local PostgreSQL testing workflow, command guidance and database-test safety
 documentation were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].

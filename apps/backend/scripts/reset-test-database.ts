@@ -1,4 +1,4 @@
-﻿import { Client } from 'pg';
+import { Client } from 'pg';
 
 import { assertSafeTestDatabase } from './test-database-safety';
 
