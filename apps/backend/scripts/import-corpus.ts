@@ -15,7 +15,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { Client } from 'pg';
 
 import { ingestMatchData } from './ingest-match-data';
@@ -95,6 +95,17 @@ function looksLikeAMatch(path: string): boolean {
   }
 }
 
+/** A remaining time in seconds, as hours and minutes or minutes and seconds. */
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '?';
+  if (seconds < 90) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
 const certificate = readFileSync(new URL('../certs/supabase-ca.crt', import.meta.url), 'utf8');
 
 function createClient(): Client {
@@ -158,13 +169,17 @@ async function ingestOne(file: string, allowRetry = true): Promise<number> {
       message.includes('Client has encountered a connection error');
 
     if (connectionLost && allowRetry) {
-      console.log('  reconnecting after a dropped connection');
       await reconnect();
       return ingestOne(file, false);
     }
 
     throw error;
   }
+}
+
+/** Clear the progress line so a message can be printed above it. */
+function clearProgress(): void {
+  process.stdout.write(`\r${' '.repeat(110)}\r`);
 }
 
 async function main(): Promise<void> {
@@ -190,7 +205,7 @@ async function main(): Promise<void> {
   await client.connect();
 
   const before = await summarise();
-  console.log(`\nStarting import of ${files.length} match file(s).\n`);
+  console.log(`\nImporting ${files.length} match file(s).\n`);
 
   const started = Date.now();
   const rejections: Rejection[] = [];
@@ -208,27 +223,35 @@ async function main(): Promise<void> {
         imported += 1;
       }
     } catch (error) {
-      rejections.push({
-        file,
-        reason: error instanceof Error ? error.message : String(error),
-      });
+      const reason = error instanceof Error ? error.message : String(error);
+      rejections.push({ file, reason });
+
+      // Printed above the progress line so it survives in the scrollback.
+      clearProgress();
+      console.log(`  rejected ${basename(file)}: ${reason}`);
     }
 
     const done = index + 1;
-    if (done % 25 === 0 || done === files.length) {
-      const elapsed = (Date.now() - started) / 1000;
-      const rate = done / elapsed;
-      const remaining = (files.length - done) / rate;
-      console.log(
-        `  ${done}/${files.length}` +
-          `  imported ${imported}` +
-          `  already present ${alreadyPresent}` +
-          `  rejected ${rejections.length}` +
-          `  ${rate.toFixed(2)}/s` +
-          `  ~${Math.round(remaining / 60)} min remaining`,
-      );
-    }
+    const elapsed = (Date.now() - started) / 1000;
+    const rate = done / elapsed;
+    const remaining = (files.length - done) / rate;
+    const width = 24;
+    const filled = Math.round((done / files.length) * width);
+
+    // Rewritten in place rather than appended, so a run of thousands of matches
+    // does not scroll.
+    process.stdout.write(
+      `\r  [${'#'.repeat(filled)}${'.'.repeat(width - filled)}]` +
+        ` ${done}/${files.length}` +
+        `  imported ${imported}` +
+        `  present ${alreadyPresent}` +
+        `  rejected ${rejections.length}` +
+        `  ${rate.toFixed(2)}/s` +
+        `  ~${formatDuration(remaining)} left   `,
+    );
   }
+
+  process.stdout.write('\n');
 
   const after = await summarise();
 
@@ -238,7 +261,7 @@ async function main(): Promise<void> {
   console.log(`  already present   : ${alreadyPresent}`);
   console.log(`  rejected          : ${rejections.length}`);
   console.log(`  deliveries added  : ${deliveriesAdded}`);
-  console.log(`  elapsed           : ${Math.round((Date.now() - started) / 60_000)} min\n`);
+  console.log(`  elapsed           : ${formatDuration((Date.now() - started) / 1000)}\n`);
 
   console.log('Database totals:\n');
   for (const key of Object.keys(after)) {
@@ -263,7 +286,7 @@ async function main(): Promise<void> {
 
 main()
   .catch((error: unknown) => {
-    console.error('Import failed.');
+    console.error('\nImport failed.');
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
   })
