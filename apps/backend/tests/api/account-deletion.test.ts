@@ -59,6 +59,34 @@ describe('DELETE /api/v1/account', () => {
     expect(response.body.error.code).toBe('ACCOUNT_DELETION_UNAVAILABLE');
   });
 
+  it('enables the deletion workflow when the server-only Supabase secret is configured', async () => {
+    const app = createApp({
+      environment: {
+        NODE_ENV: 'test',
+        PORT: 3000,
+        CORS_ORIGINS: 'http://localhost:5173',
+        SUPABASE_URL: 'https://test-project.supabase.co',
+        SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+        SUPABASE_SECRET_KEY: 'test-server-only-secret-key',
+      },
+      verifyAccessToken: async () => ({
+        uid: 'account-owner',
+        displayName: 'Account Owner',
+        lastSignInAt: null,
+      }),
+      synchronizeAccount: async () =>
+        createTestAccount({ accountId: '42', subject: 'account-owner' }),
+    });
+
+    const response = await request(app)
+      .delete('/api/v1/account')
+      .set('Authorization', 'Bearer valid-test-token')
+      .send({ confirmation: 'DELETE' })
+      .expect(403);
+
+    expect(response.body.error.code).toBe('RECENT_AUTHENTICATION_REQUIRED');
+  });
+
   it('rejects unauthenticated requests without calling deletion', async () => {
     const service = { deleteAccount: vi.fn() } as unknown as AccountDeletionService;
     const verifyAccessToken = vi.fn<VerifyAccessToken>();

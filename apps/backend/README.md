@@ -53,6 +53,7 @@ Current runtime variables are:
 | `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)                                 | No      | Comma-separated browser origins allowed by Express CORS middleware.                                                                                                                        |
 | `SUPABASE_URL`             | Yes                                                                      | No      | Supabase project URL used by backend token verification.                                                                                                                                   |
 | `SUPABASE_PUBLISHABLE_KEY` | Yes                                                                      | No      | Publishable key used with `supabase.auth.getUser(accessToken)`.                                                                                                                            |
+| `SUPABASE_SECRET_KEY`      | No at startup; yes to enable account deletion                            | Yes     | Server-only key used exclusively by the Supabase Auth Admin account-deletion client.                                                                                                       |
 | `DATABASE_URL`             | Required for database-backed routes/scripts                              | Yes     | PostgreSQL session-pooler connection string.                                                                                                                                               |
 | `DATABASE_URL_TEST`        | Optional for local tests; supplied by Docker/CI or for a managed test DB | Depends | Dedicated isolated test PostgreSQL connection. When absent, the normal database-test command provisions a disposable PostgreSQL 16 cluster. Must never point to development or production. |
 
@@ -88,7 +89,7 @@ Default endpoints include:
 
 - `http://localhost:3000/api/v1/health`
 - `http://localhost:3000/api/v1/auth/me`
-- `DELETE http://localhost:3000/api/v1/account` (currently returns `501`; see below)
+- `DELETE http://localhost:3000/api/v1/account` (requires optional server-only Auth configuration)
 - `http://localhost:3000/api/v1/admin/users` (administrator only)
 - `http://localhost:3000/api/v1/fixtures/{fixtureId}/events` (public accepted events)
 
@@ -187,9 +188,11 @@ values at startup.
 
 ### Account deletion returns `501 ACCOUNT_DELETION_UNAVAILABLE`
 
-The backend intentionally uses publishable-only Supabase access. Supabase Auth administrative user
-deletion requires elevated provider access, so the current runtime rejects account deletion before
-changing deletion state. Do not replace the publishable key with an elevated key.
+Keep `SUPABASE_PUBLISHABLE_KEY` configured for normal token verification and add a separate
+server-only `SUPABASE_SECRET_KEY` to enable Supabase Auth administrative deletion. When the secret
+is absent, the backend still starts and all unrelated routes remain available, but account deletion
+returns `501` before changing local state. Never use the secret key in the frontend or replace the
+publishable key with it.
 
 ### `DATABASE_URL is not configured`
 
