@@ -166,6 +166,18 @@ If the application reports that `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHAB
 
 Confirm that the backend is running and that `VITE_API_BASE_URL` points to its `/api/v1` base URL. Also confirm that the frontend origin is included in the backend `CORS_ORIGINS` value.
 
+### A valid API response is rejected after a shared-contract change
+
+Build the contracts workspace, then restart the frontend development server:
+
+```bash
+npm run build --workspace=@sport-analytics/contracts
+npm run dev:frontend
+```
+
+The development server rebuilds its optimized contracts dependency on startup. A running server
+must still be restarted after the compiled contracts change.
+
 ### Tests behave differently after dependency changes
 
 Return to the repository root and run `npm ci` so the install matches the committed `package-lock.json`.
@@ -199,3 +211,5 @@ The preceding document was planned, generated, reviewed and edited with the assi
 ChatGPT-Web[GPT-5.6 Sol]. The submitter access workflow section was updated with the assistance of
 Codex[GPT-5].
 The account-deletion interface behavior was documented with the assistance of Codex[GPT-5].
+The shared-contract development troubleshooting guidance was updated with the assistance of
+Codex[GPT-5.6 Sol].
