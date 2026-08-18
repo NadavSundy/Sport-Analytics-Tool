@@ -1,7 +1,8 @@
 export type AdminManagementConflictCode =
   | 'SELF_MANAGEMENT_NOT_ALLOWED'
   | 'ADMIN_ACCOUNT_NOT_MANAGEABLE'
-  | 'DISABLED_ACCOUNT_NOT_MANAGEABLE';
+  | 'DISABLED_ACCOUNT_NOT_MANAGEABLE'
+  | 'SUBMITTER_REQUEST_NOT_PENDING';
 
 export class AdminManagementConflictError extends Error {
   constructor(

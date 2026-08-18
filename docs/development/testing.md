@@ -144,6 +144,12 @@ The request-response contract suite additionally verifies that only a persisted 
 accepted from the submitter-access endpoint. The browser suite verifies keyboard activation,
 pending state after reload, narrow-screen overflow, and serious or critical Axe findings.
 
+The administrator-management suites verify that `not_requested` and `rejected` viewers have no
+approval or competition-scope controls, pending viewers can be approved or rejected, and approved
+submitters can still be re-scoped or revoked. Backend policy, API, and PostgreSQL integration tests
+also verify that a direct approval attempt without a pending request returns a conflict and cannot
+bypass the state transition.
+
 Run the focused checks with:
 
 ```text

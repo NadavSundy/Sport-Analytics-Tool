@@ -246,6 +246,18 @@ current-user profile so refreshes and later authenticated sessions continue from
 state.
 
 Administrator role assignment and competition-scope assignment remain server-owned operations.
+The administrator update endpoint enforces these review transitions while holding a database lock:
+
+```text
+pending viewer     -> approved submitter
+pending viewer     -> rejected viewer
+approved submitter -> approved submitter with replacement scope
+approved submitter -> rejected viewer with no scope
+```
+
+Viewers in `not_requested` or `rejected` cannot be approved directly. They receive `409 Conflict`
+with `SUBMITTER_REQUEST_NOT_PENDING`, so hiding the frontend controls is never the authorization
+boundary. A rejected viewer must create a new request to return to `pending` before approval.
 
 Protected routes compose reusable middleware in this order:
 

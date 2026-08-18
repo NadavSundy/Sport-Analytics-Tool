@@ -95,13 +95,16 @@ Default endpoints include:
 
 `GET /api/v1/admin/users` returns registered application accounts, their authoritative role,
 legacy request state, assigned competition scopes, valid scope choices, and the latest submitter
-access audit fields. `PATCH /api/v1/admin/users/:userId/submitter-access` approves or revokes a
-submitter and replaces their complete competition scope in one database transaction.
+access audit fields. `PATCH /api/v1/admin/users/:userId/submitter-access` approves or rejects a
+pending request, re-scopes an approved submitter, or revokes submitter access in one database
+transaction.
 
 Both operations require a synchronized `admin` account. Approving requires at least one existing
-competition. Revocation assigns `viewer`, records the request state as `rejected`, and removes all
-scope rows. Administrator and disabled accounts are protected from this submitter-specific update,
-and administrators cannot update themselves through this route.
+competition. A viewer can only be approved or rejected while their request state is `pending`;
+`not_requested` and `rejected` accounts receive `409 SUBMITTER_REQUEST_NOT_PENDING`. Revocation
+assigns `viewer`, records the request state as `rejected`, and removes all scope rows. Administrator
+and disabled accounts are protected from this submitter-specific update, and administrators cannot
+update themselves through this route.
 
 ## Checks
 

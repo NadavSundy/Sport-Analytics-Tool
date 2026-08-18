@@ -197,6 +197,14 @@ describe('administrator user-management API', () => {
       409,
       'SELF_MANAGEMENT_NOT_ALLOWED',
     ],
+    [
+      new AdminManagementConflictError(
+        'SUBMITTER_REQUEST_NOT_PENDING',
+        'This account does not have a pending submitter access request.',
+      ),
+      409,
+      'SUBMITTER_REQUEST_NOT_PENDING',
+    ],
   ])('returns a useful management failure', async (error, status, code) => {
     const service = mockAdminService();
     vi.mocked(service.updateSubmitterAccess).mockRejectedValue(error);

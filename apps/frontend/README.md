@@ -105,8 +105,10 @@ remains the authorisation boundary for every request and submission.
 
 An authenticated administrator can open `/admin/users` from the account page. The responsive user
 cards expose each account's role, request state, current competition scope, account state, and most
-recent submitter-access audit. Labelled checkboxes allow an administrator to approve a pending or
-other eligible viewer, replace an existing submitter's scope, or revoke access.
+recent submitter-access audit. Labelled checkboxes are shown only for a viewer with a `pending`
+request or an existing submitter. Administrators can approve or reject a pending request, replace an
+existing submitter's scope, or revoke access. `not_requested` and `rejected` viewers receive a clear
+read-only state without approval or scope controls.
 
 The page checks the current application role before requesting management data, but that check is
 only a user-interface guard. The handwritten backend independently requires the `admin` role for
