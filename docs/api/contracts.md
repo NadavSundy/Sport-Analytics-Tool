@@ -78,6 +78,11 @@ Administrator submitter access
 `GET /api/v1/admin/users` and
 `PATCH /api/v1/admin/users/{userId}/submitter-access` require the authoritative `admin` role.
 
+New approval and rejection decisions require the target to be a `viewer` with a persisted `pending`
+request. A `not_requested` or `rejected` viewer receives `409 SUBMITTER_REQUEST_NOT_PENDING` and
+must create a new request before approval. Existing approved submitters may still be re-scoped or
+revoked through the same endpoint.
+
 Approval replaces the complete competition scope and requires one or more unique, existing
 competition identifiers:
 

@@ -1,3 +1,21 @@
+﻿function normaliseHost(hostname: string): string {
+  const host = hostname.toLowerCase();
+
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1') {
+    return 'localhost';
+  }
+
+  return host;
+}
+
+function databaseIdentity(databaseUrl: URL): string {
+  const host = normaliseHost(databaseUrl.hostname);
+  const port = databaseUrl.port || '5432';
+  const databaseName = decodeURIComponent(databaseUrl.pathname.replace(/^\//, '')).toLowerCase();
+
+  return `${host}:${port}/${databaseName}`;
+}
+
 export function assertSafeTestDatabase(
   testDatabaseUrl: string | undefined,
   developmentDatabaseUrl: string | undefined,
@@ -11,27 +29,41 @@ export function assertSafeTestDatabase(
     throw new Error('DATABASE_URL_TEST is required.');
   }
 
-  if (developmentDatabaseUrl && testDatabaseUrl === developmentDatabaseUrl) {
-    throw new Error('DATABASE_URL_TEST must not match DATABASE_URL.');
-  }
-
-  let parsedUrl: URL;
+  let parsedTestUrl: URL;
 
   try {
-    parsedUrl = new URL(testDatabaseUrl);
+    parsedTestUrl = new URL(testDatabaseUrl);
   } catch {
     throw new Error('DATABASE_URL_TEST must be a valid URL.');
   }
 
-  if (parsedUrl.protocol !== 'postgres:' && parsedUrl.protocol !== 'postgresql:') {
+  if (parsedTestUrl.protocol !== 'postgres:' && parsedTestUrl.protocol !== 'postgresql:') {
     throw new Error('DATABASE_URL_TEST must use the PostgreSQL protocol.');
   }
 
-  const databaseName = parsedUrl.pathname.replace(/^\//, '').toLowerCase();
+  const databaseName = decodeURIComponent(parsedTestUrl.pathname.replace(/^\//, '')).toLowerCase();
 
-  if (!databaseName.includes('test')) {
-    throw new Error('The test database name must contain "test".');
+  if (!/(^|[_-])test($|[_-])/.test(databaseName)) {
+    throw new Error('The test database name must contain "test" as a distinct name segment.');
   }
 
-  return parsedUrl;
+  if (developmentDatabaseUrl) {
+    let parsedDevelopmentUrl: URL;
+
+    try {
+      parsedDevelopmentUrl = new URL(developmentDatabaseUrl);
+    } catch {
+      throw new Error('DATABASE_URL must be a valid URL when provided.');
+    }
+
+    if (
+      (parsedDevelopmentUrl.protocol === 'postgres:' ||
+        parsedDevelopmentUrl.protocol === 'postgresql:') &&
+      databaseIdentity(parsedTestUrl) === databaseIdentity(parsedDevelopmentUrl)
+    ) {
+      throw new Error('DATABASE_URL_TEST must not target the same database as DATABASE_URL.');
+    }
+  }
+
+  return parsedTestUrl;
 }

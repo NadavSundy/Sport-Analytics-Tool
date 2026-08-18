@@ -105,6 +105,7 @@ async function runDisposableDatabaseTests(): Promise<void> {
     };
 
     await runNpmScript('db:test:reset', testEnvironment);
+    await runNpmScript('db:test:migrate', testEnvironment);
     await runNpmScript('db:test:seed', testEnvironment);
     await runNpmScript('test:database:run', testEnvironment);
   } finally {

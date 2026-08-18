@@ -149,4 +149,61 @@ describe.sequential('administrator user-management database integration', () => 
       submitterAccessUpdatedBy: { id: administratorId },
     });
   });
+
+  test('rejects approval unless a viewer has a pending request', async () => {
+    const accounts = await executeQuery<{ accountId: string; subject: string }>(
+      databasePool(),
+      `
+        INSERT INTO app_user (
+          auth_provider,
+          auth_subject,
+          display_name,
+          application_role,
+          submitter_approval_state
+        )
+        VALUES
+          ('test', $1, 'Transition Administrator', 'admin', 'not_requested'),
+          ('test', $2, 'No Request', 'viewer', 'not_requested'),
+          ('test', $3, 'Rejected Request', 'viewer', 'rejected'),
+          ('test', $4, 'Pending Request', 'viewer', 'pending')
+        RETURNING app_user_id::text AS "accountId", auth_subject AS subject
+      `,
+      [
+        `${sourcePrefix}-transition-admin`,
+        `${sourcePrefix}-not-requested`,
+        `${sourcePrefix}-rejected`,
+        `${sourcePrefix}-pending`,
+      ],
+    );
+    const accountId = (suffix: string) =>
+      accounts.rows.find((row) => row.subject.endsWith(suffix))!.accountId;
+    const competition = await executeQuery<{ competitionId: string }>(
+      databasePool(),
+      'INSERT INTO competition (name) VALUES ($1) RETURNING competition_id::text AS "competitionId"',
+      [`${sourcePrefix}-Transition League`],
+    );
+    const competitionId = competition.rows[0]!.competitionId;
+    const administratorId = accountId('-transition-admin');
+    const repository = createAdminRepository(databasePool());
+
+    for (const suffix of ['-not-requested', '-rejected']) {
+      await expect(
+        repository.updateSubmitterAccess(accountId(suffix), administratorId, {
+          approved: true,
+          competitionIds: [competitionId],
+        }),
+      ).rejects.toMatchObject({ code: 'SUBMITTER_REQUEST_NOT_PENDING' });
+    }
+
+    await expect(
+      repository.updateSubmitterAccess(accountId('-pending'), administratorId, {
+        approved: true,
+        competitionIds: [competitionId],
+      }),
+    ).resolves.toMatchObject({
+      role: 'submitter',
+      approvalState: 'approved',
+      competitionScopes: [{ competitionId }],
+    });
+  });
 });

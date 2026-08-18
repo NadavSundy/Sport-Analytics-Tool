@@ -83,6 +83,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(express.json({ limit: '1mb' }));
   app.use(
     pinoHttp({
+      autoLogging: process.env.NODE_ENV !== 'test',
       redact: ['req.headers.authorization'],
     }),
   );

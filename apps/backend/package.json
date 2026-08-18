@@ -24,9 +24,9 @@
     "db:migrate:down": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate down --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true",
     "db:migrate:dry": "cross-env NODE_EXTRA_CA_CERTS=certs/supabase-ca.crt node-pg-migrate up --envPath .env --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --reject-unauthorized true --dry-run",
     "db:migrate:create": "node-pg-migrate create --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --migration-filename-format utc -j sql",
-    "db:test:migrate": "cross-env NODE_ENV=test node-pg-migrate up --database-url-var DATABASE_URL_TEST --envPath .env.test --migrations-dir ../../database/migrations --ignore-pattern \"README.md\"",
-    "db:test:reset": "cross-env NODE_ENV=test tsx --env-file=.env.test scripts/reset-test-database.ts",
-    "db:test:seed": "cross-env NODE_ENV=test tsx --env-file=.env.test scripts/seed-test-database.ts"
+    "db:test:migrate": "cross-env NODE_ENV=test node-pg-migrate up --database-url-var DATABASE_URL_TEST --migrations-dir ../../database/migrations --ignore-pattern \"README.md\" --no-verbose",
+    "db:test:reset": "cross-env NODE_ENV=test tsx scripts/reset-test-database.ts",
+    "db:test:seed": "cross-env NODE_ENV=test tsx scripts/seed-test-database.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",

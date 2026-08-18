@@ -29,7 +29,8 @@ type PageState =
 
 type Feedback = { userId: string; kind: 'success' | 'error'; message: string } | undefined;
 
-type PendingAction = { userId: string; kind: 'approve' | 'scope' | 'revoke' } | undefined;
+type PendingAction =
+  { userId: string; kind: 'approve' | 'reject' | 'scope' | 'revoke' } | undefined;
 
 const roleLabels: Record<AdministratorManagedUser['role'], string> = {
   viewer: 'Viewer',
@@ -104,8 +105,10 @@ function ManagedUserCard({
   const [selectedScopeIds, setSelectedScopeIds] = useState<string[]>(assignedIds);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const isBusy = pendingAction?.userId === user.id;
-  const isSubmitter = user.role === 'submitter';
+  const isSubmitter = user.role === 'submitter' && user.approvalState === 'approved';
+  const hasPendingRequest = user.role === 'viewer' && user.approvalState === 'pending';
   const isManageable = user.role !== 'admin' && !user.disabled;
+  const canManageAccess = isManageable && (isSubmitter || hasPendingRequest);
   const audit = accessAudit(user);
   const selectionChanged =
     [...selectedScopeIds].sort().join(',') !== [...assignedIds].sort().join(',');
@@ -180,7 +183,7 @@ function ManagedUserCard({
         ) : null}
       </dl>
 
-      {isManageable ? (
+      {canManageAccess ? (
         <form className="admin-access-form" onSubmit={(event) => void saveAccess(event)}>
           <fieldset disabled={isBusy} aria-describedby={`scope-help-${user.id}`}>
             <legend>{isSubmitter ? 'Update competition scope' : 'Approve and assign scope'}</legend>
@@ -242,6 +245,19 @@ function ManagedUserCard({
                   ? 'Revoking access...'
                   : 'Revoke submitter access'}
               </button>
+            ) : hasPendingRequest ? (
+              <button
+                className="button button--danger"
+                type="button"
+                disabled={isBusy}
+                onClick={() =>
+                  void onUpdate(user, { approved: false, competitionIds: [] }, 'reject')
+                }
+              >
+                {isBusy && pendingAction.kind === 'reject'
+                  ? 'Rejecting request...'
+                  : 'Reject request'}
+              </button>
             ) : null}
           </div>
         </form>
@@ -249,7 +265,13 @@ function ManagedUserCard({
         <p className="admin-user-card__protected" role="status">
           {user.role === 'admin'
             ? 'Administrator accounts are protected from submitter access changes.'
-            : 'Disabled accounts cannot receive submitter access changes.'}
+            : user.disabled
+              ? 'Disabled accounts cannot receive submitter access changes.'
+              : user.approvalState === 'not_requested'
+                ? 'No submitter access request has been made.'
+                : user.approvalState === 'rejected'
+                  ? 'This request was rejected. The user must make a new request before approval.'
+                  : 'This account has no actionable pending submitter request.'}
         </p>
       )}
 
@@ -347,9 +369,11 @@ export function AdminUsersPage() {
         message:
           kind === 'revoke'
             ? `Submitter access was revoked for ${userLabel(user)}.`
-            : kind === 'scope'
-              ? `Competition scope was updated for ${userLabel(user)}.`
-              : `${userLabel(user)} is now an approved submitter.`,
+            : kind === 'reject'
+              ? `Submitter request was rejected for ${userLabel(user)}.`
+              : kind === 'scope'
+                ? `Competition scope was updated for ${userLabel(user)}.`
+                : `${userLabel(user)} is now an approved submitter.`,
       });
     } catch (error) {
       setFeedback({

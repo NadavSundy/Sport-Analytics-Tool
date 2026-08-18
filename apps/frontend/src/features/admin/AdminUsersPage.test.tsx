@@ -193,6 +193,44 @@ describe('administrator user management page', () => {
     expect(card.getByRole('button', { name: 'Revoke submitter access' })).toBeEnabled();
   });
 
+  it('does not offer approval or scope controls before a submitter request is made', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(managementResponse(managedUser({ approvalState: 'not_requested' }))),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(card.getByText('No submitter access request has been made.')).toBeInTheDocument();
+    expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('does not treat a rejected request as pending approval', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(managementResponse(managedUser({ approvalState: 'rejected' }))),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(
+      card.getByText(
+        'This request was rejected. The user must make a new request before approval.',
+      ),
+    ).toBeInTheDocument();
+    expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
   it('approves a pending user with a selected scope and updates the card immediately', async () => {
     const approved = managedUser({
       role: 'submitter',
@@ -223,6 +261,29 @@ describe('administrator user management page', () => {
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
       method: 'PATCH',
       body: JSON.stringify({ approved: true, competitionIds: ['7'] }),
+    });
+  });
+
+  it('allows an administrator to reject a pending request', async () => {
+    const rejected = managedUser({ approvalState: 'rejected' });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(managementResponse())
+      .mockResolvedValueOnce(updateResponse(rejected));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage();
+
+    fireEvent.click(within(await userCard()).getByRole('button', { name: 'Reject request' }));
+
+    expect(
+      await screen.findByText('Submitter request was rejected for Pending Contributor.'),
+    ).toBeInTheDocument();
+    expect(within(await userCard()).queryByRole('button')).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ approved: false, competitionIds: [] }),
     });
   });
 
@@ -283,8 +344,10 @@ describe('administrator user management page', () => {
       await screen.findByText('Submitter access was revoked for Pending Contributor.'),
     ).toBeInTheDocument();
     expect(
-      within(await userCard()).getByRole('button', { name: 'Approve submitter' }),
-    ).toBeEnabled();
+      within(await userCard()).getByText(
+        'This request was rejected. The user must make a new request before approval.',
+      ),
+    ).toBeInTheDocument();
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
       body: JSON.stringify({ approved: false, competitionIds: [] }),
     });

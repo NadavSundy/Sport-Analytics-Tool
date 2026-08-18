@@ -7,6 +7,7 @@ import type { Pool } from 'pg';
 
 import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
 import { isApplicationRole, isSubmitterApprovalState } from '../accounts/account';
+import { resolveSubmitterAccessTransition } from './admin-access-policy';
 import {
   AdminManagementConflictError,
   AdminUserNotFoundError,
@@ -29,6 +30,7 @@ interface AdministratorUserRow {
 
 interface TargetAccountRow {
   role: string;
+  approvalState: string;
   disabledAt: Date | null;
 }
 
@@ -186,6 +188,7 @@ export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepo
           `
             SELECT
               application_role AS role,
+              submitter_approval_state AS "approvalState",
               disabled_at AS "disabledAt"
             FROM app_user
             WHERE app_user_id = $1
@@ -197,6 +200,14 @@ export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepo
 
         if (!target) {
           throw new AdminUserNotFoundError();
+        }
+
+        if (!isApplicationRole(target.role)) {
+          throw new Error('Managed application account has an unsupported role');
+        }
+
+        if (!isSubmitterApprovalState(target.approvalState)) {
+          throw new Error('Managed application account has an unsupported approval state');
         }
 
         if (target.role === 'admin') {
@@ -212,6 +223,11 @@ export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepo
             'Disabled accounts cannot be changed through submitter access management.',
           );
         }
+
+        resolveSubmitterAccessTransition(
+          { role: target.role, approvalState: target.approvalState },
+          update,
+        );
 
         const requestedCompetitionIds = [...new Set(update.competitionIds)];
 

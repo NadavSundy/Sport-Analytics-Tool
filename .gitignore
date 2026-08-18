@@ -172,3 +172,6 @@ __pycache__/
 
 # Generated Azure deployment artifacts
 /.deployment/
+
+# Allow the documented database-test environment template
+!apps/backend/.env.test.example
