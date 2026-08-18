@@ -67,10 +67,16 @@ requested competition exists. In one transaction the backend:
 4. replaces the target account's complete `submitter_competition_scope`; and
 5. records the administrator and change time.
 
-Revocation assigns `application_role = viewer`, records the compatibility state `rejected`, and
-removes every competition scope in the same transaction. The changed role and scope therefore take
-effect on the user's next authenticated API request. An invalid scope rolls the transaction back
-without partially changing permission.
+Rejection and revocation are distinct. Rejection is permitted only for a pending viewer request; it
+keeps `application_role = viewer`, records `rejected`, removes every competition scope, and permits a
+later request. Revocation is permitted only for an approved submitter; it assigns
+`application_role = viewer`, retains the historical `approved` request decision, and removes every
+competition scope. Scope replacement is likewise limited to an approved submitter. Each transition
+updates role, request state, scopes, administrator attribution, and time in one transaction.
+
+Invalid lifecycle changes return `409 INVALID_SUBMITTER_ACCESS_TRANSITION`. Validation and state
+checks occur while the target row is locked, so a failed transition leaves the existing role,
+request state, scopes, and audit fields unchanged.
 
 The submitter-access operation cannot modify an `admin` account, a disabled account, or the acting
 administrator's own account. A viewer or submitter receives `403 Forbidden` before request-body
@@ -88,5 +94,5 @@ remains visible if the administrator account is later removed.
 - Re-authentication may refresh the display name and last-authenticated time, but it never updates
   the persisted role or scopes.
 - Only a trusted administrative backend process may change `application_role`.
-- Approval, scope replacement, audit attribution, and revocation are committed atomically.
+- Approval, rejection, scope replacement, audit attribution, and revocation are committed atomically.
 - Frontend visibility checks may improve the interface, but they are never the security boundary.

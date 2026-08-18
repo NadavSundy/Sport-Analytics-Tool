@@ -25,6 +25,7 @@ Development deployment
 | `CORS_ORIGINS`             | Used                        | Comma-separated allowed browser origins; include the deployed frontend URL. |
 | `SUPABASE_URL`             | Used                        | Supabase Auth project URL.                                                  |
 | `SUPABASE_PUBLISHABLE_KEY` | Used                        | Supabase publishable key used for backend token verification.               |
+| `SUPABASE_SECRET_KEY`      | Required for issue #66      | Server-only Supabase key used by Auth Admin account deletion.               |
 | `DATABASE_URL`             | Used                        | PostgreSQL session-pooler connection string.                                |
 
 `API_VERSION`, `CORS_ALLOWED_ORIGINS` and `LOG_LEVEL` appear as reserved placeholders in the current backend example environment file but are not read by the current application runtime. In particular, deployed CORS configuration must use `CORS_ORIGINS` unless the application code is deliberately changed.
@@ -67,6 +68,11 @@ validation step reports the secret name and stops before verification when it is
 Backend application secrets such as `DATABASE_URL` and Supabase configuration remain Azure App
 Service settings. They are not copied into the deployment artifact or exposed to the workflow's
 local artifact check.
+
+`SUPABASE_SECRET_KEY` is intentionally optional during process startup. This keeps health and public
+routes available if the App Service setting is missing, while `DELETE /api/v1/account` returns a
+safe `501` until the setting is configured. Deployed issue #66 verification must confirm that the
+App Service secret belongs to the same Supabase project as `SUPABASE_URL`.
 
 ## Current startup limitation
 

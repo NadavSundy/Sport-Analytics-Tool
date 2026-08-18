@@ -74,6 +74,8 @@ The backend requires:
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+# Optional at startup; required for account deletion.
+# SUPABASE_SECRET_KEY=your-server-only-supabase-secret-key
 ```
 
 The committed `apps/backend/.env.example` contains placeholders only.
@@ -86,7 +88,8 @@ apps/backend/.env
 
 That file is ignored by Git.
 
-The backend does not require a Supabase secret key or legacy `service_role` key to validate an access token.
+The backend does not require a Supabase secret key or legacy `service_role` key to validate an access
+token. Account deletion uses a separate server-only secret when that optional capability is enabled.
 
 ## Frontend environment configuration
 
@@ -252,11 +255,12 @@ The administrator update endpoint enforces these review transitions while holdin
 pending viewer     -> approved submitter
 pending viewer     -> rejected viewer
 approved submitter -> approved submitter with replacement scope
-approved submitter -> rejected viewer with no scope
+approved submitter -> viewer with no scope (request decision remains approved)
 ```
 
-Viewers in `not_requested` or `rejected` cannot be approved directly. They receive `409 Conflict`
-with `SUBMITTER_REQUEST_NOT_PENDING`, so hiding the frontend controls is never the authorization
+Approval and rejection are permitted only from `pending`. Scope replacement and revocation are
+permitted only for an existing approved submitter. Other lifecycle changes receive `409 Conflict`
+with `INVALID_SUBMITTER_ACCESS_TRANSITION`, so hiding frontend controls is never the authorization
 boundary. A rejected viewer must create a new request to return to `pending` before approval.
 
 Protected routes compose reusable middleware in this order:
@@ -465,16 +469,14 @@ rationale.
 
 ## Account deletion
 
-The backend is configured with `SUPABASE_PUBLISHABLE_KEY` only. Because Supabase Auth user deletion
-is an administrative operation, `DELETE /api/v1/account` currently returns `501
-ACCOUNT_DELETION_UNAVAILABLE`. The rejection happens before the account-deletion state machine
-changes application data.
+Normal token verification uses `SUPABASE_PUBLISHABLE_KEY`. The backend creates a separate,
+non-persistent Supabase Admin client only when the optional server-only `SUPABASE_SECRET_KEY` is
+configured. Without that secret, `DELETE /api/v1/account` returns `501
+ACCOUNT_DELETION_UNAVAILABLE` before the account-deletion state machine changes application data;
+backend startup and unrelated routes are unaffected.
 
-The endpoint still accepts no target account ID and validates the exact `DELETE` confirmation. Its
-recoverable deletion implementation remains isolated behind an injected service for automated
-verification, but it is not enabled in the production application composition.
-
-The retained provider-capable workflow design is a recoverable state machine:
+The endpoint accepts no target account ID, validates the exact `DELETE` confirmation, and implements
+the provider-capable workflow as a recoverable state machine:
 
 1. disable the application account and remove role, approval and competition grants;
 2. hard-delete the Supabase Auth user;
@@ -482,7 +484,7 @@ The retained provider-capable workflow design is a recoverable state machine:
    stable `app_user_id` provenance key; and
 4. clear the browser's local Supabase session after the backend confirms success.
 
-When a provider-capable deletion integration is supplied, an Auth or database failure returns `503
+An Auth or database failure returns `503
 ACCOUNT_DELETION_INCOMPLETE`. The local account remains disabled, and retry either repeats the
 idempotent Auth deletion or resumes finalization. A hash of the former high-entropy Auth subject
 prevents an already-issued JWT from synchronizing a replacement account during the token's remaining

@@ -52,3 +52,20 @@ export async function updateAdministratorSubmitterAccess(
 
   return parsed.data.data;
 }
+
+export async function rejectAdministratorSubmitterAccessRequest(
+  client: AuthenticatedApiClient,
+  userId: string,
+): Promise<AdministratorManagedUser> {
+  const response = await client.request<unknown>(
+    `/admin/users/${encodeURIComponent(userId)}/submitter-access/rejection`,
+    { method: 'POST' },
+  );
+  const parsed = administratorSubmitterAccessResponseSchema.safeParse(response);
+
+  if (!parsed.success) {
+    throw new AdminUserManagementContractError();
+  }
+
+  return parsed.data.data;
+}

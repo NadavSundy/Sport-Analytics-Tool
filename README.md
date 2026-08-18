@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and atomically approve, re-scope, or revoke submitters. Public reference data, accepted fixture events, and derived fixture statistics remain anonymous. Datasets and external API integration remain future work.
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and atomically approve or reject pending requests, re-scope approved submitters, or revoke access. Public reference data, accepted fixture events, and derived fixture statistics remain anonymous. Datasets and external API integration remain future work.
 
 ## Repository structure
 
@@ -29,7 +29,7 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 - Python 3.10 or later and MkDocs Material for the documentation site
 - Access to the current Supabase-hosted PostgreSQL development database
 - Access to the shared Supabase Auth project
-- Docker Desktop or a compatible Docker Compose runtime only if running the recommended local PostgreSQL integration-test workflow
+- Docker Desktop or a compatible Docker Compose runtime only for the explicit container-based PostgreSQL integration-test workflow
 
 ## Initial setup
 
@@ -47,13 +47,20 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-Normal unit, frontend, API and contract tests do not require Docker:
+The normal database-independent test suite is:
 
 ```bash
 npm run test
 ```
 
-For the complete PostgreSQL integration suite, the recommended local workflow is:
+Run PostgreSQL integration coverage explicitly with:
+
+```bash
+npm run test:database
+```
+
+When no isolated `DATABASE_URL_TEST` is configured, that command provisions a disposable local
+PostgreSQL 16 cluster automatically. An explicit Docker Compose alternative is available:
 
 ```bash
 npm run test:database:local
@@ -65,14 +72,12 @@ On Windows PowerShell:
 npm.cmd run test:database:local
 ```
 
-This command uses Docker to provision an isolated PostgreSQL 16 test database, applies migrations
-and deterministic test seed data, and runs the database integration suite. No separate Supabase test
-project, manually created PostgreSQL database, shared test credentials, manual `NODE_ENV=test`
-setting or local `.env.test` file is required.
+The Docker command provisions an isolated PostgreSQL 16 test database, applies migrations and
+deterministic seed data, and runs the same database integration suite.
 
 Docker is not required for normal application development, `npm run test`, or `npm run check`.
 See [Testing Strategy](docs/development/testing.md) for the complete database-test workflow,
-safety rules and non-Docker alternative.
+safety rules, and explicit Docker and configured-database alternatives.
 
 The root development dispatcher also accepts the application name, so
 `npm run dev frontend` and `npm run dev backend` are equivalent. Additional

@@ -23,13 +23,14 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 | `CORS_ORIGINS`             | No; defaults to `http://localhost:5173` | No     | Comma-separated list of allowed browser origins.           |
 | `SUPABASE_URL`             | Yes                                     | No     | Supabase Auth project URL used for token verification.     |
 | `SUPABASE_PUBLISHABLE_KEY` | Yes                                     | No     | Publishable key used for backend `getUser()` verification. |
+| `SUPABASE_SECRET_KEY`      | No; required to enable account deletion | Yes    | Server-only key used by Supabase Auth Admin deletion.      |
 | `DATABASE_URL`             | Required when database access is used   | Yes    | Hosted PostgreSQL session-pooler connection string.        |
 
 ## Test and support-script variables
 
-| Variable            | Required                           | Secret | Purpose                                                                                          |
-| ------------------- | ---------------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL_TEST` | Yes for database integration tests | Yes    | Dedicated isolated test database. It must never identify the development or production database. |
+| Variable            | Required                            | Secret | Purpose                                                                                                                                                                                    |
+| ------------------- | ----------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL_TEST` | No; optional database-test override | Yes    | Dedicated isolated test database. When absent, `npm run test:database` provisions a disposable local PostgreSQL 16 cluster. It must never identify the development or production database. |
 
 The committed backend `.env.example` currently also contains the following placeholders that are **reserved for future/other tooling and are not read by the current backend application runtime**:
 
@@ -58,5 +59,5 @@ Repository-hosted deployment secrets must be stored using the relevant platform 
 ## AI Declaration
 
 The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol].
-The publishable-only account-deletion limitation was documented with the assistance of
+The optional server-only account-deletion configuration was documented with the assistance of
 Codex[GPT-5].

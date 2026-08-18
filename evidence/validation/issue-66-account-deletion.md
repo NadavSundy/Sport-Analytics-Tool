@@ -1,8 +1,8 @@
 # Issue #66 secure account-deletion validation
 
-> **Current runtime note (17 August 2026):** This record describes the original issue #66
-> implementation. The production composition now uses publishable-only Supabase access and returns
-> `501 ACCOUNT_DELETION_UNAVAILABLE` before entering the validated state machine.
+> **Follow-up note (18 August 2026):** Production composition now enables the validated deletion
+> state machine when an optional server-only Supabase secret is present. Without it, only the
+> deletion route returns `501`; backend startup and unrelated routes remain available.
 
 ## Scope
 
@@ -65,9 +65,30 @@ The signed-in deletion panel was not exercised against a live identity. React te
 checkbox and exact-text confirmation, disabled/in-flight state, duplicate prevention, success and
 error announcements, local Supabase sign-out, and navigation to the public home page.
 
+## Follow-up regression validation
+
+The 18 August correction adds coverage proving that:
+
+- the backend environment remains valid without an elevated key;
+- a configured server-only key selects the real deletion workflow rather than the `501` fallback;
+- the Admin client performs hard deletion, treats `user_not_found` idempotently, and hides provider
+  details on failure; and
+- the deletion repository is initialized lazily, so enabling provider administration does not
+  reintroduce an unrelated startup dependency.
+
+`npm run check` passed with 73 backend unit tests, 78 backend API tests, 68 frontend tests, 68
+contract tests, and 4 deployment-helper tests. Formatting, linting, type checking, OpenAPI linting,
+and all production builds passed. The prepared backend deployment artifact also returned HTTP 200
+from its health route both with and without `SUPABASE_SECRET_KEY` present.
+
+The PostgreSQL integration suite was not rerun for this follow-up because Docker is unavailable on
+the validation machine. This correction does not change the previously validated migration or SQL;
+CI must rerun the existing database suite before merge.
+
 ## Known limitations and human checks
 
-- The original provider-administration integration is not enabled in the publishable-only runtime.
+- Azure App Service must receive `SUPABASE_SECRET_KEY` for the same project as `SUPABASE_URL` before
+  deployed deletion can satisfy the acceptance criteria.
 - Supabase Storage objects owned by a user can block Auth deletion. The product currently creates no
   such objects; reassess this workflow before adding user-owned storage.
 - A rare failure after Auth deletion and before any local success-stage write requires operator

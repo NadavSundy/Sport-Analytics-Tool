@@ -167,3 +167,66 @@ export function createAdminUpdateSubmitterAccessController(service: AdminService
       });
   };
 }
+
+export function createAdminRejectSubmitterAccessRequestController(
+  service: AdminService,
+): RequestHandler {
+  return (request, response, next) => {
+    const targetAccountId = request.params.userId;
+
+    if (!targetAccountId || !isDatabaseIdentifier(targetAccountId)) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The submitter access rejection is invalid.',
+          details: [
+            {
+              code: 'INVALID_FIELD',
+              field: 'userId',
+              message: 'The user identifier is invalid.',
+            },
+          ],
+        },
+      });
+      return;
+    }
+
+    let administrator: ApplicationAccount;
+
+    try {
+      administrator = getAuthenticatedAccount(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+
+    void service
+      .rejectSubmitterAccessRequest(administrator, targetAccountId)
+      .then((result) => {
+        response.status(200).json(administratorSubmitterAccessResponseSchema.parse(result));
+      })
+      .catch((error: unknown) => {
+        if (error instanceof AdminUserNotFoundError) {
+          response.status(404).json({
+            error: {
+              code: 'USER_NOT_FOUND',
+              message: error.message,
+            },
+          });
+          return;
+        }
+
+        if (error instanceof AdminManagementConflictError) {
+          response.status(409).json({
+            error: {
+              code: error.code,
+              message: error.message,
+            },
+          });
+          return;
+        }
+
+        next(error);
+      });
+  };
+}

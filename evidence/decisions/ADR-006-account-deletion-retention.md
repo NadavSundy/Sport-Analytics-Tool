@@ -1,16 +1,16 @@
 # ADR-006: Account deletion retention and tombstoning
 
-- **Status:** Superseded for the current runtime
+- **Status:** Accepted
 - **Date:** 2026-08-16
 - **Participants:** Gabriel Raz, Git Push Pray project team
 - **Related issue:** #66
 
 ## Context
 
-On 17 August 2026, the runtime was changed to use publishable-only Supabase access. Supabase Auth
-administrative deletion is therefore unavailable, and the HTTP endpoint now rejects the operation
-before changing local state. The remainder of this ADR records the earlier issue #66 design and is
-retained as historical context for any future provider-capable implementation.
+On 17 August 2026, a required elevated key caused the backend to fail at startup where that setting
+was absent. A publishable-only fallback restored availability but disabled this decision's deletion
+workflow. The corrected composition keeps elevated access optional at startup and enables the
+workflow only when the backend has a separate server-only Supabase secret.
 
 An application account is both a personal account record and the stable owner of cricket-data
 submissions. Deleting the row would either break submission provenance or encourage a cascading
@@ -67,6 +67,8 @@ raw subject.
 ## Consequences
 
 - Account deletion is irreversible through the product interface.
+- A missing server-only Supabase secret disables only account deletion; it does not prevent backend
+  startup or unrelated routes.
 - Retained cricket data is attributed to a non-identifying deleted-account tombstone.
 - The account cannot regain roles, approval, or scopes, including while an old JWT is unexpired.
 - Auth and application deletion cannot be globally atomic. Failures are recorded for safe retry

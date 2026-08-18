@@ -26,11 +26,12 @@ See:
 
 ## Account deletion and retention
 
-Account deletion is unavailable in the current publishable-only runtime. The reserved endpoint
-returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing local state. The retained
-provider-capable design would remove the managed Supabase identity and personal application-account
-identifiers, permissions, approval, and scopes. Accepted cricket data is not personal profile data
-and remains necessary to reproduce published statistics and preserve submission provenance.
+Account deletion uses a dedicated server-only Supabase secret for the Auth Admin operation while
+normal token verification continues to use the publishable key. If that optional secret is absent,
+the endpoint returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing local state and unrelated
+routes continue to start normally. A configured deletion removes the managed Supabase identity and
+personal application-account identifiers, permissions, approval, and scopes. Accepted cricket data
+is retained to reproduce published statistics and preserve submission provenance.
 
 The application therefore retains a permanently disabled, non-identifying `app_user` tombstone and
 its stable internal identifier. Submissions, fixtures, deliveries, statistics, corrections, source

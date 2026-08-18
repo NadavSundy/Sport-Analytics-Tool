@@ -73,12 +73,15 @@ The backend requires environment configuration including:
 DATABASE_URL
 SUPABASE_URL
 SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
 CORS_ORIGINS
 NODE_ENV
 API_VERSION
 ```
 
 Secrets must remain in Azure App Service/Gitea secret storage and must not be committed to the repository.
+`SUPABASE_SECRET_KEY` is optional for process startup but required for self-service account deletion.
+Keep it server-side in App Service configuration; never add it to frontend build settings.
 
 ### Frontend build variables
 
