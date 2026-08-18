@@ -4,17 +4,22 @@ This is the canonical onboarding guide for a clean checkout of the Sport Analyti
 
 ## 1. Required software
 
-| Tool    | Project requirement | Why it is needed                                                                            |
-| ------- | ------------------- | ------------------------------------------------------------------------------------------- |
-| Git     | Git 2.x             | Clone, branch, commit and Pull Request workflow.                                            |
-| Node.js | 20 or later         | Backend runtime and all JavaScript/TypeScript tooling. Azure currently uses Node.js 22 LTS. |
-| npm     | 10 or later         | Workspace installation and repository scripts.                                              |
-| Python  | 3.10 or later       | MkDocs documentation and the Cricsheet downloader.                                          |
+| Tool    | Project requirement                                      | Why it is needed                                                                            |
+| ------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Git     | Git 2.x                                                  | Clone, branch, commit and Pull Request workflow.                                            |
+| Node.js | 20 or later                                              | Backend runtime and all JavaScript/TypeScript tooling. Azure currently uses Node.js 22 LTS. |
+| npm     | 10 or later                                              | Workspace installation and repository scripts.                                              |
+| Python  | 3.10 or later                                            | MkDocs documentation and the Cricsheet downloader.                                          |
+| Docker  | Docker Desktop or compatible Docker runtime with Compose | Required only for the recommended disposable local PostgreSQL integration-test workflow.    |
 
 Optional:
 
-- a Docker-compatible runtime, only if the team deliberately uses a local Supabase stack;
+- the Supabase CLI/local Supabase stack, only if the team deliberately chooses to use it;
 - an editor/IDE of your choice. The repository does not require VS Code, Qoder or any other editor.
+
+Docker is **not** required to run the application, `npm run test`, or `npm run check`.
+It is required for the recommended `npm run test:database:local` workflow because that command
+creates an isolated PostgreSQL 16 test database automatically.
 
 Record the exact versions used during onboarding:
 
@@ -183,7 +188,125 @@ npm run build
 
 The extended CI/testing suite also includes the isolated PostgreSQL integration tests, Playwright browser/accessibility tests and coverage generation. See [Testing](testing.md).
 
-## 9. Documentation site
+## 9. Local PostgreSQL integration tests
+
+Database integration tests exercise the application against a real PostgreSQL database. The
+recommended local workflow uses a disposable PostgreSQL 16 container so that developers do not
+need to create a test Supabase project, install PostgreSQL manually, share database credentials, or
+prepare their own database.
+
+### Start Docker Desktop
+
+On Windows:
+
+1. Open **Docker Desktop** from the Start menu.
+2. Wait until Docker Desktop reports that the Docker engine is running.
+3. Open PowerShell in the repository and verify:
+
+```powershell
+docker --version
+docker compose version
+docker info
+```
+
+On macOS, start Docker Desktop from Applications and wait for the engine to become available before
+running the same verification commands.
+
+A different Docker-compatible runtime may be used if it provides the `docker compose` command used
+by the repository.
+
+### Run the database integration suite
+
+From the repository root:
+
+```bash
+npm run test:database:local
+```
+
+On Windows PowerShell, `npm.cmd` may be used explicitly:
+
+```powershell
+npm.cmd run test:database:local
+```
+
+The command automatically:
+
+1. starts the repository-managed PostgreSQL 16 test container;
+2. waits until PostgreSQL is healthy;
+3. supplies `NODE_ENV=test`;
+4. supplies the local `DATABASE_URL_TEST`;
+5. resets the test schema;
+6. applies all migrations;
+7. loads the deterministic test seed; and
+8. runs the complete PostgreSQL integration suite.
+
+No manual `NODE_ENV` change, `.env.test` file, hosted test database, Supabase test project or
+shared database password is required for this normal workflow.
+
+The local test database is:
+
+```text
+postgresql://test_user:test_password@127.0.0.1:55432/sport_analytics_test
+```
+
+These are repository-defined **test-only local credentials**, not application secrets. Port
+`55432` is intentionally different from PostgreSQL's common `5432` port to reduce conflicts with
+an existing local installation.
+
+### Development database versus test database
+
+`DATABASE_URL` is the normal application development database connection. In the team's current
+configuration it points to the Supabase-hosted PostgreSQL development database.
+
+`DATABASE_URL_TEST` is used only by PostgreSQL integration tests and destructive test-database
+commands.
+
+The disposable Docker workflow supplies `DATABASE_URL_TEST` itself. It does not replace, reset or
+modify `DATABASE_URL`.
+
+The database safety guard requires `NODE_ENV=test`, requires the target database name to identify it
+as a test database, and rejects a test connection that resolves to the same PostgreSQL host, port and
+database as the configured development connection.
+
+### Stop or remove the local test database
+
+The container may remain running between test runs. Each local database-test run resets the schema,
+so tests do not depend on data left by the previous run.
+
+Stop the container while keeping its disposable volume:
+
+```bash
+docker compose -f compose.test.yml down
+```
+
+Stop it and remove all local test-database data:
+
+```bash
+docker compose -f compose.test.yml down --volumes
+```
+
+The next `npm run test:database:local` command recreates the environment automatically.
+
+### Using a different test database
+
+Docker is the recommended workflow, but it is not mandatory for the underlying database test suite.
+
+A developer who already has a dedicated PostgreSQL test database may supply a safe
+`DATABASE_URL_TEST` and run:
+
+```bash
+npm run db:test:reset --workspace=@sport-analytics/backend
+npm run db:test:migrate --workspace=@sport-analytics/backend
+npm run db:test:seed --workspace=@sport-analytics/backend
+npm run test:database
+```
+
+The supported npm commands set `NODE_ENV=test` automatically.
+
+See `apps/backend/.env.test.example` for the expected test configuration shape. Never use the
+application development or production database for this workflow.
+
+## 10. Documentation site
 
 Create a Python virtual environment and install the documentation requirements.
 
@@ -219,7 +342,7 @@ python -m mkdocs build --strict
 
 The generated `site/` directory is build output and must not be committed as part of normal documentation changes.
 
-## 10. Optional Cricsheet data download
+## 11. Optional Cricsheet data download
 
 Historical T20/IT20 source data is acquired with the committed Python script:
 
@@ -231,11 +354,11 @@ On Windows, `py scripts/download_cricsheet_t20.py` is also valid.
 
 The downloader uses the Python standard library and requires internet access. Downloaded archives, extracted match data and generated manifests are ignored by Git. See [Cricsheet T20 data](../data/cricsheet.md).
 
-## 11. Optional local Supabase stack
+## 12. Optional local Supabase stack
 
 A local Supabase stack is **not required** for normal onboarding. If the team deliberately chooses to use it, the Supabase CLI requires a Docker-compatible runtime and the work must be coordinated with the database workstream. Do not initialize or reset a shared environment without team agreement.
 
-## 12. Common setup problems
+## 13. Common setup problems
 
 ### `npm ci` fails because Node/npm is too old
 
@@ -297,6 +420,45 @@ npm run format:check
 
 Review the resulting diff before committing. Formatting should not be used to hide unrelated changes.
 
+### Docker command is not found
+
+Install or start Docker Desktop, then open a new terminal and verify:
+
+```bash
+docker --version
+docker compose version
+```
+
+Docker is needed only for `npm run test:database:local`; normal application development and
+`npm run test` do not require it.
+
+### Docker cannot connect to the engine
+
+Start Docker Desktop and wait until the Docker engine is running. Then verify:
+
+```bash
+docker info
+```
+
+Retry `npm run test:database:local` only after `docker info` succeeds.
+
+### Port 55432 is already in use
+
+The repository deliberately uses port `55432` rather than the usual PostgreSQL port `5432`.
+If another process already uses `55432`, stop that process before running the local database
+workflow. Do not change the test workflow to point at an unknown existing database.
+
+### Database test safety check fails
+
+Do not bypass the safety check. Confirm that the command is using a dedicated test database and that
+`DATABASE_URL_TEST` does not resolve to the same PostgreSQL database as `DATABASE_URL`.
+
+For the normal Docker workflow, do not manually set `DATABASE_URL_TEST`; run:
+
+```bash
+npm run test:database:local
+```
+
 ### Playwright cannot find a browser
 
 Install the configured Chromium browser:
@@ -317,7 +479,7 @@ python -m pip install -r requirements-docs.txt
 
 Then prefer `python -m mkdocs ...` so the command uses the intended Python environment.
 
-## 13. Onboarding verification record
+## 14. Onboarding verification record
 
 Issue #12 requires a second team member to follow this guide from a clean clone. The verifier must record:
 

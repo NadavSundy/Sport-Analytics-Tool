@@ -32,7 +32,8 @@
     "structure:check": "node scripts/check-required-files.mjs",
     "openapi:lint": "redocly lint docs/api/openapi.yaml",
     "deploy:prepare:backend": "node scripts/prepare-backend-deployment.mjs",
-    "check": "npm run structure:check && npm run format:check && npm run lint && npm run build --workspace=@sport-analytics/contracts && npm run typecheck && npm run test && npm run openapi:lint && npm run build"
+    "check": "npm run structure:check && npm run format:check && npm run lint && npm run build --workspace=@sport-analytics/contracts && npm run typecheck && npm run test && npm run openapi:lint && npm run build",
+    "test:database:local": "node scripts/test-database-local.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

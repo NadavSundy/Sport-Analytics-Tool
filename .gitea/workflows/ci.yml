@@ -49,7 +49,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Reset and migrate test database
-        run: npm run db:test:reset --workspace=@sport-analytics/backend
+        run: |
+          npm run db:test:reset --workspace=@sport-analytics/backend
+          npm run db:test:migrate --workspace=@sport-analytics/backend
 
       - name: Seed test database
         run: npm run db:test:seed --workspace=@sport-analytics/backend
