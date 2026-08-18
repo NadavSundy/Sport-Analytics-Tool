@@ -174,7 +174,7 @@ It currently runs, in order:
 3. ESLint;
 4. shared-contract build;
 5. TypeScript type-checking;
-6. unit/frontend/API/PostgreSQL/contract/deployment-helper tests;
+6. unit/frontend/API/contract/deployment-helper tests;
 7. OpenAPI linting; and
 8. production builds for contracts, backend and frontend.
 

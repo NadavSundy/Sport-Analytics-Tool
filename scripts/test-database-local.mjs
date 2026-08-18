@@ -67,7 +67,13 @@ async function main() {
 
   console.log('\n[5/5] Running database integration tests...');
   await runNpm(
-    ['run', 'test:database', '--workspace=@sport-analytics/backend', '--', '--reporter=verbose'],
+    [
+      'run',
+      'test:database:run',
+      '--workspace=@sport-analytics/backend',
+      '--',
+      '--reporter=verbose',
+    ],
     testEnvironment,
   );
 
