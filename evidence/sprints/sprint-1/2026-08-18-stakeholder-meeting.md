@@ -3,7 +3,7 @@
 **Date:** 18 August 2026  
 **Project:** Sport Analytics Tool  
 **Team:** Git Push Pray  
-**Stakeholder:** Terence Nkoua Mackyta  
+**Stakeholder:** Terence Nkoua Mackyta
 
 ## Purpose
 

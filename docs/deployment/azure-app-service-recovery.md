@@ -691,33 +691,26 @@ browser renders competition data
 
 ---
 
-## 20. Separate CI/CD issues identified during investigation
+## 20. Gitea deployment workflow repair
 
-Earlier investigation also identified potential problems in the Gitea deployment workflows.
+The deployment workflows now use the current `apps/backend` and `apps/frontend` paths. Changes to
+`packages/contracts`, the root npm manifests, shared TypeScript configuration and the relevant
+deployment helpers also trigger the affected deployment.
 
-Examples discussed during troubleshooting included workflow path filters referring to:
-
-```text
-backend/**
-frontend/**
-```
-
-rather than the monorepo paths:
+Both workflows install from the root lockfile and address workspaces by their package names:
 
 ```text
-apps/backend/**
-apps/frontend/**
+@sport-analytics/backend
+@sport-analytics/frontend
+@sport-analytics/contracts
 ```
 
-Workspace references also need to use the actual package/workspace names used by the repository.
+They run focused lint, type-check and test commands before building and deploying. Each workflow can
+also be started manually through `workflow_dispatch` when configuration-only recovery requires a
+redeployment.
 
-These issues are separate from the runtime CORS and workspace-link fixes.
-
-### Important
-
-The current state of these workflow files must be checked in the repository before marking these items as resolved.
-
-Do not document them as fixed unless a merged pull request and successful Gitea Actions run provide evidence.
+The implementation is only one part of the evidence. The repair must not be described as deployed or
+successful until it is merged and the corresponding Gitea Actions runs and smoke-check output pass.
 
 ---
 
@@ -740,7 +733,7 @@ startup script recreates link
 backend starts
 ```
 
-### Required permanent design
+### Implemented artifact design
 
 ```text
 Gitea Actions
@@ -755,7 +748,7 @@ build shared contracts
 build backend
      |
      v
-assemble self-contained runtime artifact
+assemble production runtime artifact
      |
      v
 smoke-test artifact
@@ -764,26 +757,28 @@ smoke-test artifact
 deploy artifact
      |
      v
-Azure starts backend directly
+configured Azure startup launches backend
 ```
 
-The deployment artifact should contain everything needed at runtime without depending on Azure reconstructing an npm workspace symlink.
+The backend workflow creates `.deployment/backend` from the root `package-lock.json`. It contains the
+compiled backend, compiled shared contracts, the runtime CA certificate and production dependencies.
+During assembly, the npm workspace link for `@sport-analytics/contracts` is replaced with a physical
+directory. The workflow then starts this artifact and checks its health endpoint before deployment.
 
-One suitable approach is to create a staging artifact in CI where the compiled shared contract package is copied/installed as a real runtime dependency rather than represented only by a workspace symlink.
+The existing Azure startup workaround remains configured until a merged live deployment proves the
+artifact and the App Service startup command is changed deliberately. The publish-profile workflow
+does not make that Azure configuration change.
 
-The exact packaging method should be selected and documented through an Architecture Decision Record before replacing the working recovery configuration.
+### Remaining criteria for removing the workaround
 
-### Acceptance criteria for permanent fix
-
-The permanent deployment task is complete only when:
+The recovery workaround may be removed only when:
 
 - CI builds `@sport-analytics/contracts`;
 - CI builds the backend;
-- a clean deployment artifact is generated;
-- the artifact contains all runtime dependencies;
-- `@sport-analytics/contracts` resolves without an Azure startup symlink repair;
-- the artifact passes a local/CI production startup smoke test;
-- Gitea automatically deploys it;
+- the merged Gitea workflow generates and deploys the clean runtime artifact;
+- the artifact contains all runtime dependencies and a physical contracts package;
+- the artifact passes its pre-deployment startup health check;
+- a live Gitea deployment and its post-deployment checks pass;
 - Azure starts using a normal backend startup command;
 - `/api/v1/health` returns `200`;
 - `/api/v1/competitions` returns database data;
@@ -792,13 +787,14 @@ The permanent deployment task is complete only when:
 - deployment documentation is updated;
 - no secrets are committed.
 
-Only after all of these conditions are met should the temporary Azure startup workaround be removed.
+Only after the live evidence and configuration change are complete should the temporary Azure startup
+workaround be removed.
 
 ---
 
-## 22. Recommended CI deployment checks
+## 22. Backend CI deployment checks
 
-A successful backend deployment pipeline should perform at least:
+The backend deployment pipeline performs:
 
 ```text
 dependency installation
@@ -831,21 +827,22 @@ Azure deployment
 post-deployment health test
 ```
 
-A failed health check should fail the deployment workflow rather than silently reporting success.
-
-Where practical, an additional read-only smoke test should verify:
+A failed artifact or deployed health check fails the workflow. The deployed workflow also verifies the
+read-only database-backed path:
 
 ```text
 GET /api/v1/competitions?limit=1
 ```
 
-so that deployment verifies both the process and database connectivity.
+so that deployment verifies both the process and database connectivity. The helper retries normal
+App Service warm-up failures, reports each attempt and exits unsuccessfully after the configured
+limit.
 
 ---
 
-## 23. Recommended frontend deployment checks
+## 23. Frontend CI deployment checks
 
-The frontend workflow should:
+The frontend workflow:
 
 1. install dependencies reproducibly;
 2. run frontend tests;
@@ -853,7 +850,7 @@ The frontend workflow should:
 4. provide `VITE_API_BASE_URL` at build time;
 5. deploy the resulting frontend artifact;
 6. verify the frontend URL is reachable;
-7. perform an end-to-end or browser test against the deployed API.
+7. fails if the deployed response does not contain the expected application title.
 
 The value of:
 
@@ -861,7 +858,9 @@ The value of:
 VITE_API_BASE_URL
 ```
 
-must point to the actual deployed API hostname.
+must point to the actual deployed API hostname. `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_PUBLISHABLE_KEY` are also provided from Gitea secrets during the Vite build. These
+values are not printed by the workflow.
 
 ---
 
@@ -1035,15 +1034,13 @@ Do not create or alter evidence retrospectively. Preserve the actual commands, s
 
 ### High priority
 
-- Replace the runtime workspace-symlink repair with a self-contained backend deployment artifact.
-- Verify and repair the Gitea backend deployment workflow.
-- Verify and repair the Gitea frontend deployment workflow.
-- Ensure changes to `packages/contracts` trigger backend validation/build/deployment where appropriate.
+- Merge the repaired frontend and backend deployment workflows and retain their passing Gitea Action
+  links and smoke-check output.
+- Verify the generated backend artifact on Azure, switch the App Service to the normal startup command
+  and then remove the runtime workspace-link repair.
 - Remove the obsolete `CORS_ALLOWED_ORIGINS` example if it remains unused.
-- Verify frontend build-time environment variables in Gitea.
-- Add post-deployment health checks.
-- Add deployment failure handling to CI/CD.
-- Capture evidence of successful automated deployments.
+- Verify the configured frontend build-time secrets in Gitea without exposing their values.
+- Capture evidence of successful automated deployments and the database-backed backend check.
 
 ### Before Milestone 2
 
@@ -1166,7 +1163,9 @@ and verified API health, database-backed competition retrieval, pagination, CORS
 
 The main outstanding deployment risk is the temporary npm-workspace symlink repair in the backend App Service startup command.
 
-The next deployment objective is therefore not another manual Azure fix. It is to convert the currently working state into a **deterministic, tested and documented Gitea CI/CD deployment**.
+The repaired workflows create a deterministic, tested deployment path. The next deployment objective
+is to merge them, retain passing live evidence and then remove the temporary Azure startup workaround
+through a deliberate configuration change.
 
 ---
 
@@ -1177,5 +1176,8 @@ The preceding document was generated with the assistance of:
 **ChatGPT Web[GPT-5.6 Thinking]**
 
 Purpose: review of deployment troubleshooting, technical documentation, organisation of recovery evidence, and CI/CD follow-up planning.
+
+The workflow repair, artifact packaging and smoke-check sections were updated with the assistance of
+**Codex[GPT-5]**.
 
 The project team must review this document against the repository, Azure configuration, logs and Gitea evidence before merging it.

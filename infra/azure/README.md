@@ -12,8 +12,19 @@ Current deployment boundaries are:
 
 This directory is for Azure-specific infrastructure and operational notes. It must not contain subscription credentials, publish profiles, database passwords, API tokens or other secrets.
 
-Deployment workflow verification, health checks, rollback evidence and any future infrastructure changes should be recorded through the relevant Gitea issue and Pull Request rather than by silently changing these notes.
+The application deployment definitions are `.gitea/workflows/deploy-frontend.yml` and
+`.gitea/workflows/deploy-backend.yml`. They build from the root npm workspace and deploy
+`apps/frontend/dist` and the generated `.deployment/backend` artifact respectively. Both workflows
+run retrying post-deployment checks; the backend also starts its generated artifact locally before
+deployment.
+
+Publish profiles remain Gitea Action secrets. Backend runtime secrets remain Azure App Service
+settings, while the public-safe frontend Vite configuration is supplied from Gitea secrets at build
+time. Deployment results, smoke-check output, rollback evidence and future infrastructure changes
+must be recorded through the relevant Gitea issue and Pull Request rather than by silently changing
+these notes.
 
 ## AI Declaration
 
-The preceding document was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol] and
+Codex[GPT-5].
