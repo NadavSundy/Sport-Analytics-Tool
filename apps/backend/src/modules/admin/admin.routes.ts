@@ -6,6 +6,7 @@ import { requireAdministrator } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import {
   createAdminListUsersController,
+  createAdminRejectSubmitterAccessRequestController,
   createAdminUpdateSubmitterAccessController,
 } from './admin.controller';
 import type { AdminService } from './admin.service';
@@ -25,6 +26,12 @@ export function createAdminRouter(
     authenticate,
     authorize,
     createAdminUpdateSubmitterAccessController(service),
+  );
+  router.post(
+    '/admin/users/:userId/submitter-access/rejection',
+    authenticate,
+    authorize,
+    createAdminRejectSubmitterAccessRequestController(service),
   );
 
   return router;

@@ -7,7 +7,10 @@ import type { Pool } from 'pg';
 
 import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
 import { isApplicationRole, isSubmitterApprovalState } from '../accounts/account';
-import { resolveSubmitterAccessTransition } from './admin-access-policy';
+import {
+  resolveSubmitterAccessTransition,
+  type SubmitterAccessAction,
+} from './admin-access-policy';
 import {
   AdminManagementConflictError,
   AdminUserNotFoundError,
@@ -45,6 +48,10 @@ export interface AdminRepository {
     targetAccountId: string,
     administratorAccountId: string,
     update: AdministratorSubmitterAccessUpdate,
+  ): Promise<AdministratorManagedUser>;
+  rejectSubmitterAccessRequest(
+    targetAccountId: string,
+    administratorAccountId: string,
   ): Promise<AdministratorManagedUser>;
 }
 
@@ -170,6 +177,125 @@ async function listCompetitionScopes(
   return result.rows;
 }
 
+async function applySubmitterAccessTransition(
+  pool: Pool,
+  targetAccountId: string,
+  administratorAccountId: string,
+  action: SubmitterAccessAction,
+  competitionIds: string[],
+): Promise<AdministratorManagedUser> {
+  return withTransaction(pool, async (client) => {
+    const targetResult = await executeQuery<TargetAccountRow>(
+      client,
+      `
+        SELECT
+          application_role AS role,
+          submitter_approval_state AS "approvalState",
+          disabled_at AS "disabledAt"
+        FROM app_user
+        WHERE app_user_id = $1
+        FOR UPDATE
+      `,
+      [targetAccountId],
+    );
+    const target = targetResult.rows[0];
+
+    if (!target) {
+      throw new AdminUserNotFoundError();
+    }
+
+    if (!isApplicationRole(target.role)) {
+      throw new Error('Managed application account has an unsupported role');
+    }
+
+    if (!isSubmitterApprovalState(target.approvalState)) {
+      throw new Error('Managed application account has an unsupported approval state');
+    }
+
+    if (target.role === 'admin') {
+      throw new AdminManagementConflictError(
+        'ADMIN_ACCOUNT_NOT_MANAGEABLE',
+        'Administrator accounts cannot be changed through submitter access management.',
+      );
+    }
+
+    if (target.disabledAt) {
+      throw new AdminManagementConflictError(
+        'DISABLED_ACCOUNT_NOT_MANAGEABLE',
+        'Disabled accounts cannot be changed through submitter access management.',
+      );
+    }
+
+    const transition = resolveSubmitterAccessTransition(
+      { role: target.role, approvalState: target.approvalState },
+      action,
+    );
+    const grantsAccess = transition === 'approve' || transition === 'scope';
+    const requestedCompetitionIds = [...new Set(competitionIds)];
+
+    if (grantsAccess && requestedCompetitionIds.length === 0) {
+      throw new InvalidCompetitionScopesError([]);
+    }
+
+    if (grantsAccess) {
+      const validScopes = await executeQuery<{ competitionId: string }>(
+        client,
+        `
+          SELECT competition_id::text AS "competitionId"
+          FROM competition
+          WHERE competition_id = ANY($1::bigint[])
+        `,
+        [requestedCompetitionIds],
+      );
+      const validIds = new Set(validScopes.rows.map((scope) => scope.competitionId));
+      const invalidIds = requestedCompetitionIds.filter(
+        (competitionId) => !validIds.has(competitionId),
+      );
+
+      if (invalidIds.length > 0) {
+        throw new InvalidCompetitionScopesError(invalidIds);
+      }
+    }
+
+    await executeQuery(
+      client,
+      `
+        UPDATE app_user
+        SET
+          application_role = $2,
+          submitter_approval_state = $3,
+          submitter_access_updated_at = now(),
+          submitter_access_updated_by = $4
+        WHERE app_user_id = $1
+      `,
+      [
+        targetAccountId,
+        grantsAccess ? 'submitter' : 'viewer',
+        transition === 'reject' ? 'rejected' : 'approved',
+        administratorAccountId,
+      ],
+    );
+
+    await executeQuery(client, 'DELETE FROM submitter_competition_scope WHERE app_user_id = $1', [
+      targetAccountId,
+    ]);
+
+    if (grantsAccess) {
+      await executeQuery(
+        client,
+        `
+          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+          SELECT $1, requested.competition_id
+          FROM unnest($2::bigint[]) AS requested(competition_id)
+        `,
+        [targetAccountId, requestedCompetitionIds],
+      );
+    }
+
+    return findUserById(targetAccountId, client);
+  });
+}
+
 export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepository {
   return {
     async listUserManagementData() {
@@ -182,114 +308,23 @@ export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepo
     },
 
     async updateSubmitterAccess(targetAccountId, administratorAccountId, update) {
-      return withTransaction(pool, async (client) => {
-        const targetResult = await executeQuery<TargetAccountRow>(
-          client,
-          `
-            SELECT
-              application_role AS role,
-              submitter_approval_state AS "approvalState",
-              disabled_at AS "disabledAt"
-            FROM app_user
-            WHERE app_user_id = $1
-            FOR UPDATE
-          `,
-          [targetAccountId],
-        );
-        const target = targetResult.rows[0];
+      return applySubmitterAccessTransition(
+        pool,
+        targetAccountId,
+        administratorAccountId,
+        update.approved ? 'grant' : 'revoke',
+        update.competitionIds,
+      );
+    },
 
-        if (!target) {
-          throw new AdminUserNotFoundError();
-        }
-
-        if (!isApplicationRole(target.role)) {
-          throw new Error('Managed application account has an unsupported role');
-        }
-
-        if (!isSubmitterApprovalState(target.approvalState)) {
-          throw new Error('Managed application account has an unsupported approval state');
-        }
-
-        if (target.role === 'admin') {
-          throw new AdminManagementConflictError(
-            'ADMIN_ACCOUNT_NOT_MANAGEABLE',
-            'Administrator accounts cannot be changed through submitter access management.',
-          );
-        }
-
-        if (target.disabledAt) {
-          throw new AdminManagementConflictError(
-            'DISABLED_ACCOUNT_NOT_MANAGEABLE',
-            'Disabled accounts cannot be changed through submitter access management.',
-          );
-        }
-
-        resolveSubmitterAccessTransition(
-          { role: target.role, approvalState: target.approvalState },
-          update,
-        );
-
-        const requestedCompetitionIds = [...new Set(update.competitionIds)];
-
-        if (update.approved) {
-          const validScopes = await executeQuery<{ competitionId: string }>(
-            client,
-            `
-              SELECT competition_id::text AS "competitionId"
-              FROM competition
-              WHERE competition_id = ANY($1::bigint[])
-            `,
-            [requestedCompetitionIds],
-          );
-          const validIds = new Set(validScopes.rows.map((scope) => scope.competitionId));
-          const invalidIds = requestedCompetitionIds.filter(
-            (competitionId) => !validIds.has(competitionId),
-          );
-
-          if (invalidIds.length > 0) {
-            throw new InvalidCompetitionScopesError(invalidIds);
-          }
-        }
-
-        await executeQuery(
-          client,
-          `
-            UPDATE app_user
-            SET
-              application_role = $2,
-              submitter_approval_state = $3,
-              submitter_access_updated_at = now(),
-              submitter_access_updated_by = $4
-            WHERE app_user_id = $1
-          `,
-          [
-            targetAccountId,
-            update.approved ? 'submitter' : 'viewer',
-            update.approved ? 'approved' : 'rejected',
-            administratorAccountId,
-          ],
-        );
-
-        await executeQuery(
-          client,
-          'DELETE FROM submitter_competition_scope WHERE app_user_id = $1',
-          [targetAccountId],
-        );
-
-        if (update.approved) {
-          await executeQuery(
-            client,
-            `
-              INSERT INTO submitter_competition_scope (app_user_id, competition_id)
-              SELECT $1, requested.competition_id
-              FROM unnest($2::bigint[]) AS requested(competition_id)
-            `,
-            [targetAccountId, requestedCompetitionIds],
-          );
-        }
-
-        return findUserById(targetAccountId, client);
-      });
+    async rejectSubmitterAccessRequest(targetAccountId, administratorAccountId) {
+      return applySubmitterAccessTransition(
+        pool,
+        targetAccountId,
+        administratorAccountId,
+        'reject',
+        [],
+      );
     },
   };
 }

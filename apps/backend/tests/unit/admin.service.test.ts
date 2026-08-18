@@ -21,6 +21,17 @@ function repository(): AdminRepository {
       submitterAccessUpdatedAt: '2026-08-16T12:00:00.000Z',
       submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
     }),
+    rejectSubmitterAccessRequest: vi.fn().mockResolvedValue({
+      id: '42',
+      displayName: 'Contributor',
+      role: 'viewer',
+      approvalState: 'rejected',
+      competitionScopes: [],
+      disabled: false,
+      updatedAt: '2026-08-16T12:00:00.000Z',
+      submitterAccessUpdatedAt: '2026-08-16T12:00:00.000Z',
+      submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
+    }),
   };
 }
 
@@ -58,5 +69,26 @@ describe('administrator user-management service', () => {
       }),
     ).rejects.toMatchObject({ code: 'SELF_MANAGEMENT_NOT_ALLOWED' });
     expect(adminRepository.updateSubmitterAccess).not.toHaveBeenCalled();
+  });
+
+  test('passes the administrator identity when rejecting a pending request', async () => {
+    const adminRepository = repository();
+    const service = createAdminService(adminRepository);
+    const administrator = createTestAccount({ accountId: '1', role: 'admin' });
+
+    await service.rejectSubmitterAccessRequest(administrator, '42');
+
+    expect(adminRepository.rejectSubmitterAccessRequest).toHaveBeenCalledWith('42', '1');
+  });
+
+  test('does not allow an administrator to reject their own request', async () => {
+    const adminRepository = repository();
+    const service = createAdminService(adminRepository);
+    const administrator = createTestAccount({ accountId: '42', role: 'admin' });
+
+    await expect(service.rejectSubmitterAccessRequest(administrator, '42')).rejects.toMatchObject({
+      code: 'SELF_MANAGEMENT_NOT_ALLOWED',
+    });
+    expect(adminRepository.rejectSubmitterAccessRequest).not.toHaveBeenCalled();
   });
 });

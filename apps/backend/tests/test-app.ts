@@ -63,6 +63,9 @@ const testAdminService: AdminService = {
   async updateSubmitterAccess() {
     throw new Error('The test administrator service was not configured for an update.');
   },
+  async rejectSubmitterAccessRequest() {
+    throw new Error('The test administrator service was not configured for a rejection.');
+  },
 };
 
 export function createTestApp(

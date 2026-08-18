@@ -252,11 +252,12 @@ The administrator update endpoint enforces these review transitions while holdin
 pending viewer     -> approved submitter
 pending viewer     -> rejected viewer
 approved submitter -> approved submitter with replacement scope
-approved submitter -> rejected viewer with no scope
+approved submitter -> viewer with no scope (request decision remains approved)
 ```
 
-Viewers in `not_requested` or `rejected` cannot be approved directly. They receive `409 Conflict`
-with `SUBMITTER_REQUEST_NOT_PENDING`, so hiding the frontend controls is never the authorization
+Approval and rejection are permitted only from `pending`. Scope replacement and revocation are
+permitted only for an existing approved submitter. Other lifecycle changes receive `409 Conflict`
+with `INVALID_SUBMITTER_ACCESS_TRANSITION`, so hiding frontend controls is never the authorization
 boundary. A rejected viewer must create a new request to return to `pending` before approval.
 
 Protected routes compose reusable middleware in this order:

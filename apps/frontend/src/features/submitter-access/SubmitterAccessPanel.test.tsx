@@ -244,17 +244,19 @@ describe('submitter access request and status interface', () => {
 
     renderAccountPage();
 
-    expect(await screen.findByText(/legacy approval record is approved/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/previously approved submitter access has been revoked/i),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Submit events' })).toBeNull();
   });
 
-  it('explains rejected or revoked access and permits a new request', async () => {
+  it('explains rejected access and permits a new request', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('rejected')));
 
     renderAccountPage();
 
     expect(await screen.findByText('Not approved')).toBeInTheDocument();
-    expect(screen.getByText(/declined or your access was revoked/i)).toBeInTheDocument();
+    expect(screen.getByText(/previous request was declined/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Request submitter access' })).toBeEnabled();
   });
 

@@ -13,6 +13,7 @@ import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import {
   AdminUserManagementContractError,
   getAdministratorUserManagement,
+  rejectAdministratorSubmitterAccessRequest,
   updateAdministratorSubmitterAccess,
 } from './admin-api';
 
@@ -271,7 +272,9 @@ function ManagedUserCard({
                 ? 'No submitter access request has been made.'
                 : user.approvalState === 'rejected'
                   ? 'This request was rejected. The user must make a new request before approval.'
-                  : 'This account has no actionable pending submitter request.'}
+                  : user.approvalState === 'approved'
+                    ? "This account's previously approved submitter access has been revoked."
+                    : 'This account has no actionable pending submitter request.'}
         </p>
       )}
 
@@ -348,7 +351,10 @@ export function AdminUsersPage() {
     setFeedback(undefined);
 
     try {
-      const updatedUser = await updateAdministratorSubmitterAccess(client, user.id, update);
+      const updatedUser =
+        kind === 'reject'
+          ? await rejectAdministratorSubmitterAccessRequest(client, user.id)
+          : await updateAdministratorSubmitterAccess(client, user.id, update);
 
       setPageState((current) =>
         current.kind === 'ready'

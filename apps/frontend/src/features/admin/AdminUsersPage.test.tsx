@@ -281,9 +281,9 @@ describe('administrator user management page', () => {
       await screen.findByText('Submitter request was rejected for Pending Contributor.'),
     ).toBeInTheDocument();
     expect(within(await userCard()).queryByRole('button')).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls[2]?.[0]).toContain('/admin/users/42/submitter-access/rejection');
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
-      method: 'PATCH',
-      body: JSON.stringify({ approved: false, competitionIds: [] }),
+      method: 'POST',
     });
   });
 
@@ -326,7 +326,7 @@ describe('administrator user management page', () => {
       approvalState: 'approved',
       competitionScopes: [availableScopes[0]!],
     });
-    const revoked = managedUser({ approvalState: 'rejected', competitionScopes: [] });
+    const revoked = managedUser({ approvalState: 'approved', competitionScopes: [] });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser())
@@ -345,7 +345,7 @@ describe('administrator user management page', () => {
     ).toBeInTheDocument();
     expect(
       within(await userCard()).getByText(
-        'This request was rejected. The user must make a new request before approval.',
+        "This account's previously approved submitter access has been revoked.",
       ),
     ).toBeInTheDocument();
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({

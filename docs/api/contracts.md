@@ -76,12 +76,14 @@ Administrator submitter access
 ------------------------------
 
 `GET /api/v1/admin/users` and
-`PATCH /api/v1/admin/users/{userId}/submitter-access` require the authoritative `admin` role.
+`PATCH /api/v1/admin/users/{userId}/submitter-access` require the authoritative `admin` role. A
+pending request is rejected through the separate administrator-only
+`POST /api/v1/admin/users/{userId}/submitter-access/rejection` action.
 
 New approval and rejection decisions require the target to be a `viewer` with a persisted `pending`
-request. A `not_requested` or `rejected` viewer receives `409 SUBMITTER_REQUEST_NOT_PENDING` and
-must create a new request before approval. Existing approved submitters may still be re-scoped or
-revoked through the same endpoint.
+request. A `not_requested` or `rejected` viewer receives
+`409 INVALID_SUBMITTER_ACCESS_TRANSITION` and must create a new request before approval. Existing
+approved submitters may still be re-scoped or revoked through the PATCH endpoint.
 
 Approval replaces the complete competition scope and requires one or more unique, existing
 competition identifiers:
@@ -102,10 +104,18 @@ Revocation always sends an empty scope:
 }
 ```
 
+Approval is valid only for a `pending` viewer. Scope replacement and revocation are valid only for
+an existing `approved` submitter. Revocation removes the `submitter` role and all scopes while
+retaining the historical `approved` request decision. Rejection applies only to a `pending` viewer,
+keeps the `viewer` role, writes `rejected`, and removes all scopes. A rejected viewer may request
+access again.
+
 The returned user includes the effective role, compatibility approval state, named competition
 scopes, and the latest submitter-access change actor/time. `403` means the caller is not an
-administrator; malformed or nonexistent scopes return `422`; protected or self-targeted changes
-return `409`.
+administrator; malformed or nonexistent scopes return `422`; protected, self-targeted, or invalid
+lifecycle changes return `409`. Invalid lifecycle changes use the stable
+`INVALID_SUBMITTER_ACCESS_TRANSITION` code and do not change role, request state, scopes, or audit
+fields.
 
 Errors
 ──────

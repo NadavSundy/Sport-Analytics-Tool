@@ -200,14 +200,14 @@ export function SubmitterAccessPanel() {
         </p>
       ) : profileState.profile.approvalState === 'approved' ? (
         <p className="submitter-access-panel__message" role="status">
-          Your legacy approval record is approved, but your account role does not currently permit
-          submissions. Ask an administrator to review your role.
+          Your previously approved submitter access has been revoked. Your account no longer permits
+          submissions.
         </p>
       ) : (
         <div className="submitter-access-panel__message">
           <p>
             {profileState.profile.approvalState === 'rejected'
-              ? 'Your previous request was declined or your access was revoked. You can send a new request for review.'
+              ? 'Your previous request was declined. You can send a new request for review.'
               : 'Request permission to contribute cricket delivery-event data. An administrator will review your request and assign any competition scope.'}
           </p>
           <button

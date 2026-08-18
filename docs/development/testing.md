@@ -242,7 +242,8 @@ The Account-page suite verifies the complete user-facing request workflow:
 - stale eligible views refresh after the backend reports an active-request conflict;
 - `submitter` and `admin` roles receive submission access without a request action;
 - a legacy `approved` request state on a viewer does not grant submission access;
-- rejected or revoked users receive a clear state and may request another review; and
+- rejected users receive a clear state and may request another review, while revoked viewers retain
+  the historical approved decision without submission access; and
 - malformed profiles and backend request failures produce safe, actionable feedback.
 
 The request-response contract suite additionally verifies that only a persisted `pending` result is
