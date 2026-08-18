@@ -52,7 +52,6 @@ Current runtime variables are:
 | `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)    | No     | Comma-separated browser origins allowed by Express CORS middleware.                         |
 | `SUPABASE_URL`             | Yes                                         | No     | Supabase project URL used by backend token verification.                                    |
 | `SUPABASE_PUBLISHABLE_KEY` | Yes                                         | No     | Publishable key used with `supabase.auth.getUser(accessToken)`.                             |
-| `SUPABASE_SECRET_KEY`      | Yes                                         | Yes    | Server-only key used for administrative Auth account deletion. Never expose it to Vite.     |
 | `DATABASE_URL`             | Required for database-backed routes/scripts | Yes    | PostgreSQL session-pooler connection string.                                                |
 | `DATABASE_URL_TEST`        | Required for database integration tests     | Yes    | Dedicated isolated test PostgreSQL database. Must never point to development or production. |
 
@@ -88,7 +87,7 @@ Default endpoints include:
 
 - `http://localhost:3000/api/v1/health`
 - `http://localhost:3000/api/v1/auth/me`
-- `DELETE http://localhost:3000/api/v1/account`
+- `DELETE http://localhost:3000/api/v1/account` (currently returns `501`; see below)
 - `http://localhost:3000/api/v1/admin/users` (administrator only)
 - `http://localhost:3000/api/v1/fixtures/{fixtureId}/events` (public accepted events)
 
@@ -155,7 +154,14 @@ The backend is hosted on Azure App Service.
 
 ### Backend fails immediately with invalid environment configuration
 
-Populate `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. The environment schema validates these values at startup. The secret key must stay on the backend and may be a current Supabase secret key or a legacy `service_role` key during migration.
+Populate `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The environment schema validates these
+values at startup.
+
+### Account deletion returns `501 ACCOUNT_DELETION_UNAVAILABLE`
+
+The backend intentionally uses publishable-only Supabase access. Supabase Auth administrative user
+deletion requires elevated provider access, so the current runtime rejects account deletion before
+changing deletion state. Do not replace the publishable key with an elevated key.
 
 ### `DATABASE_URL is not configured`
 

@@ -2,11 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
-import {
-  createSupabaseAdminUserDeleter,
-  createSupabaseTokenVerifier,
-  type VerifyAccessToken,
-} from './auth/supabase-auth';
+import { createSupabaseTokenVerifier, type VerifyAccessToken } from './auth/supabase-auth';
 import { loadEnvironment, type Environment } from './config/env';
 import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
@@ -38,7 +34,7 @@ import {
 } from './modules/submitter-access/submitter-access.service';
 import { createAccountDeletionRouter } from './modules/account-deletion/account-deletion.routes';
 import {
-  createAccountDeletionService,
+  createUnavailableAccountDeletionService,
   type AccountDeletionService,
 } from './modules/account-deletion/account-deletion.service';
 import { createAdminRouter } from './modules/admin/admin.routes';
@@ -68,8 +64,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
   const accountDeletionService =
-    dependencies.accountDeletionService ??
-    createAccountDeletionService(createSupabaseAdminUserDeleter(environment));
+    dependencies.accountDeletionService ?? createUnavailableAccountDeletionService();
   const adminService = dependencies.adminService ?? createAdminService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())

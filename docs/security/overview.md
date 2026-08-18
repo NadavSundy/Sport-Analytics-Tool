@@ -25,7 +25,9 @@ See:
 
 ## Account deletion and retention
 
-Deleting an account removes the managed Supabase identity and personal application-account
+Account deletion is unavailable in the current publishable-only runtime. The reserved endpoint
+returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing local state. The retained
+provider-capable design would remove the managed Supabase identity and personal application-account
 identifiers, permissions, approval, and scopes. Accepted cricket data is not personal profile data
 and remains necessary to reproduce published statistics and preserve submission provenance.
 

@@ -6,6 +6,7 @@ import type { ApplicationAccount } from '../accounts/account';
 import { hashAuthenticationSubject } from '../accounts/account-subject';
 import {
   AccountDeletionIncompleteError,
+  AccountDeletionUnavailableError,
   RecentAuthenticationRequiredError,
 } from './account-deletion.errors';
 import {
@@ -20,6 +21,14 @@ export interface AccountDeletionService {
     account: ApplicationAccount,
     identity: VerifiedIdentity,
   ): Promise<AccountDeletionResponse>;
+}
+
+export function createUnavailableAccountDeletionService(): AccountDeletionService {
+  return {
+    async deleteAccount() {
+      throw new AccountDeletionUnavailableError();
+    },
+  };
 }
 
 function isRecentAuthentication(identity: VerifiedIdentity, now: Date): boolean {

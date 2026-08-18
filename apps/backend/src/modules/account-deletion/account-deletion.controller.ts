@@ -8,6 +8,7 @@ import type { VerifiedIdentity } from '../../auth/supabase-auth';
 import type { ApplicationAccount } from '../accounts/account';
 import {
   AccountDeletionIncompleteError,
+  AccountDeletionUnavailableError,
   RecentAuthenticationRequiredError,
 } from './account-deletion.errors';
 import type { AccountDeletionService } from './account-deletion.service';
@@ -54,6 +55,16 @@ export function createAccountDeletionController(service: AccountDeletionService)
         response.status(200).json(accountDeletionResponseSchema.parse(result));
       })
       .catch((error: unknown) => {
+        if (error instanceof AccountDeletionUnavailableError) {
+          response.status(501).json({
+            error: {
+              code: error.code,
+              message: error.message,
+            },
+          });
+          return;
+        }
+
         if (error instanceof RecentAuthenticationRequiredError) {
           response.status(403).json({
             error: {

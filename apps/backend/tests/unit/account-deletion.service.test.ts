@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { DeleteAuthUser, VerifiedIdentity } from '../../src/auth/supabase-auth';
 import type { AccountDeletionRepository } from '../../src/modules/account-deletion/account-deletion.repository';
-import { createAccountDeletionService } from '../../src/modules/account-deletion/account-deletion.service';
+import {
+  createAccountDeletionService,
+  createUnavailableAccountDeletionService,
+} from '../../src/modules/account-deletion/account-deletion.service';
 import type { ApplicationAccount } from '../../src/modules/accounts/account';
 import { hashAuthenticationSubject } from '../../src/modules/accounts/account-subject';
 
@@ -41,6 +44,15 @@ describe('account deletion service', () => {
 
   beforeEach(() => {
     deleteAuthUser = vi.fn<DeleteAuthUser>().mockResolvedValue('deleted');
+  });
+
+  test('fails safely without changing account state when provider administration is unavailable', async () => {
+    const service = createUnavailableAccountDeletionService();
+
+    await expect(service.deleteAccount(account, recentIdentity)).rejects.toMatchObject({
+      name: 'AccountDeletionUnavailableError',
+      code: 'ACCOUNT_DELETION_UNAVAILABLE',
+    });
   });
 
   test('disables locally before deleting Auth and then finalizes the tombstone', async () => {

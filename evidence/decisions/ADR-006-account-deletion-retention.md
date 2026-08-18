@@ -1,11 +1,16 @@
 # ADR-006: Account deletion retention and tombstoning
 
-- **Status:** Accepted
+- **Status:** Superseded for the current runtime
 - **Date:** 2026-08-16
 - **Participants:** Gabriel Raz, Git Push Pray project team
 - **Related issue:** #66
 
 ## Context
+
+On 17 August 2026, the runtime was changed to use publishable-only Supabase access. Supabase Auth
+administrative deletion is therefore unavailable, and the HTTP endpoint now rejects the operation
+before changing local state. The remainder of this ADR records the earlier issue #66 design and is
+retained as historical context for any future provider-capable implementation.
 
 An application account is both a personal account record and the stable owner of cricket-data
 submissions. Deleting the row would either break submission provenance or encourage a cascading

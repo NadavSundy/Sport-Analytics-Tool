@@ -84,59 +84,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /api/v1/account:
-    delete:
-      tags:
-        - Authentication and Profile
-      summary: Permanently delete the authenticated account
-      description: |
-        Requires an exact `DELETE` confirmation and a Supabase sign-in no more
-        than 15 minutes old. The backend immediately disables the local account,
-        removes its authorisation grants, hard-deletes its Supabase Auth user,
-        and tombstones local identity fields.
-
-        Cricket submissions, fixtures, deliveries, statistics and their stable
-        provenance link remain available without the former display name or
-        reusable authentication subject.
-      operationId: deleteCurrentAccount
-      x-implementation-status: implemented
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountDeletionRequest'
-      responses:
-        '200':
-          description: Account identity deleted and local session may now be cleared.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountDeletionResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: The identity was not authenticated recently enough.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '422':
-          description: The exact deletion confirmation was not supplied.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '503':
-          description: |
-            Deletion could not be completed. The local account remains disabled
-            and the operation can be retried safely.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/submitter-access-requests:
     post:
       tags:
@@ -932,34 +879,6 @@ components:
               uniqueItems: true
               items:
                 $ref: '#/components/schemas/ApiIdentifier'
-    AccountDeletionRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - confirmation
-      properties:
-        confirmation:
-          type: string
-          const: DELETE
-    AccountDeletionResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - data
-      properties:
-        data:
-          type: object
-          additionalProperties: false
-          required:
-            - status
-            - retainedCricketData
-          properties:
-            status:
-              type: string
-              const: deleted
-            retainedCricketData:
-              type: boolean
-              const: true
     SubmitterAccessRequestResponse:
       type: object
       additionalProperties: false

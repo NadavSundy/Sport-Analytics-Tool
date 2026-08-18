@@ -51,6 +51,10 @@ function deletionErrorMessage(error: unknown): string {
     if (error.code === 'ACCOUNT_DELETION_INCOMPLETE') {
       return 'Deletion could not be completed. Your account is disabled and the operation can be retried safely.';
     }
+
+    if (error.code === 'ACCOUNT_DELETION_UNAVAILABLE') {
+      return 'Account deletion is currently unavailable.';
+    }
   }
 
   return 'We could not delete your account. Please try again.';
