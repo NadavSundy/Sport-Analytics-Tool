@@ -16,6 +16,7 @@
     "db:check": "tsx --env-file=.env scripts/check-connection.ts",
     "db:seed": "tsx --env-file=.env scripts/seed.ts",
     "db:latency": "tsx --env-file=.env scripts/latency.ts",
+    "db:import": "tsx --env-file=.env scripts/import-corpus.ts",
     "db:ingest": "tsx --env-file=.env scripts/ingest-match.ts",
     "db:validate": "tsx --env-file=.env scripts/validate-match.ts",
     "db:sql": "tsx --env-file=.env scripts/sql.ts",
