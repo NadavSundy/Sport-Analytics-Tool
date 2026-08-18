@@ -82,14 +82,19 @@ Deployment automation is configured using Gitea Actions.
 
 The deployment workflow will:
 
-1. Install dependencies
-2. Run project checks
-3. Build the application
-4. Deploy to Azure App Service
+1. install root workspace dependencies from `package-lock.json`;
+2. lint, type-check and test the affected workspace and shared contracts;
+3. build the application from its `apps/frontend` or `apps/backend` workspace;
+4. deploy the prepared application bundle to Azure App Service; and
+5. retry a content-aware smoke or health check against the deployed service.
 
 Deployment credentials are stored securely using repository Action Secrets.
 
 No deployment credentials are committed to source control.
+
+See [Azure frontend deployment](docs/deployment/azure-fronted.md) and
+[Azure backend deployment](docs/deployment/azure-backend.md) for workflow triggers, required Gitea
+secrets, artifact contents and failure behaviour.
 
 Default local URLs:
 
