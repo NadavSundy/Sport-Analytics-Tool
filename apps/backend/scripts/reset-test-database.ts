@@ -1,15 +1,20 @@
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 import { Client } from 'pg';
 
 import { assertSafeTestDatabase } from './test-database-safety';
 
 async function runMigrations(): Promise<void> {
+  const migrationCli = createRequire(import.meta.url).resolve(
+    'node-pg-migrate/bin/node-pg-migrate',
+  );
+
   await new Promise<void>((resolve, reject) => {
     const child = spawn(
-      'npx',
+      process.execPath,
       [
-        'node-pg-migrate',
+        migrationCli,
         'up',
         '--database-url-var',
         'DATABASE_URL_TEST',
@@ -21,7 +26,6 @@ async function runMigrations(): Promise<void> {
       {
         cwd: new URL('..', import.meta.url),
         env: process.env,
-        shell: process.platform === 'win32',
         stdio: 'inherit',
       },
     );
