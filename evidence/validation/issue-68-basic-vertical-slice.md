@@ -35,7 +35,7 @@ npm run test:database
 Test Files  7 passed (7)
 Tests       30 passed (30)
 
-npm run check
+VITE_API_BASE_URL=http://localhost:3000/api/v1 npm run check
 Backend unit tests       56 passed
 Frontend tests           65 passed
 Backend API tests        76 passed
