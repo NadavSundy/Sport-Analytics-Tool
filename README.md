@@ -124,6 +124,7 @@ Important starting documents:
 - [Environment Variables](docs/environment.md)
 - [Testing Strategy](docs/development/testing.md)
 - [Authentication Foundation](docs/security/authentication.md)
+- [Password Recovery Ownership](docs/security/password-recovery.md)
 - [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
 
 The project documentation is publicly available at:

@@ -19,6 +19,7 @@ a policy receive a consistent, non-disclosing `403`. Public read routes do not u
 See:
 
 - [Authentication, accounts and authorisation](authentication.md)
+- [Password recovery ownership](password-recovery.md)
 - [Roles and permissions](roles-and-permissions.md)
 - [Authentication provider comparison](auth-provider-comparison.md)
 - [Privacy and retention](privacy-retention.md)

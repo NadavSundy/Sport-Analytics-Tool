@@ -326,7 +326,7 @@ Where multiple issues are listed, they collectively satisfy or support the catal
 | S1-19        | Implement frontend authentication state, protected routes and authenticated API client                      | #64                                               |
 | S1-20        | Build Create Account, Sign In, Account, Sign Out and authentication navigation                              | #39                                               |
 | S1-21        | Build accessible sign-up and sign-in forms                                                                  | #39, supported by #57                             |
-| S1-22        | Build forgotten-password and password-reset flow                                                            | #65                                               |
+| S1-22        | Document Google-managed password recovery and the application credential boundary                           | #65                                               |
 | S1-23        | Implement secure account deletion across authentication and application data                                | #66                                               |
 | S1-24        | Implement administrator APIs for submitter approval, revocation and scope assignment                        | #45                                               |
 | S1-25        | Build administrator submitter approval and scope-management interface                                       | #45                                               |
@@ -365,7 +365,7 @@ They must be reviewed during Sprint 1 close-out and either:
 | #44   | Account synchronisation, profile API and role-based authorisation            |
 | #45   | Administrator submitter approval and scope management                        |
 | #64   | Frontend authentication state, protected routes and authenticated API client |
-| #65   | Forgotten-password and password-reset flow                                   |
+| #65   | Google-managed password-recovery decision and documentation                  |
 | #66   | Secure account deletion across authentication and application data           |
 
 Before #66 begins, its Gitea title and description must be checked for legacy Firebase terminology.

@@ -65,7 +65,7 @@ comparative, or explicit warnings against adding a second identity platform.
 
 No application functionality was changed as part of this audit.
 
-## Unresolved Issue #65 decision
+## Issue #65 decision at the time of the audit
 
 Issue #65 requests a forgotten-password and password-reset flow and depends on
 Supabase email/password authentication. The implemented frontend currently uses
@@ -82,6 +82,18 @@ Before #65 is implemented, the team must decide whether:
 
 This decision must be made through the project's architecture and review process.
 Issue #86 does not authorise enabling a new authentication method.
+
+### Resolution note — 18 August 2026
+
+The project subsequently selected the first option while Google OAuth remains the only supported
+sign-in method. Google owns recovery of the Google Account credential. The application does not
+implement `resetPasswordForEmail`, because completing that Supabase flow would set a separate
+Supabase email/password credential rather than changing the user's Google Account or Gmail
+password.
+
+The current decision and user journey are documented in
+`docs/security/password-recovery.md`. Adding Supabase email/password authentication remains a
+separate architecture and product decision.
 
 ## Search commands and results
 
@@ -122,7 +134,8 @@ https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?q=Firebase&t
 - Current authentication and architecture documentation identifies Supabase Auth
   as the selected provider.
 - No active runtime dependency or requirement instructs Firebase implementation.
-- The separate email/password decision required by #65 is recorded as unresolved.
+- At the time of this audit, the separate email/password decision required by #65 was unresolved;
+  the 18 August 2026 resolution note records the later Google-managed recovery decision.
 - No application functionality changed during this audit.
 - Peer review remains required before Issue #86 can be completed.
 
