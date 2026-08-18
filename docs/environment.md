@@ -58,3 +58,5 @@ Repository-hosted deployment secrets must be stored using the relevant platform 
 ## AI Declaration
 
 The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The publishable-only account-deletion limitation was documented with the assistance of
+Codex[GPT-5].

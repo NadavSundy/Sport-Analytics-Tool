@@ -1,5 +1,13 @@
 # ADR 0003
 
+> **Note:** This is a documentation-site ADR about **application hosting**. It is
+> a different record from `evidence/decisions/ADR-003-database-host-connection-and-migrations.md`,
+> which covers the **database host, connection method and migration tooling**.
+> The two share the number "003" by coincidence of separate sequences (`docs/adr/`
+> and `evidence/decisions/`); citations elsewhere in the documentation
+> distinguish them as "ADR 0003" (this hosting record) and "ADR-003" (the
+> database record).
+
 ## Title
 
 Use Azure App Service for application hosting.

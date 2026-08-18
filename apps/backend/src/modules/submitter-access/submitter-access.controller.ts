@@ -1,3 +1,4 @@
+import { submitterAccessRequestResponseSchema } from '@sport-analytics/contracts';
 import type { RequestHandler, Response } from 'express';
 
 import type { ApplicationAccount } from '../accounts/account';
@@ -28,7 +29,7 @@ export function createSubmitterAccessController(service: SubmitterAccessService)
     void service
       .requestAccess(account)
       .then((result) => {
-        response.status(201).json(result);
+        response.status(201).json(submitterAccessRequestResponseSchema.parse(result));
       })
       .catch((error: unknown) => {
         if (error instanceof SubmitterAccessConflictError) {

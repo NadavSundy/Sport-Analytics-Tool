@@ -29,16 +29,16 @@ and use semantic lists and definition lists so metric groups remain readable at 
 
 ## Authentication routes
 
-| Route              | Purpose                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------- |
-| `/sign-in`         | Starts managed Supabase Google OAuth for either login or account creation.                  |
-| `/account`         | Displays the signed-in Supabase identity email when available.                              |
-| `/submissions/new` | Lets an approved submitter select an in-scope fixture and submit Basic delivery-event JSON. |
+| Route              | Purpose                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| `/sign-in`         | Starts managed Supabase Google OAuth for either login or account creation.                     |
+| `/account`         | Displays the signed-in Supabase identity email when available.                                 |
+| `/submissions/new` | Lets a `submitter` or `admin` select an in-scope fixture and submit Basic delivery-event JSON. |
 
 The sign-in and account routes use only Supabase session identity. The protected submission route
-loads approval and competition scope from the handwritten API's current-user profile. That state
-controls presentation only: the backend independently enforces approval and fixture scope for every
-submission.
+loads the application role and competition scope from the handwritten API's current-user profile.
+That state controls presentation only: the backend independently enforces the submission-capable
+role and fixture scope for every submission.
 
 ## AI Declaration
 

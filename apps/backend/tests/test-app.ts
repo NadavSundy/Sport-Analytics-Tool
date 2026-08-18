@@ -7,6 +7,8 @@ import type { PublicReadService } from '../src/modules/public-read/public-read.s
 import type { FixtureStatisticsService } from '../src/modules/statistics/fixture-statistics.service';
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
+import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
+import type { AdminService } from '../src/modules/admin/admin.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -29,7 +31,39 @@ const synchronizeTestAccount: SynchronizeAccount = async (identity) => ({
   approvalState: 'not_requested',
   competitionIds: [],
   disabled: false,
+  deletionState: 'active',
 });
+
+const requestTestSubmitterAccess: SubmitterAccessService = {
+  async requestAccess(account) {
+    return {
+      data: {
+        accountId: account.accountId,
+        approvalState: 'pending',
+      },
+    };
+  },
+};
+
+const deleteTestAccount: AccountDeletionService = {
+  async deleteAccount() {
+    return {
+      data: {
+        status: 'deleted',
+        retainedCricketData: true,
+      },
+    };
+  },
+};
+
+const testAdminService: AdminService = {
+  async listUsers() {
+    return { data: { users: [], availableScopes: [] } };
+  },
+  async updateSubmitterAccess() {
+    throw new Error('The test administrator service was not configured for an update.');
+  },
+};
 
 export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
@@ -37,7 +71,9 @@ export function createTestApp(
   synchronizeAccount: SynchronizeAccount = synchronizeTestAccount,
   fixtureStatisticsService?: FixtureStatisticsService,
   submissionService?: SubmissionService,
-  submitterAccessService?: SubmitterAccessService,
+  submitterAccessService: SubmitterAccessService = requestTestSubmitterAccess,
+  accountDeletionService: AccountDeletionService = deleteTestAccount,
+  adminService: AdminService = testAdminService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -46,7 +82,9 @@ export function createTestApp(
     ...(publicReadService !== undefined ? { publicReadService } : {}),
     ...(fixtureStatisticsService !== undefined ? { fixtureStatisticsService } : {}),
     ...(submissionService !== undefined ? { submissionService } : {}),
-    ...(submitterAccessService !== undefined ? { submitterAccessService } : {}),
+    submitterAccessService,
+    accountDeletionService,
+    adminService,
   });
 }
 
@@ -59,6 +97,7 @@ export function createTestAccount(overrides: Partial<ApplicationAccount> = {}): 
     approvalState: 'not_requested',
     competitionIds: [],
     disabled: false,
+    deletionState: 'active',
     ...overrides,
   };
 }

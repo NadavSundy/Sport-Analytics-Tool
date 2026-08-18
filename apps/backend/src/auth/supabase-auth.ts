@@ -6,9 +6,12 @@ type SupabaseEnvironment = Pick<Environment, 'SUPABASE_URL' | 'SUPABASE_PUBLISHA
 export interface VerifiedIdentity {
   uid: string;
   displayName?: string | null;
+  lastSignInAt?: Date | null;
 }
 
 export type VerifyAccessToken = (accessToken: string) => Promise<VerifiedIdentity>;
+export type DeleteAuthUserResult = 'deleted' | 'not_found';
+export type DeleteAuthUser = (authSubject: string) => Promise<DeleteAuthUserResult>;
 
 export function createSupabaseTokenVerifier(environment: SupabaseEnvironment): VerifyAccessToken {
   const supabase = createClient(environment.SUPABASE_URL, environment.SUPABASE_PUBLISHABLE_KEY, {
@@ -32,6 +35,7 @@ export function createSupabaseTokenVerifier(environment: SupabaseEnvironment): V
     return {
       uid: user.id,
       displayName: resolveDisplayName(user.user_metadata),
+      lastSignInAt: parseDate(user.last_sign_in_at),
     };
   };
 }
@@ -46,4 +50,13 @@ function resolveDisplayName(metadata: Record<string, unknown>): string | null {
   }
 
   return null;
+}
+
+function parseDate(value: string | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

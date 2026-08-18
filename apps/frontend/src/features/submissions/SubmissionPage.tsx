@@ -8,21 +8,21 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
+import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import {
-  getCurrentUserProfile,
-  listScopedFixtures,
-  SubmissionInputError,
-  submitEvents,
-} from './submission-api';
+import { listScopedFixtures, SubmissionInputError, submitEvents } from './submission-api';
 
 const EMPTY_EVENTS = '[]';
 
 type AccessState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'unapproved'; approvalState: CurrentUserProfile['approvalState'] }
-  | { kind: 'approved'; fixtures: Fixture[] };
+  | {
+      kind: 'forbidden';
+      role: CurrentUserProfile['role'];
+      approvalState: CurrentUserProfile['approvalState'];
+    }
+  | { kind: 'permitted'; fixtures: Fixture[] };
 
 type ResultState =
   | { kind: 'idle' }
@@ -62,20 +62,22 @@ function AccessError({ message }: { message: string }) {
   );
 }
 
-function UnapprovedState({
+function ForbiddenState({
+  role,
   approvalState,
 }: {
+  role: CurrentUserProfile['role'];
   approvalState: CurrentUserProfile['approvalState'];
 }) {
   const detail =
-    approvalState === 'pending'
+    role === 'viewer' && approvalState === 'pending'
       ? 'Your submitter request is pending approval.'
-      : 'Your account is not approved to submit event data.';
+      : 'Your account does not have the submitter role required to submit event data.';
 
   return (
     <div className="state-message" role="status">
-      <h2>Submitter approval required</h2>
-      <p>{detail} The backend will continue to protect every submission and fixture scope.</p>
+      <h2>Submitter role required</h2>
+      <p>{detail} The backend will continue to protect every submission and competition scope.</p>
       <Link className="button button--secondary" to="/account">
         Return to account
       </Link>
@@ -159,7 +161,10 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
     return (
       <div className="state-message" role="status">
         <h2>No in-scope fixtures</h2>
-        <p>Your account is approved, but it currently has no available fixtures in its scope.</p>
+        <p>
+          Your account has submission access, but it currently has no available fixtures in its
+          scope.
+        </p>
       </div>
     );
   }
@@ -286,13 +291,17 @@ export function SubmissionPage() {
 
     void getCurrentUserProfile(client, controller.signal)
       .then(async (profile) => {
-        if (profile.approvalState !== 'approved') {
-          setAccessState({ kind: 'unapproved', approvalState: profile.approvalState });
+        if (profile.role !== 'submitter' && profile.role !== 'admin') {
+          setAccessState({
+            kind: 'forbidden',
+            role: profile.role,
+            approvalState: profile.approvalState,
+          });
           return;
         }
 
         const fixtures = await listScopedFixtures(profile.competitionIds, controller.signal);
-        setAccessState({ kind: 'approved', fixtures });
+        setAccessState({ kind: 'permitted', fixtures });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
@@ -304,7 +313,7 @@ export function SubmissionPage() {
           message:
             error instanceof ApiResponseError && error.kind === 'unauthenticated'
               ? 'Your session is no longer valid. Sign in again to continue.'
-              : 'Your submitter approval and fixture scope could not be loaded. Please try again.',
+              : 'Your application role and fixture scope could not be loaded. Please try again.',
         });
       });
 
@@ -318,7 +327,7 @@ export function SubmissionPage() {
   return (
     <section className="submission-page content-boundary" aria-labelledby="submission-page-title">
       <header className="page-heading submission-page__heading">
-        <p className="eyebrow">Approved submitter workspace</p>
+        <p className="eyebrow">Submitter workspace</p>
         <h1 id="submission-page-title">Submit Delivery Events</h1>
         <p>
           Select an authorised fixture and send ordered delivery events for backend validation and
@@ -329,12 +338,12 @@ export function SubmissionPage() {
       {isLoading || accessState.kind === 'loading' ? (
         <div className="state-message" role="status">
           <h2>Checking submission access</h2>
-          <p>Loading your persisted approval state and competition scope…</p>
+          <p>Loading your persisted role and competition scope…</p>
         </div>
       ) : accessState.kind === 'error' ? (
         <AccessError message={accessState.message} />
-      ) : accessState.kind === 'unapproved' ? (
-        <UnapprovedState approvalState={accessState.approvalState} />
+      ) : accessState.kind === 'forbidden' ? (
+        <ForbiddenState role={accessState.role} approvalState={accessState.approvalState} />
       ) : (
         <SubmissionForm fixtures={accessState.fixtures} />
       )}

@@ -7,8 +7,8 @@ The Sport Analytics Tool uses **Supabase Auth** as its managed authentication pr
 Google is enabled as the initial OAuth identity provider in the shared development Supabase project.
 
 The handwritten Express API validates authenticated Supabase identities, synchronizes them to
-provider-neutral application accounts, and enforces server-owned role, submitter-approval and
-competition-scope rules. Authentication by itself grants no application permission.
+provider-neutral application accounts, and enforces server-owned role and competition-scope rules.
+Authentication by itself grants no application permission.
 
 See:
 
@@ -33,7 +33,7 @@ sequenceDiagram
     Frontend->>API: Authorization: Bearer access-token
     API->>Supabase: getUser(access-token)
     Supabase-->>API: Verified Supabase user
-    API->>Database: Upsert app_user and load role, approval and scope
+    API->>Database: Upsert app_user and load role, request state and scope
     Database-->>API: Application account profile
     API-->>Frontend: Current user profile
 ```
@@ -120,19 +120,20 @@ or refresh tokens separately.
 
 The provider subscribes to Supabase authentication-state changes and unsubscribes when it is
 unmounted. Supabase sign-in, sign-out and managed token-refresh events therefore replace the shared
-session state. This identity state must not be interpreted as an application role, approved
-submitter status, administrator permission or scoped grant.
+session state. This identity state must not be interpreted as an application role, submission
+permission, administrator permission or scoped grant.
 
 Signed-out navigation exposes one Login or Sign up action. Signed-in navigation exposes Account and
-Submit Events, and Sign Out, and updates from the shared authentication state without a page reload. `/account`
-displays only the email already present on the Supabase session identity when available. Sign-out
-uses the managed Supabase operation and returns to `/`.
+Sign Out, and updates from the shared authentication state without a page reload. The Account page
+loads the server-owned role and exposes submission navigation only to `submitter` and `admin`
+accounts. `/account` displays only the email already present on the Supabase session identity when
+available. Sign-out uses the managed Supabase operation and returns to `/`.
 
 `/submissions/new` is a protected frontend journey. Anonymous users are redirected to sign in. A
-signed-in user must also have a persisted `approved` submitter state before the event editor is
+signed-in user must also have a persisted `submitter` or `admin` role before the event editor is
 shown. The fixture selector is populated from public fixture queries constrained by the competition
 IDs returned from `/auth/me`. These frontend checks improve the experience but are not an
-authorisation boundary: `POST /api/v1/submissions` repeats authentication, approval, and target
+authorisation boundary: `POST /api/v1/submissions` repeats authentication, role, and target
 fixture-scope checks on the backend.
 
 ## Frontend authenticated API requests
@@ -171,9 +172,9 @@ supabase.auth.getUser(accessToken);
 Supabase Auth validates the submitted access token and returns the authenticated user or an error.
 
 The API then upserts the verified provider subject into `app_user`. A first request creates a
-`viewer` account with `not_requested` submission approval and no competition grants. Later requests
-refresh the verified display name and `last_authenticated_at`; they never accept role, approval or
-scope from the frontend.
+`viewer` account with `not_requested` request state and no competition grants. Later requests
+refresh the verified display name and `last_authenticated_at`; they never accept role, request
+state, or scope from the frontend.
 
 The profile response combines the verified identity with server-owned application state:
 
@@ -183,7 +184,7 @@ The profile response combines the verified identity with server-owned applicatio
     "id": "42",
     "subject": "<supabase-user-id>",
     "displayName": "Example User",
-    "role": "viewer",
+    "role": "submitter",
     "approvalState": "approved",
     "competitionIds": ["7", "12"]
   }
@@ -194,13 +195,20 @@ The API does not trust an unverified, manually decoded token.
 
 ## Application authorisation model
 
-Roles and submission approval are deliberately separate:
+The only valid `application_role` values are `viewer`, `submitter`, and `admin`:
 
-- `viewer` is the default role;
-- `administrator` is required by administrator-only middleware;
-- `not_requested`, `pending`, `approved`, and `rejected` describe submitter approval; and
-- an approved submitter must also have a `submitter_competition_scope` row for the target
-  competition.
+- `viewer` is the default and cannot submit or administer the application;
+- `submitter` can submit only within assigned competition scope; and
+- `admin` is required by administrator-only middleware and can use permitted submission workflows.
+
+`application_role` is authoritative for submission permission. Competition scopes remain separate
+and are still required by the current submission policy. The legacy `not_requested`, `pending`,
+`approved`, and `rejected` values remain temporarily in `submitter_approval_state` only to support
+the access-request workflow; they do not authorize a submission.
+
+Neither a Supabase identity nor its user-editable metadata can set the role. Account synchronization
+creates a viewer and preserves any existing server-owned role on later sign-ins. See
+[Roles and permissions](roles-and-permissions.md) for the capability matrix.
 
 ### Requesting submitter access
 
@@ -222,24 +230,35 @@ rejected      -> pending
 
 An existing `pending` request is rejected with `409 Conflict`, preventing duplicate active requests.
 
-An `approved` submitter is also rejected with `409 Conflict` because no additional request is necessary.
+An account that already has the `submitter` or `admin` role is rejected with `409 Conflict` because
+no additional request is necessary. A legacy `approved` request state is also rejected while the
+deprecated request workflow remains in place.
 
 The state transition is performed with a conditional PostgreSQL update so that concurrent duplicate requests cannot both create a new active request.
 
-Administrator approval and competition-scope assignment remain separate server-owned operations.
+The signed-in Account page loads `/api/v1/auth/me` whenever it mounts and displays the persisted
+state. Viewer accounts in `not_requested` and `rejected` receive the request action, while `pending`
+viewers see an awaiting-review state without another action. Accounts with `submitter` or `admin`
+receive a link to the scoped submission interface regardless of the deprecated request state. The
+request action has explicit progress, success and error feedback. After a
+successful request, or a `409 Conflict` caused by a stale eligible view, the frontend reloads the
+current-user profile so refreshes and later authenticated sessions continue from server-owned
+state.
+
+Administrator role assignment and competition-scope assignment remain server-owned operations.
 
 Protected routes compose reusable middleware in this order:
 
 ```ts
 requireAuthentication(verifyAccessToken, synchronizeAccount);
-requireApprovedSubmitter();
+requireSubmitter();
 requireCompetitionScope((request) => request.params.competitionId);
 ```
 
 Administrator routes use `requireAdministrator()`. Competition resolvers may be asynchronous so a
 future fixture or submission route can load the trusted target competition before checking scope.
-Missing or invalid credentials return `401`; authenticated but disabled, unapproved, incorrectly
-roled, or out-of-scope accounts return the same non-disclosing `403` response.
+Missing or invalid credentials return `401`; authenticated but disabled, incorrectly roled, or
+out-of-scope accounts return the same non-disclosing `403` response.
 
 ## Protected endpoint
 
@@ -365,8 +384,9 @@ Expected result:
 HTTP/1.1 200 OK
 ```
 
-The response must contain the synchronized application profile. Verify role, approval and scope
-against the database rather than against token claims or frontend state.
+The response must contain the synchronized application profile. Verify the authoritative role and
+scope against the database rather than against token claims, deprecated request state, or frontend
+state.
 
 Replace the token immediately after use and clear it from shell history where practical. Never include the real token in test evidence.
 
@@ -376,12 +396,13 @@ The backend tests cover:
 
 1. missing, invalid and expired bearer tokens return `401`;
 2. a valid token synchronizes and returns the application profile;
-3. a disabled account and denied role/approval/scope checks return `403`;
+3. a disabled account and denied role/scope checks return `403`;
 4. a normal signed-in user cannot access administrator or upload policies;
-5. an approved in-scope submitter passes upload policies;
-6. an approved out-of-scope submitter is denied;
-7. an administrator passes administrator policy; and
-8. public reads do not invoke authentication.
+5. an in-scope `submitter` passes upload policies;
+6. an out-of-scope `submitter` is denied;
+7. a `submitter` cannot access administrator policy;
+8. an `admin` passes administrator and permitted submission policies; and
+9. public reads do not invoke authentication.
 
 The test application injects a mock verifier. Automated tests therefore do not require live Supabase credentials or contact the hosted Auth service.
 
@@ -424,17 +445,36 @@ The hosted default email service has development rate limits. Production use req
 
 ## Account deletion
 
-Supabase provides administrative account deletion through its Auth Admin API.
+The backend is configured with `SUPABASE_PUBLISHABLE_KEY` only. Because Supabase Auth user deletion
+is an administrative operation, `DELETE /api/v1/account` currently returns `501
+ACCOUNT_DELETION_UNAVAILABLE`. The rejection happens before the account-deletion state machine
+changes application data.
 
-Deletion requires an elevated server-side key. Therefore:
+The endpoint still accepts no target account ID and validates the exact `DELETE` confirmation. Its
+recoverable deletion implementation remains isolated behind an injected service for automated
+verification, but it is not enabled in the production application composition.
 
-- deletion must never run directly in the browser;
-- a secret or legacy `service_role` key must never be exposed to the frontend;
-- the final endpoint must reauthenticate the user where appropriate;
-- associated application data retention and deletion must be defined;
-- the final workflow requires separate authorisation and auditing.
+The retained provider-capable workflow design is a recoverable state machine:
 
-Account deletion is not implemented by this foundation.
+1. disable the application account and remove role, approval and competition grants;
+2. hard-delete the Supabase Auth user;
+3. replace the local Auth subject and display name with a non-reusable tombstone while retaining the
+   stable `app_user_id` provenance key; and
+4. clear the browser's local Supabase session after the backend confirms success.
+
+When a provider-capable deletion integration is supplied, an Auth or database failure returns `503
+ACCOUNT_DELETION_INCOMPLETE`. The local account remains disabled, and retry either repeats the
+idempotent Auth deletion or resumes finalization. A hash of the former high-entropy Auth subject
+prevents an already-issued JWT from synchronizing a replacement account during the token's remaining
+lifetime. The browser's local sign-out does not substitute for the backend revocation check.
+
+Cricket submissions, deliveries, fixtures and derived statistics remain available without the
+deleted display name or reusable Auth subject.
+
+See:
+
+- [Privacy and retention](privacy-retention.md)
+- `evidence/decisions/ADR-006-account-deletion-retention.md`
 
 ## Authentication versus authorisation
 
@@ -448,8 +488,8 @@ Authorisation answers:
 
 A valid Supabase identity does not automatically grant:
 
-- administrator access;
-- approved-submitter status;
+- `admin` access;
+- `submitter` access;
 - competition access;
 - season or fixture access;
 - event submission rights;
@@ -470,8 +510,8 @@ management, submitter access requests and event-submission routes remain separat
 - Configure exact redirect URLs and CORS origins.
 - Use separate development and production configuration.
 - Return safe authentication errors.
-- Fail closed when persisted role or approval values are unsupported.
-- Never accept role, approval or granted competition scopes from a request or token claim.
+- Fail closed when persisted role or request-state values are unsupported.
+- Never accept role, request state, or granted competition scopes from a request or token claim.
 - Apply rate limiting before exposing sensitive production endpoints.
 - Define Row Level Security and backend authorisation separately.
 - Rotate credentials immediately if exposure is suspected.
@@ -481,9 +521,6 @@ management, submitter access requests and event-submission routes remain separat
 This foundation intentionally does not implement:
 
 - final password-reset screens;
-- final account-deletion screens;
-- administrator approval-management routes and interfaces;
-- submitter access-request frontend interface;
 - event correction and file or batch upload interfaces;
 - season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;
@@ -508,3 +545,5 @@ Codex[GPT-5.6 Sol]. The account synchronization, profile, and authorization sect
 with the assistance of Codex[GPT-5.6 Sol]. The protected event-submission journey was documented
 with the assistance of Codex[GPT-5.6 Sol].
 The submitter access-request section was documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion security and recovery flow was documented with the assistance of Codex[GPT-5].
+The submitter access-request frontend workflow was documented with the assistance of Codex[GPT-5].

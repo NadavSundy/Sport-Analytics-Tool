@@ -19,18 +19,26 @@ npm run check
 ## Account and authorization coverage
 
 The backend API suite covers missing, invalid and expired credentials; account synchronization;
-the `/api/v1/auth/me` profile; disabled accounts; viewers; approved in-scope and out-of-scope
-submitters; administrators; and anonymous public reads.
+the `/api/v1/auth/me` profile; disabled accounts; viewers; in-scope and out-of-scope submitters;
+submitters denied from admin routes; admins allowed through administrator and permitted submission
+policies; attempted role self-promotion; and anonymous public reads.
 
 The PostgreSQL integration suite additionally verifies the migrated application-account schema:
 
 - provider-neutral identity uniqueness;
-- allowed role and approval-state constraints;
+- the `viewer | submitter | admin` role constraint and deprecated request-state constraint;
 - approval and revocation transitions;
 - automatic application-account update timestamps;
 - competition-grant uniqueness and foreign keys;
 - account-to-grant cascade behaviour; and
 - the indexes required for account-first and competition-first scope lookups.
+
+Account-deletion coverage verifies exact confirmation, recent authentication, owner-only targeting,
+immediate disabling, authorization revocation, idempotent recovery across Auth/database partial
+failures, local session clearing, and accessible loading/error states. The isolated PostgreSQL
+retention test additionally proves that tombstoning preserves the stable account provenance key,
+submission, fixture, delivery and derived run total; it also verifies the non-cascading submission
+foreign key and guarded migration rollback.
 
 Run the focused checks with:
 
@@ -56,7 +64,7 @@ The submitter-access API and repository suites cover:
 - an authenticated application account creating a `pending` request;
 - the authenticated account being passed to the request service;
 - duplicate `pending` requests returning a conflict;
-- already-approved submitters returning a conflict;
+- accounts with the legacy `approved` request state returning a conflict;
 - eligible state changes being implemented as a conditional database update; and
 - unsupported persisted approval states failing closed.
 
@@ -92,17 +100,46 @@ Coverage includes:
 
 Run the focused checks with:
 
-````text
+```text
 npm run build --workspace=@sport-analytics/contracts
 npm run test --workspace=@sport-analytics/contracts
 npm run test:unit --workspace=@sport-analytics/backend
 npm run test:api --workspace=@sport-analytics/backend
 npm run test --workspace=@sport-analytics/frontend
+```
+
+## Submitter access frontend coverage
+
+The Account-page suite verifies the complete user-facing request workflow:
+
+- signed-out users do not load application account data;
+- eligible users can request access and see an in-progress state;
+- successful requests reload the persisted `pending` profile;
+- a remount restores `pending` without offering another request;
+- stale eligible views refresh after the backend reports an active-request conflict;
+- `submitter` and `admin` roles receive submission access without a request action;
+- a legacy `approved` request state on a viewer does not grant submission access;
+- rejected or revoked users receive a clear state and may request another review; and
+- malformed profiles and backend request failures produce safe, actionable feedback.
+
+The request-response contract suite additionally verifies that only a persisted `pending` result is
+accepted from the submitter-access endpoint. The browser suite verifies keyboard activation,
+pending state after reload, narrow-screen overflow, and serious or critical Axe findings.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/frontend
+npm run test:e2e -- tests/e2e/submitter-access.spec.ts --workers=1
+```
 
 ## Direct submission coverage
 
-The contract and API suites cover the versioned delivery schema, anonymous and unapproved users,
-in-scope and out-of-scope submitters, detailed invalid-event responses, the JSON payload limit, and
+The contract and API suites cover the versioned delivery schema, anonymous users and viewers,
+in-scope and out-of-scope submitters, permitted admin submission, detailed invalid-event responses,
+the JSON payload limit, and
 the per-account rate limit. PostgreSQL integration tests verify stored provenance, submitted order,
 duplicate event-ID rejection, and full rollback when a later event conflicts after an earlier insert.
 
@@ -114,16 +151,17 @@ npm run test:api --workspace=@sport-analytics/backend
 npm run db:test:reset --workspace=@sport-analytics/backend
 npm run test:database --workspace=@sport-analytics/backend
 npm run openapi:lint
-````
+```
 
 The issue #51 verification record is in
 `evidence/validation/issue-51-direct-event-submission.md` at the repository root.
 
 ## Submitter interface coverage
 
-The frontend suite covers anonymous redirection, persisted unapproved access, competition-scoped
-fixture selection, valid submissions, event- and field-specific validation results, invalid JSON,
-and backend failures. Browser tests additionally verify keyboard order, focus movement to results,
+The frontend suite covers anonymous redirection, role-denied viewers, submitter/admin role gates,
+competition-scoped fixture selection, valid submissions, event- and field-specific validation
+results, invalid JSON, and backend failures. Browser tests additionally verify keyboard order,
+focus movement to results,
 error association, narrow-screen overflow, and serious or critical Axe findings.
 
 Run the focused checks with:
@@ -170,3 +208,6 @@ Codex[GPT-5.6 Sol]. The submitter interface coverage was documented with the ass
 Codex[GPT-5.6 Sol].
 The current-user submitter status coverage section was generated with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The account-deletion testing section was documented with the assistance of Codex[GPT-5].
+The submitter access frontend coverage section and corrected code fences were updated with the
+assistance of Codex[GPT-5].

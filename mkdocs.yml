@@ -34,6 +34,8 @@ nav:
           - Versioning and Deprecation: api/versioning.md
       - Submission field mapping: api/submission-field-mapping.md
       - Event to statistic mapping: api/event-statistic-mapping.md
+      - Sport Domain Definition: requirements/sport-domain-definition.md
+      - Cricsheet Data Source: data/cricsheet.md
       - Database:
           - Overview: database/overview.md
           - Access and Transactions: database/access.md
@@ -42,12 +44,16 @@ nav:
       - Security:
           - Overview: security/overview.md
           - Authentication and Authorisation: security/authentication.md
+          - Privacy and Retention: security/privacy-retention.md
+          - Roles and Permissions: security/roles-and-permissions.md
           - Provider Comparison: security/auth-provider-comparison.md
   - Deployment:
       - Overview: deployment/overview.md
       - Azure Application Hosting: deployment/azure.md
+      - Azure Hosting Decision Record: adr/0003-azure-hosting.md
       - Azure Backend: deployment/azure-backend.md
       - Azure Frontend: deployment/azure-fronted.md
+      - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
       - Cloudflare Documentation: deployment/cloudflare_pages.md
   - Methodology:
       - Git Methodology: git-methodology.md

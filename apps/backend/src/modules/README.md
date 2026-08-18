@@ -2,8 +2,9 @@
 
 Implement business capabilities as modules rather than placing all endpoints and logic in one file. A module should normally contain its routes, controller, service, repository, validation schemas, tests, and documentation links.
 
-Current modules include authentication/accounts, public reference-data reads, approved-submitter
-event submissions, and event-derived fixture statistics. Expected future modules include:
+Current modules include authentication/accounts, public reference-data reads, role- and
+scope-authorized event submissions, and event-derived fixture statistics. Expected future modules
+include:
 
 - competition and season administration;
 - competitors and teams;

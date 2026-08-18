@@ -67,7 +67,7 @@ Successful response:
     "id": "42",
     "subject": "<supabase-user-id>",
     "displayName": "Example User",
-    "role": "viewer",
+    "role": "submitter",
     "approvalState": "approved",
     "competitionIds": ["7", "12"]
   }
@@ -85,9 +85,38 @@ The API verifies the Supabase identity, creates or synchronizes the local accoun
 server-owned authorization state. Authentication does not promote a user, approve submission, or
 grant competition scope. A disabled account receives `403 Forbidden`.
 
+### Account deletion
+
+The current backend uses publishable-only Supabase access. Supabase Auth user deletion requires an
+administrative provider operation, so account deletion is not part of the current published API
+contract.
+
+The reserved route:
+
+```http
+DELETE /api/v1/account
+Authorization: Bearer <supabase-access-token>
+Content-Type: application/json
+
+{"confirmation":"DELETE"}
+```
+
+accepts no target account identifier and returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing
+account-deletion state or identity data. It is retained temporarily so existing frontend clients
+receive a stable, explicit failure instead of initiating a partial deletion workflow.
+
+The earlier provider-capable design and its retention rules remain recorded in [Privacy and
+retention](../security/privacy-retention.md) and ADR-006 for historical context.
+
+Application registration is handled by Supabase Auth; there is no backend registration or profile
+mutation endpoint that accepts `application_role`. New application accounts are synchronized as
+`viewer`, and only a trusted administrative backend process may change the role to `submitter` or
+`admin`.
+
 ### Submitter access requests
 
-An authenticated application user who is not already an approved submitter can request submitter access through:
+An authenticated viewer who does not already hold a submission-capable role can request submitter
+access through:
 
 ```http
 POST /api/v1/submitter-access-requests
@@ -107,9 +136,14 @@ A successful request changes the authenticated application account's server-owne
 
 The endpoint returns `401 Unauthorized` when no valid authentication is supplied.
 
-A `409 Conflict` is returned when the account already has a pending request or is already an approved submitter. A previously rejected account may submit a new request.
+A `409 Conflict` is returned when the account already has a pending request, has the legacy
+`approved` request state, or already holds the `submitter`/`admin` role. A previously rejected
+viewer may submit a new request.
 
-The request state is stored on the provider-neutral application account and can subsequently be consumed by the administrator approval and competition-scope workflow.
+The request state is stored on the provider-neutral application account and can subsequently be
+consumed by the administrator approval and competition-scope workflow. The request state is not an
+authorization grant: approval must assign `application_role = submitter`, and the backend uses that
+role plus competition scope for submission decisions.
 
 ### Public read
 
@@ -122,6 +156,8 @@ GET /api/v1/seasons
 GET /api/v1/seasons/{seasonId}
 GET /api/v1/fixtures
 GET /api/v1/fixtures/{fixtureId}
+GET /api/v1/fixtures/{fixtureId}/events
+GET /api/v1/fixtures/{fixtureId}/events/{eventId}
 GET /api/v1/fixtures/{fixtureId}/statistics
 GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}
 GET /api/v1/competitors
@@ -147,7 +183,7 @@ validation errors, payload limit, and rate limit.
 
 - competitions, seasons, competitors, and fixtures;
 - review, rejection, correction, and audit history;
-- public ordered-event endpoints and derived season/career statistics;
+- derived season/career statistics;
 - filtered exports and dataset releases;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
@@ -158,4 +194,5 @@ An OpenAPI specification should be maintained alongside implementation and verif
 
 ## AI Declaration
 
-The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]
+and Codex[GPT-5].

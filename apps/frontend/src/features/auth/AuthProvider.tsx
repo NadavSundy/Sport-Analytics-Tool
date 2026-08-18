@@ -24,6 +24,7 @@ export interface AuthState {
 interface AuthContextValue extends AuthState {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  clearLocalSession: () => Promise<void>;
 }
 
 interface AuthProviderProps {
@@ -105,9 +106,21 @@ export function AuthProvider({ children, client }: AuthProviderProps) {
     }
   }, [client]);
 
+  const clearLocalSession = useCallback(async () => {
+    const { error } = await client.signOut({ scope: 'local' });
+
+    // A deleted application account must leave the managed React session even
+    // if the now-removed Auth identity makes Supabase return an error.
+    setAuthState(resolveAuthState(null));
+
+    if (error) {
+      throw new Error('Local session cleanup could not be confirmed.');
+    }
+  }, [client]);
+
   const value = useMemo(
-    () => ({ ...authState, signInWithGoogle, signOut }),
-    [authState, signInWithGoogle, signOut],
+    () => ({ ...authState, signInWithGoogle, signOut, clearLocalSession }),
+    [authState, clearLocalSession, signInWithGoogle, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

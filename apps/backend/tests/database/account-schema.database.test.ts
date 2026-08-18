@@ -78,6 +78,12 @@ describe.sequential('application account authorization schema', () => {
     const accountTimestampSchema = await migrationSections(
       '20260815133241837_add-app-user-updated-at.sql',
     );
+    const applicationRoleSchema = await migrationSections(
+      '20260816120000000_standardise-application-role.sql',
+    );
+    const submitterAccessAuditSchema = await migrationSections(
+      '20260816190000000_add-submitter-access-audit.sql',
+    );
 
     try {
       await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
@@ -85,13 +91,31 @@ describe.sequential('application account authorization schema', () => {
       await client.query(deliverySchema.up);
       await client.query(authorizationSchema.up);
       await client.query(accountTimestampSchema.up);
+      await client.query(applicationRoleSchema.up);
+      await client.query(submitterAccessAuditSchema.up);
 
-      const applied = await client.query<{ scopeExists: boolean }>(
-        `SELECT to_regclass($1) IS NOT NULL AS "scopeExists"`,
-        [`${schemaName}.submitter_competition_scope`],
+      const applied = await client.query<{ auditColumnCount: number; scopeExists: boolean }>(
+        `
+          SELECT
+            to_regclass($1) IS NOT NULL AS "scopeExists",
+            (
+              SELECT count(*)::int
+              FROM information_schema.columns
+              WHERE table_schema = $2
+                AND table_name = 'app_user'
+                AND column_name IN (
+                  'submitter_access_updated_at',
+                  'submitter_access_updated_by'
+                )
+            ) AS "auditColumnCount"
+        `,
+        [`${schemaName}.submitter_competition_scope`, schemaName],
       );
       expect(applied.rows[0].scopeExists).toBe(true);
+      expect(applied.rows[0].auditColumnCount).toBe(2);
 
+      await client.query(submitterAccessAuditSchema.down);
+      await client.query(applicationRoleSchema.down);
       await client.query(accountTimestampSchema.down);
       await client.query(authorizationSchema.down);
 
@@ -128,9 +152,12 @@ describe.sequential('application account authorization schema', () => {
 
       await client.query(authorizationSchema.up);
       await client.query(accountTimestampSchema.up);
+      await client.query(applicationRoleSchema.up);
+      await client.query(submitterAccessAuditSchema.up);
 
       const reapplied = await client.query<{
         approvalColumnCount: number;
+        auditColumnCount: number;
         scopeExists: boolean;
         updatedAtColumnCount: number;
       }>(
@@ -149,6 +176,16 @@ describe.sequential('application account authorization schema', () => {
               FROM information_schema.columns
               WHERE table_schema = $2
                 AND table_name = 'app_user'
+                AND column_name IN (
+                  'submitter_access_updated_at',
+                  'submitter_access_updated_by'
+                )
+            ) AS "auditColumnCount",
+            (
+              SELECT count(*)::int
+              FROM information_schema.columns
+              WHERE table_schema = $2
+                AND table_name = 'app_user'
                 AND column_name = 'updated_at'
             ) AS "updatedAtColumnCount"
         `,
@@ -157,8 +194,359 @@ describe.sequential('application account authorization schema', () => {
       expect(reapplied.rows[0]).toEqual({
         scopeExists: true,
         approvalColumnCount: 1,
+        auditColumnCount: 2,
         updatedAtColumnCount: 1,
       });
+    } finally {
+      await client.query('RESET search_path');
+      await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);
+      client.release();
+    }
+  });
+
+  test('migrates approved submitters and administrators without changing account identity', async () => {
+    const client = await databasePool().connect();
+    const schemaName = `issue154_role_migration_${process.pid}`;
+    const quotedSchemaName = `"${schemaName}"`;
+    const deliverySchema = await migrationSections('20260806150357535_delivery-event-schema.sql');
+    const authorizationSchema = await migrationSections(
+      '20260812120000000_account-authorisation.sql',
+    );
+    const applicationRoleSchema = await migrationSections(
+      '20260816120000000_standardise-application-role.sql',
+    );
+
+    try {
+      await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
+      await client.query(`SET search_path TO ${quotedSchemaName}`);
+      await client.query(deliverySchema.up);
+      await client.query(authorizationSchema.up);
+      await client.query(
+        `
+          INSERT INTO app_user (
+            auth_provider,
+            auth_subject,
+            application_role,
+            submitter_approval_state
+          )
+          VALUES
+            ('supabase', 'legacy-viewer', 'viewer', 'not_requested'),
+            ('supabase', 'legacy-approved-submitter', 'viewer', 'approved'),
+            ('supabase', 'legacy-administrator', 'administrator', 'approved')
+        `,
+      );
+      await client.query("INSERT INTO competition (name) VALUES ('Legacy scoped competition')");
+      await client.query(
+        `
+          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+          SELECT app_user_id, competition_id
+          FROM app_user
+          CROSS JOIN competition
+          WHERE auth_subject = 'legacy-approved-submitter'
+            AND competition.name = 'Legacy scoped competition'
+        `,
+      );
+
+      await client.query(applicationRoleSchema.up);
+
+      const migrated = await client.query<{ role: string; subject: string }>(
+        `
+          SELECT auth_subject AS subject, application_role AS role
+          FROM app_user
+          ORDER BY auth_subject
+        `,
+      );
+      expect(migrated.rows).toEqual([
+        { subject: 'legacy-administrator', role: 'admin' },
+        { subject: 'legacy-approved-submitter', role: 'submitter' },
+        { subject: 'legacy-viewer', role: 'viewer' },
+      ]);
+
+      const preservedScope = await client.query<{ scopeCount: number }>(
+        `
+          SELECT count(*)::int AS "scopeCount"
+          FROM submitter_competition_scope scope
+          JOIN app_user account USING (app_user_id)
+          WHERE account.auth_subject = 'legacy-approved-submitter'
+        `,
+      );
+      expect(preservedScope.rows[0].scopeCount).toBe(1);
+
+      await client.query(applicationRoleSchema.down);
+
+      const restored = await client.query<{ role: string; subject: string }>(
+        `
+          SELECT auth_subject AS subject, application_role AS role
+          FROM app_user
+          ORDER BY auth_subject
+        `,
+      );
+      expect(restored.rows).toEqual([
+        { subject: 'legacy-administrator', role: 'administrator' },
+        { subject: 'legacy-approved-submitter', role: 'viewer' },
+        { subject: 'legacy-viewer', role: 'viewer' },
+      ]);
+    } finally {
+      await client.query('RESET search_path');
+      await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);
+      client.release();
+    }
+  });
+
+  test('aborts role migration when an unknown legacy value exists', async () => {
+    const client = await databasePool().connect();
+    const schemaName = `issue154_unknown_role_${process.pid}`;
+    const quotedSchemaName = `"${schemaName}"`;
+    const deliverySchema = await migrationSections('20260806150357535_delivery-event-schema.sql');
+    const authorizationSchema = await migrationSections(
+      '20260812120000000_account-authorisation.sql',
+    );
+    const applicationRoleSchema = await migrationSections(
+      '20260816120000000_standardise-application-role.sql',
+    );
+
+    try {
+      await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
+      await client.query(`SET search_path TO ${quotedSchemaName}`);
+      await client.query(deliverySchema.up);
+      await client.query(authorizationSchema.up);
+      await client.query('ALTER TABLE app_user DROP CONSTRAINT app_user_application_role_ck');
+      await client.query(
+        `
+          INSERT INTO app_user (auth_provider, auth_subject, application_role)
+          VALUES ('supabase', 'unknown-role', 'owner')
+        `,
+      );
+
+      await expect(client.query(applicationRoleSchema.up)).rejects.toThrow(
+        /unsupported values: 'owner'/,
+      );
+
+      const unchanged = await client.query<{ role: string }>(
+        "SELECT application_role AS role FROM app_user WHERE auth_subject = 'unknown-role'",
+      );
+      expect(unchanged.rows[0].role).toBe('owner');
+    } finally {
+      await client.query('RESET search_path');
+      await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);
+      client.release();
+    }
+  });
+
+  test('retains cricket provenance and statistics after an account is tombstoned', async () => {
+    const client = await databasePool().connect();
+    const schemaName = `issue66_retention_${process.pid}`;
+    const quotedSchemaName = `"${schemaName}"`;
+    const deliverySchema = await migrationSections('20260806150357535_delivery-event-schema.sql');
+    const authorizationSchema = await migrationSections(
+      '20260812120000000_account-authorisation.sql',
+    );
+    const accountTimestampSchema = await migrationSections(
+      '20260815133241837_add-app-user-updated-at.sql',
+    );
+    const applicationRoleSchema = await migrationSections(
+      '20260816120000000_standardise-application-role.sql',
+    );
+    const deletionSchema = await migrationSections(
+      '20260816160000000_account-deletion-tombstone.sql',
+    );
+
+    try {
+      await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
+      await client.query(`SET search_path TO ${quotedSchemaName}`);
+      await client.query(deliverySchema.up);
+      await client.query(authorizationSchema.up);
+      await client.query(accountTimestampSchema.up);
+      await client.query(applicationRoleSchema.up);
+      await client.query(deletionSchema.up);
+
+      const account = await client.query<{ accountId: string }>(
+        `
+          INSERT INTO app_user (
+            auth_provider,
+            auth_subject,
+            display_name,
+            application_role,
+            submitter_approval_state
+          )
+          VALUES ('supabase', 'issue-66-subject', 'Delete Me', 'viewer', 'approved')
+          RETURNING app_user_id::text AS "accountId"
+        `,
+      );
+      const accountId = account.rows[0].accountId;
+      const competition = await client.query<{ competitionId: string }>(
+        `INSERT INTO competition (name) VALUES ('Issue 66 Competition')
+         RETURNING competition_id::text AS "competitionId"`,
+      );
+      const teams = await client.query<{ teamId: string }>(
+        `INSERT INTO team (name) VALUES ('Issue 66 Batting'), ('Issue 66 Bowling')
+         RETURNING team_id::text AS "teamId"`,
+      );
+      const people = await client.query<{ personId: string }>(
+        `
+          INSERT INTO person (source_ref, display_name)
+          VALUES
+            ('issue-66-striker', 'Striker'),
+            ('issue-66-non-striker', 'Non-striker'),
+            ('issue-66-bowler', 'Bowler')
+          RETURNING person_id::text AS "personId"
+        `,
+      );
+      const submission = await client.query<{ submissionId: string }>(
+        `INSERT INTO submission (submitted_by, status)
+         VALUES ($1, 'accepted')
+         RETURNING submission_id::text AS "submissionId"`,
+        [accountId],
+      );
+      const fixture = await client.query<{ fixtureId: string }>(
+        `
+          INSERT INTO fixture (
+            source_ref,
+            competition_id,
+            season,
+            match_type,
+            team_type,
+            gender,
+            balls_per_over,
+            start_date,
+            end_date,
+            outcome,
+            source_version,
+            source_revision,
+            first_seen_in
+          )
+          VALUES (
+            'issue-66-fixture', $1, '2026', 'T20', 'club', 'mixed', 6,
+            CURRENT_DATE, CURRENT_DATE, 'tie', '1.0', 1, $2
+          )
+          RETURNING fixture_id::text AS "fixtureId"
+        `,
+        [competition.rows[0].competitionId, submission.rows[0].submissionId],
+      );
+      const innings = await client.query<{ inningsId: string }>(
+        `INSERT INTO innings (fixture_id, ordinal, batting_team_id)
+         VALUES ($1, 0, $2)
+         RETURNING innings_id::text AS "inningsId"`,
+        [fixture.rows[0].fixtureId, teams.rows[0].teamId],
+      );
+
+      await client.query(
+        `
+          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+          VALUES ($1, $2)
+        `,
+        [accountId, competition.rows[0].competitionId],
+      );
+      await client.query(
+        `
+          INSERT INTO delivery (
+            innings_id,
+            over_number,
+            position_in_over,
+            innings_sequence,
+            ball_number,
+            striker_id,
+            non_striker_id,
+            bowler_id,
+            runs_off_bat,
+            runs_extras,
+            runs_total,
+            submission_id
+          )
+          VALUES ($1, 0, 0, 1, '0.1', $2, $3, $4, 4, 0, 4, $5)
+        `,
+        [
+          innings.rows[0].inningsId,
+          people.rows[0].personId,
+          people.rows[1].personId,
+          people.rows[2].personId,
+          submission.rows[0].submissionId,
+        ],
+      );
+
+      const before = await client.query<{ deliveries: number; runs: number }>(
+        `SELECT count(*)::int AS deliveries, sum(runs_total)::int AS runs FROM delivery_current`,
+      );
+
+      await client.query(`DELETE FROM submitter_competition_scope WHERE app_user_id = $1`, [
+        accountId,
+      ]);
+      await client.query(
+        `
+          UPDATE app_user
+          SET
+            auth_subject = 'deleted:123e4567-e89b-42d3-a456-426614174066',
+            display_name = NULL,
+            application_role = 'viewer',
+            submitter_approval_state = 'not_requested',
+            disabled_at = now(),
+            deletion_state = 'deleted',
+            deletion_requested_at = now(),
+            auth_deleted_at = now(),
+            deleted_at = now(),
+            deleted_auth_subject_hash = repeat('a', 64)
+          WHERE app_user_id = $1
+        `,
+        [accountId],
+      );
+
+      const retained = await client.query<{
+        accountId: string;
+        approvalState: string;
+        deliveryCount: number;
+        displayName: string | null;
+        fixtureCount: number;
+        role: string;
+        runs: number;
+        scopeCount: number;
+        submissionCount: number;
+        subject: string;
+      }>(
+        `
+          SELECT
+            u.app_user_id::text AS "accountId",
+            u.auth_subject AS subject,
+            u.display_name AS "displayName",
+            u.application_role AS role,
+            u.submitter_approval_state AS "approvalState",
+            (SELECT count(*)::int FROM submitter_competition_scope WHERE app_user_id = u.app_user_id) AS "scopeCount",
+            (SELECT count(*)::int FROM submission WHERE submitted_by = u.app_user_id) AS "submissionCount",
+            (SELECT count(*)::int FROM fixture WHERE first_seen_in = $2) AS "fixtureCount",
+            (SELECT count(*)::int FROM delivery_current WHERE submission_id = $2) AS "deliveryCount",
+            (SELECT sum(runs_total)::int FROM delivery_current WHERE submission_id = $2) AS runs
+          FROM app_user u
+          WHERE u.app_user_id = $1
+        `,
+        [accountId, submission.rows[0].submissionId],
+      );
+
+      expect(before.rows[0]).toEqual({ deliveries: 1, runs: 4 });
+      expect(retained.rows[0]).toEqual({
+        accountId,
+        approvalState: 'not_requested',
+        deliveryCount: 1,
+        displayName: null,
+        fixtureCount: 1,
+        role: 'viewer',
+        runs: 4,
+        scopeCount: 0,
+        submissionCount: 1,
+        subject: 'deleted:123e4567-e89b-42d3-a456-426614174066',
+      });
+
+      const submissionForeignKey = await client.query<{ deleteAction: string }>(
+        `
+          SELECT confdeltype AS "deleteAction"
+          FROM pg_constraint
+          WHERE conrelid = 'submission'::regclass
+            AND conname = 'submission_submitted_by_fkey'
+        `,
+      );
+      expect(submissionForeignKey.rows[0].deleteAction).toBe('a');
+
+      await expect(client.query(deletionSchema.down)).rejects.toThrow(
+        'Cannot roll back account deletion schema while deletion state exists',
+      );
     } finally {
       await client.query('RESET search_path');
       await client.query(`DROP SCHEMA IF EXISTS ${quotedSchemaName} CASCADE`);
@@ -188,6 +576,8 @@ describe.sequential('application account authorization schema', () => {
               'submitter_approval_state',
               'created_at',
               'last_authenticated_at',
+              'submitter_access_updated_at',
+              'submitter_access_updated_by',
               'updated_at'
             ))
             OR
@@ -207,6 +597,16 @@ describe.sequential('application account authorization schema', () => {
       { tableName: 'app_user', columnName: 'auth_subject', nullable: 'NO' },
       { tableName: 'app_user', columnName: 'created_at', nullable: 'NO' },
       { tableName: 'app_user', columnName: 'last_authenticated_at', nullable: 'NO' },
+      {
+        tableName: 'app_user',
+        columnName: 'submitter_access_updated_at',
+        nullable: 'YES',
+      },
+      {
+        tableName: 'app_user',
+        columnName: 'submitter_access_updated_by',
+        nullable: 'YES',
+      },
       { tableName: 'app_user', columnName: 'submitter_approval_state', nullable: 'NO' },
       { tableName: 'app_user', columnName: 'updated_at', nullable: 'NO' },
       {
@@ -242,6 +642,7 @@ describe.sequential('application account authorization schema', () => {
         'app_user_application_role_ck',
         'app_user_auth_provider_auth_subject_key',
         'app_user_submitter_approval_state_ck',
+        'app_user_submitter_access_updated_by_fkey',
         'submitter_competition_scope_app_user_id_fkey',
         'submitter_competition_scope_competition_id_fkey',
         'submitter_competition_scope_pkey',
@@ -254,7 +655,7 @@ describe.sequential('application account authorization schema', () => {
         SELECT indexname AS "indexName"
         FROM pg_indexes
         WHERE schemaname = 'public'
-          AND tablename = 'submitter_competition_scope'
+          AND tablename IN ('app_user', 'submitter_competition_scope')
       `,
     );
 
@@ -262,6 +663,7 @@ describe.sequential('application account authorization schema', () => {
       expect.arrayContaining([
         'submitter_competition_scope_pkey',
         'submitter_competition_scope_competition_idx',
+        'app_user_submitter_access_updated_by_idx',
       ]),
     );
   });
@@ -313,6 +715,33 @@ describe.sequential('application account authorization schema', () => {
       );
 
       expect(accounts.rows[0].accountCount).toBe(2);
+    });
+  });
+
+  test('defaults new accounts to viewer and accepts explicit submitter and admin roles', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const accounts = await executeQuery<{ role: string; subject: string }>(
+        client,
+        `
+          INSERT INTO app_user (auth_provider, auth_subject, application_role)
+          VALUES
+            ('supabase', $1, DEFAULT),
+            ('supabase', $2, 'submitter'),
+            ('supabase', $3, 'admin')
+          RETURNING auth_subject AS subject, application_role AS role
+        `,
+        [
+          `${sourcePrefix}-default-viewer`,
+          `${sourcePrefix}-explicit-submitter`,
+          `${sourcePrefix}-explicit-admin`,
+        ],
+      );
+
+      expect(accounts.rows).toEqual([
+        { subject: `${sourcePrefix}-default-viewer`, role: 'viewer' },
+        { subject: `${sourcePrefix}-explicit-submitter`, role: 'submitter' },
+        { subject: `${sourcePrefix}-explicit-admin`, role: 'admin' },
+      ]);
     });
   });
 
@@ -398,6 +827,7 @@ describe.sequential('application account authorization schema', () => {
   });
 
   test.each([
+    ['application role', 'administrator'],
     ['application role', 'owner'],
     ['approval state', 'self_approved'],
   ])('rejects an unsupported %s', async (field, invalidValue) => {

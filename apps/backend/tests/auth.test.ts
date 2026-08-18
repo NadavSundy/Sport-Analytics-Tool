@@ -46,7 +46,7 @@ describe('GET /api/v1/auth/me', () => {
         accountId: '42',
         subject: 'supabase-user-123',
         displayName: 'Supabase User',
-        role: 'administrator',
+        role: 'admin',
         approvalState: 'approved',
         competitionIds: ['7', '12'],
       }),
@@ -67,7 +67,7 @@ describe('GET /api/v1/auth/me', () => {
         id: '42',
         subject: 'supabase-user-123',
         displayName: 'Supabase User',
-        role: 'administrator',
+        role: 'admin',
         approvalState: 'approved',
         competitionIds: ['7', '12'],
       },
@@ -138,4 +138,36 @@ describe('GET /api/v1/auth/me', () => {
       },
     });
   });
+
+  it.each(['submitter', 'admin'] as const)(
+    'does not expose a user-controlled application-role update endpoint for %s',
+    async (applicationRole) => {
+      const verifyAccessToken = vi.fn<VerifyAccessToken>();
+      const synchronizeAccount = vi.fn<SynchronizeAccount>();
+
+      await request(createTestApp(verifyAccessToken, undefined, synchronizeAccount))
+        .patch('/api/v1/auth/me')
+        .send({ application_role: applicationRole })
+        .expect(404);
+
+      expect(verifyAccessToken).not.toHaveBeenCalled();
+      expect(synchronizeAccount).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['submitter', 'admin'] as const)(
+    'does not accept the %s role through a backend registration endpoint',
+    async (applicationRole) => {
+      const verifyAccessToken = vi.fn<VerifyAccessToken>();
+      const synchronizeAccount = vi.fn<SynchronizeAccount>();
+
+      await request(createTestApp(verifyAccessToken, undefined, synchronizeAccount))
+        .post('/api/v1/auth/register')
+        .send({ application_role: applicationRole })
+        .expect(404);
+
+      expect(verifyAccessToken).not.toHaveBeenCalled();
+      expect(synchronizeAccount).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,6 +1,8 @@
 import request from 'supertest';
 import { describe, expect, test, vi } from 'vitest';
 
+import type { PublicEvent } from '@sport-analytics/contracts';
+
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { PublicReadService } from '../../src/modules/public-read/public-read.service';
 import { PublicReadInputError } from '../../src/modules/public-read/public-read.errors';
@@ -73,6 +75,52 @@ function createService(overrides: Partial<PublicReadService> = {}): PublicReadSe
       return null;
     },
 
+    async listFixtureEvents() {
+      return {
+        data: [],
+        pagination: {
+          nextCursor: null,
+        },
+      };
+    },
+
+    async getFixtureEvent() {
+      return null;
+    },
+
+    ...overrides,
+  };
+}
+
+function publicEvent(overrides: Partial<PublicEvent> = {}): PublicEvent {
+  return {
+    eventId: '500',
+    fixtureId: '100',
+    inningsId: '200',
+    inningsOrdinal: 0,
+    sequenceNumber: 1,
+    overNumber: 0,
+    positionInOver: 0,
+    ballNumber: '0.1',
+    battingCompetitorId: '20',
+    bowlingCompetitorId: '21',
+    strikerParticipantId: '30',
+    nonStrikerParticipantId: '31',
+    bowlerParticipantId: '32',
+    runs: {
+      offBat: 4,
+      extras: 0,
+      total: 4,
+      nonBoundary: false,
+    },
+    extras: {
+      wides: null,
+      noBalls: null,
+      byes: null,
+      legByes: null,
+      penalty: null,
+    },
+    wickets: [],
     ...overrides,
   };
 }
@@ -268,6 +316,79 @@ describe('public read API', () => {
     expect(response.body.data.fixtureId).toBe('100');
   });
 
+  test('lists ordered accepted fixture events anonymously with filters and pagination', async () => {
+    const verifyAccessToken = vi.fn<VerifyAccessToken>();
+    const events = [
+      publicEvent(),
+      publicEvent({
+        eventId: '501',
+        sequenceNumber: 2,
+        positionInOver: 1,
+        ballNumber: '0.2',
+      }),
+    ];
+    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>().mockResolvedValue({
+      data: events,
+      pagination: {
+        nextCursor: 'next-event-page',
+      },
+    });
+
+    const response = await request(
+      createTestApp(
+        verifyAccessToken,
+        createService({
+          listFixtureEvents,
+        }),
+      ),
+    )
+      .get('/api/v1/fixtures/100/events')
+      .query({
+        inningsId: '200',
+        competitorId: '20',
+        participantId: '30',
+        overNumber: '0',
+        wicketKind: 'caught',
+        limit: '2',
+      })
+      .expect(200);
+
+    expect(verifyAccessToken).not.toHaveBeenCalled();
+    expect(listFixtureEvents).toHaveBeenCalledWith('100', {
+      inningsId: '200',
+      competitorId: '20',
+      participantId: '30',
+      overNumber: 0,
+      wicketKind: 'caught',
+      limit: 2,
+    });
+    expect(response.body.data.map((event: PublicEvent) => event.eventId)).toEqual(['500', '501']);
+    expect(response.body.pagination.nextCursor).toBe('next-event-page');
+    expect(response.body.data[0]).not.toHaveProperty('submissionId');
+    expect(response.body.data[0]).not.toHaveProperty('submittedBy');
+    expect(response.body.data[0]).not.toHaveProperty('recordedAt');
+  });
+
+  test('retrieves an accepted fixture event by stable identifier', async () => {
+    const getFixtureEvent = vi
+      .fn<PublicReadService['getFixtureEvent']>()
+      .mockResolvedValue(publicEvent());
+
+    const response = await request(
+      createTestApp(
+        undefined,
+        createService({
+          getFixtureEvent,
+        }),
+      ),
+    )
+      .get('/api/v1/fixtures/100/events/500')
+      .expect(200);
+
+    expect(getFixtureEvent).toHaveBeenCalledWith('100', '500');
+    expect(response.body.data.eventId).toBe('500');
+  });
+
   test('lists and retrieves competitors', async () => {
     const listCompetitors = vi.fn<PublicReadService['listCompetitors']>().mockResolvedValue({
       data: [
@@ -384,6 +505,31 @@ describe('public read API', () => {
       .expect(400);
 
     expect(response.body.error.code).toBe('VALIDATION_FAILED');
+  });
+
+  test('returns fixture-event validation and not-found errors', async () => {
+    const service = createService({
+      listFixtureEvents: async () => null,
+      getFixtureEvent: async () => null,
+    });
+    const app = createTestApp(undefined, service);
+
+    const invalidFilter = await request(app)
+      .get('/api/v1/fixtures/100/events?overNumber=-1')
+      .expect(400);
+    expect(invalidFilter.body.error.code).toBe('VALIDATION_FAILED');
+
+    const missingFixture = await request(app).get('/api/v1/fixtures/999/events').expect(404);
+    expect(missingFixture.body.error).toEqual({
+      code: 'NOT_FOUND',
+      message: 'Fixture not found.',
+    });
+
+    const missingEvent = await request(app).get('/api/v1/fixtures/100/events/999').expect(404);
+    expect(missingEvent.body.error).toEqual({
+      code: 'NOT_FOUND',
+      message: 'Event not found.',
+    });
   });
 
   test('returns a clear invalid-cursor response', async () => {

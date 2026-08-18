@@ -7,7 +7,7 @@ The backend is the handwritten Express HTTP API for Stat'sTheGame. It is the aut
 - expose versioned HTTP endpoints under `/api/v1`;
 - validate Supabase identities on protected routes;
 - synchronize provider-neutral application accounts;
-- enforce server-owned roles, submitter approval and competition scope;
+- enforce server-owned `viewer | submitter | admin` roles and competition scope;
 - access PostgreSQL through the `pg` driver;
 - return safe errors and structured request logs; and
 - keep generated Supabase data endpoints outside the application architecture.
@@ -87,6 +87,21 @@ Default endpoints include:
 
 - `http://localhost:3000/api/v1/health`
 - `http://localhost:3000/api/v1/auth/me`
+- `DELETE http://localhost:3000/api/v1/account` (currently returns `501`; see below)
+- `http://localhost:3000/api/v1/admin/users` (administrator only)
+- `http://localhost:3000/api/v1/fixtures/{fixtureId}/events` (public accepted events)
+
+## Administrator user management
+
+`GET /api/v1/admin/users` returns registered application accounts, their authoritative role,
+legacy request state, assigned competition scopes, valid scope choices, and the latest submitter
+access audit fields. `PATCH /api/v1/admin/users/:userId/submitter-access` approves or revokes a
+submitter and replaces their complete competition scope in one database transaction.
+
+Both operations require a synchronized `admin` account. Approving requires at least one existing
+competition. Revocation assigns `viewer`, records the request state as `rejected`, and removes all
+scope rows. Administrator and disabled accounts are protected from this submitter-specific update,
+and administrators cannot update themselves through this route.
 
 ## Checks
 
@@ -139,7 +154,14 @@ The backend is hosted on Azure App Service.
 
 ### Backend fails immediately with invalid environment configuration
 
-Populate `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The environment schema validates these values at startup.
+Populate `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The environment schema validates these
+values at startup.
+
+### Account deletion returns `501 ACCOUNT_DELETION_UNAVAILABLE`
+
+The backend intentionally uses publishable-only Supabase access. Supabase Auth administrative user
+deletion requires elevated provider access, so the current runtime rejects account deletion before
+changing deletion state. Do not replace the publishable key with an elevated key.
 
 ### `DATABASE_URL is not configured`
 
@@ -165,4 +187,5 @@ The root `npm run check` already performs that contracts build before repository
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].

@@ -62,7 +62,14 @@ test.beforeEach(async ({ page }) => {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        user: { approvalState: 'approved', competitionIds: ['5'] },
+        user: {
+          id: '17',
+          subject: 'approved-user',
+          displayName: 'Submitter User',
+          role: 'submitter',
+          approvalState: 'approved',
+          competitionIds: ['5'],
+        },
       }),
     });
   });
@@ -76,7 +83,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('approved submitter completes the responsive workflow with a keyboard', async ({ page }) => {
+test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
   await page.route('**/api/v1/submissions', async (route) => {
     const body = route.request().postDataJSON();
     expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });

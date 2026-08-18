@@ -188,12 +188,21 @@ The account-schema integration tests cover:
 
 - one application account per provider identity;
 - provider-neutral identity mapping;
-- valid role and submitter-approval values;
+- the `viewer` default and the `viewer | submitter | admin` role constraint;
+- guarded migration of approved submitters and legacy `administrator` accounts without coercing
+  unknown roles or losing competition scopes;
+- valid submitter-approval values;
 - approval and revocation updates;
 - automatic application-account update timestamps;
 - unique competition grants;
 - invalid account and competition references; and
 - cascade removal of grants when an account or competition is deleted.
+
+Account deletion does not execute `DELETE FROM app_user`. It updates the account through a
+fail-closed deletion state machine and removes its scope rows. `submission.submitted_by` remains a
+non-cascading foreign key so accepted submissions, deliveries, statistics, and provenance survive
+the personal-account deletion request. A rollback guard prevents removal of the deletion columns
+after any account has entered that lifecycle.
 
 ## Scope
 

@@ -9,17 +9,32 @@ that identity using `@supabase/supabase-js`.
 The frontend may use Supabase for authentication, but application data remains behind the handwritten backend API.
 
 After verification, the backend creates or synchronizes a provider-neutral `app_user` record and
-loads role, submitter-approval state, disabled state, and granted competition scopes from
+loads role, deprecated submitter-request state, disabled state, and granted competition scopes from
 PostgreSQL. Authentication alone never grants or changes those values.
 
-Reusable backend policies protect administrator routes, approved-submitter routes, and target
+Reusable backend policies protect `admin` routes, `submitter`/`admin` routes, and target
 competition scope. Missing or invalid credentials receive `401`; authenticated accounts that fail
 a policy receive a consistent, non-disclosing `403`. Public read routes do not use authentication.
 
 See:
 
 - [Authentication, accounts and authorisation](authentication.md)
+- [Roles and permissions](roles-and-permissions.md)
 - [Authentication provider comparison](auth-provider-comparison.md)
+- [Privacy and retention](privacy-retention.md)
+
+## Account deletion and retention
+
+Account deletion is unavailable in the current publishable-only runtime. The reserved endpoint
+returns `501 ACCOUNT_DELETION_UNAVAILABLE` before changing local state. The retained
+provider-capable design would remove the managed Supabase identity and personal application-account
+identifiers, permissions, approval, and scopes. Accepted cricket data is not personal profile data
+and remains necessary to reproduce published statistics and preserve submission provenance.
+
+The application therefore retains a permanently disabled, non-identifying `app_user` tombstone and
+its stable internal identifier. Submissions, fixtures, deliveries, statistics, corrections, source
+metadata, and audit relationships do not cascade from `app_user`. See the privacy and retention
+policy for failure handling and limitations.
 
 ## Input and data protection
 
