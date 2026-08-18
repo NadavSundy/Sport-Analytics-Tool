@@ -19,7 +19,8 @@ From the repository root:
 - Node.js 20 or later;
 - npm 10 or later;
 - access to the shared Supabase Auth configuration; and
-- access to the selected hosted PostgreSQL development database.
+- access to the selected hosted PostgreSQL development database; and
+- Docker Desktop or a compatible Docker Compose runtime only if using the recommended local database-integration-test workflow.
 
 Install all workspaces with:
 
@@ -45,15 +46,15 @@ cp apps/backend/.env.example apps/backend/.env
 
 Current runtime variables are:
 
-| Variable                   | Required by current runtime                 | Secret | Purpose                                                                                     |
-| -------------------------- | ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                 | No (defaults to `development`)              | No     | Runtime mode: `development`, `test` or `production`.                                        |
-| `PORT`                     | No (defaults to `3000`)                     | No     | HTTP listen port. Azure may provide this value.                                             |
-| `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)    | No     | Comma-separated browser origins allowed by Express CORS middleware.                         |
-| `SUPABASE_URL`             | Yes                                         | No     | Supabase project URL used by backend token verification.                                    |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes                                         | No     | Publishable key used with `supabase.auth.getUser(accessToken)`.                             |
-| `DATABASE_URL`             | Required for database-backed routes/scripts | Yes    | PostgreSQL session-pooler connection string.                                                |
-| `DATABASE_URL_TEST`        | Required for database integration tests     | Yes    | Dedicated isolated test PostgreSQL database. Must never point to development or production. |
+| Variable                   | Required by current runtime                                                 | Secret  | Purpose                                                                                                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                 | No (defaults to `development`)                                              | No      | Runtime mode: `development`, `test` or `production`.                                                                                                                                         |
+| `PORT`                     | No (defaults to `3000`)                                                     | No      | HTTP listen port. Azure may provide this value.                                                                                                                                              |
+| `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)                                    | No      | Comma-separated browser origins allowed by Express CORS middleware.                                                                                                                          |
+| `SUPABASE_URL`             | Yes                                                                         | No      | Supabase project URL used by backend token verification.                                                                                                                                     |
+| `SUPABASE_PUBLISHABLE_KEY` | Yes                                                                         | No      | Publishable key used with `supabase.auth.getUser(accessToken)`.                                                                                                                              |
+| `DATABASE_URL`             | Required for database-backed routes/scripts                                 | Yes     | PostgreSQL session-pooler connection string.                                                                                                                                                 |
+| `DATABASE_URL_TEST`        | Automatic for local Docker/CI; required for manually managed database tests | Depends | Dedicated isolated test PostgreSQL connection. Local Docker credentials are test-only and non-secret; hosted credentials must remain private. Must never point to development or production. |
 
 The current `.env.example` also contains reserved placeholders (`EXTERNAL_API_KEY`, `API_VERSION`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`) that are not read by the current application runtime. Do not treat a reserved placeholder as an implemented configuration option. `CORS_ORIGINS` is the variable used by the code today.
 
@@ -116,13 +117,41 @@ npm run test:api
 npm run build --workspace=@sport-analytics/backend
 ```
 
-Database integration tests require an isolated test database:
+For the recommended local PostgreSQL integration-test workflow, start Docker Desktop and run from the repository root:
+
+```bash
+npm run test:database:local
+```
+
+On Windows PowerShell:
+
+```powershell
+npm.cmd run test:database:local
+```
+
+This automatically starts an isolated PostgreSQL 16 container, waits for it to become healthy,
+supplies `NODE_ENV=test` and a dedicated `DATABASE_URL_TEST`, resets the schema, applies migrations,
+loads deterministic test seed data and runs the complete database integration suite.
+
+No Supabase test project, shared test credentials, manual PostgreSQL installation, manual
+`NODE_ENV` change or local `.env.test` file is required for this workflow.
+
+The application's normal Supabase `DATABASE_URL` remains separate and must never be reset by
+database-test tooling.
+
+For an intentionally manually managed test PostgreSQL database, supply a safe
+`DATABASE_URL_TEST` and run:
 
 ```bash
 npm run db:test:reset --workspace=@sport-analytics/backend
+npm run db:test:migrate --workspace=@sport-analytics/backend
 npm run db:test:seed --workspace=@sport-analytics/backend
 npm run test:database
 ```
+
+See `apps/backend/.env.test.example` for the optional manual configuration shape and
+[`docs/development/testing.md`](../../docs/development/testing.md) for the complete testing policy,
+Docker lifecycle commands and safety behaviour.
 
 For the full repository gate:
 

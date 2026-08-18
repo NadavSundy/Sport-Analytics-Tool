@@ -29,7 +29,7 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 - Python 3.10 or later and MkDocs Material for the documentation site
 - Access to the current Supabase-hosted PostgreSQL development database
 - Access to the shared Supabase Auth project
-- A Docker-compatible runtime if using the optional local Supabase stack
+- Docker Desktop or a compatible Docker Compose runtime only if running the recommended local PostgreSQL integration-test workflow
 
 ## Initial setup
 
@@ -46,6 +46,33 @@ Run the applications in separate terminals:
 npm run dev:backend
 npm run dev:frontend
 ```
+
+Normal unit, frontend, API and contract tests do not require Docker:
+
+```bash
+npm run test
+```
+
+For the complete PostgreSQL integration suite, the recommended local workflow is:
+
+```bash
+npm run test:database:local
+```
+
+On Windows PowerShell:
+
+```powershell
+npm.cmd run test:database:local
+```
+
+This command uses Docker to provision an isolated PostgreSQL 16 test database, applies migrations
+and deterministic test seed data, and runs the database integration suite. No separate Supabase test
+project, manually created PostgreSQL database, shared test credentials, manual `NODE_ENV=test`
+setting or local `.env.test` file is required.
+
+Docker is not required for normal application development, `npm run test`, or `npm run check`.
+See [Testing Strategy](docs/development/testing.md) for the complete database-test workflow,
+safety rules and non-Docker alternative.
 
 The root development dispatcher also accepts the application name, so
 `npm run dev frontend` and `npm run dev backend` are equivalent. Additional
