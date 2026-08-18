@@ -437,11 +437,19 @@ A local stack is for development only. It has development credentials and must n
 
 ## Password reset
 
-Supabase Auth provides managed password-reset operations and email flows.
+The application supports Google OAuth only, so it has no application-owned password to reset.
+Google owns the user's Google Account credential and recovery process. The application never
+receives, stores or changes that password.
 
-The final password-reset page, redirect handling, email templates and production SMTP configuration remain future work.
+Supabase's `resetPasswordForEmail` operation applies to Supabase email/password authentication. It
+cannot reset a Google Account or Gmail password. Adding it for an OAuth account could introduce a
+separate Supabase password without changing the Google credential, thereby expanding the product to
+a second authentication method.
 
-The hosted default email service has development rate limits. Production use requires appropriate SMTP configuration and monitoring.
+Users who have forgotten their Google Account password must use Google Account recovery and then
+return to the application to sign in with Google. See
+[Password recovery ownership](password-recovery.md) for the issue #65 decision and security
+rationale.
 
 ## Account deletion
 
@@ -520,7 +528,7 @@ management, submitter access requests and event-submission routes remain separat
 
 This foundation intentionally does not implement:
 
-- final password-reset screens;
+- application-owned password-reset screens while Google OAuth remains the only sign-in method;
 - event correction and file or batch upload interfaces;
 - season or fixture scopes beyond reusable competition resolution;
 - sport-specific authorisation;

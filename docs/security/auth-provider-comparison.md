@@ -41,6 +41,12 @@ Pricing was checked on 2026-08-06 and must be reviewed before production deploym
 
 Supabase Auth supports managed email/password registration, sign-in, email verification, password reset, session refresh and social identity providers.
 
+These are separate authentication methods. The Sport Analytics Tool currently enables Google OAuth
+for users and does not expose Supabase email/password sign-in. Its users recover their Google
+Account through Google; Supabase password reset would reset or add only a separate Supabase
+credential, not the Google Account password. See
+[Password recovery ownership](password-recovery.md).
+
 Administrative deletion is available through the Auth Admin API. It requires an elevated server-side key and must never be exposed through the browser.
 
 Final account-management screens remain outside the current task.
