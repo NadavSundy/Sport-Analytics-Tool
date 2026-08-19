@@ -259,7 +259,11 @@ pending state after reload, narrow-screen overflow, and serious or critical Axe 
 
 The administrator-management suites verify that `not_requested` and `rejected` viewers have no
 approval or competition-scope controls, pending viewers can be approved or rejected, and approved
-submitters can still be re-scoped or revoked. Backend policy, API, and PostgreSQL integration tests
+submitters can still be re-scoped or revoked. Rejection coverage includes in-progress, success,
+authentication, authorisation, conflict, and validation feedback. The administrator browser
+scenario activates rejection from the keyboard at desktop and mobile widths, checks the immediate
+persisted-state update and horizontal overflow, and scans the result for serious or critical Axe
+findings. Backend policy, API, and PostgreSQL integration tests
 also verify that a direct approval attempt without a pending request returns a conflict and cannot
 bypass the state transition.
 
