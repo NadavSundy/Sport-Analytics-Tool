@@ -124,6 +124,19 @@ once the compliance question had been settled in writing.
    blocked. The latency consequence recorded above stands unchanged: the new
    project is in `eu-west-2` and the median round trip is 173 ms.
 
+   **Measured on 19 August 2026.** The benchmark this record required has been
+   taken against the imported corpus of 3,207,109 deliveries across 14,011
+   fixtures. Total database size is 798 MB, of which `delivery` accounts for
+   705 MB: 385 MB of heap and 319 MB of indexes. That is approximately 249 bytes
+   per delivery all-in, against the 414 bytes per delivery estimated here. Index
+   size is 45 per cent of table heap on `delivery`, a proportion the earlier
+   four-fixture sample could not have shown because every index sat at its
+   minimum allocation.
+
+   The estimate was therefore conservative by roughly 40 per cent, and the
+   corpus occupies about a tenth of the 8 GB now available. Both the storage
+   constraint and the benchmark requirement recorded here are closed.
+
 5. Because the plan retains no backups and all six members hold owner access on
    the project, a tested dump and restore procedure is required rather than
    optional.
