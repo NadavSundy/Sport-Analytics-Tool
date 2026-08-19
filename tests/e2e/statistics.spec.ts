@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const fixture = {
   fixtureId: 'fixture-1',
@@ -38,6 +38,28 @@ const participantStatistic = {
   batting: { runsScored: 4, ballsFaced: 1, strikeRate: 400, fours: 1, sixes: 0 },
   bowling: null,
 };
+
+async function readDetailSpacing(page: Page) {
+  return page.evaluate(() => {
+    const detailPage = document.querySelector<HTMLElement>('.detail-page');
+    const heading = document.querySelector<HTMLElement>('.page-heading--detail');
+    const firstFact = document.querySelector<HTMLElement>('.record-facts > div');
+    const relatedRecords = document.querySelector<HTMLElement>('.related-records');
+    const summary = document.querySelector<HTMLElement>('.statistics-summary');
+    if (!detailPage || !heading || !firstFact || !relatedRecords) {
+      throw new Error('The public detail layout was not rendered.');
+    }
+
+    return {
+      pagePaddingTop: Number.parseFloat(getComputedStyle(detailPage).paddingTop),
+      headingPaddingTop: Number.parseFloat(getComputedStyle(heading).paddingTop),
+      headingPaddingBottom: Number.parseFloat(getComputedStyle(heading).paddingBottom),
+      factPaddingTop: Number.parseFloat(getComputedStyle(firstFact).paddingTop),
+      relatedRecordsMarginTop: Number.parseFloat(getComputedStyle(relatedRecords).marginTop),
+      summaryMarginTop: summary ? Number.parseFloat(getComputedStyle(summary).marginTop) : null,
+    };
+  });
+}
 
 test('anonymous users navigate the responsive fixture statistics and event trace', async ({
   page,
@@ -116,6 +138,21 @@ test('anonymous users navigate the responsive fixture statistics and event trace
 
   await page.goto('/fixtures/fixture-1');
   const statisticsLink = page.getByRole('link', { name: 'View statistics' });
+  await expect(page.getByRole('heading', { level: 1, name: 'T20 fixture' })).toBeVisible();
+  const isMobile = (page.viewportSize()?.width ?? 0) < 900;
+  const detailSpacing = await readDetailSpacing(page);
+  expect(detailSpacing).toEqual({
+    pagePaddingTop: isMobile ? 24 : 32,
+    headingPaddingTop: 16,
+    headingPaddingBottom: 16,
+    factPaddingTop: 16,
+    relatedRecordsMarginTop: 32,
+    summaryMarginTop: null,
+  });
+  expect(Object.values(detailSpacing).every((value) => value === null || value % 4 === 0)).toBe(
+    true,
+  );
+
   await statisticsLink.focus();
   await expect(statisticsLink).toBeFocused();
   await page.keyboard.press('Enter');
@@ -125,6 +162,34 @@ test('anonymous users navigate the responsive fixture statistics and event trace
   await expect(page.getByRole('heading', { name: 'Participant statistics' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Participant striker-1' })).toBeVisible();
   await expect(page).not.toHaveURL(/sign-in/);
+
+  const dayStatisticsSpacing = await readDetailSpacing(page);
+  expect(dayStatisticsSpacing).toEqual({
+    pagePaddingTop: isMobile ? 24 : 32,
+    headingPaddingTop: 16,
+    headingPaddingBottom: 16,
+    factPaddingTop: 16,
+    relatedRecordsMarginTop: 32,
+    summaryMarginTop: 32,
+  });
+
+  if (process.env.CAPTURE_ISSUE_195_EVIDENCE && !isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-195-statistics-after-desktop.png',
+    });
+  }
+
+  await page.getByLabel('Switch to Night Match theme').check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+  expect(await readDetailSpacing(page)).toEqual(dayStatisticsSpacing);
+
+  if (process.env.CAPTURE_ISSUE_195_EVIDENCE && isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-195-statistics-after-mobile.png',
+    });
+  }
 
   const accessibilityResults = await new AxeBuilder({ page }).analyze();
   expect(
