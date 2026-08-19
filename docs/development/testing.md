@@ -342,6 +342,25 @@ npm run test:e2e -- tests/e2e/statistics.spec.ts --workers=1
 The issue #54 frontend verification and screenshots are recorded in
 `evidence/validation/issue-54-public-statistics.md`.
 
+## Participant fixture-history coverage
+
+The public player fixture-history suites cover anonymous pagination, participant-bound cursors,
+readable competition and team context, squad participation, correct fixture association for batting
+and bowling figures, null figures for a selected player who did not bat or bowl, partial and missing
+published-statistic states, privacy-safe responses, and consistency with the existing fixture
+statistics derivation rules.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm exec --workspace=@sport-analytics/backend -- vitest run tests/unit/public-read.service.test.ts
+npm exec --workspace=@sport-analytics/backend -- vitest run tests/api/public-read.test.ts
+npm run test --workspace=@sport-analytics/contracts
+npm run test:database --workspace=@sport-analytics/backend
+npm run openapi:lint
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of

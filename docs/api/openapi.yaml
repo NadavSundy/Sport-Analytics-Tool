@@ -744,6 +744,39 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/participants/{participantId}/fixtures:
+    get:
+      tags:
+        - Public Read
+      summary: List a participant's published fixture history and performance
+      description: |
+        Returns fixtures in which the participant was selected, newest first,
+        with readable competition and team context plus the participant's
+        available fixture-level batting and bowling figures. A selected player
+        remains in the history when they did not bat or bowl. Partial accepted
+        source data and fixtures without published delivery statistics are
+        represented through statisticsStatus, statisticsWarnings and null
+        batting or bowling values. Submission, account and audit data are not
+        exposed.
+      operationId: listParticipantFixtures
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Paginated published fixture history for the participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantFixtureCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/submissions:
     post:
       tags:
@@ -1362,6 +1395,112 @@ components:
         displayName:
           type: string
           minLength: 1
+
+    ParticipantFixtureBatting:
+      type: object
+      additionalProperties: false
+      required:
+        - runsScored
+        - ballsFaced
+        - fours
+        - sixes
+        - strikeRate
+      properties:
+        runsScored:
+          type: integer
+          minimum: 0
+        ballsFaced:
+          type: integer
+          minimum: 0
+        fours:
+          type: integer
+          minimum: 0
+        sixes:
+          type: integer
+          minimum: 0
+        strikeRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantFixtureBowling:
+      type: object
+      additionalProperties: false
+      required:
+        - runsConceded
+        - legalBallsBowled
+        - oversBowled
+        - wicketsTaken
+        - economyRate
+      properties:
+        runsConceded:
+          type: integer
+          minimum: 0
+        legalBallsBowled:
+          type: integer
+          minimum: 0
+        oversBowled:
+          type: string
+          pattern: '^\d+\.\d+$'
+        wicketsTaken:
+          type: integer
+          minimum: 0
+        economyRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantFixture:
+      type: object
+      additionalProperties: false
+      required:
+        - fixture
+        - competitionName
+        - competitors
+        - competitor
+        - role
+        - statisticsStatus
+        - statisticsWarnings
+        - batting
+        - bowling
+      properties:
+        fixture:
+          $ref: '#/components/schemas/Fixture'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        competitors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competitor'
+        competitor:
+          $ref: '#/components/schemas/Competitor'
+        role:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        statisticsStatus:
+          type: string
+          enum:
+            - complete
+            - partial
+        statisticsWarnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixtureStatisticsWarning'
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantFixtureBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantFixtureBowling'
+            - type: 'null'
 
     PublicEventFielder:
       type: object
@@ -2024,6 +2163,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Participant'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    ParticipantFixtureCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantFixture'
         pagination:
           $ref: '#/components/schemas/PaginationMetadata'
 

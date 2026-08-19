@@ -5,6 +5,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { executeQuery } from '../../src/database';
+import {
+  listCompetitorsForFixtures,
+  listParticipantFixtures,
+} from '../../src/modules/participants/participant.repository';
 import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
 import { loadFixtureStatisticsSource } from '../../src/modules/statistics/fixture-statistics.repository';
 
@@ -176,6 +180,40 @@ describe.sequential('fixture statistics database integration', () => {
         wicketsTaken: 0,
       },
     });
+
+    const mccullumHistory = await listParticipantFixtures(
+      { participantId: mccullum.personId, limit: 10 },
+      executor,
+    );
+    const mccullumFixture = mccullumHistory.records.find(
+      (record) => record.fixtureId === currentFixtureId,
+    );
+    expect(mccullumFixture).toMatchObject({
+      runsScored: 116,
+      ballsFaced: 56,
+      fours: 12,
+      sixes: 8,
+      missingFields: source.missingFields,
+      standardInningsCount: 2,
+      acceptedEventCount: source.events.length,
+      emptyStandardInningsIds: [],
+    });
+
+    const southeeHistory = await listParticipantFixtures(
+      { participantId: southee.personId, limit: 10 },
+      executor,
+    );
+    expect(
+      southeeHistory.records.find((record) => record.fixtureId === currentFixtureId),
+    ).toMatchObject({
+      runsConceded: 44,
+      legalBallsBowled: 24,
+      wicketsTaken: 0,
+    });
+
+    const readableCompetitors = await listCompetitorsForFixtures([currentFixtureId], executor);
+    expect(readableCompetitors).toHaveLength(2);
+    expect(readableCompetitors.every((competitor) => competitor.name.length > 0)).toBe(true);
 
     const mccullumSuperOver = await executeQuery<BattingDeltaRow>(
       executor,
