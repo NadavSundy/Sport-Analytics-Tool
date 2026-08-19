@@ -91,12 +91,12 @@ chunk exceeds 500 kB.
 ## Remaining Definition of Done steps
 
 - Human review
-- Pull Request creation and linkage
 - Peer approval
 - Merge into `main`
 - Gitea issue closure
 
-These steps are not performed by this implementation session.
+Pull Request #204 was created and linked during this implementation session. The remaining steps
+were not performed.
 
 ## AI Declaration
 
