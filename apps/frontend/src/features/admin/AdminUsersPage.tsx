@@ -113,6 +113,16 @@ function ManagedUserCard({
   const audit = accessAudit(user);
   const selectionChanged =
     [...selectedScopeIds].sort().join(',') !== [...assignedIds].sort().join(',');
+  const pendingActionMessage =
+    pendingAction?.kind === 'approve'
+      ? 'Approving submitter access. Please wait.'
+      : pendingAction?.kind === 'reject'
+        ? 'Rejecting the submitter access request. Please wait.'
+        : pendingAction?.kind === 'scope'
+          ? 'Saving competition scope changes. Please wait.'
+          : pendingAction?.kind === 'revoke'
+            ? 'Revoking submitter access. Please wait.'
+            : null;
 
   useEffect(() => {
     setSelectedScopeIds(assignedIds);
@@ -184,6 +194,14 @@ function ManagedUserCard({
         ) : null}
       </dl>
 
+      {hasPendingRequest && isManageable ? (
+        <p className="admin-user-card__request-state" role="status">
+          <strong>Submitter access requested.</strong> This request is awaiting administrator
+          review. Approval requires at least one competition scope; rejection does not assign any
+          scope.
+        </p>
+      ) : null}
+
       {canManageAccess ? (
         <form className="admin-access-form" onSubmit={(event) => void saveAccess(event)}>
           <fieldset disabled={isBusy} aria-describedby={`scope-help-${user.id}`}>
@@ -225,13 +243,13 @@ function ManagedUserCard({
                 isBusy || availableScopes.length === 0 || (isSubmitter && !selectionChanged)
               }
             >
-              {isBusy && pendingAction.kind !== 'revoke'
-                ? isSubmitter
+              {isBusy && pendingAction?.kind === 'approve'
+                ? 'Approving submitter...'
+                : isBusy && pendingAction?.kind === 'scope'
                   ? 'Saving scope...'
-                  : 'Approving submitter...'
-                : isSubmitter
-                  ? 'Save scope changes'
-                  : 'Approve submitter'}
+                  : isSubmitter
+                    ? 'Save scope changes'
+                    : 'Approve submitter'}
             </button>
             {isSubmitter ? (
               <button
@@ -261,6 +279,12 @@ function ManagedUserCard({
               </button>
             ) : null}
           </div>
+
+          {isBusy && pendingActionMessage ? (
+            <p className="admin-access-form__progress" role="status" aria-live="polite">
+              {pendingActionMessage}
+            </p>
+          ) : null}
         </form>
       ) : (
         <p className="admin-user-card__protected" role="status">
@@ -269,11 +293,11 @@ function ManagedUserCard({
             : user.disabled
               ? 'Disabled accounts cannot receive submitter access changes.'
               : user.approvalState === 'not_requested'
-                ? 'No submitter access request has been made.'
+                ? 'No submitter access request is currently awaiting review.'
                 : user.approvalState === 'rejected'
-                  ? 'This request was rejected. The user must make a new request before approval.'
+                  ? 'No submitter access request is currently awaiting review. The previous request was rejected; the user must make a new request before approval.'
                   : user.approvalState === 'approved'
-                    ? "This account's previously approved submitter access has been revoked."
+                    ? "No submitter access request is currently awaiting review. This account's previously approved submitter access has been revoked."
                     : 'This account has no actionable pending submitter request.'}
         </p>
       )}
@@ -425,8 +449,8 @@ export function AdminUsersPage() {
         <p className="eyebrow">Administrator workspace</p>
         <h1 id="admin-users-title">User Access Management</h1>
         <p>
-          Review registered accounts, approve or revoke submitters, and keep every contributor
-          within a defined competition scope.
+          Approve or reject pending submitter requests, manage existing submitter scopes, and revoke
+          existing access as a separate action.
         </p>
       </header>
 
