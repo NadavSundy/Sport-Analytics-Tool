@@ -71,6 +71,62 @@ test('anonymous browsing preserves filters, pagination and keyboard navigation',
       .getByRole('link', { name: 'Login or Sign up' }),
   ).toHaveAttribute('href', '/sign-in');
 
+  const compactCollectionLayout = await page.evaluate(() => {
+    const heading = document.querySelector<HTMLElement>('.page-heading');
+    const content = document.querySelector<HTMLElement>('.browse-page__content');
+    if (!heading || !content) {
+      throw new Error('The public collection layout was not rendered.');
+    }
+
+    const headingStyle = getComputedStyle(heading);
+    const contentStyle = getComputedStyle(content);
+    return {
+      headingPaddingTop: Number.parseFloat(headingStyle.paddingTop),
+      headingPaddingBottom: Number.parseFloat(headingStyle.paddingBottom),
+      contentGap: Number.parseFloat(contentStyle.rowGap),
+    };
+  });
+  const isMobile = (page.viewportSize()?.width ?? 0) < 900;
+  expect(compactCollectionLayout).toEqual({
+    headingPaddingTop: isMobile ? 24 : 32,
+    headingPaddingBottom: isMobile ? 16 : 24,
+    contentGap: isMobile ? 24 : 32,
+  });
+  expect(Object.values(compactCollectionLayout).every((value) => value % 4 === 0)).toBe(true);
+
+  if (process.env.CAPTURE_ISSUE_195_EVIDENCE && !isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-195-collection-after-desktop.png',
+    });
+  }
+
+  await page.getByLabel('Switch to Night Match theme').check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+  const nightCollectionLayout = await page.evaluate(() => {
+    const heading = document.querySelector<HTMLElement>('.page-heading');
+    const content = document.querySelector<HTMLElement>('.browse-page__content');
+    if (!heading || !content) {
+      throw new Error('The public collection layout was not rendered.');
+    }
+
+    const headingStyle = getComputedStyle(heading);
+    const contentStyle = getComputedStyle(content);
+    return {
+      headingPaddingTop: Number.parseFloat(headingStyle.paddingTop),
+      headingPaddingBottom: Number.parseFloat(headingStyle.paddingBottom),
+      contentGap: Number.parseFloat(contentStyle.rowGap),
+    };
+  });
+  expect(nightCollectionLayout).toEqual(compactCollectionLayout);
+
+  if (process.env.CAPTURE_ISSUE_195_EVIDENCE && isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-195-collection-after-mobile.png',
+    });
+  }
+
   const accessibilityResults = await new AxeBuilder({ page }).analyze();
   const seriousOrCriticalViolations = accessibilityResults.violations.filter(
     (violation) => violation.impact === 'serious' || violation.impact === 'critical',
@@ -98,4 +154,28 @@ test('anonymous browsing preserves filters, pagination and keyboard navigation',
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   expect(hasHorizontalOverflow).toBe(false);
+
+  if (!isMobile) {
+    const viewport = page.viewportSize();
+    if (!viewport) {
+      throw new Error('The desktop viewport is unavailable.');
+    }
+
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setDeviceMetricsOverride', {
+      width: Math.floor(viewport.width / 2),
+      height: viewport.height,
+      deviceScaleFactor: 2,
+      mobile: false,
+    });
+    await expect(page.getByRole('heading', { level: 1, name: 'Competitors' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Wanderers' })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
+    await session.send('Emulation.clearDeviceMetricsOverride');
+    await session.detach();
+  }
 });
