@@ -29,7 +29,9 @@ interface BowlingAccumulator {
 
 interface ParticipantAccumulator {
   participantId: string;
+  participantName: string;
   competitorIds: Set<string>;
+  competitorNames: Map<string, string>;
   batting: BattingAccumulator | null;
   bowling: BowlingAccumulator | null;
   events: FixtureStatisticsEventSource[];
@@ -67,7 +69,9 @@ function mapContributingEvent(
     inningsOrdinal: event.inningsOrdinal,
     sequenceNumber: event.inningsSequence,
     strikerParticipantId: event.strikerId,
+    strikerParticipantName: event.strikerName,
     bowlerParticipantId: event.bowlerId,
+    bowlerParticipantName: event.bowlerName,
     runs: {
       offBat: event.runsOffBat,
       extras: event.runsExtras,
@@ -102,7 +106,9 @@ function mapOutcome(source: FixtureStatisticsSource): FixtureOutcome {
   return {
     kind: source.outcome === 'no result' ? 'no_result' : source.outcome,
     winnerCompetitorId: source.winnerCompetitorId,
+    winnerCompetitorName: source.winnerCompetitorName,
     eliminatorCompetitorId: source.eliminatorCompetitorId,
+    eliminatorCompetitorName: source.eliminatorCompetitorName,
     margin,
     method: source.outcomeMethod,
     decidedByBowlOut: source.decidedByBowlOut,
@@ -112,6 +118,7 @@ function mapOutcome(source: FixtureStatisticsSource): FixtureOutcome {
 function participantAccumulator(
   participants: Map<string, ParticipantAccumulator>,
   participantId: string,
+  participantName: string,
 ): ParticipantAccumulator {
   const existing = participants.get(participantId);
   if (existing) {
@@ -120,12 +127,15 @@ function participantAccumulator(
 
   const created: ParticipantAccumulator = {
     participantId,
+    participantName,
     competitorIds: new Set<string>(),
+    competitorNames: new Map<string, string>(),
     batting: null,
     bowling: null,
     events: [],
     eventIds: new Set<string>(),
   };
+
   participants.set(participantId, created);
   return created;
 }
@@ -202,6 +212,7 @@ export function deriveFixtureStatistics(
       inningsId: innings.inningsId,
       inningsOrdinal: innings.ordinal,
       competitorId: innings.battingCompetitorId,
+      competitorName: innings.battingCompetitorName,
       sourceEventCount: events.length,
       metrics: {
         deliveryRuns,
@@ -219,8 +230,9 @@ export function deriveFixtureStatistics(
   }
 
   for (const event of orderedEvents) {
-    const batter = participantAccumulator(participants, event.strikerId);
+    const batter = participantAccumulator(participants, event.strikerId, event.strikerName);
     batter.competitorIds.add(event.battingCompetitorId);
+    batter.competitorNames.set(event.battingCompetitorId, event.battingCompetitorName);
     batter.batting ??= {
       runsScored: 0,
       ballsFaced: 0,
@@ -239,9 +251,13 @@ export function deriveFixtureStatistics(
     }
     addParticipantEvent(batter, event);
 
-    const bowler = participantAccumulator(participants, event.bowlerId);
+    const bowler = participantAccumulator(participants, event.bowlerId, event.bowlerName);
     if (event.bowlingCompetitorId !== null) {
       bowler.competitorIds.add(event.bowlingCompetitorId);
+
+      if (event.bowlingCompetitorName !== null) {
+        bowler.competitorNames.set(event.bowlingCompetitorId, event.bowlingCompetitorName);
+      }
     }
     bowler.bowling ??= {
       runsConceded: 0,
@@ -262,6 +278,8 @@ export function deriveFixtureStatistics(
     .map((participant): ParticipantFixtureStatistic => {
       const competitorIds = [...participant.competitorIds].sort(compareDatabaseIds);
       const competitorId = competitorIds[0] ?? null;
+      const competitorName =
+        competitorId === null ? null : (participant.competitorNames.get(competitorId) ?? null);
 
       if (competitorId === null) {
         warnings.push({
@@ -277,7 +295,9 @@ export function deriveFixtureStatistics(
         scope: 'participant',
         statisticCode: 'participant_fixture',
         participantId: participant.participantId,
+        participantName: participant.participantName,
         competitorId,
+        competitorName,
         sourceEventCount: participant.events.length,
         batting: participant.batting
           ? {

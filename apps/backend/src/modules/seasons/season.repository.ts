@@ -2,6 +2,7 @@ import { executeQuery, getDatabasePool, type QueryExecutor } from '../../databas
 
 export interface SeasonRecord {
   competitionId: string;
+  competitionName: string;
   label: string;
 }
 
@@ -18,13 +19,13 @@ export async function listSeasons(
   options: SeasonListOptions,
   executor: QueryExecutor = getDatabasePool(),
 ) {
-  const innerConditions = ['competition_id IS NOT NULL'];
+  const innerConditions = ['f.competition_id IS NOT NULL'];
   const outerConditions: string[] = [];
   const values: unknown[] = [];
 
   if (options.competitionId) {
     values.push(options.competitionId);
-    innerConditions.push(`competition_id = $${values.length}::bigint`);
+    innerConditions.push(`f.competition_id = $${values.length}::bigint`);
   }
 
   if (options.after) {
@@ -35,7 +36,7 @@ export async function listSeasons(
     const seasonParameter = values.length;
 
     outerConditions.push(
-      `(competition_id, season) > ($${competitionParameter}::bigint, $${seasonParameter}::text)`,
+      `(s.competition_id, s.season) > ($${competitionParameter}::bigint, $${seasonParameter}::text)`,
     );
   }
 
@@ -48,16 +49,21 @@ export async function listSeasons(
     executor,
     `
       WITH seasons AS (
-        SELECT DISTINCT competition_id, season
-        FROM fixture
+        SELECT DISTINCT
+          f.competition_id,
+          f.season
+        FROM fixture f
         WHERE ${innerConditions.join(' AND ')}
       )
       SELECT
-        competition_id::text AS "competitionId",
-        season AS label
-      FROM seasons
+        s.competition_id::text AS "competitionId",
+        c.name AS "competitionName",
+        s.season AS label
+      FROM seasons s
+      INNER JOIN competition c
+        ON c.competition_id = s.competition_id
       ${outerWhere}
-      ORDER BY competition_id ASC, season ASC
+      ORDER BY s.competition_id ASC, s.season ASC
       LIMIT $${limitParameter}
     `,
     values,
@@ -78,11 +84,14 @@ export async function findSeason(
     executor,
     `
       SELECT
-        competition_id::text AS "competitionId",
-        season AS label
-      FROM fixture
-      WHERE competition_id = $1
-        AND season = $2
+        f.competition_id::text AS "competitionId",
+        c.name AS "competitionName",
+        f.season AS label
+      FROM fixture f
+      INNER JOIN competition c
+        ON c.competition_id = f.competition_id
+      WHERE f.competition_id = $1::bigint
+        AND f.season = $2::text
       LIMIT 1
     `,
     [competitionId, label],

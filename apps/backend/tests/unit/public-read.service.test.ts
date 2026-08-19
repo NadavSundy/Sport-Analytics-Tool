@@ -191,7 +191,15 @@ describe('public participant fixture history service', () => {
     expect(firstPage?.data[0]).toMatchObject({
       fixture: {
         fixtureId: '100',
+        competitionId: '12',
+        competitionName: 'Example Competition',
         seasonId: expect.any(String),
+        season: '2026',
+        seasonLabel: '2026',
+        competitors: [
+          { competitorId: '20', name: 'Team One' },
+          { competitorId: '21', name: 'Team Two' },
+        ],
       },
       competitionName: 'Example Competition',
       competitors: [

@@ -1297,12 +1297,16 @@ components:
       required:
         - seasonId
         - competitionId
+        - competitionName
         - label
       properties:
         seasonId:
           $ref: '#/components/schemas/ApiIdentifier'
         competitionId:
           $ref: '#/components/schemas/ApiIdentifier'
+        competitionName:
+          type: string
+          minLength: 1
         label:
           type: string
           minLength: 1
@@ -1313,8 +1317,11 @@ components:
       required:
         - fixtureId
         - competitionId
+        - competitionName
         - seasonId
         - season
+        - seasonLabel
+        - competitors
         - matchType
         - teamType
         - gender
@@ -1330,6 +1337,11 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
             - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
 
         seasonId:
           oneOf:
@@ -1339,7 +1351,14 @@ components:
         season:
           type: string
           minLength: 1
+        seasonLabel:
+          type: string
+          minLength: 1
 
+        competitors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competitor'
         matchType:
           type: string
           minLength: 1
@@ -1662,7 +1681,9 @@ components:
         - inningsOrdinal
         - sequenceNumber
         - strikerParticipantId
+        - strikerParticipantName
         - bowlerParticipantId
+        - bowlerParticipantName
         - runs
         - extras
         - nonBoundary
@@ -1682,8 +1703,14 @@ components:
           minimum: 1
         strikerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        strikerParticipantName:
+          type: string
+          minLength: 1
         bowlerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        bowlerParticipantName:
+          type: string
+          minLength: 1
         runs:
           type: object
           additionalProperties: false
@@ -1772,6 +1799,7 @@ components:
             - inningsId
             - inningsOrdinal
             - competitorId
+            - competitorName
             - metrics
           properties:
             scope:
@@ -1787,6 +1815,9 @@ components:
               minimum: 0
             competitorId:
               $ref: '#/components/schemas/ApiIdentifier'
+            competitorName:
+              type: string
+              minLength: 1
             metrics:
               type: object
               additionalProperties: false
@@ -1810,10 +1841,10 @@ components:
         - $ref: '#/components/schemas/FixtureStatisticCommon'
         - type: object
           required:
-            - scope
-            - statisticCode
             - participantId
+            - participantName
             - competitorId
+            - competitorName
             - batting
             - bowling
           properties:
@@ -1825,10 +1856,19 @@ components:
               const: participant_fixture
             participantId:
               $ref: '#/components/schemas/ApiIdentifier'
+            participantName:
+              type: string
+              minLength: 1
             competitorId:
               oneOf:
                 - $ref: '#/components/schemas/ApiIdentifier'
                 - type: 'null'
+            competitorName:
+              oneOf:
+                - type: string
+                  minLength: 1
+                - type: 'null'
+
             batting:
               oneOf:
                 - type: object
@@ -1927,7 +1967,9 @@ components:
       required:
         - kind
         - winnerCompetitorId
+        - winnerCompetitorName
         - eliminatorCompetitorId
+        - eliminatorCompetitorName
         - margin
         - method
         - decidedByBowlOut
@@ -1943,9 +1985,19 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
             - type: 'null'
+        winnerCompetitorName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
         eliminatorCompetitorId:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        eliminatorCompetitorName:
+          oneOf:
+            - type: string
+              minLength: 1
             - type: 'null'
         margin:
           oneOf:

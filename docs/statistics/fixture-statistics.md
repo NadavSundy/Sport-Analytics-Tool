@@ -66,11 +66,19 @@ Each innings and participant projection has a stable opaque `statisticId`. The I
 hash of the fixture and scope identifiers, so replaying the same fixture preserves its resource
 references.
 
+Published statistics retain stable competitor and participant identifiers while also carrying the
+readable relationship names needed for presentation. Innings totals include `competitorName`;
+participant statistics include `participantName` and the participant's `competitorName` where known;
+and fixture outcomes include `winnerCompetitorName` and `eliminatorCompetitorName` where those
+relationships exist.
+
 Normal list and detail responses return `sourceEventCount` only. Calling either endpoint with
 `includeContributors=true` adds the accepted, ordered delivery records used by that projection.
-Each trace record includes the stable delivery `eventId`, innings and sequence references, the
-participants, run components, extras, boundary flag and credited-bowler wicket count. This is enough
-to reproduce every published metric without exposing submission ownership or internal audit data.
+Each trace record includes the stable delivery `eventId`, innings and sequence references, striker
+and bowler identifiers and readable names, run components, extras, boundary flag and
+credited-bowler wicket count. This is enough to reproduce every published metric while allowing
+user-facing traces to identify the players without exposing submission ownership or internal audit
+data.
 
 For an innings total, `metrics.deliveryRuns` is traceable to delivery event IDs while
 `metrics.penaltyRuns` is traceable to the returned `inningsId`, because the approved schema records
@@ -80,8 +88,9 @@ pre/post penalties at innings level rather than inventing a delivery for them.
 
 Anonymous users can open a fixture's Basic statistics at
 `/fixtures/{fixtureId}/statistics`. The page shows the typed fixture outcome, completeness state,
-warnings, innings competitor totals, and available participant batting and bowling metrics. Each
-competitor and participant identifier links to its corresponding public record.
+warnings, innings competitor totals, and available participant batting and bowling metrics.The statistics API exposes readable team and player names alongside their stable identifiers so
+public interfaces can present cricket identities without performing additional name-resolution
+requests. The identifiers remain available for routing to the corresponding public records.
 
 Each result links to `/fixtures/{fixtureId}/statistics/{statisticId}`. That route opts into
 `includeContributors=true` and presents the accepted delivery references and run components used by
@@ -111,5 +120,5 @@ result, while the repository test verifies accepted-revision filtering and occur
 
 ## AI Declaration
 
-The preceding calculation, API and public-interface documentation was generated and verified with
-the assistance of Codex[GPT-5.6 Sol].
+The preceding calculation, API and public-interface documentation was generated, reviewed and edited
+with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].

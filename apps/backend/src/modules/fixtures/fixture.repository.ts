@@ -1,9 +1,16 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 
+export interface FixtureCompetitorRecord {
+  competitorId: string;
+  name: string;
+}
+
 export interface FixtureRecord {
   fixtureId: string;
   competitionId: string | null;
+  competitionName: string | null;
   season: string;
+  competitors: FixtureCompetitorRecord[];
   matchType: string;
   teamType: string;
   gender: string;
@@ -99,7 +106,24 @@ export async function listFixtures(
       SELECT
         f.fixture_id::text AS "fixtureId",
         f.competition_id::text AS "competitionId",
+        c.name AS "competitionName",
         f.season,
+        COALESCE(
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'competitorId', ft.team_id::text,
+                'name', t.name
+              )
+              ORDER BY ft.ordinal ASC
+            )
+            FROM fixture_team ft
+            INNER JOIN team t
+              ON t.team_id = ft.team_id
+            WHERE ft.fixture_id = f.fixture_id
+          ),
+          '[]'::jsonb
+        ) AS competitors,
         f.match_type AS "matchType",
         f.team_type AS "teamType",
         f.gender,
@@ -108,6 +132,8 @@ export async function listFixtures(
         f.start_date::text AS "startDate",
         f.end_date::text AS "endDate"
       FROM fixture f
+      LEFT JOIN competition c
+        ON c.competition_id = f.competition_id
       ${where}
       ORDER BY f.start_date ASC, f.fixture_id ASC
       LIMIT $${limitParameter}
@@ -129,18 +155,37 @@ export async function findFixtureById(
     executor,
     `
       SELECT
-        fixture_id::text AS "fixtureId",
-        competition_id::text AS "competitionId",
-        season,
-        match_type AS "matchType",
-        team_type AS "teamType",
-        gender,
-        balls_per_over AS "ballsPerOver",
-        scheduled_overs AS "scheduledOvers",
-        start_date::text AS "startDate",
-        end_date::text AS "endDate"
-      FROM fixture
-      WHERE fixture_id = $1::bigint
+        f.fixture_id::text AS "fixtureId",
+        f.competition_id::text AS "competitionId",
+        c.name AS "competitionName",
+        f.season,
+        COALESCE(
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'competitorId', ft.team_id::text,
+                'name', t.name
+              )
+              ORDER BY ft.ordinal ASC
+            )
+            FROM fixture_team ft
+            INNER JOIN team t
+              ON t.team_id = ft.team_id
+            WHERE ft.fixture_id = f.fixture_id
+          ),
+          '[]'::jsonb
+        ) AS competitors,
+        f.match_type AS "matchType",
+        f.team_type AS "teamType",
+        f.gender,
+        f.balls_per_over AS "ballsPerOver",
+        f.scheduled_overs AS "scheduledOvers",
+        f.start_date::text AS "startDate",
+        f.end_date::text AS "endDate"
+      FROM fixture f
+      LEFT JOIN competition c
+        ON c.competition_id = f.competition_id
+      WHERE f.fixture_id = $1::bigint
     `,
     [fixtureId],
   );

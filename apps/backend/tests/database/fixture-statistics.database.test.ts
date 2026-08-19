@@ -119,8 +119,14 @@ describe.sequential('fixture statistics database integration', () => {
       throw new Error('Expected the ingested fixture to be available for derivation.');
     }
 
-    const result = deriveFixtureStatistics(source);
+    const result = deriveFixtureStatistics(source, {
+      includeContributors: true,
+    });
     expect(source.innings).toHaveLength(2);
+    expect(source.innings.map((innings) => innings.battingCompetitorName)).toEqual([
+      'New Zealand',
+      'Australia',
+    ]);
     expect(result.scope).toEqual({ superOversIncluded: false });
     expect(
       result.statistics.flatMap((statistic) =>
@@ -158,6 +164,8 @@ describe.sequential('fixture statistics database integration', () => {
         statistic.scope === 'participant' && statistic.participantId === mccullum.personId,
     );
     expect(mccullumStatistic).toMatchObject({
+      participantName: 'BB McCullum',
+      competitorName: 'New Zealand',
       batting: {
         runsScored: 116,
         ballsFaced: 56,
@@ -172,6 +180,8 @@ describe.sequential('fixture statistics database integration', () => {
         statistic.scope === 'participant' && statistic.participantId === southee.personId,
     );
     expect(southeeStatistic).toMatchObject({
+      participantName: 'TG Southee',
+      competitorName: 'New Zealand',
       bowling: {
         runsConceded: 44,
         legalBallsBowled: 24,
@@ -272,7 +282,25 @@ describe.sequential('fixture statistics database integration', () => {
     expect(result.outcome).toMatchObject({
       kind: 'tie',
       winnerCompetitorId: null,
+      winnerCompetitorName: null,
+      eliminatorCompetitorName: 'New Zealand',
     });
     expect(result.outcome.eliminatorCompetitorId).not.toBeNull();
+
+    const inningsStatistic = result.statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsOrdinal === 0,
+    );
+
+    if (!inningsStatistic || inningsStatistic.scope !== 'innings') {
+      throw new Error('Expected the first standard innings statistic.');
+    }
+
+    expect(inningsStatistic.competitorName).toBe('New Zealand');
+    expect(inningsStatistic.contributingEvents?.length).toBeGreaterThan(0);
+
+    for (const event of inningsStatistic.contributingEvents ?? []) {
+      expect(event.strikerParticipantName.length).toBeGreaterThan(0);
+      expect(event.bowlerParticipantName.length).toBeGreaterThan(0);
+    }
   });
 });
