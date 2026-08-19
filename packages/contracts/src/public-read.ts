@@ -273,10 +273,51 @@ export const competitorCollectionResponseSchema = createCollectionResponseSchema
 
 export const participantResponseSchema = createResourceResponseSchema(participantSchema);
 
+export const participantFixtureBattingSchema = z.object({
+  runsScored: z.number().int().nonnegative(),
+  ballsFaced: z.number().int().nonnegative(),
+  fours: z.number().int().nonnegative(),
+  sixes: z.number().int().nonnegative(),
+  strikeRate: z.number().nonnegative().nullable(),
+});
+
+export const participantFixtureBowlingSchema = z.object({
+  runsConceded: z.number().int().nonnegative(),
+  legalBallsBowled: z.number().int().nonnegative(),
+  oversBowled: z.string(),
+  wicketsTaken: z.number().int().nonnegative(),
+  economyRate: z.number().nonnegative().nullable(),
+});
+
+export const participantFixtureSchema = z.object({
+  fixture: fixtureSchema,
+  // fixtureSchema carries the competition identifier but not its name, and no
+  // competitors. Both are required for a readable player record, so they are
+  // carried here rather than by widening fixtureSchema, which other responses
+  // already depend on.
+  competitionName: z.string().min(1).nullable(),
+  competitors: z.array(competitorSchema),
+  // The competitor the participant was selected for in this fixture.
+  competitor: competitorSchema,
+  role: z.string().min(1).nullable(),
+  // Null where the participant was selected but did not bat, or did not bowl.
+  // The fixture is still listed: selection is participation, and omitting it
+  // would misrepresent a player's record.
+  batting: participantFixtureBattingSchema.nullable(),
+  bowling: participantFixtureBowlingSchema.nullable(),
+});
+
+export const participantFixtureListQuerySchema = paginationQuerySchema;
+
+export const participantFixtureCollectionResponseSchema =
+  createCollectionResponseSchema(participantFixtureSchema);
+
 export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
 export const publicEventResponseSchema = createResourceResponseSchema(publicEventSchema);
+
+
 
 export const publicEventCollectionResponseSchema =
   createCollectionResponseSchema(publicEventSchema);
@@ -307,3 +348,8 @@ export type CompetitorListQuery = z.infer<typeof competitorListQuerySchema>;
 export type ParticipantListQuery = z.infer<typeof participantListQuerySchema>;
 export type FixtureEventListQuery = z.infer<typeof fixtureEventListQuerySchema>;
 export type FixtureStatisticsQuery = z.infer<typeof fixtureStatisticsQuerySchema>;
+export type ParticipantFixtureBatting = z.infer<typeof participantFixtureBattingSchema>;
+export type ParticipantFixtureBowling = z.infer<typeof participantFixtureBowlingSchema>;
+export type ParticipantFixture = z.infer<typeof participantFixtureSchema>;
+export type ParticipantFixtureListQuery = z.infer<typeof participantFixtureListQuerySchema>;
+export type ParticipantFixtureCollectionResponse = z.infer<typeof participantFixtureCollectionResponseSchema>;

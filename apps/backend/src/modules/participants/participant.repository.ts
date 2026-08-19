@@ -148,3 +148,245 @@ export async function listFixtureParticipants(
 
   return result.rows;
 }
+
+export interface ParticipantFixtureRecord {
+  fixtureId: string;
+  competitionId: string | null;
+  competitionName: string | null;
+  ballsPerOver: number;
+  scheduledOvers: number | null;
+  season: string;
+  matchType: string;
+  teamType: string;
+  gender: string;
+  startDate: string;
+  endDate: string;
+  teamId: string;
+  teamName: string;
+  role: string | null;
+  runsScored: number | null;
+  ballsFaced: number | null;
+  fours: number | null;
+  sixes: number | null;
+  runsConceded: number | null;
+  legalBallsBowled: number | null;
+  wicketsTaken: number | null;
+}
+
+export interface ParticipantFixtureListOptions {
+  participantId: string;
+  limit: number;
+  after?: {
+    startDate: string;
+    fixtureId: string;
+  };
+}
+
+export interface ParticipantFixturePage {
+  records: ParticipantFixtureRecord[];
+  hasMore: boolean;
+}
+
+/**
+ * The fixtures a participant was selected for, newest first, with their batting
+ * and bowling figures for each.
+ *
+ * Participation is squad selection rather than appearance in a delivery, which
+ * is the meaning already used elsewhere in this repository and the one a cricket
+ * record reflects: a player selected but not called upon still played in the
+ * fixture.
+ *
+ * The figures are aggregated here rather than derived per fixture through the
+ * statistics module, because deriving fifty fixtures for one page would cost
+ * fifty round trips. The aggregation rules are those the statistics module
+ * applies, and a test asserts the two agree:
+ *
+ *   - only deliveries from accepted submissions are counted;
+ *   - a revised delivery is resolved to its latest revision;
+ *   - super-over innings are excluded;
+ *   - a wide is not a ball faced, but a no-ball is;
+ *   - a wide and a no-ball are not legal balls bowled;
+ *   - byes and leg byes are not conceded by the bowler;
+ *   - only dismissal kinds crediting the bowler count as wickets.
+ *
+ * A fixture the participant was selected for but did not bat or bowl in returns
+ * null figures rather than being omitted.
+ */
+export async function listParticipantFixtures(
+  options: ParticipantFixtureListOptions,
+  executor: QueryExecutor = getDatabasePool(),
+): Promise<ParticipantFixturePage> {
+  const values: unknown[] = [options.participantId];
+  const conditions: string[] = ['fs.person_id = $1::bigint'];
+
+  if (options.after) {
+    values.push(options.after.startDate);
+    const dateParameter = values.length;
+    values.push(options.after.fixtureId);
+    const idParameter = values.length;
+    conditions.push(
+      `(f.start_date, f.fixture_id) < ($${dateParameter}::date, $${idParameter}::bigint)`,
+    );
+  }
+
+  values.push(options.limit + 1);
+  const limitParameter = values.length;
+
+  const result = await executeQuery<ParticipantFixtureRecord>(
+    executor,
+    `
+      WITH selected_fixture AS (
+        SELECT
+          f.fixture_id,
+          f.competition_id,
+          f.balls_per_over,
+          f.scheduled_overs,
+          f.season,
+          f.match_type,
+          f.team_type,
+          f.gender,
+          f.start_date,
+          f.end_date,
+          fs.team_id,
+          fs.role
+        FROM fixture_squad fs
+        INNER JOIN fixture f
+          ON f.fixture_id = fs.fixture_id
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY f.start_date DESC, f.fixture_id DESC
+        LIMIT $${limitParameter}
+      ),
+      accepted_delivery AS (
+        SELECT DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)
+          d.*,
+          i.fixture_id
+        FROM delivery d
+        JOIN innings i
+          ON i.innings_id = d.innings_id
+         AND i.is_super_over = false
+        JOIN submission source_submission
+          ON source_submission.submission_id = d.submission_id
+         AND source_submission.status = 'accepted'
+        WHERE i.fixture_id IN (SELECT fixture_id FROM selected_fixture)
+        ORDER BY
+          d.innings_id ASC,
+          d.over_number ASC,
+          d.position_in_over ASC,
+          d.revision DESC,
+          d.delivery_id DESC
+      ),
+      batting AS (
+        SELECT
+          d.fixture_id,
+          SUM(d.runs_off_bat)::int AS runs_scored,
+          COUNT(*) FILTER (WHERE d.extra_wides IS NULL)::int AS balls_faced,
+          COUNT(*) FILTER (WHERE d.runs_off_bat = 4 AND NOT d.non_boundary)::int AS fours,
+          COUNT(*) FILTER (WHERE d.runs_off_bat = 6 AND NOT d.non_boundary)::int AS sixes
+        FROM accepted_delivery d
+        WHERE d.striker_id = $1::bigint
+        GROUP BY d.fixture_id
+      ),
+      bowling AS (
+        SELECT
+          d.fixture_id,
+          SUM(
+            d.runs_off_bat
+            + COALESCE(d.extra_wides, 0)
+            + COALESCE(d.extra_noballs, 0)
+          )::int AS runs_conceded,
+          COUNT(*) FILTER (
+            WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+          )::int AS legal_balls_bowled,
+          COALESCE(SUM((
+            SELECT COUNT(*)
+            FROM delivery_wicket dw
+            JOIN dismissal_kind dk ON dk.code = dw.kind
+            WHERE dw.delivery_id = d.delivery_id
+              AND dk.credits_bowler = true
+          )), 0)::int AS wickets_taken
+        FROM accepted_delivery d
+        WHERE d.bowler_id = $1::bigint
+        GROUP BY d.fixture_id
+      )
+      SELECT
+        sf.fixture_id::text AS "fixtureId",
+        sf.competition_id::text AS "competitionId",
+        c.name AS "competitionName",
+        sf.balls_per_over AS "ballsPerOver",
+        sf.scheduled_overs AS "scheduledOvers",
+        sf.season AS "season",
+        sf.match_type AS "matchType",
+        sf.team_type AS "teamType",
+        sf.gender AS "gender",
+        to_char(sf.start_date, 'YYYY-MM-DD') AS "startDate",
+        to_char(sf.end_date, 'YYYY-MM-DD') AS "endDate",
+        sf.team_id::text AS "teamId",
+        t.name AS "teamName",
+        sf.role AS "role",
+        b.runs_scored AS "runsScored",
+        b.balls_faced AS "ballsFaced",
+        b.fours AS "fours",
+        b.sixes AS "sixes",
+        w.runs_conceded AS "runsConceded",
+        w.legal_balls_bowled AS "legalBallsBowled",
+        w.wickets_taken AS "wicketsTaken"
+      FROM selected_fixture sf
+      INNER JOIN team t
+        ON t.team_id = sf.team_id
+      LEFT JOIN competition c
+        ON c.competition_id = sf.competition_id
+      LEFT JOIN batting b
+        ON b.fixture_id = sf.fixture_id
+      LEFT JOIN bowling w
+        ON w.fixture_id = sf.fixture_id
+      ORDER BY sf.start_date DESC, sf.fixture_id DESC
+    `,
+    values,
+  );
+
+  return {
+    records: result.rows.slice(0, options.limit),
+    hasMore: result.rows.length > options.limit,
+  };
+}
+
+export interface FixtureCompetitorRecord {
+  fixtureId: string;
+  competitorId: string;
+  name: string;
+  ordinal: number;
+}
+
+/**
+ * The competitors contesting each of the given fixtures.
+ *
+ * Fetched for a whole page in one statement rather than per fixture, because at
+ * roughly 173 ms per round trip a query per fixture would dominate the response.
+ */
+export async function listCompetitorsForFixtures(
+  fixtureIds: string[],
+  executor: QueryExecutor = getDatabasePool(),
+): Promise<FixtureCompetitorRecord[]> {
+  if (fixtureIds.length === 0) {
+    return [];
+  }
+
+  const result = await executeQuery<FixtureCompetitorRecord>(
+    executor,
+    `
+      SELECT
+        ft.fixture_id::text AS "fixtureId",
+        t.team_id::text AS "competitorId",
+        t.name AS "name",
+        ft.ordinal AS "ordinal"
+      FROM fixture_team ft
+      INNER JOIN team t
+        ON t.team_id = ft.team_id
+      WHERE ft.fixture_id = ANY($1::bigint[])
+      ORDER BY ft.fixture_id ASC, ft.ordinal ASC
+    `,
+    [fixtureIds],
+  );
+
+  return result.rows;
+}
