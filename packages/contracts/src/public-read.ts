@@ -18,14 +18,23 @@ export const competitionSchema = z.object({
 export const seasonSchema = z.object({
   seasonId: apiIdentifierSchema,
   competitionId: apiIdentifierSchema,
+  competitionName: z.string().min(1),
   label: z.string().min(1),
+});
+
+export const fixtureCompetitorSummarySchema = z.object({
+  competitorId: apiIdentifierSchema,
+  name: z.string().min(1),
 });
 
 export const fixtureSchema = z.object({
   fixtureId: apiIdentifierSchema,
   competitionId: apiIdentifierSchema.nullable(),
+  competitionName: z.string().min(1).nullable(),
   seasonId: apiIdentifierSchema.nullable(),
   season: z.string().min(1),
+  seasonLabel: z.string().min(1),
+  competitors: z.array(fixtureCompetitorSummarySchema),
   matchType: z.string().min(1),
   teamType: z.string().min(1),
   gender: z.string().min(1),
@@ -94,7 +103,9 @@ export const statisticContributingEventSchema = z.object({
   inningsOrdinal: z.number().int().nonnegative(),
   sequenceNumber: z.number().int().positive(),
   strikerParticipantId: apiIdentifierSchema,
+  strikerParticipantName: z.string().min(1),
   bowlerParticipantId: apiIdentifierSchema,
+  bowlerParticipantName: z.string().min(1),
   runs: z.object({
     offBat: z.number().int().nonnegative(),
     extras: z.number().int().nonnegative(),
@@ -124,6 +135,7 @@ export const inningsTeamStatisticSchema = fixtureStatisticCommonSchema.extend({
   inningsId: apiIdentifierSchema,
   inningsOrdinal: z.number().int().nonnegative(),
   competitorId: apiIdentifierSchema,
+  competitorName: z.string().min(1),
   metrics: z.object({
     deliveryRuns: z.number().int().nonnegative(),
     penaltyRuns: z.number().int().nonnegative(),
@@ -135,7 +147,9 @@ export const participantFixtureStatisticSchema = fixtureStatisticCommonSchema.ex
   scope: z.literal('participant'),
   statisticCode: z.literal('participant_fixture'),
   participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
   competitorId: apiIdentifierSchema.nullable(),
+  competitorName: z.string().min(1).nullable(),
   batting: z
     .object({
       runsScored: z.number().int().nonnegative(),
@@ -178,7 +192,9 @@ export const fixtureStatisticsWarningSchema = z.object({
 export const fixtureOutcomeSchema = z.object({
   kind: z.enum(['won', 'tie', 'draw', 'no_result']),
   winnerCompetitorId: apiIdentifierSchema.nullable(),
+  winnerCompetitorName: z.string().min(1).nullable(),
   eliminatorCompetitorId: apiIdentifierSchema.nullable(),
+  eliminatorCompetitorName: z.string().min(1).nullable(),
   margin: z
     .object({
       type: z.enum(['runs', 'wickets']),

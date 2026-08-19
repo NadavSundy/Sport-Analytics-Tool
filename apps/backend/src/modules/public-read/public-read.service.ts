@@ -212,6 +212,7 @@ function mapFixture(record: FixtureRecord): Fixture {
   return {
     fixtureId: record.fixtureId,
     competitionId: record.competitionId,
+    competitionName: record.competitionName,
     seasonId: record.competitionId
       ? createSeasonId({
           competitionId: record.competitionId,
@@ -219,6 +220,8 @@ function mapFixture(record: FixtureRecord): Fixture {
         })
       : null,
     season: record.season,
+    seasonLabel: record.season,
+    competitors: record.competitors,
     matchType: record.matchType,
     teamType: record.teamType,
     gender: record.gender,
@@ -280,7 +283,10 @@ function mapParticipantFixture(
   const warnings = participantFixtureWarnings(record);
 
   return {
-    fixture: mapFixture(record),
+    fixture: mapFixture({
+      ...record,
+      competitors,
+    }),
     competitionName: record.competitionName,
     competitors: competitors.map(({ competitorId, name }) => ({ competitorId, name })),
     competitor: {
@@ -404,6 +410,7 @@ export function createPublicReadService(
           label: record.label,
         }),
         competitionId: record.competitionId,
+        competitionName: record.competitionName,
         label: record.label,
       }));
 
@@ -434,6 +441,7 @@ export function createPublicReadService(
       return {
         seasonId,
         competitionId: record.competitionId,
+        competitionName: record.competitionName,
         label: record.label,
       };
     },

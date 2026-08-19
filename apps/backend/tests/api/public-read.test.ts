@@ -247,6 +247,7 @@ describe('public read API', () => {
         {
           seasonId: 'season_example',
           competitionId: '12',
+          competitionName: 'Example Competition',
           label: '2026',
         },
       ],
@@ -258,6 +259,7 @@ describe('public read API', () => {
     const getSeason = vi.fn<PublicReadService['getSeason']>().mockResolvedValue({
       seasonId: 'season_example',
       competitionId: '12',
+      competitionName: 'Example Competition',
       label: '2026',
     });
 
@@ -278,7 +280,12 @@ describe('public read API', () => {
 
     const detail = await request(app).get('/api/v1/seasons/season_example').expect(200);
 
-    expect(detail.body.data.label).toBe('2026');
+    expect(detail.body.data).toEqual({
+      seasonId: 'season_example',
+      competitionId: '12',
+      competitionName: 'Example Competition',
+      label: '2026',
+    });
   });
 
   test('passes fixture filters and pagination to the service', async () => {
@@ -336,8 +343,20 @@ describe('public read API', () => {
     const getFixture = vi.fn<PublicReadService['getFixture']>().mockResolvedValue({
       fixtureId: '100',
       competitionId: '12',
+      competitionName: 'Test Competition',
       seasonId: 'season_example',
       season: '2026',
+      seasonLabel: '2026',
+      competitors: [
+        {
+          competitorId: '20',
+          name: 'Team Alpha',
+        },
+        {
+          competitorId: '21',
+          name: 'Team Beta',
+        },
+      ],
       matchType: 'T20',
       teamType: 'international',
       gender: 'male',
@@ -358,7 +377,21 @@ describe('public read API', () => {
       .get('/api/v1/fixtures/100')
       .expect(200);
 
-    expect(response.body.data.fixtureId).toBe('100');
+    expect(response.body.data).toMatchObject({
+      fixtureId: '100',
+      competitionName: 'Test Competition',
+      seasonLabel: '2026',
+      competitors: [
+        {
+          competitorId: '20',
+          name: 'Team Alpha',
+        },
+        {
+          competitorId: '21',
+          name: 'Team Beta',
+        },
+      ],
+    });
   });
 
   test('lists ordered accepted fixture events anonymously with filters and pagination', async () => {

@@ -2,6 +2,7 @@ export interface FixtureStatisticsInningsSource {
   inningsId: string;
   ordinal: number;
   battingCompetitorId: string;
+  battingCompetitorName: string;
   penaltyPre: number | null;
   penaltyPost: number | null;
 }
@@ -12,9 +13,13 @@ export interface FixtureStatisticsEventSource {
   inningsOrdinal: number;
   inningsSequence: number;
   battingCompetitorId: string;
+  battingCompetitorName: string;
   bowlingCompetitorId: string | null;
+  bowlingCompetitorName: string | null;
   strikerId: string;
+  strikerName: string;
   bowlerId: string;
+  bowlerName: string;
   runsOffBat: number;
   runsExtras: number;
   runsTotal: number;
@@ -33,7 +38,9 @@ export interface FixtureStatisticsSource {
   missingFields: string[];
   outcome: 'won' | 'tie' | 'draw' | 'no result';
   winnerCompetitorId: string | null;
+  winnerCompetitorName: string | null;
   eliminatorCompetitorId: string | null;
+  eliminatorCompetitorName: string | null;
   outcomeByRuns: number | null;
   outcomeByWickets: number | null;
   outcomeMethod: string | null;

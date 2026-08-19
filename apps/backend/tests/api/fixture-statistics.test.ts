@@ -31,7 +31,9 @@ describe('public fixture statistics API', () => {
         outcome: {
           kind: 'tie',
           winnerCompetitorId: null,
+          winnerCompetitorName: null,
           eliminatorCompetitorId: null,
+          eliminatorCompetitorName: null,
           margin: null,
           method: null,
           decidedByBowlOut: false,
@@ -69,6 +71,7 @@ describe('public fixture statistics API', () => {
         inningsId: '11',
         inningsOrdinal: 0,
         competitorId: '2',
+        competitorName: 'Team Alpha',
         sourceEventCount: 0,
         metrics: {
           deliveryRuns: 0,

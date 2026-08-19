@@ -15,7 +15,9 @@ describe('fixture statistics repository', () => {
             missingFields: [],
             outcome: 'tie',
             winnerCompetitorId: null,
+            winnerCompetitorName: null,
             eliminatorCompetitorId: null,
+            eliminatorCompetitorName: null,
             outcomeByRuns: null,
             outcomeByWickets: null,
             outcomeMethod: null,
@@ -23,6 +25,7 @@ describe('fixture statistics repository', () => {
             inningsId: '11',
             inningsOrdinal: 0,
             battingCompetitorId: '2',
+            battingCompetitorName: 'Team Alpha',
             penaltyPre: null,
             penaltyPost: null,
           },
@@ -44,13 +47,20 @@ describe('fixture statistics repository', () => {
     const source = await loadFixtureStatisticsSource('9', executor);
 
     expect(source?.fixtureId).toBe('9');
+    expect(source?.innings[0]).toMatchObject({
+      battingCompetitorId: '2',
+      battingCompetitorName: 'Team Alpha',
+    });
     expect(query).toHaveBeenCalledTimes(2);
     expect(query.mock.calls[0]?.[0]).toContain('i.is_super_over = false');
 
     expect(query.mock.calls[1]?.[0]).toContain('d.innings_id = ANY($1::bigint[])');
 
     expect(query.mock.calls[1]?.[0]).not.toContain('is_super_over');
-
+    expect(query.mock.calls[0]?.[0]).toContain('winner_team.name AS "winnerCompetitorName"');
+    expect(query.mock.calls[0]?.[0]).toContain('batting_team.name AS "battingCompetitorName"');
+    expect(query.mock.calls[1]?.[0]).toContain('striker_person.display_name AS "strikerName"');
+    expect(query.mock.calls[1]?.[0]).toContain('bowler_person.display_name AS "bowlerName"');
     expect(query.mock.calls[1]?.[1]).toEqual([['11']]);
     expect(query.mock.calls[0]?.[0]).toContain("publication.status = 'accepted'");
     expect(query.mock.calls[1]?.[0]).toContain("source_submission.status = 'accepted'");
