@@ -370,11 +370,61 @@ On Windows, `py scripts/download_cricsheet_t20.py` is also valid.
 
 The downloader uses the Python standard library and requires internet access. Downloaded archives, extracted match data and generated manifests are ignored by Git. See [Cricsheet T20 data](../data/cricsheet.md).
 
-## 12. Optional local Supabase stack
+## 12. Importing the dataset
+
+Once the source data has been downloaded, it is imported with:
+
+```bash
+npm run db:import --workspace=@sport-analytics/backend -- ../../data/cricsheet/matches
+```
+
+The path is relative to `apps/backend`, because npm runs a workspace script from that directory.
+
+### Options
+
+| Flag        | Effect                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run` | Reports how many match files would be imported and writes nothing. Reads every file, so it takes about a minute over the full corpus. |
+| `--limit N` | Imports at most N matches, in the same stable order. Useful for a first run against a new database.                                   |
+
+### What the importer does
+
+Each match is ingested in its own transaction. A file that cannot be ingested rolls back on its own and the run continues; its reason is printed as it happens and summarised at the end, so a rejected file is never silently discarded.
+
+Ingestion is idempotent. A match already present is recognised and skipped, so an interrupted run is resumed by issuing the same command again. Re-scanning matches already imported is fast.
+
+A live progress line reports the count, the rate and an estimate of the time remaining. On completion the importer prints the number of files considered, imported, already present and rejected, and the resulting database totals.
+
+### Expected duration
+
+The full corpus of 13,953 matches takes approximately twelve hours at roughly 0.3 matches per second. Most of that is round-trip latency to the hosted database rather than work; see issue #105.
+
+A machine running the import must be prevented from sleeping, or the run stops silently while the clock continues. On Windows:
+
+```powershell
+powercfg /change standby-timeout-ac 0
+powercfg /change hibernate-timeout-ac 0
+```
+
+Restore these afterwards.
+
+### Before importing to a shared database
+
+The importer writes to whatever `DATABASE_URL` points at. Before a full import against the shared development database, confirm with the team that the storage and the scope are agreed: the corpus is approximately 3.2 million deliveries.
+
+For local development the smaller deterministic seed is usually what you want instead:
+
+```bash
+npm run db:seed --workspace=@sport-analytics/backend
+```
+
+That loads four fixtures chosen to exercise the awkward cases, and is described in `database/seeds/README.md`.
+
+## 13. Optional local Supabase stack
 
 A local Supabase stack is **not required** for normal onboarding. If the team deliberately chooses to use it, the Supabase CLI requires a Docker-compatible runtime and the work must be coordinated with the database workstream. Do not initialize or reset a shared environment without team agreement.
 
-## 13. Common setup problems
+## 14. Common setup problems
 
 ### `npm ci` fails because Node/npm is too old
 
@@ -494,7 +544,7 @@ python -m pip install -r requirements-docs.txt
 
 Then prefer `python -m mkdocs ...` so the command uses the intended Python environment.
 
-## 14. Onboarding verification record
+## 15. Onboarding verification record
 
 Issue #12 requires a second team member to follow this guide from a clean clone. The verifier must record:
 
