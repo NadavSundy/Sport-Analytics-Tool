@@ -315,6 +315,7 @@ competitorId ASC
 ```http
 GET /api/v1/participants
 GET /api/v1/participants/{participantId}
+GET /api/v1/participants/{participantId}/fixtures
 ```
 
 Supported filters:
@@ -329,11 +330,77 @@ Only public participant fields are returned.
 
 Internal source references, authentication data, submission records and audit information are not exposed.
 
+The fixture-history endpoint returns the fixtures in which the player was selected, newest first.
+Each entry includes the readable competition name, season, date, match type, both named teams, the
+player's team and squad role, and that player's available fixture-level batting and bowling figures.
+Selection is participation: a selected player remains in the history even when they did not bat or
+bowl, in which case the corresponding figure is `null`.
+
+Example:
+
+```http
+GET /api/v1/participants/30/fixtures?limit=25
+```
+
+```json
+{
+  "data": [
+    {
+      "fixture": {
+        "fixtureId": "481",
+        "competitionId": "12",
+        "seasonId": "season_...",
+        "season": "2026",
+        "matchType": "T20",
+        "teamType": "international",
+        "gender": "male",
+        "ballsPerOver": 6,
+        "scheduledOvers": 20,
+        "startDate": "2026-08-09",
+        "endDate": "2026-08-09"
+      },
+      "competitionName": "Example Competition",
+      "competitors": [
+        { "competitorId": "20", "name": "Team One" },
+        { "competitorId": "21", "name": "Team Two" }
+      ],
+      "competitor": { "competitorId": "20", "name": "Team One" },
+      "role": "player",
+      "statisticsStatus": "complete",
+      "statisticsWarnings": [],
+      "batting": {
+        "runsScored": 55,
+        "ballsFaced": 40,
+        "fours": 4,
+        "sixes": 2,
+        "strikeRate": 137.5
+      },
+      "bowling": null
+    }
+  ],
+  "pagination": {
+    "nextCursor": null
+  }
+}
+```
+
+`statisticsStatus` and `statisticsWarnings` preserve the publication state used by the fixture
+statistics API. A fixture with incomplete accepted source data or no accepted delivery events is
+returned with `partial` status and stable warnings rather than silently omitted. The endpoint does
+not calculate season or career aggregates.
+
 Deterministic ordering:
 
 ```text
 displayName ASC
 participantId ASC
+```
+
+Deterministic participant fixture-history ordering:
+
+```text
+startDate DESC
+fixtureId DESC
 ```
 
 ## Pagination

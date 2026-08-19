@@ -164,6 +164,10 @@ export interface ParticipantFixtureRecord {
   teamId: string;
   teamName: string;
   role: string | null;
+  missingFields: string[];
+  standardInningsCount: number;
+  acceptedEventCount: number;
+  emptyStandardInningsIds: string[];
   runsScored: number | null;
   ballsFaced: number | null;
   fours: number | null;
@@ -241,6 +245,7 @@ export async function listParticipantFixtures(
           f.competition_id,
           f.balls_per_over,
           f.scheduled_overs,
+          f.missing_fields,
           f.season,
           f.match_type,
           f.team_type,
@@ -252,6 +257,9 @@ export async function listParticipantFixtures(
         FROM fixture_squad fs
         INNER JOIN fixture f
           ON f.fixture_id = fs.fixture_id
+        INNER JOIN submission publication
+          ON publication.submission_id = f.first_seen_in
+         AND publication.status = 'accepted'
         WHERE ${conditions.join(' AND ')}
         ORDER BY f.start_date DESC, f.fixture_id DESC
         LIMIT $${limitParameter}
@@ -307,6 +315,32 @@ export async function listParticipantFixtures(
         FROM accepted_delivery d
         WHERE d.bowler_id = $1::bigint
         GROUP BY d.fixture_id
+      ),
+      fixture_state AS (
+        SELECT
+          sf.fixture_id,
+          COUNT(i.innings_id)::int AS standard_innings_count,
+          (
+            SELECT COUNT(*)::int
+            FROM accepted_delivery d
+            WHERE d.fixture_id = sf.fixture_id
+          ) AS accepted_event_count,
+          COALESCE(
+            ARRAY_AGG(i.innings_id::text ORDER BY i.ordinal) FILTER (
+              WHERE i.innings_id IS NOT NULL
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM accepted_delivery d
+                  WHERE d.innings_id = i.innings_id
+                )
+            ),
+            ARRAY[]::text[]
+          ) AS empty_standard_innings_ids
+        FROM selected_fixture sf
+        LEFT JOIN innings i
+          ON i.fixture_id = sf.fixture_id
+         AND i.is_super_over = false
+        GROUP BY sf.fixture_id
       )
       SELECT
         sf.fixture_id::text AS "fixtureId",
@@ -323,6 +357,10 @@ export async function listParticipantFixtures(
         sf.team_id::text AS "teamId",
         t.name AS "teamName",
         sf.role AS "role",
+        sf.missing_fields AS "missingFields",
+        state.standard_innings_count AS "standardInningsCount",
+        state.accepted_event_count AS "acceptedEventCount",
+        state.empty_standard_innings_ids AS "emptyStandardInningsIds",
         b.runs_scored AS "runsScored",
         b.balls_faced AS "ballsFaced",
         b.fours AS "fours",
@@ -339,6 +377,8 @@ export async function listParticipantFixtures(
         ON b.fixture_id = sf.fixture_id
       LEFT JOIN bowling w
         ON w.fixture_id = sf.fixture_id
+      INNER JOIN fixture_state state
+        ON state.fixture_id = sf.fixture_id
       ORDER BY sf.start_date DESC, sf.fixture_id DESC
     `,
     values,

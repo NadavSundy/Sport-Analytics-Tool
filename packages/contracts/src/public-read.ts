@@ -284,7 +284,7 @@ export const participantFixtureBattingSchema = z.object({
 export const participantFixtureBowlingSchema = z.object({
   runsConceded: z.number().int().nonnegative(),
   legalBallsBowled: z.number().int().nonnegative(),
-  oversBowled: z.string(),
+  oversBowled: z.string().regex(/^\d+\.\d+$/),
   wicketsTaken: z.number().int().nonnegative(),
   economyRate: z.number().nonnegative().nullable(),
 });
@@ -300,6 +300,11 @@ export const participantFixtureSchema = z.object({
   // The competitor the participant was selected for in this fixture.
   competitor: competitorSchema,
   role: z.string().min(1).nullable(),
+  // These mirror the fixture-statistics publication state so a client can
+  // distinguish a player who did not bat or bowl from a fixture whose accepted
+  // source is incomplete or has no published delivery events.
+  statisticsStatus: z.enum(['complete', 'partial']),
+  statisticsWarnings: z.array(fixtureStatisticsWarningSchema),
   // Null where the participant was selected but did not bat, or did not bowl.
   // The fixture is still listed: selection is participation, and omitting it
   // would misrepresent a player's record.
@@ -316,8 +321,6 @@ export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
 export const publicEventResponseSchema = createResourceResponseSchema(publicEventSchema);
-
-
 
 export const publicEventCollectionResponseSchema =
   createCollectionResponseSchema(publicEventSchema);
@@ -352,4 +355,6 @@ export type ParticipantFixtureBatting = z.infer<typeof participantFixtureBatting
 export type ParticipantFixtureBowling = z.infer<typeof participantFixtureBowlingSchema>;
 export type ParticipantFixture = z.infer<typeof participantFixtureSchema>;
 export type ParticipantFixtureListQuery = z.infer<typeof participantFixtureListQuerySchema>;
-export type ParticipantFixtureCollectionResponse = z.infer<typeof participantFixtureCollectionResponseSchema>;
+export type ParticipantFixtureCollectionResponse = z.infer<
+  typeof participantFixtureCollectionResponseSchema
+>;

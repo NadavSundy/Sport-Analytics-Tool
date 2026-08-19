@@ -5,6 +5,8 @@ import {
   fixtureListQuerySchema,
   fixtureStatisticsQuerySchema,
   fixtureStatisticsResponseSchema,
+  participantFixtureCollectionResponseSchema,
+  participantFixtureListQuerySchema,
   participantListQuerySchema,
   publicEventCollectionResponseSchema,
   seasonSchema,
@@ -25,6 +27,91 @@ describe('public read contracts', () => {
     expect(participantListQuerySchema.parse({})).toEqual({
       limit: 50,
     });
+    expect(participantFixtureListQuerySchema.parse({})).toEqual({
+      limit: 50,
+    });
+  });
+
+  test('validates player fixture history with readable context and partial statistics', () => {
+    const result = participantFixtureCollectionResponseSchema.safeParse({
+      data: [
+        {
+          fixture: {
+            fixtureId: '481',
+            competitionId: '12',
+            seasonId: 'season_example',
+            season: '2026',
+            matchType: 'T20',
+            teamType: 'international',
+            gender: 'male',
+            ballsPerOver: 6,
+            scheduledOvers: 20,
+            startDate: '2026-08-09',
+            endDate: '2026-08-09',
+          },
+          competitionName: 'Example Competition',
+          competitors: [
+            { competitorId: '20', name: 'Team One' },
+            { competitorId: '21', name: 'Team Two' },
+          ],
+          competitor: { competitorId: '20', name: 'Team One' },
+          role: null,
+          statisticsStatus: 'partial',
+          statisticsWarnings: [
+            {
+              code: 'NO_ACCEPTED_EVENTS',
+              message: 'No accepted delivery events are available for derivation.',
+            },
+          ],
+          batting: null,
+          bowling: null,
+        },
+      ],
+      pagination: {
+        nextCursor: null,
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('rejects malformed player fixture bowling notation', () => {
+    const result = participantFixtureCollectionResponseSchema.safeParse({
+      data: [
+        {
+          fixture: {
+            fixtureId: '481',
+            competitionId: null,
+            seasonId: null,
+            season: '2026',
+            matchType: 'T20',
+            teamType: 'club',
+            gender: 'mixed',
+            ballsPerOver: 6,
+            scheduledOvers: null,
+            startDate: '2026-08-09',
+            endDate: '2026-08-09',
+          },
+          competitionName: null,
+          competitors: [],
+          competitor: { competitorId: '20', name: 'Team One' },
+          role: null,
+          statisticsStatus: 'complete',
+          statisticsWarnings: [],
+          batting: null,
+          bowling: {
+            runsConceded: 10,
+            legalBallsBowled: 6,
+            oversBowled: 'one over',
+            wicketsTaken: 1,
+            economyRate: 10,
+          },
+        },
+      ],
+      pagination: { nextCursor: null },
+    });
+
+    expect(result.success).toBe(false);
   });
 
   test('accepts fixture filters', () => {

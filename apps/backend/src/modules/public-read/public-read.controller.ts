@@ -3,6 +3,7 @@ import {
   competitorListQuerySchema,
   fixtureEventListQuerySchema,
   fixtureListQuerySchema,
+  participantFixtureListQuerySchema,
   participantListQuerySchema,
   seasonListQuerySchema,
 } from '@sport-analytics/contracts';
@@ -227,6 +228,26 @@ export function createPublicReadController(service: PublicReadService) {
       response.status(200).json({
         data: participant,
       });
+    }),
+
+    listParticipantFixtures: wrapPublicHandler(async (request, response) => {
+      const query = parseQuery(participantFixtureListQuerySchema, request, response);
+
+      if (!query) {
+        return;
+      }
+
+      const result = await service.listParticipantFixtures(
+        getPathParameter(request, 'participantId'),
+        query,
+      );
+
+      if (!result) {
+        sendNotFound(response, 'Participant');
+        return;
+      }
+
+      response.status(200).json(result);
     }),
   };
 }

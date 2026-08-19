@@ -12,6 +12,7 @@ import type {
   FixtureStatisticsEventSource,
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
+import { calculateRate, formatOvers } from './fixture-statistics.metrics';
 
 interface BattingAccumulator {
   runsScored: number;
@@ -53,18 +54,6 @@ function statisticId(fixtureId: string, scope: string, scopeId: string): string 
     .digest('base64url');
 
   return `stat_${digest}`;
-}
-
-function rate(numerator: number, denominator: number, multiplier: number): number | null {
-  if (denominator === 0) {
-    return null;
-  }
-
-  return Number(((numerator / denominator) * multiplier).toFixed(2));
-}
-
-function formatOvers(legalBalls: number, ballsPerOver: number): string {
-  return `${Math.floor(legalBalls / ballsPerOver)}.${legalBalls % ballsPerOver}`;
 }
 
 function mapContributingEvent(
@@ -293,14 +282,18 @@ export function deriveFixtureStatistics(
         batting: participant.batting
           ? {
               ...participant.batting,
-              strikeRate: rate(participant.batting.runsScored, participant.batting.ballsFaced, 100),
+              strikeRate: calculateRate(
+                participant.batting.runsScored,
+                participant.batting.ballsFaced,
+                100,
+              ),
             }
           : null,
         bowling: participant.bowling
           ? {
               ...participant.bowling,
               oversBowled: formatOvers(participant.bowling.legalBallsBowled, source.ballsPerOver),
-              economyRate: rate(
+              economyRate: calculateRate(
                 participant.bowling.runsConceded,
                 participant.bowling.legalBallsBowled,
                 source.ballsPerOver,
