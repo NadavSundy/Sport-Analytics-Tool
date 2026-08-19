@@ -94,6 +94,33 @@ The 74 already-present fixtures demonstrate the resumable, idempotent path: they
   submissions   :     14225  (+14011)
 ```
 
+## Additional Database Verification
+
+Gabriel Raz performed a clean dependency installation after the import:
+
+```text
+npm ci
+added 552 packages, and audited 556 packages in 23s
+```
+
+The installation completed successfully. The audit reported 10 dependency findings: 5 moderate, 3 high, and 2 critical. No automatic dependency changes were made with `npm audit fix` or `npm audit fix --force`; the findings remain separate dependency-maintenance work rather than being hidden or changed as part of this evidence update.
+
+Gabriel then ran:
+
+```powershell
+npm run test:database
+```
+
+The repository-managed test runner provisioned disposable PostgreSQL 16 on port 50242, reset the test schema, applied all eight current migrations, loaded the deterministic test seed, and executed every database integration test:
+
+```text
+Test Files  8 passed (8)
+Tests       37 passed (37)
+Duration    4.67s
+```
+
+The passing suite included all four cases in `tests/database/import.database.test.ts`, providing focused automated coverage of the corpus importer in addition to the completed real-data run.
+
 ## Verification Summary
 
 | Verification                    |         Result |
@@ -110,6 +137,10 @@ The 74 already-present fixtures demonstrate the resumable, idempotent path: they
 | Elapsed import time             |        15h 12m |
 | Average completion rate         | 0.26 matches/s |
 | Import result                   |           PASS |
+| Clean dependency installation   |           PASS |
+| Database test files             |   8 / 8 passed |
+| Database integration tests      | 37 / 37 passed |
+| Import database tests           |   4 / 4 passed |
 
 ## Operational Note
 
