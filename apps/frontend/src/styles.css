@@ -746,6 +746,19 @@ main {
   border-top: 1px solid var(--colour-border);
 }
 
+.admin-user-card__request-state {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border-left: 3px solid var(--colour-primary);
+  background: var(--colour-primary-soft);
+  color: var(--colour-text-secondary);
+  line-height: 1.55;
+}
+
+.admin-user-card__request-state strong {
+  color: var(--colour-text);
+}
+
 .admin-access-form fieldset {
   min-width: 0;
   margin: 0;
@@ -805,6 +818,7 @@ main {
 
 .admin-access-form__error,
 .admin-access-form__empty,
+.admin-access-form__progress,
 .admin-user-card__protected,
 .admin-access-feedback {
   margin: 1rem 0 0;
