@@ -116,6 +116,18 @@ both list and update operations. Successful updates replace the displayed user i
 empty, forbidden, validation, request-failure, and success states remain available to assistive
 technology through status or alert regions.
 
+## Public collection filters
+
+Competition, season, fixture, team, and player filters use the same readable-name combobox. Opening
+a control requests up to the API's documented maximum page size and displays options without
+requiring typed text; typing fuzzy-ranks the returned readable names. Internal relationship
+identifiers remain available only in routed query state and outgoing handwritten-API requests.
+
+The controls preserve visible labels, keyboard focus, listbox navigation, selection, clearing,
+dismissal, and screen-reader result announcements. Each option request has loading, no-match,
+failure, and retry states. Changing or clearing a parent filter clears its dependent draft
+selections before another filter request can be applied.
+
 ## Checks
 
 From the repository root:
@@ -215,3 +227,4 @@ Codex[GPT-5].
 The account-deletion interface behavior was documented with the assistance of Codex[GPT-5].
 The shared-contract development troubleshooting guidance was updated with the assistance of
 Codex[GPT-5.6 Sol].
+The public collection filter behavior was documented with the assistance of Codex[GPT-5.6 Sol].

@@ -361,6 +361,23 @@ npm run test:database --workspace=@sport-analytics/backend
 npm run openapi:lint
 ```
 
+## Readable collection-filter coverage
+
+The public collection filter suites cover the shared competition, season, fixture, team, and player
+name-combobox pattern; fuzzy typing; opening without text; direct and keyboard selection; dismissal;
+individual and parent-dependent clearing; readable routed summaries; validation; option loading;
+no-match, request-failure, and retry states; and the resulting handwritten-API requests. The browser
+suite runs the interaction in Day Match and Night Match at the configured desktop and mobile sizes
+and scans the rendered page for serious or critical Axe findings.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/frontend -- --run src/features/browse/NameCombobox.test.tsx src/pages/PublicBrowsePages.test.tsx
+npm run test:e2e -- tests/e2e/public-browsing.spec.ts --workers=1
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -376,3 +393,5 @@ The disposable PostgreSQL workflow and Basic vertical-slice check integration we
 the assistance of Codex[GPT-5].
 The disposable local PostgreSQL testing workflow, command guidance and database-test safety
 documentation were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The readable collection-filter coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].

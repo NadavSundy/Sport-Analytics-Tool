@@ -1,5 +1,5 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -114,6 +114,26 @@ describe('public browsing pages', () => {
     expect(screen.getByText(/No published fixtures match/i)).toBeInTheDocument();
   });
 
+  it.each([
+    { route: '/competitions', labels: ['Competition name'] },
+    { route: '/seasons', labels: ['Competition'] },
+    { route: '/fixtures', labels: ['Competition', 'Season', 'Team'] },
+    { route: '/competitors', labels: ['Competition', 'Season', 'Team name'] },
+    { route: '/participants', labels: ['Fixture', 'Team', 'Player name'] },
+  ])('uses the shared name combobox pattern on $route', async ({ route, labels }) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(collection([])));
+
+    renderRoute(route);
+    await screen.findByText(/^No .* found$/);
+
+    for (const label of labels) {
+      expect(screen.getByRole('combobox', { name: label })).toHaveAttribute(
+        'aria-autocomplete',
+        'list',
+      );
+    }
+  });
+
   it('shows a safe API failure and retries the request', async () => {
     const fetchMock = vi
       .fn()
@@ -145,8 +165,14 @@ describe('public browsing pages', () => {
             {
               fixtureId: 'fixture-1',
               competitionId: 'competition-1',
+              competitionName: 'Premier Cricket League',
               seasonId: 'season-1',
               season: '2026',
+              seasonLabel: '2026',
+              competitors: [
+                { competitorId: 'team-1', name: 'Wanderers' },
+                { competitorId: 'team-2', name: 'Strikers' },
+              ],
               matchType: 'T20',
               teamType: 'international',
               gender: 'female',
@@ -181,12 +207,166 @@ describe('public browsing pages', () => {
     expect(fetchMock.mock.calls[2]?.[0]).not.toContain('cursor=');
   });
 
+  it('routes internal relationship filters while displaying only readable names', async () => {
+    const requestedUrls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
+        const url = new URL(input);
+        if (url.pathname.endsWith('/competitions')) {
+          return Promise.resolve(
+            collection([
+              { competitionId: 'competition-1', name: 'Premier Cricket League' },
+              { competitionId: 'competition-2', name: 'Regional Cup' },
+            ]),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/fixtures');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show competition options' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Premier Cricket League' }));
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue(
+      'Premier Cricket League',
+    );
+    expect(screen.queryByText('competition-1')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() =>
+      expect(
+        requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=50')),
+      ).toBe(true),
+    );
+    const summary = await screen.findByText('Active filters');
+    expect(summary.parentElement).toHaveTextContent('Competition: Premier Cricket League');
+    expect(summary.parentElement).not.toHaveTextContent('competition-1');
+  });
+
+  it('clears dependent selections and validates unselected typed names', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/competitions')) {
+          return Promise.resolve(
+            collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }]),
+          );
+        }
+        if (url.pathname.endsWith('/seasons')) {
+          return Promise.resolve(
+            collection([
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026',
+                seasonId: 'season-1',
+              },
+            ]),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/fixtures');
+    fireEvent.click(screen.getByRole('button', { name: 'Show competition options' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Premier Cricket League' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show season options' }));
+    const seasonListbox = await screen.findByRole('listbox', { name: 'Season options' });
+    fireEvent.click(within(seasonListbox).getByRole('option'));
+    expect(screen.getByRole('combobox', { name: 'Season' })).toHaveValue(
+      'Premier Cricket League — 2026',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear competition' }));
+    expect(screen.getByRole('combobox', { name: 'Season' })).toHaveValue('');
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Competition' }), {
+      target: { value: 'Premier' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(
+      screen.getByText('Choose a competition from the suggestions or clear the field.'),
+    ).toBeVisible();
+  });
+
+  it('loads readable fixture, team, and player suggestions from public endpoints', async () => {
+    const requestedUrls: string[] = [];
+    const fixture = {
+      fixtureId: 'fixture-1',
+      competitionId: 'competition-1',
+      competitionName: 'Premier Cricket League',
+      seasonId: 'season-1',
+      season: '2026',
+      seasonLabel: '2026',
+      competitors: [
+        { competitorId: 'team-1', name: 'Wanderers' },
+        { competitorId: 'team-2', name: 'Strikers' },
+      ],
+      matchType: 'T20',
+      teamType: 'international',
+      gender: 'female',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate: '2026-08-09',
+      endDate: '2026-08-09',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
+        const url = new URL(input);
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(collection([fixture]));
+        }
+        if (url.pathname.endsWith('/competitors')) {
+          return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
+        }
+        if (url.pathname.endsWith('/participants') && url.searchParams.has('limit')) {
+          return Promise.resolve(
+            collection([{ participantId: 'player-1', displayName: 'A Player' }]),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants');
+    fireEvent.click(screen.getByRole('button', { name: 'Show fixture options' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Wanderers vs Strikers/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show team options' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Wanderers' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Player name' }), {
+      target: { value: 'A Pl' },
+    });
+
+    expect(await screen.findByRole('option', { name: 'A Player' })).toBeVisible();
+    expect(requestedUrls.some((url) => url.includes('/fixtures?limit=100'))).toBe(true);
+    expect(requestedUrls.some((url) => url.includes('/competitors?limit=100'))).toBe(true);
+    expect(
+      requestedUrls.some((url) =>
+        url.includes('/participants?fixtureId=fixture-1&competitorId=team-1&limit=100'),
+      ),
+    ).toBe(true);
+  });
+
   it('opens a fixture and links its related public records', async () => {
     const fixture = {
       fixtureId: 'fixture-1',
       competitionId: 'competition-1',
+      competitionName: 'Premier Cricket League',
       seasonId: 'season-1',
       season: '2026',
+      seasonLabel: '2026',
+      competitors: [
+        { competitorId: 'team-1', name: 'Wanderers' },
+        { competitorId: 'team-2', name: 'Strikers' },
+      ],
       matchType: 'T20',
       teamType: 'international',
       gender: 'female',
@@ -266,11 +446,20 @@ describe('public browsing pages', () => {
   it('browses seasons and links them to their competitions', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          collection([{ seasonId: 'season-2026', competitionId: 'competition-1', label: '2026' }]),
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve(
+          url.includes('/competitions?')
+            ? collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }])
+            : collection([
+                {
+                  seasonId: 'season-2026',
+                  competitionId: 'competition-1',
+                  competitionName: 'Premier Cricket League',
+                  label: '2026',
+                },
+              ]),
         ),
+      ),
     );
 
     renderRoute('/seasons?competitionId=competition-1');
