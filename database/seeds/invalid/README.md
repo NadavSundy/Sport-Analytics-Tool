@@ -1,5 +1,3 @@
-@'
-
 # Invalid submission examples
 
 Each file is match 729307 with exactly one deliberate defect introduced. They are
@@ -22,11 +20,12 @@ upon alone.
 
 ## Verification
 
-Each file was submitted to the ingestion script on 10 August 2026. Each was
-rejected with a message naming the defect, and the database was unchanged
-afterwards: four fixtures and 955 deliveries before and after.
+`apps/backend/tests/database/reference-fixture.database.test.ts` submits each
+committed example inside an isolated database savepoint. The automated test
+requires a descriptive rejection and verifies that no partial fixture remains.
+Run it with `npm run test:database` from the repository root.
 
 ## AI Declaration
 
-The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
-'@ | Set-Content -Path database\seeds\invalid\README.md -Encoding utf8
+The preceding document was generated with the assistance of Claude-Web[Claude Opus 5]
+and reviewed and edited with the assistance of Codex[GPT-5].
