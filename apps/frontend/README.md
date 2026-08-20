@@ -128,6 +128,19 @@ dismissal, and screen-reader result announcements. Each option request has loadi
 failure, and retry states. Changing or clearing a parent filter clears its dependent draft
 selections before another filter request can be applied.
 
+## Public related-record overviews
+
+Competition overviews embed their published seasons, season-grouped fixtures, and teams. Season
+overviews place fixtures first and also show participating teams, while team overviews show their
+fixtures and players. Each section requests the handwritten API independently and keeps its own
+loading, empty, error, retry, and cursor-pagination state, so one failed relationship does not
+replace the successfully loaded overview or another section.
+
+Visible headings, facts, messages, and links use competition, season, fixture, team, and player
+names. Stable identifiers remain internal to routes, React keys, and API filters. Related fixture
+rows link directly to the named fixture overview, and the embedded lists retain the existing
+keyboard-accessible record-list and responsive layout patterns.
+
 ## Checks
 
 From the repository root:
@@ -228,3 +241,5 @@ The account-deletion interface behavior was documented with the assistance of Co
 The shared-contract development troubleshooting guidance was updated with the assistance of
 Codex[GPT-5.6 Sol].
 The public collection filter behavior was documented with the assistance of Codex[GPT-5.6 Sol].
+The public related-record overview behavior was documented with the assistance of
+Codex[GPT-5.6 Sol].

@@ -91,8 +91,8 @@ export function PublicShell({ children }: PublicShellProps) {
             <NavLink to="/competitions">Competitions</NavLink>
             <NavLink to="/seasons">Seasons</NavLink>
             <NavLink to="/fixtures">Fixtures</NavLink>
-            <NavLink to="/competitors">Competitors</NavLink>
-            <NavLink to="/participants">Participants</NavLink>
+            <NavLink to="/competitors">Teams</NavLink>
+            <NavLink to="/participants">Players</NavLink>
           </nav>
           <div className="site-header__controls">
             <AuthenticationNavigation />

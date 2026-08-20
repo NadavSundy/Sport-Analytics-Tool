@@ -378,6 +378,23 @@ npm run test --workspace=@sport-analytics/frontend -- --run src/features/browse/
 npm run test:e2e -- tests/e2e/public-browsing.spec.ts --workers=1
 ```
 
+## Related public detail-overview coverage
+
+The competition, season, and team detail-page suites verify readable related seasons, fixtures,
+teams, and players; season-grouped competition fixtures; direct fixture-overview links; fixture-first
+season content; independent loading, empty, error, retry, and cursor-pagination states; and the
+absence of visible technical identifiers and backend resource terminology. The public-browsing
+browser suite follows the competition-to-season-to-fixture journey in three keyboard activations,
+visits the team overview, checks desktop and mobile overflow, and scans the result for serious or
+critical Axe findings.
+
+Run the focused checks with:
+
+```text
+npm run test --workspace=@sport-analytics/frontend -- --run src/pages/PublicBrowsePages.test.tsx
+npm run test:e2e -- tests/e2e/public-browsing.spec.ts --workers=1
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -394,4 +411,6 @@ the assistance of Codex[GPT-5].
 The disposable local PostgreSQL testing workflow, command guidance and database-test safety
 documentation were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The readable collection-filter coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].
+The related public detail-overview coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].

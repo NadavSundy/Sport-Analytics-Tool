@@ -10,13 +10,13 @@ import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../api/public-read';
 import { BrowseCollection, type FilterField } from '../features/browse/BrowseCollection';
 import type { NameComboboxOption } from '../features/browse/NameCombobox';
+import { RelatedCollection } from '../features/browse/RelatedCollection';
 import {
   DetailError,
   DetailLayout,
   DetailLoading,
   RecordFact,
   RecordFacts,
-  RelatedLinks,
 } from '../features/browse/RecordDetail';
 import { usePublicData } from '../features/browse/usePublicData';
 
@@ -252,8 +252,132 @@ function labelValue(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function fixtureTitle(fixture: Fixture): string {
+  const teamNames = fixture.competitors.map(({ name }) => name);
+  return teamNames.length > 0 ? teamNames.join(' vs ') : 'Fixture teams unavailable';
+}
+
+function relatedFilters(name: string, value: string): URLSearchParams {
+  return new URLSearchParams({ [name]: value });
+}
+
 function RecordListItem({ children }: { children: ReactNode }) {
   return <li className="record-list__item">{children}</li>;
+}
+
+function FixtureRecord({ fixture }: { fixture: Fixture }) {
+  const context = [fixture.competitionName, fixture.seasonLabel, fixture.matchType].filter(
+    (value): value is string => Boolean(value),
+  );
+
+  return (
+    <RecordListItem>
+      <p className="record-list__meta">
+        <time dateTime={fixture.startDate}>{formatDate(fixture.startDate)}</time>
+      </p>
+      <h3>
+        <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}`}>
+          {fixtureTitle(fixture)}
+        </Link>
+      </h3>
+      <p className="record-list__summary">{context.join(' · ')}</p>
+    </RecordListItem>
+  );
+}
+
+function FixtureRecords({ fixtures }: { fixtures: Fixture[] }) {
+  return (
+    <ul className="record-list">
+      {fixtures.map((fixture) => (
+        <FixtureRecord fixture={fixture} key={fixture.fixtureId} />
+      ))}
+    </ul>
+  );
+}
+
+function CompetitionFixtureRecords({ fixtures }: { fixtures: Fixture[] }) {
+  const groups = new Map<string, { label: string; seasonId: string | null; fixtures: Fixture[] }>();
+
+  for (const fixture of fixtures) {
+    const key = fixture.seasonId ?? fixture.seasonLabel;
+    const group = groups.get(key);
+    if (group) {
+      group.fixtures.push(fixture);
+    } else {
+      groups.set(key, {
+        fixtures: [fixture],
+        label: fixture.seasonLabel,
+        seasonId: fixture.seasonId,
+      });
+    }
+  }
+
+  return (
+    <ol className="fixture-groups">
+      {[...groups.entries()].map(([key, group]) => (
+        <li key={key}>
+          <h3>
+            {group.seasonId ? (
+              <Link to={`/seasons/${encodeURIComponent(group.seasonId)}`}>{group.label}</Link>
+            ) : (
+              group.label
+            )}
+          </h3>
+          <FixtureRecords fixtures={group.fixtures} />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function SeasonRecords({ seasons }: { seasons: Season[] }) {
+  return (
+    <ul className="record-list">
+      {seasons.map((season) => (
+        <RecordListItem key={season.seasonId}>
+          <p className="record-list__meta">{season.competitionName}</p>
+          <h3>
+            <Link to={`/seasons/${encodeURIComponent(season.seasonId)}`}>{season.label}</Link>
+          </h3>
+          <p className="record-list__summary">Season overview</p>
+        </RecordListItem>
+      ))}
+    </ul>
+  );
+}
+
+function TeamRecords({ teams }: { teams: Competitor[] }) {
+  return (
+    <ul className="record-list">
+      {teams.map((team) => (
+        <RecordListItem key={team.competitorId}>
+          <p className="record-list__meta">Team</p>
+          <h3>
+            <Link to={`/competitors/${encodeURIComponent(team.competitorId)}`}>{team.name}</Link>
+          </h3>
+          <p className="record-list__summary">Team overview</p>
+        </RecordListItem>
+      ))}
+    </ul>
+  );
+}
+
+function PlayerRecords({ players }: { players: Participant[] }) {
+  return (
+    <ul className="record-list">
+      {players.map((player) => (
+        <RecordListItem key={player.participantId}>
+          <p className="record-list__meta">Player</p>
+          <h3>
+            <Link to={`/participants/${encodeURIComponent(player.participantId)}`}>
+              {player.displayName}
+            </Link>
+          </h3>
+          <p className="record-list__summary">Player overview</p>
+        </RecordListItem>
+      ))}
+    </ul>
+  );
 }
 
 export function CompetitionsPage() {
@@ -290,12 +414,7 @@ export function SeasonsPage() {
       load={publicReadApi.listSeasons}
       renderItem={(season) => (
         <RecordListItem key={season.seasonId}>
-          <p className="record-list__meta">
-            Competition{' '}
-            <Link to={`/competitions/${encodeURIComponent(season.competitionId)}`}>
-              {season.competitionId}
-            </Link>
-          </p>
+          <p className="record-list__meta">{season.competitionName}</p>
           <h3>
             <Link to={`/seasons/${encodeURIComponent(season.seasonId)}`}>{season.label}</Link>
           </h3>
@@ -310,29 +429,12 @@ export function SeasonsPage() {
 export function FixturesPage() {
   return (
     <BrowseCollection<Fixture>
-      description="Browse published fixtures by competition, season, competitor, date and gender."
+      description="Browse published fixtures by competition, season, team, date and gender."
       emptyMessage="No published fixtures match the current filters."
       eyebrow="Match archive"
       filters={fixtureFilters}
       load={publicReadApi.listFixtures}
-      renderItem={(fixture) => (
-        <RecordListItem key={fixture.fixtureId}>
-          <p className="record-list__meta">
-            <time dateTime={fixture.startDate}>{formatDate(fixture.startDate)}</time>
-          </p>
-          <h3>
-            <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}`}>
-              {fixture.matchType} fixture
-            </Link>
-          </h3>
-          <p className="record-list__summary">
-            {fixture.season} / {labelValue(fixture.gender)} /{' '}
-            {fixture.scheduledOvers === null
-              ? 'Overs not specified'
-              : `${fixture.scheduledOvers} overs`}
-          </p>
-        </RecordListItem>
-      )}
+      renderItem={(fixture) => <FixtureRecord fixture={fixture} key={fixture.fixtureId} />}
       resourceLabel="fixtures"
       title="Fixtures"
     />
@@ -349,7 +451,7 @@ export function CompetitorsPage() {
       load={publicReadApi.listCompetitors}
       renderItem={(competitor) => (
         <RecordListItem key={competitor.competitorId}>
-          <p className="record-list__meta">Competitor</p>
+          <p className="record-list__meta">Team</p>
           <h3>
             <Link to={`/competitors/${encodeURIComponent(competitor.competitorId)}`}>
               {competitor.name}
@@ -358,7 +460,7 @@ export function CompetitorsPage() {
         </RecordListItem>
       )}
       resourceLabel="teams"
-      title="Competitors"
+      title="Teams"
     />
   );
 }
@@ -373,7 +475,7 @@ export function ParticipantsPage() {
       load={publicReadApi.listParticipants}
       renderItem={(participant) => (
         <RecordListItem key={participant.participantId}>
-          <p className="record-list__meta">Participant</p>
+          <p className="record-list__meta">Player</p>
           <h3>
             <Link to={`/participants/${encodeURIComponent(participant.participantId)}`}>
               {participant.displayName}
@@ -382,7 +484,7 @@ export function ParticipantsPage() {
         </RecordListItem>
       )}
       resourceLabel="players"
-      title="Participants"
+      title="Players"
     />
   );
 }
@@ -431,7 +533,6 @@ export function CompetitionDetailPage() {
       label="Competition"
       load={load}
       render={({ data: competition }) => {
-        const id = encodeURIComponent(competition.competitionId);
         return (
           <DetailLayout
             backLabel="competitions"
@@ -439,14 +540,30 @@ export function CompetitionDetailPage() {
             eyebrow="Competition"
             title={competition.name}
           >
-            <RecordFacts>
-              <RecordFact label="Competition ID" value={competition.competitionId} />
-            </RecordFacts>
-            <RelatedLinks>
-              <Link to={`/seasons?competitionId=${id}`}>Browse seasons</Link>
-              <Link to={`/fixtures?competitionId=${id}`}>Browse fixtures</Link>
-              <Link to={`/competitors?competitionId=${id}`}>Browse competitors</Link>
-            </RelatedLinks>
+            <RelatedCollection
+              emptyMessage="No published seasons are available for this competition."
+              filters={relatedFilters('competitionId', competition.competitionId)}
+              load={publicReadApi.listSeasons}
+              renderRecords={(seasons) => <SeasonRecords seasons={seasons} />}
+              resourceLabel="seasons"
+              title="Seasons"
+            />
+            <RelatedCollection
+              emptyMessage="No published fixtures are available for this competition."
+              filters={relatedFilters('competitionId', competition.competitionId)}
+              load={publicReadApi.listFixtures}
+              renderRecords={(fixtures) => <CompetitionFixtureRecords fixtures={fixtures} />}
+              resourceLabel="fixtures"
+              title="Fixtures by season"
+            />
+            <RelatedCollection
+              emptyMessage="No published teams are available for this competition."
+              filters={relatedFilters('competitionId', competition.competitionId)}
+              load={publicReadApi.listCompetitors}
+              renderRecords={(teams) => <TeamRecords teams={teams} />}
+              resourceLabel="teams"
+              title="Teams"
+            />
           </DetailLayout>
         );
       }}
@@ -467,24 +584,39 @@ export function SeasonDetailPage() {
       label="Season"
       load={load}
       render={({ data: season }) => {
-        const id = encodeURIComponent(season.seasonId);
         return (
-          <DetailLayout backLabel="seasons" backTo="/seasons" eyebrow="Season" title={season.label}>
+          <DetailLayout
+            backLabel="seasons"
+            backTo="/seasons"
+            eyebrow={season.competitionName}
+            title={season.label}
+          >
             <RecordFacts>
-              <RecordFact label="Season ID" value={season.seasonId} />
               <RecordFact
                 label="Competition"
                 value={
                   <Link to={`/competitions/${encodeURIComponent(season.competitionId)}`}>
-                    {season.competitionId}
+                    {season.competitionName}
                   </Link>
                 }
               />
             </RecordFacts>
-            <RelatedLinks>
-              <Link to={`/fixtures?seasonId=${id}`}>Browse fixtures</Link>
-              <Link to={`/competitors?seasonId=${id}`}>Browse competitors</Link>
-            </RelatedLinks>
+            <RelatedCollection
+              emptyMessage="No published fixtures are available for this season."
+              filters={relatedFilters('seasonId', season.seasonId)}
+              load={publicReadApi.listFixtures}
+              renderRecords={(fixtures) => <FixtureRecords fixtures={fixtures} />}
+              resourceLabel="fixtures"
+              title="Fixtures"
+            />
+            <RelatedCollection
+              emptyMessage="No published teams are available for this season."
+              filters={relatedFilters('seasonId', season.seasonId)}
+              load={publicReadApi.listCompetitors}
+              renderRecords={(teams) => <TeamRecords teams={teams} />}
+              resourceLabel="teams"
+              title="Teams"
+            />
           </DetailLayout>
         );
       }}
@@ -509,12 +641,54 @@ export function FixtureDetailPage() {
           <DetailLayout
             backLabel="fixtures"
             backTo="/fixtures"
-            eyebrow="Fixture"
-            title={`${fixture.matchType} fixture`}
+            eyebrow="Fixture overview"
+            title={fixtureTitle(fixture)}
           >
             <RecordFacts>
-              <RecordFact label="Fixture ID" value={fixture.fixtureId} />
-              <RecordFact label="Season" value={fixture.season} />
+              <RecordFact
+                label="Competition"
+                value={
+                  fixture.competitionId && fixture.competitionName ? (
+                    <Link to={`/competitions/${encodeURIComponent(fixture.competitionId)}`}>
+                      {fixture.competitionName}
+                    </Link>
+                  ) : (
+                    'Competition name unavailable'
+                  )
+                }
+              />
+              <RecordFact
+                label="Season"
+                value={
+                  fixture.seasonId ? (
+                    <Link to={`/seasons/${encodeURIComponent(fixture.seasonId)}`}>
+                      {fixture.seasonLabel}
+                    </Link>
+                  ) : (
+                    fixture.seasonLabel
+                  )
+                }
+              />
+              <RecordFact
+                label="Teams"
+                value={
+                  fixture.competitors.length > 0 ? (
+                    <span className="record-fact-links">
+                      {fixture.competitors.map((team) => (
+                        <Link
+                          key={team.competitorId}
+                          to={`/competitors/${encodeURIComponent(team.competitorId)}`}
+                        >
+                          {team.name}
+                        </Link>
+                      ))}
+                    </span>
+                  ) : (
+                    'Team names unavailable'
+                  )
+                }
+              />
+              <RecordFact label="Match type" value={fixture.matchType} />
               <RecordFact label="Gender" value={labelValue(fixture.gender)} />
               <RecordFact label="Team type" value={labelValue(fixture.teamType)} />
               <RecordFact label="Start date" value={formatDate(fixture.startDate)} />
@@ -525,22 +699,17 @@ export function FixtureDetailPage() {
                 value={fixture.scheduledOvers ?? 'Not specified'}
               />
             </RecordFacts>
-            <RelatedLinks>
-              <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`}>
-                View statistics
-              </Link>
-              {fixture.competitionId ? (
-                <Link to={`/competitions/${encodeURIComponent(fixture.competitionId)}`}>
-                  Open competition
+            <nav aria-label="Fixture records" className="related-records">
+              <h2>Fixture records</h2>
+              <div>
+                <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`}>
+                  View fixture statistics
                 </Link>
-              ) : null}
-              {fixture.seasonId ? (
-                <Link to={`/seasons/${encodeURIComponent(fixture.seasonId)}`}>Open season</Link>
-              ) : null}
-              <Link to={`/participants?fixtureId=${encodeURIComponent(fixture.fixtureId)}`}>
-                Browse participants
-              </Link>
-            </RelatedLinks>
+                <Link to={`/participants?fixtureId=${encodeURIComponent(fixture.fixtureId)}`}>
+                  Browse players
+                </Link>
+              </div>
+            </nav>
           </DetailLayout>
         );
       }}
@@ -558,24 +727,32 @@ export function CompetitorDetailPage() {
 
   return (
     <DetailState
-      label="Competitor"
+      label="Team"
       load={load}
       render={({ data: competitor }) => {
-        const id = encodeURIComponent(competitor.competitorId);
         return (
           <DetailLayout
-            backLabel="competitors"
+            backLabel="teams"
             backTo="/competitors"
-            eyebrow="Competitor"
+            eyebrow="Team"
             title={competitor.name}
           >
-            <RecordFacts>
-              <RecordFact label="Competitor ID" value={competitor.competitorId} />
-            </RecordFacts>
-            <RelatedLinks>
-              <Link to={`/fixtures?competitorId=${id}`}>Browse fixtures</Link>
-              <Link to={`/participants?competitorId=${id}`}>Browse participants</Link>
-            </RelatedLinks>
+            <RelatedCollection
+              emptyMessage="No published fixtures are available for this team."
+              filters={relatedFilters('competitorId', competitor.competitorId)}
+              load={publicReadApi.listFixtures}
+              renderRecords={(fixtures) => <FixtureRecords fixtures={fixtures} />}
+              resourceLabel="fixtures"
+              title="Fixtures"
+            />
+            <RelatedCollection
+              emptyMessage="No published players are available for this team."
+              filters={relatedFilters('competitorId', competitor.competitorId)}
+              load={publicReadApi.listParticipants}
+              renderRecords={(players) => <PlayerRecords players={players} />}
+              resourceLabel="players"
+              title="Players"
+            />
           </DetailLayout>
         );
       }}
@@ -593,19 +770,17 @@ export function ParticipantDetailPage() {
 
   return (
     <DetailState
-      label="Participant"
+      label="Player"
       load={load}
       render={({ data: participant }) => {
         return (
           <DetailLayout
-            backLabel="participants"
+            backLabel="players"
             backTo="/participants"
-            eyebrow="Participant"
+            eyebrow="Player"
             title={participant.displayName}
           >
-            <RecordFacts>
-              <RecordFact label="Participant ID" value={participant.participantId} />
-            </RecordFacts>
+            {null}
           </DetailLayout>
         );
       }}
