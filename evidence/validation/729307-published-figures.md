@@ -8,7 +8,7 @@ Premier League 2014
 **Date:** 26 April 2014
 **Venue:** Sheikh Zayed Stadium, Abu Dhabi
 **Cricsheet identifier:** 729307
-**Source file:** `data/cricsheet/matches/indian-premier-league/729307.json`
+**Committed source file:** `database/seeds/matches/729307.json`
 
 ## Sources
 
@@ -73,9 +73,9 @@ The database stores the registry identifier and reproduces the source form.
 
 ## Running score checkpoints
 
-Recorded from the ESPNcricinfo match flow but not yet asserted by the validation
-script. They would test that runs and extras accumulate at the correct point in
-the innings rather than merely summing correctly.
+Recorded from the ESPNcricinfo match flow and asserted by the automated database
+test. These test that runs and extras accumulate at the correct point in the
+innings rather than merely summing correctly.
 
 | Innings | Milestone | Overs | Balls | Extras at that point |
 | ------- | --------- | ----- | ----- | -------------------- |
@@ -108,9 +108,20 @@ not detect a systematic error in the derivation rules.
 
 ## Validation status
 
-Validation is performed by `apps/backend/scripts/validate-match.ts`, which derives
-every figure by SQL over `delivery_current` and reads nothing from the source
-file. All twenty-two assertions pass.
+Manual validation is performed by `apps/backend/scripts/validate-match.ts`, which
+derives every figure by SQL over `delivery_current` and reads nothing from the
+source file. Its twenty-two comparisons cover the two innings totals, all ten
+fall-of-wicket rows, and credited and uncredited dismissals.
+
+`apps/backend/tests/database/reference-fixture.database.test.ts` now runs those
+same twenty-two comparisons automatically against a transactionally ingested
+copy of the committed fixture. It also verifies the domain shape, ordered Basic
+events, the running-score checkpoints, both powerplays, repeat loading and all
+three invalid examples.
+
+On 20 August 2026, `npm run test:database` provisioned a disposable PostgreSQL 16
+cluster, applied all eight migrations and passed all 46 tests in 10 database test
+files. The seven reference-fixture cases passed as part of that run.
 
 | Check                                       | Status                                      |
 | ------------------------------------------- | ------------------------------------------- |
@@ -122,8 +133,10 @@ file. All twenty-two assertions pass.
 | Extras breakdown by type                    | Derived from the database; see caveat below |
 | Fall of wickets                             | Confirmed, all ten rows                     |
 | Run outs excluded from bowler credit        | Confirmed                                   |
-| Idempotent resubmission                     | Confirmed: a second ingestion adds no rows  |
-| Running score checkpoints                   | Recorded but not asserted                   |
+| Repeat loading                              | Confirmed: no duplicate domain records      |
+| Running score checkpoints                   | Confirmed by automated database test        |
+| Powerplay runs and wickets                  | Confirmed by automated database test        |
+| Invalid submission examples                 | Confirmed rejected without partial fixtures |
 
 **Caveat on the extras breakdown.** The published scorecard's per-type extras line
 could not be read directly, because the site blocks automated access. The
@@ -135,4 +148,5 @@ document is treated as complete.
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of
-Claude-Web[Claude Opus 5].
+Claude-Web[Claude Opus 5] and reviewed and edited with the assistance of
+Codex[GPT-5].
