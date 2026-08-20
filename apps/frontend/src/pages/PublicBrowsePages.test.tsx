@@ -21,6 +21,63 @@ function collection(data: unknown[], nextCursor: string | null = null) {
   return response(200, { data, pagination: { nextCursor } });
 }
 
+function playerMatch(
+  fixtureId: string,
+  options: {
+    batting?: Record<string, number | null> | null;
+    bowling?: Record<string, number | string | null> | null;
+    competitionName?: string;
+    startDate?: string;
+    status?: 'complete' | 'partial';
+    teams?: [string, string];
+    warnings?: Array<{ code: string; message: string }>;
+  } = {},
+) {
+  const teams = options.teams ?? ['Wanderers', 'Strikers'];
+  const competitors = teams.map((name, index) => ({ competitorId: `team-${index + 1}`, name }));
+  const competitionName = options.competitionName ?? 'Premier Cricket League';
+  const startDate = options.startDate ?? '2026-08-09';
+
+  return {
+    fixture: {
+      fixtureId,
+      competitionId: 'competition-1',
+      competitionName,
+      seasonId: 'season-1',
+      season: '2026',
+      seasonLabel: '2026 season',
+      competitors,
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate,
+      endDate: startDate,
+    },
+    competitionName,
+    competitors,
+    competitor: competitors[0],
+    role: 'playing_xi',
+    statisticsStatus: options.status ?? 'complete',
+    statisticsWarnings: options.warnings ?? [],
+    batting:
+      options.batting === undefined
+        ? { runsScored: 42, ballsFaced: 30, fours: 5, sixes: 1, strikeRate: 140 }
+        : options.batting,
+    bowling:
+      options.bowling === undefined
+        ? {
+            runsConceded: 18,
+            legalBallsBowled: 12,
+            oversBowled: '2.0',
+            wicketsTaken: 2,
+            economyRate: 9,
+          }
+        : options.bowling,
+  };
+}
+
 function useSystemTheme() {
   vi.stubGlobal(
     'matchMedia',
@@ -715,6 +772,150 @@ describe('public browsing pages', () => {
     expect(requestedUrls.some((url) => url.includes('cursor=next-fixtures'))).toBe(true);
   });
 
+  it('shows paginated player match history with readable links and reused performance figures', async () => {
+    const requestedUrls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        requestedUrls.push(requestUrl);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+          return Promise.resolve(
+            url.searchParams.has('cursor')
+              ? collection([
+                  playerMatch('fixture-2', {
+                    startDate: '2026-07-02',
+                    teams: ['Wanderers', 'Titans'],
+                  }),
+                ])
+              : collection([playerMatch('fixture-1')], 'next-matches'),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Wanderers vs Strikers' })).toHaveAttribute(
+      'href',
+      '/fixtures/fixture-1',
+    );
+    expect(screen.getByRole('link', { name: 'Premier Cricket League' })).toHaveAttribute(
+      'href',
+      '/competitions/competition-1',
+    );
+    expect(screen.getByRole('link', { name: '2026 season' })).toHaveAttribute(
+      'href',
+      '/seasons/season-1',
+    );
+    expect(screen.getByRole('link', { name: 'Wanderers' })).toHaveAttribute(
+      'href',
+      '/competitors/team-1',
+    );
+    expect(screen.getByText(/Playing Xi/)).toBeVisible();
+    expect(screen.getByText('42')).toBeVisible();
+    expect(screen.getByText('2.0')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next matches page' }));
+    expect(await screen.findByRole('link', { name: 'Wanderers vs Titans' })).toBeVisible();
+    expect(requestedUrls.some((url) => url.includes('cursor=next-matches'))).toBe(true);
+    expect(document.querySelector('main')).not.toHaveTextContent(
+      /player-1|fixture-2|competition-1|season-1|team-1/,
+    );
+  });
+
+  it('keeps the player visible while match history errors, retries, and explains partial data', async () => {
+    let historyRequests = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+          historyRequests += 1;
+          return Promise.resolve(
+            historyRequests === 1
+              ? response(503, {
+                  error: { code: 'SERVICE_UNAVAILABLE', message: 'History unavailable.' },
+                })
+              : collection([
+                  playerMatch('fixture-1', {
+                    batting: null,
+                    bowling: null,
+                    status: 'partial',
+                    warnings: [
+                      {
+                        code: 'NO_ACCEPTED_EVENTS',
+                        message: 'No published delivery events are available for this match.',
+                      },
+                    ],
+                  }),
+                ]),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Match history could not be loaded');
+    expect(screen.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry matches' }));
+    expect(await screen.findByText('Partial data')).toBeVisible();
+    expect(
+      screen.getByText('No published delivery events are available for this match.'),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'No batting or bowling figures are published for this player in this match.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('shows loading and empty states for a player with no published matches', async () => {
+    let resolveHistory!: (value: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        return new Promise<Response>((resolve) => {
+          resolveHistory = resolve;
+        });
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Loading matches' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    resolveHistory(collection([]));
+    expect(
+      await screen.findByRole('heading', { level: 3, name: 'No matches found' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('No published match history is available for this player.'),
+    ).toBeVisible();
+  });
+
   it.each([
     {
       listPath: '/competitors',
@@ -735,15 +936,15 @@ describe('public browsing pages', () => {
   ])('opens $linkName from its public collection', async (example) => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockImplementation((url: string) =>
-          Promise.resolve(
-            url.endsWith(example.detailPath)
-              ? response(200, { data: example.detailRecord })
-              : collection([example.listRecord]),
-          ),
-        ),
+      vi.fn().mockImplementation((url: string) => {
+        if (url.endsWith(example.detailPath)) {
+          return Promise.resolve(response(200, { data: example.detailRecord }));
+        }
+        if (url.includes(`${example.detailPath}/fixtures?`)) {
+          return Promise.resolve(collection([]));
+        }
+        return Promise.resolve(collection([example.listRecord]));
+      }),
     );
 
     renderRoute(example.listPath);

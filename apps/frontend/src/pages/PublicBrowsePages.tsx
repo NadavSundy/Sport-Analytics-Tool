@@ -3,6 +3,7 @@ import type {
   Competitor,
   Fixture,
   Participant,
+  ParticipantFixture,
   Season,
 } from '@sport-analytics/contracts';
 import { useCallback, type ReactNode } from 'react';
@@ -19,7 +20,10 @@ import {
   RecordFacts,
 } from '../features/browse/RecordDetail';
 import { usePublicData } from '../features/browse/usePublicData';
-import { FixtureStatisticsOverview } from '../features/statistics/StatisticsPages';
+import {
+  FixtureStatisticsOverview,
+  PlayerPerformance,
+} from '../features/statistics/StatisticsPages';
 
 function optionSearch(filters?: URLSearchParams): string {
   const params = new URLSearchParams(filters);
@@ -250,7 +254,10 @@ function formatDate(date: string): string {
 }
 
 function labelValue(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  return value
+    .split(/[_-]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function fixtureTitle(fixture: Fixture): string {
@@ -293,6 +300,107 @@ function FixtureRecords({ fixtures }: { fixtures: Fixture[] }) {
         <FixtureRecord fixture={fixture} key={fixture.fixtureId} />
       ))}
     </ul>
+  );
+}
+
+function PlayerMatchRecord({ match }: { match: ParticipantFixture }) {
+  const { fixture } = match;
+  const title = fixtureTitle({ ...fixture, competitors: match.competitors });
+
+  return (
+    <li className="statistic-card player-match-card">
+      <header className="statistic-card__heading">
+        <div>
+          <p className="record-list__meta">
+            <time dateTime={fixture.startDate}>{formatDate(fixture.startDate)}</time>
+            {' · '}
+            {fixture.matchType}
+          </p>
+          <h3>
+            <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}`}>{title}</Link>
+          </h3>
+          <p className="player-match-card__associations">
+            {match.competitionName ? (
+              fixture.competitionId ? (
+                <Link to={`/competitions/${encodeURIComponent(fixture.competitionId)}`}>
+                  {match.competitionName}
+                </Link>
+              ) : (
+                match.competitionName
+              )
+            ) : (
+              'Competition name unavailable'
+            )}
+            {' · '}
+            {fixture.seasonId ? (
+              <Link to={`/seasons/${encodeURIComponent(fixture.seasonId)}`}>
+                {fixture.seasonLabel}
+              </Link>
+            ) : (
+              fixture.seasonLabel
+            )}
+            {' · '}
+            <Link to={`/competitors/${encodeURIComponent(match.competitor.competitorId)}`}>
+              {match.competitor.name}
+            </Link>
+            {match.role ? ` · ${labelValue(match.role)}` : null}
+          </p>
+        </div>
+        <p className={`statistics-status statistics-status--${match.statisticsStatus}`}>
+          {match.statisticsStatus === 'complete' ? 'Complete data' : 'Partial data'}
+        </p>
+      </header>
+
+      {match.statisticsWarnings.length > 0 ? (
+        <div className="player-match-card__notices" role="status">
+          <h4>Data notices</h4>
+          <ul>
+            {match.statisticsWarnings.map((warning, index) => (
+              <li key={`${warning.code}-${index}`}>{warning.message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {match.batting || match.bowling ? (
+        <PlayerPerformance batting={match.batting} bowling={match.bowling} showUnavailable />
+      ) : (
+        <p className="statistics-section__empty">
+          No batting or bowling figures are published for this player in this match.
+        </p>
+      )}
+    </li>
+  );
+}
+
+function PlayerMatchRecords({ matches }: { matches: ParticipantFixture[] }) {
+  return (
+    <ul className="statistics-list player-match-list">
+      {matches.map((match) => (
+        <PlayerMatchRecord key={match.fixture.fixtureId} match={match} />
+      ))}
+    </ul>
+  );
+}
+
+const playerMatchFilters = new URLSearchParams();
+
+function PlayerMatchHistory({ participantId }: { participantId: string }) {
+  const load = useCallback(
+    (search: string, signal: AbortSignal) =>
+      publicReadApi.listParticipantFixtures(participantId, search, signal),
+    [participantId],
+  );
+
+  return (
+    <RelatedCollection
+      emptyMessage="No published match history is available for this player."
+      filters={playerMatchFilters}
+      load={load}
+      renderRecords={(matches) => <PlayerMatchRecords matches={matches} />}
+      resourceLabel="matches"
+      title="Match history"
+    />
   );
 }
 
@@ -779,7 +887,7 @@ export function ParticipantDetailPage() {
             eyebrow="Player"
             title={participant.displayName}
           >
-            {null}
+            <PlayerMatchHistory participantId={participant.participantId} />
           </DetailLayout>
         );
       }}

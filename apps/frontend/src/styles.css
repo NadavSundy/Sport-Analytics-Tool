@@ -1785,6 +1785,33 @@ h3 {
   margin: 1.25rem 0 0;
 }
 
+.player-match-list {
+  margin-top: 1rem;
+}
+
+.player-match-card__associations {
+  margin: 0.5rem 0 0;
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.player-match-card__notices {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-inline-start: 4px solid var(--colour-brand);
+  background: var(--colour-surface-raised);
+}
+
+.player-match-card__notices h4,
+.player-match-card__notices ul {
+  margin: 0;
+}
+
+.player-match-card__notices ul {
+  margin-top: 0.5rem;
+  padding-inline-start: 1.25rem;
+}
+
 .statistic-card__source-count,
 .statistics-note,
 .statistics-section__empty {

@@ -35,6 +35,11 @@ fixture result opens a named fixture overview. Internal identifiers remain in ro
 values but are not used as visible record identity.
 Fixture-statistics pages additionally identify complete or partial data in text, show API warnings,
 and use semantic lists and definition lists so metric groups remain readable at narrow widths.
+Player details immediately embed the participant fixture-history endpoint. Named match cards link to
+the complete fixture overview and present readable competition, season, date, match type, team, and
+role context with available batting and bowling figures. The history section owns its loading,
+empty, error, retry, and cursor-pagination states, while partial and unavailable figures are stated
+without deriving aggregate player statistics in presentation code.
 
 ## Authentication routes
 
@@ -58,4 +63,6 @@ Codex[GPT-5.6 Sol].
 The related-record detail overview behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The combined match-overview route behavior was documented with the assistance of
+Codex[GPT-5.6 Sol].
+The embedded player-overview route behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].

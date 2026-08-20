@@ -2,6 +2,8 @@ import type {
   FixtureOutcome,
   FixtureStatistic,
   FixtureStatistics,
+  ParticipantFixtureBatting,
+  ParticipantFixtureBowling,
   StatisticContributingEvent,
 } from '@sport-analytics/contracts';
 import { useCallback, useId, type ElementType, type ReactNode } from 'react';
@@ -58,6 +60,55 @@ function MetricList({ children }: { children: ReactNode }) {
   return <dl className="statistic-metrics">{children}</dl>;
 }
 
+export function PlayerPerformance({
+  batting,
+  bowling,
+  showUnavailable = false,
+}: {
+  batting: ParticipantFixtureBatting | null;
+  bowling: ParticipantFixtureBowling | null;
+  showUnavailable?: boolean;
+}) {
+  return (
+    <div className="participant-statistics">
+      {batting ? (
+        <section aria-label="Batting statistics">
+          <h4>Batting</h4>
+          <MetricList>
+            <StatisticMetric label="Runs" value={batting.runsScored} />
+            <StatisticMetric label="Balls faced" value={batting.ballsFaced} />
+            <StatisticMetric label="Strike rate" value={batting.strikeRate ?? 'Not available'} />
+            <StatisticMetric label="Fours" value={batting.fours} />
+            <StatisticMetric label="Sixes" value={batting.sixes} />
+          </MetricList>
+        </section>
+      ) : showUnavailable ? (
+        <section aria-label="Batting statistics">
+          <h4>Batting</h4>
+          <p className="statistics-section__empty">No batting figures are available.</p>
+        </section>
+      ) : null}
+      {bowling ? (
+        <section aria-label="Bowling statistics">
+          <h4>Bowling</h4>
+          <MetricList>
+            <StatisticMetric label="Runs conceded" value={bowling.runsConceded} />
+            <StatisticMetric label="Legal balls" value={bowling.legalBallsBowled} />
+            <StatisticMetric label="Overs" value={bowling.oversBowled} />
+            <StatisticMetric label="Economy rate" value={bowling.economyRate ?? 'Not available'} />
+            <StatisticMetric label="Wickets" value={bowling.wicketsTaken} />
+          </MetricList>
+        </section>
+      ) : showUnavailable ? (
+        <section aria-label="Bowling statistics">
+          <h4>Bowling</h4>
+          <p className="statistics-section__empty">No bowling figures are available.</p>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
   if (statistic.scope === 'innings') {
     return (
@@ -69,40 +120,7 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
     );
   }
 
-  return (
-    <div className="participant-statistics">
-      {statistic.batting ? (
-        <section aria-label="Batting statistics">
-          <h4>Batting</h4>
-          <MetricList>
-            <StatisticMetric label="Runs" value={statistic.batting.runsScored} />
-            <StatisticMetric label="Balls faced" value={statistic.batting.ballsFaced} />
-            <StatisticMetric
-              label="Strike rate"
-              value={statistic.batting.strikeRate ?? 'Not available'}
-            />
-            <StatisticMetric label="Fours" value={statistic.batting.fours} />
-            <StatisticMetric label="Sixes" value={statistic.batting.sixes} />
-          </MetricList>
-        </section>
-      ) : null}
-      {statistic.bowling ? (
-        <section aria-label="Bowling statistics">
-          <h4>Bowling</h4>
-          <MetricList>
-            <StatisticMetric label="Runs conceded" value={statistic.bowling.runsConceded} />
-            <StatisticMetric label="Legal balls" value={statistic.bowling.legalBallsBowled} />
-            <StatisticMetric label="Overs" value={statistic.bowling.oversBowled} />
-            <StatisticMetric
-              label="Economy rate"
-              value={statistic.bowling.economyRate ?? 'Not available'}
-            />
-            <StatisticMetric label="Wickets" value={statistic.bowling.wicketsTaken} />
-          </MetricList>
-        </section>
-      ) : null}
-    </div>
-  );
+  return <PlayerPerformance batting={statistic.batting} bowling={statistic.bowling} />;
 }
 
 function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {

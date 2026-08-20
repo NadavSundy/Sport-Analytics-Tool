@@ -9,6 +9,7 @@ import {
   fixtureStatisticResponseSchema,
   fixtureStatisticsResponseSchema,
   participantCollectionResponseSchema,
+  participantFixtureCollectionResponseSchema,
   participantResponseSchema,
   seasonCollectionResponseSchema,
   seasonResponseSchema,
@@ -19,6 +20,7 @@ import {
   type FixtureStatistics,
   type PaginationMetadata,
   type Participant,
+  type ParticipantFixture,
   type Season,
 } from '@sport-analytics/contracts';
 import { ApiResponseError } from './client';
@@ -157,6 +159,13 @@ export const publicReadApi = {
     return requestPublicApi<{ data: Participant }>(
       `/participants/${encodeURIComponent(participantId)}`,
       participantResponseSchema,
+      signal,
+    );
+  },
+  listParticipantFixtures(participantId: string, search: string, signal?: AbortSignal) {
+    return requestPublicApi<CollectionResponse<ParticipantFixture>>(
+      `/participants/${encodeURIComponent(participantId)}/fixtures${search}`,
+      participantFixtureCollectionResponseSchema,
       signal,
     );
   },
