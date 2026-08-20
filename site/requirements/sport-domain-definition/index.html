@@ -1,0 +1,2951 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Public documentation for the COMS3011A Sport Analytics Tool">
+      
+      
+      
+      
+        <link rel="prev" href="../../api/event-statistic-mapping/">
+      
+      
+        <link rel="next" href="../../data/cricsheet/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Sport Domain Definition - Sport Analytics Tool</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sport-domain-definition" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Sport Analytics Tool" class="md-header__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sport Analytics Tool
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sport Domain Definition
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/setup/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../design/brand-guidelines/" class="md-tabs__link">
+          
+  
+  
+  Design
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../deployment/overview/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../git-methodology/" class="md-tabs__link">
+          
+  
+  
+  Methodology
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../ai/usage/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  AI Use
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Sport Analytics Tool" class="md-nav__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Sport Analytics Tool
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/technology-stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technology Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/repository-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/gitea-issue-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gitea Issue Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/brand-guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/system-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture and Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/public-read/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public Read API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/submissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Direct Event Submissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../statistics/fixture-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixture Statistic Calculations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning and Deprecation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/submission-field-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Submission field mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/event-statistic-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event to statistic mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sport Domain Definition
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sport Domain Definition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-selected-sport-and-professional-competition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Selected sport and professional competition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-motivation-for-the-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Motivation for the selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-competition-and-fixture-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Competition and fixture definitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-competitors-and-participant-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Competitors and participant definitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-event-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Event vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-required-event-field-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Required-event field summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-statistic-catalogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Statistic catalogue
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-event-to-statistic-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Event-to-statistic mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-submitter-scope-foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Submitter scope foundation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-sport-specific-validation-rules-and-known-impossible-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Sport-specific validation rules and known-impossible conditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-representative-fixture-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Representative fixture example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-open-stakeholder-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Open stakeholder questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-final-decisions-and-approval-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Final decisions and approval record
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/cricsheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cricsheet Data Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Access and Transactions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/erd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Entity Relationships
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_12" id="__nav_3_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and Authorisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/privacy-retention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy and Retention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/roles-and-permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roles and Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/auth-provider-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Provider Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Application Hosting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0003-azure-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Hosting Decision Record
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Backend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-fronted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-app-service-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Deployment Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/cloudflare_pages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflare Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methodology
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Methodology
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../git-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../planning/project-backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Backlog and Milestone Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-selected-sport-and-professional-competition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Selected sport and professional competition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-motivation-for-the-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Motivation for the selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-competition-and-fixture-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Competition and fixture definitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-competitors-and-participant-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Competitors and participant definitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-event-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Event vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-required-event-field-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Required-event field summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-statistic-catalogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Statistic catalogue
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-event-to-statistic-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Event-to-statistic mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-submitter-scope-foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Submitter scope foundation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-sport-specific-validation-rules-and-known-impossible-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Sport-specific validation rules and known-impossible conditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-representative-fixture-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Representative fixture example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-open-stakeholder-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Open stakeholder questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-final-decisions-and-approval-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Final decisions and approval record
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="sport-domain-definition">Sport domain definition<a class="headerlink" href="#sport-domain-definition" title="Permanent link">&para;</a></h1>
+<p><strong>Issue:</strong> #37 · <strong>Status:</strong> Draft for team and stakeholder review
+<strong>Depends on / formalises:</strong> <code>database/schema.md</code> (approved 6 August 2026, #27), <code>docs/cricsheet.md</code>, <code>docs/database/overview.md</code>, <code>docs/api/overview.md</code></p>
+<blockquote>
+<p><strong>Process note.</strong> This document should normally precede the event schema. In
+this repository the event model (<code>schema.md</code>) and the Cricsheet downloader
+were already built and approved before an explicit domain-definition issue
+was raised. Rather than re-deriving a different domain from scratch, this
+document makes the existing implicit decision explicit, ratifies it against
+the required questions in #37, and records the gaps that were not yet
+written down anywhere. The team and stakeholder should treat the "Final
+decisions and approval record" section as the item needing sign-off, since
+the underlying schema decision already carries six-person approval on #27.</p>
+</blockquote>
+<hr />
+<h2 id="1-selected-sport-and-professional-competition">1. Selected sport and professional competition<a class="headerlink" href="#1-selected-sport-and-professional-competition" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Sport:</strong> Cricket, restricted to the <strong>Twenty20 (T20) format</strong>.</li>
+<li><strong>Competitions represented:</strong> Any competition whose matches Cricsheet
+  classifies as <code>match_type: "T20"</code>, covering both:</li>
+<li><strong>domestic / franchise T20 competitions</strong> (e.g. league tournaments such as
+    the Big Bash League), and</li>
+<li><strong>international T20 matches</strong>, identified not by the <code>IT20</code> label but by
+    <code>team_type: "international"</code> on a <code>T20</code>-typed match (see §10 for why the
+    <code>IT20</code> label cannot be used for this).</li>
+<li><strong>Coverage:</strong> Both men's and women's matches are in scope. The Hundred (a
+  100-ball format) is explicitly out of scope.</li>
+<li><strong>Data source:</strong> Cricsheet's JSON match archive, acquired via
+  <code>scripts/download_cricsheet_t20.py</code>, currently holding 13,953 matches and
+  3,193,996 deliveries (<code>docs/cricsheet.md</code>).</li>
+</ul>
+<h2 id="2-motivation-for-the-selection">2. Motivation for the selection<a class="headerlink" href="#2-motivation-for-the-selection" title="Permanent link">&para;</a></h2>
+<p>Applying the criteria in #37 against what the corpus analysis in <code>schema.md</code>
+already demonstrated:</p>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Events are individually and chronologically representable</td>
+<td>Every delivery is addressable as <code>(fixture, innings ordinal, over number, position_in_over)</code>; array position — not the printed ball number — gives a stable chronological key (schema.md §2.1, §1.1).</td>
+</tr>
+<tr>
+<td>Meaningful statistics are derivable from events</td>
+<td>Balls faced, runs conceded, boundaries, team totals, and career aggregates are all defined as functions of delivery rows (schema.md §5).</td>
+</tr>
+<tr>
+<td>Fixture structure is well understood</td>
+<td>A T20 fixture is bounded, typically two innings, with clearly defined start/toss/outcome semantics, though not rigidly two innings (see §3, §10).</td>
+</tr>
+<tr>
+<td>Sufficient domain information is available</td>
+<td>Cricsheet publishes a documented, versioned schema with 13,953 matches already downloaded and catalogued.</td>
+</tr>
+<tr>
+<td>Representative test data is available and legal</td>
+<td>The corpus is already downloaded under Cricsheet's own redistribution terms; scripts are repeatable and cached locally.</td>
+</tr>
+<tr>
+<td>Event volume suits Intermediate performance testing</td>
+<td>3.19 million deliveries across 13,953 matches gives a realistic bulk-ingestion and query-performance workload.</td>
+</tr>
+<tr>
+<td>Corrections can be demonstrated clearly</td>
+<td>Cricsheet republishes corrected match files with revisions; the schema's revision/supersession model (schema.md §3) was designed specifically to demonstrate this.</td>
+</tr>
+<tr>
+<td>Season and career aggregates are meaningful</td>
+<td>Player identifiers persist and alias across name changes (schema.md §1.2, §2.2), which is exactly what is needed for career-level aggregation.</td>
+</tr>
+<tr>
+<td>Live / out-of-order events are eventually demonstrable</td>
+<td>The delivery identity model does not depend on receiving deliveries in submission order, only in encoded order, so late/out-of-order events are representable.</td>
+</tr>
+<tr>
+<td>The team can explain the domain confidently</td>
+<td>Cricket's scoring rules (byes, wides, no-balls, boundaries, dismissals) are well documented and already reflected in the approved schema.</td>
+</tr>
+<tr>
+<td>Achievable within the project timeline</td>
+<td>The Basic-tier vocabulary below is deliberately narrow: one event type (the delivery) with typed attributes, not a large enumerated event catalogue.</td>
+</tr>
+</tbody>
+</table>
+<p>The counter-argument — that cricket's rule surface (extras interactions,
+super overs, bowl-outs, miscounted overs) is unusually irregular — is
+accepted, but treated as a strength for this project specifically: it forces
+the event-sourced, no-independently-entered-totals design that is the
+project's central technical claim (schema.md §3), rather than allowing a
+simpler sport to hide schema mistakes.</p>
+<h2 id="3-competition-and-fixture-definitions">3. Competition and fixture definitions<a class="headerlink" href="#3-competition-and-fixture-definitions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Season / competition period:</strong> the <code>competition</code> entity groups fixtures
+  that belong to the same tournament, series, or league edition (schema.md
+  §4, "Reference" entities). A season boundary is taken from Cricsheet's own
+  per-match <code>season</code> field; the platform does not yet define an independent
+  season-numbering scheme.</li>
+<li><strong>Fixture:</strong> one T20 match, identified by the Cricsheet match ID, retained
+  as <code>source_ref</code> on the <code>fixture</code> entity, so that a resubmitted or corrected
+  match file is recognised as the same fixture rather than a duplicate
+  (schema.md §2.3).</li>
+<li><strong>Multiple competitions:</strong> the platform supports many competitions of the
+  same sport concurrently (domestic leagues and international series side by
+  side), not a single hard-coded competition.</li>
+<li><strong>Innings count is not fixed at two.</strong> 99 matches in the corpus carry four
+  innings, and 204 innings are flagged as super-over innings (schema.md,
+  property O5). Any fixture-level logic that assumes exactly two innings will
+  misrepresent these matches.</li>
+</ul>
+<h2 id="4-competitors-and-participant-definitions">4. Competitors and participant definitions<a class="headerlink" href="#4-competitors-and-participant-definitions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Competitors are teams</strong>, not individual athletes. <code>fixture_team</code> links a
+  <code>team</code> to a <code>fixture</code>; <code>fixture_squad</code> lists the players declared for that
+  team in that fixture.</li>
+<li><strong>Participants</strong> are individual players, tracked through the sport even
+  though the competitor unit is the team. Participant roles required by the
+  event vocabulary below: <strong>striker (batter facing)</strong>, <strong>non-striker</strong>,
+  <strong>bowler</strong>, <strong>fielder(s)</strong> (on a wicket), <strong>captain</strong>, <strong>wicketkeeper</strong>, and
+  <strong>substitute/replacement player</strong>.</li>
+<li><strong>Officials</strong> (umpires, match referees) are modelled separately from
+  <code>person</code> rather than folded into it, because Cricsheet gives no stable
+  identifier for them and asserting identity from a name alone is exactly
+  what the corpus rules out for players (schema.md §1.2, decision #2 in §7).
+  If a stable official registry becomes available later, records reconcile
+  through an <code>external_ref</code>.</li>
+<li><strong>Players can change teams between seasons.</strong> Player identity must survive
+  that: the platform keys players on a registry identifier
+  (<code>person</code>/<code>person_alias</code>), never on name, because 168 names in the corpus
+  map to more than one player and 40 identifiers map to more than one name
+  (schema.md, property O2, §1.2).</li>
+<li><strong>Stable identifiers required across seasons:</strong> <code>person</code> (player)
+  identifiers, <code>team</code> identifiers, and <code>fixture</code> <code>source_ref</code> values. Venue
+  and competition identifiers should also remain stable, though this has not
+  yet been stress-tested against the corpus the way player identity has.</li>
+</ul>
+<h2 id="5-event-vocabulary">5. Event vocabulary<a class="headerlink" href="#5-event-vocabulary" title="Permanent link">&para;</a></h2>
+<p>The platform's Basic-tier event vocabulary is deliberately narrow: a single
+core event (the <strong>delivery</strong>), carrying typed sub-facts, plus a small number
+of innings- and fixture-level facts that do not belong to any one delivery.
+This mirrors the approved schema rather than inventing a separate list.</p>
+<table>
+<thead>
+<tr>
+<th>Event type</th>
+<th>Meaning</th>
+<th>Required data</th>
+<th>Optional data</th>
+<th>Statistics affected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Delivery</strong></td>
+<td>One ball bowled in an innings.</td>
+<td>fixture, innings ordinal, over number, <code>position_in_over</code> (identity key), bowler, striker, non-striker, runs off bat</td>
+<td>printed ball number (display only)</td>
+<td>Balls faced, runs off bat, boundaries, strike rate, economy rate</td>
+</tr>
+<tr>
+<td><strong>Extra</strong> (attached to a delivery)</td>
+<td>Runs awarded outside the delivery's off-the-bat total.</td>
+<td>extras type (wide / no-ball / bye / leg bye / penalty — nullable columns, since types co-occur, e.g. a wide with byes) and the runs for each type present</td>
+<td>—</td>
+<td>Runs conceded, balls faced (a no-ball counts as faced, a wide does not), team total</td>
+</tr>
+<tr>
+<td><strong>Wicket</strong> (attached to a delivery)</td>
+<td>A batter is dismissed.</td>
+<td>dismissed player, <code>dismissal_kind</code> (raw source value retained for provenance), whether the kind credits the bowler</td>
+<td>fielder(s) involved (0, 1, or more — 5,833 dismissals in the corpus name multiple fielders, and some fielder records identify a substitute with no name)</td>
+<td>Bowler's wicket tally (only for kinds flagged <code>credits_bowler</code> — a run out is not the bowler's wicket), fielder/catch tallies</td>
+</tr>
+<tr>
+<td><strong>Review</strong></td>
+<td>A DRS-style review is requested and decided.</td>
+<td>fixture, innings, delivery reference, outcome of the review</td>
+<td>reviewing side/player</td>
+<td>Not currently used in a Basic statistic; retained for provenance and Advanced-tier reconciliation work</td>
+</tr>
+<tr>
+<td><strong>Replacement / substitution</strong></td>
+<td>A player is substituted mid-fixture (injury substitute, concussion substitute, or a competition-specific "supersub" role).</td>
+<td>fixture, team, player in, player out</td>
+<td>reason/role (e.g. <code>supersub</code>, present on 42 Big Bash League matches only)</td>
+<td>Squad/participation statistics; excluded from ball-by-ball batting/bowling attribution unless the replacement actually bowls or bats</td>
+</tr>
+<tr>
+<td><strong>Innings penalty</strong></td>
+<td>Penalty runs awarded at innings level, belonging to no single delivery.</td>
+<td>fixture, innings ordinal, penalty run amount</td>
+<td>—</td>
+<td>Team total (team total = sum of delivery totals <strong>plus</strong> innings-level penalty runs — it cannot be derived from deliveries alone)</td>
+</tr>
+<tr>
+<td><strong>Powerplay marker</strong></td>
+<td>Marks which overs of an innings fall in a powerplay.</td>
+<td>fixture, innings, over range</td>
+<td>—</td>
+<td>Powerplay-scoped aggregates (Intermediate)</td>
+</tr>
+<tr>
+<td><strong>Miscounted-over note</strong></td>
+<td>Records that an over legitimately held other than six legal balls.</td>
+<td>fixture, innings, over number, legal ball count</td>
+<td>—</td>
+<td>Legal-balls-per-over must always be counted from delivery rows, never assumed to be six</td>
+</tr>
+<tr>
+<td><strong>Fixture outcome</strong></td>
+<td>The result of the match.</td>
+<td>outcome shape (win/loss with margin, tie, no result, abandoned, decided by eliminator, decided by bowl-out — seven distinct shapes exist in the corpus)</td>
+<td>winning team/margin where applicable</td>
+<td>Not a "winner plus margin" pair — must be modelled as a typed outcome, not two flat columns</td>
+</tr>
+</tbody>
+</table>
+<p>Event ordering and timing: deliveries are ordered by a within-innings
+sequence assigned at ingestion (not derived on read), so the API can return
+events in occurrence order with pagination; a correction inherits the
+sequence of the revision it supersedes rather than being appended
+(schema.md §3, §7 decision #4).</p>
+<h2 id="6-required-event-field-summary">6. Required-event field summary<a class="headerlink" href="#6-required-event-field-summary" title="Permanent link">&para;</a></h2>
+<p>This restates §5 as a flat required/optional split for implementers:</p>
+<ul>
+<li><strong>Always required on a delivery:</strong> fixture, innings ordinal, over number,
+  position-in-over, bowler identifier, striker identifier, non-striker
+  identifier, runs off bat.</li>
+<li><strong>Required when a wicket occurs:</strong> dismissed player identifier,
+  dismissal-kind reference.</li>
+<li><strong>Required when an extra occurs:</strong> at least one of wide/no-ball/bye/leg-bye/
+  penalty run counts (more than one may be present simultaneously).</li>
+<li><strong>Required at innings level:</strong> innings ordinal, fixture reference,
+  super-over flag (where applicable), penalty runs (where applicable).</li>
+<li><strong>Required at fixture level:</strong> source_ref (Cricsheet match ID), competition
+  reference, team references, outcome.</li>
+</ul>
+<h2 id="7-statistic-catalogue">7. Statistic catalogue<a class="headerlink" href="#7-statistic-catalogue" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Statistic</th>
+<th>Level</th>
+<th>Source events</th>
+<th>Calculation</th>
+<th>Requirement tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runs scored (off bat)</td>
+<td>Participant (batting), fixture</td>
+<td>Delivery</td>
+<td>Sum of runs-off-bat for deliveries faced by the player</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Balls faced</td>
+<td>Participant, fixture</td>
+<td>Delivery, Extra</td>
+<td>Count of deliveries where no wide was bowled (a no-ball is faced, a wide is not)</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Strike rate</td>
+<td>Participant, fixture</td>
+<td>Delivery</td>
+<td>Runs scored ÷ balls faced × 100</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Boundaries (4s/6s)</td>
+<td>Participant, fixture</td>
+<td>Delivery</td>
+<td>Count of deliveries with 4 or 6 off the bat, excluding the deliveries flagged <code>non_boundary</code> (runs run rather than struck to the rope)</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Runs conceded</td>
+<td>Participant (bowling), fixture</td>
+<td>Delivery, Extra</td>
+<td>Runs off bat + wides + no-balls, excluding byes and leg-byes</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Legal balls bowled / overs bowled</td>
+<td>Participant, fixture</td>
+<td>Delivery, miscounted-over note</td>
+<td>Count of legal deliveries per over, never assumed to be six</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Economy rate</td>
+<td>Participant, fixture</td>
+<td>Delivery, Extra</td>
+<td>Runs conceded ÷ legal balls bowled × 6</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Wickets taken (bowler)</td>
+<td>Participant, fixture</td>
+<td>Wicket</td>
+<td>Count of dismissals where the dismissal kind is flagged <code>credits_bowler</code> and the bowler is this player</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Team total</td>
+<td>Fixture, team, innings</td>
+<td>Delivery, Extra, Innings penalty</td>
+<td>Sum of delivery totals plus innings-level penalty runs</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Fixture outcome</td>
+<td>Fixture</td>
+<td>Fixture outcome</td>
+<td>Typed outcome (not winner+margin)</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td>Season aggregates (runs, wickets, economy, strike rate)</td>
+<td>Season, competitor, participant</td>
+<td>All above, grouped by competition/season</td>
+<td>Sum or recompute across fixtures within a season, grouped by person identifier — never by name</td>
+<td>Intermediate</td>
+</tr>
+<tr>
+<td>Career aggregates</td>
+<td>Participant (career)</td>
+<td>All above</td>
+<td>Same as season aggregates, grouped by person identifier across all seasons</td>
+<td>Intermediate</td>
+</tr>
+<tr>
+<td>Powerplay-scoped statistics</td>
+<td>Innings, fixture</td>
+<td>Delivery, Powerplay marker</td>
+<td>As above, restricted to overs marked as powerplay</td>
+<td>Intermediate</td>
+</tr>
+<tr>
+<td>Super-over statistics</td>
+<td>Fixture, participant</td>
+<td>Delivery (super-over innings)</td>
+<td>Same calculations as standard statistics, but computed on a separately scoped set; <strong>excluded from standard aggregates by default</strong></td>
+<td>Intermediate/Advanced — excluded by default under Issue #104; client confirmation pending (§12)</td>
+</tr>
+<tr>
+<td>Analyst-defined / custom statistic</td>
+<td>Any</td>
+<td>Statistic definition + version</td>
+<td>Computed from a versioned expression, not hard-coded query logic</td>
+<td>Advanced (deferred entity — not yet modelled, schema.md §6)</td>
+</tr>
+<tr>
+<td>Live/in-progress fixture statistics</td>
+<td>Fixture (live)</td>
+<td>Delivery, submitted incrementally, possibly out of order</td>
+<td>Same calculations, recomputed incrementally as new deliveries arrive</td>
+<td>Advanced</td>
+</tr>
+<tr>
+<td>Reconciliation after correction</td>
+<td>Any statistic already published</td>
+<td>Delivery revision + superseded delivery</td>
+<td>Identify which derived results become stale when a delivery is corrected</td>
+<td>Advanced (deferred entity — "derived result", schema.md §6)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Statistics identified as currently unsupported / deferred</strong>, per the
+"deferred entities" already recorded in schema.md §6: any statistic that
+depends on a versioned statistic definition, a derived-result provenance
+record, or a dataset release manifest. These require entities that do not
+exist yet and are explicitly out of scope for this issue and for Basic/
+Intermediate work.</p>
+<h2 id="8-event-to-statistic-mapping">8. Event-to-statistic mapping<a class="headerlink" href="#8-event-to-statistic-mapping" title="Permanent link">&para;</a></h2>
+<p>This is the inverse of §7, for traceability:</p>
+<ul>
+<li><strong>Delivery</strong> → runs scored, balls faced, strike rate, boundaries, runs
+  conceded, economy rate, team total, all season/career aggregates.</li>
+<li><strong>Wicket</strong> (+ fielders) → wickets taken, dismissal-kind breakdowns, catch/
+  run-out tallies for fielders.</li>
+<li><strong>Extra</strong> → runs conceded, balls faced exclusion rule, team total.</li>
+<li><strong>Innings penalty</strong> → team total only (this is the one statistic that
+  cannot be derived from deliveries alone — property O7).</li>
+<li><strong>Miscounted-over note</strong> → legal-balls-per-over, and therefore overs
+  bowled and economy rate.</li>
+<li><strong>Powerplay marker</strong> → powerplay-scoped aggregates only.</li>
+<li><strong>Fixture outcome</strong> → win/loss/tie/no-result reporting; not used in any
+  player statistic.</li>
+<li><strong>Review, Replacement</strong> → not currently mapped to any Basic or
+  Intermediate statistic; retained for provenance and future Advanced-tier
+  reconciliation work.</li>
+</ul>
+<h2 id="9-submitter-scope-foundation">9. Submitter scope foundation<a class="headerlink" href="#9-submitter-scope-foundation" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Submission ownership is recorded on <code>submission</code>, referencing <code>app_user</code>,
+  which is keyed on the authentication provider and that provider's subject
+  identifier rather than any provider-specific column (schema.md §4, §7
+  decision #6).</li>
+<li>The implemented minimum scope model authorises an account with the <code>submitter</code> or <code>admin</code> role
+  for explicit competitions through <code>submitter_competition_scope</code>. A verified identity with the
+  <code>viewer</code> role or no matching grant cannot pass upload-route policy. More granular date, season,
+  or fixture grants remain a future extension and must preserve this deny-by-default boundary.</li>
+<li>Validation/review state (accepted, rejected, pending) is expected to live
+  on <code>submission</code>, which already carries a status column; a richer
+  reviewer-workflow (who reviewed, when, against which rule) is deferred
+  (schema.md §6).</li>
+</ul>
+<h2 id="10-sport-specific-validation-rules-and-known-impossible-conditions">10. Sport-specific validation rules and known-impossible conditions<a class="headerlink" href="#10-sport-specific-validation-rules-and-known-impossible-conditions" title="Permanent link">&para;</a></h2>
+<p>Carried over directly from the corpus analysis already performed for the
+approved schema, because these are exactly the conditions a naive validator
+would get wrong:</p>
+<ol>
+<li><strong>Delivery identity must never use the printed ball number.</strong> It repeats
+   within an over in 20.4% of overs (104,818 of 514,380) because wides and
+   no-balls do not advance it. Identity is <code>(fixture, innings, over,
+position_in_over)</code> only.</li>
+<li><strong>Extras types can co-occur</strong> on one delivery (e.g. wide + byes).
+   Validation must not assume at most one extras type per delivery.</li>
+<li><strong>A run out must never be credited to the bowler.</strong> Only dismissal kinds
+   flagged <code>credits_bowler</code> count toward a bowler's wicket tally.</li>
+<li><strong>An over may legally hold other than six balls</strong> (175 innings in the
+   corpus carry <code>miscounted_overs</code>, with overs of five or seven legal balls).
+   No constraint may hard-code six.</li>
+<li><strong>Innings count per fixture is not fixed at two</strong> (99 four-innings
+   matches; 204 super-over innings).</li>
+<li><strong>Team total cannot be validated from deliveries alone</strong> — innings-level
+   penalty runs must be included.</li>
+<li><strong>Outcome is not "winner plus margin."</strong> Seven distinct outcome shapes
+   exist, including no-result, eliminator, and bowl-out decisions.</li>
+<li><strong><code>IT20</code> is not a reliable filter for "international match."</strong> Only 320
+   matches in the corpus are classified <code>IT20</code>, while every true T20
+   international carries <code>match_type: "T20"</code> with <code>team_type:
+"international"</code>, and <code>match_type_number</code> is present on exactly those
+   5,602 matches. Any validation, filter, or statistic that treats <code>IT20</code> as
+   meaning "international" will misclassify roughly 5,300 matches. This has
+   been raised against the downloader (schema.md §9) but is repeated here
+   because it is a domain-definition error, not just a data-acquisition bug.</li>
+<li><strong>Bowl-out attempts are deliberately not modelled as individual events.</strong>
+   The mechanism appears on only 2 matches (2006–2007), is obsolete, and no
+   in-scope statistic depends on it. The fixture outcome must still be able
+   to record that a match was decided by bowl-out (a nullable outcome value),
+   but per-attempt bowler/outcome pairs are an accepted exclusion, not an
+   oversight.</li>
+<li><strong>Supersubs are a squad fact, not an event.</strong> The Big Bash League's
+    substitute rule (42 matches) is represented as a nullable role on
+    <code>fixture_squad</code>, not as its own event or table.</li>
+<li><strong>A correction never overwrites delivery content.</strong> It inserts a new
+    revision; the previous revision is marked superseded, and a correction
+    inherits the within-innings sequence of the revision it supersedes so
+    that pagination order does not shift underneath a consumer.</li>
+</ol>
+<h2 id="11-representative-fixture-example">11. Representative fixture example<a class="headerlink" href="#11-representative-fixture-example" title="Permanent link">&para;</a></h2>
+<p><strong>Structural walkthrough</strong> (illustrative, using the fields defined above —
+not a specific match's actual scorecard):</p>
+<ol>
+<li>A fixture is created from a Cricsheet match file, with <code>source_ref</code> set to
+   the match ID, teams and venue resolved to <code>team</code>/<code>venue</code> records, and the
+   competition resolved to a <code>competition</code> record.</li>
+<li>Two <code>fixture_team</code> rows link the fixture to its two competing teams;
+   <code>fixture_squad</code> rows list the declared players for each team, with roles
+   (captain, wicketkeeper) marked where the source provides them.</li>
+<li>For the first innings, an <code>innings</code> row is created (ordinal 1). Deliveries
+   are ingested in source-array order; each delivery row carries
+   <code>position_in_over</code> as its identity anchor and the printed ball number as a
+   display-only column.</li>
+<li>A wicket occurring on, say, the third delivery of the fourth over creates
+   a <code>delivery_wicket</code> row referencing that delivery, the dismissed batter,
+   the dismissal kind, and — if it's a catch — a <code>delivery_wicket_fielder</code>
+   row for the catching fielder.</li>
+<li><strong>Verification: does a correction propagate correctly?</strong> Schema.md already
+   documents a real corpus case that exercises this end-to-end — match
+   <code>1402765</code>, innings 0, over 5, where seven consecutive source records share
+   the printed ball number <code>5.1</code> and are distinguished only by array
+   position. If any one of those seven delivery records is later corrected
+   (say, a wide reclassified as a legal delivery), the correction is inserted
+   as a new revision of that specific <code>(fixture, innings, over,
+position_in_over)</code> row; the old revision is superseded; and every
+   statistic reading from <code>delivery_current</code> — balls faced, legal-balls-in-
+   over, team total — recomputes to reflect only the live row, while the
+   superseded revision remains queryable for audit. This confirms
+   requirement (5) of the #37 verification checklist ("at least one event
+   correction would automatically affect a derived statistic") using data
+   already present in the corpus, rather than a hypothetical.</li>
+<li>The second innings repeats the same structure. If the match went to a
+   super over, a third <code>innings</code> row is created with <code>is_super_over = true</code>
+   and is excluded from standard season/career aggregates by default (§7).</li>
+<li>The fixture closes with an <code>outcome</code> row recording one of the seven
+   possible outcome shapes.</li>
+</ol>
+<p>This walkthrough confirms: competitors and participants can be represented;
+events can be recorded in order; each event fits the proposed fields; the
+required fixture statistics (team total, wickets, balls faced) can be
+computed from those events; a correction demonstrably affects a derived
+statistic; every calculated statistic traces back to specific delivery rows;
+and nothing here is specific to a single fixture — the same model already
+covers all 13,953 downloaded matches.</p>
+<h2 id="12-open-stakeholder-questions">12. Open stakeholder questions<a class="headerlink" href="#12-open-stakeholder-questions" title="Permanent link">&para;</a></h2>
+<p>Carried forward from schema.md §9, since they were never resolved there and
+belong properly to this domain-definition issue:</p>
+<ol>
+<li><strong>Super-over convention:</strong> should super-over statistics be entirely
+   excluded from a player's season/career figures, or surfaced as a
+   separately labelled scope the client can opt into? Not yet confirmed with
+   the client.</li>
+<li><strong>Storage benchmark for the corpus at full scale</strong> (3,193,996 deliveries,
+   2.5× the size of the subset the original storage projection was based on)
+   is still outstanding — owner and date not yet assigned.</li>
+<li><strong>Object-storage option for source files and dataset releases:</strong> whether
+   holding these outside PostgreSQL changes the ADR-003 hosting decision is
+   still open.</li>
+<li><strong><code>IT20</code> misclassification (§10, item 8):</strong> raised against the downloader
+   but not yet fixed; needs a decision on whether to patch the downloader's
+   classification logic or handle it in ingestion/validation instead.</li>
+<li><strong>Review/DRS event usage:</strong> the <code>Review</code> event is defined for provenance
+   but has no statistic consuming it yet; confirm whether any Basic/
+   Intermediate statistic should use it before Advanced-tier work begins.</li>
+</ol>
+<h2 id="13-final-decisions-and-approval-record">13. Final decisions and approval record<a class="headerlink" href="#13-final-decisions-and-approval-record" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Sport and format:</strong> Cricket, T20, men's and women's, domestic/franchise
+  and international competitions, per §1 — consistent with, and formalising,
+  the corpus scope already approved in <code>schema.md</code> (approved by all six team
+  members on 6 August 2026, per #27).</li>
+<li><strong>Submitter scope:</strong> Competition-level grants are the implemented Basic-tier
+  boundary. Fixture, season, and date-range grants remain possible future
+  extensions, but are not prerequisites for issue #43 or the direct-submission
+  flow.</li>
+<li><strong>This document's own approval status:</strong> draft, pending explicit team
+  review and stakeholder sign-off as required by #37's Definition of Done.
+  Because the underlying schema decision already has six-person approval,
+  this document's review can focus on the parts that were not previously
+  written down explicitly: the submitter scope foundation (§9), the statistic
+  requirement-tier assignments (§7), and the open questions (§12).</li>
+<li><strong>Outstanding before this issue can close:</strong> team review, stakeholder
+  review (or explicit recording of unresolved questions per §12), and a
+  merged Pull Request per the Git workflow specified in #37.</li>
+</ul>
+<h2 id="ai-declaration">AI Declaration<a class="headerlink" href="#ai-declaration" title="Permanent link">&para;</a></h2>
+<p>The submitter-scope implementation status was updated with the assistance of
+Codex[GPT-5.6 Sol].</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

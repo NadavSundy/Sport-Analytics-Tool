@@ -1,0 +1,5440 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Public documentation for the COMS3011A Sport Analytics Tool">
+      
+      
+      
+      
+        <link rel="prev" href="../../project_methodology/">
+      
+      
+        <link rel="next" href="../../ai/usage/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Project Backlog and Milestone Plan - Sport Analytics Tool</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#project-backlog-and-milestone-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Sport Analytics Tool" class="md-header__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sport Analytics Tool
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Project Backlog and Milestone Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/setup/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../design/brand-guidelines/" class="md-tabs__link">
+          
+  
+  
+  Design
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../deployment/overview/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../git-methodology/" class="md-tabs__link">
+          
+  
+  
+  Methodology
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../ai/usage/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  AI Use
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Sport Analytics Tool" class="md-nav__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Sport Analytics Tool
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/technology-stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technology Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/repository-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/gitea-issue-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gitea Issue Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/brand-guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/system-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture and Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/public-read/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public Read API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/submissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Direct Event Submissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../statistics/fixture-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixture Statistic Calculations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning and Deprecation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/submission-field-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Submission field mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/event-statistic-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event to statistic mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../requirements/sport-domain-definition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sport Domain Definition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/cricsheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cricsheet Data Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Access and Transactions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/erd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Entity Relationships
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_12" id="__nav_3_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and Authorisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/privacy-retention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy and Retention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/roles-and-permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roles and Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/auth-provider-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Provider Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Application Hosting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0003-azure-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Hosting Decision Record
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Backend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-fronted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-app-service-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Deployment Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/cloudflare_pages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflare Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methodology
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Methodology
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../git-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Backlog and Milestone Plan
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Backlog and Milestone Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-planning-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Planning Approach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Planning Approach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-planned-backlog-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Planned Backlog Items
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-actionable-gitea-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Actionable Gitea Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-prioritisation-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Prioritisation Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-milestone-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Milestone Outcomes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Milestone Outcomes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-1-working-basic-vertical-slice-and-project-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 1 — Working Basic Vertical Slice and Project Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-complete-basic-and-intermediate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 — Complete Basic and Intermediate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-advanced-feature-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 — Advanced Feature Completion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-hardening-and-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission — Hardening and Release
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-existing-project-and-foundation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Existing Project and Foundation Issues
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-sprint-1-requirement-to-issue-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Sprint 1 Requirement-to-Issue Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-sprint-1-implementation-areas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Sprint 1 Implementation Areas
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Sprint 1 Implementation Areas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#account-authentication-and-authorisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account, Authentication and Authorisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-and-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database and Domain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-submission-and-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Submission and Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-api-statistics-and-frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public API, Statistics and Frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture-api-design-and-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture, API Design and UX
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-deployment-and-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing, Deployment and Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-authentication-terminology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Authentication Terminology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-sprint-1-dependency-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Sprint 1 Dependency Order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Sprint 1 Dependency Order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#priority-a-governance-and-technical-foundations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority A — Governance and Technical Foundations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-b-persistent-domain-and-identity-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority B — Persistent Domain and Identity Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-c-authentication-and-approval-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority C — Authentication and Approval Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-d-event-submission-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority D — Event Submission Vertical Slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-e-public-read-and-statistics-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority E — Public Read and Statistics Vertical Slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-f-verification-and-sprint-close-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority F — Verification and Sprint Close-Out
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-sprint-1-end-to-end-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Sprint 1 End-to-End Trace
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Sprint 1 End-to-End Trace">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-define-the-sport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Define the Sport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-establish-architecture-and-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Establish Architecture and Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-establish-data-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Establish Data Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-establish-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Establish Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-approve-submitters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Approve Submitters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-define-and-validate-deliveries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Define and Validate Deliveries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-submit-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Submit Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-persist-events-with-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Persist Events with Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-read-public-event-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Read Public Event Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-derive-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Derive Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-display-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Display Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-verify-the-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Verify the Vertical Slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Deploy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-publish-documentation-and-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Publish Documentation and Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-review-and-close-sprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Review and Close Sprint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-sprint-2-planned-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Sprint 2 Planned Backlog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Sprint 2 Planned Backlog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint Goal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-sprint-2-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Sprint 2 Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-expected-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 Expected Outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-sprint-3-planned-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Sprint 3 Planned Backlog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Sprint 3 Planned Backlog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-goal_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint Goal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-sprint-3-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Sprint 3 Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-expected-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 Expected Outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-final-submission-planned-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Final Submission Planned Backlog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Final Submission Planned Backlog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission Goal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-final-submission-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Final Submission Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-expected-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission Expected Outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-future-backlog-refinement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Future Backlog Refinement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Future Backlog Refinement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-reviewing-the-future-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Reviewing the Future Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-recording-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Recording Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-backlog-maintenance-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Backlog Maintenance Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-completion-of-issue-36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Completion of Issue #36
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Completion of Issue #36">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issue-36-completion-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #36 Completion Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-review-cadence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Review Cadence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-planning-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Planning Approach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Planning Approach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-planned-backlog-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Planned Backlog Items
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-actionable-gitea-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Actionable Gitea Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-prioritisation-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Prioritisation Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-milestone-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Milestone Outcomes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Milestone Outcomes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-1-working-basic-vertical-slice-and-project-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 1 — Working Basic Vertical Slice and Project Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-complete-basic-and-intermediate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 — Complete Basic and Intermediate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-advanced-feature-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 — Advanced Feature Completion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-hardening-and-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission — Hardening and Release
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-existing-project-and-foundation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Existing Project and Foundation Issues
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-sprint-1-requirement-to-issue-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Sprint 1 Requirement-to-Issue Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-sprint-1-implementation-areas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Sprint 1 Implementation Areas
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Sprint 1 Implementation Areas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#account-authentication-and-authorisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account, Authentication and Authorisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-and-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database and Domain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-submission-and-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Submission and Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-api-statistics-and-frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public API, Statistics and Frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture-api-design-and-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture, API Design and UX
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-deployment-and-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing, Deployment and Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-authentication-terminology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Authentication Terminology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-sprint-1-dependency-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Sprint 1 Dependency Order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Sprint 1 Dependency Order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#priority-a-governance-and-technical-foundations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority A — Governance and Technical Foundations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-b-persistent-domain-and-identity-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority B — Persistent Domain and Identity Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-c-authentication-and-approval-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority C — Authentication and Approval Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-d-event-submission-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority D — Event Submission Vertical Slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-e-public-read-and-statistics-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority E — Public Read and Statistics Vertical Slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-f-verification-and-sprint-close-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority F — Verification and Sprint Close-Out
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-sprint-1-end-to-end-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Sprint 1 End-to-End Trace
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Sprint 1 End-to-End Trace">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-define-the-sport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Define the Sport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-establish-architecture-and-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Establish Architecture and Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-establish-data-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Establish Data Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-establish-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Establish Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-approve-submitters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Approve Submitters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-define-and-validate-deliveries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Define and Validate Deliveries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-submit-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Submit Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-persist-events-with-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Persist Events with Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-read-public-event-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Read Public Event Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-derive-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Derive Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-display-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Display Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-verify-the-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Verify the Vertical Slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Deploy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-publish-documentation-and-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Publish Documentation and Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-review-and-close-sprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Review and Close Sprint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-sprint-2-planned-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Sprint 2 Planned Backlog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Sprint 2 Planned Backlog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint Goal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-sprint-2-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Sprint 2 Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-expected-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 Expected Outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-sprint-3-planned-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Sprint 3 Planned Backlog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Sprint 3 Planned Backlog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-goal_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint Goal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-sprint-3-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Sprint 3 Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-expected-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 Expected Outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-final-submission-planned-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Final Submission Planned Backlog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Final Submission Planned Backlog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission Goal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-final-submission-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Final Submission Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-expected-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission Expected Outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-future-backlog-refinement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Future Backlog Refinement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Future Backlog Refinement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-reviewing-the-future-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Reviewing the Future Backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-recording-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Recording Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-backlog-maintenance-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Backlog Maintenance Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-completion-of-issue-36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Completion of Issue #36
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Completion of Issue #36">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issue-36-completion-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #36 Completion Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-review-cadence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Review Cadence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="project-backlog-and-milestone-plan">Project Backlog and Milestone Plan<a class="headerlink" href="#project-backlog-and-milestone-plan" title="Permanent link">&para;</a></h1>
+<table>
+<thead>
+<tr>
+<th>Document Information</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Project</td>
+<td>Sport Analytics Tool</td>
+</tr>
+<tr>
+<td>Related Issue</td>
+<td>#36</td>
+</tr>
+<tr>
+<td>Methodology</td>
+<td>Lightweight Scrumban</td>
+</tr>
+<tr>
+<td>Planning Target</td>
+<td>Advanced-tier feature completeness by the end of Sprint 3</td>
+</tr>
+<tr>
+<td>Final Submission Target</td>
+<td>Hardening, evidence, documentation and release packaging</td>
+</tr>
+<tr>
+<td>Last Updated</td>
+<td>7 August 2026</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Active planning document</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1-purpose">1. Purpose<a class="headerlink" href="#1-purpose" title="Permanent link">&para;</a></h2>
+<p>This document records the complete project backlog, milestone allocation, development roadmap and prioritisation approach for the Sport Analytics Tool.</p>
+<p>It supports issue #36 by providing a persistent repository record of:</p>
+<ul>
+<li>the agreed project milestones;</li>
+<li>the complete Sprint 1 backlog;</li>
+<li>existing Gitea issues mapped to Sprint 1 work;</li>
+<li>Sprint 1 priorities and dependencies;</li>
+<li>the complete planned Sprint 2 backlog;</li>
+<li>the complete planned Sprint 3 backlog;</li>
+<li>the complete planned Final Submission backlog;</li>
+<li>the relationship between Basic, Intermediate, Advanced and Common work;</li>
+<li>the process for progressive backlog refinement; and</li>
+<li>the rules used when project priorities or requirements change.</li>
+</ul>
+<p>This document provides the complete project planning baseline established during Sprint 1.</p>
+<p>It does not replace Gitea.</p>
+<p>Gitea remains the authoritative source for actionable development work, including:</p>
+<ul>
+<li>current issue status;</li>
+<li>assignees;</li>
+<li>detailed acceptance criteria;</li>
+<li>issue dependencies;</li>
+<li>milestone assignment;</li>
+<li>board position;</li>
+<li>Pull Requests; and</li>
+<li>completion evidence.</li>
+</ul>
+<p>This document remains the authoritative repository record of the planned project roadmap and future backlog until future items are refined into detailed Gitea issues.</p>
+<hr />
+<h2 id="2-planning-approach">2. Planning Approach<a class="headerlink" href="#2-planning-approach" title="Permanent link">&para;</a></h2>
+<p>The project uses a lightweight Scrumban methodology.</p>
+<p>The backlog is planned across four formal delivery periods:</p>
+<div class="highlight"><pre><span></span><code>Sprint 1
+Sprint 2
+Sprint 3
+Final Submission
+</code></pre></div>
+<p>Two levels of backlog detail are used.</p>
+<h3 id="21-planned-backlog-items">2.1 Planned Backlog Items<a class="headerlink" href="#21-planned-backlog-items" title="Permanent link">&para;</a></h3>
+<p>A planned backlog item identifies work that the project expects to complete during a future delivery period.</p>
+<p>Planned backlog items:</p>
+<ul>
+<li>appear in this document;</li>
+<li>have a milestone;</li>
+<li>have a tier;</li>
+<li>have a priority;</li>
+<li>contribute to the overall development roadmap; and</li>
+<li>may still change following stakeholder feedback or technical discoveries.</li>
+</ul>
+<p>A planned backlog item does not need to exist as an individual Gitea issue immediately.</p>
+<h3 id="22-actionable-gitea-issues">2.2 Actionable Gitea Issues<a class="headerlink" href="#22-actionable-gitea-issues" title="Permanent link">&para;</a></h3>
+<p>When work enters the active planning horizon, it is refined into an actionable Gitea issue.</p>
+<p>An actionable issue includes:</p>
+<ul>
+<li>a clear purpose;</li>
+<li>an expected outcome;</li>
+<li>acceptance criteria;</li>
+<li>identified dependencies;</li>
+<li>required stakeholder clarification;</li>
+<li>an appropriate assignee;</li>
+<li>a scope small enough to manage effectively; and</li>
+<li>an understood verification approach.</li>
+</ul>
+<p>Sprint 1 is the current delivery period and is therefore represented primarily by detailed Gitea issues.</p>
+<p>Sprint 2, Sprint 3 and Final Submission are documented completely in this roadmap during Sprint 1 but will be converted into detailed Gitea issues progressively, normally one sprint ahead.</p>
+<p>This prevents the tracker from being filled with premature issues whose detailed scope may change before implementation begins.</p>
+<p>Future work must not be moved to <code>Ready</code> merely because it appears in this document.</p>
+<p>The Project board remains:</p>
+<div class="highlight"><pre><span></span><code>Backlog
+Ready
+In Progress
+In Review
+Blocked
+Done
+</code></pre></div>
+<hr />
+<h2 id="3-prioritisation-rules">3. Prioritisation Rules<a class="headerlink" href="#3-prioritisation-rules" title="Permanent link">&para;</a></h2>
+<p>Work is prioritised in the following order:</p>
+<ol>
+<li>mandatory project requirements;</li>
+<li>work required for the current milestone;</li>
+<li>work blocking other issues;</li>
+<li>stakeholder priorities;</li>
+<li>high-risk technical work;</li>
+<li>defects affecting core functionality;</li>
+<li>testing and documentation supporting completed features; and</li>
+<li>optional enhancements.</li>
+</ol>
+<p>For the Sport Analytics Tool, the highest early priorities are:</p>
+<ul>
+<li>domain and sport definitions;</li>
+<li>event-data modelling;</li>
+<li>submission validation;</li>
+<li>provenance and traceability;</li>
+<li>authentication and authorisation;</li>
+<li>approved-submitter scope;</li>
+<li>API contracts;</li>
+<li>database foundations;</li>
+<li>statistic derivation;</li>
+<li>automated testing;</li>
+<li>deployment; and</li>
+<li>project documentation.</li>
+</ul>
+<p>Basic functionality is non-negotiable.</p>
+<p>Intermediate functionality is planned for completion by Sprint 2.</p>
+<p>Advanced functionality is the Sprint 3 target.</p>
+<p>Advanced architecture and technical risks should be considered before Sprint 3 where delaying them would create avoidable rework.</p>
+<hr />
+<h2 id="4-milestone-outcomes">4. Milestone Outcomes<a class="headerlink" href="#4-milestone-outcomes" title="Permanent link">&para;</a></h2>
+<h3 id="sprint-1-working-basic-vertical-slice-and-project-direction">Sprint 1 — Working Basic Vertical Slice and Project Direction<a class="headerlink" href="#sprint-1-working-basic-vertical-slice-and-project-direction" title="Permanent link">&para;</a></h3>
+<p>Sprint 1 targets a deployed and documented Basic vertical slice while establishing the design, architecture, methodology and technical foundations required for the rest of the project.</p>
+<p>The intended end-to-end workflow is:</p>
+<div class="highlight"><pre><span></span><code>administrator approves submitter
+        ↓
+approved submitter signs in
+        ↓
+submitter sends delivery events
+        ↓
+backend verifies identity, role and scope
+        ↓
+events are validated
+        ↓
+invalid events receive useful rejection messages
+        ↓
+valid events are stored with provenance
+        ↓
+statistics are derived from accepted events
+        ↓
+public users retrieve fixtures, events and statistics
+</code></pre></div>
+<p>Sprint 1 must also establish:</p>
+<ul>
+<li>a comprehensive project roadmap;</li>
+<li>system architecture;</li>
+<li>UI and information architecture;</li>
+<li>database foundations;</li>
+<li>API conventions;</li>
+<li>authentication foundations;</li>
+<li>CI and automated testing foundations;</li>
+<li>deployment foundations;</li>
+<li>project methodology evidence; and</li>
+<li>clear direction for Sprint 2, Sprint 3 and Final Submission.</li>
+</ul>
+<h3 id="sprint-2-complete-basic-and-intermediate">Sprint 2 — Complete Basic and Intermediate<a class="headerlink" href="#sprint-2-complete-basic-and-intermediate" title="Permanent link">&para;</a></h3>
+<p>Sprint 2 targets:</p>
+<ul>
+<li>completion of all remaining Basic requirements; and</li>
+<li>completion of the Intermediate feature tier.</li>
+</ul>
+<p>The expected outcome is a useful and increasingly stable product supporting:</p>
+<ul>
+<li>complete Basic user flows;</li>
+<li>bulk event ingestion;</li>
+<li>review and publication;</li>
+<li>correction history;</li>
+<li>wider aggregate statistics;</li>
+<li>performance optimisation;</li>
+<li>external API consumers;</li>
+<li>dataset releases;</li>
+<li>formal user testing; and</li>
+<li>Intermediate-level testing and documentation.</li>
+</ul>
+<h3 id="sprint-3-advanced-feature-completion">Sprint 3 — Advanced Feature Completion<a class="headerlink" href="#sprint-3-advanced-feature-completion" title="Permanent link">&para;</a></h3>
+<p>Sprint 3 targets completion of the Advanced feature tier and a near-complete product.</p>
+<p>The expected outcome includes:</p>
+<ul>
+<li>safe custom statistics;</li>
+<li>live event ingestion;</li>
+<li>replayable event processing;</li>
+<li>temporal statistics;</li>
+<li>dataset comparisons;</li>
+<li>asynchronous queries;</li>
+<li>change feeds;</li>
+<li>API compatibility controls;</li>
+<li>anomaly detection;</li>
+<li>conflicting-submitter reconciliation;</li>
+<li>correction propagation;</li>
+<li>production observability; and</li>
+<li>advanced quality assurance.</li>
+</ul>
+<h3 id="final-submission-hardening-and-release">Final Submission — Hardening and Release<a class="headerlink" href="#final-submission-hardening-and-release" title="Permanent link">&para;</a></h3>
+<p>Final Submission is not planned as another major feature-development sprint.</p>
+<p>The period is reserved primarily for:</p>
+<ul>
+<li>defect resolution;</li>
+<li>release hardening;</li>
+<li>production verification;</li>
+<li>database backup and restore verification;</li>
+<li>final security testing;</li>
+<li>final accessibility testing;</li>
+<li>final performance testing;</li>
+<li>browser compatibility;</li>
+<li>complete documentation;</li>
+<li>requirements traceability;</li>
+<li>known limitation records;</li>
+<li>demonstration preparation;</li>
+<li>reports;</li>
+<li>presentation material;</li>
+<li>release notes;</li>
+<li>final version tagging; and</li>
+<li>submission packaging.</li>
+</ul>
+<hr />
+<h2 id="5-existing-project-and-foundation-issues">5. Existing Project and Foundation Issues<a class="headerlink" href="#5-existing-project-and-foundation-issues" title="Permanent link">&para;</a></h2>
+<p>The following issues already establish important repository, infrastructure, governance and technical foundations.</p>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#2</td>
+<td>Add Git and project methodology documentation</td>
+</tr>
+<tr>
+<td>#7</td>
+<td>Align repository governance and document initial setup deviation</td>
+</tr>
+<tr>
+<td>#8</td>
+<td>Protect <code>main</code> and require Pull Request approval</td>
+</tr>
+<tr>
+<td>#10</td>
+<td>Restore green CI and reproducible installation</td>
+</tr>
+<tr>
+<td>#11</td>
+<td>Deploy the public documentation site with Cloudflare Pages</td>
+</tr>
+<tr>
+<td>#12</td>
+<td>Validate developer onboarding and motivate the technology stack</td>
+</tr>
+<tr>
+<td>#13</td>
+<td>Establish the Supabase PostgreSQL foundation</td>
+</tr>
+<tr>
+<td>#14</td>
+<td>Investigate and establish the OAuth/OIDC authentication foundation</td>
+</tr>
+<tr>
+<td>#15</td>
+<td>Establish the Azure backend deployment foundation</td>
+</tr>
+<tr>
+<td>#17</td>
+<td>Establish the Azure frontend deployment foundation</td>
+</tr>
+<tr>
+<td>#21</td>
+<td>Resolve database merge conflict</td>
+</tr>
+<tr>
+<td>#27</td>
+<td>Design and implement the delivery event schema</td>
+</tr>
+<tr>
+<td>#28</td>
+<td>Create the Cricsheet T20 dataset downloader</td>
+</tr>
+<tr>
+<td>#29</td>
+<td>Deploy MkDocs documentation to Cloudflare Pages using Wrangler</td>
+</tr>
+<tr>
+<td>#30</td>
+<td>Create per-team-member folders for AI transcripts</td>
+</tr>
+<tr>
+<td>#36</td>
+<td>Complete and prioritise the project backlog</td>
+</tr>
+<tr>
+<td>#37</td>
+<td>Confirm sport and domain definitions</td>
+</tr>
+<tr>
+<td>#38</td>
+<td>Produce the complete system architecture, data flow and development roadmap</td>
+</tr>
+<tr>
+<td>#39</td>
+<td>Build frontend authentication pages and navigation controls</td>
+</tr>
+<tr>
+<td>#43</td>
+<td>Implement the application account, role, approved-submitter and scope database schema</td>
+</tr>
+<tr>
+<td>#49</td>
+<td>Define the executable delivery submission schema and validation examples</td>
+</tr>
+<tr>
+<td>#72</td>
+<td>Complete the automated testing foundation and test environment setup</td>
+</tr>
+<tr>
+<td>#73</td>
+<td>Align architecture roadmap and authentication terminology</td>
+</tr>
+</tbody>
+</table>
+<p>Existing work should not be duplicated merely because a later planning item describes related functionality.</p>
+<p>Where a later implementation issue extends an existing foundation issue, the relationship should be recorded as a dependency or predecessor.</p>
+<hr />
+<h2 id="6-sprint-1-requirement-to-issue-mapping">6. Sprint 1 Requirement-to-Issue Mapping<a class="headerlink" href="#6-sprint-1-requirement-to-issue-mapping" title="Permanent link">&para;</a></h2>
+<p>The Sprint 1 planning catalogue contains 36 work areas.</p>
+<p>The following table records the current mapping between those work areas and the Gitea issues already created.</p>
+<p>Where multiple issues are listed, they collectively satisfy or support the catalogue item.</p>
+<table>
+<thead>
+<tr>
+<th>Catalogue ID</th>
+<th>Sprint 1 Work</th>
+<th>Gitea Mapping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1-01</td>
+<td>Confirm sport, professional competition scope, fixture definition, event vocabulary and required statistics</td>
+<td>#37</td>
+</tr>
+<tr>
+<td>S1-02</td>
+<td>Clarify Basic, Intermediate and Advanced acceptance decisions with the stakeholder</td>
+<td>Planning requirement retained for Sprint 1 review</td>
+</tr>
+<tr>
+<td>S1-03</td>
+<td>Create requirements traceability matrix and requirement change log</td>
+<td>Planning requirement retained for Sprint 1 review</td>
+</tr>
+<tr>
+<td>S1-04</td>
+<td>Produce complete system architecture, data flow, deployment design and development roadmap</td>
+<td>#38, follow-up #73</td>
+</tr>
+<tr>
+<td>S1-05</td>
+<td>Record architecture decisions for caching, background jobs, file storage and live ingestion</td>
+<td>#55</td>
+</tr>
+<tr>
+<td>S1-06</td>
+<td>Produce information architecture, user journeys and responsive wireframes</td>
+<td>#56</td>
+</tr>
+<tr>
+<td>S1-07</td>
+<td>Define accessible design system and reusable frontend component baseline</td>
+<td>#57</td>
+</tr>
+<tr>
+<td>S1-08</td>
+<td>Define stable identifiers and shared API response, error, filtering, sorting and pagination contracts</td>
+<td>#58</td>
+</tr>
+<tr>
+<td>S1-09</td>
+<td>Create OpenAPI baseline and API versioning and deprecation conventions</td>
+<td>#59</td>
+</tr>
+<tr>
+<td>S1-10</td>
+<td>Implement repeatable database migrations and development seed tooling</td>
+<td>#60</td>
+</tr>
+<tr>
+<td>S1-11</td>
+<td>Implement competition, season, competitor, participant and fixture database schema</td>
+<td>#46</td>
+</tr>
+<tr>
+<td>S1-12</td>
+<td>Implement application account, role, approved-submitter and scope database schema</td>
+<td>#43</td>
+</tr>
+<tr>
+<td>S1-13</td>
+<td>Implement submission, ordered-event, provenance and correction database schema</td>
+<td>#61, building on #27</td>
+</tr>
+<tr>
+<td>S1-14</td>
+<td>Implement backend database repository and transaction foundation</td>
+<td>#62</td>
+</tr>
+<tr>
+<td>S1-15</td>
+<td>Create representative development seed and reference fixture dataset</td>
+<td>#63, supported by #28</td>
+</tr>
+<tr>
+<td>S1-16</td>
+<td>Configure managed authentication provider and account authentication foundation</td>
+<td>#14</td>
+</tr>
+<tr>
+<td>S1-17</td>
+<td>Implement account synchronisation, profile API and role-based authorisation</td>
+<td>#44</td>
+</tr>
+<tr>
+<td>S1-18</td>
+<td>Implement reusable authentication, role, approval and scope authorisation</td>
+<td>#44, with submission scope enforcement in #51</td>
+</tr>
+<tr>
+<td>S1-19</td>
+<td>Implement frontend authentication state, protected routes and authenticated API client</td>
+<td>#64</td>
+</tr>
+<tr>
+<td>S1-20</td>
+<td>Build Create Account, Sign In, Account, Sign Out and authentication navigation</td>
+<td>#39</td>
+</tr>
+<tr>
+<td>S1-21</td>
+<td>Build accessible sign-up and sign-in forms</td>
+<td>#39, supported by #57</td>
+</tr>
+<tr>
+<td>S1-22</td>
+<td>Build forgotten-password and password-reset flow</td>
+<td>#65</td>
+</tr>
+<tr>
+<td>S1-23</td>
+<td>Implement secure account deletion across authentication and application data</td>
+<td>#66</td>
+</tr>
+<tr>
+<td>S1-24</td>
+<td>Implement administrator APIs for submitter approval, revocation and scope assignment</td>
+<td>#45</td>
+</tr>
+<tr>
+<td>S1-25</td>
+<td>Build administrator submitter approval and scope-management interface</td>
+<td>#45</td>
+</tr>
+<tr>
+<td>S1-26</td>
+<td>Define executable delivery submission schema and valid/invalid validation examples</td>
+<td>#49</td>
+</tr>
+<tr>
+<td>S1-27</td>
+<td>Implement event validation with detailed and structured rejection messages</td>
+<td>#50</td>
+</tr>
+<tr>
+<td>S1-28</td>
+<td>Implement approved-submitter event submission with provenance and scope enforcement</td>
+<td>#51</td>
+</tr>
+<tr>
+<td>S1-29</td>
+<td>Implement public fixture and ordered-event APIs with filtering and pagination</td>
+<td>#47 and #67</td>
+</tr>
+<tr>
+<td>S1-30</td>
+<td>Implement Basic event-derived fixture statistics and public statistics API</td>
+<td>#52</td>
+</tr>
+<tr>
+<td>S1-31</td>
+<td>Build first public competition, fixture, event and statistics browsing experience</td>
+<td>#48 and #54</td>
+</tr>
+<tr>
+<td>S1-32</td>
+<td>Add backend and frontend tests for the Basic vertical slice</td>
+<td>#68, supported by #72</td>
+</tr>
+<tr>
+<td>S1-33</td>
+<td>Repair Azure deployment workflows for the current monorepo and add deployed smoke checks</td>
+<td>#69, building on #15 and #17</td>
+</tr>
+<tr>
+<td>S1-34</td>
+<td>Automate MkDocs deployment from Gitea to Cloudflare Pages</td>
+<td>#29, building on #11</td>
+</tr>
+<tr>
+<td>S1-35</td>
+<td>Publish Sprint 1 setup, architecture, API, testing documentation and evidence</td>
+<td>#70</td>
+</tr>
+<tr>
+<td>S1-36</td>
+<td>Conduct Sprint 1 stakeholder review, retrospective and milestone tag</td>
+<td>#71</td>
+</tr>
+</tbody>
+</table>
+<p>S1-02 and S1-03 remain explicit Sprint 1 planning obligations even though a dedicated Gitea issue number has not yet been recorded for them in this document.</p>
+<p>Their absence from the mapping does not remove the requirements.</p>
+<p>They must be reviewed during Sprint 1 close-out and either:</p>
+<ul>
+<li>mapped to an existing issue or planning record; or</li>
+<li>converted into a dedicated Gitea issue if meaningful implementation or documentation work remains.</li>
+</ul>
+<hr />
+<h2 id="7-sprint-1-implementation-areas">7. Sprint 1 Implementation Areas<a class="headerlink" href="#7-sprint-1-implementation-areas" title="Permanent link">&para;</a></h2>
+<h3 id="account-authentication-and-authorisation">Account, Authentication and Authorisation<a class="headerlink" href="#account-authentication-and-authorisation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#14</td>
+<td>OAuth/OIDC authentication foundation</td>
+</tr>
+<tr>
+<td>#39</td>
+<td>Frontend authentication pages and navigation controls</td>
+</tr>
+<tr>
+<td>#43</td>
+<td>Account, role, approved-submitter and scope database schema</td>
+</tr>
+<tr>
+<td>#44</td>
+<td>Account synchronisation, profile API and role-based authorisation</td>
+</tr>
+<tr>
+<td>#45</td>
+<td>Administrator submitter approval and scope management</td>
+</tr>
+<tr>
+<td>#64</td>
+<td>Frontend authentication state, protected routes and authenticated API client</td>
+</tr>
+<tr>
+<td>#65</td>
+<td>Forgotten-password and password-reset flow</td>
+</tr>
+<tr>
+<td>#66</td>
+<td>Secure account deletion across authentication and application data</td>
+</tr>
+</tbody>
+</table>
+<p>Before #66 begins, its Gitea title and description must be checked for legacy Firebase terminology.</p>
+<p>If Firebase remains in the issue wording, it should be changed to:</p>
+<div class="highlight"><pre><span></span><code>Implement secure account deletion across Supabase Auth and application data
+</code></pre></div>
+<p>Firebase must not be implemented alongside Supabase Auth.</p>
+<h3 id="database-and-domain">Database and Domain<a class="headerlink" href="#database-and-domain" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#13</td>
+<td>Supabase PostgreSQL foundation</td>
+</tr>
+<tr>
+<td>#21</td>
+<td>Database merge-conflict resolution</td>
+</tr>
+<tr>
+<td>#27</td>
+<td>Delivery event schema</td>
+</tr>
+<tr>
+<td>#28</td>
+<td>Cricsheet T20 dataset downloader</td>
+</tr>
+<tr>
+<td>#43</td>
+<td>Application account, role, approved-submitter and scope schema</td>
+</tr>
+<tr>
+<td>#46</td>
+<td>Competition, season, competitor, participant and fixture schema</td>
+</tr>
+<tr>
+<td>#60</td>
+<td>Repeatable database migrations and development seed tooling</td>
+</tr>
+<tr>
+<td>#61</td>
+<td>Submission, ordered-event, provenance and correction schema</td>
+</tr>
+<tr>
+<td>#62</td>
+<td>Backend database repository and transaction foundation</td>
+</tr>
+<tr>
+<td>#63</td>
+<td>Representative development seed and reference fixture dataset</td>
+</tr>
+</tbody>
+</table>
+<h3 id="event-submission-and-validation">Event Submission and Validation<a class="headerlink" href="#event-submission-and-validation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#49</td>
+<td>Define executable delivery submission schema and validation examples</td>
+</tr>
+<tr>
+<td>#50</td>
+<td>Implement event validation with detailed rejection messages</td>
+</tr>
+<tr>
+<td>#51</td>
+<td>Implement approved-submitter event submission with provenance and scope enforcement</td>
+</tr>
+<tr>
+<td>#53</td>
+<td>Build approved-submitter event upload and validation-results interface</td>
+</tr>
+</tbody>
+</table>
+<h3 id="public-api-statistics-and-frontend">Public API, Statistics and Frontend<a class="headerlink" href="#public-api-statistics-and-frontend" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#47</td>
+<td>Public competition, fixture and participant read APIs</td>
+</tr>
+<tr>
+<td>#48</td>
+<td>Public competition, fixture and participant browsing pages</td>
+</tr>
+<tr>
+<td>#52</td>
+<td>Event-derived fixture statistics and public statistics API</td>
+</tr>
+<tr>
+<td>#54</td>
+<td>Public fixture and competitor statistics pages</td>
+</tr>
+<tr>
+<td>#67</td>
+<td>Public ordered-event read APIs with filtering and pagination</td>
+</tr>
+</tbody>
+</table>
+<h3 id="architecture-api-design-and-ux">Architecture, API Design and UX<a class="headerlink" href="#architecture-api-design-and-ux" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#38</td>
+<td>Complete system architecture, data flow and roadmap</td>
+</tr>
+<tr>
+<td>#55</td>
+<td>Architecture decisions for caching, background jobs, file storage and live ingestion</td>
+</tr>
+<tr>
+<td>#56</td>
+<td>Information architecture, user journeys and responsive wireframes</td>
+</tr>
+<tr>
+<td>#57</td>
+<td>Accessible design system and reusable frontend component baseline</td>
+</tr>
+<tr>
+<td>#58</td>
+<td>Stable identifiers and shared API response, error, filtering, sorting and pagination contracts</td>
+</tr>
+<tr>
+<td>#59</td>
+<td>OpenAPI baseline and API versioning/deprecation conventions</td>
+</tr>
+<tr>
+<td>#73</td>
+<td>Architecture roadmap and authentication terminology alignment</td>
+</tr>
+</tbody>
+</table>
+<h3 id="testing-deployment-and-evidence">Testing, Deployment and Evidence<a class="headerlink" href="#testing-deployment-and-evidence" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>#10</td>
+<td>Restore green CI and reproducible installation</td>
+</tr>
+<tr>
+<td>#11</td>
+<td>Deploy public documentation site</td>
+</tr>
+<tr>
+<td>#15</td>
+<td>Azure backend deployment foundation</td>
+</tr>
+<tr>
+<td>#17</td>
+<td>Azure frontend deployment foundation</td>
+</tr>
+<tr>
+<td>#29</td>
+<td>MkDocs deployment through Cloudflare Pages and Wrangler</td>
+</tr>
+<tr>
+<td>#68</td>
+<td>Basic vertical-slice backend and frontend tests</td>
+</tr>
+<tr>
+<td>#69</td>
+<td>Repair Azure workflows and add deployed smoke checks</td>
+</tr>
+<tr>
+<td>#70</td>
+<td>Sprint 1 setup, architecture, API, testing documentation and evidence</td>
+</tr>
+<tr>
+<td>#71</td>
+<td>Sprint 1 stakeholder review, retrospective and milestone tag</td>
+</tr>
+<tr>
+<td>#72</td>
+<td>Automated testing foundation and test environment setup</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-authentication-terminology">8. Authentication Terminology<a class="headerlink" href="#8-authentication-terminology" title="Permanent link">&para;</a></h2>
+<p>The project originally investigated Firebase Authentication.</p>
+<p>The current architecture uses:</p>
+<div class="highlight"><pre><span></span><code>Supabase Auth
+    +
+Google OAuth
+</code></pre></div>
+<p>ADR-004 supersedes the earlier Firebase direction.</p>
+<p>Future backlog items and Gitea issues must therefore use current Supabase Auth terminology and must not introduce Firebase as a parallel authentication implementation unless a later approved ADR explicitly supersedes ADR-004.</p>
+<p>The authentication flow is:</p>
+<div class="highlight"><pre><span></span><code>React frontend
+      ↓
+Supabase Auth
+      ↓
+Google OAuth
+      ↓
+Supabase access token
+      ↓
+Handwritten Express API
+      ↓
+Application account, role, approval state and scope
+</code></pre></div>
+<p>Authentication and application authorisation remain separate.</p>
+<p>Supabase Auth proves identity.</p>
+<p>The Sport Analytics backend determines:</p>
+<ul>
+<li>application account state;</li>
+<li>role;</li>
+<li>approved-submitter status;</li>
+<li>competition, season or fixture scope; and</li>
+<li>administrator permissions.</li>
+</ul>
+<p>Application identity remains provider-neutral through:</p>
+<div class="highlight"><pre><span></span><code>(auth_provider, provider_subject)
+</code></pre></div>
+<p>The written lecturer approval currently stored in the repository explicitly covers Supabase-hosted PostgreSQL but does not separately confirm Supabase Auth.</p>
+<p>Supabase Auth is therefore the team's selected and implemented authentication foundation, while any required formal confirmation remains an open compliance decision.</p>
+<hr />
+<h2 id="9-sprint-1-dependency-order">9. Sprint 1 Dependency Order<a class="headerlink" href="#9-sprint-1-dependency-order" title="Permanent link">&para;</a></h2>
+<p>Sprint 1 work should be pulled according to dependencies rather than simply by issue number.</p>
+<h3 id="priority-a-governance-and-technical-foundations">Priority A — Governance and Technical Foundations<a class="headerlink" href="#priority-a-governance-and-technical-foundations" title="Permanent link">&para;</a></h3>
+<p>Relevant issues include:</p>
+<div class="highlight"><pre><span></span><code>#2
+#7
+#8
+#10
+#12
+#13
+#14
+#15
+#17
+#21
+#27
+#28
+#29
+#30
+#36
+#37
+#38
+#55
+#56
+#57
+#58
+#59
+#60
+#72
+#73
+</code></pre></div>
+<p>These establish:</p>
+<ul>
+<li>repository governance;</li>
+<li>CI;</li>
+<li>development setup;</li>
+<li>architecture;</li>
+<li>domain definitions;</li>
+<li>database connectivity;</li>
+<li>event modelling;</li>
+<li>authentication;</li>
+<li>API conventions;</li>
+<li>testing;</li>
+<li>deployment; and</li>
+<li>documentation infrastructure.</li>
+</ul>
+<h3 id="priority-b-persistent-domain-and-identity-model">Priority B — Persistent Domain and Identity Model<a class="headerlink" href="#priority-b-persistent-domain-and-identity-model" title="Permanent link">&para;</a></h3>
+<p>Relevant issues include:</p>
+<div class="highlight"><pre><span></span><code>#43
+#46
+#61
+#62
+#63
+</code></pre></div>
+<p>These establish the database structures and transaction foundations required by the product vertical slice.</p>
+<h3 id="priority-c-authentication-and-approval-flow">Priority C — Authentication and Approval Flow<a class="headerlink" href="#priority-c-authentication-and-approval-flow" title="Permanent link">&para;</a></h3>
+<p>Relevant issues include:</p>
+<div class="highlight"><pre><span></span><code>#39
+#44
+#45
+#64
+#65
+#66
+</code></pre></div>
+<p>The required flow is:</p>
+<div class="highlight"><pre><span></span><code>user authenticates
+        ↓
+application account is resolved
+        ↓
+role is determined
+        ↓
+administrator approves submitter
+        ↓
+submitter receives allowed scope
+</code></pre></div>
+<h3 id="priority-d-event-submission-vertical-slice">Priority D — Event Submission Vertical Slice<a class="headerlink" href="#priority-d-event-submission-vertical-slice" title="Permanent link">&para;</a></h3>
+<p>Relevant issues include:</p>
+<div class="highlight"><pre><span></span><code>#49
+#50
+#51
+#53
+</code></pre></div>
+<p>The required flow is:</p>
+<div class="highlight"><pre><span></span><code>approved submitter
+        ↓
+delivery submission
+        ↓
+schema validation
+        ↓
+sport-rule validation
+        ↓
+scope authorisation
+        ↓
+structured rejection or acceptance
+        ↓
+provenance-backed persistence
+</code></pre></div>
+<h3 id="priority-e-public-read-and-statistics-vertical-slice">Priority E — Public Read and Statistics Vertical Slice<a class="headerlink" href="#priority-e-public-read-and-statistics-vertical-slice" title="Permanent link">&para;</a></h3>
+<p>Relevant issues include:</p>
+<div class="highlight"><pre><span></span><code>#47
+#48
+#52
+#54
+#67
+</code></pre></div>
+<p>The required public flow is:</p>
+<div class="highlight"><pre><span></span><code>public user
+      ↓
+competition / fixture discovery
+      ↓
+ordered event viewing
+      ↓
+derived statistics
+</code></pre></div>
+<p>Public read functionality must not require authentication.</p>
+<h3 id="priority-f-verification-and-sprint-close-out">Priority F — Verification and Sprint Close-Out<a class="headerlink" href="#priority-f-verification-and-sprint-close-out" title="Permanent link">&para;</a></h3>
+<p>Relevant issues include:</p>
+<div class="highlight"><pre><span></span><code>#68
+#69
+#70
+#71
+</code></pre></div>
+<p>Before Sprint 1 closes:</p>
+<ul>
+<li>the Basic vertical slice must be covered by automated tests;</li>
+<li>deployment must be verified;</li>
+<li>documentation must reflect the implemented system;</li>
+<li>stakeholder feedback must be recorded;</li>
+<li>incomplete work must be identified honestly;</li>
+<li>known limitations must be recorded;</li>
+<li>required checks must pass for the approved milestone state; and</li>
+<li>the Sprint 1 milestone tag must identify the reviewed <code>main</code> commit.</li>
+</ul>
+<hr />
+<h2 id="10-sprint-1-end-to-end-trace">10. Sprint 1 End-to-End Trace<a class="headerlink" href="#10-sprint-1-end-to-end-trace" title="Permanent link">&para;</a></h2>
+<p>The main Sprint 1 product flow can be traced directly to Gitea work.</p>
+<h3 id="1-define-the-sport">1. Define the Sport<a class="headerlink" href="#1-define-the-sport" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#37
+</code></pre></div>
+<p>Confirm T20 cricket terminology, competition scope, fixtures, events and required statistics.</p>
+<h3 id="2-establish-architecture-and-design">2. Establish Architecture and Design<a class="headerlink" href="#2-establish-architecture-and-design" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#38
+#55
+#56
+#57
+#58
+#59
+#73
+</code></pre></div>
+<p>Define system boundaries, service interactions, API conventions, technical decisions, information architecture, user journeys and responsive design.</p>
+<h3 id="3-establish-data-storage">3. Establish Data Storage<a class="headerlink" href="#3-establish-data-storage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#13
+#27
+#43
+#46
+#60
+#61
+#62
+#63
+</code></pre></div>
+<p>Establish PostgreSQL, migrations, domain data, authentication-linked application accounts, events, submissions, provenance and corrections.</p>
+<h3 id="4-establish-authentication">4. Establish Authentication<a class="headerlink" href="#4-establish-authentication" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#14
+#39
+#44
+#64
+#65
+#66
+</code></pre></div>
+<p>Support account authentication, frontend authentication state, account resolution and role-based access.</p>
+<h3 id="5-approve-submitters">5. Approve Submitters<a class="headerlink" href="#5-approve-submitters" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#43
+#45
+</code></pre></div>
+<p>Store approval and scope and provide administrator management functionality.</p>
+<h3 id="6-define-and-validate-deliveries">6. Define and Validate Deliveries<a class="headerlink" href="#6-define-and-validate-deliveries" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#49
+#50
+</code></pre></div>
+<p>Define the executable delivery contract and validate submitted events.</p>
+<h3 id="7-submit-events">7. Submit Events<a class="headerlink" href="#7-submit-events" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#51
+#53
+</code></pre></div>
+<p>Allow approved submitters to submit in-scope delivery events and receive validation outcomes.</p>
+<h3 id="8-persist-events-with-provenance">8. Persist Events with Provenance<a class="headerlink" href="#8-persist-events-with-provenance" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#27
+#61
+#62
+</code></pre></div>
+<p>Store accepted events and their submission provenance through the backend repository layer.</p>
+<h3 id="9-read-public-event-data">9. Read Public Event Data<a class="headerlink" href="#9-read-public-event-data" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#47
+#48
+#67
+</code></pre></div>
+<p>Expose public competition, fixture, participant and ordered-event data.</p>
+<h3 id="10-derive-statistics">10. Derive Statistics<a class="headerlink" href="#10-derive-statistics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#52
+</code></pre></div>
+<p>Compute fixture statistics from accepted event data rather than treating statistics as an independent source of truth.</p>
+<h3 id="11-display-statistics">11. Display Statistics<a class="headerlink" href="#11-display-statistics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#54
+</code></pre></div>
+<p>Provide public fixture and competitor statistics pages.</p>
+<h3 id="12-verify-the-vertical-slice">12. Verify the Vertical Slice<a class="headerlink" href="#12-verify-the-vertical-slice" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#68
+#72
+</code></pre></div>
+<p>Provide automated backend and frontend verification.</p>
+<h3 id="13-deploy">13. Deploy<a class="headerlink" href="#13-deploy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#15
+#17
+#69
+</code></pre></div>
+<p>Verify the frontend and backend through the project's Azure deployment path.</p>
+<h3 id="14-publish-documentation-and-evidence">14. Publish Documentation and Evidence<a class="headerlink" href="#14-publish-documentation-and-evidence" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#11
+#29
+#70
+</code></pre></div>
+<p>Publish documentation and retain Sprint 1 evidence.</p>
+<h3 id="15-review-and-close-sprint">15. Review and Close Sprint<a class="headerlink" href="#15-review-and-close-sprint" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>#71
+</code></pre></div>
+<p>Conduct the stakeholder review and retrospective before creating the milestone tag.</p>
+<hr />
+<h2 id="11-sprint-2-planned-backlog">11. Sprint 2 Planned Backlog<a class="headerlink" href="#11-sprint-2-planned-backlog" title="Permanent link">&para;</a></h2>
+<h3 id="sprint-goal">Sprint Goal<a class="headerlink" href="#sprint-goal" title="Permanent link">&para;</a></h3>
+<p>Complete all remaining Basic functionality and deliver the full Intermediate feature tier.</p>
+<p>Sprint 2 work is identified now as part of the complete development roadmap.</p>
+<p>These entries are intentionally retained as planned backlog items during Sprint 1 rather than being expanded immediately into individual Gitea issues.</p>
+<p>During Sprint 1 close-out, the Sprint 2 backlog will be reviewed against:</p>
+<ul>
+<li>completed Sprint 1 work;</li>
+<li>incomplete Sprint 1 work;</li>
+<li>stakeholder feedback;</li>
+<li>technical discoveries;</li>
+<li>defects and limitations;</li>
+<li>changed dependencies;</li>
+<li>performance findings; and</li>
+<li>team capacity.</li>
+</ul>
+<p>The reviewed Sprint 2 backlog will then be converted into appropriately sized Gitea issues with detailed acceptance criteria, dependencies, labels, assignees and the Sprint 2 milestone.</p>
+<h3 id="complete-sprint-2-backlog">Complete Sprint 2 Backlog<a class="headerlink" href="#complete-sprint-2-backlog" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Planned Work</th>
+<th>Tier</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S2-01</td>
+<td>Implement public competition, season, competitor and participant read APIs</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-02</td>
+<td>Implement administrator CRUD APIs for competitions, seasons, competitors, participants and fixtures</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-03</td>
+<td>Build public competition, season, competitor and fixture browsing pages</td>
+<td>Basic</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-04</td>
+<td>Build administrator competition, season, competitor and fixture management pages</td>
+<td>Basic</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-05</td>
+<td>Implement JSON and CSV file-upload submissions through the shared validation pipeline</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-06</td>
+<td>Implement submission list, detail and validation-result APIs</td>
+<td>Basic</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-07</td>
+<td>Build the approved-submitter upload, direct-entry and result interface</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-08</td>
+<td>Implement authorised event correction with automatic statistic refresh</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-09</td>
+<td>Build the approved event-correction interface</td>
+<td>Basic</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-10</td>
+<td>Implement statistic provenance and the how-calculated trace in the API and frontend</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-11</td>
+<td>Implement filtered CSV and JSON dataset exports in the API and frontend</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-12</td>
+<td>Select and document a relevant external API integration</td>
+<td>Common</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-13</td>
+<td>Implement the selected external API integration in the backend and frontend</td>
+<td>Common</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-14</td>
+<td>Complete the full Basic integration and browser-level end-to-end acceptance workflow</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-15</td>
+<td>Complete the Basic accessibility and responsive-design audit and fixes</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-16</td>
+<td>Complete the Basic security, privacy and dependency hardening review</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-17</td>
+<td>Conduct formal Basic user testing and integrate prioritised feedback</td>
+<td>Basic</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-18</td>
+<td>Design the batch staging, file storage and processing pipeline</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-19</td>
+<td>Implement batch, batch-item and processing-checkpoint database models</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-20</td>
+<td>Implement whole-season and back-catalogue batch upload and staging</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-21</td>
+<td>Implement asynchronous batch validation and processing</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-22</td>
+<td>Generate accepted and rejected batch processing reports</td>
+<td>Intermediate</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-23</td>
+<td>Make batch resubmission idempotent and prevent double counting</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-24</td>
+<td>Implement resumable batch processing from durable checkpoints</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-25</td>
+<td>Implement submission review and publication workflow in the API and frontend</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-26</td>
+<td>Implement impossible and conflicting event validation rules</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-27</td>
+<td>Implement immutable correction history and audit logs</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-28</td>
+<td>Implement season, career and competition-wide aggregate derivation</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-29</td>
+<td>Implement dependency-aware selective recomputation after event changes</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-30</td>
+<td>Build golden reference results and automated correctness checks</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-31</td>
+<td>Create representative large-scale data and define API response-time targets</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-32</td>
+<td>Optimise database indexes, storage layout and query plans under load</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-33</td>
+<td>Implement explicit API versioning and compatibility behaviour</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-34</td>
+<td>Implement API key issuance, rotation, revocation, rate limits and quotas</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-35</td>
+<td>Implement caching for repeated reads with correct invalidation</td>
+<td>Intermediate</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-36</td>
+<td>Implement versioned dataset releases, snapshots, field documentation and checksums</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-37</td>
+<td>Build the dataset release catalogue and download experience</td>
+<td>Intermediate</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-38</td>
+<td>Complete Intermediate integration, correctness, performance and API tests</td>
+<td>Intermediate</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S2-39</td>
+<td>Publish Intermediate API, database, testing and third-party code documentation</td>
+<td>Intermediate</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S2-40</td>
+<td>Conduct the Sprint 2 stakeholder review, user feedback round, retrospective and milestone tag</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sprint-2-expected-outcome">Sprint 2 Expected Outcome<a class="headerlink" href="#sprint-2-expected-outcome" title="Permanent link">&para;</a></h3>
+<p>By the end of Sprint 2:</p>
+<ul>
+<li>all remaining Basic requirements should be complete;</li>
+<li>the complete Intermediate feature tier should be operational;</li>
+<li>the system should support bulk event ingestion;</li>
+<li>imports should be resumable and idempotent;</li>
+<li>corrections and review workflows should be traceable;</li>
+<li>season, career and competition aggregates should be available;</li>
+<li>the API should support external consumers using appropriate controls;</li>
+<li>dataset releases should be versioned and reproducible;</li>
+<li>representative-scale performance should have been tested;</li>
+<li>formal user testing should have been conducted; and</li>
+<li>Sprint 2 evidence should be retained.</li>
+</ul>
+<hr />
+<h2 id="12-sprint-3-planned-backlog">12. Sprint 3 Planned Backlog<a class="headerlink" href="#12-sprint-3-planned-backlog" title="Permanent link">&para;</a></h2>
+<h3 id="sprint-goal_1">Sprint Goal<a class="headerlink" href="#sprint-goal_1" title="Permanent link">&para;</a></h3>
+<p>Complete the Advanced feature tier and bring the system to a near-complete, production-quality state.</p>
+<p>Sprint 3 work is identified during Sprint 1 as part of the complete roadmap.</p>
+<p>The detailed form of these items will be reviewed at Sprint 2 close-out using:</p>
+<ul>
+<li>implementation evidence;</li>
+<li>stakeholder feedback;</li>
+<li>performance findings;</li>
+<li>security findings;</li>
+<li>unresolved technical risk;</li>
+<li>updated requirements; and</li>
+<li>available team capacity.</li>
+</ul>
+<p>Only then will the planned items be converted into detailed Sprint 3 Gitea issues.</p>
+<h3 id="complete-sprint-3-backlog">Complete Sprint 3 Backlog<a class="headerlink" href="#complete-sprint-3-backlog" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Planned Work</th>
+<th>Tier</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S3-01</td>
+<td>Define the safe custom statistic definition language and execution contract</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-02</td>
+<td>Implement versioned custom statistic definitions and validation</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-03</td>
+<td>Implement sandboxed and resource-limited custom statistic execution</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-04</td>
+<td>Evaluate custom statistic definitions across the full event history at scale</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-05</td>
+<td>Build custom statistic definition, evaluation and result APIs and interfaces</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-06</td>
+<td>Trace custom statistic results to source events and definition versions</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-07</td>
+<td>Propagate event corrections into affected custom statistic results</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-08</td>
+<td>Define and implement the authenticated live fixture event feed</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-09</td>
+<td>Handle duplicate, late and out-of-order live events deterministically</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-10</td>
+<td>Implement replayable event processing and prove ordered-feed convergence</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-11</td>
+<td>Implement temporal history and as-of-date statistic queries and views</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-12</td>
+<td>Implement dataset release comparison and difference views</td>
+<td>Advanced</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S3-13</td>
+<td>Implement aggregate query endpoints beyond record retrieval</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-14</td>
+<td>Implement asynchronous large-query jobs with submission, status and result collection</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-15</td>
+<td>Implement the event and dataset change feed for delta synchronisation</td>
+<td>Advanced</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S3-16</td>
+<td>Publish the API deprecation path and implement safe version retirement behaviour</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-17</td>
+<td>Add automated API contract and backwards-compatibility tests</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-18</td>
+<td>Implement per-consumer API usage metering and an administrator usage view</td>
+<td>Advanced</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>S3-19</td>
+<td>Implement historical anomaly detection and anomaly review</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-20</td>
+<td>Implement conflicting-submitter reconciliation and accepted-resolution workflow</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-21</td>
+<td>Carry accepted corrections through aggregates, caches, custom statistics and releases</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-22</td>
+<td>Complete advanced end-to-end correctness and representative-scale performance testing</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-23</td>
+<td>Implement production observability, structured logs, metrics and health checks</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-24</td>
+<td>Complete the application-wide accessibility, responsiveness, UX and aesthetic polish</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-25</td>
+<td>Complete the advanced security, failure-recovery and dependency review</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-26</td>
+<td>Publish the complete advanced architecture, API, analyst and operations documentation</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-27</td>
+<td>Run the advanced browser-level demonstration and stakeholder acceptance test</td>
+<td>Advanced</td>
+<td>High</td>
+</tr>
+<tr>
+<td>S3-28</td>
+<td>Complete the Sprint 3 review, retrospective, evidence pack and milestone tag</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sprint-3-expected-outcome">Sprint 3 Expected Outcome<a class="headerlink" href="#sprint-3-expected-outcome" title="Permanent link">&para;</a></h3>
+<p>By the end of Sprint 3:</p>
+<ul>
+<li>Advanced custom statistics should be supported safely;</li>
+<li>live event ingestion should be supported;</li>
+<li>duplicate, late and out-of-order events should converge correctly;</li>
+<li>event processing should be replayable;</li>
+<li>historical as-of queries should be available;</li>
+<li>dataset releases should be comparable;</li>
+<li>large queries should be supported asynchronously where required;</li>
+<li>consumers should be able to follow change feeds;</li>
+<li>API compatibility and deprecation should be tested;</li>
+<li>usage reporting should be available;</li>
+<li>anomalies and conflicting submissions should be reviewable;</li>
+<li>corrections should propagate through downstream outputs;</li>
+<li>production observability should be available;</li>
+<li>accessibility, security and recovery should be reviewed; and</li>
+<li>stakeholder acceptance should be demonstrated.</li>
+</ul>
+<hr />
+<h2 id="13-final-submission-planned-backlog">13. Final Submission Planned Backlog<a class="headerlink" href="#13-final-submission-planned-backlog" title="Permanent link">&para;</a></h2>
+<h3 id="final-submission-goal">Final Submission Goal<a class="headerlink" href="#final-submission-goal" title="Permanent link">&para;</a></h3>
+<p>Release a stable, demonstrable and well-evidenced final product.</p>
+<p>Final Submission is not planned as another major implementation sprint.</p>
+<p>Its backlog is primarily concerned with:</p>
+<ul>
+<li>release verification;</li>
+<li>defects;</li>
+<li>hardening;</li>
+<li>documentation;</li>
+<li>evidence;</li>
+<li>reporting; and</li>
+<li>packaging.</li>
+</ul>
+<p>At Sprint 3 close-out, the planned Final Submission backlog will be reviewed against the actual state of the system and converted into detailed Gitea issues.</p>
+<h3 id="complete-final-submission-backlog">Complete Final Submission Backlog<a class="headerlink" href="#complete-final-submission-backlog" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Planned Work</th>
+<th>Tier</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-01</td>
+<td>Triage all open defects and resolve every release-blocking issue</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-02</td>
+<td>Prepare production database migrations, backups and restore verification</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-03</td>
+<td>Verify production secrets, configuration and frontend, API, worker, cache and storage deployments</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-04</td>
+<td>Run the final performance, security, accessibility and cross-browser release audits</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-05</td>
+<td>Complete the final requirements traceability matrix, limitations register and acceptance record</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-06</td>
+<td>Complete database, third-party code, licence, testing and AI usage documentation</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-07</td>
+<td>Prepare the reproducible demonstration dataset and scripted product demonstration</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+<tr>
+<td>F-08</td>
+<td>Prepare the group presentation and architecture and UX showcase</td>
+<td>Common</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>F-09</td>
+<td>Prepare the group report, individual report and peer-review evidence packs</td>
+<td>Common</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>F-10</td>
+<td>Publish release notes, create the final version tag and assemble the submission package</td>
+<td>Common</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<h3 id="final-submission-expected-outcome">Final Submission Expected Outcome<a class="headerlink" href="#final-submission-expected-outcome" title="Permanent link">&para;</a></h3>
+<p>The final submission should provide:</p>
+<ul>
+<li>a stable deployed application;</li>
+<li>no unresolved release-blocking defects;</li>
+<li>verified production configuration;</li>
+<li>verified database backup and recovery;</li>
+<li>complete automated and manual testing evidence;</li>
+<li>final security and accessibility evidence;</li>
+<li>final requirements traceability;</li>
+<li>complete public and repository documentation;</li>
+<li>reproducible demonstration data;</li>
+<li>group and individual reports;</li>
+<li>presentation material;</li>
+<li>release notes;</li>
+<li>the final milestone tag; and</li>
+<li>the complete submission package.</li>
+</ul>
+<hr />
+<h2 id="14-future-backlog-refinement">14. Future Backlog Refinement<a class="headerlink" href="#14-future-backlog-refinement" title="Permanent link">&para;</a></h2>
+<p>The backlog documented in this file represents the project's complete planned development scope as understood during Sprint 1.</p>
+<p>The Sprint 2, Sprint 3 and Final Submission items are deliberately documented before their corresponding detailed Gitea issues are created.</p>
+<p>This provides a comprehensive development plan and roadmap during Sprint 1 while avoiding premature task refinement.</p>
+<p>The planned refinement cycle is:</p>
+<div class="highlight"><pre><span></span><code>SPRINT 1
+
+Detailed Sprint 1 Gitea issues
++
+Complete documented Sprint 2 backlog
++
+Complete documented Sprint 3 backlog
++
+Complete documented Final Submission backlog
+
+        ↓ Sprint 1 close-out
+
+Review Sprint 2 backlog
+        ↓
+Apply stakeholder feedback
+        ↓
+Apply implementation discoveries
+        ↓
+Split / combine / reprioritise where justified
+        ↓
+Create detailed Sprint 2 Gitea issues
+        ↓
+Assign labels, owners and Sprint 2 milestone
+
+        ↓ Sprint 2 close-out
+
+Review and refine Sprint 3 backlog
+        ↓
+Create detailed Sprint 3 Gitea issues
+
+        ↓ Sprint 3 close-out
+
+Review actual remaining release work
+        ↓
+Create detailed Final Submission Gitea issues
+</code></pre></div>
+<p>This is progressive refinement, not postponed planning.</p>
+<p>The work itself is already identified in this roadmap.</p>
+<p>Only its detailed implementation form is deferred until the relevant sprint approaches.</p>
+<h3 id="141-reviewing-the-future-backlog">14.1 Reviewing the Future Backlog<a class="headerlink" href="#141-reviewing-the-future-backlog" title="Permanent link">&para;</a></h3>
+<p>Future backlog items must be reviewed before being converted into Gitea issues.</p>
+<p>The review should consider:</p>
+<ul>
+<li>whether the requirement is still applicable;</li>
+<li>stakeholder feedback;</li>
+<li>lessons from completed work;</li>
+<li>new technical information;</li>
+<li>dependencies;</li>
+<li>defects;</li>
+<li>performance evidence;</li>
+<li>security findings;</li>
+<li>available team capacity; and</li>
+<li>whether the planned work should be divided or combined.</li>
+</ul>
+<h3 id="142-recording-changes">14.2 Recording Changes<a class="headerlink" href="#142-recording-changes" title="Permanent link">&para;</a></h3>
+<p>The roadmap is allowed to evolve.</p>
+<p>A planned future backlog item may be:</p>
+<ul>
+<li>clarified;</li>
+<li>split;</li>
+<li>combined;</li>
+<li>reprioritised;</li>
+<li>moved to another milestone;</li>
+<li>replaced by a better implementation approach; or</li>
+<li>removed where formally justified.</li>
+</ul>
+<p>Material changes must not happen silently.</p>
+<p>Where the roadmap changes materially, the team must record:</p>
+<ul>
+<li>what changed;</li>
+<li>why it changed;</li>
+<li>the evidence or stakeholder feedback supporting the change; and</li>
+<li>the effect on project scope or milestone targets.</li>
+</ul>
+<p>This makes the original Sprint 1 plan and its later evolution traceable.</p>
+<hr />
+<h2 id="15-backlog-maintenance-rules">15. Backlog Maintenance Rules<a class="headerlink" href="#15-backlog-maintenance-rules" title="Permanent link">&para;</a></h2>
+<p>The backlog is a living planning artifact.</p>
+<p>When stakeholder feedback or implementation discoveries change required work:</p>
+<ol>
+<li>review the relevant planned backlog item;</li>
+<li>update an existing Gitea issue where one already exists;</li>
+<li>create a new issue where the work becomes a separate actionable unit;</li>
+<li>update dependencies;</li>
+<li>reprioritise the Project board where necessary;</li>
+<li>update the relevant milestone where justified;</li>
+<li>record important requirement changes;</li>
+<li>update architecture or ADR documentation where technical decisions change; and</li>
+<li>update this document where the project roadmap changes materially.</li>
+</ol>
+<p>Requirements must not be changed silently.</p>
+<p>Duplicate issues must not be created merely to make a catalogue appear complete.</p>
+<p>Where one existing issue legitimately satisfies multiple catalogue items, the relationship should be documented.</p>
+<p>Where an issue becomes too large to review or complete comfortably, it should be split into smaller issues.</p>
+<hr />
+<h2 id="16-completion-of-issue-36">16. Completion of Issue #36<a class="headerlink" href="#16-completion-of-issue-36" title="Permanent link">&para;</a></h2>
+<p>Issue #36 establishes and prioritises the complete project backlog and development roadmap.</p>
+<p>The project backlog established under #36 has two forms:</p>
+<ol>
+<li><strong>Current actionable work</strong> — detailed Gitea issues for the active Sprint 1 planning horizon.</li>
+<li><strong>Future planned work</strong> — complete, prioritised Sprint 2, Sprint 3 and Final Submission backlog items documented in this file.</li>
+</ol>
+<p>The distinction is intentional.</p>
+<p>Closing #36 does not mean that future work is implemented.</p>
+<p>It does not mean that every future backlog item already has a Gitea issue number.</p>
+<p>It means that the complete development path has been:</p>
+<ul>
+<li>identified;</li>
+<li>organised by milestone;</li>
+<li>categorised by requirement tier;</li>
+<li>prioritised;</li>
+<li>documented;</li>
+<li>connected to the project roadmap; and</li>
+<li>given a defined future refinement process.</li>
+</ul>
+<h3 id="issue-36-completion-checklist">Issue #36 Completion Checklist<a class="headerlink" href="#issue-36-completion-checklist" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] the four project delivery periods are defined;</li>
+<li>[x] milestone goals are documented;</li>
+<li>[x] milestone expected outcomes are documented;</li>
+<li>[x] project-wide prioritisation rules are documented;</li>
+<li>[x] the complete Sprint 1 backlog is documented;</li>
+<li>[x] current Sprint 1 implementation work is mapped to Gitea issues;</li>
+<li>[x] Sprint 1 dependencies and priority order are documented;</li>
+<li>[x] the Basic vertical slice is traceable through Sprint 1 work;</li>
+<li>[x] the complete Sprint 2 backlog is documented;</li>
+<li>[x] all 40 planned Sprint 2 work areas are identified;</li>
+<li>[x] the complete Sprint 3 backlog is documented;</li>
+<li>[x] all 28 planned Sprint 3 work areas are identified;</li>
+<li>[x] the complete Final Submission backlog is documented;</li>
+<li>[x] all 10 planned Final Submission work areas are identified;</li>
+<li>[x] Basic, Intermediate, Advanced and Common work is distinguishable;</li>
+<li>[x] future backlog refinement timing is documented;</li>
+<li>[x] future Gitea issue creation timing is documented;</li>
+<li>[x] stakeholder and implementation feedback are explicitly included in the refinement process;</li>
+<li>[x] material roadmap changes are required to be recorded;</li>
+<li>[x] the relationship between the repository roadmap and Gitea tracking is defined.</li>
+</ul>
+<p>Issue #36 may therefore be closed once:</p>
+<ul>
+<li>this document is reviewed;</li>
+<li>the associated Sprint 1 planning evidence is reviewed;</li>
+<li>the Pull Request containing the planning work passes the applicable checks; and</li>
+<li>the Pull Request is approved and merged.</li>
+</ul>
+<p>Future Sprint 2, Sprint 3 and Final Submission issue creation is part of the normal progressive sprint-refinement process and does not require issue #36 to remain open.</p>
+<hr />
+<h2 id="17-review-cadence">17. Review Cadence<a class="headerlink" href="#17-review-cadence" title="Permanent link">&para;</a></h2>
+<p>The project backlog should be reviewed:</p>
+<ul>
+<li>during sprint planning;</li>
+<li>during sprint close-out;</li>
+<li>after significant stakeholder feedback;</li>
+<li>when implementation discoveries materially affect future work;</li>
+<li>when an important architecture decision changes;</li>
+<li>when priorities or blockers change substantially; and</li>
+<li>before the next sprint's planned items are converted into detailed Gitea issues.</li>
+</ul>
+<p>Routine status changes do not require this document to be rewritten.</p>
+<p>Current execution status remains on the Gitea Project board.</p>
+<p>The project roadmap should retain enough history to demonstrate how the development plan evolved over the semester.</p>
+<hr />
+<h2 id="ai-declaration">AI Declaration<a class="headerlink" href="#ai-declaration" title="Permanent link">&para;</a></h2>
+<p>The preceding document was planned, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol] for backlog structuring, roadmap planning and documentation editing.</p>
+<p>The project team remains responsible for verifying all issue mappings, requirements, milestone allocations, priorities, dependencies and planning decisions recorded in this document.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

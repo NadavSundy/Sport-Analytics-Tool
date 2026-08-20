@@ -1,0 +1,3784 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Public documentation for the COMS3011A Sport Analytics Tool">
+      
+      
+      
+      
+        <link rel="prev" href="../overview/">
+      
+      
+        <link rel="next" href="../../api/overview/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>System Architecture and Roadmap - Sport Analytics Tool</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#system-architecture-and-development-roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Sport Analytics Tool" class="md-header__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sport Analytics Tool
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              System Architecture and Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/setup/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../design/brand-guidelines/" class="md-tabs__link">
+          
+  
+  
+  Design
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../deployment/overview/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../git-methodology/" class="md-tabs__link">
+          
+  
+  
+  Methodology
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../ai/usage/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  AI Use
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Sport Analytics Tool" class="md-nav__button md-logo" aria-label="Sport Analytics Tool" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Sport Analytics Tool
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Git Push Pray / Sport Analytics Tool
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/technology-stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technology Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../repository-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/gitea-issue-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gitea Issue Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/brand-guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture and Roadmap
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture and Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose-and-architectural-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose and architectural principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-current-decisions-and-terminology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Current decisions and terminology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Current decisions and terminology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#authentication-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication provider
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-high-level-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. High-level architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. High-level architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-component-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Component responsibilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-authorisation-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Authorisation model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-authentication-and-authorisation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Authentication and authorisation flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-event-submission-to-calculated-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Event submission to calculated statistics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Event submission to calculated statistics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#corrections-and-derivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corrections and derivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-files-datasets-and-external-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Files, datasets, and external integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Files, datasets, and external integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uploads-and-source-artefacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploads and source artefacts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dataset-exports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dataset exports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-basic-intermediate-and-advanced-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Basic, Intermediate, and Advanced evolution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-deployment-and-cicd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Deployment and CI/CD
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Deployment and CI/CD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environments-and-deployment-units" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environments and deployment units
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-development-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Development roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Development roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-1-deliver-the-working-basic-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 1 — deliver the working Basic vertical slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-complete-basic-and-intermediate-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 — complete Basic and Intermediate functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-complete-advanced-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 — complete Advanced functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-harden-evidence-and-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission — harden, evidence and release
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-1-settle-and-prove-the-foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 1 — settle and prove the foundation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-deliver-the-basic-event-to-statistic-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 — deliver the Basic event-to-statistic path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-make-the-system-operational-at-real-data-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 — make the system operational at real-data scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-harden-evidence-and-add-controlled-stretch-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission — harden, evidence, and add controlled stretch value
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-risks-and-unresolved-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Risks and unresolved decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-architecture-verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Architecture verification checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/public-read/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public Read API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/submissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Direct Event Submissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../statistics/fixture-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixture Statistic Calculations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning and Deprecation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/submission-field-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Submission field mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/event-statistic-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event to statistic mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../requirements/sport-domain-definition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sport Domain Definition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/cricsheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cricsheet Data Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Access and Transactions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/erd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Entity Relationships
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_12" id="__nav_3_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and Authorisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/privacy-retention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy and Retention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/roles-and-permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roles and Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/auth-provider-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Provider Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Application Hosting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0003-azure-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Hosting Decision Record
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Backend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-fronted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/azure-app-service-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Deployment Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/cloudflare_pages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflare Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methodology
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Methodology
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../git-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../planning/project-backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Backlog and Milestone Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose-and-architectural-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose and architectural principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-current-decisions-and-terminology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Current decisions and terminology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Current decisions and terminology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#authentication-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication provider
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-high-level-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. High-level architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. High-level architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-component-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Component responsibilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-authorisation-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Authorisation model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-authentication-and-authorisation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Authentication and authorisation flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-event-submission-to-calculated-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Event submission to calculated statistics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Event submission to calculated statistics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#corrections-and-derivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corrections and derivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-files-datasets-and-external-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Files, datasets, and external integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Files, datasets, and external integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uploads-and-source-artefacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploads and source artefacts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dataset-exports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dataset exports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-basic-intermediate-and-advanced-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Basic, Intermediate, and Advanced evolution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-deployment-and-cicd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Deployment and CI/CD
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Deployment and CI/CD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environments-and-deployment-units" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environments and deployment units
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-development-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Development roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Development roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sprint-1-deliver-the-working-basic-vertical-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 1 — deliver the working Basic vertical slice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-complete-basic-and-intermediate-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 — complete Basic and Intermediate functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-complete-advanced-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 — complete Advanced functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-harden-evidence-and-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission — harden, evidence and release
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-1-settle-and-prove-the-foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 1 — settle and prove the foundation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-2-deliver-the-basic-event-to-statistic-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 2 — deliver the Basic event-to-statistic path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sprint-3-make-the-system-operational-at-real-data-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sprint 3 — make the system operational at real-data scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-submission-harden-evidence-and-add-controlled-stretch-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final Submission — harden, evidence, and add controlled stretch value
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-risks-and-unresolved-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Risks and unresolved decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-architecture-verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Architecture verification checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-declaration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Declaration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="system-architecture-and-development-roadmap">System architecture and development roadmap<a class="headerlink" href="#system-architecture-and-development-roadmap" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Target architecture; foundation components are implemented, while later-tier
+components are explicitly marked as planned.<br />
+<strong>Related issues:</strong> #38, #73
+<strong>Last updated:</strong> 12 August 2026</p>
+<h2 id="1-purpose-and-architectural-principles">1. Purpose and architectural principles<a class="headerlink" href="#1-purpose-and-architectural-principles" title="Permanent link">&para;</a></h2>
+<p>The Sport Analytics Tool is an event-driven cricket analytics platform. It accepts
+traceable match-event submissions, validates and stores accepted events, derives statistics
+from those events, and publishes results through a web application, dataset exports, and a
+versioned HTTP API.</p>
+<p>The design follows these principles:</p>
+<ol>
+<li>The React frontend and Express backend are separate applications and separate deployment
+   units. They communicate through the documented HTTP API.</li>
+<li>The handwritten backend is the only application-data boundary. The frontend and external
+   consumers never use database-generated REST or GraphQL endpoints.</li>
+<li>PostgreSQL event records are the source of truth. Published statistics are derived values,
+   not independently entered totals.</li>
+<li>Authentication proves identity; backend authorisation separately determines roles,
+   approval state, and competition, season, or fixture scope.</li>
+<li>Every submission, correction, statistic, and export must retain provenance.</li>
+<li>Basic functionality is delivered before asynchronous, cached, live, or user-defined
+   functionality is introduced.</li>
+<li>Planned components must not be presented as implemented. The architecture can grow by
+   adding workers and adapters without replacing the frontend, API, or event model.</li>
+</ol>
+<h2 id="2-current-decisions-and-terminology">2. Current decisions and terminology<a class="headerlink" href="#2-current-decisions-and-terminology" title="Permanent link">&para;</a></h2>
+<p>The approved event model covers T20 cricket. The current data source is Cricsheet, and the
+agreed scope recorded in ADR-003 is eleven franchise competitions plus men's and women's T20
+internationals. The exact required statistic catalogue is still a dependency of issue #37.</p>
+<h3 id="authentication-provider">Authentication provider<a class="headerlink" href="#authentication-provider" title="Permanent link">&para;</a></h3>
+<p>The project uses <strong>Supabase Auth</strong> as its managed authentication foundation, with
+<strong>Google OAuth</strong> as the initial sign-in provider.</p>
+<p>ADR-004 supersedes the earlier Firebase decision in ADR-002. The repository now implements
+Supabase token verification in the Express backend using
+<code>supabase.auth.getUser(accessToken)</code>. Firebase Authentication is therefore not part of the
+current runtime architecture and must not be implemented alongside Supabase Auth.</p>
+<p>The authentication flow is:</p>
+<ol>
+<li>The React frontend initiates the managed Google OAuth flow through Supabase Auth.</li>
+<li>Supabase Auth issues a user session and access token.</li>
+<li>The frontend sends the access token to the handwritten Express API using a bearer token.</li>
+<li>The backend verifies the token with Supabase Auth.</li>
+<li>The backend maps the verified provider subject to the application's own account, role,
+   approval state and scoped permissions.</li>
+</ol>
+<p>Authentication and authorisation remain separate:</p>
+<ul>
+<li><strong>Supabase Auth</strong> proves the user's identity.</li>
+<li><strong>The Sport Analytics backend</strong> determines what the user is allowed to do.</li>
+</ul>
+<p>Application users are identified using the provider-neutral combination:</p>
+<div class="highlight"><pre><span></span><code>(auth_provider, auth_subject)
+</code></pre></div>
+<p>This prevents authentication-provider details from becoming coupled to competition, event,
+submission or statistic data.</p>
+<p>The written lecturer ruling currently stored in the repository explicitly approves using
+Supabase as hosted PostgreSQL while avoiding its generated data API. It does not explicitly
+mention Supabase Auth.</p>
+<p>Supabase Auth is therefore the team's selected and implemented authentication foundation.
+Any required stakeholder or lecturer confirmation for its production use must remain
+recorded as an open compliance decision until confirmed.</p>
+<h2 id="3-high-level-architecture">3. High-level architecture<a class="headerlink" href="#3-high-level-architecture" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TB
+    subgraph Clients[Clients]
+        User[Browser user]
+        Consumer[External API or dataset consumer]
+    end
+
+    subgraph Applications[Separate deployable applications]
+        Frontend[React and Vite frontend]
+        API[Handwritten Express API&lt;br/&gt;/api/v1]
+    end
+
+    Auth[Supabase Auth&lt;br/&gt;current managed identity provider]
+    External[External data or sports API&lt;br/&gt;adapter and source provenance]
+
+    subgraph Data[Persistent data]
+        DB[(PostgreSQL&lt;br/&gt;events, users, grants, statistics, audit)]
+        Files[(Object storage&lt;br/&gt;planned for uploads and exports)]
+    end
+
+    subgraph Future[Intermediate and advanced components]
+        Queue[[Job queue or transactional outbox]]
+        Worker[Batch and derivation worker]
+        Cache[(Cache)]
+        Live[Live event provider]
+        Definitions[Versioned custom statistic definitions]
+    end
+
+    User --&gt;|HTTPS| Frontend
+    Frontend --&gt;|Managed sign-in| Auth
+    Frontend --&gt;|HTTPS: JSON, multipart, bearer token| API
+    Consumer --&gt;|HTTPS: public or API credentials| API
+    Consumer &lt;--&gt;|Versioned dataset files| Files
+    API --&gt;|Verify access token| Auth
+    API --&gt;|TLS SQL through server-side driver| DB
+    API --&gt;|Upload and signed download operations| Files
+    API --&gt;|Timeouts, quotas, retries| External
+    API -.-&gt;|Enqueue durable work| Queue
+    Queue -.-&gt; Worker
+    Worker -.-&gt; DB
+    Worker -.-&gt; Files
+    API -.-&gt; Cache
+    Worker -.-&gt;|Invalidate or refresh| Cache
+    Live -.-&gt;|Webhook, stream, or polling adapter| API
+    Definitions -.-&gt; Worker</code></pre>
+<p>Solid connections are Basic-tier boundaries or selected foundations. Dotted connections are
+Intermediate or Advanced additions. Object storage is shown as planned because PostgreSQL
+should store file metadata and provenance, not necessarily large source and export objects.
+Its provider has not yet been selected.</p>
+<h3 id="trust-boundaries">Trust boundaries<a class="headerlink" href="#trust-boundaries" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Browser input, uploaded files, external API responses, and consumer requests are untrusted.</li>
+<li>The backend API is the policy-enforcement point for validation, authorisation, business
+  rules, quotas, and audit logging.</li>
+<li>Authentication-provider configuration safe for a browser may be exposed through frontend
+  environment variables; database credentials, elevated auth keys, external API secrets, and
+  storage credentials remain server-side.</li>
+<li>Only the backend and future workers connect to PostgreSQL or object storage with write
+  privileges.</li>
+<li>Workers use the same domain services and validation rules as synchronous API operations;
+  asynchronous execution must not create a second set of business rules.</li>
+</ul>
+<h2 id="4-component-responsibilities">4. Component responsibilities<a class="headerlink" href="#4-component-responsibilities" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Responsibility</th>
+<th>Delivery tier and state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>React frontend (<code>apps/frontend</code>)</td>
+<td>Render responsive and accessible search, dashboard, authentication, submission, review, and export journeys. Perform helpful client validation and send application data only to the backend.</td>
+<td>Basic; application scaffold exists, product journeys are planned.</td>
+</tr>
+<tr>
+<td>Express backend (<code>apps/backend</code>)</td>
+<td>Own <code>/api/v1</code>, authoritative validation, authentication middleware, role and scope checks, event ingestion, derivation orchestration, queries, exports, external integrations, audit logs, and safe error responses.</td>
+<td>Basic; health, current-profile, and public-read endpoints exist; later domain modules are planned.</td>
+</tr>
+<tr>
+<td>Shared contracts (<code>packages/contracts</code>)</td>
+<td>Hold versioned request/response schemas and TypeScript types shared by the applications. It contains no secrets, database access, or authorisation decisions.</td>
+<td>Basic; health contract exists and domain contracts are planned.</td>
+</tr>
+<tr>
+<td>Supabase Auth</td>
+<td>Manage Google OAuth and identity lifecycle flows; issue tokens that the backend verifies. It proves identity but grants no application permission.</td>
+<td>Basic; selected and backend verification is implemented.</td>
+</tr>
+<tr>
+<td>Backend authorisation</td>
+<td>Map the verified provider subject to <code>app_user</code>, enforce account status, one of the <code>viewer</code>, <code>submitter</code>, or <code>admin</code> roles, and scoped grants on every protected route.</td>
+<td>Basic; account synchronization, profile, administrator, submitter, and competition policies are implemented.</td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td>Store identity mappings, grants, reference data, submissions, immutable event revisions, review and correction history, statistic definitions/results, export metadata, and audit records. Enforce integrity with constraints and transactions.</td>
+<td>Basic; hosted connection and event model are approved, full migrations are planned.</td>
+</tr>
+<tr>
+<td>Submission and validation service</td>
+<td>Accept manual JSON and file submissions, identify duplicates, apply versioned structural and cricket-domain rules, normalise source data, and produce actionable validation results.</td>
+<td>Basic.</td>
+</tr>
+<tr>
+<td>Derivation service</td>
+<td>Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.</td>
+<td>Basic for required statistics; versioned/custom definitions are Advanced.</td>
+</tr>
+<tr>
+<td>File and export service</td>
+<td>Enforce upload type/size limits, calculate checksums, retain source provenance, create immutable release manifests, and provide authorised downloads.</td>
+<td>Basic for small synchronous files; object storage and asynchronous large exports are Intermediate.</td>
+</tr>
+<tr>
+<td>External integration adapter</td>
+<td>Isolate provider formats and credentials; apply timeouts, bounded retries, rate limits, schema validation, idempotency, and source/retrieval metadata. Cricsheet is the current historical file source; the required runtime external API is undecided.</td>
+<td>Basic adapter and one integration required.</td>
+</tr>
+<tr>
+<td>Worker and job queue</td>
+<td>Process large imports, recomputation, exports, and scheduled synchronisation outside request timeouts. Jobs are idempotent, retryable, observable, and dead-lettered after bounded failures.</td>
+<td>Intermediate.</td>
+</tr>
+<tr>
+<td>Cache</td>
+<td>Reduce repeated reads of published statistics and reference data. Cache entries are keyed by data and definition version and invalidated after accepted corrections or recalculation.</td>
+<td>Intermediate; introduce only after measurement.</td>
+</tr>
+<tr>
+<td>Live ingestion adapter</td>
+<td>Receive or poll live events, order and deduplicate them, handle late corrections, and pass them through the same validation and acceptance path as file submissions.</td>
+<td>Advanced.</td>
+</tr>
+<tr>
+<td>Custom statistic engine</td>
+<td>Store reviewed, versioned definitions and calculate results in a restricted expression model. It must not execute arbitrary user code or unbounded database queries.</td>
+<td>Advanced.</td>
+</tr>
+<tr>
+<td>MkDocs site</td>
+<td>Publish architecture, API, database, security, deployment, testing, methodology, and data-source documentation independently of the product applications.</td>
+<td>Basic; deployed separately to Cloudflare Pages.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-authorisation-model">5. Authorisation model<a class="headerlink" href="#5-authorisation-model" title="Permanent link">&para;</a></h2>
+<p>The minimum target model combines role-based access control with scoped grants. Role names
+remain subject to group approval, but the capabilities and separation of duties below should
+be preserved.</p>
+<table>
+<thead>
+<tr>
+<th>Actor</th>
+<th>Typical permissions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public viewer</td>
+<td>Read published fixtures, statistics, and public dataset-release metadata.</td>
+</tr>
+<tr>
+<td>Registered user</td>
+<td>Public-viewer access plus account functions and their own submission history where applicable.</td>
+</tr>
+<tr>
+<td>Submitter</td>
+<td>Create submissions only within explicit competition, season, and optionally fixture grants; view their own validation results; submit corrections.</td>
+</tr>
+<tr>
+<td>Reviewer</td>
+<td>Inspect validation evidence and accept or reject submissions within assigned scope; cannot silently rewrite source events.</td>
+</tr>
+<tr>
+<td>Administrator</td>
+<td>Approve or suspend submitters, manage roles and scoped grants, and audit decisions. Administrative actions are themselves audited.</td>
+</tr>
+<tr>
+<td>API consumer</td>
+<td>Read only the endpoints and datasets allowed by its API credential and quota; it receives no user or submission privilege by default.</td>
+</tr>
+</tbody>
+</table>
+<p>A submission-capable account must satisfy all of the following:</p>
+<div class="highlight"><pre><span></span><code>verified identity
+AND active application account
+AND application role = submitter OR admin
+AND active scoped grant covering the target competition/season/fixture
+AND route-specific permission
+</code></pre></div>
+<p>The implemented persistence foundation extends <code>app_user</code> with a three-value application role and
+last-authenticated time, plus <code>submitter_competition_scope</code> grants. The older submitter-approval
+state remains only as deprecated request-workflow data. Approval-management work may later add
+approver, reason, revocation, and expiry audit fields without changing the route-policy boundary.
+Denied checks return <code>403 Forbidden</code>; missing, invalid, expired, or revoked identity tokens return
+<code>401 Unauthorized</code>. The frontend may hide unavailable actions for usability, but frontend state is
+never an authorisation control.</p>
+<h2 id="6-authentication-and-authorisation-flow">6. Authentication and authorisation flow<a class="headerlink" href="#6-authentication-and-authorisation-flow" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>sequenceDiagram
+    actor User
+    participant UI as React frontend
+    participant Auth as Supabase Auth
+    participant API as Express API
+    participant DB as PostgreSQL
+
+    User-&gt;&gt;UI: Start managed Google sign-in
+    UI-&gt;&gt;Auth: OAuth request with approved redirect URI
+    Auth--&gt;&gt;UI: Session and access token
+    UI-&gt;&gt;API: Protected request with Bearer token
+    API-&gt;&gt;Auth: Verify token using getUser(token)
+    alt Token missing, invalid, expired, or revoked
+        API--&gt;&gt;UI: 401 Unauthorized
+    else Verified provider identity
+        Auth--&gt;&gt;API: Stable provider subject
+        API-&gt;&gt;DB: Upsert app_user; load status, role, and scoped grants
+        alt Account or permission check fails
+            API--&gt;&gt;UI: 403 Forbidden
+        else Route and resource scope allowed
+            API-&gt;&gt;DB: Execute transaction and append audit evidence
+            API--&gt;&gt;UI: Safe response
+        end
+    end</code></pre>
+<p>Important controls are:</p>
+<ul>
+<li>accept bearer tokens only over HTTPS and never log them;</li>
+<li>validate identity on the backend rather than trusting decoded browser claims;</li>
+<li>re-check permissions for every protected request and target resource;</li>
+<li>prevent users from approving their own submitter status or expanding their own scope;</li>
+<li>require step-up or recent authentication for destructive account or administration actions
+  if supported by the selected provider;</li>
+<li>keep elevated provider credentials in the backend secret store and use them only for the
+  narrow administrative operations that require them; and</li>
+<li>audit role, grant, review, correction, and account-status changes with actor and timestamp.</li>
+</ul>
+<h2 id="7-event-submission-to-calculated-statistics">7. Event submission to calculated statistics<a class="headerlink" href="#7-event-submission-to-calculated-statistics" title="Permanent link">&para;</a></h2>
+<h3 id="end-to-end-flow">End-to-end flow<a class="headerlink" href="#end-to-end-flow" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    actor Submitter
+    participant UI as Frontend or API client
+    participant API as Handwritten API
+    participant AuthZ as Auth and permission middleware
+    participant Validate as Validation service
+    participant DB as PostgreSQL
+    participant Jobs as Worker or in-process derivation
+    participant Files as File and export storage
+
+    Submitter-&gt;&gt;UI: Enter events or choose JSON file
+    UI-&gt;&gt;API: Submit payload, schema version, and bearer token
+    API-&gt;&gt;AuthZ: Verify identity, approval, and target scope
+    AuthZ--&gt;&gt;API: Allowed submitter and effective scope
+    API-&gt;&gt;API: Enforce content type and size, then calculate checksum
+    API-&gt;&gt;DB: Create RECEIVED submission with provenance
+    opt Raw source file retained
+        API-&gt;&gt;Files: Store source object under generated identifier
+    end
+    API-&gt;&gt;Validate: Structural, referential, sequence, and cricket-rule validation
+    alt Validation fails
+        Validate--&gt;&gt;DB: Store safe field and record-level errors
+        API--&gt;&gt;UI: 422 with actionable validation result
+    else Valid but review required
+        Validate--&gt;&gt;DB: Mark PENDING_REVIEW
+        API--&gt;&gt;UI: 202 with submission status
+    else Accepted by policy or reviewer
+        Validate-&gt;&gt;DB: Transactionally insert immutable event revisions and audit decision
+        DB--&gt;&gt;Jobs: Recalculate affected statistic scopes
+        Jobs-&gt;&gt;DB: Read accepted current events
+        Jobs-&gt;&gt;Jobs: Apply versioned deterministic definitions
+        Jobs-&gt;&gt;DB: Upsert derived results and provenance
+        Jobs--&gt;&gt;API: Calculation complete or durable job status
+        API--&gt;&gt;UI: Accepted submission and statistic links
+    end</code></pre>
+<p>For the Basic tier, bounded submissions and required fixture statistics may be validated and
+derived synchronously. Before processing becomes asynchronous, event acceptance and job
+creation must be made atomic with a transactional outbox or equivalent pattern so an accepted
+event cannot exist without its recalculation job.</p>
+<h3 id="validation-layers">Validation layers<a class="headerlink" href="#validation-layers" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Transport:</strong> HTTPS, supported media type, request/file size, filename handling, and
+   decompression limits.</li>
+<li><strong>Contract:</strong> versioned JSON schema, required fields, types, ranges, and unknown-field
+   policy.</li>
+<li><strong>Reference:</strong> stable competition, fixture, team, and player identifiers; no name-based
+   player joins.</li>
+<li><strong>Cricket semantics:</strong> innings/delivery ordering, team membership, extras, wickets,
+   super-over flags, miscounted overs, outcome forms, and other approved vocabulary.</li>
+<li><strong>Idempotency:</strong> source reference, revision, checksum, and natural event identity prevent
+   duplicate ingestion while allowing corrections.</li>
+<li><strong>Permission:</strong> submitter grant covers every target resource in the submission.</li>
+<li><strong>Review:</strong> policy determines whether a structurally valid submission can be auto-accepted
+   or needs an independent reviewer.</li>
+</ol>
+<p>Validation errors are stored against the submission and returned without exposing internal
+queries or secrets. Multi-record acceptance is transactional: the database receives all
+accepted records or none of them.</p>
+<h3 id="corrections-and-derivation">Corrections and derivation<a class="headerlink" href="#corrections-and-derivation" title="Permanent link">&para;</a></h3>
+<p>Delivery event content is immutable. A correction inserts a new revision, marks the previous
+live revision as superseded, and retains the original sequence and audit history. Derivation
+reads only the approved current-event view.</p>
+<p>Required statistics begin with the group-approved catalogue from #37. The engine must cover
+the event-model rules already approved in #27, including wides and balls faced, bowler extras,
+non-boundary flags, innings-level penalty runs, actual legal-ball counts, stable player IDs,
+bowler-credit dismissal kinds, and the agreed super-over convention.</p>
+<p>Each stored result identifies:</p>
+<ul>
+<li>statistic definition and version;</li>
+<li>scope, such as fixture, innings, player, season, or career;</li>
+<li>input event revision set or reproducible data version;</li>
+<li>calculation status and timestamp; and</li>
+<li>value and units.</li>
+</ul>
+<p>A correction marks only dependent results stale, recalculates them, and invalidates matching
+cache keys. Consumers must never observe a cache entry for a superseded data/definition
+version.</p>
+<h2 id="8-files-datasets-and-external-integration">8. Files, datasets, and external integration<a class="headerlink" href="#8-files-datasets-and-external-integration" title="Permanent link">&para;</a></h2>
+<h3 id="uploads-and-source-artefacts">Uploads and source artefacts<a class="headerlink" href="#uploads-and-source-artefacts" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Uploads enter through the backend; the browser never receives storage write credentials.</li>
+<li>The API allow-lists formats, sanitises display names, ignores client filesystem paths,
+  generates object identifiers, enforces compressed and expanded size limits, and calculates
+  SHA-256 checksums.</li>
+<li>PostgreSQL stores the submission, checksum, media type, object reference, source/retrieval
+  metadata, validation status, and owner. Object storage holds large bytes when selected.</li>
+<li>Duplicate checksums are not sufficient by themselves: source reference and source revision
+  determine whether a file is a replay, correction, or different fixture.</li>
+<li>Retention, malware scanning, and deletion rules must be agreed before arbitrary public file
+  uploads are enabled.</li>
+</ul>
+<h3 id="dataset-exports">Dataset exports<a class="headerlink" href="#dataset-exports" title="Permanent link">&para;</a></h3>
+<p>Small filtered exports may stream from the API. Large or full releases become worker jobs and
+return <code>202 Accepted</code> with a status URL. Completed immutable releases include a version,
+scope, creation time, schema/statistic-definition versions, row or event counts, licence and
+provenance notes, and checksums. Downloads use short-lived authorised links where necessary;
+public releases may use stable public links.</p>
+<h3 id="external-integration">External integration<a class="headerlink" href="#external-integration" title="Permanent link">&para;</a></h3>
+<p>Cricsheet's JSON archive is the approved historical source and already has a reproducible
+download and manifest process. It is a file feed, not a substitute for the project's required
+runtime external API integration. The team must select a relevant API based on stakeholder
+value, licence, T20 coverage, quotas, correction behaviour, and testability.</p>
+<p>All providers are isolated behind adapters that convert external payloads into the internal
+submission contract. Provider calls use secret management, explicit timeouts, bounded retries
+with jitter, rate-limit handling, circuit breaking where appropriate, schema checks, and
+observable failures. Raw provider references, retrieval time, licence, version, and checksum
+are retained for provenance. An unavailable provider must degrade only the dependent feature,
+not health checks, historical statistics, or unrelated API routes.</p>
+<h2 id="9-basic-intermediate-and-advanced-evolution">9. Basic, Intermediate, and Advanced evolution<a class="headerlink" href="#9-basic-intermediate-and-advanced-evolution" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Architecture need</th>
+<th>Completion signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Basic</td>
+<td>Separate responsive frontend and handwritten versioned backend; PostgreSQL persistence; managed identity; backend roles and submitter competition scopes; event/file submission; layered validation; traceable corrections; required derived statistics; one external integration; small exports; automated tests; CI/CD and public documentation.</td>
+<td>A user can submit in-scope T20 events, see validation outcomes, and retrieve independently verified statistics and a documented dataset/API from deployed applications.</td>
+</tr>
+<tr>
+<td>Intermediate</td>
+<td>Durable background jobs for batch ingestion, large recalculation and exports; object storage; job status and retries; caching of measured hot reads; richer review workflow; API credentials/quotas; observability, backup/restore, and performance testing.</td>
+<td>Large real-data operations complete outside HTTP timeouts, survive retries without duplication, expose useful status, and meet agreed performance/recovery targets.</td>
+</tr>
+<tr>
+<td>Advanced</td>
+<td>Live event ingestion and correction handling; versioned custom statistic definitions; dependency-aware incremental recomputation; safe expression limits; change feeds/release differences; stronger scaling and cache invalidation.</td>
+<td>Live corrections converge on auditable results, and approved custom definitions calculate reproducibly without arbitrary code execution or unbounded resource use.</td>
+</tr>
+</tbody>
+</table>
+<p>Promotion to a later tier is evidence-based. Batch processing is introduced when request-time
+work exceeds agreed limits; caching is introduced after profiling; live ingestion depends on a
+licensed reliable feed; and custom statistics depend on an approved safe definition model.</p>
+<h2 id="10-deployment-and-cicd">10. Deployment and CI/CD<a class="headerlink" href="#10-deployment-and-cicd" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    Dev[Short-lived branch] --&gt; PR[Gitea Pull Request]
+    PR --&gt; CI[CI: install, structure, format,&lt;br/&gt;lint, typecheck, test, build]
+    CI --&gt; Review[Peer review and approval]
+    Review --&gt; Main[Protected main branch]
+    Main --&gt; FE[Frontend deployment&lt;br/&gt;Azure App Service]
+    Main --&gt; BE[Backend deployment&lt;br/&gt;Azure App Service]
+    Main --&gt; Docs[MkDocs build and&lt;br/&gt;Cloudflare Pages deployment]
+    Migration[Reviewed SQL migrations] --&gt; DB[(Supabase-hosted PostgreSQL)]
+    BE --&gt; DB
+    FE --&gt; BE
+    Secrets[Environment-specific secret stores] -.-&gt; FE
+    Secrets -.-&gt; BE</code></pre>
+<h3 id="environments-and-deployment-units">Environments and deployment units<a class="headerlink" href="#environments-and-deployment-units" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Local:</strong> Vite frontend on port 5173 and Express API on port 3000 run as separate
+  processes. Developers use safe environment placeholders and either shared development
+  services or an approved isolated local stack.</li>
+<li><strong>Development:</strong> the frontend and backend currently target separate Azure App Services.
+  PostgreSQL is hosted by Supabase in Frankfurt and reached by the backend over the TLS
+  Supavisor session pooler. The documentation site is deployed separately to Cloudflare
+  Pages.</li>
+<li><strong>Preview/test:</strong> Pull Requests always receive CI verification. Automated per-PR application
+  previews are desirable but not yet established.</li>
+<li><strong>Production:</strong> service names, database plan/region, storage, secrets, observability,
+  backups, and rollback procedures require a production decision record before release.</li>
+</ul>
+<p>Frontend configuration contains only browser-safe API and auth settings. Backend settings
+contain <code>DATABASE_URL</code>, auth verification settings, allowed origins, external API keys, and
+future queue/storage credentials. Gitea Action secrets or platform secret stores provide
+deployment credentials. Real secrets are never committed.</p>
+<h3 id="pipeline-controls">Pipeline controls<a class="headerlink" href="#pipeline-controls" title="Permanent link">&para;</a></h3>
+<p>The existing Pull Request workflow uses Node.js 20, runs <code>npm ci</code>, then <code>npm run check</code>. The
+repository check verifies required files, formatting, lint, TypeScript, automated tests, and
+all workspace builds. Before deployment is considered reliable, the pipeline must also:</p>
+<ol>
+<li>build MkDocs with <code>mkdocs build --strict</code>;</li>
+<li>correct the frontend/backend deployment path and workspace references so they match
+   <code>apps/frontend</code> and <code>apps/backend</code>;</li>
+<li>make deployments depend on the same green quality checks used for Pull Requests;</li>
+<li>run reviewed database migrations as an explicit, observable, and recoverable step rather
+   than on application startup;</li>
+<li>deploy immutable build output to the correct application;</li>
+<li>smoke-test frontend, API health, CORS, authentication callback, and database connectivity;</li>
+<li>record release identity and support rollback to the previous application version; and</li>
+<li>keep destructive migration changes backward-compatible across the deployment window.</li>
+</ol>
+<p>Path filters should deploy only affected units, while changes to contracts, root lockfiles,
+or shared configuration must trigger every dependent unit. Production approval gates may be
+added without changing application architecture.</p>
+<h2 id="11-development-roadmap">11. Development roadmap<a class="headerlink" href="#11-development-roadmap" title="Permanent link">&para;</a></h2>
+<p>The roadmap is outcome-based and follows the project's lightweight Scrumban methodology.
+Issues move into active development only when their dependencies are understood, an assignee
+is available, and they satisfy the Definition of Ready.</p>
+<p>The team is targeting:</p>
+<ul>
+<li>a working Basic vertical slice during Sprint 1;</li>
+<li>complete Basic and Intermediate functionality by the end of Sprint 2;</li>
+<li>Advanced feature completion by the end of Sprint 3; and</li>
+<li>Final Submission work focused on hardening, evidence and release preparation.</li>
+</ul>
+<p>This is an ambitious target. Basic and Intermediate requirements remain non-negotiable.
+High-risk Advanced design work must begin early enough that it is not all deferred until
+Sprint 3.</p>
+<h3 id="sprint-1-deliver-the-working-basic-vertical-slice">Sprint 1 — deliver the working Basic vertical slice<a class="headerlink" href="#sprint-1-deliver-the-working-basic-vertical-slice" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> establish the project foundations and demonstrate the complete path from approved
+event submission to publicly viewable event-derived statistics.</p>
+<p>Planned outcomes include:</p>
+<ul>
+<li>complete and prioritise the project backlog under #36;</li>
+<li>confirm the T20 competition scope, event vocabulary and required statistic catalogue under
+  #37;</li>
+<li>maintain the agreed architecture and roadmap through #38 and #73;</li>
+<li>preserve the separate React frontend and handwritten Express backend;</li>
+<li>use Supabase Auth with Google OAuth for managed identity;</li>
+<li>implement application accounts, <code>viewer | submitter | admin</code> roles and scoped permissions;</li>
+<li>implement repeatable PostgreSQL migrations and development seed data;</li>
+<li>implement the approved cricket fixture and delivery-event model;</li>
+<li>define the executable delivery-submission contract;</li>
+<li>validate incoming event submissions and return actionable rejection messages;</li>
+<li>allow only approved, in-scope submitters to upload delivery events;</li>
+<li>retain submission, submitter, fixture and event provenance;</li>
+<li>derive the first required fixture statistics from accepted delivery events;</li>
+<li>expose fixtures, ordered events and derived statistics through the public API;</li>
+<li>allow public users to browse fixtures, events and statistics without signing in;</li>
+<li>establish frontend, backend, database, contract and browser testing foundations;</li>
+<li>repair and verify frontend and backend deployment workflows;</li>
+<li>maintain green CI, public documentation and AI-use evidence.</li>
+</ul>
+<p><strong>Exit evidence:</strong></p>
+<ul>
+<li>a deployed public user can browse a fixture and view its ordered events and derived
+  statistics without signing in;</li>
+<li>an administrator can approve a submitter and assign an appropriate scope;</li>
+<li>a user with the <code>submitter</code> role can sign in and submit in-scope delivery events;</li>
+<li>invalid submissions receive useful structured rejection messages;</li>
+<li>valid submissions are stored with provenance;</li>
+<li>required fixture statistics are derived from accepted events;</li>
+<li>automated tests cover the main vertical-slice behaviour;</li>
+<li>frontend, backend and documentation deployments are verifiable;</li>
+<li>architecture, database, API, testing and setup documentation reflect the implemented state;</li>
+<li>Sprint 1 review and retrospective evidence is recorded.</li>
+</ul>
+<h3 id="sprint-2-complete-basic-and-intermediate-functionality">Sprint 2 — complete Basic and Intermediate functionality<a class="headerlink" href="#sprint-2-complete-basic-and-intermediate-functionality" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> complete all remaining Basic requirements and extend the platform for reliable
+whole-season processing, aggregate statistics, API consumers and reproducible dataset
+releases.</p>
+<p>Planned outcomes include:</p>
+<ul>
+<li>complete any unfinished Basic account, administration, correction, provenance and export
+  workflows;</li>
+<li>complete public competition, season, fixture, competitor, participant, event and statistic
+  interfaces;</li>
+<li>implement JSON and CSV file submissions through the shared validation pipeline;</li>
+<li>implement authorised event corrections while retaining correction history;</li>
+<li>automatically refresh statistics affected by accepted corrections;</li>
+<li>provide clear statistic provenance and “how calculated” information;</li>
+<li>integrate one relevant external API through an isolated adapter;</li>
+<li>stage and validate whole-season and back-catalogue batches before publication;</li>
+<li>report accepted and rejected batch records;</li>
+<li>make repeated batch submissions idempotent;</li>
+<li>resume failed batch processing from durable checkpoints;</li>
+<li>introduce submission review and publication workflows;</li>
+<li>detect impossible and conflicting data through documented validation rules;</li>
+<li>derive season, career and competition-wide aggregates;</li>
+<li>recompute only results affected by changed events;</li>
+<li>compare derived figures against independently verified reference results;</li>
+<li>create representative-scale performance data;</li>
+<li>define and meet documented API response-time targets;</li>
+<li>optimise database indexes, storage layout and query plans;</li>
+<li>implement explicit API versioning;</li>
+<li>issue, rotate and revoke API keys;</li>
+<li>enforce consumer rate limits and quotas;</li>
+<li>cache repeated reads where measurements justify caching;</li>
+<li>publish versioned dataset releases with schemas, field descriptions and checksums;</li>
+<li>complete Intermediate integration, correctness, performance and recovery tests;</li>
+<li>publish complete Basic and Intermediate API, database, testing and third-party code
+  documentation.</li>
+</ul>
+<p><strong>Exit evidence:</strong></p>
+<ul>
+<li>all mandatory Basic requirements are demonstrably complete;</li>
+<li>representative whole-season batches can be staged, validated, resumed and safely
+  resubmitted;</li>
+<li>corrections retain history and update only dependent results;</li>
+<li>season and career aggregates match approved reference results;</li>
+<li>API consumers use documented versioned endpoints and managed credentials;</li>
+<li>representative performance targets pass;</li>
+<li>reproducible versioned dataset releases can be downloaded and verified;</li>
+<li>stakeholder and user feedback has been recorded and incorporated where appropriate.</li>
+</ul>
+<h3 id="sprint-3-complete-advanced-functionality">Sprint 3 — complete Advanced functionality<a class="headerlink" href="#sprint-3-complete-advanced-functionality" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> complete the Advanced event-processing, analyst-definition, temporal-query,
+compatibility and data-defence capabilities and bring the product to a near-release state.</p>
+<p>Planned outcomes include:</p>
+<ul>
+<li>define a restricted and safe custom-statistic definition language;</li>
+<li>validate and version analyst-defined statistic definitions;</li>
+<li>execute custom definitions under resource and safety limits;</li>
+<li>evaluate approved custom statistics across the full event history;</li>
+<li>trace each result to its source events and definition version;</li>
+<li>propagate accepted event corrections into affected custom-statistic results;</li>
+<li>accept an authenticated live fixture-event feed;</li>
+<li>handle duplicate, late and out-of-order live events deterministically;</li>
+<li>replay the event pipeline and prove convergence with an equivalent ordered feed;</li>
+<li>support as-of-date statistic queries;</li>
+<li>compare two dataset releases and show what changed;</li>
+<li>provide aggregate API queries beyond record retrieval;</li>
+<li>hand large API requests to asynchronous jobs;</li>
+<li>allow consumers to submit jobs, inspect status and collect completed results;</li>
+<li>publish an event and dataset change feed for delta synchronisation;</li>
+<li>implement and document API deprecation and safe version retirement;</li>
+<li>add automated contract and backwards-compatibility tests;</li>
+<li>provide per-consumer API usage information;</li>
+<li>detect events that appear anomalous against historical data;</li>
+<li>reconcile conflicting submitters through an auditable resolution workflow;</li>
+<li>carry accepted corrections through aggregates, caches, custom statistics and dataset
+  releases;</li>
+<li>complete representative-scale Advanced correctness and performance testing;</li>
+<li>implement production observability, structured logs, metrics and health checks;</li>
+<li>complete accessibility, responsiveness, security and failure-recovery reviews;</li>
+<li>publish complete Advanced architecture, API, analyst and operations documentation;</li>
+<li>run the Advanced stakeholder acceptance demonstration.</li>
+</ul>
+<p><strong>Exit evidence:</strong></p>
+<ul>
+<li>approved custom statistic definitions run reproducibly without arbitrary code execution;</li>
+<li>a disordered live feed converges on the same result as the equivalent ordered events;</li>
+<li>consumers can query historical statistic state and compare dataset releases;</li>
+<li>large requests complete through observable asynchronous jobs;</li>
+<li>API compatibility and deprecation behaviour is tested;</li>
+<li>anomalies and conflicting submissions can be reviewed and resolved with audit evidence;</li>
+<li>accepted corrections reach every affected downstream result and release;</li>
+<li>the deployed product is feature-complete for the Advanced tier and ready for final
+  hardening.</li>
+</ul>
+<h3 id="final-submission-harden-evidence-and-release">Final Submission — harden, evidence and release<a class="headerlink" href="#final-submission-harden-evidence-and-release" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> release a stable and reproducible product without introducing major new feature
+scope.</p>
+<p>Planned outcomes include:</p>
+<ul>
+<li>resolve all release-blocking defects;</li>
+<li>complete production database migrations, backups and restore verification;</li>
+<li>verify production secrets, configuration and all deployed components;</li>
+<li>run final performance, security, accessibility, recovery and cross-browser audits;</li>
+<li>complete the requirements traceability matrix and limitations register;</li>
+<li>complete database, third-party code, licence, testing and AI-use documentation;</li>
+<li>prepare the reproducible demonstration dataset;</li>
+<li>rehearse the complete product demonstration;</li>
+<li>prepare the group report, individual reports, peer review and group presentation;</li>
+<li>reconcile the final implementation with architecture diagrams, ADRs and API documentation;</li>
+<li>publish release notes;</li>
+<li>create the final annotated version tag;</li>
+<li>assemble and verify the final submission package.</li>
+</ul>
+<p><strong>Exit evidence:</strong></p>
+<ul>
+<li>all required automated and manual checks pass;</li>
+<li>the frontend, API, database, documentation and supporting services are deployed and
+  verifiable;</li>
+<li>every claimed requirement links to implementation, testing and documentation evidence;</li>
+<li>known limitations are recorded honestly;</li>
+<li>backup, restore and rollback procedures have been exercised;</li>
+<li>the final demonstration is reproducible;</li>
+<li>the exact submitted commit is tagged and documented.</li>
+</ul>
+<p>The roadmap is outcome-based rather than a promise that every stretch component will be
+delivered. Work moves only after its dependencies and acceptance tests are clear. Incomplete
+work returns to the backlog under the project's documented methodology.</p>
+<h3 id="sprint-1-settle-and-prove-the-foundation">Sprint 1 — settle and prove the foundation<a class="headerlink" href="#sprint-1-settle-and-prove-the-foundation" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> establish an agreed, deployable architecture and remove decisions that would force
+later rework.</p>
+<ul>
+<li>Complete and prioritise backlog #36; confirm issue owners and milestone scope.</li>
+<li>Confirm the T20 professional-competition boundary, event vocabulary, and required statistics
+  in #37, including the super-over convention.</li>
+<li>Review this architecture as a group and record provider, role, submission-review, external
+  API, file-storage, and statistic decisions that require ADRs.</li>
+<li>Retain separate React and Express applications, shared versioned contracts, health checks,
+  Supabase token verification, synchronized profiles, and backend authorization policies.</li>
+<li>Convert the approved event model into reviewed PostgreSQL migrations and reproducible seed
+  data; measure storage and representative query performance against real Cricsheet volume.</li>
+<li>Define the minimum role and scoped-grant schema, OpenAPI conventions, validation error
+  contract, submission state machine, and Definition of Done tests.</li>
+<li>Repair and verify frontend/backend deployment workflows, add strict documentation builds,
+  and smoke-test independent development deployments.</li>
+<li>Establish backup/restore ownership, secret rotation expectations, logging conventions, and
+  an initial risk register.</li>
+</ul>
+<p><strong>Exit evidence:</strong> approved architecture and ADRs, green CI, independent deployed health and
+current-profile verification, migrated development database, measured storage result, and sprint
+review records.</p>
+<h3 id="sprint-2-deliver-the-basic-event-to-statistic-path">Sprint 2 — deliver the Basic event-to-statistic path<a class="headerlink" href="#sprint-2-deliver-the-basic-event-to-statistic-path" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> provide one complete, usable vertical slice from approved submission to trusted
+statistics.</p>
+<ul>
+<li>Build administrative submitter approval and audited grant management on the implemented account
+  mapping, competition-grant foundation, and backend policy middleware.</li>
+<li>Implement competition, team, player, fixture, innings, delivery, wicket, correction, and
+  submission repositories from the approved schema.</li>
+<li>Publish versioned contracts and OpenAPI documentation for reference data, submission,
+  validation status, events, and required statistics.</li>
+<li>Build manual/JSON upload, layered validation, idempotency, transactional acceptance, and
+  actionable error responses.</li>
+<li>Implement and independently verify the first required fixture/player statistics against
+  prepared reference results and cricket edge cases.</li>
+<li>Build accessible frontend journeys for sign-in, browse/search, authorised submission,
+  validation feedback, and statistic display.</li>
+<li>Integrate the selected external provider through an adapter with test fixtures and failure
+  handling; retain Cricsheet provenance for historical imports.</li>
+<li>Add integration and end-to-end tests for 401, 403, invalid, duplicate, correction, accepted,
+  and recalculated paths.</li>
+</ul>
+<p><strong>Exit evidence:</strong> a deployed submitter can submit a scoped fixture, invalid data is
+rejected safely, accepted events produce verified statistics, and public users can retrieve
+the result through frontend and API.</p>
+<h3 id="sprint-3-make-the-system-operational-at-real-data-scale">Sprint 3 — make the system operational at real-data scale<a class="headerlink" href="#sprint-3-make-the-system-operational-at-real-data-scale" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> add Intermediate capabilities where Basic measurements show they are needed.</p>
+<ul>
+<li>Introduce object storage if the storage benchmark supports it; implement retention and
+  immutable dataset-release manifests.</li>
+<li>Add a durable queue/outbox and idempotent workers for Cricsheet batch ingestion, large
+  recomputation, external synchronisation, and export generation.</li>
+<li>Add job status, bounded retries, cancellation where safe, dead-letter handling, and operator
+  diagnostics.</li>
+<li>Implement reviewer queues, accept/reject evidence, correction history, and scoped audit
+  views.</li>
+<li>Add season/career aggregations, filtered dataset exports, API consumer credentials, quotas,
+  and rate limiting.</li>
+<li>Profile database and API behaviour; add indexes first and version-keyed caching only for
+  demonstrated hot paths.</li>
+<li>Add structured logs, metrics, error reporting, health/readiness checks, backup/restore
+  rehearsal, security tests, and performance tests against representative data volume.</li>
+<li>Complete accessibility, responsive-layout, and external-service degradation testing.</li>
+</ul>
+<p><strong>Exit evidence:</strong> representative bulk import/export completes reliably outside request
+timeouts, retry tests prove idempotency, recovery is rehearsed, and agreed latency and
+accessibility targets pass.</p>
+<h3 id="final-submission-harden-evidence-and-add-controlled-stretch-value">Final Submission — harden, evidence, and add controlled stretch value<a class="headerlink" href="#final-submission-harden-evidence-and-add-controlled-stretch-value" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> release a stable, demonstrable product and complete assessment evidence before
+attempting Advanced stretch work.</p>
+<ul>
+<li>Resolve all high-severity defects and security/dependency findings; freeze schemas and
+  public API versions with a documented compatibility policy.</li>
+<li>Validate production configuration, CORS and OAuth redirects, secret separation, migration
+  and rollback procedures, monitoring, backups, quotas, licences, and cost limits.</li>
+<li>Run the complete automated suite plus user acceptance, accessibility, performance, recovery,
+  and cross-browser tests; retain genuine evidence and known limitations.</li>
+<li>Complete public API, dataset, architecture, setup, deployment, security, testing,
+  methodology, contribution, and AI-use documentation.</li>
+<li>Reconcile implementation with diagrams and ADRs, conduct group review, resolve Pull Request
+  comments, and merge only through the approved workflow.</li>
+<li>If Basic and Intermediate exit criteria are already met, add one controlled Advanced slice:
+  either live-event ingestion with correction convergence or safe versioned custom statistics.
+  Do not make a stretch feature critical to the final demonstration.</li>
+</ul>
+<p><strong>Exit evidence:</strong> tagged reproducible release, deployed frontend/API/docs, verified dataset
+and API examples, complete test and stakeholder evidence, rollback/recovery proof, and no
+undocumented critical limitation.</p>
+<h2 id="12-risks-and-unresolved-decisions">12. Risks and unresolved decisions<a class="headerlink" href="#12-risks-and-unresolved-decisions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Risk or decision</th>
+<th>Impact</th>
+<th>Required resolution or mitigation</th>
+<th>Decision gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Supabase Auth compliance confirmation</td>
+<td>The repository and ADR-004 use Supabase Auth with Google OAuth, but the written lecturer approval currently recorded in the repository explicitly covers Supabase-hosted PostgreSQL and does not separately confirm Supabase Auth.</td>
+<td>Obtain written stakeholder or lecturer confirmation that Supabase Auth is acceptable for managed authentication. Continue using the provider-neutral application identity model and do not introduce Firebase alongside Supabase Auth.</td>
+<td>Before production authentication is enabled or account and role functionality is considered complete.</td>
+</tr>
+<tr>
+<td>Required statistic catalogue (#37)</td>
+<td>Derivation contracts, provenance, indexes, and acceptance tests cannot be finalised.</td>
+<td>Approve names, formulas, scopes, rounding, tie/null rules, super-over handling, and reference examples.</td>
+<td>Sprint 1; before Sprint 2 derivation.</td>
+</tr>
+<tr>
+<td>Competition scope and storage volume</td>
+<td>The measured corpus contains 3,193,996 deliveries; the selected database free plan may be too small and the Frankfurt database adds about 150 ms network latency from Johannesburg.</td>
+<td>Benchmark the real schema/indexes and representative queries; then pay, reduce scope, move provider/region, or separate large objects. Record an ADR.</td>
+<td>Before bulk ingestion.</td>
+</tr>
+<tr>
+<td>Role administration and review policy</td>
+<td>The deny-by-default role and competition checks are implemented, but over-broad grant management or self-promotion could still corrupt trusted data.</td>
+<td>Define approver separation, grant reason/audit fields, expiry/revocation, and auto-accept versus review rules; preserve the tested deny-by-default route policies.</td>
+<td>Before enabling submissions.</td>
+</tr>
+<tr>
+<td>Object storage and retention</td>
+<td>Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.</td>
+<td>Select a provider after measurement; define size/type limits, malware approach, signed links, retention, licence, and deletion behaviour.</td>
+<td>Before large/public uploads or exports.</td>
+</tr>
+<tr>
+<td>Runtime external API is not selected</td>
+<td>The mandatory integration may have inadequate T20 coverage, quotas, licence, reliability, or correction semantics.</td>
+<td>Compare candidates using a thin adapter proof; preserve fixtures for offline tests and ensure graceful degradation.</td>
+<td>Sprint 1 selection; Sprint 2 implementation.</td>
+</tr>
+<tr>
+<td>Deployment workflows do not match monorepo paths</td>
+<td>Current filters and package/workspace references use <code>frontend</code>/<code>backend</code> rather than <code>apps/frontend</code>/<code>apps/backend</code>, so main changes may not deploy correctly.</td>
+<td>Correct the workflows and prove them with deployment plus smoke-test evidence.</td>
+<td>Sprint 1.</td>
+</tr>
+<tr>
+<td>Database migration and recovery process</td>
+<td>Automatic or incompatible changes can break a running API; the current free database has no retained backups.</td>
+<td>Use reviewed SQL, explicit forward migration, backward-compatible rollout, tested dump/restore, and recorded ownership.</td>
+<td>Before event data becomes authoritative.</td>
+</tr>
+<tr>
+<td>Event and statistic correctness</td>
+<td>Cricket edge cases can silently produce plausible but wrong aggregates.</td>
+<td>Preserve the approved identities/revisions, use corpus edge cases and independent golden results, property-test invariants, and make formula versions visible.</td>
+<td>Every event/statistic Pull Request.</td>
+</tr>
+<tr>
+<td>Queue/cache consistency</td>
+<td>A lost job or stale cache can publish statistics from superseded events.</td>
+<td>Use atomic outbox/job creation, idempotent workers, data/definition-version cache keys, invalidation tests, and reconciliation jobs. Avoid these components until needed.</td>
+<td>Before Intermediate rollout.</td>
+</tr>
+<tr>
+<td>Live feed ordering, correction, licence, and cost</td>
+<td>Late or duplicate events can cause divergence; provider terms may prevent redistribution.</td>
+<td>Select a licensed provider, persist provider sequence/idempotency keys, pass live data through normal validation, and test replay/reconciliation.</td>
+<td>Optional Advanced gate.</td>
+</tr>
+<tr>
+<td>Custom-statistic safety</td>
+<td>Arbitrary expressions can cause code execution, data leakage, or unbounded workloads.</td>
+<td>Use a restricted declarative model, allow-listed operations, validation, cost/time limits, review/versioning, and isolated execution. Never evaluate arbitrary JavaScript or SQL.</td>
+<td>Optional Advanced gate.</td>
+</tr>
+<tr>
+<td>Provider and secret availability</td>
+<td>Auth, database, storage, or external-provider outage can affect multiple features; leaked credentials expand impact.</td>
+<td>Separate least-privilege credentials by environment, rotate and redact them, monitor providers, apply timeouts/circuit breakers, and document degraded modes.</td>
+<td>Before production.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="13-architecture-verification-checklist">13. Architecture verification checklist<a class="headerlink" href="#13-architecture-verification-checklist" title="Permanent link">&para;</a></h2>
+<p>The architecture is implemented—not merely documented—when the group can provide evidence
+that:</p>
+<ul>
+<li>frontend and backend build and deploy separately and exchange application data only through
+  the handwritten API;</li>
+<li>unauthenticated, unapproved, expired-grant, and out-of-scope submissions are denied;</li>
+<li>invalid and duplicate events produce stable actionable outcomes without partial writes;</li>
+<li>an accepted event and its correction produce the independently expected statistics while
+  retaining both revisions and derivation provenance;</li>
+<li>file and external-source metadata resolve back to every imported event and exported release;</li>
+<li>secrets are absent from source and logs, and CORS/OAuth redirect configuration is
+  environment-specific;</li>
+<li>CI, migration, deployment, smoke test, rollback, backup, and restore procedures have been
+  exercised; and</li>
+<li>the documentation, diagrams, API contracts, schema, deployed behaviour, and known
+  limitations agree at Final Submission.</li>
+</ul>
+<h2 id="related-documentation">Related documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../overview/">Architecture overview</a></li>
+<li><a href="../repository-structure/">Repository structure</a></li>
+<li><a href="../../api/overview/">API overview</a></li>
+<li><a href="../../database/schema/">Approved event model</a></li>
+<li><a href="../../security/authentication/">Authentication foundation</a></li>
+<li><a href="../../deployment/overview/">Deployment overview</a></li>
+<li><a href="../../development/testing/">Testing strategy</a></li>
+<li><a href="../../project_methodology/">Project methodology</a></li>
+<li><a href="../../data/cricsheet/">Cricsheet T20 data</a></li>
+</ul>
+<h2 id="ai-declaration">AI Declaration<a class="headerlink" href="#ai-declaration" title="Permanent link">&para;</a></h2>
+<p>The preceding document was planned, generated, and reviewed with the assistance of
+Codex[GPT-5]. The architecture was reconciled against the repository's implemented code,
+accepted decision records, workflows, and approved event-model documentation; it still
+requires the group review and Pull Request required by issue #38.</p>
+<p>The roadmap and authentication terminology were later reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Thinking]. The issue #44 implementation status was reconciled with the
+repository and updated with the assistance of Codex[GPT-5.6 Sol].</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -28,6 +28,11 @@ tags:
   - name: Public Read
     description: Anonymous sport-reference, fixture, accepted-event and statistic reads.
 
+  - name: Weather
+    description: >-
+      Contextual weather lookup for a location and date, backed by the
+      Open-Meteo external API. See ADR-008 for the integration decision.
+
   - name: Submissions
     description: Approved-submitter event-submission operations.
 
@@ -628,6 +633,49 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/weather:
+    get:
+      tags:
+        - Weather
+      summary: Get weather for a location and date
+      description: |
+        Retrieves observed daily weather (temperature range, precipitation and
+        maximum wind speed) for a given latitude, longitude and date from the
+        Open-Meteo external API. Intended to provide contextual weather for a
+        fixture; the caller currently supplies coordinates directly rather
+        than a fixture identifier.
+      operationId: getWeather
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WeatherLatitude'
+        - $ref: '#/components/parameters/WeatherLongitude'
+        - $ref: '#/components/parameters/WeatherDate'
+      responses:
+        '200':
+          description: Observed daily weather for the requested location and date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeatherResponse'
+              example:
+                data:
+                  date: '2026-08-19'
+                  latitude: -26.2041
+                  longitude: 28.0473
+                  temperatureMax: 23.4
+                  temperatureMin: 10.2
+                  precipitationSum: 0
+                  windSpeedMax: 18.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
   /api/v1/competitors:
     get:
       tags:
@@ -894,6 +942,35 @@ components:
       schema:
         $ref: '#/components/schemas/ApiIdentifier'
 
+    WeatherLatitude:
+      name: latitude
+      in: query
+      required: true
+      description: Latitude in decimal degrees, between -90 and 90.
+      schema:
+        type: number
+        minimum: -90
+        maximum: 90
+
+    WeatherLongitude:
+      name: longitude
+      in: query
+      required: true
+      description: Longitude in decimal degrees, between -180 and 180.
+      schema:
+        type: number
+        minimum: -180
+        maximum: 180
+
+    WeatherDate:
+      name: date
+      in: query
+      required: true
+      description: Date in YYYY-MM-DD format.
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+
     StatisticId:
       name: statisticId
       in: path
@@ -952,6 +1029,27 @@ components:
 
     NotFound:
       description: The requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    UpstreamError:
+      description: The Open-Meteo external API returned an error response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    UpstreamTimeout:
+      description: The Open-Meteo external API did not respond within the configured timeout.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    ServiceUnavailable:
+      description: An unclassified failure occurred while contacting the external weather provider.
       content:
         application/json:
           schema:
@@ -1265,6 +1363,59 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ApiErrorDetail'
+
+    WeatherData:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - latitude
+        - longitude
+        - temperatureMax
+        - temperatureMin
+        - precipitationSum
+        - windSpeedMax
+      properties:
+        date:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        temperatureMax:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Maximum daily temperature in degrees Celsius.
+        temperatureMin:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Minimum daily temperature in degrees Celsius.
+        precipitationSum:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Total daily precipitation in millimetres.
+        windSpeedMax:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Maximum daily wind speed in km/h.
+
+    WeatherResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/WeatherData'
 
     PaginationMetadata:
       type: object
