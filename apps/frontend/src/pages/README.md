@@ -22,8 +22,12 @@ These pages call only the handwritten public API through `src/api/public-read.ts
 read Supabase data, attach identity credentials, or require an authenticated session.
 
 Collection pages preserve the API-supported filters, page size, and cursor in the URL query
-string. Every route provides explicit loading and error states; collections also provide an empty
-state. Related public records are linked where their identifiers are present in the API response.
+string. Competition, season, fixture, team, and player filters share a readable-name combobox with
+fuzzy-ranked suggestions and direct dropdown selection. Stable relationship identifiers may remain
+in routed query values and API requests, but fields, options, active-filter summaries, and
+validation feedback display readable names only. Parent changes clear invalid dependent selections.
+Every route provides explicit loading and error states; collections also provide an empty state.
+Related public records are linked where their identifiers are present in the API response.
 Fixture-statistics pages additionally identify complete or partial data in text, show API warnings,
 and use semantic lists and definition lists so metric groups remain readable at narrow widths.
 
@@ -44,3 +48,5 @@ role and fixture scope for every submission.
 
 The public browsing, statistics and authentication route documentation was updated with the
 assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
+The readable public collection filter behavior was documented with the assistance of
+Codex[GPT-5.6 Sol].

@@ -9,6 +9,7 @@ import { useCallback, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../api/public-read';
 import { BrowseCollection, type FilterField } from '../features/browse/BrowseCollection';
+import type { NameComboboxOption } from '../features/browse/NameCombobox';
 import {
   DetailError,
   DetailLayout,
@@ -19,33 +20,223 @@ import {
 } from '../features/browse/RecordDetail';
 import { usePublicData } from '../features/browse/usePublicData';
 
+function optionSearch(filters?: URLSearchParams): string {
+  const params = new URLSearchParams(filters);
+  params.set('limit', '100');
+  return `?${params.toString()}`;
+}
+
+async function loadCompetitionOptions(
+  _filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const response = await publicReadApi.listCompetitions(optionSearch(), signal);
+  return response.data.map((competition) => ({
+    label: competition.name,
+    value: competition.competitionId,
+  }));
+}
+
+async function loadCompetitionNameOptions(
+  filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const options = await loadCompetitionOptions(filters, signal);
+  return options.map((option) => ({ ...option, value: option.label }));
+}
+
+async function loadSeasonOptions(
+  filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const response = await publicReadApi.listSeasons(optionSearch(filters), signal);
+  return response.data.map((season) => ({
+    description: `Season in ${season.competitionName}`,
+    keywords: [season.label, season.competitionName],
+    label: `${season.competitionName} — ${season.label}`,
+    value: season.seasonId,
+  }));
+}
+
+async function loadFixtureOptions(
+  filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const response = await publicReadApi.listFixtures(optionSearch(filters), signal);
+  return response.data.map((fixture) => {
+    const teamNames = fixture.competitors.map(({ name }) => name);
+    const title = teamNames.length > 0 ? teamNames.join(' vs ') : 'Fixture teams unavailable';
+    const context = [
+      formatDate(fixture.startDate),
+      fixture.competitionName,
+      fixture.seasonLabel,
+    ].filter((value): value is string => Boolean(value));
+
+    return {
+      description: context.join(' · '),
+      keywords: [...teamNames, ...context],
+      label: title,
+      value: fixture.fixtureId,
+    };
+  });
+}
+
+async function loadTeamOptions(
+  filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const response = await publicReadApi.listCompetitors(optionSearch(filters), signal);
+  return response.data.map((team) => ({
+    label: team.name,
+    value: team.competitorId,
+  }));
+}
+
+async function loadTeamNameOptions(
+  filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const options = await loadTeamOptions(filters, signal);
+  return options.map((option) => ({ ...option, value: option.label }));
+}
+
+async function loadPlayerNameOptions(
+  filters: URLSearchParams,
+  signal: AbortSignal,
+): Promise<NameComboboxOption[]> {
+  const response = await publicReadApi.listParticipants(optionSearch(filters), signal);
+  return response.data.map((player) => ({
+    label: player.displayName,
+    value: player.displayName,
+  }));
+}
+
 const competitionFilters: FilterField[] = [
-  { label: 'Competition name', name: 'name', placeholder: 'Search by name', type: 'search' },
+  {
+    entityName: 'competition',
+    kind: 'combobox',
+    label: 'Competition name',
+    loadOptions: loadCompetitionNameOptions,
+    name: 'name',
+    placeholder: 'Type a competition name',
+    routeValue: 'name',
+  },
 ];
 
 const seasonFilters: FilterField[] = [
-  { label: 'Competition ID', name: 'competitionId', placeholder: 'Competition ID' },
+  {
+    entityName: 'competition',
+    kind: 'combobox',
+    label: 'Competition',
+    loadOptions: loadCompetitionOptions,
+    name: 'competitionId',
+    placeholder: 'Type a competition name',
+    routeValue: 'reference',
+  },
 ];
 
 const fixtureFilters: FilterField[] = [
-  { label: 'Competition ID', name: 'competitionId', placeholder: 'Competition ID' },
-  { label: 'Season ID', name: 'seasonId', placeholder: 'Season ID' },
-  { label: 'Competitor ID', name: 'competitorId', placeholder: 'Competitor ID' },
+  {
+    clears: ['seasonId', 'competitorId'],
+    entityName: 'competition',
+    kind: 'combobox',
+    label: 'Competition',
+    loadOptions: loadCompetitionOptions,
+    name: 'competitionId',
+    placeholder: 'Type a competition name',
+    routeValue: 'reference',
+  },
+  {
+    clears: ['competitorId'],
+    dependsOn: ['competitionId'],
+    entityName: 'season',
+    kind: 'combobox',
+    label: 'Season',
+    loadOptions: loadSeasonOptions,
+    name: 'seasonId',
+    placeholder: 'Type a season or competition name',
+    routeValue: 'reference',
+  },
+  {
+    dependsOn: ['competitionId', 'seasonId'],
+    entityName: 'team',
+    kind: 'combobox',
+    label: 'Team',
+    loadOptions: loadTeamOptions,
+    name: 'competitorId',
+    placeholder: 'Type a team name',
+    routeValue: 'reference',
+  },
   { label: 'Gender', name: 'gender', placeholder: 'Gender', type: 'search' },
   { label: 'Starting on or after', name: 'startDateFrom', type: 'date' },
   { label: 'Starting on or before', name: 'startDateTo', type: 'date' },
 ];
 
 const competitorFilters: FilterField[] = [
-  { label: 'Competition ID', name: 'competitionId', placeholder: 'Competition ID' },
-  { label: 'Season ID', name: 'seasonId', placeholder: 'Season ID' },
-  { label: 'Team name', name: 'name', placeholder: 'Search by team name', type: 'search' },
+  {
+    clears: ['seasonId', 'name'],
+    entityName: 'competition',
+    kind: 'combobox',
+    label: 'Competition',
+    loadOptions: loadCompetitionOptions,
+    name: 'competitionId',
+    placeholder: 'Type a competition name',
+    routeValue: 'reference',
+  },
+  {
+    clears: ['name'],
+    dependsOn: ['competitionId'],
+    entityName: 'season',
+    kind: 'combobox',
+    label: 'Season',
+    loadOptions: loadSeasonOptions,
+    name: 'seasonId',
+    placeholder: 'Type a season or competition name',
+    routeValue: 'reference',
+  },
+  {
+    dependsOn: ['competitionId', 'seasonId'],
+    entityName: 'team',
+    kind: 'combobox',
+    label: 'Team name',
+    loadOptions: loadTeamNameOptions,
+    name: 'name',
+    placeholder: 'Type a team name',
+    routeValue: 'name',
+  },
 ];
 
 const participantFilters: FilterField[] = [
-  { label: 'Fixture ID', name: 'fixtureId', placeholder: 'Fixture ID' },
-  { label: 'Competitor ID', name: 'competitorId', placeholder: 'Competitor ID' },
-  { label: 'Player name', name: 'name', placeholder: 'Search by player name', type: 'search' },
+  {
+    clears: ['competitorId', 'name'],
+    entityName: 'fixture',
+    kind: 'combobox',
+    label: 'Fixture',
+    loadOptions: loadFixtureOptions,
+    name: 'fixtureId',
+    placeholder: 'Type team, competition or season names',
+    routeValue: 'reference',
+  },
+  {
+    clears: ['name'],
+    entityName: 'team',
+    kind: 'combobox',
+    label: 'Team',
+    loadOptions: loadTeamOptions,
+    name: 'competitorId',
+    placeholder: 'Type a team name',
+    routeValue: 'reference',
+  },
+  {
+    dependsOn: ['fixtureId', 'competitorId'],
+    entityName: 'player',
+    kind: 'combobox',
+    label: 'Player name',
+    loadOptions: loadPlayerNameOptions,
+    name: 'name',
+    placeholder: 'Type a player name',
+    routeValue: 'name',
+  },
 ];
 
 function formatDate(date: string): string {

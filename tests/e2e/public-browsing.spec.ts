@@ -4,8 +4,14 @@ import { expect, test } from '@playwright/test';
 const fixture = {
   fixtureId: 'fixture-1',
   competitionId: 'competition-1',
+  competitionName: 'Premier Cricket League',
   seasonId: 'season-1',
   season: '2026',
+  seasonLabel: '2026',
+  competitors: [
+    { competitorId: 'competitor-1', name: 'Wanderers' },
+    { competitorId: 'competitor-2', name: 'Strikers' },
+  ],
   matchType: 'T20',
   teamType: 'international',
   gender: 'female',
@@ -14,6 +20,116 @@ const fixture = {
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
+
+test('readable filter combobox supports routed selection and keyboard use', async ({ page }) => {
+  const requestedUrls: string[] = [];
+
+  await page.route('**/api/v1/**', async (route) => {
+    const requestUrl = route.request().url();
+    const url = new URL(requestUrl);
+    requestedUrls.push(requestUrl);
+
+    if (url.pathname.endsWith('/competitions')) {
+      await route.fulfill({
+        json: {
+          data: [
+            { competitionId: 'competition-2', name: 'Regional Cup' },
+            { competitionId: 'competition-1', name: 'Premier Cricket League' },
+          ],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/seasons')) {
+      await route.fulfill({
+        json: {
+          data: [
+            {
+              competitionId: 'competition-1',
+              competitionName: 'Premier Cricket League',
+              label: '2026',
+              seasonId: 'season-1',
+            },
+          ],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/competitors')) {
+      await route.fulfill({
+        json: {
+          data: [{ competitorId: 'competitor-1', name: 'Wanderers' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures')) {
+      await route.fulfill({ json: { data: [], pagination: { nextCursor: null } } });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: 'NOT_FOUND', message: 'Not found.' } },
+    });
+  });
+
+  await page.goto('/fixtures');
+  const competition = page.getByRole('combobox', { name: 'Competition' });
+  await competition.fill('prem');
+  await expect(page.getByRole('option', { name: 'Premier Cricket League' })).toBeVisible();
+  await competition.press('ArrowDown');
+  await competition.press('Enter');
+  await expect(competition).toHaveValue('Premier Cricket League');
+
+  await page.getByRole('button', { name: 'Show season options' }).click();
+  await expect(page.getByRole('option', { name: /Premier Cricket League — 2026/ })).toBeVisible();
+  await page.getByRole('option', { name: /Premier Cricket League — 2026/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Season' })).toHaveValue(
+    'Premier Cricket League — 2026',
+  );
+  expect(
+    requestedUrls.some((url) => url.includes('/seasons?competitionId=competition-1&limit=100')),
+  ).toBe(true);
+
+  await page.getByRole('button', { name: 'Clear competition' }).click();
+  await expect(competition).toHaveValue('');
+  await expect(page.getByRole('combobox', { name: 'Season' })).toHaveValue('');
+
+  await page.getByLabel('Switch to Night Match theme').check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+  await page.getByRole('button', { name: 'Show competition options' }).click();
+  await page.getByRole('option', { name: 'Premier Cricket League' }).click();
+  const team = page.getByRole('combobox', { name: 'Team' });
+  await team.focus();
+  await team.press('ArrowDown');
+  await expect(team).toHaveAttribute('aria-expanded', 'true');
+  await team.press('Escape');
+  await expect(team).toHaveAttribute('aria-expanded', 'false');
+
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page).toHaveURL(/competitionId=competition-1/);
+  await expect(page.locator('.active-filter-summary')).toContainText(
+    'Competition: Premier Cricket League',
+  );
+  await expect(page.locator('.active-filter-summary')).not.toContainText('competition-1');
+  expect(
+    requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=50')),
+  ).toBe(true);
+
+  const accessibilityResults = await new AxeBuilder({ page }).analyze();
+  expect(
+    accessibilityResults.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    ),
+  ).toEqual([]);
+});
 
 test('anonymous browsing preserves filters, pagination and keyboard navigation', async ({
   page,
