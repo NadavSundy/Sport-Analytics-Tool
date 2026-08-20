@@ -31,58 +31,112 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 - Access to the shared Supabase Auth project
 - Docker Desktop or a compatible Docker Compose runtime only for the explicit container-based PostgreSQL integration-test workflow
 
-## Initial setup
+> **Windows PowerShell:** Commands use portable `npm`/`npx` syntax. If PowerShell blocks
+> `npm.ps1` or `npx.ps1`, use `npm.cmd` or `npx.cmd` instead, for example
+> `npm.cmd run check`. Windows-specific file-copy commands are shown where needed.
+
+## Getting started
+
+This section is the complete quick-start path for a normal local checkout. For explanations,
+troubleshooting and clean-clone verification detail, use the canonical
+[Local Development Setup](docs/development/setup.md). If you are working on only one part of the
+monorepo, use the [component guides](#component-guides) instead of repeating the whole setup.
+
+### 1. Install dependencies
+
+From the repository root:
 
 ```bash
 npm ci
-cp apps/backend/.env.example apps/backend/.env
-cp apps/frontend/.env.example apps/frontend/.env
-npm run check
 ```
 
-Run the applications in separate terminals:
+### 2. Create local environment files
+
+Real `.env` files are ignored by Git and must never be committed.
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item apps/backend/.env.example apps/backend/.env
+Copy-Item apps/frontend/.env.example apps/frontend/.env
+```
+
+On macOS, Linux or Git Bash:
+
+```bash
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
+```
+
+Populate the required values using the team's approved development configuration and the
+[Environment Variables](docs/environment.md) guide. Do not place database passwords, elevated
+Supabase keys or other server credentials in the frontend environment file.
+
+### 3. Run the applications
+
+Start the backend and frontend in separate terminals from the repository root:
 
 ```bash
 npm run dev:backend
+```
+
+```bash
 npm run dev:frontend
 ```
 
-The normal database-independent test suite is:
+Once both are running, verify the local services:
+
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend health: [http://localhost:3000/api/v1/health](http://localhost:3000/api/v1/health)
+- Current-user endpoint: [http://localhost:3000/api/v1/auth/me](http://localhost:3000/api/v1/auth/me)
+
+The root development dispatcher also accepts the application name, so `npm run dev frontend` and
+`npm run dev backend` are equivalent. Additional arguments are forwarded to the selected workspace
+after `--`, for example `npm run dev frontend -- --host 0.0.0.0`.
+
+### 4. Verify the repository
+
+Run the normal database-independent quality gate:
+
+```bash
+npm run check
+```
+
+The normal database-independent test suite can also be run directly:
 
 ```bash
 npm run test
 ```
 
-Run PostgreSQL integration coverage explicitly with:
+PostgreSQL integration tests are explicit rather than hidden inside the normal gate. The standard
+workflow provisions a disposable local PostgreSQL 16 runtime when an isolated `DATABASE_URL_TEST`
+is not supplied:
 
 ```bash
 npm run test:database
 ```
 
-When no isolated `DATABASE_URL_TEST` is configured, that command provisions a disposable local
-PostgreSQL 16 cluster automatically. An explicit Docker Compose alternative is available:
+The repository-managed Docker Compose alternative is:
 
 ```bash
 npm run test:database:local
 ```
 
-On Windows PowerShell:
+Docker is not required for normal application development, `npm run test`, or `npm run check`.
+See [Testing Strategy](docs/development/testing.md) for database-test safety rules and all supported
+execution modes.
 
-```powershell
-npm.cmd run test:database:local
+### 5. Run the documentation site when needed
+
+Documentation development is optional for normal application startup. To preview the public docs:
+
+```bash
+python -m pip install -r requirements-docs.txt
+python -m mkdocs serve
 ```
 
-The Docker command provisions an isolated PostgreSQL 16 test database, applies migrations and
-deterministic seed data, and runs the same database integration suite.
-
-Docker is not required for normal application development, `npm run test`, or `npm run check`.
-See [Testing Strategy](docs/development/testing.md) for the complete database-test workflow,
-safety rules, and explicit Docker and configured-database alternatives.
-
-The root development dispatcher also accepts the application name, so
-`npm run dev frontend` and `npm run dev backend` are equivalent. Additional
-arguments are forwarded to the selected workspace after `--`, for example
-`npm run dev frontend -- --host 0.0.0.0`.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Before documentation changes are submitted,
+validate them with `python -m mkdocs build --strict`.
 
 ## Deployment
 
@@ -128,12 +182,6 @@ See [Azure frontend deployment](docs/deployment/azure-fronted.md) and
 [Azure backend deployment](docs/deployment/azure-backend.md) for workflow triggers, required Gitea
 secrets, artifact contents and failure behaviour.
 
-Default local URLs:
-
-- Frontend: `http://localhost:5173`
-- Backend health endpoint: `http://localhost:3000/api/v1/health`
-- Current user profile endpoint: `http://localhost:3000/api/v1/auth/me`
-
 ## Documentation
 
 Project documentation is stored in the [`docs`](docs/) directory and is configured as a public MkDocs site.
@@ -143,16 +191,25 @@ python -m pip install -r requirements-docs.txt
 mkdocs serve
 ```
 
-Important starting documents:
+### Component guides
+
+- [Frontend application](apps/frontend/README.md)
+- [Backend API](apps/backend/README.md)
+- [Database](database/README.md)
+- [Shared contracts](packages/contracts/README.md)
+- [Documentation site](docs/README.md)
+- [Repository testing](tests/README.md)
+- [Infrastructure and deployment](infra/README.md)
+- [Repository scripts](scripts/README.md)
+- [Project evidence](evidence/README.md)
+
+Important detailed documentation:
 
 - [Git Methodology](docs/git-methodology.md)
 - [Project Methodology](docs/project_methodology.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Local Development Setup](docs/development/setup.md)
 - [Technology Stack](docs/development/technology-stack.md)
-- [Frontend README](apps/frontend/README.md)
-- [Backend README](apps/backend/README.md)
-- [Shared Contracts README](packages/contracts/README.md)
 - [Environment Variables](docs/environment.md)
 - [Testing Strategy](docs/development/testing.md)
 - [Authentication Foundation](docs/security/authentication.md)
@@ -198,3 +255,5 @@ This repository makes use of AI-assisted code review using tools recorded in the
 
 See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level records. The earlier
 shared register remains available while its entries are migrated.
+
+The preceding README was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

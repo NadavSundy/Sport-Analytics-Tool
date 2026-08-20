@@ -2,6 +2,29 @@
 
 This is the canonical onboarding guide for a clean checkout of the Sport Analytics Tool.
 
+## Component getting-started audit
+
+Each independently developed or operated part of the monorepo has a repository entry point:
+
+## Component getting-started audit
+
+Each independently developed or operated part of the monorepo has a repository entry point:
+
+| Component / location  | Getting-started README                                                                                                                    | Responsibility                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Repository root       | [README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/README.md)                                       | Overall project setup, architecture boundaries and links to specialist guides.  |
+| `apps/frontend/`      | [apps/frontend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/frontend/README.md)           | React/Vite application setup, environment, run, test and build guidance.        |
+| `apps/backend/`       | [apps/backend/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/apps/backend/README.md)             | Express API setup, environment, database access, run, test and build guidance.  |
+| `database/`           | [database/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/README.md)                     | PostgreSQL migrations, development connection, seeding and database testing.    |
+| `packages/contracts/` | [packages/contracts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/packages/contracts/README.md) | Shared Zod/TypeScript contract build, test and usage boundaries.                |
+| `docs/`               | [docs/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/docs/README.md)                             | MkDocs prerequisites, local serve/build and deployment guidance.                |
+| `tests/`              | [tests/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/tests/README.md)                           | Unit, API, database, E2E, accessibility, performance and coverage entry points. |
+| `infra/`              | [infra/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/infra/README.md)                           | Infrastructure/deployment boundaries and Azure-specific guidance.               |
+| `scripts/`            | [scripts/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/scripts/README.md)                       | Developer-facing repository scripts, prerequisites and safe usage.              |
+| `evidence/`           | [evidence/README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md)                     | Evidence artefact purpose, locations and integrity rules.                       |
+
+Each listed README is the component's getting-started entry point. Separate `GETTING_STARTED.md` files are intentionally not created because they would duplicate the same setup instructions.
+
 ## 1. Required software
 
 | Tool    | Project requirement                                      | Why it is needed                                                                            |
@@ -31,6 +54,10 @@ python --version
 
 On Windows, `py --version` may be used if `python` is not on `PATH`.
 
+> **Windows PowerShell:** Commands in this guide use portable `npm`/`npx` syntax. If PowerShell
+> attempts to run `npm.ps1` or `npx.ps1` and blocks it, use `npm.cmd` or `npx.cmd` instead.
+> For this repository's Docker database verification, use `npm.cmd run test:database:local`.
+
 ## 2. Clean clone and reproducible install
 
 Clone the repository and install exactly the dependency graph recorded in `package-lock.json`.
@@ -41,11 +68,12 @@ cd Sport-Analytics-Tool
 npm ci
 ```
 
-For Issue #12 independent verification, check out the Pull Request branch after cloning:
+When verifying an unmerged Pull Request from a clean clone, fetch the remote and switch to the
+branch named by that Pull Request before following the rest of this guide:
 
 ```bash
 git fetch origin
-git switch docs/12-validate-developer-onboarding
+git switch <pull-request-branch>
 ```
 
 Use `npm ci` rather than `npm install` for clean-clone verification. `npm ci` fails if the lock file and package manifests do not agree, which is useful evidence that the repository can be installed reproducibly.
@@ -236,12 +264,6 @@ From the repository root:
 
 ```bash
 npm run test:database:local
-```
-
-On Windows PowerShell, `npm.cmd` may be used explicitly:
-
-```powershell
-npm.cmd run test:database:local
 ```
 
 The command automatically:

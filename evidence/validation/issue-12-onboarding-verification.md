@@ -4,10 +4,17 @@ This record captures clean-clone verification of the developer onboarding guide.
 
 ## Guide under test
 
+- `README.md`
 - `docs/development/setup.md`
 - `apps/frontend/README.md`
 - `apps/backend/README.md`
+- `database/README.md`
 - `packages/contracts/README.md`
+- `docs/README.md`
+- `tests/README.md`
+- `infra/README.md`
+- `scripts/README.md`
+- `evidence/README.md`
 - `docs/environment.md`
 - `docs/development/technology-stack.md`
 
@@ -42,6 +49,9 @@ Python: Pending
 - [ ] Backend health endpoint responded
 - [ ] Frontend start command worked
 - [ ] Frontend loaded in the browser
+- [ ] Database migration/seeding/testing guidance was understandable
+- [ ] `npm run test:database:local` succeeded against the isolated Docker PostgreSQL database
+- [ ] Testing, infrastructure, scripts and evidence entry-point READMEs matched the repository
 - [ ] `npm run check` succeeded
 - [ ] Python virtual environment/documentation dependencies installed
 - [ ] `python -m mkdocs build --strict` succeeded
@@ -81,6 +91,9 @@ Python: Pending
 - [ ] Backend setup/run instructions worked
 - [ ] Frontend setup/run instructions worked
 - [ ] Shared-contract instructions worked
+- [ ] Database setup/migration/seeding/testing guidance was clear
+- [ ] `npm run test:database:local` worked against the isolated Docker PostgreSQL database
+- [ ] Testing, infrastructure, scripts and evidence entry points were clear
 - [ ] Repository checks worked
 - [ ] MkDocs local/strict-build instructions worked
 - [ ] Common-problem guidance was sufficient for any issue encountered

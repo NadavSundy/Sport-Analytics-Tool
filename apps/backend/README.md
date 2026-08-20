@@ -87,12 +87,12 @@ npm run dev:backend
 
 Default endpoints include:
 
-- `http://localhost:3000/api/v1/health`
-- `http://localhost:3000/api/v1/auth/me`
-- `DELETE http://localhost:3000/api/v1/account` (requires optional server-only Auth configuration)
-- `http://localhost:3000/api/v1/admin/users` (administrator only)
-- `http://localhost:3000/api/v1/fixtures/{fixtureId}/events` (public accepted events)
-- `http://localhost:3000/api/v1/participants/{participantId}/fixtures` (public player match history)
+- Health: [http://localhost:3000/api/v1/health](http://localhost:3000/api/v1/health)
+- Current user: [http://localhost:3000/api/v1/auth/me](http://localhost:3000/api/v1/auth/me)
+- Account deletion: `DELETE http://localhost:3000/api/v1/account` (requires optional server-only Auth configuration)
+- Administrator users: [http://localhost:3000/api/v1/admin/users](http://localhost:3000/api/v1/admin/users) (administrator only)
+- Fixture event route template: `/api/v1/fixtures/{fixtureId}/events` (public accepted events)
+- Participant fixture-history route template: `/api/v1/participants/{participantId}/fixtures` (public player match history)
 
 ## Administrator user management
 
