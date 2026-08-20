@@ -15,9 +15,13 @@ function event(
 ): FixtureStatisticsEventSource {
   return {
     battingCompetitorId: '10',
+    battingCompetitorName: 'Team Alpha',
     bowlingCompetitorId: '20',
+    bowlingCompetitorName: 'Team Beta',
     strikerId: '101',
+    strikerName: 'Player 101',
     bowlerId: '201',
+    bowlerName: 'Player 201',
     runsOffBat: 0,
     runsExtras: 0,
     runsTotal: 0,
@@ -94,9 +98,13 @@ const goldenEvents: FixtureStatisticsEventSource[] = [
     inningsOrdinal: 1,
     inningsSequence: 1,
     battingCompetitorId: '20',
+    battingCompetitorName: 'Team Beta',
     bowlingCompetitorId: '10',
+    bowlingCompetitorName: 'Team Alpha',
     strikerId: '201',
+    strikerName: 'Player 201',
     bowlerId: '101',
+    bowlerName: 'Player 101',
     runsOffBat: 6,
     runsTotal: 6,
   }),
@@ -109,7 +117,9 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
     missingFields: [],
     outcome: 'won',
     winnerCompetitorId: '20',
+    winnerCompetitorName: 'Team Beta',
     eliminatorCompetitorId: null,
+    eliminatorCompetitorName: null,
     outcomeByRuns: null,
     outcomeByWickets: 8,
     outcomeMethod: null,
@@ -117,6 +127,7 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
     innings: [
       {
         inningsId: '501',
+        battingCompetitorName: 'Team Alpha',
         ordinal: 0,
         battingCompetitorId: '10',
         penaltyPre: 5,
@@ -124,6 +135,7 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
       },
       {
         inningsId: '502',
+        battingCompetitorName: 'Team Beta',
         ordinal: 1,
         battingCompetitorId: '20',
         penaltyPre: null,
@@ -142,7 +154,9 @@ describe('fixture statistics golden fixture', () => {
     expect(result.outcome).toEqual({
       kind: 'won',
       winnerCompetitorId: '20',
+      winnerCompetitorName: 'Team Beta',
       eliminatorCompetitorId: null,
+      eliminatorCompetitorName: null,
       margin: { type: 'wickets', value: 8 },
       method: null,
       decidedByBowlOut: false,
@@ -153,6 +167,7 @@ describe('fixture statistics golden fixture', () => {
     );
     expect(firstInnings).toMatchObject({
       competitorId: '10',
+      competitorName: 'Team Alpha',
       sourceEventCount: 6,
       metrics: {
         deliveryRuns: 18,
@@ -166,6 +181,8 @@ describe('fixture statistics golden fixture', () => {
     );
     expect(firstBatter).toMatchObject({
       competitorId: '10',
+      participantName: 'Player 101',
+      competitorName: 'Team Alpha',
       batting: {
         runsScored: 10,
         ballsFaced: 2,
@@ -200,6 +217,8 @@ describe('fixture statistics golden fixture', () => {
     );
     expect(firstBowler).toMatchObject({
       competitorId: '20',
+      participantName: 'Player 201',
+      competitorName: 'Team Beta',
       bowling: {
         runsConceded: 16,
         legalBallsBowled: 4,
@@ -243,6 +262,13 @@ describe('fixture statistics golden fixture', () => {
       '5',
       '6',
     ]);
+
+    expect(firstInnings?.contributingEvents?.[0]).toMatchObject({
+      strikerParticipantId: '101',
+      strikerParticipantName: 'Player 101',
+      bowlerParticipantId: '201',
+      bowlerParticipantName: 'Player 201',
+    });
   });
 
   test('handles incomplete accepted data predictably', () => {

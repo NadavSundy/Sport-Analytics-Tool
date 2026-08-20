@@ -61,6 +61,10 @@ competitionId
 
 A season resource is derived from a competition and the season value recorded on its fixtures.
 
+Season resources include `competitionName` alongside `competitionId`, allowing consumers to present
+the associated competition without making a separate name-resolution request. The stable identifier
+remains available for routing and relationships.
+
 `seasonId` is a stable opaque identifier derived by the backend. Consumers must not decode or derive meaning from its representation.
 
 Deterministic ordering:
@@ -104,8 +108,20 @@ Example response:
     {
       "fixtureId": "481",
       "competitionId": "12",
+      "competitionName": "Example Competition",
       "seasonId": "season_...",
       "season": "2026",
+      "seasonLabel": "2026",
+      "competitors": [
+        {
+          "competitorId": "20",
+          "name": "Team One"
+        },
+        {
+          "competitorId": "21",
+          "name": "Team Two"
+        }
+      ],
       "matchType": "T20",
       "teamType": "international",
       "gender": "male",
@@ -120,6 +136,11 @@ Example response:
   }
 }
 ```
+
+`competitionName`, `seasonLabel` and the ordered `competitors` summaries provide the readable
+relationship context required to construct a fixture title such as `Team One vs Team Two`. Existing
+technical identifiers remain available for routing and machine consumers. `competitionName` is
+`null` when the fixture has no associated competition.
 
 Deterministic fixture ordering:
 
@@ -251,7 +272,9 @@ Example compact response:
     "outcome": {
       "kind": "won",
       "winnerCompetitorId": "20",
+      "winnerCompetitorName": "Team One",
       "eliminatorCompetitorId": null,
+      "eliminatorCompetitorName": null,
       "margin": {
         "type": "wickets",
         "value": 8
@@ -269,6 +292,7 @@ Example compact response:
         "inningsId": "900",
         "inningsOrdinal": 0,
         "competitorId": "20",
+        "competitorName": "Team One",
         "sourceEventCount": 120,
         "metrics": {
           "deliveryRuns": 154,
@@ -280,6 +304,14 @@ Example compact response:
   }
 }
 ```
+
+Team and player statistic resources expose readable names alongside their stable identifiers.
+Participant statistics include `participantName` and, where known, `competitorName`. Fixture outcomes
+include the readable winning-team name where applicable.
+
+When `includeContributors=true` is requested, each contributing event retains the striker and bowler
+participant identifiers and also includes `strikerParticipantName` and `bowlerParticipantName`.
+This allows user-facing calculation traces to identify the players without extra lookup requests.
 
 `status` is `partial` rather than failing the request when accepted source data is incomplete. The
 `warnings` array then gives stable warning codes, and rate metrics with a zero denominator are
@@ -315,6 +347,7 @@ competitorId ASC
 ```http
 GET /api/v1/participants
 GET /api/v1/participants/{participantId}
+GET /api/v1/participants/{participantId}/fixtures
 ```
 
 Supported filters:
@@ -329,11 +362,83 @@ Only public participant fields are returned.
 
 Internal source references, authentication data, submission records and audit information are not exposed.
 
+The fixture-history endpoint returns the fixtures in which the player was selected, newest first.
+Each entry includes the readable competition name, season, date, match type, both named teams, the
+player's team and squad role, and that player's available fixture-level batting and bowling figures.
+Selection is participation: a selected player remains in the history even when they did not bat or
+bowl, in which case the corresponding figure is `null`.
+
+Example:
+
+```http
+GET /api/v1/participants/30/fixtures?limit=25
+```
+
+```json
+{
+  "data": [
+    {
+      "fixture": {
+        "fixtureId": "481",
+        "competitionId": "12",
+        "competitionName": "Example Competition",
+        "seasonId": "season_...",
+        "season": "2026",
+        "seasonLabel": "2026",
+        "competitors": [
+          { "competitorId": "20", "name": "Team One" },
+          { "competitorId": "21", "name": "Team Two" }
+        ],
+        "matchType": "T20",
+        "teamType": "international",
+        "gender": "male",
+        "ballsPerOver": 6,
+        "scheduledOvers": 20,
+        "startDate": "2026-08-09",
+        "endDate": "2026-08-09"
+      },
+      "competitionName": "Example Competition",
+      "competitors": [
+        { "competitorId": "20", "name": "Team One" },
+        { "competitorId": "21", "name": "Team Two" }
+      ],
+      "competitor": { "competitorId": "20", "name": "Team One" },
+      "role": "player",
+      "statisticsStatus": "complete",
+      "statisticsWarnings": [],
+      "batting": {
+        "runsScored": 55,
+        "ballsFaced": 40,
+        "fours": 4,
+        "sixes": 2,
+        "strikeRate": 137.5
+      },
+      "bowling": null
+    }
+  ],
+  "pagination": {
+    "nextCursor": null
+  }
+}
+```
+
+`statisticsStatus` and `statisticsWarnings` preserve the publication state used by the fixture
+statistics API. A fixture with incomplete accepted source data or no accepted delivery events is
+returned with `partial` status and stable warnings rather than silently omitted. The endpoint does
+not calculate season or career aggregates.
+
 Deterministic ordering:
 
 ```text
 displayName ASC
 participantId ASC
+```
+
+Deterministic participant fixture-history ordering:
+
+```text
+startDate DESC
+fixtureId DESC
 ```
 
 ## Pagination

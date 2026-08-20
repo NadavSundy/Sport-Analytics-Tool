@@ -92,6 +92,7 @@ Default endpoints include:
 - `DELETE http://localhost:3000/api/v1/account` (requires optional server-only Auth configuration)
 - `http://localhost:3000/api/v1/admin/users` (administrator only)
 - `http://localhost:3000/api/v1/fixtures/{fixtureId}/events` (public accepted events)
+- `http://localhost:3000/api/v1/participants/{participantId}/fixtures` (public player match history)
 
 ## Administrator user management
 

@@ -5,6 +5,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { executeQuery } from '../../src/database';
+import {
+  listCompetitorsForFixtures,
+  listParticipantFixtures,
+} from '../../src/modules/participants/participant.repository';
 import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
 import { loadFixtureStatisticsSource } from '../../src/modules/statistics/fixture-statistics.repository';
 
@@ -115,8 +119,14 @@ describe.sequential('fixture statistics database integration', () => {
       throw new Error('Expected the ingested fixture to be available for derivation.');
     }
 
-    const result = deriveFixtureStatistics(source);
+    const result = deriveFixtureStatistics(source, {
+      includeContributors: true,
+    });
     expect(source.innings).toHaveLength(2);
+    expect(source.innings.map((innings) => innings.battingCompetitorName)).toEqual([
+      'New Zealand',
+      'Australia',
+    ]);
     expect(result.scope).toEqual({ superOversIncluded: false });
     expect(
       result.statistics.flatMap((statistic) =>
@@ -154,6 +164,8 @@ describe.sequential('fixture statistics database integration', () => {
         statistic.scope === 'participant' && statistic.participantId === mccullum.personId,
     );
     expect(mccullumStatistic).toMatchObject({
+      participantName: 'BB McCullum',
+      competitorName: 'New Zealand',
       batting: {
         runsScored: 116,
         ballsFaced: 56,
@@ -168,6 +180,8 @@ describe.sequential('fixture statistics database integration', () => {
         statistic.scope === 'participant' && statistic.participantId === southee.personId,
     );
     expect(southeeStatistic).toMatchObject({
+      participantName: 'TG Southee',
+      competitorName: 'New Zealand',
       bowling: {
         runsConceded: 44,
         legalBallsBowled: 24,
@@ -176,6 +190,40 @@ describe.sequential('fixture statistics database integration', () => {
         wicketsTaken: 0,
       },
     });
+
+    const mccullumHistory = await listParticipantFixtures(
+      { participantId: mccullum.personId, limit: 10 },
+      executor,
+    );
+    const mccullumFixture = mccullumHistory.records.find(
+      (record) => record.fixtureId === currentFixtureId,
+    );
+    expect(mccullumFixture).toMatchObject({
+      runsScored: 116,
+      ballsFaced: 56,
+      fours: 12,
+      sixes: 8,
+      missingFields: source.missingFields,
+      standardInningsCount: 2,
+      acceptedEventCount: source.events.length,
+      emptyStandardInningsIds: [],
+    });
+
+    const southeeHistory = await listParticipantFixtures(
+      { participantId: southee.personId, limit: 10 },
+      executor,
+    );
+    expect(
+      southeeHistory.records.find((record) => record.fixtureId === currentFixtureId),
+    ).toMatchObject({
+      runsConceded: 44,
+      legalBallsBowled: 24,
+      wicketsTaken: 0,
+    });
+
+    const readableCompetitors = await listCompetitorsForFixtures([currentFixtureId], executor);
+    expect(readableCompetitors).toHaveLength(2);
+    expect(readableCompetitors.every((competitor) => competitor.name.length > 0)).toBe(true);
 
     const mccullumSuperOver = await executeQuery<BattingDeltaRow>(
       executor,
@@ -234,7 +282,25 @@ describe.sequential('fixture statistics database integration', () => {
     expect(result.outcome).toMatchObject({
       kind: 'tie',
       winnerCompetitorId: null,
+      winnerCompetitorName: null,
+      eliminatorCompetitorName: 'New Zealand',
     });
     expect(result.outcome.eliminatorCompetitorId).not.toBeNull();
+
+    const inningsStatistic = result.statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsOrdinal === 0,
+    );
+
+    if (!inningsStatistic || inningsStatistic.scope !== 'innings') {
+      throw new Error('Expected the first standard innings statistic.');
+    }
+
+    expect(inningsStatistic.competitorName).toBe('New Zealand');
+    expect(inningsStatistic.contributingEvents?.length).toBeGreaterThan(0);
+
+    for (const event of inningsStatistic.contributingEvents ?? []) {
+      expect(event.strikerParticipantName.length).toBeGreaterThan(0);
+      expect(event.bowlerParticipantName.length).toBeGreaterThan(0);
+    }
   });
 });

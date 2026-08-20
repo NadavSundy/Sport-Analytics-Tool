@@ -29,6 +29,8 @@ export function createPublicReadRouter(service: PublicReadService): Router {
 
   router.get('/participants', controller.listParticipants);
 
+  router.get('/participants/:participantId/fixtures', controller.listParticipantFixtures);
+
   router.get('/participants/:participantId', controller.getParticipant);
 
   return router;

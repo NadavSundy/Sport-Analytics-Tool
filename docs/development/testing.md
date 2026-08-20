@@ -259,7 +259,11 @@ pending state after reload, narrow-screen overflow, and serious or critical Axe 
 
 The administrator-management suites verify that `not_requested` and `rejected` viewers have no
 approval or competition-scope controls, pending viewers can be approved or rejected, and approved
-submitters can still be re-scoped or revoked. Backend policy, API, and PostgreSQL integration tests
+submitters can still be re-scoped or revoked. Rejection coverage includes in-progress, success,
+authentication, authorisation, conflict, and validation feedback. The administrator browser
+scenario activates rejection from the keyboard at desktop and mobile widths, checks the immediate
+persisted-state update and horizontal overflow, and scans the result for serious or critical Axe
+findings. Backend policy, API, and PostgreSQL integration tests
 also verify that a direct approval attempt without a pending request returns a conflict and cannot
 bypass the state transition.
 
@@ -337,6 +341,25 @@ npm run test:e2e -- tests/e2e/statistics.spec.ts --workers=1
 
 The issue #54 frontend verification and screenshots are recorded in
 `evidence/validation/issue-54-public-statistics.md`.
+
+## Participant fixture-history coverage
+
+The public player fixture-history suites cover anonymous pagination, participant-bound cursors,
+readable competition and team context, squad participation, correct fixture association for batting
+and bowling figures, null figures for a selected player who did not bat or bowl, partial and missing
+published-statistic states, privacy-safe responses, and consistency with the existing fixture
+statistics derivation rules.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm exec --workspace=@sport-analytics/backend -- vitest run tests/unit/public-read.service.test.ts
+npm exec --workspace=@sport-analytics/backend -- vitest run tests/api/public-read.test.ts
+npm run test --workspace=@sport-analytics/contracts
+npm run test:database --workspace=@sport-analytics/backend
+npm run openapi:lint
+```
 
 ## AI Declaration
 

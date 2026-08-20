@@ -7,10 +7,13 @@ import type {
   FixtureEventListQuery,
   FixtureListQuery,
   Participant,
+  ParticipantFixture,
+  ParticipantFixtureListQuery,
   ParticipantListQuery,
   PublicEvent,
   Season,
   SeasonListQuery,
+  FixtureStatisticsWarning,
 } from '@sport-analytics/contracts';
 import { z } from 'zod';
 
@@ -33,9 +36,17 @@ import {
 } from '../fixtures/fixture.repository';
 import {
   findParticipantById,
+  listCompetitorsForFixtures,
+  listParticipantFixtures as listParticipantFixtureRecords,
   listParticipants as listParticipantRecords,
+  type FixtureCompetitorRecord,
+  type ParticipantFixtureListOptions,
+  type ParticipantFixturePage,
+  type ParticipantFixtureRecord,
+  type ParticipantRecord,
 } from '../participants/participant.repository';
 import { findSeason, listSeasons as listSeasonRecords } from '../seasons/season.repository';
+import { calculateRate, formatOvers } from '../statistics/fixture-statistics.metrics';
 import { createCursor, InvalidCursorError, readCursor } from './cursor';
 import { PublicReadInputError } from './public-read.errors';
 import { createSeasonId, parseSeasonId } from './season-id';
@@ -65,6 +76,12 @@ const competitorCursorSchema = z.object({
 const participantCursorSchema = z.object({
   displayName: z.string(),
   participantId: databaseIdSchema,
+});
+
+const participantFixtureCursorSchema = z.object({
+  participantId: databaseIdSchema,
+  startDate: z.string().date(),
+  fixtureId: databaseIdSchema,
 });
 
 const eventCursorSchema = z.object({
@@ -120,6 +137,16 @@ export interface PublicReadService {
 
   getParticipant(participantId: string): Promise<Participant | null>;
 
+  listParticipantFixtures(
+    participantId: string,
+    query: ParticipantFixtureListQuery,
+  ): Promise<{
+    data: ParticipantFixture[];
+    pagination: {
+      nextCursor: string | null;
+    };
+  } | null>;
+
   listFixtureEvents(
     fixtureId: string,
     query: FixtureEventListQuery,
@@ -132,6 +159,18 @@ export interface PublicReadService {
 
   getFixtureEvent(fixtureId: string, eventId: string): Promise<PublicEvent | null>;
 }
+
+export interface ParticipantFixtureHistoryRepository {
+  findParticipantById(participantId: string): Promise<ParticipantRecord | null>;
+  listParticipantFixtures(options: ParticipantFixtureListOptions): Promise<ParticipantFixturePage>;
+  listCompetitorsForFixtures(fixtureIds: string[]): Promise<FixtureCompetitorRecord[]>;
+}
+
+const defaultParticipantFixtureHistoryRepository: ParticipantFixtureHistoryRepository = {
+  findParticipantById,
+  listParticipantFixtures: listParticipantFixtureRecords,
+  listCompetitorsForFixtures,
+};
 
 function isDatabaseId(value: string): boolean {
   return databaseIdSchema.safeParse(value).success;
@@ -173,6 +212,7 @@ function mapFixture(record: FixtureRecord): Fixture {
   return {
     fixtureId: record.fixtureId,
     competitionId: record.competitionId,
+    competitionName: record.competitionName,
     seasonId: record.competitionId
       ? createSeasonId({
           competitionId: record.competitionId,
@@ -180,6 +220,8 @@ function mapFixture(record: FixtureRecord): Fixture {
         })
       : null,
     season: record.season,
+    seasonLabel: record.season,
+    competitors: record.competitors,
     matchType: record.matchType,
     teamType: record.teamType,
     gender: record.gender,
@@ -187,6 +229,104 @@ function mapFixture(record: FixtureRecord): Fixture {
     scheduledOvers: record.scheduledOvers,
     startDate: record.startDate,
     endDate: record.endDate,
+  };
+}
+
+function requiredStatisticValue(value: number | null, field: string): number {
+  if (value === null) {
+    throw new Error(`Participant fixture statistic "${field}" was unexpectedly null.`);
+  }
+
+  return value;
+}
+
+function participantFixtureWarnings(record: ParticipantFixtureRecord): FixtureStatisticsWarning[] {
+  const warnings: FixtureStatisticsWarning[] = [];
+
+  if (record.missingFields.length > 0) {
+    warnings.push({
+      code: 'SOURCE_DATA_INCOMPLETE',
+      message: 'The accepted source identifies fields that were unavailable.',
+      fields: [...record.missingFields].sort(),
+    });
+  }
+
+  if (record.standardInningsCount === 0) {
+    warnings.push({
+      code: 'NO_STANDARD_INNINGS',
+      message: 'No non-super-over innings are available for derivation.',
+    });
+  }
+
+  if (record.acceptedEventCount === 0) {
+    warnings.push({
+      code: 'NO_ACCEPTED_EVENTS',
+      message: 'No accepted delivery events are available for derivation.',
+    });
+  }
+
+  for (const inningsId of record.emptyStandardInningsIds) {
+    warnings.push({
+      code: 'INNINGS_WITHOUT_ACCEPTED_EVENTS',
+      message: 'This innings has no accepted delivery events.',
+      inningsId,
+    });
+  }
+
+  return warnings;
+}
+
+function mapParticipantFixture(
+  record: ParticipantFixtureRecord,
+  competitors: FixtureCompetitorRecord[],
+): ParticipantFixture {
+  const warnings = participantFixtureWarnings(record);
+
+  return {
+    fixture: mapFixture({
+      ...record,
+      competitors,
+    }),
+    competitionName: record.competitionName,
+    competitors: competitors.map(({ competitorId, name }) => ({ competitorId, name })),
+    competitor: {
+      competitorId: record.teamId,
+      name: record.teamName,
+    },
+    role: record.role,
+    statisticsStatus: warnings.length === 0 ? 'complete' : 'partial',
+    statisticsWarnings: warnings,
+    batting:
+      record.runsScored === null
+        ? null
+        : {
+            runsScored: record.runsScored,
+            ballsFaced: requiredStatisticValue(record.ballsFaced, 'ballsFaced'),
+            fours: requiredStatisticValue(record.fours, 'fours'),
+            sixes: requiredStatisticValue(record.sixes, 'sixes'),
+            strikeRate: calculateRate(
+              record.runsScored,
+              requiredStatisticValue(record.ballsFaced, 'ballsFaced'),
+              100,
+            ),
+          },
+    bowling:
+      record.runsConceded === null
+        ? null
+        : {
+            runsConceded: record.runsConceded,
+            legalBallsBowled: requiredStatisticValue(record.legalBallsBowled, 'legalBallsBowled'),
+            oversBowled: formatOvers(
+              requiredStatisticValue(record.legalBallsBowled, 'legalBallsBowled'),
+              record.ballsPerOver,
+            ),
+            wicketsTaken: requiredStatisticValue(record.wicketsTaken, 'wicketsTaken'),
+            economyRate: calculateRate(
+              record.runsConceded,
+              requiredStatisticValue(record.legalBallsBowled, 'legalBallsBowled'),
+              record.ballsPerOver,
+            ),
+          },
   };
 }
 
@@ -222,6 +362,7 @@ function resolveSeasonFilter(
 
 export function createPublicReadService(
   eventRepository: PublicEventRepository = createPublicEventRepository(),
+  participantFixtureHistoryRepository: ParticipantFixtureHistoryRepository = defaultParticipantFixtureHistoryRepository,
 ): PublicReadService {
   return {
     async listCompetitions(query) {
@@ -269,6 +410,7 @@ export function createPublicReadService(
           label: record.label,
         }),
         competitionId: record.competitionId,
+        competitionName: record.competitionName,
         label: record.label,
       }));
 
@@ -299,6 +441,7 @@ export function createPublicReadService(
       return {
         seasonId,
         competitionId: record.competitionId,
+        competitionName: record.competitionName,
         label: record.label,
       };
     },
@@ -416,6 +559,63 @@ export function createPublicReadService(
       }
 
       return findParticipantById(participantId);
+    },
+
+    async listParticipantFixtures(participantId, query) {
+      if (!isDatabaseId(participantId)) {
+        return null;
+      }
+
+      const after = decodeCursor(query.cursor, participantFixtureCursorSchema);
+      if (after && after.participantId !== participantId) {
+        throw new PublicReadInputError(
+          'INVALID_CURSOR',
+          'The pagination cursor does not belong to this participant.',
+        );
+      }
+
+      const [participant, page] = await Promise.all([
+        participantFixtureHistoryRepository.findParticipantById(participantId),
+        participantFixtureHistoryRepository.listParticipantFixtures({
+          participantId,
+          limit: query.limit,
+          ...(after !== undefined
+            ? {
+                after: {
+                  startDate: after.startDate,
+                  fixtureId: after.fixtureId,
+                },
+              }
+            : {}),
+        }),
+      ]);
+
+      if (!participant) {
+        return null;
+      }
+
+      const competitors = await participantFixtureHistoryRepository.listCompetitorsForFixtures(
+        page.records.map((record) => record.fixtureId),
+      );
+      const competitorsByFixture = new Map<string, FixtureCompetitorRecord[]>();
+      for (const competitor of competitors) {
+        const fixtureCompetitors = competitorsByFixture.get(competitor.fixtureId) ?? [];
+        fixtureCompetitors.push(competitor);
+        competitorsByFixture.set(competitor.fixtureId, fixtureCompetitors);
+      }
+
+      return {
+        data: page.records.map((record) =>
+          mapParticipantFixture(record, competitorsByFixture.get(record.fixtureId) ?? []),
+        ),
+        pagination: {
+          nextCursor: createNextCursor(page.hasMore, page.records, (record) => ({
+            participantId,
+            startDate: record.startDate,
+            fixtureId: record.fixtureId,
+          })),
+        },
+      };
     },
 
     async listFixtureEvents(fixtureId, query) {

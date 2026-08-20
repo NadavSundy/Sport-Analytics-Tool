@@ -1,16 +1,17 @@
 # Stat’sTheGame Brand and Interface Guidelines
 
-| Document information | Details                    |
-| -------------------- | -------------------------- |
-| Product              | Stat’sTheGame              |
-| Domain               | T20 cricket analytics      |
-| Light theme          | Day Match                  |
-| Dark theme           | Night Match                |
-| Document version     | 1.0                        |
-| Status               | Proposed for team approval |
-| Date                 | 7 August 2026              |
+| Document information | Details               |
+| -------------------- | --------------------- |
+| Product              | Stat’sTheGame         |
+| Domain               | T20 cricket analytics |
+| Light theme          | Day Match             |
+| Dark theme           | Night Match           |
+| Document version     | 1.0                   |
+| Status               | Approved              |
+| Date                 | 7 August 2026         |
+| Approval confirmed   | 19 August 2026        |
 
-> This document defines the proposed visual identity and frontend presentation standard for Stat’sTheGame. It is intended to be reviewed through the normal project issue and Pull Request process before being treated as an approved team standard.
+> This document defines the approved visual identity and frontend presentation standard for Stat’sTheGame. Project-team approval of the design documents was confirmed during issue #191 on 19 August 2026. Future changes continue through the normal project issue and Pull Request process.
 
 ---
 
@@ -1162,4 +1163,4 @@ Do not claim that a visual change has been approved until the relevant team revi
 
 ## 24. AI declaration
 
-The preceding document was generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]. Its approved status was recorded with the assistance of Codex[GPT-5.6 Sol].

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { describe, expect, test, vi } from 'vitest';
 
-import type { PublicEvent } from '@sport-analytics/contracts';
+import type { ParticipantFixture, PublicEvent } from '@sport-analytics/contracts';
 
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { PublicReadService } from '../../src/modules/public-read/public-read.service';
@@ -75,6 +75,15 @@ function createService(overrides: Partial<PublicReadService> = {}): PublicReadSe
       return null;
     },
 
+    async listParticipantFixtures() {
+      return {
+        data: [],
+        pagination: {
+          nextCursor: null,
+        },
+      };
+    },
+
     async listFixtureEvents() {
       return {
         data: [],
@@ -121,6 +130,42 @@ function publicEvent(overrides: Partial<PublicEvent> = {}): PublicEvent {
       penalty: null,
     },
     wickets: [],
+    ...overrides,
+  };
+}
+
+function participantFixture(overrides: Partial<ParticipantFixture> = {}): ParticipantFixture {
+  return {
+    fixture: {
+      fixtureId: '100',
+      competitionId: '12',
+      seasonId: 'season_example',
+      season: '2026',
+      matchType: 'T20',
+      teamType: 'international',
+      gender: 'male',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate: '2026-08-09',
+      endDate: '2026-08-09',
+    },
+    competitionName: 'Example Competition',
+    competitors: [
+      { competitorId: '20', name: 'Team One' },
+      { competitorId: '21', name: 'Team Two' },
+    ],
+    competitor: { competitorId: '20', name: 'Team One' },
+    role: 'player',
+    statisticsStatus: 'complete',
+    statisticsWarnings: [],
+    batting: {
+      runsScored: 55,
+      ballsFaced: 40,
+      fours: 4,
+      sixes: 2,
+      strikeRate: 137.5,
+    },
+    bowling: null,
     ...overrides,
   };
 }
@@ -202,6 +247,7 @@ describe('public read API', () => {
         {
           seasonId: 'season_example',
           competitionId: '12',
+          competitionName: 'Example Competition',
           label: '2026',
         },
       ],
@@ -213,6 +259,7 @@ describe('public read API', () => {
     const getSeason = vi.fn<PublicReadService['getSeason']>().mockResolvedValue({
       seasonId: 'season_example',
       competitionId: '12',
+      competitionName: 'Example Competition',
       label: '2026',
     });
 
@@ -233,7 +280,12 @@ describe('public read API', () => {
 
     const detail = await request(app).get('/api/v1/seasons/season_example').expect(200);
 
-    expect(detail.body.data.label).toBe('2026');
+    expect(detail.body.data).toEqual({
+      seasonId: 'season_example',
+      competitionId: '12',
+      competitionName: 'Example Competition',
+      label: '2026',
+    });
   });
 
   test('passes fixture filters and pagination to the service', async () => {
@@ -291,8 +343,20 @@ describe('public read API', () => {
     const getFixture = vi.fn<PublicReadService['getFixture']>().mockResolvedValue({
       fixtureId: '100',
       competitionId: '12',
+      competitionName: 'Test Competition',
       seasonId: 'season_example',
       season: '2026',
+      seasonLabel: '2026',
+      competitors: [
+        {
+          competitorId: '20',
+          name: 'Team Alpha',
+        },
+        {
+          competitorId: '21',
+          name: 'Team Beta',
+        },
+      ],
       matchType: 'T20',
       teamType: 'international',
       gender: 'male',
@@ -313,7 +377,21 @@ describe('public read API', () => {
       .get('/api/v1/fixtures/100')
       .expect(200);
 
-    expect(response.body.data.fixtureId).toBe('100');
+    expect(response.body.data).toMatchObject({
+      fixtureId: '100',
+      competitionName: 'Test Competition',
+      seasonLabel: '2026',
+      competitors: [
+        {
+          competitorId: '20',
+          name: 'Team Alpha',
+        },
+        {
+          competitorId: '21',
+          name: 'Team Beta',
+        },
+      ],
+    });
   });
 
   test('lists ordered accepted fixture events anonymously with filters and pagination', async () => {
@@ -465,6 +543,74 @@ describe('public read API', () => {
     const detail = await request(app).get('/api/v1/participants/30').expect(200);
 
     expect(detail.body.data.displayName).toBe('Player Example');
+  });
+
+  test('lists a participant fixture history anonymously with readable match context', async () => {
+    const verifyAccessToken = vi.fn<VerifyAccessToken>();
+    const listParticipantFixtures = vi
+      .fn<PublicReadService['listParticipantFixtures']>()
+      .mockResolvedValue({
+        data: [
+          participantFixture({
+            statisticsStatus: 'partial',
+            statisticsWarnings: [
+              {
+                code: 'SOURCE_DATA_INCOMPLETE',
+                message: 'The accepted source identifies fields that were unavailable.',
+                fields: ['outcome'],
+              },
+            ],
+          }),
+        ],
+        pagination: {
+          nextCursor: 'next-match-page',
+        },
+      });
+
+    const response = await request(
+      createTestApp(
+        verifyAccessToken,
+        createService({
+          listParticipantFixtures,
+        }),
+      ),
+    )
+      .get('/api/v1/participants/30/fixtures?limit=10')
+      .expect(200);
+
+    expect(verifyAccessToken).not.toHaveBeenCalled();
+    expect(listParticipantFixtures).toHaveBeenCalledWith('30', { limit: 10 });
+    expect(response.body.data[0]).toMatchObject({
+      competitionName: 'Example Competition',
+      competitors: [{ name: 'Team One' }, { name: 'Team Two' }],
+      statisticsStatus: 'partial',
+      batting: {
+        runsScored: 55,
+      },
+      bowling: null,
+    });
+    expect(response.body.pagination.nextCursor).toBe('next-match-page');
+    expect(JSON.stringify(response.body)).not.toContain('submissionId');
+    expect(JSON.stringify(response.body)).not.toContain('submittedBy');
+    expect(JSON.stringify(response.body)).not.toContain('audit');
+  });
+
+  test('returns not found when fixture history is requested for an unknown participant', async () => {
+    const response = await request(
+      createTestApp(
+        undefined,
+        createService({
+          listParticipantFixtures: async () => null,
+        }),
+      ),
+    )
+      .get('/api/v1/participants/999/fixtures')
+      .expect(404);
+
+    expect(response.body.error).toEqual({
+      code: 'NOT_FOUND',
+      message: 'Participant not found.',
+    });
   });
 
   test('returns a clear not-found response for an unknown identifier', async () => {

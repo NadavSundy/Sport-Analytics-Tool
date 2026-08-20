@@ -746,6 +746,19 @@ main {
   border-top: 1px solid var(--colour-border);
 }
 
+.admin-user-card__request-state {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border-left: 3px solid var(--colour-primary);
+  background: var(--colour-primary-soft);
+  color: var(--colour-text-secondary);
+  line-height: 1.55;
+}
+
+.admin-user-card__request-state strong {
+  color: var(--colour-text);
+}
+
 .admin-access-form fieldset {
   min-width: 0;
   margin: 0;
@@ -805,6 +818,7 @@ main {
 
 .admin-access-form__error,
 .admin-access-form__empty,
+.admin-access-form__progress,
 .admin-user-card__protected,
 .admin-access-feedback {
   margin: 1rem 0 0;
@@ -1160,7 +1174,7 @@ h3 {
 }
 
 .page-heading {
-  padding-block: 3.5rem 2.5rem;
+  padding-block: 2rem 1.5rem;
 }
 
 .page-heading h1 {
@@ -1181,7 +1195,7 @@ h3 {
 
 .browse-page__content {
   display: grid;
-  gap: 3rem;
+  gap: 2rem;
 }
 
 .filter-panel {
@@ -1375,11 +1389,11 @@ h3 {
 
 .detail-page {
   min-height: 38rem;
-  padding-block: 2.5rem 5rem;
+  padding-block: 2rem 5rem;
 }
 
 .page-heading--detail {
-  padding-block: 2.5rem 2rem;
+  padding-block: 1rem;
   border-bottom: 2px solid var(--colour-primary);
 }
 
@@ -1392,7 +1406,7 @@ h3 {
 
 .record-facts > div {
   min-width: 0;
-  padding-block: 1.5rem;
+  padding-block: 1rem;
   border-bottom: 1px solid var(--colour-border);
 }
 
@@ -1412,7 +1426,7 @@ h3 {
 }
 
 .related-records {
-  margin-top: 3rem;
+  margin-top: 2rem;
 }
 
 .related-records > div {
@@ -1433,7 +1447,7 @@ h3 {
 
 .statistics-summary,
 .statistics-section {
-  margin-top: 3rem;
+  margin-top: 2rem;
 }
 
 .statistics-section-heading,
@@ -1874,7 +1888,11 @@ h3 {
   }
 
   .page-heading {
-    padding-block: 2.5rem 2rem;
+    padding-block: 1.5rem 1rem;
+  }
+
+  .page-heading--detail {
+    padding-block: 1rem;
   }
 
   .page-heading h1 {
@@ -1887,6 +1905,10 @@ h3 {
     border-right: 0;
     border-left: 0;
     border-radius: 0;
+  }
+
+  .browse-page__content {
+    gap: 1.5rem;
   }
 
   .filter-panel__heading,
@@ -1938,7 +1960,7 @@ h3 {
   }
 
   .detail-page {
-    padding-block: 2rem 3.5rem;
+    padding-block: 1.5rem 3.5rem;
   }
 
   .submission-page {

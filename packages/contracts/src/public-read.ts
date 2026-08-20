@@ -18,14 +18,23 @@ export const competitionSchema = z.object({
 export const seasonSchema = z.object({
   seasonId: apiIdentifierSchema,
   competitionId: apiIdentifierSchema,
+  competitionName: z.string().min(1),
   label: z.string().min(1),
+});
+
+export const fixtureCompetitorSummarySchema = z.object({
+  competitorId: apiIdentifierSchema,
+  name: z.string().min(1),
 });
 
 export const fixtureSchema = z.object({
   fixtureId: apiIdentifierSchema,
   competitionId: apiIdentifierSchema.nullable(),
+  competitionName: z.string().min(1).nullable(),
   seasonId: apiIdentifierSchema.nullable(),
   season: z.string().min(1),
+  seasonLabel: z.string().min(1),
+  competitors: z.array(fixtureCompetitorSummarySchema),
   matchType: z.string().min(1),
   teamType: z.string().min(1),
   gender: z.string().min(1),
@@ -94,7 +103,9 @@ export const statisticContributingEventSchema = z.object({
   inningsOrdinal: z.number().int().nonnegative(),
   sequenceNumber: z.number().int().positive(),
   strikerParticipantId: apiIdentifierSchema,
+  strikerParticipantName: z.string().min(1),
   bowlerParticipantId: apiIdentifierSchema,
+  bowlerParticipantName: z.string().min(1),
   runs: z.object({
     offBat: z.number().int().nonnegative(),
     extras: z.number().int().nonnegative(),
@@ -124,6 +135,7 @@ export const inningsTeamStatisticSchema = fixtureStatisticCommonSchema.extend({
   inningsId: apiIdentifierSchema,
   inningsOrdinal: z.number().int().nonnegative(),
   competitorId: apiIdentifierSchema,
+  competitorName: z.string().min(1),
   metrics: z.object({
     deliveryRuns: z.number().int().nonnegative(),
     penaltyRuns: z.number().int().nonnegative(),
@@ -135,7 +147,9 @@ export const participantFixtureStatisticSchema = fixtureStatisticCommonSchema.ex
   scope: z.literal('participant'),
   statisticCode: z.literal('participant_fixture'),
   participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
   competitorId: apiIdentifierSchema.nullable(),
+  competitorName: z.string().min(1).nullable(),
   batting: z
     .object({
       runsScored: z.number().int().nonnegative(),
@@ -178,7 +192,9 @@ export const fixtureStatisticsWarningSchema = z.object({
 export const fixtureOutcomeSchema = z.object({
   kind: z.enum(['won', 'tie', 'draw', 'no_result']),
   winnerCompetitorId: apiIdentifierSchema.nullable(),
+  winnerCompetitorName: z.string().min(1).nullable(),
   eliminatorCompetitorId: apiIdentifierSchema.nullable(),
+  eliminatorCompetitorName: z.string().min(1).nullable(),
   margin: z
     .object({
       type: z.enum(['runs', 'wickets']),
@@ -273,6 +289,50 @@ export const competitorCollectionResponseSchema = createCollectionResponseSchema
 
 export const participantResponseSchema = createResourceResponseSchema(participantSchema);
 
+export const participantFixtureBattingSchema = z.object({
+  runsScored: z.number().int().nonnegative(),
+  ballsFaced: z.number().int().nonnegative(),
+  fours: z.number().int().nonnegative(),
+  sixes: z.number().int().nonnegative(),
+  strikeRate: z.number().nonnegative().nullable(),
+});
+
+export const participantFixtureBowlingSchema = z.object({
+  runsConceded: z.number().int().nonnegative(),
+  legalBallsBowled: z.number().int().nonnegative(),
+  oversBowled: z.string().regex(/^\d+\.\d+$/),
+  wicketsTaken: z.number().int().nonnegative(),
+  economyRate: z.number().nonnegative().nullable(),
+});
+
+export const participantFixtureSchema = z.object({
+  fixture: fixtureSchema,
+  // fixtureSchema carries the competition identifier but not its name, and no
+  // competitors. Both are required for a readable player record, so they are
+  // carried here rather than by widening fixtureSchema, which other responses
+  // already depend on.
+  competitionName: z.string().min(1).nullable(),
+  competitors: z.array(competitorSchema),
+  // The competitor the participant was selected for in this fixture.
+  competitor: competitorSchema,
+  role: z.string().min(1).nullable(),
+  // These mirror the fixture-statistics publication state so a client can
+  // distinguish a player who did not bat or bowl from a fixture whose accepted
+  // source is incomplete or has no published delivery events.
+  statisticsStatus: z.enum(['complete', 'partial']),
+  statisticsWarnings: z.array(fixtureStatisticsWarningSchema),
+  // Null where the participant was selected but did not bat, or did not bowl.
+  // The fixture is still listed: selection is participation, and omitting it
+  // would misrepresent a player's record.
+  batting: participantFixtureBattingSchema.nullable(),
+  bowling: participantFixtureBowlingSchema.nullable(),
+});
+
+export const participantFixtureListQuerySchema = paginationQuerySchema;
+
+export const participantFixtureCollectionResponseSchema =
+  createCollectionResponseSchema(participantFixtureSchema);
+
 export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
@@ -307,3 +367,10 @@ export type CompetitorListQuery = z.infer<typeof competitorListQuerySchema>;
 export type ParticipantListQuery = z.infer<typeof participantListQuerySchema>;
 export type FixtureEventListQuery = z.infer<typeof fixtureEventListQuerySchema>;
 export type FixtureStatisticsQuery = z.infer<typeof fixtureStatisticsQuerySchema>;
+export type ParticipantFixtureBatting = z.infer<typeof participantFixtureBattingSchema>;
+export type ParticipantFixtureBowling = z.infer<typeof participantFixtureBowlingSchema>;
+export type ParticipantFixture = z.infer<typeof participantFixtureSchema>;
+export type ParticipantFixtureListQuery = z.infer<typeof participantFixtureListQuerySchema>;
+export type ParticipantFixtureCollectionResponse = z.infer<
+  typeof participantFixtureCollectionResponseSchema
+>;

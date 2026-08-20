@@ -77,6 +77,7 @@ function managedUser(
     role: 'viewer' | 'submitter' | 'admin';
     approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected';
     competitionScopes: { competitionId: string; name: string }[];
+    disabled: boolean;
   }> = {},
 ) {
   return {
@@ -191,6 +192,23 @@ describe('administrator user management page', () => {
     expect(card.getByText('Approved')).toBeInTheDocument();
     expect(card.getAllByText('Premier T20').length).toBeGreaterThan(0);
     expect(card.getByRole('button', { name: 'Revoke submitter access' })).toBeEnabled();
+    expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
+  });
+
+  it('identifies a pending request and offers distinct approval and rejection actions', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(currentUser()).mockResolvedValueOnce(managementResponse()),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(card.getByText('Submitter access requested.')).toBeInTheDocument();
+    expect(card.getByText(/awaiting administrator review/i)).toBeInTheDocument();
+    expect(card.getByText(/rejection does not assign any scope/i)).toBeInTheDocument();
+    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeEnabled();
+    expect(card.getByRole('button', { name: 'Reject request' })).toBeEnabled();
   });
 
   it('does not offer approval or scope controls before a submitter request is made', async () => {
@@ -205,8 +223,11 @@ describe('administrator user management page', () => {
     renderPage();
 
     const card = within(await userCard());
-    expect(card.getByText('No submitter access request has been made.')).toBeInTheDocument();
+    expect(
+      card.getByText('No submitter access request is currently awaiting review.'),
+    ).toBeInTheDocument();
     expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
+    expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
     expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
@@ -223,11 +244,51 @@ describe('administrator user management page', () => {
 
     const card = within(await userCard());
     expect(
-      card.getByText(
-        'This request was rejected. The user must make a new request before approval.',
-      ),
+      card.getByText(/no submitter access request is currently awaiting review/i),
     ).toBeInTheDocument();
+    expect(card.getByText(/the previous request was rejected/i)).toBeInTheDocument();
     expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
+    expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('does not offer submitter request-management controls for an administrator account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(
+          managementResponse(managedUser({ role: 'admin', approvalState: 'approved' })),
+        ),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(
+      card.getByText('Administrator accounts are protected from submitter access changes.'),
+    ).toBeInTheDocument();
+    expect(card.queryByRole('button')).not.toBeInTheDocument();
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('does not offer actionable submitter controls for a disabled account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(managementResponse(managedUser({ disabled: true }))),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(
+      card.getByText('Disabled accounts cannot receive submitter access changes.'),
+    ).toBeInTheDocument();
+    expect(card.queryByRole('button')).not.toBeInTheDocument();
     expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
@@ -279,12 +340,83 @@ describe('administrator user management page', () => {
 
     expect(
       await screen.findByText('Submitter request was rejected for Pending Contributor.'),
+    ).toHaveAttribute('role', 'status');
+    expect(within(await userCard()).getByText('Not approved')).toBeInTheDocument();
+    expect(
+      within(await userCard()).getByText(
+        /no submitter access request is currently awaiting review/i,
+      ),
     ).toBeInTheDocument();
     expect(within(await userCard()).queryByRole('button')).not.toBeInTheDocument();
     expect(fetchMock.mock.calls[2]?.[0]).toContain('/admin/users/42/submitter-access/rejection');
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
       method: 'POST',
     });
+    expect(fetchMock.mock.calls[2]?.[1]?.body).toBeUndefined();
+  });
+
+  it('announces rejection progress and keeps approval distinct while the request is pending', async () => {
+    const rejected = managedUser({ approvalState: 'rejected' });
+    let resolveRejection!: (response: Response) => void;
+    const rejectionResponse = new Promise<Response>((resolve) => {
+      resolveRejection = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(managementResponse())
+      .mockReturnValueOnce(rejectionResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage();
+
+    const card = within(await userCard());
+    fireEvent.click(card.getByRole('button', { name: 'Reject request' }));
+
+    expect(card.getByRole('button', { name: 'Rejecting request...' })).toBeDisabled();
+    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeDisabled();
+    expect(card.queryByRole('button', { name: 'Approving submitter...' })).not.toBeInTheDocument();
+    expect(card.getByText('Rejecting the submitter access request. Please wait.')).toHaveAttribute(
+      'role',
+      'status',
+    );
+
+    resolveRejection(updateResponse(rejected));
+
+    expect(
+      await screen.findByText('Submitter request was rejected for Pending Contributor.'),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    [401, 'Your session is no longer valid. Sign in again to continue.'],
+    [403, 'You are not authorised to reject this submitter request.'],
+    [409, 'This submitter request is no longer pending.'],
+    [422, 'The submitter access rejection is invalid.'],
+  ])('shows an accessible rejection error for an HTTP %i response', async (status, message) => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(managementResponse())
+      .mockResolvedValueOnce(
+        jsonResponse(status, {
+          error: {
+            code: 'SUBMITTER_ACCESS_REJECTION_FAILED',
+            message,
+          },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage();
+
+    fireEvent.click(within(await userCard()).getByRole('button', { name: 'Reject request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(within(await userCard()).getByRole('button', { name: 'Reject request' })).toBeEnabled();
+    expect(
+      within(await userCard()).getByRole('button', { name: 'Approve submitter' }),
+    ).toBeEnabled();
   });
 
   it('updates an approved submitter to a different scope', async () => {
@@ -345,7 +477,7 @@ describe('administrator user management page', () => {
     ).toBeInTheDocument();
     expect(
       within(await userCard()).getByText(
-        "This account's previously approved submitter access has been revoked.",
+        /this account's previously approved submitter access has been revoked/i,
       ),
     ).toBeInTheDocument();
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({

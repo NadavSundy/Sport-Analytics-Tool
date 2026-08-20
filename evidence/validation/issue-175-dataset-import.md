@@ -71,3 +71,68 @@ The full import had not completed at the time of this verification. Final counts
 ## AI Declaration
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
+
+## 6. Imported scope
+
+Recorded after the full import of 14,011 fixtures on 19 August 2026. Gabriel Raz
+recorded the import itself in `issue-175-cricsheet-corpus-import.md`; this section
+records what the imported corpus contains.
+
+### By classification
+
+| Match type | Team type     | Gender | Fixtures |
+| ---------- | ------------- | ------ | -------- |
+| T20        | club          | male   | 6,827    |
+| T20        | international | male   | 3,521    |
+| T20        | international | female | 2,114    |
+| T20        | club          | female | 1,229    |
+| IT20       | international | male   | 240      |
+| IT20       | international | female | 80       |
+
+5,955 international fixtures and 8,056 club fixtures.
+
+### The IT20 classification, confirmed against imported data
+
+Section 10 of the sport domain definition records that `match_type: "IT20"` is not
+a reliable filter for international matches. The imported corpus confirms it: 320
+fixtures carry `IT20`, all of them international, while a further 5,635
+international fixtures carry `T20`. Filtering on `IT20` to mean international
+would therefore find 320 fixtures and miss 5,635.
+
+Both classifications were imported faithfully. The risk is not in the import but
+in anything that later queries `match_type` to determine whether a fixture is
+international. The reliable test is `team_type = 'international'`.
+
+### Divergence from the agreed competition scope
+
+The imported corpus contains **741 competitions**, of which 66 fixtures carry
+none.
+
+ADR-003 consequence 4 records the agreed competition scope as eleven franchise
+competitions plus men's and women's T20 internationals. What has been imported is
+every T20 fixture Cricsheet publishes. This is not a defect in the import: the
+downloader was built to acquire the full T20 archive and its scope was never
+narrowed to the agreed list.
+
+The team should either amend the recorded scope to describe what is held, or
+narrow the imported dataset. This is a decision rather than an omission and is
+recorded here rather than resolved.
+
+## 7. Measured storage
+
+The benchmark ADR-003 consequence 4 required has been taken against the imported
+corpus and is recorded in that decision record. In summary: 798 MB total, of
+which `delivery` accounts for 705 MB — 385 MB of heap and 319 MB of indexes —
+or approximately 249 bytes per delivery against the 414 bytes estimated.
+
+## 8. Observations
+
+The database reports PostgreSQL 17.6, while continuous integration runs
+`postgres:16` and the disposable test database provisions 16. Three versions are
+therefore in play across development, test and continuous integration. Nothing
+observed depends on the difference, but it is recorded because a divergence of
+this kind has already caused a failure elsewhere in the project.
+
+Submissions total 14,225 against 14,011 fixtures. The 214 additional records are
+the limitation recorded in section 5: a submission row is created for every match
+processed, including one already present in full.
