@@ -193,6 +193,9 @@ async function main(): Promise<void> {
     console.log(`  ${row.wickets}  ${row.bowler}`);
   }
 
+  const creditedDismissals = credited.rows.reduce((total, row) => total + Number(row.wickets), 0);
+  check('dismissals credited to bowlers', creditedDismissals, 17);
+
   const runOuts = await client.query(
     `SELECT COUNT(*) AS n
        FROM delivery_current d
@@ -204,6 +207,7 @@ async function main(): Promise<void> {
     [sourceRef],
   );
   console.log(`\n  ${runOuts.rows[0].n} dismissal(s) not credited to any bowler.`);
+  check('dismissals not credited to bowlers', runOuts.rows[0].n, 2);
 
   console.log(`\n${failures === 0 ? 'All checks passed.' : `${failures} check(s) failed.`}`);
   if (failures > 0) process.exitCode = 1;
