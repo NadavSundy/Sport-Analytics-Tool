@@ -4,8 +4,14 @@ import { expect, test, type Page } from '@playwright/test';
 const fixture = {
   fixtureId: 'fixture-1',
   competitionId: 'competition-1',
+  competitionName: 'Premier Cricket League',
   seasonId: 'season-1',
   season: '2026',
+  seasonLabel: '2026 season',
+  competitors: [
+    { competitorId: 'team-1', name: 'Team One' },
+    { competitorId: 'team-2', name: 'Team Two' },
+  ],
   matchType: 'T20',
   teamType: 'international',
   gender: 'female',
@@ -137,8 +143,8 @@ test('anonymous users navigate the responsive fixture statistics and event trace
   });
 
   await page.goto('/fixtures/fixture-1');
-  const statisticsLink = page.getByRole('link', { name: 'View statistics' });
-  await expect(page.getByRole('heading', { level: 1, name: 'T20 fixture' })).toBeVisible();
+  const statisticsLink = page.getByRole('link', { name: 'View fixture statistics' });
+  await expect(page.getByRole('heading', { level: 1, name: 'Team One vs Team Two' })).toBeVisible();
   const isMobile = (page.viewportSize()?.width ?? 0) < 900;
   const detailSpacing = await readDetailSpacing(page);
   expect(detailSpacing).toEqual({

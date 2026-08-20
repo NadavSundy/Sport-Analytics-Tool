@@ -21,6 +21,163 @@ const fixture = {
   endDate: '2026-08-09',
 };
 
+test('competition, season, and team overviews embed readable related records', async ({ page }) => {
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+
+    if (url.pathname.endsWith('/competitions/competition-1')) {
+      await route.fulfill({
+        json: { data: { competitionId: 'competition-1', name: 'Premier Cricket League' } },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/seasons/season-1')) {
+      await route.fulfill({
+        json: {
+          data: {
+            competitionId: 'competition-1',
+            competitionName: 'Premier Cricket League',
+            label: '2026 season',
+            seasonId: 'season-1',
+          },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures/fixture-1')) {
+      await route.fulfill({ json: { data: { ...fixture, seasonLabel: '2026 season' } } });
+      return;
+    }
+
+    if (url.pathname.endsWith('/competitors/competitor-1')) {
+      await route.fulfill({
+        json: { data: { competitorId: 'competitor-1', name: 'Wanderers' } },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/competitions')) {
+      await route.fulfill({
+        json: {
+          data: [{ competitionId: 'competition-1', name: 'Premier Cricket League' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/seasons')) {
+      await route.fulfill({
+        json: {
+          data: [
+            {
+              competitionId: 'competition-1',
+              competitionName: 'Premier Cricket League',
+              label: '2026 season',
+              seasonId: 'season-1',
+            },
+          ],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures')) {
+      await route.fulfill({
+        json: {
+          data: [{ ...fixture, seasonLabel: '2026 season' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/competitors')) {
+      await route.fulfill({
+        json: {
+          data: [{ competitorId: 'competitor-1', name: 'Wanderers' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/participants')) {
+      await route.fulfill({
+        json: {
+          data: [{ participantId: 'participant-1', displayName: 'A Player' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: 'NOT_FOUND', message: 'Not found.' } },
+    });
+  });
+
+  let purposefulInteractions = 0;
+  await page.goto('/competitions');
+  await page.getByRole('link', { name: 'Premier Cricket League' }).focus();
+  await page.keyboard.press('Enter');
+  purposefulInteractions += 1;
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Premier Cricket League' }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Fixtures by season' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Wanderers', exact: true })).toBeVisible();
+
+  const seasonsSection = page
+    .getByRole('heading', { level: 2, name: 'Seasons' })
+    .locator('..')
+    .locator('..');
+  await seasonsSection.getByRole('link', { name: '2026 season' }).focus();
+  await page.keyboard.press('Enter');
+  purposefulInteractions += 1;
+
+  await expect(page.getByRole('heading', { level: 1, name: '2026 season' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Fixtures' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Teams' })).toBeVisible();
+  await page.getByRole('link', { name: 'Wanderers vs Strikers' }).focus();
+  await page.keyboard.press('Enter');
+  purposefulInteractions += 1;
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Premier Cricket League' })).toBeVisible();
+  expect(purposefulInteractions).toBe(3);
+
+  await page.getByRole('link', { name: 'Teams', exact: true }).click();
+  await page.getByRole('link', { name: 'Wanderers', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { level: 1, name: 'Wanderers' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'A Player' })).toBeVisible();
+
+  const mainText = await page.locator('main').innerText();
+  expect(mainText).not.toMatch(/competition-1|season-1|fixture-1|competitor-1|participant-1/);
+  expect(mainText).not.toMatch(/\bcompetitor\b|\bparticipant\b/i);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+
+  const accessibilityResults = await new AxeBuilder({ page }).analyze();
+  expect(
+    accessibilityResults.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    ),
+  ).toEqual([]);
+});
+
 test('readable filter combobox supports routed selection and keyboard use', async ({ page }) => {
   const requestedUrls: string[] = [];
 
@@ -180,7 +337,9 @@ test('anonymous browsing preserves filters, pagination and keyboard navigation',
   await expect(page.getByLabel('Gender')).toHaveValue('female');
   await expect(page.getByLabel('Records per page')).toHaveValue('25');
   await expect(page).toHaveURL(/\/fixtures\?gender=female&limit=25/);
-  await expect(page.getByRole('link', { name: 'T20 fixture' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(
     page
       .getByRole('navigation', { name: 'Account' })
@@ -257,12 +416,12 @@ test('anonymous browsing preserves filters, pagination and keyboard navigation',
   await expect(page.getByText('No fixtures found')).toBeVisible();
   expect(requestedUrls.some((url) => url.includes('cursor=next-fixture-cursor'))).toBe(true);
 
-  const competitorsLink = page.getByRole('link', { name: 'Competitors', exact: true });
+  const competitorsLink = page.getByRole('link', { name: 'Teams', exact: true });
   await competitorsLink.focus();
   await expect(competitorsLink).toBeFocused();
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Competitors' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Teams' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Wanderers' })).toBeVisible();
   await expect(page).not.toHaveURL(/sign-in/);
 
@@ -284,7 +443,7 @@ test('anonymous browsing preserves filters, pagination and keyboard navigation',
       deviceScaleFactor: 2,
       mobile: false,
     });
-    await expect(page.getByRole('heading', { level: 1, name: 'Competitors' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Teams' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Wanderers' })).toBeVisible();
     expect(
       await page.evaluate(

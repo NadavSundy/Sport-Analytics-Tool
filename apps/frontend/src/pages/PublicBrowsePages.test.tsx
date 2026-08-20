@@ -191,7 +191,7 @@ describe('public browsing pages', () => {
 
     renderRoute('/fixtures?gender=female&limit=25');
 
-    expect(await screen.findByRole('link', { name: 'T20 fixture' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeInTheDocument();
     expect(screen.getByLabelText('Gender')).toHaveValue('female');
     expect(screen.getByLabelText('Records per page')).toHaveValue('25');
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/fixtures?gender=female&limit=25');
@@ -389,21 +389,306 @@ describe('public browsing pages', () => {
     );
 
     renderRoute('/fixtures');
-    fireEvent.click(await screen.findByRole('link', { name: 'T20 fixture' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Wanderers vs Strikers' }));
 
-    expect(await screen.findByText('Fixture ID')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open competition' })).toHaveAttribute(
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Premier Cricket League' })).toHaveAttribute(
       'href',
       '/competitions/competition-1',
     );
-    expect(screen.getByRole('link', { name: 'Browse participants' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Browse players' })).toHaveAttribute(
       'href',
       '/participants?fixtureId=fixture-1',
     );
-    expect(screen.getByRole('link', { name: 'View statistics' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'View fixture statistics' })).toHaveAttribute(
       'href',
       '/fixtures/fixture-1/statistics',
     );
+    expect(screen.queryByText('Fixture ID')).not.toBeInTheDocument();
+  });
+
+  it('displays readable seasons, season-grouped fixtures, and teams on a competition overview', async () => {
+    const requestedUrls: string[] = [];
+    const fixture = {
+      fixtureId: 'fixture-1',
+      competitionId: 'competition-1',
+      competitionName: 'Premier Cricket League',
+      seasonId: 'season-1',
+      season: '2026',
+      seasonLabel: '2026 season',
+      competitors: [
+        { competitorId: 'team-1', name: 'Wanderers' },
+        { competitorId: 'team-2', name: 'Strikers' },
+      ],
+      matchType: 'T20',
+      teamType: 'international',
+      gender: 'female',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate: '2026-08-09',
+      endDate: '2026-08-09',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
+        const url = new URL(input);
+        if (url.pathname.endsWith('/competitions/competition-1')) {
+          return Promise.resolve(
+            response(200, {
+              data: { competitionId: 'competition-1', name: 'Premier Cricket League' },
+            }),
+          );
+        }
+        if (url.pathname.endsWith('/seasons')) {
+          return Promise.resolve(
+            collection([
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026 season',
+                seasonId: 'season-1',
+              },
+            ]),
+          );
+        }
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(collection([fixture]));
+        }
+        return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
+      }),
+    );
+
+    renderRoute('/competitions/competition-1');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Premier Cricket League' }),
+    ).toBeVisible();
+    const fixturesSection = screen
+      .getByRole('heading', { level: 2, name: 'Fixtures by season' })
+      .closest('section');
+    expect(fixturesSection).not.toBeNull();
+    expect(within(fixturesSection!).getByRole('link', { name: '2026 season' })).toHaveAttribute(
+      'href',
+      '/seasons/season-1',
+    );
+    expect(
+      within(fixturesSection!).getByRole('link', { name: 'Wanderers vs Strikers' }),
+    ).toHaveAttribute('href', '/fixtures/fixture-1');
+    expect(screen.getByRole('link', { name: 'Wanderers' })).toHaveAttribute(
+      'href',
+      '/competitors/team-1',
+    );
+    expect(document.querySelector('main')).not.toHaveTextContent('competition-1');
+    expect(document.querySelector('main')).not.toHaveTextContent(/competitor|participant/i);
+    expect(
+      requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=10')),
+    ).toBe(true);
+  });
+
+  it('displays a season competition name, fixtures first, and participating teams', async () => {
+    const fixture = {
+      fixtureId: 'fixture-1',
+      competitionId: 'competition-1',
+      competitionName: 'Premier Cricket League',
+      seasonId: 'season-1',
+      season: '2026',
+      seasonLabel: '2026 season',
+      competitors: [
+        { competitorId: 'team-1', name: 'Wanderers' },
+        { competitorId: 'team-2', name: 'Strikers' },
+      ],
+      matchType: 'T20',
+      teamType: 'international',
+      gender: 'female',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate: '2026-08-09',
+      endDate: '2026-08-09',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/seasons/season-1')) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026 season',
+                seasonId: 'season-1',
+              },
+            }),
+          );
+        }
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(collection([fixture]));
+        }
+        return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
+      }),
+    );
+
+    renderRoute('/seasons/season-1');
+
+    expect(await screen.findByRole('heading', { level: 1, name: '2026 season' })).toBeVisible();
+    const relatedHeadings = screen.getAllByRole('heading', { level: 2 });
+    expect(relatedHeadings.map((heading) => heading.textContent)).toEqual(['Fixtures', 'Teams']);
+    expect(screen.getByRole('link', { name: 'Premier Cricket League' })).toHaveAttribute(
+      'href',
+      '/competitions/competition-1',
+    );
+    expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toHaveAttribute(
+      'href',
+      '/fixtures/fixture-1',
+    );
+    expect(screen.getByRole('link', { name: 'Wanderers' })).toHaveAttribute(
+      'href',
+      '/competitors/team-1',
+    );
+    expect(document.querySelector('main')).not.toHaveTextContent('season-1');
+  });
+
+  it('displays a team fixture history and readable players', async () => {
+    const fixture = {
+      fixtureId: 'fixture-1',
+      competitionId: 'competition-1',
+      competitionName: 'Premier Cricket League',
+      seasonId: 'season-1',
+      season: '2026',
+      seasonLabel: '2026 season',
+      competitors: [
+        { competitorId: 'team-1', name: 'Wanderers' },
+        { competitorId: 'team-2', name: 'Strikers' },
+      ],
+      matchType: 'T20',
+      teamType: 'international',
+      gender: 'female',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate: '2026-08-09',
+      endDate: '2026-08-09',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/competitors/team-1')) {
+          return Promise.resolve(
+            response(200, { data: { competitorId: 'team-1', name: 'Wanderers' } }),
+          );
+        }
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(collection([fixture]));
+        }
+        return Promise.resolve(
+          collection([{ participantId: 'player-1', displayName: 'A Player' }]),
+        );
+      }),
+    );
+
+    renderRoute('/competitors/team-1');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Wanderers' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Wanderers vs Strikers' })).toHaveAttribute(
+      'href',
+      '/fixtures/fixture-1',
+    );
+    expect(screen.getByRole('link', { name: 'A Player' })).toHaveAttribute(
+      'href',
+      '/participants/player-1',
+    );
+    expect(document.querySelector('main')).not.toHaveTextContent('team-1');
+    expect(document.querySelector('main')).not.toHaveTextContent(/competitor|participant/i);
+  });
+
+  it('keeps related loading, error, retry, empty, and pagination states independent', async () => {
+    let resolveSeasonRequest!: (value: Response) => void;
+    let seasonRequestCount = 0;
+    const requestedUrls: string[] = [];
+    const fixture = (fixtureId: string, teams: string[]) => ({
+      fixtureId,
+      competitionId: 'competition-1',
+      competitionName: 'Premier Cricket League',
+      seasonId: 'season-1',
+      season: '2026',
+      seasonLabel: '2026 season',
+      competitors: teams.map((name, index) => ({ competitorId: `team-${index + 1}`, name })),
+      matchType: 'T20',
+      teamType: 'international',
+      gender: 'female',
+      ballsPerOver: 6,
+      scheduledOvers: 20,
+      startDate: '2026-08-09',
+      endDate: '2026-08-09',
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
+        const url = new URL(input);
+        if (url.pathname.endsWith('/competitions/competition-1')) {
+          return Promise.resolve(
+            response(200, {
+              data: { competitionId: 'competition-1', name: 'Premier Cricket League' },
+            }),
+          );
+        }
+        if (url.pathname.endsWith('/seasons')) {
+          seasonRequestCount += 1;
+          if (seasonRequestCount === 1) {
+            return new Promise<Response>((resolve) => {
+              resolveSeasonRequest = resolve;
+            });
+          }
+          return Promise.resolve(
+            collection([
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026 season',
+                seasonId: 'season-1',
+              },
+            ]),
+          );
+        }
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(
+            url.searchParams.has('cursor')
+              ? collection([fixture('fixture-2', ['Titans', 'Lions'])])
+              : collection([fixture('fixture-1', ['Wanderers', 'Strikers'])], 'next-fixtures'),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/competitions/competition-1');
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Loading seasons' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'No teams found' })).toBeVisible();
+
+    resolveSeasonRequest(
+      response(503, {
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Published seasons are unavailable.' },
+      }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Published seasons could not be requested. Try this section again.',
+    );
+    expect(screen.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry seasons' }));
+    expect(await screen.findByRole('link', { name: '2026 season' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next fixtures page' }));
+    expect(await screen.findByRole('link', { name: 'Titans vs Lions' })).toBeVisible();
+    expect(screen.getAllByRole('link', { name: '2026 season' })).not.toHaveLength(0);
+    expect(screen.getByRole('heading', { level: 3, name: 'No teams found' })).toBeVisible();
+    expect(requestedUrls.some((url) => url.includes('cursor=next-fixtures'))).toBe(true);
   });
 
   it.each([
@@ -413,7 +698,7 @@ describe('public browsing pages', () => {
       linkName: 'Wanderers',
       listRecord: { competitorId: 'competitor-1', name: 'Wanderers' },
       detailRecord: { competitorId: 'competitor-1', name: 'Wanderers' },
-      fact: 'Competitor ID',
+      heading: 'Wanderers',
     },
     {
       listPath: '/participants',
@@ -421,7 +706,7 @@ describe('public browsing pages', () => {
       linkName: 'A Player',
       listRecord: { participantId: 'participant-1', displayName: 'A Player' },
       detailRecord: { participantId: 'participant-1', displayName: 'A Player' },
-      fact: 'Participant ID',
+      heading: 'A Player',
     },
   ])('opens $linkName from its public collection', async (example) => {
     vi.stubGlobal(
@@ -440,7 +725,9 @@ describe('public browsing pages', () => {
     renderRoute(example.listPath);
     fireEvent.click(await screen.findByRole('link', { name: example.linkName }));
 
-    expect(await screen.findByText(example.fact)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: example.heading }),
+    ).toBeInTheDocument();
   });
 
   it('browses seasons and links them to their competitions', async () => {
@@ -468,9 +755,7 @@ describe('public browsing pages', () => {
       'href',
       '/seasons/season-2026',
     );
-    expect(screen.getByRole('link', { name: 'competition-1' })).toHaveAttribute(
-      'href',
-      '/competitions/competition-1',
-    );
+    expect(screen.getAllByText('Premier Cricket League')).not.toHaveLength(0);
+    expect(screen.queryByText('competition-1')).not.toBeInTheDocument();
   });
 });

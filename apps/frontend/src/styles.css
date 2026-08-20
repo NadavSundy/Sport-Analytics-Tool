@@ -1597,6 +1597,27 @@ h3 {
   margin-top: 2rem;
 }
 
+.related-collection {
+  margin-top: 2rem;
+}
+
+.fixture-groups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fixture-groups > li > h3 {
+  margin: 1.5rem 0 0;
+  font-size: 1.25rem;
+}
+
+.record-fact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
 .related-records > div {
   display: flex;
   flex-wrap: wrap;
