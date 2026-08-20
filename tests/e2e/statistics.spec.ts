@@ -29,6 +29,7 @@ const inningsStatistic = {
   inningsId: 'innings-1',
   inningsOrdinal: 0,
   competitorId: 'team-1',
+  competitorName: 'Team One',
   sourceEventCount: 1,
   metrics: { deliveryRuns: 5, penaltyRuns: 0, totalRuns: 5 },
 };
@@ -39,7 +40,9 @@ const participantStatistic = {
   scope: 'participant',
   statisticCode: 'participant_fixture',
   participantId: 'striker-1',
+  participantName: 'Opening Batter',
   competitorId: 'team-1',
+  competitorName: 'Team One',
   sourceEventCount: 1,
   batting: { runsScored: 4, ballsFaced: 1, strikeRate: 400, fours: 1, sixes: 0 },
   bowling: null,
@@ -50,9 +53,9 @@ async function readDetailSpacing(page: Page) {
     const detailPage = document.querySelector<HTMLElement>('.detail-page');
     const heading = document.querySelector<HTMLElement>('.page-heading--detail');
     const firstFact = document.querySelector<HTMLElement>('.record-facts > div');
-    const relatedRecords = document.querySelector<HTMLElement>('.related-records');
+    const matchStatistics = document.querySelector<HTMLElement>('.fixture-statistics-overview');
     const summary = document.querySelector<HTMLElement>('.statistics-summary');
-    if (!detailPage || !heading || !firstFact || !relatedRecords) {
+    if (!detailPage || !heading || !firstFact || !matchStatistics || !summary) {
       throw new Error('The public detail layout was not rendered.');
     }
 
@@ -61,13 +64,13 @@ async function readDetailSpacing(page: Page) {
       headingPaddingTop: Number.parseFloat(getComputedStyle(heading).paddingTop),
       headingPaddingBottom: Number.parseFloat(getComputedStyle(heading).paddingBottom),
       factPaddingTop: Number.parseFloat(getComputedStyle(firstFact).paddingTop),
-      relatedRecordsMarginTop: Number.parseFloat(getComputedStyle(relatedRecords).marginTop),
-      summaryMarginTop: summary ? Number.parseFloat(getComputedStyle(summary).marginTop) : null,
+      matchStatisticsMarginTop: Number.parseFloat(getComputedStyle(matchStatistics).marginTop),
+      summaryMarginTop: Number.parseFloat(getComputedStyle(summary).marginTop),
     };
   });
 }
 
-test('anonymous users navigate the responsive fixture statistics and event trace', async ({
+test('anonymous users open the responsive match overview and calculation trace', async ({
   page,
 }) => {
   const requestedUrls: string[] = [];
@@ -89,7 +92,9 @@ test('anonymous users navigate the responsive fixture statistics and event trace
                 inningsOrdinal: 0,
                 sequenceNumber: 1,
                 strikerParticipantId: 'striker-1',
+                strikerParticipantName: 'Opening Batter',
                 bowlerParticipantId: 'bowler-1',
+                bowlerParticipantName: 'Opening Bowler',
                 runs: { offBat: 4, extras: 1, total: 5 },
                 extras: {
                   wides: 1,
@@ -118,7 +123,9 @@ test('anonymous users navigate the responsive fixture statistics and event trace
             outcome: {
               kind: 'won',
               winnerCompetitorId: 'team-1',
+              winnerCompetitorName: 'Team One',
               eliminatorCompetitorId: null,
+              eliminatorCompetitorName: null,
               margin: { type: 'wickets', value: 5 },
               method: null,
               decidedByBowlOut: false,
@@ -136,6 +143,16 @@ test('anonymous users navigate the responsive fixture statistics and event trace
       return;
     }
 
+    if (url.pathname.endsWith('/participants')) {
+      await route.fulfill({
+        json: {
+          data: [{ participantId: 'striker-1', displayName: 'Opening Batter' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 404,
       json: { error: { code: 'NOT_FOUND', message: 'Not found.' } },
@@ -143,8 +160,13 @@ test('anonymous users navigate the responsive fixture statistics and event trace
   });
 
   await page.goto('/fixtures/fixture-1');
-  const statisticsLink = page.getByRole('link', { name: 'View fixture statistics' });
   await expect(page.getByRole('heading', { level: 1, name: 'Team One vs Team Two' })).toBeVisible();
+  await expect(page.getByText('Team One won by 5 wickets.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Opening Batter' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Participating players' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View fixture statistics' })).toHaveCount(0);
+  expect(requestedUrls.some((url) => url.endsWith('/fixtures/fixture-1/statistics'))).toBe(true);
   const isMobile = (page.viewportSize()?.width ?? 0) < 900;
   const detailSpacing = await readDetailSpacing(page);
   expect(detailSpacing).toEqual({
@@ -152,21 +174,13 @@ test('anonymous users navigate the responsive fixture statistics and event trace
     headingPaddingTop: 16,
     headingPaddingBottom: 16,
     factPaddingTop: 16,
-    relatedRecordsMarginTop: 32,
-    summaryMarginTop: null,
+    matchStatisticsMarginTop: 32,
+    summaryMarginTop: 32,
   });
   expect(Object.values(detailSpacing).every((value) => value === null || value % 4 === 0)).toBe(
     true,
   );
 
-  await statisticsLink.focus();
-  await expect(statisticsLink).toBeFocused();
-  await page.keyboard.press('Enter');
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Fixture statistics' })).toBeVisible();
-  await expect(page.getByText('Competitor team-1 won by 5 wickets.')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Participant statistics' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Participant striker-1' })).toBeVisible();
   await expect(page).not.toHaveURL(/sign-in/);
 
   const dayStatisticsSpacing = await readDetailSpacing(page);
@@ -175,7 +189,7 @@ test('anonymous users navigate the responsive fixture statistics and event trace
     headingPaddingTop: 16,
     headingPaddingBottom: 16,
     factPaddingTop: 16,
-    relatedRecordsMarginTop: 32,
+    matchStatisticsMarginTop: 32,
     summaryMarginTop: 32,
   });
 
@@ -204,14 +218,18 @@ test('anonymous users navigate the responsive fixture statistics and event trace
     ),
   ).toEqual([]);
 
-  const calculationLink = page.getByRole('link', { name: 'How calculated' }).first();
+  const calculationLink = page.getByRole('link', { name: 'View calculation trace' }).first();
   await calculationLink.focus();
   await expect(calculationLink).toBeFocused();
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Innings 1 team total' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Team One innings 1 total' }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Contributing events' })).toBeVisible();
-  await expect(page.getByText('event-1')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Delivery 1' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Opening Bowler' })).toBeVisible();
+  await expect(page.getByText('event-1')).toHaveCount(0);
   expect(requestedUrls.some((url) => url.includes('includeContributors=true'))).toBe(true);
 
   const hasHorizontalOverflow = await page.evaluate(

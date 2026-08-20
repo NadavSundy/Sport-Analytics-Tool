@@ -4,7 +4,7 @@ import type {
   FixtureStatistics,
   StatisticContributingEvent,
 } from '@sport-analytics/contracts';
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useId, type ElementType, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../../api/public-read';
 import {
@@ -24,14 +24,25 @@ function formatOutcome(outcome: FixtureOutcome): string {
   if (outcome.kind === 'won') {
     const margin = outcome.margin ? ` by ${outcome.margin.value} ${outcome.margin.type}` : '';
     const method = outcome.method ? ` (${outcome.method})` : '';
-    return `Competitor ${outcome.winnerCompetitorId ?? 'unknown'} won${margin}${method}.`;
+    return `${outcome.winnerCompetitorName ?? 'Winning team name unavailable'} won${margin}${method}.`;
   }
 
   if (outcome.kind === 'no_result') {
     return 'No result.';
   }
 
-  return `${outcome.kind === 'tie' ? 'Tie' : 'Draw'}.`;
+  if (outcome.kind === 'tie') {
+    const deciderWinner = outcome.eliminatorCompetitorName ?? outcome.winnerCompetitorName;
+    if (outcome.decidedByBowlOut && deciderWinner) {
+      return `Match tied; ${deciderWinner} won the bowl-out.`;
+    }
+    if (outcome.eliminatorCompetitorName) {
+      return `Match tied; ${outcome.eliminatorCompetitorName} won the eliminator.`;
+    }
+    return 'Match tied.';
+  }
+
+  return 'Match drawn.';
 }
 
 function StatisticMetric({ label, value }: { label: string; value: ReactNode }) {
@@ -105,30 +116,32 @@ function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {
           <p className="record-list__meta">
             {statistic.scope === 'innings'
               ? `Innings ${statistic.inningsOrdinal + 1}`
-              : 'Fixture participant'}
+              : 'Player performance'}
           </p>
           <h3>
             {statistic.scope === 'innings' ? (
               <Link to={recordPath('competitors', statistic.competitorId)}>
-                Competitor {statistic.competitorId}
+                {statistic.competitorName}
               </Link>
             ) : (
               <Link to={recordPath('participants', statistic.participantId)}>
-                Participant {statistic.participantId}
+                {statistic.participantName}
               </Link>
             )}
           </h3>
-          {statistic.scope === 'participant' && statistic.competitorId ? (
+          {statistic.scope === 'participant' &&
+          statistic.competitorId &&
+          statistic.competitorName ? (
             <p className="statistic-card__association">
               Team:{' '}
               <Link to={recordPath('competitors', statistic.competitorId)}>
-                competitor {statistic.competitorId}
+                {statistic.competitorName}
               </Link>
             </p>
           ) : null}
         </div>
         <Link className="text-link" to={`/fixtures/${fixtureId}/statistics/${statisticId}`}>
-          How calculated
+          View calculation trace
         </Link>
       </header>
       <StatisticValues statistic={statistic} />
@@ -140,7 +153,14 @@ function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {
   );
 }
 
-function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
+function StatisticsResults({
+  headingLevel = 'h2',
+  statistics,
+}: {
+  headingLevel?: 'h2' | 'h3';
+  statistics: FixtureStatistics;
+}) {
+  const Heading: ElementType = headingLevel;
   const inningsStatistics = statistics.statistics.filter(
     (statistic) => statistic.scope === 'innings',
   );
@@ -149,28 +169,15 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
   );
 
   return (
-    <article className="detail-page statistics-page content-boundary">
-      <Link className="back-link" to={`/fixtures/${encodeURIComponent(statistics.fixtureId)}`}>
-        Back to fixture
-      </Link>
-      <header className="page-heading page-heading--detail">
-        <p className="eyebrow">Published fixture record</p>
-        <h1>Fixture statistics</h1>
-        <p>
-          Basic totals calculated from accepted delivery events. Standard fixture statistics exclude
-          super overs.
-        </p>
-      </header>
-
+    <>
       <section aria-labelledby="fixture-summary-heading" className="statistics-summary">
         <div className="statistics-section-heading">
-          <h2 id="fixture-summary-heading">Fixture summary</h2>
+          <Heading id="fixture-summary-heading">Match result</Heading>
           <p className={`statistics-status statistics-status--${statistics.status}`}>
             {statistics.status === 'complete' ? 'Complete data' : 'Partial data'}
           </p>
         </div>
         <RecordFacts>
-          <RecordFact label="Fixture ID" value={statistics.fixtureId} />
           <RecordFact label="Outcome" value={formatOutcome(statistics.outcome)} />
           <RecordFact label="Super overs included" value="No" />
         </RecordFacts>
@@ -178,7 +185,7 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
 
       {statistics.warnings.length > 0 ? (
         <section aria-labelledby="statistics-warnings-heading" className="statistics-warnings">
-          <h2 id="statistics-warnings-heading">Data notices</h2>
+          <Heading id="statistics-warnings-heading">Data notices</Heading>
           <ul>
             {statistics.warnings.map((warning, index) => (
               <li key={`${warning.code}-${index}`}>{warning.message}</li>
@@ -189,8 +196,8 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
 
       {statistics.statistics.length === 0 ? (
         <div className="state-message" role="status">
-          <h2>No fixture statistics available</h2>
-          <p>No accepted standard-innings events are currently available for this fixture.</p>
+          <Heading>No match statistics available</Heading>
+          <p>No published standard-innings statistics are currently available for this match.</p>
         </div>
       ) : (
         <>
@@ -198,7 +205,7 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
             <div className="statistics-section-heading">
               <div>
                 <p className="eyebrow">By innings</p>
-                <h2 id="team-statistics-heading">Competitor totals</h2>
+                <Heading id="team-statistics-heading">Innings totals</Heading>
               </div>
               <p>{inningsStatistics.length} published</p>
             </div>
@@ -209,7 +216,7 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
                 ))}
               </ul>
             ) : (
-              <p className="statistics-section__empty">No competitor totals are available.</p>
+              <p className="statistics-section__empty">No innings totals are available.</p>
             )}
           </section>
 
@@ -217,7 +224,7 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
             <div className="statistics-section-heading">
               <div>
                 <p className="eyebrow">By player</p>
-                <h2 id="participant-statistics-heading">Participant statistics</h2>
+                <Heading id="participant-statistics-heading">Player statistics</Heading>
               </div>
               <p>{participantStatistics.length} published</p>
             </div>
@@ -228,19 +235,77 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
                 ))}
               </ul>
             ) : (
-              <p className="statistics-section__empty">No participant statistics are available.</p>
+              <p className="statistics-section__empty">No player statistics are available.</p>
             )}
           </section>
         </>
       )}
+    </>
+  );
+}
 
-      <RelatedLinks>
-        <Link to={`/fixtures/${encodeURIComponent(statistics.fixtureId)}`}>Open fixture</Link>
-        <Link to={`/participants?fixtureId=${encodeURIComponent(statistics.fixtureId)}`}>
-          Browse fixture participants
-        </Link>
-      </RelatedLinks>
+function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
+  return (
+    <article className="detail-page statistics-page content-boundary">
+      <Link className="back-link" to={`/fixtures/${encodeURIComponent(statistics.fixtureId)}`}>
+        Back to match overview
+      </Link>
+      <header className="page-heading page-heading--detail">
+        <p className="eyebrow">Published match record</p>
+        <h1>Match statistics</h1>
+        <p>
+          Basic totals calculated from accepted delivery events. Standard match statistics exclude
+          super overs.
+        </p>
+      </header>
+      <StatisticsResults statistics={statistics} />
     </article>
+  );
+}
+
+export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) {
+  const headingId = useId();
+  const load = useCallback(
+    (signal: AbortSignal) => publicReadApi.getFixtureStatistics(fixtureId, signal),
+    [fixtureId],
+  );
+  const state = usePublicData(load, fixtureId);
+
+  return (
+    <section aria-labelledby={headingId} className="related-collection fixture-statistics-overview">
+      <div className="statistics-section-heading">
+        <div>
+          <p className="eyebrow">Published match record</p>
+          <h2 id={headingId}>Match statistics</h2>
+        </div>
+      </div>
+
+      {state.status === 'loading' ? (
+        <div className="state-message" role="status">
+          <h3>Loading match statistics</h3>
+          <p>The published outcome and player performances are being requested.</p>
+        </div>
+      ) : null}
+
+      {state.status === 'error' ? (
+        <div className="state-message state-message--error" role="alert">
+          <h3>Match statistics could not be loaded</h3>
+          <p>Published match statistics could not be requested. Try this section again.</p>
+          <button
+            aria-label="Retry match statistics"
+            className="button button--secondary"
+            onClick={state.reload}
+            type="button"
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+
+      {state.status === 'ready' ? (
+        <StatisticsResults headingLevel="h3" statistics={state.data.data} />
+      ) : null}
+    </section>
   );
 }
 
@@ -276,10 +341,9 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
     <li className="event-trace">
       <header>
         <p className="record-list__meta">Innings {event.inningsOrdinal + 1}</p>
-        <h3>Event {event.sequenceNumber}</h3>
+        <h3>Delivery {event.sequenceNumber}</h3>
       </header>
       <dl>
-        <StatisticMetric label="Event reference" value={event.eventId} />
         <StatisticMetric label="Total runs" value={event.runs.total} />
         <StatisticMetric label="Off bat" value={event.runs.offBat} />
         <StatisticMetric label="Extras" value={event.runs.extras} />
@@ -294,7 +358,7 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
           label="Striker"
           value={
             <Link to={recordPath('participants', event.strikerParticipantId)}>
-              Participant {event.strikerParticipantId}
+              {event.strikerParticipantName}
             </Link>
           }
         />
@@ -302,7 +366,7 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
           label="Bowler"
           value={
             <Link to={recordPath('participants', event.bowlerParticipantId)}>
-              Participant {event.bowlerParticipantId}
+              {event.bowlerParticipantName}
             </Link>
           }
         />
@@ -315,22 +379,19 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
   const fixtureId = encodeURIComponent(statistic.fixtureId);
   const title =
     statistic.scope === 'innings'
-      ? `Innings ${statistic.inningsOrdinal + 1} team total`
-      : `Participant ${statistic.participantId}`;
+      ? `${statistic.competitorName} innings ${statistic.inningsOrdinal + 1} total`
+      : `${statistic.participantName} performance`;
   const contributingEvents = statistic.contributingEvents ?? [];
 
   return (
     <article className="detail-page statistics-page content-boundary">
-      <Link className="back-link" to={`/fixtures/${fixtureId}/statistics`}>
-        Back to fixture statistics
+      <Link className="back-link" to={`/fixtures/${fixtureId}`}>
+        Back to match overview
       </Link>
       <header className="page-heading page-heading--detail">
         <p className="eyebrow">Calculation trace</p>
         <h1>{title}</h1>
-        <p>
-          This published result is calculated from accepted events in innings and event-sequence
-          order.
-        </p>
+        <p>This published result is calculated from accepted events in their match order.</p>
       </header>
 
       <section aria-labelledby="published-result-heading" className="statistics-section">
@@ -367,20 +428,26 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
         ) : (
           <div className="state-message" role="status">
             <h3>No contributing events available</h3>
-            <p>The public API did not return accepted delivery events for this statistic.</p>
+            <p>No accepted delivery records are available for this calculation.</p>
           </div>
         )}
       </section>
 
       <RelatedLinks>
-        <Link to={`/fixtures/${fixtureId}`}>Open fixture</Link>
+        <Link to={`/fixtures/${fixtureId}`}>Open match overview</Link>
         {statistic.scope === 'innings' ? (
-          <Link to={recordPath('competitors', statistic.competitorId)}>Open competitor</Link>
+          <Link to={recordPath('competitors', statistic.competitorId)}>
+            Open {statistic.competitorName}
+          </Link>
         ) : (
           <>
-            <Link to={recordPath('participants', statistic.participantId)}>Open participant</Link>
-            {statistic.competitorId ? (
-              <Link to={recordPath('competitors', statistic.competitorId)}>Open competitor</Link>
+            <Link to={recordPath('participants', statistic.participantId)}>
+              Open {statistic.participantName}
+            </Link>
+            {statistic.competitorId && statistic.competitorName ? (
+              <Link to={recordPath('competitors', statistic.competitorId)}>
+                Open {statistic.competitorName}
+              </Link>
             ) : null}
           </>
         )}

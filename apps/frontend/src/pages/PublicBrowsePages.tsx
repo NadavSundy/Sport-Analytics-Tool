@@ -19,6 +19,7 @@ import {
   RecordFacts,
 } from '../features/browse/RecordDetail';
 import { usePublicData } from '../features/browse/usePublicData';
+import { FixtureStatisticsOverview } from '../features/statistics/StatisticsPages';
 
 function optionSearch(filters?: URLSearchParams): string {
   const params = new URLSearchParams(filters);
@@ -699,17 +700,15 @@ export function FixtureDetailPage() {
                 value={fixture.scheduledOvers ?? 'Not specified'}
               />
             </RecordFacts>
-            <nav aria-label="Fixture records" className="related-records">
-              <h2>Fixture records</h2>
-              <div>
-                <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`}>
-                  View fixture statistics
-                </Link>
-                <Link to={`/participants?fixtureId=${encodeURIComponent(fixture.fixtureId)}`}>
-                  Browse players
-                </Link>
-              </div>
-            </nav>
+            <FixtureStatisticsOverview fixtureId={fixture.fixtureId} />
+            <RelatedCollection
+              emptyMessage="No published players are available for this match."
+              filters={relatedFilters('fixtureId', fixture.fixtureId)}
+              load={publicReadApi.listParticipants}
+              renderRecords={(players) => <PlayerRecords players={players} />}
+              resourceLabel="players"
+              title="Participating players"
+            />
           </DetailLayout>
         );
       }}

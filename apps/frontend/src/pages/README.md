@@ -13,10 +13,12 @@ available without an account; there is no global authentication gate.
 | Teams          | `/competitors`  | `/competitors/:competitorId`   |
 | Players        | `/participants` | `/participants/:participantId` |
 
-Published fixture statistics are available at `/fixtures/:fixtureId/statistics`. Each statistic
-links to `/fixtures/:fixtureId/statistics/:statisticId`, which requests the accepted contributing
-events used by that result. Both routes remain anonymous and link back to the fixture and related
-competitor or participant records.
+Published fixture statistics load directly in `/fixtures/:fixtureId` with the fixture outcome,
+completeness state, innings totals, player batting and bowling figures, and participating players.
+The previous `/fixtures/:fixtureId/statistics` route remains available for compatible deep links,
+but it is not required to view the primary statistics. Each statistic links to
+`/fixtures/:fixtureId/statistics/:statisticId`, which requests the accepted contributing events used
+by that result and links back to the named match, team, and player records.
 
 These pages call only the handwritten public API through `src/api/public-read.ts`. They do not
 read Supabase data, attach identity credentials, or require an authenticated session.
@@ -54,4 +56,6 @@ assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
 The readable public collection filter behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The related-record detail overview behavior was documented with the assistance of
+Codex[GPT-5.6 Sol].
+The combined match-overview route behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].

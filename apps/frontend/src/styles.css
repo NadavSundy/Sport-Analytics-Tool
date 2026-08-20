@@ -1653,6 +1653,8 @@ h3 {
 }
 
 .statistics-section-heading h2,
+.statistics-section-heading h3,
+.statistics-warnings h3,
 .statistics-warnings h2 {
   max-width: none;
   margin: 0;
