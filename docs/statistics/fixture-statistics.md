@@ -86,17 +86,21 @@ pre/post penalties at innings level rather than inventing a delivery for them.
 
 ## Public frontend
 
-Anonymous users can open a fixture's Basic statistics at
-`/fixtures/{fixtureId}/statistics`. The page shows the typed fixture outcome, completeness state,
-warnings, innings competitor totals, and available participant batting and bowling metrics.The statistics API exposes readable team and player names alongside their stable identifiers so
-public interfaces can present cricket identities without performing additional name-resolution
-requests. The identifiers remain available for routing to the corresponding public records.
+Opening `/fixtures/{fixtureId}` automatically requests and displays the fixture's Basic statistics
+below its named teams and match metadata. The combined overview shows the typed outcome,
+completeness state, warnings, innings totals, available player batting and bowling metrics, and
+participating players without a separate statistics action. The previous
+`/fixtures/{fixtureId}/statistics` route remains available for compatible deep links.
+
+The statistics API exposes readable team and player names alongside stable identifiers so public
+interfaces can present cricket identities without additional name-resolution requests. Identifiers
+remain internal to API requests, routes, and React keys rather than visible page content.
 
 Each result links to `/fixtures/{fixtureId}/statistics/{statisticId}`. That route opts into
 `includeContributors=true` and presents the accepted delivery references and run components used by
 the calculation. It does not expose submission ownership, account information, pending or rejected
-events, or internal audit data. Because there is no standalone public event-detail endpoint, event
-IDs are displayed as trace references rather than links to an unsupported route.
+events, or internal audit data. The calculation trace identifies deliveries by readable match order
+and player names; stable event identifiers remain internal React keys.
 
 ## Incomplete data
 

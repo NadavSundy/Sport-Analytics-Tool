@@ -355,7 +355,7 @@ describe('public browsing pages', () => {
     ).toBe(true);
   });
 
-  it('opens a fixture and links its related public records', async () => {
+  it('opens a fixture and displays its match statistics and participating players', async () => {
     const fixture = {
       fixtureId: 'fixture-1',
       competitionId: 'competition-1',
@@ -377,15 +377,41 @@ describe('public browsing pages', () => {
     };
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockImplementation((url: string) =>
-          Promise.resolve(
-            url.endsWith('/fixtures/fixture-1')
-              ? response(200, { data: fixture })
-              : collection([fixture]),
-          ),
-        ),
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/fixtures/fixture-1')) {
+          return Promise.resolve(response(200, { data: fixture }));
+        }
+        if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                fixtureId: 'fixture-1',
+                status: 'complete',
+                scope: { superOversIncluded: false },
+                outcome: {
+                  kind: 'won',
+                  winnerCompetitorId: 'team-1',
+                  winnerCompetitorName: 'Wanderers',
+                  eliminatorCompetitorId: null,
+                  eliminatorCompetitorName: null,
+                  margin: { type: 'runs', value: 12 },
+                  method: null,
+                  decidedByBowlOut: false,
+                },
+                warnings: [],
+                statistics: [],
+              },
+            }),
+          );
+        }
+        if (url.pathname.endsWith('/participants')) {
+          return Promise.resolve(
+            collection([{ participantId: 'player-1', displayName: 'A Player' }]),
+          );
+        }
+        return Promise.resolve(collection([fixture]));
+      }),
     );
 
     renderRoute('/fixtures');
@@ -398,14 +424,12 @@ describe('public browsing pages', () => {
       'href',
       '/competitions/competition-1',
     );
-    expect(screen.getByRole('link', { name: 'Browse players' })).toHaveAttribute(
+    expect(await screen.findByText('Wanderers won by 12 runs.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'A Player' })).toHaveAttribute(
       'href',
-      '/participants?fixtureId=fixture-1',
+      '/participants/player-1',
     );
-    expect(screen.getByRole('link', { name: 'View fixture statistics' })).toHaveAttribute(
-      'href',
-      '/fixtures/fixture-1/statistics',
-    );
+    expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
     expect(screen.queryByText('Fixture ID')).not.toBeInTheDocument();
   });
 

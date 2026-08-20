@@ -327,9 +327,11 @@ npm run test:api --workspace=@sport-analytics/backend
 npm run test --workspace=@sport-analytics/contracts
 ```
 
-The public frontend suite covers anonymous access, known Basic fixture and participant results,
-partial and empty fixtures, API failure and retry, related-record links, and contributing-event
-traces. Its browser test additionally covers keyboard navigation, desktop and mobile overflow, and
+The public frontend suite covers automatic anonymous loading in the match overview, known Basic
+innings and player results, participating players, partial and empty fixtures, independently handled
+statistics failure and retry, readable related-record links, and contributing-event traces. Its
+browser test additionally covers the combined overview without a separate statistics action,
+keyboard trace navigation, Day Match and Night Match behavior, desktop and mobile overflow, and
 serious or critical Axe findings.
 
 Run the focused frontend checks with:
@@ -414,3 +416,4 @@ The readable collection-filter coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The related public detail-overview coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The combined match-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].

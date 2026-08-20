@@ -141,6 +141,18 @@ names. Stable identifiers remain internal to routes, React keys, and API filters
 rows link directly to the named fixture overview, and the embedded lists retain the existing
 keyboard-accessible record-list and responsive layout patterns.
 
+## Public match overviews
+
+Opening a published fixture automatically requests its statistics and participating players. The
+fixture identity and match metadata remain visible while those sections load or fail independently.
+Published outcome and completeness information, innings totals, batting and bowling figures, and
+named team and player links are displayed on the same responsive overview without a separate
+statistics action.
+
+Each published statistic retains a secondary calculation-trace link. The trace displays accepted
+deliveries with readable player names and returns to the match overview; stable fixture, statistic,
+team, player, and event identifiers remain confined to API requests, route values, and React keys.
+
 ## Checks
 
 From the repository root:
@@ -243,3 +255,4 @@ Codex[GPT-5.6 Sol].
 The public collection filter behavior was documented with the assistance of Codex[GPT-5.6 Sol].
 The public related-record overview behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The public match overview behavior was documented with the assistance of Codex[GPT-5.6 Sol].
