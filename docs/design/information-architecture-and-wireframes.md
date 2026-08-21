@@ -17,12 +17,12 @@ Four audiences use the same application, distinguished by `app_user.application_
 for submitters, `submitter_competition_scope` (see
 [Roles and permissions](../security/roles-and-permissions.md)):
 
-| Audience                  | Sign-in required | Role                                    |
-| -------------------------- | ----------------- | ---------------------------------------- |
-| **Public visitor**         | No                | Unauthenticated                          |
-| **Signed-in viewer**       | Yes                | `viewer` (default for any new account)  |
-| **Approved submitter**     | Yes                | `submitter`, scoped to specific competitions |
-| **Administrator**          | Yes                | `admin`                                  |
+| Audience               | Sign-in required | Role                                         |
+| ---------------------- | ---------------- | -------------------------------------------- |
+| **Public visitor**     | No               | Unauthenticated                              |
+| **Signed-in viewer**   | Yes              | `viewer` (default for any new account)       |
+| **Approved submitter** | Yes              | `submitter`, scoped to specific competitions |
+| **Administrator**      | Yes              | `admin`                                      |
 
 The frontend may use role/scope to decide what to show, but — consistent with the security
 boundary in the roles document — **frontend visibility is never the security boundary**; every
@@ -93,12 +93,12 @@ flowchart TD
 
 ### 2.3 Content hierarchy per page type
 
-| Page type            | Hierarchy                                                                 |
-| --------------------- | -------------------------------------------------------------------------- |
-| List page (e.g. Fixtures) | Page title → filters → paginated card/row grid → pagination           |
+| Page type                  | Hierarchy                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| List page (e.g. Fixtures)  | Page title → filters → paginated card/row grid → pagination                                 |
 | Detail page (e.g. Fixture) | Breadcrumb → title/summary → tabs (Overview / Statistics / Squads / Timeline) → tab content |
-| Form page (Submission) | Title → scope/help copy → single-column form → primary action → result region |
-| Admin page             | Title → one card per account → request state → scope controls → role-transition actions |
+| Form page (Submission)     | Title → scope/help copy → single-column form → primary action → result region               |
+| Admin page                 | Title → one card per account → request state → scope controls → role-transition actions     |
 
 ---
 
@@ -198,12 +198,12 @@ flowchart LR
 Every list, detail, form and admin page in this document is designed against the same four
 states, shown as annotated strips beneath each wireframe in §5:
 
-| State           | Pattern used across pages                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------- |
-| **Loading**      | Skeleton/placeholder content in place, with a status-role announcement (e.g. "Loading fixture…", "Checking submission access") for assistive technology. |
-| **Empty**        | A specific, non-alarming message naming what is absent (e.g. "No published fixtures match the current filters.", "No in-scope fixtures.") rather than a generic blank page. |
-| **Validation**   | Errors surface next to the offending field where the field is identifiable, plus a summary region that receives focus (submission and admin-approval forms). |
-| **Error**        | An alert-role message distinct from "empty" (e.g. failed fetch vs. genuinely no data), with a retry action where the failure is retryable. Unresolvable public IDs render the shared 404 page rather than an error banner. |
+| State          | Pattern used across pages                                                                                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Loading**    | Skeleton/placeholder content in place, with a status-role announcement (e.g. "Loading fixture…", "Checking submission access") for assistive technology.                                                                   |
+| **Empty**      | A specific, non-alarming message naming what is absent (e.g. "No published fixtures match the current filters.", "No in-scope fixtures.") rather than a generic blank page.                                                |
+| **Validation** | Errors surface next to the offending field where the field is identifiable, plus a summary region that receives focus (submission and admin-approval forms).                                                               |
+| **Error**      | An alert-role message distinct from "empty" (e.g. failed fetch vs. genuinely no data), with a retry action where the failure is retryable. Unresolvable public IDs render the shared 404 page rather than an error banner. |
 
 ---
 
