@@ -25,6 +25,7 @@ nav:
       - Gitea Issue Export: development/gitea-issue-export.md
   - Design:
       - Brand Guidelines: design/brand-guidelines.md
+      - Information Architecture and Wireframes: design/information-architecture-and-wireframes.md
       - Architecture: architecture/overview.md
       - System Architecture and Roadmap: architecture/system-architecture.md
       - API:
