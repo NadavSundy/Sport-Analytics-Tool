@@ -352,6 +352,13 @@ and bowling figures, null figures for a selected player who did not bat or bowl,
 published-statistic states, privacy-safe responses, and consistency with the existing fixture
 statistics derivation rules.
 
+The frontend page suite additionally covers the player heading with independently loading,
+error/retry, empty, and cursor-paginated match history; named fixture, competition, season, and team
+links; reused batting and bowling figures; partial-data notices; and unavailable figures. The
+Playwright player journey runs at desktop and Pixel 7 sizes, opens the player and complete fixture
+overview by keyboard within three purposeful interactions, exercises both themes and 200 percent
+desktop reflow, checks horizontal overflow, and scans for serious or critical Axe findings.
+
 Run the focused checks with:
 
 ```text
@@ -417,3 +424,4 @@ Codex[GPT-5.6 Sol].
 The related public detail-overview coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The combined match-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].
+The public player-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].

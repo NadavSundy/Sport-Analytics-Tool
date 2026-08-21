@@ -153,6 +153,18 @@ Each published statistic retains a secondary calculation-trace link. The trace d
 deliveries with readable player names and returns to the match overview; stable fixture, statistic,
 team, player, and event identifiers remain confined to API requests, route values, and React keys.
 
+## Public player overviews
+
+Opening a published player immediately requests that player's paginated match history. Each match
+uses its named teams as the fixture link and shows readable competition, season, date, match type,
+player team, and squad role context. Available batting and bowling figures reuse the match-overview
+metric presentation; partial source-data notices, unavailable disciplines, and matches with no
+published figures remain explicit without calculating career aggregates in the browser.
+
+The player heading remains usable while match history loads or fails. The embedded section keeps
+its own loading, empty, error, retry, and cursor-pagination behavior, and its named fixture links
+open the complete match overview.
+
 ## Checks
 
 From the repository root:
@@ -256,3 +268,4 @@ The public collection filter behavior was documented with the assistance of Code
 The public related-record overview behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The public match overview behavior was documented with the assistance of Codex[GPT-5.6 Sol].
+The public player overview behavior was documented with the assistance of Codex[GPT-5.6 Sol].
