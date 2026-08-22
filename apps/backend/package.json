@@ -8,7 +8,7 @@
     "start": "node dist/index.js",
     "lint": "eslint src tests --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "npm run build --workspace=@sport-analytics/contracts && npm run test:unit && npm run test:api",
     "test:unit": "vitest run tests/unit",
     "test:api": "vitest run tests/api tests/auth.test.ts tests/authorization.test.ts tests/health.test.ts",
     "test:database": "tsx scripts/run-database-tests.ts",

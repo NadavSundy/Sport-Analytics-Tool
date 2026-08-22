@@ -6,6 +6,7 @@ The `tests/` directory contains cross-application and browser-level testing asse
 
 | Area                       | Location                                                 | Main command                                             | Purpose                                                                                                    |
 | -------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Complete backend suite     | `apps/backend/tests/`                                    | `npm run test:backend` or `npm run test:backend:local`   | Run backend unit, API, and database tests with the default or Docker PostgreSQL workflow.                  |
 | Backend unit tests         | `apps/backend/tests/unit/`                               | `npm run test:unit`                                      | Verify backend services, derivation logic and helpers in isolation.                                        |
 | Backend API tests          | `apps/backend/tests/api/` plus backend auth/health tests | `npm run test:api`                                       | Exercise handwritten HTTP API behaviour.                                                                   |
 | Frontend tests             | `apps/frontend/src/**/*.test.tsx`                        | `npm run test:frontend`                                  | Verify React behaviour with Vitest, jsdom and Testing Library.                                             |
@@ -29,6 +30,16 @@ npm run check
 `npm run check` is the normal database-independent pre-Pull-Request quality gate. It includes structure, formatting, linting, contract build, type-checking, the normal unit/frontend/API/contract/deployment-helper suites, OpenAPI linting and production builds.
 
 PostgreSQL integration tests and browser end-to-end tests are run explicitly rather than being hidden inside the normal local gate.
+
+Run every backend test with the default disposable PostgreSQL runtime:
+
+```bash
+npm run test:backend
+```
+
+Use `npm run test:backend:local` for the equivalent complete backend workflow with Docker. The
+backend workspace's plain `test` command builds the shared contracts, then runs only unit and API
+tests; it does not discover database tests implicitly.
 
 ## PostgreSQL integration tests
 
