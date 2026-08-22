@@ -13,14 +13,31 @@ flowchart LR
     Frontend -->|JSON over HTTPS| API
     API -->|SQL through server-side driver| DB[(PostgreSQL / Supabase-hosted Postgres)]
     API -->|Server-side request| External[Relevant external API]
-    API --> Worker[Future background jobs]
+    API -.->|Transactional outbox| Queue[[Future Azure Service Bus]]
+    Queue -.-> Worker[Future background worker]
     Worker --> DB
+    API -.-> Files[(Future Azure Blob Storage)]
+    API -.-> Cache[(Future Azure Managed Redis)]
     Docs[Public MkDocs site] -. documents .-> Frontend
     Docs -. documents .-> API
     Docs -. documents .-> DB
 ```
 
-A background worker is shown as a future deployment boundary for batch imports, large exports, and expensive derivations. It should only be introduced when asynchronous work is implemented; it is not required for the initial scaffold.
+A background worker is shown as a future deployment boundary for batch imports, large exports, and
+expensive derivations. It should only be introduced when asynchronous work is implemented; it is not
+required for the initial scaffold. The same adoption gate applies to object storage and caching.
+
+## Planned advanced-service decisions
+
+Issue #55 records the initial recommendations for later-tier services. These ADRs are proposals
+pending project-team review; they do not claim that the services are provisioned or implemented.
+
+| Concern         | Proposed direction                                                                                                                                       | Decision record                                                                                                                                       |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Caching         | Measure and optimise PostgreSQL first; use versioned cache-aside reads in Azure Managed Redis only for demonstrated hot paths.                           | [ADR-009](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-009-cache-and-invalidation.md)          |
+| Background jobs | Commit domain state and a PostgreSQL outbox atomically, relay identifiers through Azure Service Bus Standard, and process them with idempotent workers.  | [ADR-010](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-010-background-jobs-and-workers.md)     |
+| File storage    | Keep metadata and provenance in PostgreSQL and private bytes in Azure Blob Storage behind a backend-owned adapter.                                       | [ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)         |
+| Live ingestion  | Normalise provider input through the existing acceptance path, persist replay cursors in PostgreSQL, and deliver public updates with server-sent events. | [ADR-012](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-012-live-event-transport-and-replay.md) |
 
 ## Components and responsibilities
 
@@ -79,8 +96,16 @@ A background worker is shown as a future deployment boundary for batch imports, 
 
 ## Deployment boundaries
 
-The frontend, backend, database, and documentation site must be independently deployable. The initial Azure deployment design is documented under `infra/azure/` and must be updated once exact services are selected and tested.
+The frontend, backend, database, and documentation site must be independently deployable. The
+initial Azure deployment design is documented under `infra/azure/`. Any proposed advanced service
+must pass its ADR adoption gate and gain provisioning, deployment, recovery, and cost evidence before
+the deployed architecture is described as implemented.
 
 ## Trade-offs
 
 A monorepo simplifies shared tooling, atomic Pull Requests, and contracts while preserving separate deployable applications. Its main risk is accidental coupling. The folder boundaries, backend-only database rule, and CI checks must be enforced during review.
+
+## AI Declaration
+
+The issue #55 advanced-service decision summary was drafted and reconciled with the repository with
+the assistance of Codex[GPT-5].

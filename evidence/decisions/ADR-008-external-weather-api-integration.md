@@ -41,12 +41,12 @@ Most fixtures in the T20 corpus are historical matches with a known `start_date`
 
 `WeatherService` distinguishes three failure modes with dedicated error types so the controller does not have to string-match error messages:
 
-| Error type | Cause | HTTP status |
-| --- | --- | --- |
-| `WeatherValidationError` | Missing/non-numeric latitude or longitude, out-of-range coordinates, or a malformed date | `400` |
-| `WeatherTimeoutError` | The Open-Meteo request does not complete within 5000ms (`AbortController`-based timeout) | `504` |
-| `WeatherUpstreamError` | Non-2xx response, unreachable host, invalid JSON, or a response missing the expected `daily` fields | `502` |
-| *(unclassified)* | Any other unexpected error | `503` |
+| Error type               | Cause                                                                                               | HTTP status |
+| ------------------------ | --------------------------------------------------------------------------------------------------- | ----------- |
+| `WeatherValidationError` | Missing/non-numeric latitude or longitude, out-of-range coordinates, or a malformed date            | `400`       |
+| `WeatherTimeoutError`    | The Open-Meteo request does not complete within 5000ms (`AbortController`-based timeout)            | `504`       |
+| `WeatherUpstreamError`   | Non-2xx response, unreachable host, invalid JSON, or a response missing the expected `daily` fields | `502`       |
+| _(unclassified)_         | Any other unexpected error                                                                          | `503`       |
 
 Every failure is logged through the request-scoped Pino logger (`req.log.error`) before the response is sent, so failures are observable without crashing the process or leaking upstream error internals to the client.
 
