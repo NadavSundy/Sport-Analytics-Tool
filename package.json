@@ -18,6 +18,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test:unit && npm run test:frontend && npm run test:api && npm run test:contracts && npm run test:deployment",
+    "test:backend": "npm run test --workspace=@sport-analytics/backend && npm run test:database",
+    "test:backend:local": "npm run test --workspace=@sport-analytics/backend && npm run test:database:local",
     "test:unit": "npm run test:unit --workspace=@sport-analytics/backend",
     "test:frontend": "npm run test --workspace=@sport-analytics/frontend",
     "test:api": "npm run test:api --workspace=@sport-analytics/backend",

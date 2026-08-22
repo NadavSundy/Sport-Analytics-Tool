@@ -108,6 +108,16 @@ The normal database-independent test suite can also be run directly:
 npm run test
 ```
 
+To run every backend unit, API, and PostgreSQL integration test with the default disposable
+PostgreSQL runtime, use:
+
+```bash
+npm run test:backend
+```
+
+Use `npm run test:backend:local` for the same backend workflow with the repository-managed Docker
+Compose database instead.
+
 PostgreSQL integration tests are explicit rather than hidden inside the normal gate. The standard
 workflow provisions a disposable local PostgreSQL 16 runtime when an isolated `DATABASE_URL_TEST`
 is not supplied:
