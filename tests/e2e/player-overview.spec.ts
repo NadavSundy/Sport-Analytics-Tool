@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const competitors = [
   { competitorId: 'team-1', name: 'Wanderers' },
@@ -22,6 +22,75 @@ const fixture = {
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
+
+const inningsStatistic = {
+  statisticId: 'stat-innings-1',
+  fixtureId: 'fixture-1',
+  scope: 'innings',
+  statisticCode: 'team_total',
+  inningsId: 'innings-1',
+  inningsOrdinal: 0,
+  competitorId: 'team-1',
+  competitorName: 'Wanderers',
+  sourceEventCount: 12,
+  metrics: { deliveryRuns: 103, penaltyRuns: 1, totalRuns: 104 },
+};
+
+const playerStatistic = {
+  statisticId: 'stat-player-1',
+  fixtureId: 'fixture-1',
+  scope: 'participant',
+  statisticCode: 'participant_fixture',
+  participantId: 'player-1',
+  participantName: 'A Player',
+  competitorId: 'team-1',
+  competitorName: 'Wanderers',
+  sourceEventCount: 8,
+  batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 5, sixes: 1 },
+  bowling: {
+    runsConceded: 18,
+    legalBallsBowled: 12,
+    oversBowled: '2.0',
+    economyRate: 9,
+    wicketsTaken: 2,
+  },
+};
+
+async function selectTheme(page: Page, theme: 'day' | 'night') {
+  const currentTheme = await page.locator('html').getAttribute('data-theme');
+  if (currentTheme !== theme) {
+    const toggle = page.getByRole('checkbox', { name: /Switch to .* Match theme/ });
+    if (theme === 'night') {
+      await toggle.check();
+    } else {
+      await toggle.uncheck();
+    }
+  }
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+}
+
+async function expectReadableAccessibleView(page: Page, internalValues: string[]) {
+  const mainText = await page.locator('main').innerText();
+  for (const internalValue of internalValues) {
+    expect(mainText).not.toContain(internalValue);
+  }
+  expect(mainText).not.toMatch(
+    /\b(?:competition|season|fixture|competitor|participant|statistic|event)\s+(?:id|reference)\b/i,
+  );
+  expect(mainText).not.toMatch(/\bcompetitor\b|\bparticipant\b|\bcursor\b/i);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+
+  const accessibilityResults = await new AxeBuilder({ page }).analyze();
+  expect(
+    accessibilityResults.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    ),
+  ).toEqual([]);
+}
 
 function matchHistoryEntry(
   fixtureId: string,
@@ -124,6 +193,40 @@ test('player overview presents multiple matches, partial data, and unavailable s
       return;
     }
 
+    if (url.pathname.endsWith('/statistics/stat-innings-1')) {
+      await route.fulfill({
+        json: {
+          data: {
+            ...inningsStatistic,
+            contributingEvents: [
+              {
+                eventId: 'event-1',
+                fixtureId: 'fixture-1',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                sequenceNumber: 1,
+                strikerParticipantId: 'player-1',
+                strikerParticipantName: 'A Player',
+                bowlerParticipantId: 'bowler-1',
+                bowlerParticipantName: 'Opening Bowler',
+                runs: { offBat: 4, extras: 0, total: 4 },
+                extras: {
+                  wides: null,
+                  noBalls: null,
+                  byes: null,
+                  legByes: null,
+                  penalty: null,
+                },
+                nonBoundary: false,
+                bowlerWickets: 0,
+              },
+            ],
+          },
+        },
+      });
+      return;
+    }
+
     if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
       await route.fulfill({
         json: {
@@ -142,7 +245,7 @@ test('player overview presents multiple matches, partial data, and unavailable s
               decidedByBowlOut: false,
             },
             warnings: [],
-            statistics: [],
+            statistics: [inningsStatistic, playerStatistic],
           },
         },
       });
@@ -172,6 +275,9 @@ test('player overview presents multiple matches, partial data, and unavailable s
 
   let purposefulInteractions = 0;
   await page.goto('/participants');
+  await expect(page.getByRole('combobox', { name: 'Player name' })).toBeVisible();
+  await selectTheme(page, 'day');
+  await expectReadableAccessibleView(page, ['player-1']);
   const playerLink = page.getByRole('link', { name: 'A Player' });
   await playerLink.focus();
   await expect(playerLink).toBeFocused();
@@ -197,6 +303,32 @@ test('player overview presents multiple matches, partial data, and unavailable s
     requestedUrls.some((url) => url.includes('/participants/player-1/fixtures?limit=10')),
   ).toBe(true);
 
+  const internalValues = [
+    'player-1',
+    'fixture-1',
+    'fixture-2',
+    'fixture-3',
+    'competition-1',
+    'season-1',
+    'team-1',
+    'team-2',
+    'team-3',
+    'team-4',
+    'stat-innings-1',
+    'stat-player-1',
+    'innings-1',
+    'event-1',
+    'bowler-1',
+  ];
+  const isMobile = (page.viewportSize()?.width ?? 0) < 900;
+  await expectReadableAccessibleView(page, internalValues);
+  if (process.env.CAPTURE_ISSUE_199_EVIDENCE && !isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-199-player-journey-desktop-day.png',
+    });
+  }
+
   const matchLink = page.getByRole('link', { name: 'Wanderers vs Strikers' });
   await matchLink.focus();
   await expect(matchLink).toBeFocused();
@@ -206,17 +338,38 @@ test('player overview presents multiple matches, partial data, and unavailable s
     page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
   ).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Match statistics' })).toBeVisible();
-  expect(purposefulInteractions).toBeLessThanOrEqual(3);
+  await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Innings totals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
+  await expect(page.getByText('104', { exact: true })).toBeVisible();
+  await expectReadableAccessibleView(page, internalValues);
 
-  await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
-  if ((page.viewportSize()?.width ?? 0) < 900) {
-    await page.locator('.theme-toggle').tap();
-  } else {
-    await page.getByLabel('Switch to Night Match theme').check();
+  await selectTheme(page, 'night');
+  await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  await expectReadableAccessibleView(page, internalValues);
+
+  const calculationLink = page.getByRole('link', { name: 'View calculation trace' }).first();
+  await calculationLink.focus();
+  await expect(calculationLink).toBeFocused();
+  await page.keyboard.press('Enter');
+  purposefulInteractions += 1;
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Wanderers innings 1 total' }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Contributing events' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Delivery 1' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'A Player' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Opening Bowler' })).toBeVisible();
+  expect(requestedUrls.some((url) => url.includes('includeContributors=true'))).toBe(true);
+  expect(purposefulInteractions).toBe(3);
+  await expectReadableAccessibleView(page, internalValues);
+  if (process.env.CAPTURE_ISSUE_199_EVIDENCE && isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-199-player-journey-mobile-night.png',
+    });
   }
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
 
   if ((page.viewportSize()?.width ?? 0) >= 900) {
     const viewport = page.viewportSize();
@@ -232,19 +385,5 @@ test('player overview presents multiple matches, partial data, and unavailable s
     });
   }
 
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    ),
-  ).toBe(false);
-  const mainText = await page.locator('main').innerText();
-  expect(mainText).not.toMatch(/player-1|fixture-[123]|competition-1|season-1|team-[1234]/);
-  expect(mainText).not.toMatch(/\bparticipant\b|technical reference/i);
-
-  const accessibilityResults = await new AxeBuilder({ page }).analyze();
-  expect(
-    accessibilityResults.violations.filter(
-      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-    ),
-  ).toEqual([]);
+  await expectReadableAccessibleView(page, internalValues);
 });

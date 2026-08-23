@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const fixture = {
   fixtureId: 'fixture-1',
@@ -21,7 +21,81 @@ const fixture = {
   endDate: '2026-08-09',
 };
 
+const inningsStatistic = {
+  statisticId: 'stat-innings-1',
+  fixtureId: 'fixture-1',
+  scope: 'innings',
+  statisticCode: 'team_total',
+  inningsId: 'innings-1',
+  inningsOrdinal: 0,
+  competitorId: 'competitor-1',
+  competitorName: 'Wanderers',
+  sourceEventCount: 12,
+  metrics: { deliveryRuns: 104, penaltyRuns: 0, totalRuns: 104 },
+};
+
+const playerStatistic = {
+  statisticId: 'stat-player-1',
+  fixtureId: 'fixture-1',
+  scope: 'participant',
+  statisticCode: 'participant_fixture',
+  participantId: 'participant-1',
+  participantName: 'A Player',
+  competitorId: 'competitor-1',
+  competitorName: 'Wanderers',
+  sourceEventCount: 8,
+  batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 5, sixes: 1 },
+  bowling: null,
+};
+
+async function selectTheme(page: Page, theme: 'day' | 'night') {
+  const currentTheme = await page.locator('html').getAttribute('data-theme');
+  if (currentTheme !== theme) {
+    const toggle = page.getByRole('checkbox', { name: /Switch to .* Match theme/ });
+    if (theme === 'night') {
+      await toggle.check();
+    } else {
+      await toggle.uncheck();
+    }
+  }
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+}
+
+async function expectReadableAccessibleView(page: Page, internalValues: string[]) {
+  const mainText = await page.locator('main').innerText();
+  for (const internalValue of internalValues) {
+    expect(mainText).not.toContain(internalValue);
+  }
+  expect(mainText).not.toMatch(
+    /\b(?:competition|season|fixture|competitor|participant|statistic|event)\s+(?:id|reference)\b/i,
+  );
+  expect(mainText).not.toMatch(/\bcompetitor\b|\bparticipant\b|\bcursor\b/i);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+
+  const accessibilityResults = await new AxeBuilder({ page }).analyze();
+  expect(
+    accessibilityResults.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    ),
+  ).toEqual([]);
+}
+
 test('competition, season, and team overviews embed readable related records', async ({ page }) => {
+  const internalValues = [
+    'competition-1',
+    'season-1',
+    'fixture-1',
+    'competitor-1',
+    'competitor-2',
+    'participant-1',
+    'stat-innings-1',
+    'stat-player-1',
+  ];
+
   await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url());
 
@@ -40,6 +114,31 @@ test('competition, season, and team overviews embed readable related records', a
             competitionName: 'Premier Cricket League',
             label: '2026 season',
             seasonId: 'season-1',
+          },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
+      await route.fulfill({
+        json: {
+          data: {
+            fixtureId: 'fixture-1',
+            status: 'complete',
+            scope: { superOversIncluded: false },
+            outcome: {
+              kind: 'won',
+              winnerCompetitorId: 'competitor-1',
+              winnerCompetitorName: 'Wanderers',
+              eliminatorCompetitorId: null,
+              eliminatorCompetitorName: null,
+              margin: { type: 'runs', value: 12 },
+              method: null,
+              decidedByBowlOut: false,
+            },
+            warnings: [],
+            statistics: [inningsStatistic, playerStatistic],
           },
         },
       });
@@ -123,6 +222,9 @@ test('competition, season, and team overviews embed readable related records', a
 
   let purposefulInteractions = 0;
   await page.goto('/competitions');
+  await expect(page.getByRole('combobox', { name: 'Competition name' })).toBeVisible();
+  await selectTheme(page, 'day');
+  await expectReadableAccessibleView(page, internalValues);
   await page.getByRole('link', { name: 'Premier Cricket League' }).focus();
   await page.keyboard.press('Enter');
   purposefulInteractions += 1;
@@ -132,6 +234,7 @@ test('competition, season, and team overviews embed readable related records', a
   ).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Fixtures by season' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Wanderers', exact: true })).toBeVisible();
+  await expectReadableAccessibleView(page, internalValues);
 
   const seasonsSection = page
     .getByRole('heading', { level: 2, name: 'Seasons' })
@@ -144,6 +247,7 @@ test('competition, season, and team overviews embed readable related records', a
   await expect(page.getByRole('heading', { level: 1, name: '2026 season' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Fixtures' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Teams' })).toBeVisible();
+  await expectReadableAccessibleView(page, internalValues);
   await page.getByRole('link', { name: 'Wanderers vs Strikers' }).focus();
   await page.keyboard.press('Enter');
   purposefulInteractions += 1;
@@ -152,30 +256,48 @@ test('competition, season, and team overviews embed readable related records', a
     page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Premier Cricket League' })).toBeVisible();
+  await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Innings totals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'A Player' }).first()).toBeVisible();
   expect(purposefulInteractions).toBe(3);
 
+  const isMobile = (page.viewportSize()?.width ?? 0) < 900;
+  await selectTheme(page, 'day');
+  await expectReadableAccessibleView(page, internalValues);
+  if (process.env.CAPTURE_ISSUE_199_EVIDENCE && !isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-199-competition-journey-desktop-day.png',
+    });
+  }
+
+  await selectTheme(page, 'night');
+  await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  await expectReadableAccessibleView(page, internalValues);
+  if (process.env.CAPTURE_ISSUE_199_EVIDENCE && isMobile) {
+    await page.screenshot({
+      fullPage: true,
+      path: 'evidence/validation/issue-199-competition-journey-mobile-night.png',
+    });
+  }
+
   await page.getByRole('link', { name: 'Teams', exact: true }).click();
+  await expect(page).toHaveURL(/\/competitors$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Teams' })).toBeVisible();
+  let teamInteractions = 0;
   await page.getByRole('link', { name: 'Wanderers', exact: true }).focus();
   await page.keyboard.press('Enter');
+  teamInteractions += 1;
   await expect(page.getByRole('heading', { level: 1, name: 'Wanderers' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'A Player' })).toBeVisible();
-
-  const mainText = await page.locator('main').innerText();
-  expect(mainText).not.toMatch(/competition-1|season-1|fixture-1|competitor-1|participant-1/);
-  expect(mainText).not.toMatch(/\bcompetitor\b|\bparticipant\b/i);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    ),
-  ).toBe(false);
-
-  const accessibilityResults = await new AxeBuilder({ page }).analyze();
-  expect(
-    accessibilityResults.violations.filter(
-      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-    ),
-  ).toEqual([]);
+  await expectReadableAccessibleView(page, internalValues);
+  await page.getByRole('link', { name: 'Wanderers vs Strikers' }).focus();
+  await page.keyboard.press('Enter');
+  teamInteractions += 1;
+  await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  expect(teamInteractions).toBe(2);
 });
 
 test('readable filter combobox supports routed selection and keyboard use', async ({ page }) => {
@@ -185,6 +307,36 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
     const requestUrl = route.request().url();
     const url = new URL(requestUrl);
     requestedUrls.push(requestUrl);
+
+    if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
+      await route.fulfill({
+        json: {
+          data: {
+            fixtureId: 'fixture-1',
+            status: 'complete',
+            scope: { superOversIncluded: false },
+            outcome: {
+              kind: 'won',
+              winnerCompetitorId: 'competitor-1',
+              winnerCompetitorName: 'Wanderers',
+              eliminatorCompetitorId: null,
+              eliminatorCompetitorName: null,
+              margin: { type: 'runs', value: 12 },
+              method: null,
+              decidedByBowlOut: false,
+            },
+            warnings: [],
+            statistics: [inningsStatistic, playerStatistic],
+          },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures/fixture-1')) {
+      await route.fulfill({ json: { data: fixture } });
+      return;
+    }
 
     if (url.pathname.endsWith('/competitions')) {
       await route.fulfill({
@@ -227,7 +379,22 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
     }
 
     if (url.pathname.endsWith('/fixtures')) {
-      await route.fulfill({ json: { data: [], pagination: { nextCursor: null } } });
+      await route.fulfill({
+        json: {
+          data: url.searchParams.has('competitionId') ? [fixture] : [],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/participants')) {
+      await route.fulfill({
+        json: {
+          data: [{ participantId: 'participant-1', displayName: 'A Player' }],
+          pagination: { nextCursor: null },
+        },
+      });
       return;
     }
 
@@ -261,8 +428,11 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
 
   await page.getByLabel('Switch to Night Match theme').check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
-  await page.getByRole('button', { name: 'Show competition options' }).click();
-  await page.getByRole('option', { name: 'Premier Cricket League' }).click();
+  await competition.fill('prem');
+  await expect(page.getByRole('option', { name: 'Premier Cricket League' })).toBeVisible();
+  await competition.press('ArrowDown');
+  await competition.press('Enter');
+  let searchJourneyInteractions = 1;
   const team = page.getByRole('combobox', { name: 'Team' });
   await team.focus();
   await team.press('ArrowDown');
@@ -271,6 +441,7 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
   await expect(team).toHaveAttribute('aria-expanded', 'false');
 
   await page.getByRole('button', { name: 'Apply filters' }).click();
+  searchJourneyInteractions += 1;
   await expect(page).toHaveURL(/competitionId=competition-1/);
   await expect(page.locator('.active-filter-summary')).toContainText(
     'Competition: Premier Cricket League',
@@ -280,12 +451,24 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
     requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=50')),
   ).toBe(true);
 
-  const accessibilityResults = await new AxeBuilder({ page }).analyze();
-  expect(
-    accessibilityResults.violations.filter(
-      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-    ),
-  ).toEqual([]);
+  const filteredFixture = page.getByRole('link', { name: 'Wanderers vs Strikers' });
+  await filteredFixture.focus();
+  await expect(filteredFixture).toBeFocused();
+  await page.keyboard.press('Enter');
+  searchJourneyInteractions += 1;
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+  ).toBeVisible();
+  await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  expect(searchJourneyInteractions).toBe(3);
+  await expectReadableAccessibleView(page, [
+    'competition-1',
+    'season-1',
+    'fixture-1',
+    'competitor-1',
+    'competitor-2',
+    'participant-1',
+  ]);
 });
 
 test('anonymous browsing preserves filters, pagination and keyboard navigation', async ({
