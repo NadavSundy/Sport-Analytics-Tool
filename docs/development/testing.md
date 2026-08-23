@@ -423,6 +423,27 @@ npm run test --workspace=@sport-analytics/frontend -- --run src/pages/PublicBrow
 npm run test:e2e -- tests/e2e/public-browsing.spec.ts --workers=1
 ```
 
+## Connected public-data journey coverage
+
+The issue #199 browser verification treats the completed competition, season, fixture, team,
+player, statistics, and calculation-trace redesign as connected tasks. The public-browsing journey
+starts at Competitions and reaches a season and complete fixture overview in three keyboard
+activations, then starts at Teams and reaches the same inline statistics in two. The player journey
+starts at Players and reaches the player overview, named match, inline statistics, and calculation
+trace in three keyboard activations.
+
+Both journeys run in desktop and Pixel 7 Chromium. Day Match and Night Match are selected and
+checked independently; each representative view is audited for readable headings, labels, facts,
+filters, links, and messages, horizontal overflow, and serious or critical Axe findings. The
+interaction matrix, command results, screenshot index, usability walkthrough, and deliberately
+deferred follow-up are recorded in `evidence/validation/issue-199-public-data-journeys.md`.
+
+Run the focused checks with:
+
+```text
+npm run test:e2e -- tests/e2e/public-browsing.spec.ts tests/e2e/player-overview.spec.ts --workers=1
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -444,3 +465,5 @@ The related public detail-overview coverage was documented with the assistance o
 Codex[GPT-5.6 Sol].
 The combined match-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].
 The public player-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].
+The connected public-data journey coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].
