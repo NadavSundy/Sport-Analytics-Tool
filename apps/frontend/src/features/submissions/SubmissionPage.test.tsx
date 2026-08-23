@@ -13,8 +13,14 @@ type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => vo
 const fixture = {
   fixtureId: '7',
   competitionId: '5',
+  competitionName: 'Example Competition',
   seasonId: '15',
   season: '2026',
+  seasonLabel: '2026',
+  competitors: [
+    { competitorId: '20', name: 'Wanderers' },
+    { competitorId: '21', name: 'Strikers' },
+  ],
   matchType: 'T20',
   teamType: 'international',
   gender: 'female',

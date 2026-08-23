@@ -111,12 +111,29 @@ administrators cannot manage themselves through either action.
 
 ## Checks
 
+Run the database-independent backend unit and API suites from the repository root with:
+
+```bash
+npm run test --workspace=@sport-analytics/backend
+```
+
+The backend workspace's ordinary `test` command first builds the shared contracts, then runs only
+the unit and API suites. It intentionally excludes PostgreSQL integration tests, which prevents
+Vitest from discovering database suites when no database workflow was selected. The granular
+checks remain available:
+
 ```bash
 npm run lint --workspace=@sport-analytics/backend
 npm run typecheck --workspace=@sport-analytics/backend
 npm run test:unit
 npm run test:api
 npm run build --workspace=@sport-analytics/backend
+```
+
+Run the complete backend test workflow, including the PostgreSQL integration suite, with:
+
+```bash
+npm run test:backend
 ```
 
 Database integration tests start a disposable local PostgreSQL 16 cluster when
@@ -133,12 +150,15 @@ the normal root `npm run test` and `npm run check` commands and run explicitly i
 An explicit Docker Compose workflow remains available for parity with the PostgreSQL 16 CI service:
 
 ```bash
-npm run test:database:local
+npm run test:backend:local
 ```
 
-It starts an isolated container on `127.0.0.1:55432`, supplies the test-only connection, resets and
-migrates the schema, seeds deterministic data, and runs the same database suite. To use an
-intentionally manually managed isolated database instead, supply `DATABASE_URL_TEST` and run:
+That command runs the backend unit and API suites before using the established
+`test:database:local` workflow. The lower-level `npm run test:database:local` command remains
+available when only the database suite is needed. It starts an isolated container on
+`127.0.0.1:55432`, supplies the test-only connection, resets and migrates the schema, seeds
+deterministic data, and runs the same database suite. To use an intentionally manually managed
+isolated database instead, supply `DATABASE_URL_TEST` and run:
 
 ```bash
 npm run db:test:reset --workspace=@sport-analytics/backend

@@ -2,8 +2,8 @@
 
 **Status:** Target architecture; foundation components are implemented, while later-tier
 components are explicitly marked as planned.  
-**Related issues:** #38, #73
-**Last updated:** 12 August 2026
+**Related issues:** #38, #55, #73
+**Last updated:** 21 August 2026
 
 ## 1. Purpose and architectural principles
 
@@ -75,6 +75,19 @@ Supabase Auth is therefore the team's selected and implemented authentication fo
 Any required stakeholder or lecturer confirmation for its production use must remain
 recorded as an open compliance decision until confirmed.
 
+### Advanced service direction
+
+The following issue #55 records define compatible foundations for later-tier work. They are
+**proposed pending project-team review** and do not mean that a service is provisioned or a feature
+is implemented.
+
+| Concern                   | Proposed decision                                                                                                                                                    | Record                                                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cache and invalidation    | Keep PostgreSQL authoritative; add cache-aside Azure Managed Redis only after a measured adoption gate, using data/definition-version keys and outbox invalidation.  | [ADR-009](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-009-cache-and-invalidation.md)          |
+| Jobs and workers          | Atomically commit PostgreSQL job/outbox rows, relay identifiers through Azure Service Bus Standard, and process them with separately deployable idempotent workers.  | [ADR-010](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-010-background-jobs-and-workers.md)     |
+| Files and objects         | Keep ownership, lifecycle, and provenance in PostgreSQL while private Azure Blob Storage holds retained source and release bytes.                                    | [ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)         |
+| Live transport and replay | Adapt provider deliveries into the normal acceptance path, persist a PostgreSQL change cursor, and use server-sent events plus snapshot recovery for public clients. | [ADR-012](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-012-live-event-transport-and-replay.md) |
+
 ## 3. High-level architecture
 
 ```mermaid
@@ -94,13 +107,13 @@ flowchart TB
 
     subgraph Data[Persistent data]
         DB[(PostgreSQL<br/>events, users, grants, statistics, audit)]
-        Files[(Object storage<br/>planned for uploads and exports)]
+        Files[(Azure Blob Storage<br/>proposed for uploads and exports)]
     end
 
     subgraph Future[Intermediate and advanced components]
-        Queue[[Job queue or transactional outbox]]
+        Queue[[PostgreSQL outbox and<br/>Azure Service Bus]]
         Worker[Batch and derivation worker]
-        Cache[(Cache)]
+        Cache[(Azure Managed Redis<br/>after measured adoption gate)]
         Live[Live event provider]
         Definitions[Versioned custom statistic definitions]
     end
@@ -121,13 +134,14 @@ flowchart TB
     API -.-> Cache
     Worker -.->|Invalidate or refresh| Cache
     Live -.->|Webhook, stream, or polling adapter| API
+    API -.->|Server-sent events and cursor replay| Frontend
     Definitions -.-> Worker
 ```
 
 Solid connections are Basic-tier boundaries or selected foundations. Dotted connections are
-Intermediate or Advanced additions. Object storage is shown as planned because PostgreSQL
-should store file metadata and provenance, not necessarily large source and export objects.
-Its provider has not yet been selected.
+Intermediate or Advanced additions. ADR-009 through ADR-012 propose the service choices and
+consistency rules for those additions. They remain unimplemented until their adoption gates,
+project-team review, provisioning, and feature-specific verification are complete.
 
 ### Trust boundaries
 
@@ -156,9 +170,9 @@ Its provider has not yet been selected.
 | Derivation service                      | Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.                                                                                  | Basic for required statistics; versioned/custom definitions are Advanced.                                    |
 | File and export service                 | Enforce upload type/size limits, calculate checksums, retain source provenance, create immutable release manifests, and provide authorised downloads.                                                                                                   | Basic for small synchronous files; object storage and asynchronous large exports are Intermediate.           |
 | External integration adapter            | Isolate provider formats and credentials; apply timeouts, bounded retries, rate limits, schema validation, idempotency, and source/retrieval metadata. Cricsheet is the current historical file source; the required runtime external API is undecided. | Basic adapter and one integration required.                                                                  |
-| Worker and job queue                    | Process large imports, recomputation, exports, and scheduled synchronisation outside request timeouts. Jobs are idempotent, retryable, observable, and dead-lettered after bounded failures.                                                            | Intermediate.                                                                                                |
-| Cache                                   | Reduce repeated reads of published statistics and reference data. Cache entries are keyed by data and definition version and invalidated after accepted corrections or recalculation.                                                                   | Intermediate; introduce only after measurement.                                                              |
-| Live ingestion adapter                  | Receive or poll live events, order and deduplicate them, handle late corrections, and pass them through the same validation and acceptance path as file submissions.                                                                                    | Advanced.                                                                                                    |
+| Worker and job queue                    | Use a PostgreSQL job/outbox transaction, Azure Service Bus Standard, and a separate idempotent Node worker for large imports, recomputation, exports, and scheduled synchronisation.                                                                    | Intermediate; proposed in ADR-010 and introduced only when request limits justify it.                        |
+| Cache                                   | Use cache-aside Azure Managed Redis for measured hot published reads. Keys include data and definition versions; committed outbox events invalidate affected scopes.                                                                                    | Intermediate; proposed in ADR-009 and introduced only after measurement.                                     |
+| Live ingestion adapter                  | Normalise webhook, stream, or polling deliveries through the ordinary acceptance path; retain PostgreSQL replay cursors and expose public updates through SSE with snapshot recovery.                                                                   | Advanced; proposed in ADR-012 and blocked on a licensed provider.                                            |
 | Custom statistic engine                 | Store reviewed, versioned definitions and calculate results in a restricted expression model. It must not execute arbitrary user code or unbounded database queries.                                                                                    | Advanced.                                                                                                    |
 | MkDocs site                             | Publish architecture, API, database, security, deployment, testing, methodology, and data-source documentation independently of the product applications.                                                                                               | Basic; deployed separately to Cloudflare Pages.                                                              |
 
@@ -730,13 +744,13 @@ undocumented critical limitation.
 | Required statistic catalogue (#37)                | Derivation contracts, provenance, indexes, and acceptance tests cannot be finalised.                                                                                                                                               | Approve names, formulas, scopes, rounding, tie/null rules, super-over handling, and reference examples.                                                                                                                                | Sprint 1; before Sprint 2 derivation.                                                                 |
 | Competition scope and storage volume              | The measured corpus contains 3,193,996 deliveries; the selected database free plan may be too small and the Frankfurt database adds about 150 ms network latency from Johannesburg.                                                | Benchmark the real schema/indexes and representative queries; then pay, reduce scope, move provider/region, or separate large objects. Record an ADR.                                                                                  | Before bulk ingestion.                                                                                |
 | Role administration and review policy             | The deny-by-default role and competition checks are implemented, but over-broad grant management or self-promotion could still corrupt trusted data.                                                                               | Define approver separation, grant reason/audit fields, expiry/revocation, and auto-accept versus review rules; preserve the tested deny-by-default route policies.                                                                     | Before enabling submissions.                                                                          |
-| Object storage and retention                      | Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.                                                                                                          | Select a provider after measurement; define size/type limits, malware approach, signed links, retention, licence, and deletion behaviour.                                                                                              | Before large/public uploads or exports.                                                               |
+| Object storage and retention                      | Storing large source/export bytes in PostgreSQL raises cost; unmanaged files raise security, privacy, and deletion risks.                                                                                                          | ADR-011 proposes private Azure Blob Storage with PostgreSQL provenance. Approve volume, scanning, residency, licence, retention, recovery, and cost before provisioning or enabling large/public files.                                | Before large/public uploads or exports.                                                               |
 | Runtime external API is not selected              | The mandatory integration may have inadequate T20 coverage, quotas, licence, reliability, or correction semantics.                                                                                                                 | Compare candidates using a thin adapter proof; preserve fixtures for offline tests and ensure graceful degradation.                                                                                                                    | Sprint 1 selection; Sprint 2 implementation.                                                          |
 | Deployment workflows do not match monorepo paths  | Current filters and package/workspace references use `frontend`/`backend` rather than `apps/frontend`/`apps/backend`, so main changes may not deploy correctly.                                                                    | Correct the workflows and prove them with deployment plus smoke-test evidence.                                                                                                                                                         | Sprint 1.                                                                                             |
 | Database migration and recovery process           | Automatic or incompatible changes can break a running API; the current free database has no retained backups.                                                                                                                      | Use reviewed SQL, explicit forward migration, backward-compatible rollout, tested dump/restore, and recorded ownership.                                                                                                                | Before event data becomes authoritative.                                                              |
 | Event and statistic correctness                   | Cricket edge cases can silently produce plausible but wrong aggregates.                                                                                                                                                            | Preserve the approved identities/revisions, use corpus edge cases and independent golden results, property-test invariants, and make formula versions visible.                                                                         | Every event/statistic Pull Request.                                                                   |
-| Queue/cache consistency                           | A lost job or stale cache can publish statistics from superseded events.                                                                                                                                                           | Use atomic outbox/job creation, idempotent workers, data/definition-version cache keys, invalidation tests, and reconciliation jobs. Avoid these components until needed.                                                              | Before Intermediate rollout.                                                                          |
-| Live feed ordering, correction, licence, and cost | Late or duplicate events can cause divergence; provider terms may prevent redistribution.                                                                                                                                          | Select a licensed provider, persist provider sequence/idempotency keys, pass live data through normal validation, and test replay/reconciliation.                                                                                      | Optional Advanced gate.                                                                               |
+| Queue/cache consistency                           | A lost job or stale cache can publish statistics from superseded events.                                                                                                                                                           | Apply ADR-009 and ADR-010: atomic outbox/job creation, idempotent workers, data/definition-version cache keys, invalidation tests, and reconciliation. Avoid both services until their adoption gates pass.                            | Before Intermediate rollout.                                                                          |
+| Live feed ordering, correction, licence, and cost | Late or duplicate events can cause divergence; provider terms may prevent redistribution.                                                                                                                                          | Apply ADR-012 after selecting a licensed provider: persist delivery identities and replay cursors, use the normal acceptance path, deliver SSE updates, and test snapshot recovery and convergence.                                    | Optional Advanced gate.                                                                               |
 | Custom-statistic safety                           | Arbitrary expressions can cause code execution, data leakage, or unbounded workloads.                                                                                                                                              | Use a restricted declarative model, allow-listed operations, validation, cost/time limits, review/versioning, and isolated execution. Never evaluate arbitrary JavaScript or SQL.                                                      | Optional Advanced gate.                                                                               |
 | Provider and secret availability                  | Auth, database, storage, or external-provider outage can affect multiple features; leaked credentials expand impact.                                                                                                               | Separate least-privilege credentials by environment, rotate and redact them, monitor providers, apply timeouts/circuit breakers, and document degraded modes.                                                                          | Before production.                                                                                    |
 
@@ -781,3 +795,6 @@ requires the group review and Pull Request required by issue #38.
 The roadmap and authentication terminology were later reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Thinking]. The issue #44 implementation status was reconciled with the
 repository and updated with the assistance of Codex[GPT-5.6 Sol].
+
+The issue #55 advanced-service recommendations and decision links were drafted and reconciled with
+the current architecture with the assistance of Codex[GPT-5].

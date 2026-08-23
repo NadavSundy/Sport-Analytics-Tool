@@ -13,6 +13,18 @@ npm ci
 npm run check
 ```
 
+Run the complete backend test workflow with the default disposable PostgreSQL runtime:
+
+```bash
+npm run test:backend
+```
+
+Use the repository-managed Docker PostgreSQL environment instead with:
+
+```bash
+npm run test:backend:local
+```
+
 Run the database suite directly with:
 
 ```bash
@@ -50,16 +62,23 @@ tooling never falls back to the normal `DATABASE_URL`.
 
 ## Test command overview
 
-| Command                       | Purpose                                                                                    | PostgreSQL provisioning          | Docker required |
-| ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------- | --------------- |
-| `npm run test`                | Unit, frontend, API, contract, and deployment-helper suites                                | None                             | No              |
-| `npm run test:deployment`     | Deployment workflow helper tests                                                           | None                             | No              |
-| `npm run test:database`       | Provision and run the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:database:local` | Provision, prepare, and test against the repository-managed PostgreSQL 16 Docker container | Automatic Docker connection      | Yes             |
-| `npm run test:e2e`            | Playwright browser and accessibility tests                                                 | No dedicated database workflow   | No              |
-| `npm run test:coverage`       | Current configured coverage suites                                                         | None                             | No              |
-| `npm run check`               | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds | None                             | No              |
-| `npm run test:ci`             | Normal tests, database integration tests, and browser tests                                | CI supplies `DATABASE_URL_TEST`  | No              |
+| Command                       | Purpose                                                                                         | PostgreSQL provisioning          | Docker required |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------- | --------------- |
+| `npm run test`                | Unit, frontend, API, contract, and deployment-helper suites                                     | None                             | No              |
+| `npm run test:backend`        | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST` | No              |
+| `npm run test:backend:local`  | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection      | Yes             |
+| `npm run test:deployment`     | Deployment workflow helper tests                                                                | None                             | No              |
+| `npm run test:database`       | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
+| `npm run test:database:local` | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection      | Yes             |
+| `npm run test:e2e`            | Playwright browser and accessibility tests                                                      | No dedicated database workflow   | No              |
+| `npm run test:coverage`       | Current configured coverage suites                                                              | None                             | No              |
+| `npm run check`               | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                             | No              |
+| `npm run test:ci`             | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`  | No              |
+
+The backend workspace's ordinary command, `npm run test --workspace=@sport-analytics/backend`,
+builds the shared contracts and runs only its unit and API suites. PostgreSQL tests run only through
+`test:backend`, `test:backend:local`, `test:database`, or `test:database:local`, so a plain workspace
+test cannot accidentally discover integration tests without a selected database workflow.
 
 When `DATABASE_URL_TEST` is supplied, it must pass the safety checks and be reachable; the command
 fails rather than falling back to another database. CI provisions its own PostgreSQL 16 service,

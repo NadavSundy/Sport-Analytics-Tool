@@ -214,9 +214,15 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm run test
+npm run test:backend
 npm run openapi:lint
 npm run build
 ```
+
+`npm run test:backend` runs all backend unit, API, and PostgreSQL integration tests with the
+default disposable database runtime. Use `npm run test:backend:local` to run the same complete
+backend workflow with Docker. The normal `npm run test` and `npm run check` commands remain
+database-independent.
 
 The extended CI/testing suite also includes Playwright browser/accessibility tests and coverage
 generation. See [Testing](testing.md).
