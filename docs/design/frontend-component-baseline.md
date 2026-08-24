@@ -10,14 +10,14 @@ Use `PageLayout` for a normal route. It provides the 1600 px analytics content b
 
 ## Reusable components
 
-| Component | Purpose | Accessibility contract |
-| --- | --- | --- |
-| `Button` | Primary, secondary and destructive native actions | Native keyboard operation, disabled state and visible focus |
-| `TextField` | Labelled text input with optional help and validation | Visible `<label>`, required semantics, help/error description, `aria-invalid` |
-| `Message` | Information, success, warning and error feedback | Errors use `role="alert"`; non-error updates use `role="status"` |
-| `Card` | Group related content | Uses a landmark section; do not use for a single line only |
-| `DataTable` | Responsive data table wrapper | Native caption and table semantics; deliberate keyboard-focusable horizontal overflow |
-| `PageLayout` | Shared route heading and content boundary | Preserves one visible page `<h1>` |
+| Component    | Purpose                                               | Accessibility contract                                                                |
+| ------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `Button`     | Primary, secondary and destructive native actions     | Native keyboard operation, disabled state and visible focus                           |
+| `TextField`  | Labelled text input with optional help and validation | Visible `<label>`, required semantics, help/error description, `aria-invalid`         |
+| `Message`    | Information, success, warning and error feedback      | Errors use `role="alert"`; non-error updates use `role="status"`                      |
+| `Card`       | Group related content                                 | Uses a landmark section; do not use for a single line only                            |
+| `DataTable`  | Responsive data table wrapper                         | Native caption and table semantics; deliberate keyboard-focusable horizontal overflow |
+| `PageLayout` | Shared route heading and content boundary             | Preserves one visible page `<h1>`                                                     |
 
 All components work at desktop and mobile widths. Tables retain their meaningful columns and scroll horizontally when necessary; data cells marked with `data-numeric` are right-aligned with tabular numerals.
 

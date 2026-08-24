@@ -18,12 +18,15 @@ export function TextField({
   const inputId = id ?? inputProps.name;
 
   if (!inputId) {
-    throw new Error('TextField requires an id or name so its label can be associated with the input.');
+    throw new Error(
+      'TextField requires an id or name so its label can be associated with the input.',
+    );
   }
 
   const helpId = helpText ? `${inputId}-help` : undefined;
   const errorId = error ? `${inputId}-error` : undefined;
-  const describedBy = [inputProps['aria-describedby'], helpId, errorId].filter(Boolean).join(' ') || undefined;
+  const describedBy =
+    [inputProps['aria-describedby'], helpId, errorId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className="ui-field">
@@ -40,8 +43,16 @@ export function TextField({
         id={inputId}
         required={required}
       />
-      {helpText ? <p className="ui-field__help" id={helpId}>{helpText}</p> : null}
-      {error ? <p className="ui-field__error" id={errorId}>{error}</p> : null}
+      {helpText ? (
+        <p className="ui-field__help" id={helpId}>
+          {helpText}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="ui-field__error" id={errorId}>
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
