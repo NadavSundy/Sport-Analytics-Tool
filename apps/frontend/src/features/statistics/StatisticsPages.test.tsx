@@ -162,6 +162,13 @@ describe('public fixture statistics pages', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Loading match statistics' })).toBeInTheDocument();
 
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+        expect.objectContaining({ headers: { Accept: 'application/json' } }),
+      ),
+    );
+
     resolveStatistics(
       response(200, {
         data: {
@@ -199,12 +206,6 @@ describe('public fixture statistics pages', () => {
     expect(screen.getByRole('heading', { name: 'Participating players' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
-        expect.objectContaining({ headers: { Accept: 'application/json' } }),
-      ),
-    );
     const statisticsCall = fetchMock.mock.calls.find(
       ([url]) => String(url) === 'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
     );
