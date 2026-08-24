@@ -308,7 +308,14 @@ describe('administrator user management page', () => {
     renderPage();
 
     const card = within(await userCard());
-    fireEvent.click(card.getByRole('checkbox', { name: 'Premier T20' }));
+    const scopeCheckbox = card.getByRole('checkbox', { name: 'Premier T20' });
+
+    fireEvent.click(scopeCheckbox);
+
+    await waitFor(() => {
+      expect(scopeCheckbox).toBeChecked();
+    });
+
     fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
 
     expect(
