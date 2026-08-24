@@ -21,6 +21,19 @@ From the repository root:
 - a configured `apps/backend/.env` when using the shared development database; and
 - Docker Desktop or a compatible Docker Compose runtime only for the explicit `test:database:local` workflow.
 
+If PowerShell reports that `docker` is not recognised, Docker Desktop is not installed or is not
+available on `PATH`. Install Docker Desktop using the official Docker Desktop installation guide
+before using `npm run test:database:local`:
+
+https://docs.docker.com/desktop/
+
+After installation, open a new terminal and verify:
+
+    docker --version
+    docker compose version
+
+The default `npm run test:database` workflow does not require Docker.
+
 Install dependencies with:
 
 ```bash

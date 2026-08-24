@@ -512,14 +512,21 @@ Review the resulting diff before committing. Formatting should not be used to hi
 
 ### Docker command is not found
 
-Install or start Docker Desktop, then open a new terminal and verify:
+If PowerShell reports that `docker` is not recognised as a command, Docker Desktop is either not
+installed or is not yet available on `PATH`.
 
-```bash
-docker --version
-docker compose version
-```
+Install Docker Desktop using the official Docker Desktop installation guide:
+https://docs.docker.com/desktop/
 
-Docker is needed only for the explicit `npm run test:database:local` alternative.
+After installation, open a new terminal and verify:
+
+    docker --version
+    docker compose version
+
+If Docker Desktop is already installed, start it and wait until the Docker engine is running.
+
+Docker is required only for the explicit `npm run test:database:local` workflow. The default
+`npm run test:database` workflow does not require Docker.
 
 ### Docker cannot connect to the engine
 
