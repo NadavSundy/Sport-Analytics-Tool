@@ -2,8 +2,8 @@
 
 **User:** Anonymous  
 **Created:** 8/24/2026 9:14:06  
-**Updated:** 8/24/2026 10:57:26  
-**Exported:** 8/24/2026 10:58:10  
+**Updated:** 8/24/2026 11:48:58  
+**Exported:** 8/24/2026 11:49:25  
 **Link:** [https://chatgpt.com/g/g-p-6a71ed6ea4d0819190118e1b9a94bea9-sport-analytics-project/c/6a8beef0-964c-83ea-b49e-c9b9ac8f262a](https://chatgpt.com/g/g-p-6a71ed6ea4d0819190118e1b9a94bea9-sport-analytics-project/c/6a8beef0-964c-83ea-b49e-c9b9ac8f262a)  
 
 ## Prompt:
@@ -6061,6 +6061,3172 @@ Everything else I would **keep**:
 And I especially like that the PR criterion remains pending. **Do not mark that Pass before the PR is reviewed, CI passes, and it merges.** After merge, #70 itself can close via `Closes #70`; you don’t need a post-merge commit just to rewrite historical evidence from Pending to Pass.
 
 So: **make those 3 tweaks, rerun the final checks on the merged #70 branch, and then this evidence file is ready.**
+
+## Prompt:
+8/24/2026, 11:01:59 AM
+
+yayyy
+should we do this issue next?
+[Logo](https://sdp.ms.wits.ac.za/) ([image](https://sdp.ms.wits.ac.za/assets/img/logo.svg))[Issues](https://sdp.ms.wits.ac.za/issues)[Pull Requests](https://sdp.ms.wits.ac.za/pulls)[Milestones](https://sdp.ms.wits.ac.za/milestones)[Explore](https://sdp.ms.wits.ac.za/explore/repos)
+
+[svg](https://sdp.ms.wits.ac.za/notifications)
+
+svg
+
+[**git-push-pray**](https://sdp.ms.wits.ac.za/git-push-pray)**/**[**Sport-Analytics-Tool**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool)
+
+**Internal**
+
+[svgCode](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/)[**svgIssues9**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues)[svgPull Requests](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls)[**1**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls)[svgActions](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/actions)[**6**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/actions)[svgPackages](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/packages)[svgProjects](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects)[**1**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects)[svgReleases](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/releases)[svgWiki](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/wiki)[svgActivity](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/activity)[svgSettings](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/settings)
+
+# Fix the unresolved wireframe-assets link in the design documentation #223
+
+**svgOpen**
+
+opened 2 days ago by [GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) · 0 comments
+
+[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=80))
+
+[**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) commented [2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/223#issue-1100)
+
+**Member**
+
+# [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/223#fix-the-unresolved-wireframe-assets-link-in-the-design-documentation)Fix the unresolved wireframe-assets link in the design documentation
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/223#description)Description
+
+The design documentation contains an unresolved relative link to the wireframe-assets directory.
+
+Running the documentation validation command succeeds, but reports the following warning:
+
+```text
+Doc file 'design/information-architecture-and-wireframes.md' contains an unrecognized relative link 'assets/wireframes/', it was left as is.
+
+```
+
+The warning relates to `docs/design/information-architecture-and-wireframes.md` and predates the accessible frontend component-baseline work in issue [#57](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/57).
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/223#expected-outcome)Expected outcome
+
+- Verify whether the wireframe asset directory is intended to exist.
+- Add the intended wireframe assets, correct the relative link, or remove the obsolete link.
+- Keep the documentation navigation and rendered wireframe references usable in the public MkDocs site.
+- Run `python -m mkdocs build --strict` and confirm the warning is resolved.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/223#scope)Scope
+
+This is a documentation follow-up only. It does not require redesigning the wireframes or changing the frontend component baseline from issue [#57](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/57).
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/223#verification)Verification
+
+```powershell
+python -m mkdocs build --strict
+
+```
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added this to the **Sport-Analytics-Tool-Proj** project 1 hour ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added this to the **Sprint 1** milestone 1 hour ago
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=80))
+
+**Write**Preview
+
+Drop files or click here to upload.
+
+No Label
+
+[svgSprint 1](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/milestone/1)
+
+[svgSport-Analytics-Tool-Proj](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects/2)
+
+No Assignees
+
+**1 Participants**
+
+[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=40))
+
+**Notifications**
+
+**Due Date**
+
+No due date set.
+
+**Dependencies**
+
+No dependencies set.
+
+Reference: git-push-pray/Sport-Analytics-Tool#223
+
+[Powered by Gitea](https://about.gitea.com/)Version: 1.24.7 Page:**99ms**Template:**21ms**
+
+[Licenses](https://sdp.ms.wits.ac.za/assets/licenses.txt)[API](https://sdp.ms.wits.ac.za/api/swagger)
+
+## Response:
+8/24/2026, 11:02:00 AM
+
+> **Inspecting wireframes docs and assets**
+>
+>
+> **Fixing documentation links**
+>
+> I’m confirming the cause: MkDocs accepts file links, not directory links. I’ll remove the obsolete directory hyperlink while retaining the asset path in inline code, then tackle this warning before final verification.
+>
+> **Fixed documentation links**
+>
+> 
+>
+> **Inspected wireframe documentation and assets**
+>
+> 
+>
+> Worked for 18s
+
+Yes — **#223 is the perfect next tiny issue**, and I’d do it **before we finally merge #70**.
+
+I checked the repo itself: the wireframe directory **does exist** and contains all 12 SVGs (`home`, `fixtures`, `fixture-detail`, `signin`, `submission`, `admin-users`, desktop + mobile). The warning is caused only by this sentence linking to the **directory itself**:
+
+```markdown
+Source SVGs are in [`assets/wireframes/`](assets/wireframes/) and can be reopened and edited directly.
+```
+
+MkDocs understands the individual SVG links underneath, but it does not recognize a bare directory as a documentation target.
+
+So we **do not need to add assets or redesign anything**. The correct #223 fix is basically one line.
+
+### Best order
+
+First make sure your #70 branch is clean/committed:
+
+```powershell
+git status
+```
+
+Then switch away from it:
+
+```powershell
+git switch main
+git pull origin main
+```
+
+For #223, assign it to yourself and move it **Backlog → Ready → In Progress**, then:
+
+```powershell
+git switch -c docs/223-fix-wireframe-assets-link
+```
+
+Open:
+
+```text
+docs/design/information-architecture-and-wireframes.md
+```
+
+Replace:
+
+```markdown
+frames are shown at a 1280px reference width; mobile frames at a 375px reference width. Source
+SVGs are in [`assets/wireframes/`](assets/wireframes/) and can be reopened and edited directly.
+```
+
+with:
+
+```markdown
+frames are shown at a 1280px reference width; mobile frames at a 375px reference width. Source
+SVGs are stored in `docs/design/assets/wireframes/` and can be reopened and edited directly.
+```
+
+That preserves the useful information but removes the invalid directory hyperlink. The actual SVG references immediately below remain clickable/renderable, e.g.:
+
+```markdown
+![Home – desktop](assets/wireframes/home-desktop.svg)
+```
+
+Then:
+
+```powershell
+npx.cmd prettier docs/design/information-architecture-and-wireframes.md --write
+python -m mkdocs build --strict
+```
+
+**What we want:** the build succeeds **without** this message:
+
+```text
+contains an unrecognized relative link 'assets/wireframes/'
+```
+
+Clean generated output:
+
+```powershell
+git restore -- site
+git clean -fd -- site
+git status --short
+```
+
+This should be an extremely clean **one-file documentation PR**.
+
+And there’s an extra benefit: after #223 merges, we can merge `main` back into #70 and change the #70 verification evidence from:
+
+> “The build reports the existing wireframe directory warning…”
+
+to:
+
+> **No unresolved documentation-link warnings remain; issue #223 resolved the wireframe-assets directory link before Sprint 1 close-out.**
+
+That gives us an even cleaner Sprint 1 docs story.
+
+So yes — **do #223 now.** Run the strict build after that one-line change and send me the output; then I’ll give you the commit + PR.
+
+## Prompt:
+8/24/2026, 11:06:14 AM
+
+>> python -m mkdocs build --strict
+docs/design/information-architecture-and-wireframes.md 270ms (unchanged)
+
+ │  ⚠  Warning from the Material for MkDocs team
+ │
+ │  MkDocs 2.0, the underlying framework of Material for MkDocs,
+ │  will introduce backward-incompatible changes, including:
+ │
+ │  × All plugins will stop working – the plugin system has been removed
+ │  × All theme overrides will break – the theming system has been rewritten
+ │  × No migration path exists – existing projects cannot be upgraded
+ │  × Closed contribution model – community members can't report bugs
+ │  × Currently unlicensed – unsuitable for production use
+ │
+ │  Our full analysis:
+ │
+ │  https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool\site
+INFO    -  Documentation built in 5.74 seconds
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool>
+
+## Response:
+8/24/2026, 11:06:24 AM
+
+Yay - **#223 is fixed**. The important part is that the old warning about:
+
+```text
+unrecognized relative link 'assets/wireframes/'
+```
+
+is gone. The remaining Material for MkDocs message is an upstream informational warning and is unrelated to #223.
+
+First clean the generated site and inspect the one-file change:
+
+```powershell
+git restore -- site
+git clean -fd -- site
+
+git status --short
+git diff -- docs/design/information-architecture-and-wireframes.md
+```
+
+You should only see that documentation file changed.
+
+Then commit:
+
+```powershell
+git add docs/design/information-architecture-and-wireframes.md
+
+git commit -m "docs(design): fix wireframe assets reference" `
+  -m "Refs #223" `
+  -m "Assisted-by: ChatGPT-Web[GPT-5.6 Sol]"
+```
+
+Push:
+
+```powershell
+git push -u origin docs/223-fix-wireframe-assets-link
+```
+
+PR title:
+
+```text
+docs(design): fix wireframe assets reference
+```
+
+PR body:
+
+````markdown
+## Summary
+
+Fixes the unresolved wireframe-assets directory link reported by MkDocs in the design documentation.
+
+The wireframe SVG assets already exist and remain referenced individually by the document. The obsolete directory hyperlink has been replaced with a plain repository path, avoiding an invalid MkDocs documentation link without changing the wireframes or frontend design.
+
+## Changes
+
+- Remove the unresolved relative hyperlink to `assets/wireframes/`
+- Retain the documented location of the source SVG files
+- Preserve all existing individual wireframe image references
+- No frontend or wireframe redesign changes
+
+## Verification
+
+`python -m mkdocs build --strict` - PASS
+
+The previous warning:
+
+`Doc file 'design/information-architecture-and-wireframes.md' contains an unrecognized relative link 'assets/wireframes/'`
+
+is no longer reported.
+
+The remaining Material for MkDocs 2.0 message is an upstream informational warning and is unrelated to this documentation link.
+
+## AI Usage
+
+The documentation correction and verification guidance were completed with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+Closes #223
+````
+
+Then move **#223 → In Review**, get the review/CI, and merge.
+
+Once merged, return to #70:
+
+```powershell
+git switch main
+git pull origin main
+
+git switch docs/70-sprint-1-documentation
+git merge main
+```
+
+Then we’ll make the small update to the #70 verification document so it says the wireframe warning was resolved through **#223**, rather than listing it as an existing warning.
+
+## Prompt:
+8/24/2026, 11:07:14 AM
+
+#70 was already merged to main (after i branched) so should i pull main onto the 223 branch and update docs there instead of pushing now?
+
+## Response:
+8/24/2026, 11:07:24 AM
+
+Yes - because **#70 is already merged into `main`**, the cleanest thing is to bring the latest `main` into your **#223 branch before pushing it**.
+
+But I would **not update the #70 verification document in #223**. #70’s evidence should stay as the point-in-time record of what was true when #70 was verified/merged. #223 is the separate follow-up that resolves that warning. Changing the closed #70 evidence now would blur the history and slightly scope-creep #223.
+
+Do this:
+
+```powershell
+git status
+```
+
+Assuming the only change is:
+
+```text
+docs/design/information-architecture-and-wireframes.md
+```
+
+commit #223 first:
+
+```powershell
+git add docs/design/information-architecture-and-wireframes.md
+
+git commit -m "docs(design): fix wireframe assets reference" `
+  -m "Refs #223" `
+  -m "Assisted-by: ChatGPT-Web[GPT-5.6 Sol]"
+```
+
+Then update from the now-newer `main`:
+
+```powershell
+git switch main
+git pull origin main
+
+git switch docs/223-fix-wireframe-assets-link
+git merge main
+```
+
+Then rerun the relevant verification on the **updated #223 branch**:
+
+```powershell
+python -m mkdocs build --strict
+```
+
+You want:
+- build passes;
+- no `unrecognized relative link 'assets/wireframes/'` warning;
+- only the unrelated Material for MkDocs 2.0 notice remains.
+
+Clean the generated site:
+
+```powershell
+git restore -- site
+git clean -fd -- site
+git status
+```
+
+If clean, then:
+
+```powershell
+git push -u origin docs/223-fix-wireframe-assets-link
+```
+
+Then open the #223 PR.
+
+So the history becomes nicely accurate:
+
+**#70 merged → #223 branched slightly earlier → #223 updated from latest main → #223 fixes the remaining warning → separate reviewed PR.**
+
+That follows the one-issue/one-branch discipline much better than reopening #70’s evidence.
+
+## Prompt:
+8/24/2026, 11:09:04 AM
+
+docs/223-fix-wireframe-assets-link
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> python -m mkdocs build --strict
+
+ │  ⚠  Warning from the Material for MkDocs team
+ │
+ │  MkDocs 2.0, the underlying framework of Material for MkDocs,
+ │  will introduce backward-incompatible changes, including:
+ │
+ │  × All plugins will stop working – the plugin system has been removed
+ │  × All theme overrides will break – the theming system has been rewritten
+ │  × No migration path exists – existing projects cannot be upgraded
+ │  × Closed contribution model – community members can't report bugs
+ │  × Currently unlicensed – unsuitable for production use
+ │
+ │  Our full analysis:
+ │
+ │  https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool\site
+INFO    -  Documentation built in 6.41 seconds
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> 
+so for #223, i shouldnt update any docs? like 'update' what i did in 70 so its correct? or no?
+
+## Response:
+8/24/2026, 11:09:12 AM
+
+> **Reviewing documentation updates**
+>
+> I’m distinguishing historical validation from living documentation. I’ll leave issue #70’s record unchanged, but I’ll search current Markdown for the warning; only active guidance should be updated in #223 if it still describes that warning as present.
+>
+> **Reviewed documentation updates**
+>
+> 
+>
+> Worked for 10s
+
+No — **don’t rewrite the #70 verification evidence just because #223 has now fixed the warning**.
+
+#70’s evidence is a historical record of what was true when #70 was verified and merged. At that point, MkDocs passed but still emitted the wireframe-link warning. That was accurate, and #223 now provides the clean follow-up trail showing it was subsequently resolved.
+
+For #223, the **only documentation change you actually need is the one you already made** in:
+
+```text
+docs/design/information-architecture-and-wireframes.md
+```
+
+Your latest strict build confirms the #223 acceptance criterion is met: the old `assets/wireframes/` warning is gone; only the unrelated Material for MkDocs 2.0 notice remains.
+
+Before pushing, I’d do one quick check to make sure no *living/current* documentation elsewhere still says that warning is unresolved:
+
+```powershell
+git grep -n "unrecognized relative link" -- "*.md"
+git grep -n "assets/wireframes/" -- "*.md"
+```
+
+If the only relevant stale mention is inside:
+
+```text
+evidence/validation/issue-70-sprint-1-documentation.md
+```
+
+**leave it alone.** That is historical evidence.
+
+If some normal current doc says something like “the wireframe link is currently unresolved,” then we should update that under #223 too.
+
+Otherwise, #223 stays beautifully small: **one documentation fix, strict MkDocs build passes, warning resolved.**
+
+Then check:
+
+```powershell
+git status
+git log -3 --oneline
+```
+
+If you send me that, I’ll tell you whether you’re at **commit**, **push**, or **PR** stage now.
+
+## Prompt:
+8/24/2026, 11:09:59 AM
+
+nothing to commit, working tree clean
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> git grep -n "unrecognized relative link" -- "*.md"
+>> git grep -n "assets/wireframes/" -- "*.md"
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3274:INFO    -  Doc file 'design/information-architecture-and-wireframes.md' contains an unrecognized relative link
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3463:INFO    -  Doc file 'design/information-architecture-and-wireframes.md' contains an unrecognized relative link
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3809:INFO    -  Doc file 'design/information-architecture-and-wireframes.md' contains an unrecognized relative link
+docs/design/information-architecture-and-wireframes.md:215:SVGs are stored in `docs/design/assets/wireframes/` and can be reopened and edited directly.
+docs/design/information-architecture-and-wireframes.md:221:![Home – desktop](assets/wireframes/home-desktop.svg)
+docs/design/information-architecture-and-wireframes.md:222:![Home – mobile](assets/wireframes/home-mobile.svg)
+docs/design/information-architecture-and-wireframes.md:228:![Fixtures – desktop](assets/wireframes/fixtures-desktop.svg)
+docs/design/information-architecture-and-wireframes.md:229:![Fixtures – mobile](assets/wireframes/fixtures-mobile.svg)
+docs/design/information-architecture-and-wireframes.md:235:![Fixture detail – desktop](assets/wireframes/fixture-detail-desktop.svg)
+docs/design/information-architecture-and-wireframes.md:236:![Fixture detail – mobile](assets/wireframes/fixture-detail-mobile.svg)
+docs/design/information-architecture-and-wireframes.md:242:![Sign in – desktop](assets/wireframes/signin-desktop.svg)
+docs/design/information-architecture-and-wireframes.md:243:![Sign in – mobile](assets/wireframes/signin-mobile.svg)
+docs/design/information-architecture-and-wireframes.md:249:![Submission – desktop](assets/wireframes/submission-desktop.svg)
+docs/design/information-architecture-and-wireframes.md:250:![Submission – mobile](assets/wireframes/submission-mobile.svg)
+docs/design/information-architecture-and-wireframes.md:257:![Admin users – desktop](assets/wireframes/admin-users-deskto
+p.svg)
+docs/design/information-architecture-and-wireframes.md:258:![Admin users – mobile](assets/wireframes/admin-users-mobile.
+svg)
+evidence/ai/transcripts/gabriel-raz/2026-08-22-issue-57-accessible-component-baseline.md:389:The only output was an exis
+ting informational warning about `design/information-architecture-and-wireframes.md` linking to `assets/wireframes/`; it
+ did not fail `--strict` and is unrelated to #57.
+evidence/ai/transcripts/gabriel-raz/2026-08-22-issue-57-accessible-component-baseline.md:413:> `mkdocs build --strict` p
+asses, but reports an informational warning that `docs/design/information-architecture-and-wireframes.md` links to an un
+recognised relative `assets/wireframes/` path. This predates #57 and should be checked by the owner of the wireframes/do
+cumentation.
+evidence/ai/transcripts/gabriel-raz/2026-08-22-issue-57-accessible-component-baseline.md:437:Include that `python -m mkd
+ocs build --strict` passes but reports the `assets/wireframes/` link warning, and ask to either add the intended assets 
+or correct/remove the link.
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3275:           'assets/wireframes
+/', it was left as is.
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3327:?? site/design/assets/wirefra
+mes/
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3365:Yes - **the build passed**. `
+python -m mkdocs build --strict` completed successfully. The big Material-for-MkDocs message is a third-party tooling no
+tice, not a failure, and the `assets/wireframes/` message is informational rather than a strict-build error.
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3464:           'assets/wireframes
+/', it was left as is.
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3467:Removing site/design/assets/w
+ireframes/
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:3810:           'assets/wireframes
+/', it was left as is.
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:5236:MkDocs 2.0 project. The build
+ also reports the existing `design/assets/wireframes/` directory link
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md:5829:MkDocs 2.0 project. The build
+ also reports the existing \`design/assets/wireframes/\` directory link
+evidence/validation/issue-70-sprint-1-documentation.md:125:MkDocs 2.0 project. The build also reports the existing `desi
+gn/assets/wireframes/` directory link
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool>
+
+## Response:
+8/24/2026, 11:10:07 AM
+
+Perfect. **Do not change any of those grep hits.** They are exactly what we’d expect.
+
+The matches split into three categories:
+
+- `docs/design/information-architecture-and-wireframes.md` - **correct/current**. The directory is now plain code text, while the individual SVGs remain valid image references. Your strict MkDocs build proves these resolve correctly.
+- `evidence/validation/issue-70-sprint-1-documentation.md` - **historical evidence**. Leave it unchanged because the warning genuinely existed when #70 was verified.
+- `evidence/ai/transcripts/...` - **historical transcripts**. Definitely leave these untouched; changing them would alter the AI evidence record.
+
+So #223 is clean and properly scoped. No extra docs update is needed.
+
+Since your working tree is clean, check the commit is there:
+
+```powershell
+git log -3 --oneline
+git status
+```
+
+If you see your #223 commit, push:
+
+```powershell
+git push -u origin docs/223-fix-wireframe-assets-link
+```
+
+Then open the PR with:
+
+**Title**
+```text
+docs(design): fix wireframe assets reference
+```
+
+**Body**
+````markdown
+## Summary
+
+Fixes the unresolved wireframe-assets directory link reported by MkDocs in the design documentation.
+
+The wireframe SVG assets already exist and remain referenced individually by the document. The invalid directory hyperlink has been replaced with a plain repository path, without changing the wireframes or frontend design.
+
+## Changes
+
+- Remove the unresolved relative hyperlink to `assets/wireframes/`
+- Retain the documented source location of the wireframe SVGs
+- Preserve all individual SVG image references
+- No frontend or wireframe redesign changes
+
+## Verification
+
+`python -m mkdocs build --strict` - PASS
+
+The previous warning:
+
+`Doc file 'design/information-architecture-and-wireframes.md' contains an unrecognized relative link 'assets/wireframes/'`
+
+is no longer reported.
+
+A repository search confirms remaining mentions of the old warning occur only in historical validation/AI evidence, which has intentionally been left unchanged.
+
+The remaining Material for MkDocs 2.0 message is an upstream informational notice unrelated to issue #223.
+
+## AI Usage
+
+The documentation correction and verification guidance were completed with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+Closes #223
+````
+
+Then move **#223 → In Review**, let CI/review pass, and merge.
+
+That finishes #223 without touching #70 or historical evidence.
+
+## Prompt:
+8/24/2026, 11:11:30 AM
+
+[Logo](https://sdp.ms.wits.ac.za/) ([image](https://sdp.ms.wits.ac.za/assets/img/logo.svg))[Issues](https://sdp.ms.wits.ac.za/issues)[Pull Requests](https://sdp.ms.wits.ac.za/pulls)[Milestones](https://sdp.ms.wits.ac.za/milestones)[Explore](https://sdp.ms.wits.ac.za/explore/repos)
+
+[svg](https://sdp.ms.wits.ac.za/notifications)
+
+svg
+
+[**git-push-pray**](https://sdp.ms.wits.ac.za/git-push-pray)**/**[**Sport-Analytics-Tool**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool)
+
+**Internal**
+
+[svgCode](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/)[**svgIssues8**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues)[svgPull Requests](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls)[**1**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls)[svgActions](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/actions)[**7**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/actions)[svgPackages](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/packages)[svgProjects](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects)[**1**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects)[svgReleases](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/releases)[svgWiki](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/wiki)[svgActivity](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/activity)[svgSettings](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/settings)
+
+# Fix frontend SubmissionPage tests failing during submitter access check #206
+
+**svgOpen**
+
+opened 5 days ago by [Shayna](https://sdp.ms.wits.ac.za/Shayna) · 1 comment
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=80))
+
+[**Shayna**](https://sdp.ms.wits.ac.za/Shayna) commented [5 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#issue-843)
+
+**Member**
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#description)Description
+
+The frontend `SubmissionPage` test suite currently fails because the page enters the
+"Submission access could not be checked" error state before several tests can interact with the
+delivery-event editor.
+
+The failures are reproducible independently of Issue [#192](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/192) and currently prevent the full repository
+quality gate from passing.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#current-behaviour)Current Behaviour
+
+Running:
+
+```powershell
+npm test --workspace=@sport-analytics/frontend -- src/features/submissions/SubmissionPage.test.tsx
+
+```
+
+produces failures where tests expect to find:
+
+```text
+Delivery events JSON
+
+```
+
+but the rendered page instead displays:
+
+```text
+Submission access could not be checked
+
+Your application role and fixture scope could not be loaded. Please try again.
+
+```
+
+The focused test run currently reports:
+
+- 1 test file failed
+- 4 tests failed
+- 4 tests passed
+
+The same problem causes the frontend portion of:
+
+```powershell
+npm run check
+
+```
+
+to fail.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#expected-behaviour)Expected Behaviour
+
+The `SubmissionPage` tests should correctly provide or mock the submitter-access state required by
+each scenario.
+
+Tests intended to exercise event submission, validation, and backend-error handling should reach
+the submission editor rather than failing during the initial submitter-access check.
+
+Tests specifically covering denied or failed access should continue to verify those states.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#investigation)Investigation
+
+Determine why the tests that require valid submitter access now receive an access-check failure.
+
+Check whether recent account, role, or submitter-access changes introduced:
+
+- a new API request that is not mocked;
+- a changed response contract;
+- a missing authenticated-user or access-state fixture;
+- stale test setup following submitter-access changes; or
+- shared/mock state leaking between tests.
+
+Fix the underlying cause rather than bypassing or weakening the production access-control logic.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#acceptance-criteria)Acceptance Criteria
+
+- `SubmissionPage.test.tsx` supplies the required authenticated/account/access state for each test.
+- Tests that require submission access successfully reach the `Delivery events JSON` editor.
+- Tests for denied or failed access continue to verify those states explicitly.
+- Event-submission validation tests execute their intended assertions rather than failing during access loading.
+- The focused `SubmissionPage.test.tsx` suite passes.
+- The full frontend test suite passes.
+- `npm run check` is no longer blocked by these `SubmissionPage` failures.
+- Production submitter-access behaviour is not weakened purely to make the tests pass.
+- Regression coverage is added or updated for the identified root cause.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#verification)Verification
+
+Run:
+
+```powershell
+npm test --workspace=@sport-analytics/frontend -- src/features/submissions/SubmissionPage.test.tsx
+
+```
+
+Then:
+
+```powershell
+npm test --workspace=@sport-analytics/frontend
+
+```
+
+Then:
+
+```powershell
+npm run check
+
+```
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#related-context)Related Context
+
+This problem was discovered while validating Issue [#192](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/192).
+
+Issue [#192](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/192) does not modify frontend source or tests. On the Issue [#192](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/192) branch:
+
+```powershell
+git diff --name-only origin/main -- apps/frontend
+
+```
+
+returns no files.
+
+The Issue #192-specific contract, type-check, backend unit, API, PostgreSQL, and OpenAPI checks pass independently of this frontend test failure.
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added the 
+
+[**area: frontend**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=35)
+
+[**type: bug**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=1)
+
+[**type: testing**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=40)
+
+ labels 5 days ago
+
+svg[NadavSundy](https://sdp.ms.wits.ac.za/NadavSundy) ([image](https://sdp.ms.wits.ac.za/avatars/48ad195ab86e0c781914deeba5b552cc?size=56)) [**NadavSundy**](https://sdp.ms.wits.ac.za/NadavSundy) was assigned by **Shayna** 5 days ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added this to the **Sport-Analytics-Tool-Proj** project 5 days ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added this to the **Sprint 1** milestone 5 days ago
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) [referenced this issue ](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/222)[2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#event-8830)
+
+[**test(backend): simplify and clarify backend test workflows**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/222)[ #222](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/222)
+
+svg[Dean](https://sdp.ms.wits.ac.za/Dean) ([image](https://sdp.ms.wits.ac.za/avatars/92d04236912dc4945217b1b981a7c50a?size=56)) [**Dean**](https://sdp.ms.wits.ac.za/Dean) moved this to Ready in svg [Sport-Analytics-Tool-Proj](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects/2) on 2 days ago
+
+[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=80))
+
+[**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) commented [2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#issuecomment-8855)
+
+**Member**
+
+Revalidated on the current checkout (2026-08-22):
+
+- `SubmissionPage.test.tsx`: **8/8 tests passed**.
+- Full frontend suite: **95/95 tests passed**.
+
+The valid-submitter scenarios reach the `Delivery events JSON` editor, while denied and malformed access states remain covered. The originally reported `Submission access could not be checked` failure is not reproducible.
+
+`npm run check` remains blocked locally before tests run because Prettier scans an unrelated, untracked `tmp/worktrees/issue-193/` directory containing formatting differences. These files were left untouched because they are outside the scope of this issue.
+
+Issue [#206](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206) therefore appears resolved in the current codebase.
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) referenced this issue from a commit [2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#event-8881)
+
+svg[docs(ai): add redacted submission test transcript](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/commit/065ed49f87420f8cb25309ec31676e6133d3ae1e)
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) [referenced this issue ](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/225)[2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#event-8882)
+
+[**#206 Add redacted SubmissionPage test-verification transcript**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/225)[ #225](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/225)
+
+svg[Dean](https://sdp.ms.wits.ac.za/Dean) ([image](https://sdp.ms.wits.ac.za/avatars/92d04236912dc4945217b1b981a7c50a?size=56)) [**Dean**](https://sdp.ms.wits.ac.za/Dean) referenced this issue from a commit [2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#event-8891)
+
+svg[Merge pull request '#206 Add redacted SubmissionPage test-verification transcript' (#225) from graz/206-ai-transcript-evidence into main](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/commit/3cb2ee611ec29be6ad37134c27acfb3cfdef890e)
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=80))
+
+**Write**Preview
+
+Drop files or click here to upload.
+
+[**area: frontend**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=35)
+
+[**type: bug**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=1)
+
+[**type: testing**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=40)
+
+[svgSprint 1](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/milestone/1)
+
+[svgSport-Analytics-Tool-Proj](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects/2)
+
+[NadavSundyNadavSundy](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/206#) ([image](https://sdp.ms.wits.ac.za/avatars/48ad195ab86e0c781914deeba5b552cc?size=40))
+
+**2 Participants**
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=40))[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=40))
+
+**Notifications**
+
+**Due Date**
+
+No due date set.
+
+**Dependencies**
+
+No dependencies set.
+
+Reference: git-push-pray/Sport-Analytics-Tool#206
+
+[Powered by Gitea](https://about.gitea.com/)Version: 1.24.7 Page:**131ms**Template:**31ms**
+
+[Licenses](https://sdp.ms.wits.ac.za/assets/licenses.txt)[API](https://sdp.ms.wits.ac.za/api/swagger)
+next- confirm that when we did #70 and ran all those tests, we can confirm this issue is sorted? right?
+
+## Response:
+8/24/2026, 11:11:40 AM
+
+> **Confirming resolution**
+>
+> I’m confirming that #206 is effectively resolved: #70’s production checks passed all 97 frontend tests, including eight submission-page tests, with no evidence the regression remains. I’d close it as verified, noting the fix required no additional production changes.
+>
+> Worked for 8s
+
+Yes - **we can now confidently close #206 as resolved**.
+
+The #70 verification gave us stronger evidence than the earlier comment on #206:
+
+- `SubmissionPage.test.tsx` ran and **all 8 tests passed**
+- the full frontend suite passed **97/97**
+- `npm run check` passed completely
+- the submission E2E workflow also passed in the later **34/34 Playwright run**
+
+The actual #70 output explicitly shows:
+
+```text
+✓ src/features/submissions/SubmissionPage.test.tsx (8)
+...
+Test Files  11 passed (11)
+Tests       97 passed (97)
+```
+
+and the repository quality gate continued through API, contracts, deployment, OpenAPI and production builds successfully. `Pasted text.txt`
+
+So all the important #206 acceptance criteria are now demonstrated on the current codebase. There is no reason to make another code change just to close it.
+
+I’d add this final comment to #206 and then close it:
+
+````markdown
+Revalidated during the Sprint 1 close-out for #70 on 24 August 2026.
+
+The originally reported `SubmissionPage` failure is no longer reproducible on the current codebase.
+
+Verification results:
+
+- `SubmissionPage.test.tsx`: **8/8 tests passed**
+- Full frontend suite: **97/97 tests passed**
+- `npm run check`: **PASS**
+- The valid-submitter scenarios reach the submission editor successfully.
+- Denied/error access states remain covered by the existing tests.
+- No production submitter-access behaviour was weakened to make the suite pass.
+
+The earlier unrelated local formatting obstruction recorded on this issue is also no longer present; the full repository quality gate now completes successfully.
+
+The submission browser workflow was additionally exercised during Sprint 1 close-out, with the complete Playwright suite passing **34/34** after the separate stale E2E fixture issue #230 was resolved.
+
+No further change is required for #206, so this issue can be closed as resolved.
+````
+
+Then:
+- move **#206 → Done**
+- close the issue
+- **don’t create a new branch/PR for #206**, because there is nothing left to change.
+
+This is actually a good Sprint 1 outcome: the issue recorded a real regression symptom, the codebase evolved underneath it, and we now have reproducible evidence that the reported failure is gone.
+
+## Prompt:
+8/24/2026, 11:12:41 AM
+
+and this?
+[Logo](https://sdp.ms.wits.ac.za/) ([image](https://sdp.ms.wits.ac.za/assets/img/logo.svg))[Issues](https://sdp.ms.wits.ac.za/issues)[Pull Requests](https://sdp.ms.wits.ac.za/pulls)[Milestones](https://sdp.ms.wits.ac.za/milestones)[Explore](https://sdp.ms.wits.ac.za/explore/repos)
+
+[svg](https://sdp.ms.wits.ac.za/notifications)
+
+svg
+
+[**git-push-pray**](https://sdp.ms.wits.ac.za/git-push-pray)**/**[**Sport-Analytics-Tool**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool)
+
+**Internal**
+
+[svgCode](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/)[**svgIssues7**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues)[svgPull Requests](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls)[**1**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls)[svgActions](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/actions)[**7**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/actions)[svgPackages](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/packages)[svgProjects](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects)[**1**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects)[svgReleases](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/releases)[svgWiki](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/wiki)[svgActivity](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/activity)[svgSettings](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/settings)
+
+# Simplify and clarify backend test workflows #212
+
+**svgOpen**
+
+opened 4 days ago by [Shayna](https://sdp.ms.wits.ac.za/Shayna) · 0 comments
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=80))
+
+[**Shayna**](https://sdp.ms.wits.ac.za/Shayna) commented [4 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#issue-875)
+
+**Member**
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#description)Description
+
+Review and simplify the backend testing commands so developers have clear, reliable ways to run the complete backend test suite without needing to understand the individual test categories first.
+
+The current backend test command can unintentionally discover database integration tests that require `DATABASE_URL_TEST`, while database tests also have their own explicit execution workflows.
+
+Create a clearer backend testing workflow that separates normal backend verification from the choice of database test environment.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#motivation)Motivation
+
+A developer should be able to run one obvious command to verify the backend and know what infrastructure it uses.
+
+The repository should retain the existing granular commands for targeted testing, while also providing convenient higher-level backend test commands.
+
+The existing `test:database:local` command should not be renamed unnecessarily, as it is already established and documented.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#scope)Scope
+
+### [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#included)Included
+
+- review the current root and backend workspace test scripts;
+- prevent normal backend test commands from accidentally discovering database suites without the required setup;
+- provide a clear command that runs the complete intended backend verification workflow;
+- consider providing a second complete backend verification command that uses the existing Docker-based database workflow;
+- retain `test:database:local`;
+- retain useful granular commands such as unit, API and database tests;
+- ensure normal repository quality checks remain database-independent unless explicitly intended otherwise;
+- align command naming and responsibilities across the root and backend workspace;
+- update affected testing and developer documentation;
+- verify the resulting commands on a clean/local development setup.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#expected-direction)Expected Direction
+
+A developer should ultimately have simple commands along the lines of:
+
+```bash
+npm run test:backend
+
+```
+
+for the standard complete backend workflow, and, where useful:
+
+```bash
+npm run test:backend:local
+
+```
+
+for the equivalent workflow using the existing local Docker PostgreSQL database setup.
+
+The exact names and implementation should be decided while working on the issue based on the existing scripts and least-disruptive approach.
+
+Existing lower-level commands such as the following should remain available where useful:
+
+```bash
+npm run test:unit
+npm run test:api
+npm run test:database
+npm run test:database:local
+
+```
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#acceptance-criteria)Acceptance Criteria
+
+- There is one obvious command for running the intended complete backend test workflow.
+- There is a clear way to run the complete backend workflow using the existing local Docker PostgreSQL setup.
+- Running the ordinary backend test command does not unexpectedly fail because `DATABASE_URL_TEST` is absent.
+- Database integration tests only run when an appropriate database workflow has been selected.
+- `test:database:local` remains available unless there is a separately justified reason to replace it.
+- Existing useful granular test commands remain available.
+- `npm run check` retains its documented database-independent behaviour.
+- Test command responsibilities are documented clearly.
+- Windows PowerShell usage remains compatible with `npm.cmd` where required.
+- Existing tests are not rewritten merely to accommodate command structure.
+- No unrelated frontend-test failures or product changes are included.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#excluded)Excluded
+
+- fixing existing frontend test failures;
+- changing product functionality;
+- changing database schema or migrations;
+- adding a new testing framework;
+- unrelated CI/CD or formatting work.
+
+## [svg](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#ai-declaration)AI Declaration
+
+The preceding issue was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added this to the **Sprint 1** milestone 4 days ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added the 
+
+[**area: backend**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=116)
+
+[**type: feature**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=46)
+
+[**type: testing**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=40)
+
+ labels 4 days ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) self-assigned this 4 days ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) added this to the **Sport-Analytics-Tool-Proj** project 4 days ago
+
+svg[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=56)) [**Shayna**](https://sdp.ms.wits.ac.za/Shayna) moved this to Ready in svg [Sport-Analytics-Tool-Proj](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects/2) on 4 days ago
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) self-assigned this 2 days ago
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) referenced this issue from a commit [2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#event-8828)
+
+svg[test(backend): clarify complete test workflows](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/commit/a00e20d76c63facb7c332dec0fb0b3d5a5638a5b)
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) referenced this issue from a commit [2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#event-8829)
+
+svg[test(backend): clarify complete test workflows](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/commit/3d7cd363d192c80fef666289659dca88f8946752)
+
+svg[GabeRaz](https://sdp.ms.wits.ac.za/GabeRaz) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=56)) [**GabeRaz**](https://sdp.ms.wits.ac.za/GabeRaz) [referenced this issue ](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/222)[2 days ago](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#event-8831)
+
+[**test(backend): simplify and clarify backend test workflows**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/222)[ #222](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/pulls/222)
+
+svg[Dean](https://sdp.ms.wits.ac.za/Dean) ([image](https://sdp.ms.wits.ac.za/avatars/92d04236912dc4945217b1b981a7c50a?size=56)) [**Dean**](https://sdp.ms.wits.ac.za/Dean) moved this to In Progress in svg [Sport-Analytics-Tool-Proj](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects/2) on 2 days ago
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=80))
+
+**Write**Preview
+
+Drop files or click here to upload.
+
+[**area: backend**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=116)
+
+[**type: feature**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=46)
+
+[**type: testing**](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues?labels=40)
+
+[svgSprint 1](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/milestone/1)
+
+[svgSport-Analytics-Tool-Proj](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/projects/2)
+
+[ShaynaShayna](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=40))[GabeRazGabeRaz](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/212#) ([image](https://sdp.ms.wits.ac.za/avatars/9149003277fda00432b0276c6635a534?size=40))
+
+**1 Participants**
+
+[Shayna](https://sdp.ms.wits.ac.za/Shayna) ([image](https://sdp.ms.wits.ac.za/avatars/6d3166b50cdde4a6f8d368fa086e200a?size=40))
+
+**Notifications**
+
+**Due Date**
+
+No due date set.
+
+**Dependencies**
+
+No dependencies set.
+
+Reference: git-push-pray/Sport-Analytics-Tool#212
+
+[Powered by Gitea](https://about.gitea.com/)Version: 1.24.7 Page:**127ms**Template:**25ms**
+
+[Licenses](https://sdp.ms.wits.ac.za/assets/licenses.txt)[API](https://sdp.ms.wits.ac.za/api/swagger)
+
+## Response:
+8/24/2026, 11:12:49 AM
+
+> **Assessing closure readiness**
+>
+> I’m seeing strong evidence that #212 is implemented: backend, local backend, database, granular scripts, documentation, and independent checks are covered. I’d still verify both aggregate backend commands directly before closing, since prior testing didn’t explicitly run each one.
+>
+> **Assessed closure readiness**
+>
+> 
+>
+> Worked for 10s
+
+This one is **almost certainly already done**, but I would **not close #212 just from the #70 checks yet**.
+
+Why: #70 proved that:
+
+- `npm run check` is database-independent and passes.
+- `test:database:local` still exists and passes.
+- the documentation now clearly explains `test:backend`, `test:backend:local`, granular test commands, Docker, and Windows `npm.cmd`.
+- no frontend/product changes are needed for this issue.
+
+But #212 has two very specific acceptance criteria that #70 did **not directly exercise**:
+
+```text
+npm run test:backend
+npm run test:backend:local
+```
+
+So let's do one tiny final verification on current `main`.
+
+```powershell
+git switch main
+git pull origin main
+
+npm.cmd run test:backend
+npm.cmd run test:backend:local
+```
+
+What we want:
+
+- `test:backend` → unit + API + database workflow all pass using the default disposable PostgreSQL runtime.
+- `test:backend:local` → same complete backend workflow passes using Docker.
+- neither accidentally depends on an undeclared `DATABASE_URL_TEST`.
+- no production changes required.
+
+If both pass, then **#212 is fully satisfied and should simply be closed - no new branch or PR**. PR #222 already appears to be the implementation PR for the issue.
+
+Then I’d comment this on #212:
+
+````markdown
+Revalidated on the current `main` branch during Sprint 1 close-out.
+
+The backend test-workflow changes introduced for this issue are now present and documented.
+
+Final verification:
+
+- `npm run test:backend` - **PASS**
+- `npm run test:backend:local` - **PASS**
+- `npm run test:database:local` remains available and passes
+- `npm run check` - **PASS** and remains database-independent
+- granular unit, API and database commands remain available
+- testing responsibilities are documented in the developer/testing guides
+- Windows PowerShell `npm.cmd` usage is documented
+- no production functionality or frontend behaviour was changed for this work
+
+The resulting workflow provides an obvious complete backend command together with an equivalent Docker-backed workflow, while database integration tests remain explicitly controlled.
+
+The implementation was completed through PR #222. No further code or documentation changes are required for #212.
+
+Closing as resolved.
+````
+
+Then move **#212 → Done** and close it.
+
+So: **don’t create anything yet - just run those two commands.** If they both pass, #212 is finished.
+
+## Prompt:
+8/24/2026, 11:16:18 AM
+
+uhmmm?
+
+[Attachment: Pasted text(20260824-091613).txt]
+
+## Response:
+8/24/2026, 11:16:20 AM
+
+> **Reassessing test results**
+>
+> I need to correct my earlier conclusion: #212’s backend tests pass, but #206 shouldn’t be closed yet. The current run still shows a frontend `SubmissionPage` test failure, plus an E2E server-start issue.
+>
+> **Reassessed test results**
+>
+> 
+>
+> **Separating issue status**
+>
+> I’m treating #212 as resolved because the backend suites pass. I’m not closing #206 yet: the latest run still has a `SubmissionPage` frontend failure, so I’m rerunning that focused test before deciding.
+>
+> **Investigating Flaky Submission Authentication Tests**
+>
+> 
+>
+> Worked for 25s
+
+Yeah - your “uhmmm?” is justified. There are **two separate conclusions** in that output:
+
+For **#212**, we’re good. Both backend workflows passed on the current codebase:
+
+```text
+npm.cmd run test:backend:local
+→ 88 unit passed
+→ 91 API passed
+→ 46 database passed
+```
+
+and:
+
+```text
+npm.cmd run test:backend
+→ 88 unit passed
+→ 91 API passed
+→ 46 database passed
+```
+
+So #212’s actual purpose - making the backend workflows clear and reliable - is satisfied. The mistaken `npm.cmd run backend:local` command was just a typo; npm immediately pointed you to the correct script. `Pasted text.txt`
+
+So **#212 can be closed as resolved** after commenting that both complete backend workflows now pass.
+
+But for **#206**, I need to correct what I said earlier: **do not close it yet**. Your fresh run showed `SubmissionPage.test.tsx` fail again, with the frontend suite at **96/97**, specifically around the expected `Login or Sign up` heading. `Pasted text.txt`
+
+That is not exactly the original “Submission access could not be checked” symptom, but it does mean the test suite is **not consistently stable**, so #206’s acceptance criteria are not reliably met yet.
+
+I’d leave #206 open and run just the focused suite again:
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend -- src/features/submissions/SubmissionPage.test.tsx
+```
+
+If it passes, run it one more time. If it fails intermittently, we’ve likely got a flaky test or shared/router state problem rather than the original access-check bug, and we should update #206 accordingly instead of closing it.
+
+So the clean answer is:
+
+**#212 → close.  
+#206 → keep open for now.**
+
+## Prompt:
+8/24/2026, 11:17:57 AM
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> npm.cmd test --workspace=@sport-analytics/frontend -- src/features/submissions/SubmissionPage.test.tsx
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run src/features/submissions/SubmissionPage.test.tsx
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/features/submissions/SubmissionPage.test.tsx (8) 1157ms
+   ✓ role-gated event submission page (8) 1156ms
+     ✓ directs an anonymous user to sign in without loading application data 454ms
+     ✓ blocks a viewer whose submitter request is pending
+     ✓ does not treat a legacy approved viewer as a submitter
+     ✓ fails safely when the current-user response does not match the shared contract
+     ✓ lists only fixtures returned for the approved submitter competition scope
+     ✓ submits valid delivery events and focuses the stored reference summary
+     ✓ shows event-specific and field-specific validation results
+     ✓ shows invalid JSON and backend failures as distinct clear results
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  11:17:43
+   Duration  5.11s (transform 730ms, setup 312ms, collect 1.21s, tests 1.16s, environment 1.56s, prepare 307ms)
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> 
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool>
+
+## Response:
+8/24/2026, 11:18:06 AM
+
+> **Verifying suite stability**
+>
+> The focused tests are passing, but the full frontend suite has failed once, so I’m treating this as possible cross-test interference or flakiness. I’ll rerun the complete suite—ideally twice—before deciding whether issue #206 is resolved.
+>
+> **Verified suite stability**
+>
+> 
+>
+> Worked for 10s
+
+Good — this tells us something useful:
+
+`SubmissionPage.test.tsx` itself is **8/8 passing in isolation**. The failure we just saw only appeared when it ran as part of the **full frontend suite**.
+
+So I would **not close #206 yet**, but I also would **not change any code on the #223 branch**. This now looks more like possible test-suite interference/flakiness than the original deterministic submitter-access failure.
+
+Run the full frontend suite again:
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend
+```
+
+If that passes, run it **one more time**:
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend
+```
+
+What we’re checking:
+
+- If both full runs pass → likely transient; we can document the revalidation and decide whether #206 can close.
+- If the same test fails intermittently → #206 is **not truly resolved**; we should investigate shared/router/mock state leakage.
+- If a different test fails → broader frontend test flakiness, probably deserving a separate testing issue.
+
+For now:
+
+```text
+Focused SubmissionPage suite: 8/8 PASS ✅
+Full frontend suite earlier: 96/97 ❌
+```
+
+So we need the full-suite rerun before making the close decision.
+
+## Prompt:
+8/24/2026, 11:18:46 AM
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> 
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> npm.cmd test --workspace=@sport-analytics/frontend
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/App.test.tsx (15) 2001ms
+ ✓ src/api/client.test.ts (5)
+ ✓ src/api/public-read.test.ts (3)
+ ✓ src/pages/PublicBrowsePages.test.tsx (23) 3995ms
+ ✓ src/components/ComponentBaseline.test.tsx (2) 328ms
+ ✓ src/features/auth/AuthProvider.test.tsx (4) 456ms
+ ✓ src/features/admin/AdminUsersPage.test.tsx (18) 2114ms
+ ✓ src/features/statistics/StatisticsPages.test.tsx (4) 1337ms
+ ✓ src/features/browse/NameCombobox.test.tsx (4) 670ms
+ ✓ src/features/submissions/SubmissionPage.test.tsx (8) 1515ms
+ ✓ src/features/submitter-access/SubmitterAccessPanel.test.tsx (11) 1622ms
+
+ Test Files  11 passed (11)
+      Tests  97 passed (97)
+   Start at  11:18:30
+   Duration  9.70s (transform 2.75s, setup 3.37s, collect 12.73s, tests 14.11s, environment 23.31s, prepare 5.30s)
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool>
+
+## Response:
+8/24/2026, 11:18:53 AM
+
+Great — now we have:
+
+- focused `SubmissionPage.test.tsx`: **8/8 PASS**
+- full frontend suite: **97/97 PASS**
+- earlier one-off full-suite run: **96/97 with one transient failure**
+
+I’d do **one final full frontend run** before closing #206, just because we saw that intermittent failure once:
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend
+```
+
+If that also gives **97/97**, I’m comfortable saying #206 is resolved and the earlier failure was transient/non-reproducible.
+
+Then comment on #206:
+
+````markdown
+Revalidated again on the current codebase during Sprint 1 close-out.
+
+Final verification:
+
+- Focused `SubmissionPage.test.tsx`: **8/8 tests passed**
+- Full frontend suite: **97/97 tests passed**
+- Valid submitter scenarios reach the `Delivery events JSON` editor
+- Anonymous, denied and malformed-access states remain explicitly covered
+- No production submitter-access behaviour was weakened
+
+One earlier full-suite run produced a single transient failure in the anonymous-user navigation assertion, but the focused suite and subsequent complete frontend suite both pass. The originally reported `Submission access could not be checked` failure is not reproducible.
+
+No further code change is required for the original #206 defect.
+
+Closing as resolved.
+````
+
+If the second full run is also **97/97**, close #206 and move it to **Done**. If that same anonymous-user test fails again, then we’ve confirmed a real flaky-test problem and should keep #206 open or split out a dedicated flakiness issue.
+
+## Prompt:
+8/24/2026, 11:20:07 AM
+
+i closed #212 already, must i reopen or make a new one or what
+
+## Response:
+8/24/2026, 11:20:11 AM
+
+No — **leave #212 closed**.
+
+#212 was about the backend test workflow, and you verified exactly what it required:
+
+- `npm run test:backend` passed
+- `npm run test:backend:local` passed
+- database tests passed
+- `npm run check` remains database-independent
+- the documented command structure works
+
+So reopening #212 would be wrong.
+
+The intermittent failure we’re now looking at is a **frontend `SubmissionPage` test issue**, i.e. #206 territory, not #212.
+
+So:
+
+- **#212:** keep closed ✅
+- **#206:** finish the repeat frontend verification
+- If #206 keeps passing, close #206 too.
+- If the test is genuinely flaky across runs, then either keep #206 open and redefine it around the flakiness, or create a small new issue specifically for the flaky anonymous-user navigation test.
+
+You do **not** need a new issue for #212.
+
+## Prompt:
+8/24/2026, 11:20:45 AM
+
+how to check if i need ot create a new issue etc? leaving 212 and 206 as closed
+
+## Response:
+8/24/2026, 11:20:51 AM
+
+Yes - you can leave **#212 and #206 closed** for now.
+
+The clean way to decide whether you need a **new issue** is to verify the current `main` branch and only create something if there is still a reproducible problem.
+
+Run this from `main`:
+
+```powershell
+git switch main
+git pull origin main
+
+npm.cmd test --workspace=@sport-analytics/frontend
+npm.cmd test --workspace=@sport-analytics/frontend
+npm.cmd run check
+```
+
+Then use this rule:
+
+- If both frontend runs are **97/97** and `npm run check` passes → **do nothing**. No new issue is justified.
+- If the original #206 symptom comes back - `Submission access could not be checked` and valid submitter tests cannot reach the editor - **reopen #206**, because that is the same defect.
+- If the newer anonymous-user assertion intermittently fails again, e.g. it cannot find the `Login or Sign up` heading while the focused suite passes → **leave #206 closed and create a new flaky-test issue**. That is a different problem from the original access-check bug.
+- If some completely different test fails → investigate whether it reproduces, then create a separate issue only if it does.
+
+For the possible new flakiness issue, I would **not create it after a single failure followed by successful reruns**. One transient result is worth watching, but not enough by itself to clutter the backlog.
+
+If you want to be extra sure about that particular test, you can run the full frontend suite three times automatically:
+
+```powershell
+1..3 | ForEach-Object {
+    Write-Host "`n===== FRONTEND RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+If you get **97/97 three times**, I’d consider the Sprint 1 test state clean and move on. If one of those fails, send me the failure and I’ll tell you whether it belongs in reopened #206 or a new issue.
+
+## Prompt:
+8/24/2026, 11:22:04 AM
+
+all passed, so then why did it fail earlier wth backend stuff? is there a mistkae there?
+
+## Response:
+8/24/2026, 11:22:14 AM
+
+> **Clarifying the failure**
+>
+> I’m separating the earlier messages: the backend-local tests passed, while a frontend submission test timed out waiting for a heading. That points to a transient rendering or timing issue, not a backend mistake; later reruns passing supports this.
+>
+> **Clarified the failure**
+>
+> 
+>
+> Worked for 11s
+
+There isn’t a backend mistake in what you ran. The confusing part is that a few unrelated things happened close together.
+
+The earlier output actually shows **three different events**:
+
+1. You first typed the wrong command:
+
+```powershell
+npm.cmd run backend:local
+```
+
+That script does not exist. npm correctly suggested:
+
+```powershell
+npm.cmd run test:backend:local
+```
+
+That was just a command typo — nothing wrong with the repo.
+
+2. Both real backend workflows then passed completely:
+
+```text
+test:backend:local
+→ 88 unit ✅
+→ 91 API ✅
+→ 46 database ✅
+```
+
+and:
+
+```text
+test:backend
+→ 88 unit ✅
+→ 91 API ✅
+→ 46 database ✅
+```
+
+So **#212 is definitely fine and should stay closed.**
+
+3. The actual failure you saw earlier was **frontend**, not backend:
+
+```text
+SubmissionPage.test.tsx
+1 failed
+96 passed
+```
+
+The failing assertion was the anonymous-user test waiting for the:
+
+```text
+Login or Sign up
+```
+
+page heading. The DOM at that instant showed the shell/header but the routed page content had not appeared yet. Since you then got:
+
+- focused `SubmissionPage`: **8/8**
+- full frontend: **97/97**
+- repeated full frontend runs: **all 97/97**
+- full repository check: passing previously
+
+the best explanation is a **one-off timing/flakiness event in the frontend test runner**, probably because Vitest runs test files concurrently and that particular navigation assertion happened to miss its timing window on that run.
+
+There is **no evidence that the backend caused the frontend failure**.
+
+There was also this separate E2E message:
+
+```text
+Process from config.webServer was not able to start. Exit code: 1
+```
+
+That is another independent thing — Playwright could not start its configured dev server on that particular attempt. It is not evidence that `test:backend` was broken either.
+
+So the state now is:
+
+**#212 closed ✅** — backend workflows proven working.  
+**#206 closed ✅** — original access-check bug is not reproducible and repeated frontend verification passes.  
+**No new issue needed ✅** — because we could not reproduce the transient frontend failure.
+
+If that same `Login or Sign up` assertion starts failing again in future CI or local runs, *then* I’d create a separate issue for frontend test flakiness rather than reopening #212.
+
+## Prompt:
+8/24/2026, 11:23:30 AM
+
+nvm, heres the fail
+
+[Attachment: Pasted text(20260824-092327).txt]
+
+## Response:
+8/24/2026, 11:23:33 AM
+
+> **Interpreting the failure**
+>
+> This is a separate frontend test failure, not the earlier `SubmissionPage` issue. I’m treating `StatisticsPages.test.tsx` as a likely flaky mock-initialization race, especially since standalone runs passed. I’d open a new issue and include the intermittent `resolveStatistics is not a function` error.
+>
+> **Interpreted the failure**
+>
+> 
+>
+> Worked for 10s
+
+Yep - **this is a different problem**, so leave **#206 and #212 closed**.
+
+Your latest failure is:
+
+```text
+StatisticsPages.test.tsx
+→ 1 failed / 3 passed
+
+TypeError: resolveStatistics is not a function
+```
+
+and it happened specifically during `npm run check`, after the frontend suite had already passed twice on its own. `Pasted text.txt`
+
+That strongly points to a **flaky/racy frontend statistics test**, not a backend workflow problem and not the old SubmissionPage issue. The likely area to investigate is the deferred/mock request setup around `resolveStatistics`: the test is trying to call that resolver before it has actually been assigned. We should verify the exact cause from the test code rather than changing production code.
+
+So the correct project-methodology move is: **new issue**.
+
+**document: **
+
+# Fix intermittent StatisticsPages test race during full frontend suite
+
+## Description
+
+The frontend statistics test suite intermittently fails during the repository quality gate even though the frontend suite can pass on repeated standalone runs.
+
+During `npm run check`, the following test failed:
+
+```text
+src/features/statistics/StatisticsPages.test.tsx
+public fixture statistics pages
+automatically loads the match overview, statistics, and participating players anonymously
+```
+
+with:
+
+```text
+TypeError: resolveStatistics is not a function
+```
+
+at the point where the test attempts to resolve the mocked statistics request.
+
+Immediately before this failure, the complete frontend suite passed successfully on repeated standalone runs with 97/97 tests passing.
+
+## Investigation
+
+Determine why the deferred statistics-response resolver is not always initialised before the test attempts to invoke it.
+
+Check for:
+
+- asynchronous timing/race conditions in the fetch mock;
+- assumptions about request ordering;
+- deferred promise setup that is assigned only after a render effect executes;
+- shared mock state between tests;
+- test isolation or cleanup problems; and
+- behaviour that differs when Vitest runs the full suite concurrently.
+
+Fix the test setup/root cause rather than weakening production statistics loading behaviour or adding arbitrary delays.
+
+## Acceptance Criteria
+
+- `StatisticsPages.test.tsx` passes reliably in isolation.
+- The complete frontend suite passes reliably.
+- Repeated frontend-suite executions do not reproduce the `resolveStatistics is not a function` failure.
+- `npm run check` passes.
+- Existing loading-state assertions remain meaningful.
+- Production statistics behaviour is not changed purely to accommodate test timing.
+- No unrelated frontend or backend changes are included.
+
+## Verification
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend -- src/features/statistics/StatisticsPages.test.tsx
+npm.cmd test --workspace=@sport-analytics/frontend
+npm.cmd test --workspace=@sport-analytics/frontend
+npm.cmd run check
+```
+
+## Related Context
+
+This was discovered during Sprint 1 close-out verification on 24 August 2026.
+
+The previously tracked SubmissionPage issue #206 is separate: its focused suite passes 8/8 and repeated complete frontend runs passed 97/97.
+
+Backend test-workflow issue #212 is also separate: both `test:backend` and `test:backend:local` pass successfully.
+
+## AI Declaration
+
+The preceding issue was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+Before coding it, I’d create that issue, add `area: frontend`, `type: bug`, `type: testing`, put it in Sprint 1, and move it through **Backlog → Ready → In Progress** according to your methodology.
+
+Then branch from latest `main`, something like:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c test/<NEW-ISSUE-NUMBER>-stabilise-statistics-test
+```
+
+So the status is now:
+
+**#206 stays closed ✅  
+#212 stays closed ✅  
+new statistics-test flakiness issue needed ⚠️**
+
+And importantly, I would fix this before calling the current `main` quality gate completely clean, because you now have a reproducible example of `npm run check` occasionally failing.
+
+## Prompt:
+8/24/2026, 11:24:52 AM
+
+its #234
+
+## Response:
+8/24/2026, 11:24:59 AM
+
+Great — use **#234**.
+
+Since this is a new, separate flaky frontend-test issue, do:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c test/234-stabilise-statistics-test
+```
+
+Move **#234 → In Progress** and assign yourself if not already.
+
+Then first inspect the failing test before changing anything:
+
+```powershell
+code apps/frontend/src/features/statistics/StatisticsPages.test.tsx
+```
+
+The failure we’re targeting is:
+
+```text
+TypeError: resolveStatistics is not a function
+```
+
+inside:
+
+```text
+automatically loads the match overview, statistics, and participating players anonymously
+```
+
+Before editing, run the focused file a few times to see whether we can reproduce the race:
+
+```powershell
+1..5 | ForEach-Object {
+    Write-Host "`n===== STATISTICS TEST RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend -- src/features/statistics/StatisticsPages.test.tsx
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Then send me either:
+
+1. the output if it fails, **or**
+2. the relevant section of `StatisticsPages.test.tsx` around where `resolveStatistics` is declared/assigned and lines ~140–175.
+
+Then we’ll fix **#234 specifically**, without touching production behaviour or mixing it into #206/#212.
+
+## Prompt:
+8/24/2026, 11:25:53 AM
+
+[Attachment: Pasted code.ts]
+
+## Response:
+8/24/2026, 11:25:54 AM
+
+> **Diagnosing the race**
+>
+> I’m tracing the failure to asynchronous ordering: the test renders before the statistics request initializes its resolver, then calls an undefined function. I’d create the deferred response before rendering and match the statistics URL explicitly.
+>
+> **Diagnosed the race**
+>
+> 
+>
+> **Hardening the test**
+>
+> I’m replacing the late resolver assignment with a deferred response created before rendering. I’m also matching the statistics request explicitly, so request timing can’t produce an undefined resolver or hide unexpected calls.
+>
+> **Fixed statistics fetch race conditions in tests and mocks**
+>
+> 
+>
+> Worked for 24s
+
+Yep - we found the actual #234 bug in the test.
+
+The problem is this pattern:
+
+```ts
+let resolveStatistics!: (value: Response) => void;
+```
+
+`resolveStatistics` only gets assigned **after** the statistics `fetch` reaches this fallback:
+
+```ts
+return new Promise<Response>((resolve) => {
+  resolveStatistics = resolve;
+});
+```
+
+But the test later does this:
+
+```ts
+expect(screen.getByRole('heading', { name: 'Loading match statistics' })).toBeInTheDocument();
+
+resolveStatistics(...)
+```
+
+Seeing the **loading heading does not guarantee that the statistics fetch has already executed**. Usually it has, which is why the test normally passes. Under a slightly different scheduling order during `npm run check`, `resolveStatistics` is still undefined and you get exactly:
+
+```text
+TypeError: resolveStatistics is not a function
+```
+
+So this is a genuine test race, not a production statistics bug. `Pasted code.ts`
+
+### Fix #234
+
+In the **first test only**, immediately before `resolveStatistics(...)`, wait until the statistics request has actually happened.
+
+Replace this:
+
+```ts
+expect(screen.getByRole('heading', { name: 'Loading match statistics' })).toBeInTheDocument();
+
+resolveStatistics(
+```
+
+with:
+
+```ts
+expect(screen.getByRole('heading', { name: 'Loading match statistics' })).toBeInTheDocument();
+
+await waitFor(() =>
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+    expect.objectContaining({ headers: { Accept: 'application/json' } }),
+  ),
+);
+
+resolveStatistics(
+```
+
+Then, near the bottom of that same test, you already have **the identical `waitFor`**:
+
+```ts
+await waitFor(() =>
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+    expect.objectContaining({ headers: { Accept: 'application/json' } }),
+  ),
+);
+```
+
+Delete that later duplicate, but keep:
+
+```ts
+const statisticsCall = fetchMock.mock.calls.find(
+  ([url]) => String(url) === 'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+);
+const request = statisticsCall?.[1] as RequestInit;
+expect(new Headers(request.headers).has('Authorization')).toBe(false);
+```
+
+That gives the test the correct sequence:
+
+```text
+render
+  ↓
+fixture loads
+  ↓
+loading state appears
+  ↓
+WAIT until statistics request has actually started
+  ↓
+resolver definitely exists
+  ↓
+resolve mocked statistics response
+  ↓
+assert rendered statistics
+```
+
+No sleeps, no arbitrary timeout increase, and **no production code change**.
+
+### Then test #234 properly
+
+Format:
+
+```powershell
+npx.cmd prettier apps/frontend/src/features/statistics/StatisticsPages.test.tsx --write
+```
+
+Focused test five times:
+
+```powershell
+1..5 | ForEach-Object {
+    Write-Host "`n===== STATISTICS TEST RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend -- src/features/statistics/StatisticsPages.test.tsx
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Then full frontend three times:
+
+```powershell
+1..3 | ForEach-Object {
+    Write-Host "`n===== FRONTEND RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Finally:
+
+```powershell
+npm.cmd run check
+```
+
+If we get **5/5 focused runs + three 97/97 frontend runs + `npm run check` PASS**, I’d consider #234 properly fixed.
+
+Then we do the small **commit + AI evidence + PR for #234**.
+
+## Prompt:
+8/24/2026, 11:31:26 AM
+
+[Attachment: Pasted text(20260824-093123).txt]
+
+## Response:
+8/24/2026, 11:31:27 AM
+
+Yep - this confirms **#234 itself is fixed**, but the repository still has a **different flaky frontend test**.
+
+Your evidence for #234 is strong:
+
+- Statistics test: **4/4 passed five times**
+- Full frontend suite: **97/97 passed three times**
+- Then `npm run check` got past the statistics test successfully
+- The failure moved to `AdminUsersPage.test.tsx`
+
+So the `resolveStatistics` race is gone. `Pasted text.txt`
+
+The new failure is:
+
+```text
+AdminUsersPage.test.tsx
+→ approves a pending user with a selected scope and updates the card immediately
+```
+
+and the DOM shows:
+
+```text
+Select at least one competition scope.
+```
+
+even though that test is supposed to select a competition before approving. That is a **different flaky interaction/state problem**, not part of #234.
+
+Do **not** widen #234. That would be scope creep.
+
+First verify this new Admin test directly:
+
+```powershell
+1..5 | ForEach-Object {
+    Write-Host "`n===== ADMIN TEST RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend -- src/features/admin/AdminUsersPage.test.tsx
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+If all five pass, I would **still create a new flaky-test issue**, because we now have proof that the quality gate can fail nondeterministically even when the isolated suite passes.
+
+Then #234 can say:
+
+> Statistics race fixed and repeatedly verified. `npm run check` progressed past `StatisticsPages.test.tsx` but was independently blocked by a separate intermittent `AdminUsersPage.test.tsx` failure, tracked separately.
+
+That is acceptable evidence; #234 does not need to absorb an unrelated defect just to manufacture a green `npm run check`.
+
+Send me either the five-run output or the relevant section of `AdminUsersPage.test.tsx` around lines ~280-325. Then I’ll give you the new issue and we can finish #234 cleanly.
+
+## Prompt:
+8/24/2026, 11:32:58 AM
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> 1..5 | ForEach-Object {
+>>     Write-Host "`n===== ADMIN TEST RUN $_ ====="
+>>     npm.cmd test --workspace=@sport-analytics/frontend -- src/features/admin/AdminUsersPage.test.tsx
+>>     if ($LASTEXITCODE -ne 0) { break }
+>> }
+
+===== ADMIN TEST RUN 1 =====
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run src/features/admin/AdminUsersPage.test.tsx
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/features/admin/AdminUsersPage.test.tsx (18) 1782ms
+   ✓ administrator user management page (18) 1779ms
+     ✓ redirects signed-out visitors to sign in 307ms
+     ✓ does not request the user list for a non-administrator
+     ✓ shows each user role, approval state, and current competition scope
+     ✓ identifies a pending request and offers distinct approval and rejection actions
+     ✓ does not offer approval or scope controls before a submitter request is made
+     ✓ does not treat a rejected request as pending approval
+     ✓ does not offer submitter request-management controls for an administrator account
+     ✓ does not offer actionable submitter controls for a disabled account
+     ✓ approves a pending user with a selected scope and updates the card immediately
+     ✓ allows an administrator to reject a pending request
+     ✓ announces rejection progress and keeps approval distinct while the request is pending
+     ✓ shows an accessible rejection error for an HTTP 401 response
+     ✓ shows an accessible rejection error for an HTTP 403 response
+     ✓ shows an accessible rejection error for an HTTP 409 response
+     ✓ shows an accessible rejection error for an HTTP 422 response
+     ✓ updates an approved submitter to a different scope
+     ✓ revokes a submitter and removes the effective scope immediately
+     ✓ keeps controls usable after client or API validation errors
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  11:32:12
+   Duration  5.27s (transform 361ms, setup 248ms, collect 664ms, tests 1.78s, environment 1.46s, prepare 342ms)
+
+
+===== ADMIN TEST RUN 2 =====
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run src/features/admin/AdminUsersPage.test.tsx
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/features/admin/AdminUsersPage.test.tsx (18) 1881ms
+   ✓ administrator user management page (18) 1879ms
+     ✓ redirects signed-out visitors to sign in
+     ✓ does not request the user list for a non-administrator
+     ✓ shows each user role, approval state, and current competition scope
+     ✓ identifies a pending request and offers distinct approval and rejection actions
+     ✓ does not offer approval or scope controls before a submitter request is made
+     ✓ does not treat a rejected request as pending approval
+     ✓ does not offer submitter request-management controls for an administrator account
+     ✓ does not offer actionable submitter controls for a disabled account
+     ✓ approves a pending user with a selected scope and updates the card immediately
+     ✓ allows an administrator to reject a pending request
+     ✓ announces rejection progress and keeps approval distinct while the request is pending
+     ✓ shows an accessible rejection error for an HTTP 401 response
+     ✓ shows an accessible rejection error for an HTTP 403 response
+     ✓ shows an accessible rejection error for an HTTP 409 response
+     ✓ shows an accessible rejection error for an HTTP 422 response
+     ✓ updates an approved submitter to a different scope
+     ✓ revokes a submitter and removes the effective scope immediately
+     ✓ keeps controls usable after client or API validation errors
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  11:32:21
+   Duration  5.37s (transform 313ms, setup 291ms, collect 644ms, tests 1.88s, environment 1.51s, prepare 286ms)
+
+
+===== ADMIN TEST RUN 3 =====
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run src/features/admin/AdminUsersPage.test.tsx
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/features/admin/AdminUsersPage.test.tsx (18) 1809ms
+   ✓ administrator user management page (18) 1808ms
+     ✓ redirects signed-out visitors to sign in
+     ✓ does not request the user list for a non-administrator
+     ✓ shows each user role, approval state, and current competition scope
+     ✓ identifies a pending request and offers distinct approval and rejection actions
+     ✓ does not offer approval or scope controls before a submitter request is made
+     ✓ does not treat a rejected request as pending approval
+     ✓ does not offer submitter request-management controls for an administrator account
+     ✓ does not offer actionable submitter controls for a disabled account
+     ✓ approves a pending user with a selected scope and updates the card immediately
+     ✓ allows an administrator to reject a pending request
+     ✓ announces rejection progress and keeps approval distinct while the request is pending
+     ✓ shows an accessible rejection error for an HTTP 401 response
+     ✓ shows an accessible rejection error for an HTTP 403 response
+     ✓ shows an accessible rejection error for an HTTP 409 response
+     ✓ shows an accessible rejection error for an HTTP 422 response
+     ✓ updates an approved submitter to a different scope
+     ✓ revokes a submitter and removes the effective scope immediately
+     ✓ keeps controls usable after client or API validation errors
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  11:32:29
+   Duration  5.65s (transform 317ms, setup 278ms, collect 620ms, tests 1.81s, environment 1.59s, prepare 274ms)
+
+
+===== ADMIN TEST RUN 4 =====
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run src/features/admin/AdminUsersPage.test.tsx
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/features/admin/AdminUsersPage.test.tsx (18) 1819ms
+   ✓ administrator user management page (18) 1818ms
+     ✓ redirects signed-out visitors to sign in
+     ✓ does not request the user list for a non-administrator
+     ✓ shows each user role, approval state, and current competition scope
+     ✓ identifies a pending request and offers distinct approval and rejection actions
+     ✓ does not offer approval or scope controls before a submitter request is made
+     ✓ does not treat a rejected request as pending approval
+     ✓ does not offer submitter request-management controls for an administrator account
+     ✓ does not offer actionable submitter controls for a disabled account
+     ✓ approves a pending user with a selected scope and updates the card immediately
+     ✓ allows an administrator to reject a pending request
+     ✓ announces rejection progress and keeps approval distinct while the request is pending
+     ✓ shows an accessible rejection error for an HTTP 401 response
+     ✓ shows an accessible rejection error for an HTTP 403 response
+     ✓ shows an accessible rejection error for an HTTP 409 response
+     ✓ shows an accessible rejection error for an HTTP 422 response
+     ✓ updates an approved submitter to a different scope
+     ✓ revokes a submitter and removes the effective scope immediately
+     ✓ keeps controls usable after client or API validation errors
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  11:32:37
+   Duration  5.32s (transform 308ms, setup 308ms, collect 702ms, tests 1.82s, environment 1.38s, prepare 267ms)
+
+
+===== ADMIN TEST RUN 5 =====
+
+> @sport-analytics/frontend@0.1.0 test
+> vitest run src/features/admin/AdminUsersPage.test.tsx
+
+
+ RUN  v2.1.9 C:/Users/shayn/OneDrive/Desktop/Sport-Analytics-Tool/apps/frontend
+
+ ✓ src/features/admin/AdminUsersPage.test.tsx (18) 1778ms
+   ✓ administrator user management page (18) 1776ms
+     ✓ redirects signed-out visitors to sign in 306ms
+     ✓ does not request the user list for a non-administrator
+     ✓ shows each user role, approval state, and current competition scope
+     ✓ identifies a pending request and offers distinct approval and rejection actions
+     ✓ does not offer approval or scope controls before a submitter request is made
+     ✓ does not treat a rejected request as pending approval
+     ✓ does not offer submitter request-management controls for an administrator account
+     ✓ does not offer actionable submitter controls for a disabled account
+     ✓ approves a pending user with a selected scope and updates the card immediately
+     ✓ allows an administrator to reject a pending request
+     ✓ announces rejection progress and keeps approval distinct while the request is pending
+     ✓ shows an accessible rejection error for an HTTP 401 response
+     ✓ shows an accessible rejection error for an HTTP 403 response
+     ✓ shows an accessible rejection error for an HTTP 409 response
+     ✓ shows an accessible rejection error for an HTTP 422 response
+     ✓ updates an approved submitter to a different scope
+     ✓ revokes a submitter and removes the effective scope immediately
+     ✓ keeps controls usable after client or API validation errors
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  11:32:46
+   Duration  5.35s (transform 326ms, setup 302ms, collect 650ms, tests 1.78s, environment 1.44s, prepare 261ms)
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool>
+
+## Response:
+8/24/2026, 11:33:09 AM
+
+> **Assessing the flaky test**
+>
+> I’m treating this as a separate intermittent failure: the admin test passes repeatedly alone but fails in the full suite. I’ll open a focused flakiness issue rather than expanding #234.
+>
+> **Assessed the flaky test**
+>
+> 
+>
+> Worked for 13s
+
+Yep — this is enough to say there’s a **separate flaky AdminUsersPage test**.
+
+The important pattern is:
+
+- `AdminUsersPage.test.tsx` failed once during the full repository gate.
+- The exact same file then passed **18/18 five times in isolation**.
+- So it is not a deterministic product failure; it is almost certainly a race/test-isolation issue that only appears under the heavier full-suite run.
+
+That means **do not expand #234**. #234 is specifically the `resolveStatistics` race, and your fix for that is behaving properly.
+
+I’d create a new issue for the admin flake, something like:
+
+````markdown
+# Stabilise intermittent AdminUsersPage approval test
+
+## Description
+
+The frontend administrator user-management suite intermittently fails during the full repository quality gate even though the same test file passes consistently in isolation.
+
+During `npm run check`, the following test failed:
+
+```text
+src/features/admin/AdminUsersPage.test.tsx
+administrator user management page
+approves a pending user with a selected scope and updates the card immediately
+```
+
+The test timed out waiting for:
+
+```text
+Pending Contributor is now an approved submitter.
+```
+
+The rendered state instead showed:
+
+```text
+Select at least one competition scope.
+```
+
+Immediately afterwards, `AdminUsersPage.test.tsx` was executed five times in isolation and passed 18/18 tests on every run.
+
+## Investigation
+
+Determine why the selected competition scope is intermittently not observed when the test runs as part of the complete frontend suite.
+
+Investigate:
+
+- asynchronous checkbox/input interaction timing;
+- React state updates that are not awaited before form submission;
+- use of `fireEvent` where a user-level interaction may be required;
+- test cleanup or shared mock state;
+- request/mock ordering;
+- differences caused by concurrent full-suite execution.
+
+Fix the test setup/root cause rather than weakening production validation or adding arbitrary delays.
+
+## Acceptance Criteria
+
+- `AdminUsersPage.test.tsx` passes reliably in isolation.
+- The complete frontend suite passes reliably across repeated runs.
+- The approval test consistently selects the intended competition scope before submission.
+- Existing validation requiring at least one competition remains intact.
+- `npm run check` passes.
+- No unrelated production behaviour is changed.
+- No arbitrary sleeps or timeout increases are used as the fix.
+
+## Verification
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend -- src/features/admin/AdminUsersPage.test.tsx
+npm.cmd test --workspace=@sport-analytics/frontend
+npm.cmd test --workspace=@sport-analytics/frontend
+npm.cmd run check
+```
+
+## Related Context
+
+Discovered during verification of issue #234 on 24 August 2026.
+
+Issue #234 addresses a separate race in `StatisticsPages.test.tsx`. The statistics test passed repeatedly after its targeted fix and should not be expanded to cover this independent administrator-test failure.
+
+## AI Declaration
+
+The preceding issue was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+````
+
+Then give me the new issue number.
+
+For **#234**, don’t commit more unrelated changes. Before we finish its PR, I want to see the relevant `AdminUsersPage.test.tsx` test around the failing approval scenario, roughly lines **280–320**. There may be an obvious second race very similar to the one we just fixed.
+
+## Prompt:
+8/24/2026, 11:34:27 AM
+
+k, so should we finish 234 first or what?
+
+## Response:
+8/24/2026, 11:34:36 AM
+
+> **Prioritizing the work**
+>
+> I’m finishing #234 first, while opening a separate issue for the unrelated admin failure. I’ll document that dependency in #234, then commit and push the current stabilization changes.
+>
+> **Prioritized the work**
+>
+> 
+>
+> **Sequencing the fixes**
+>
+> I’d open the new admin issue now, then push #234 and create its PR without merging. After the admin fix lands, I’ll update #234, rerun the full check, and merge only once everything is green.
+>
+> **Sequenced the fixes**
+>
+> 
+>
+> Worked for 20s
+
+Yes - **finish #234’s implementation first, but don’t merge it yet**.
+
+The clean sequence is:
+
+1. **Create the new AdminUsersPage flaky-test issue now** so #234 can reference it. Don’t fix it on the #234 branch.
+
+2. On `test/234-stabilise-statistics-test`, commit the statistics race fix:
+
+```powershell
+git status --short
+git diff -- apps/frontend/src/features/statistics/StatisticsPages.test.tsx
+```
+
+Then:
+
+```powershell
+git add apps/frontend/src/features/statistics/StatisticsPages.test.tsx
+
+git commit -m "test(frontend): stabilise statistics loading test" `
+  -m "Refs #234" `
+  -m "Assisted-by: ChatGPT-Web[GPT-5.6 Sol]"
+```
+
+3. Push #234 and open its PR:
+
+```powershell
+git push -u origin test/234-stabilise-statistics-test
+```
+
+In the PR verification, record:
+
+```text
+StatisticsPages.test.tsx: 4/4 passed × 5 runs
+Full frontend suite: 97/97 passed × 3 runs
+npm run check: progressed past StatisticsPages successfully,
+then failed in an unrelated intermittent AdminUsersPage test,
+tracked separately as #<NEW ISSUE>
+```
+
+That distinction is supported by your run: the statistics test stayed green, while the later failure moved to `AdminUsersPage.test.tsx`. `Pasted text.txt`
+
+4. **Leave #234 in In Review, not Done/merged yet.** Its acceptance criteria include `npm run check`, and we shouldn’t pretend that passed.
+
+5. Fix the new Admin flake on its own branch/PR. Once that merges to `main`, come back to #234:
+
+```powershell
+git switch test/234-stabilise-statistics-test
+git merge main
+npm.cmd run check
+```
+
+If that passes, #234 can then merge cleanly and satisfy every acceptance criterion.
+
+So: **commit/push/open #234 now → fix separate Admin issue → update #234 from main → green check → merge #234.**
+
+That keeps both issues properly scoped and preserves your methodology.
+
+## Prompt:
+8/24/2026, 11:35:34 AM
+
+csv file?
+give pr?
+also, in csv file, refer to common transcript for today
+
+## Response:
+8/24/2026, 11:35:51 AM
+
+> **Preparing PR details**
+>
+> I’m forming the requested CSV row and pull-request text for issue #234, using the referenced transcript path. The administrative flake remains a separate follow-up, so I’m leaving its issue number as a placeholder rather than inventing one.
+>
+> **Prepared PR details**
+>
+> 
+>
+> **Finalizing PR materials**
+>
+> I’m preparing the exact CSV row, commit message, and PR description for #234. I’m recording the strong repeated test results, while clearly noting the separate intermittent AdminUsersPage failure and keeping the PR pending rather than marking it complete.
+>
+> **Updated AI register CSV and prepared pull request for issue #234**
+>
+> 
+>
+> Worked for 37s
+
+Yep. For **#234**, use the existing central AI register:
+
+```text
+evidence/ai/ai-usage-register.csv
+```
+
+Its current schema is:
+
+```text
+Date,Team member,Tool,Model,Purpose,Brief task,Output used,Verification or adaptation,Related evidence
+```
+
+and the repository already uses one retained transcript for multiple issue-specific rows. `Pasted markdown.md`
+
+Use the **same common transcript from today**:
+
+```text
+evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md
+```
+
+### CSV row for #234
+
+Append this as **one line** to `evidence/ai/ai-usage-register.csv`:
+
+```csv
+"2026-08-24","Shayna Unterslak","ChatGPT Web","GPT-5.6 Sol","Debugging; test code assistance; testing guidance; review; Git and Pull Request guidance","Issue #234: diagnose and stabilise the intermittent StatisticsPages loading-test race","apps/frontend/src/features/statistics/StatisticsPages.test.tsx; Issue #234; Pull Request preparation","Identified that the deferred resolveStatistics function was assigned only after the mocked statistics request started; updated the test to wait for the statistics request before invoking the resolver and removed the later duplicate wait; StatisticsPages.test.tsx passed 4/4 across five consecutive runs; the full frontend suite passed 97/97 across three consecutive runs; npm run check progressed past StatisticsPages successfully but was then blocked by a separate intermittent AdminUsersPage test failure, which is being tracked independently","evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md (Issue #234 section); Issue #234; Pull Request pending"
+```
+
+That is accurate - importantly, it **does not falsely claim `npm run check` passed**. Your verification really did show the statistics fix passing repeatedly, while the later quality-gate failure moved to an unrelated admin test. `Pasted text.txt`
+
+### Commit #234
+
+First:
+
+```powershell
+git status --short
+git diff -- apps/frontend/src/features/statistics/StatisticsPages.test.tsx
+git diff -- evidence/ai/ai-usage-register.csv
+```
+
+Then:
+
+```powershell
+git add apps/frontend/src/features/statistics/StatisticsPages.test.tsx `
+  evidence/ai/ai-usage-register.csv
+
+git commit -m "test(frontend): stabilise statistics loading test" `
+  -m "Refs #234" `
+  -m "Assisted-by: ChatGPT-Web[GPT-5.6 Sol]"
+```
+
+Then:
+
+```powershell
+git status
+git log -1 --format=full
+```
+
+Push:
+
+```powershell
+git push -u origin test/234-stabilise-statistics-test
+```
+
+## PR for #234
+
+**Title**
+
+```text
+test(frontend): stabilise statistics loading test
+```
+
+**Body**
+
+````markdown
+## Summary
+
+Fixes an intermittent race in the public fixture statistics frontend test.
+
+The test previously assumed that displaying the `Loading match statistics` state meant the mocked
+statistics request had already started and its deferred response resolver had been initialised.
+Under different test-run scheduling, the test could invoke `resolveStatistics` before that assignment
+occurred, producing:
+
+```text
+TypeError: resolveStatistics is not a function
+```
+
+## Changes
+
+- Wait for the fixture-statistics API request to start before resolving its deferred mocked response.
+- Remove the later duplicate request wait.
+- Preserve the existing loading-state assertion.
+- Do not change production statistics behaviour.
+
+## Verification
+
+### Focused statistics suite
+
+`StatisticsPages.test.tsx` was run five consecutive times:
+
+- 4/4 tests passed on every run
+- 20/20 total focused test executions passed
+
+### Complete frontend suite
+
+The complete frontend suite was run three consecutive times:
+
+- 97/97 tests passed on every run
+- 291/291 total frontend test executions passed
+
+### Repository quality gate
+
+`npm run check` progressed through the corrected `StatisticsPages.test.tsx` test successfully.
+
+The quality gate was subsequently blocked by a separate intermittent failure in
+`AdminUsersPage.test.tsx`, where the approval test did not observe its selected competition scope.
+That test subsequently passed 18/18 in five consecutive focused runs and is being tracked
+independently rather than expanding the scope of #234.
+
+The #234 statistics failure did not recur.
+
+## Scope
+
+This Pull Request changes only the statistics test synchronisation and its associated AI usage
+evidence. No production frontend, backend, API, or database behaviour is changed.
+
+## AI Usage
+
+The race diagnosis, test correction, verification plan, and Pull Request preparation were completed
+with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The usage is recorded in `evidence/ai/ai-usage-register.csv` and references the shared continuous
+session transcript:
+
+`evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md`
+
+Refs #234
+````
+
+**Do not put `Closes #234` yet.** Open the PR and move #234 to **In Review**, but don’t merge it until we fix the separate Admin test issue, merge latest `main` into #234, and get:
+
+```powershell
+npm.cmd run check
+```
+
+to pass. Then we can change the PR footer to:
+
+```text
+Closes #234
+```
+
+and merge it.
+
+## Prompt:
+8/24/2026, 11:38:18 AM
+
+do admin page, its #235
+
+## Response:
+8/24/2026, 11:38:40 AM
+
+> **Investigated Admin Page #235 and tested the approval workflow**
+>
+> 
+>
+> Worked for 18s
+
+Yep - do **#235 next**, separately from #234.
+
+First finish the branch setup from latest `main`:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c test/235-stabilise-admin-approval-test
+```
+
+Move **#235 → In Progress** and assign yourself.
+
+The failure we’re targeting is specifically this test:
+
+```text
+AdminUsersPage.test.tsx
+approves a pending user with a selected scope and updates the card immediately
+```
+
+During `npm run check`, the form behaved as if no competition had been selected and showed:
+
+```text
+Select at least one competition scope.
+```
+
+even though the same file then passed **18/18 five times in isolation**. `Pasted text.txt`
+
+That makes this look like another interaction/state timing race, probably around selecting the checkbox and submitting immediately.
+
+Before changing anything, open:
+
+```text
+apps/frontend/src/features/admin/AdminUsersPage.test.tsx
+```
+
+and send me the code for the failing test, roughly around:
+
+```text
+lines 285-320
+```
+
+especially the part where it:
+
+```text
+selects Premier T20
+clicks Approve submitter
+waits for "Pending Contributor is now an approved submitter."
+```
+
+I want to see whether it currently uses `fireEvent.click`, `userEvent`, or something else before I give you the exact fix.
+
+Don’t touch production `AdminUsersPage` code yet. The current evidence points to a **test synchronization problem**, not broken approval functionality.
+
+## Prompt:
+8/24/2026, 11:39:04 AM
+
+must i wait for previous pr to be merged b4 starting?
+
+## Response:
+8/24/2026, 11:39:11 AM
+
+No - you **do not need to wait for #234 to merge** before starting #235.
+
+The important thing is: **do not branch #235 from the #234 branch.** They are separate issues.
+
+You can do this now:
+
+```powershell
+git status
+```
+
+Make sure #234 is committed/pushed and the working tree is clean. Then:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c test/235-stabilise-admin-approval-test
+```
+
+Then work on #235 normally.
+
+The sequence I’d use is:
+
+**#234 PR stays open → fix #235 separately → merge #235 into `main` → bring updated `main` into #234 → rerun `npm.cmd run check` → merge #234.**
+
+That is actually cleaner than waiting, because #234’s only remaining blocker is the unrelated #235 flaky test.
+
+So yes: **start #235 now.**
+
+## Prompt:
+8/24/2026, 11:42:33 AM
+
+its merged, now five me step by step for 235
+
+## Response:
+8/24/2026, 11:42:43 AM
+
+Yep — since **#234 is merged**, start #235 cleanly from the latest `main`.
+
+1. **Set up the #235 branch**
+
+```powershell
+git switch main
+git pull origin main
+git status
+```
+
+You want:
+
+```text
+nothing to commit, working tree clean
+```
+
+Then:
+
+```powershell
+git switch -c test/235-stabilise-admin-approval-test
+```
+
+In Gitea:
+- assign #235 to yourself;
+- move it to **In Progress**.
+
+2. **Confirm the failure area, but don’t change code yet**
+
+Run the focused file once on the new branch:
+
+```powershell
+npm.cmd test --workspace=@sport-analytics/frontend -- src/features/admin/AdminUsersPage.test.tsx
+```
+
+It may well pass — that’s okay. We already know the flake tends to appear under the heavier full suite.
+
+3. **Show me the exact failing test**
+
+Run this:
+
+```powershell
+Get-Content apps/frontend/src/features/admin/AdminUsersPage.test.tsx |
+  Select-Object -Skip 270 -First 70
+```
+
+I specifically need the test:
+
+```text
+approves a pending user with a selected scope and updates the card immediately
+```
+
+especially the code that:
+- finds/selects `Premier T20`;
+- submits `Approve submitter`;
+- waits for `Pending Contributor is now an approved submitter.`
+
+**Send me that output before editing anything.**
+
+4. What we are likely checking
+
+From the failure, the form reached:
+
+```text
+Select at least one competition scope.
+```
+
+That means when the submit handler ran, React still thought no competition was selected.
+
+The likely issue is test synchronization around something like:
+
+```ts
+fireEvent.click(scopeCheckbox);
+fireEvent.click(approveButton);
+```
+
+but I do **not** want to blindly replace that until I see the current test.
+
+We’ll fix the test rather than:
+- weakening the production validation;
+- adding sleeps;
+- increasing timeouts;
+- changing unrelated admin functionality.
+
+5. **After we identify the exact fix**, we’ll verify #235 with:
+
+```powershell
+1..5 | ForEach-Object {
+    Write-Host "`n===== ADMIN TEST RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend -- src/features/admin/AdminUsersPage.test.tsx
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Then:
+
+```powershell
+1..3 | ForEach-Object {
+    Write-Host "`n===== FRONTEND RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Then:
+
+```powershell
+npm.cmd run check
+```
+
+After all of that is green, we’ll do the **#235 CSV row referencing today’s common transcript + commit + PR**.
+
+For now, run the `Get-Content ... Select-Object` command and paste me those ~70 lines.
+
+## Prompt:
+8/24/2026, 11:43:25 AM
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool> Get-Content apps/frontend/src/features/admin/AdminUsersPage.test.tsx |
+>>   Select-Object -Skip 270 -First 70
+    ).toBeInTheDocument();
+    expect(card.queryByRole('button')).not.toBeInTheDocument();
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('does not offer actionable submitter controls for a disabled account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(managementResponse(managedUser({ disabled: true }))),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(
+      card.getByText('Disabled accounts cannot receive submitter access changes.'),
+    ).toBeInTheDocument();
+    expect(card.queryByRole('button')).not.toBeInTheDocument();
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('approves a pending user with a selected scope and updates the card immediately', async () => {
+    const approved = managedUser({
+      role: 'submitter',
+      approvalState: 'approved',
+      competitionScopes: [availableScopes[0]!],
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(managementResponse())
+      .mockResolvedValueOnce(updateResponse(approved));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage();
+
+    const card = within(await userCard());
+    fireEvent.click(card.getByRole('checkbox', { name: 'Premier T20' }));
+    fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
+
+    expect(
+      await screen.findByText('Pending Contributor is now an approved submitter.'),
+    ).toHaveAttribute('role', 'status');
+    expect(
+      within(await userCard()).getByRole('button', { name: 'Revoke submitter access' }),
+    ).toBeEnabled();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2]?.[0]).toContain('/admin/users/42/submitter-access');
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ approved: true, competitionIds: ['7'] }),
+    });
+  });
+
+  it('allows an administrator to reject a pending request', async () => {
+    const rejected = managedUser({ approvalState: 'rejected' });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(managementResponse())
+      .mockResolvedValueOnce(updateResponse(rejected));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage();
+
+    fireEvent.click(within(await userCard()).getByRole('button', { name: 'Reject request' }));
+
+PS C:\Users\shayn\OneDrive\Desktop\Sport-Analytics-Tool>
+
+## Response:
+8/24/2026, 11:43:43 AM
+
+> **Fixing checkbox timing**
+>
+> I’m focusing on the likely race between checking the box and submitting. I’d wait until the checkbox is visibly checked before clicking approve; if that remains flaky, I’d switch to awaited user-style interactions.
+>
+> **Fixed checkbox timing**
+>
+> 
+>
+> **Strengthened checkbox approval tests with reliable user interactions**
+>
+> 
+>
+> Worked for 38s
+
+Yep - the test itself shows the race.
+
+Right now it does this back-to-back:
+
+```ts
+fireEvent.click(card.getByRole('checkbox', { name: 'Premier T20' }));
+fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
+```
+
+Under a heavier suite run, the submit can happen before React has fully committed the selected-scope state, which explains why the form sometimes falls into:
+
+```text
+Select at least one competition scope.
+```
+
+even though the checkbox click happened. That matches the failure you captured. `Pasted text.txt`
+
+Make this targeted change in `apps/frontend/src/features/admin/AdminUsersPage.test.tsx`.
+
+Replace:
+
+```ts
+const card = within(await userCard());
+fireEvent.click(card.getByRole('checkbox', { name: 'Premier T20' }));
+fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
+```
+
+with:
+
+```ts
+const card = within(await userCard());
+const scopeCheckbox = card.getByRole('checkbox', { name: 'Premier T20' });
+
+fireEvent.click(scopeCheckbox);
+
+await waitFor(() => {
+  expect(scopeCheckbox).toBeChecked();
+});
+
+fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
+```
+
+If `waitFor` is not already imported at the top, change the Testing Library import to include it:
+
+```ts
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+```
+
+This is the minimal fix: no production changes, no arbitrary sleeps, no timeout bump, and it explicitly waits for the state change the test depends on.
+
+Then format:
+
+```powershell
+npx.cmd prettier apps/frontend/src/features/admin/AdminUsersPage.test.tsx --write
+```
+
+Run the focused file 5 times:
+
+```powershell
+1..5 | ForEach-Object {
+    Write-Host "`n===== ADMIN TEST RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend -- src/features/admin/AdminUsersPage.test.tsx
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Then full frontend 3 times:
+
+```powershell
+1..3 | ForEach-Object {
+    Write-Host "`n===== FRONTEND RUN $_ ====="
+    npm.cmd test --workspace=@sport-analytics/frontend
+    if ($LASTEXITCODE -ne 0) { break }
+}
+```
+
+Finally:
+
+```powershell
+npm.cmd run check
+```
+
+If those are all green, #235 is done and I’ll give you the **CSV row referencing today’s common transcript + commit + PR**.
+
+## Prompt:
+8/24/2026, 11:47:41 AM
+
+can the or say closes 234 and 235 maybe?
+
+[Attachment: Pasted text(20260824-094735).txt]
+
+## Response:
+8/24/2026, 11:47:42 AM
+
+No - **don’t use `Closes #234` on the #235 PR**, because #234 is already merged/closed. `Closes` should only be used for the issue this PR is actually completing.
+
+For #235, use:
+
+```text
+Closes #235
+```
+
+You can still reference #234 in the PR body, e.g.:
+
+```markdown
+## Related context
+
+This issue was discovered while verifying #234. The #234 statistics-test race was fixed separately and has already been merged.
+
+Closes #235
+```
+
+That gives you the clean history:
+
+- #234 → statistics race fix → already merged ✅
+- #235 → admin approval-test race fix → this PR closes it ✅
+
+And #235 now has very strong verification: the admin suite passed **18/18 five times**, the full frontend suite passed **97/97 three times**, and `npm run check` passed completely. `Pasted text.txt`
+
+So the #235 PR can now legitimately use **`Closes #235`**.
+
+## Prompt:
+8/24/2026, 11:48:25 AM
+
+but 234 did only 'refs' bc of npm run check
+anyway. are we good to close 235? give me steps, csv, etc
+
+## Response:
+8/24/2026, 11:48:38 AM
+
+> **Closing PR 235**
+>
+> Yes—if `npm run check` passes, PR #235 is ready to merge. Use `Closes #235`; after merging, revisit #234 and close it once its references are no longer needed.
+> 
+> CSV row:
+> 
+> ```csv
+> 2026-08-24,shayna-unterslak,CLAUDE,CODE,AI-assisted implementation and validation,"Repository instructions; code changes; npm run check","Assistant helped implement and verify the requested changes.","Reviewed and approved by developer"
+> ```
+> 
+> Commit and push:
+> 
+> ```bash
+> git status
+> git add <changed-files> evidence/ai/ai-usage-register.csv
+> git commit -m "docs: record AI assistance for issue 235"
+> git push
+> ```
+> 
+> PR description:
+> 
+> ```md
+> ## Summary
+> - Completes #235
+> - Records the AI-assisted implementation and validation
+> - `npm run check` passes
+> 
+> Closes #235
+> ```
+>
+> **Closed pull request 235**
+>
+> 
+>
+> Worked for 13s
+
+Yes - **#235 is ready to finish**. The fix has strong verification: the admin suite passed **18/18 five times**, the full frontend suite passed **97/97 three times**, and `npm run check` passed completely. `Pasted text.txt`
+
+Do this now.
+
+### 1. Add the AI CSV row
+
+Open:
+
+```text
+evidence/ai/ai-usage-register.csv
+```
+
+Append this as **one line**:
+
+```csv
+"2026-08-24","Shayna Unterslak","ChatGPT Web","GPT-5.6 Sol","Debugging; test code assistance; testing guidance; review; Git and Pull Request guidance","Issue #235: diagnose and stabilise the intermittent AdminUsersPage approval test","apps/frontend/src/features/admin/AdminUsersPage.test.tsx; Issue #235; Pull Request preparation","Identified a race between selecting the competition checkbox and submitting the approval form; updated the test to wait until the selected scope is committed before submitting; AdminUsersPage.test.tsx passed 18/18 across five consecutive runs; the complete frontend suite passed 97/97 across three consecutive runs; npm run check passed completely; production approval validation was not weakened","evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md (Issue #235 section); Issue #235; Pull Request pending"
+```
+
+That correctly references the **same common transcript for today**.
+
+### 2. Inspect what you’re committing
+
+```powershell
+git status --short
+
+git diff -- apps/frontend/src/features/admin/AdminUsersPage.test.tsx
+git diff -- evidence/ai/ai-usage-register.csv
+```
+
+You should only have the targeted test change plus the AI register row.
+
+Then:
+
+```powershell
+git add apps/frontend/src/features/admin/AdminUsersPage.test.tsx `
+  evidence/ai/ai-usage-register.csv
+```
+
+### 3. Commit
+
+Because AI directly assisted with the test-code change:
+
+```powershell
+git commit -m "test(frontend): stabilise admin approval test" `
+  -m "Refs #235" `
+  -m "Assisted-by: ChatGPT-Web[GPT-5.6 Sol]"
+```
+
+Then:
+
+```powershell
+git status
+git log -1 --format=full
+```
+
+You want a clean tree.
+
+### 4. Push
+
+```powershell
+git push -u origin test/235-stabilise-admin-approval-test
+```
+
+### 5. Open the PR
+
+**Title:**
+
+```text
+test(frontend): stabilise admin approval test
+```
+
+**PR body:**
+
+````markdown
+## Summary
+
+Fixes an intermittent race in the administrator submitter-approval frontend test.
+
+The test previously clicked the competition-scope checkbox and immediately submitted the approval
+form. Under heavier frontend-suite execution, React could process the form submission before the
+selected-scope state had been committed, causing the test to enter the existing validation state:
+
+```text
+Select at least one competition scope.
+```
+
+The test now waits until the intended scope is actually selected before submitting the form.
+
+## Changes
+
+- Capture the `Premier T20` scope checkbox used by the approval test.
+- Select the scope as before.
+- Wait until the checkbox is confirmed as checked before submitting.
+- Preserve the existing production validation requiring at least one competition scope.
+- No production admin or submitter-access behaviour changed.
+
+## Verification
+
+### Focused admin suite
+
+`AdminUsersPage.test.tsx` was run five consecutive times:
+
+- 18/18 tests passed on every run
+- 90/90 total focused test executions passed
+
+### Complete frontend suite
+
+The complete frontend suite was run three consecutive times:
+
+- 97/97 tests passed on every run
+- 291/291 total frontend test executions passed
+
+### Repository quality gate
+
+`npm run check` - **PASS**
+
+The repository gate completed successfully, including:
+
+- structure check
+- formatting
+- lint
+- type-checking
+- backend unit tests: 88 passed
+- frontend tests: 97 passed
+- API tests: 91 passed
+- contract tests: 71 passed
+- deployment-helper tests: 4 passed
+- OpenAPI lint
+- production builds
+
+The existing Vite bundle-size message remains an informational build warning and is unrelated to this test fix.
+
+## Related context
+
+Issue #235 was discovered while verifying #234.
+
+Issue #234 fixed a separate race in `StatisticsPages.test.tsx`. This Pull Request addresses only the
+independent administrator approval-test race and does not expand or alter the statistics work.
+
+## AI Usage
+
+The race diagnosis, test correction, verification plan, and Pull Request preparation were completed
+with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+Usage is recorded in `evidence/ai/ai-usage-register.csv` and references the shared continuous-session
+transcript:
+
+`evidence/ai/transcripts/shayna-unterslak/2026-08-24-continuous-project-session.pdf.md`
+
+Closes #235
+````
+
+Then move **#235 → In Review**. Once review and CI pass, merge it; `Closes #235` can close the issue automatically, then move it to **Done** if necessary.
+
+One more thing: your point about **#234** is correct. Because its PR only used `Refs #234`, it may still be open. **After #235 is merged**, we should go back to #234: its previously blocked `npm run check` condition has now been demonstrated green, so we can add a final verification comment and close #234 cleanly without another code PR.
 
 
 
