@@ -5,24 +5,31 @@
 Issue #70 consolidates and publishes the documentation and evidence required to understand,
 run, test and review the Sprint 1 product state.
 
+## Verification context
+
+- Date: 24 August 2026
+- Branch: `docs/70-sprint-1-documentation`
+- Verifier: Shayna Unterslak
+- Related issue: #70
+
 Final verification was performed on the `docs/70-sprint-1-documentation` branch after the
 Sprint 1 documentation updates and the merged submission E2E fixture correction from issue #230.
 
 ## Acceptance criteria
 
-| Acceptance criterion                                            | Result     | Evidence                                                                                                                                                      |
-| --------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Root README and developer setup guide are current               | Pass       | `README.md`; `docs/development/setup.md`                                                                                                                      |
-| Architecture and technology stack are documented and motivated  | Pass       | `docs/architecture/system-architecture.md`; `docs/development/technology-stack.md`; architecture decision records                                             |
-| Implemented API and authentication flows are documented         | Pass       | `docs/api/overview.md`; `docs/api/openapi.md`; `docs/api/public-read.md`; `docs/api/submissions.md`; `docs/api/weather.md`; `docs/security/authentication.md` |
-| Database setup, migrations and seed instructions are documented | Pass       | `database/README.md`; `docs/database/`; `docs/development/setup.md`                                                                                           |
-| Testing commands and Sprint 1 test evidence are documented      | Pass       | `tests/README.md`; `docs/development/testing.md`; this verification record and existing records under `evidence/validation/`                                  |
-| Deployment and public documentation URLs are recorded           | Pass       | Repository deployment documentation and live URL verification below                                                                                           |
-| Known limitations and unresolved issues are listed honestly     | Pass       | `docs/planning/sprint-1-requirements-traceability.md`; `docs/architecture/system-architecture.md`                                                             |
-| Documentation site builds and is publicly accessible            | Pass       | Strict MkDocs build and live HTTP verification below                                                                                                          |
-| Work is reviewed and merged through a Pull Request              | Pending PR | To be completed by the Pull Request for issue #70                                                                                                             |
-| Sprint 1 requirements traceability matrix exists                | Pass       | `docs/planning/sprint-1-requirements-traceability.md`                                                                                                         |
-| Material requirement or architecture changes are recorded       | Pass       | Section 6 of `docs/planning/sprint-1-requirements-traceability.md` and repository ADRs                                                                        |
+| Acceptance criterion                                            | Result | Evidence                                                                                                                                                      |
+| --------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Root README and developer setup guide are current               | Pass   | `README.md`; `docs/development/setup.md`                                                                                                                      |
+| Architecture and technology stack are documented and motivated  | Pass   | `docs/architecture/system-architecture.md`; `docs/development/technology-stack.md`; architecture decision records                                             |
+| Implemented API and authentication flows are documented         | Pass   | `docs/api/overview.md`; `docs/api/openapi.md`; `docs/api/public-read.md`; `docs/api/submissions.md`; `docs/api/weather.md`; `docs/security/authentication.md` |
+| Database setup, migrations and seed instructions are documented | Pass   | `database/README.md`; `docs/database/`; `docs/development/setup.md`                                                                                           |
+| Testing commands and Sprint 1 test evidence are documented      | Pass   | `tests/README.md`; `docs/development/testing.md`; this verification record and existing records under `evidence/validation/`                                  |
+| Deployment and public documentation URLs are recorded           | Pass   | Repository deployment documentation and live URL verification below                                                                                           |
+| Known limitations and unresolved issues are listed honestly     | Pass   | `docs/planning/sprint-1-requirements-traceability.md`; `docs/architecture/system-architecture.md`                                                             |
+| Documentation site builds and is publicly accessible            | Pass   | Strict MkDocs build and live HTTP verification below                                                                                                          |
+| Work is reviewed and merged through a Pull Request              | Pass   | Issue #70 Pull Request #232 was reviewed, passed CI and merged                                                                                                |
+| Sprint 1 requirements traceability matrix exists                | Pass   | `docs/planning/sprint-1-requirements-traceability.md`                                                                                                         |
+| Material requirement or architecture changes are recorded       | Pass   | Section 6 of `docs/planning/sprint-1-requirements-traceability.md` and repository ADRs                                                                        |
 
 ## Automated verification
 
@@ -51,7 +58,7 @@ The gate verifies:
 - OpenAPI linting; and
 - production builds.
 
-Earlier final Sprint 1 verification recorded:
+Final Sprint 1 verification recorded:
 
 - backend unit tests: 88 passed;
 - frontend tests: 97 passed;
@@ -132,11 +139,11 @@ Generated `site/` output was removed from the working tree after verification an
 
 The deployed Sprint 1 services were checked on 24 August 2026.
 
-| Service              | Verification                              | Result                                      |
-| -------------------- | ----------------------------------------- | ------------------------------------------- |
-| Public documentation | `https://sports-analytics-tool.pages.dev` | HTTP 200                                    |
-| Frontend             | Azure development frontend                | HTTP 200                                    |
-| Backend              | Azure development `/api/v1/health`        | `status: ok`, service `sport-analytics-api` |
+| Service              | Verification                                                                                        | Result                                      |
+| -------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Public documentation | `https://sports-analytics-tool.pages.dev`                                                           | HTTP 200                                    |
+| Frontend             | `https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/`              | HTTP 200                                    |
+| Backend              | `https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/api/v1/health` | `status: ok`, service `sport-analytics-api` |
 
 The backend health response was verified against the deployed service rather than only the local
 application.
@@ -192,19 +199,24 @@ Key process and implementation evidence includes:
 - existing feature validation records under `evidence/validation/`
 - issue #230 and PR #231 for the stale submission E2E fixture correction
 
-## Pull Request review
+## Post-merge Pull Request completion
 
-The issue #70 Pull Request must:
+Issue #70 was completed through Pull Request #<PR-NUMBER> after this verification record was
+initially prepared.
 
-- include the verification commands;
-- identify the known Sprint 1 limitations;
-- reference this evidence record;
-- receive team review;
-- pass CI; and
-- use `Closes #70`.
+The Pull Request:
 
-The acceptance criterion requiring reviewed and merged work is complete only after that Pull Request
-has been approved and merged.
+- included the documented verification commands and results;
+- identified the known Sprint 1 limitations;
+- referenced this validation evidence;
+- received team review;
+- passed CI; and
+- was merged into `main`.
+
+The acceptance criterion requiring reviewed and merged Pull Request work is therefore complete.
+
+The original automated verification results above remain unchanged and represent the checks
+performed for the Sprint 1 documentation close-out.
 
 ## AI Declaration
 
