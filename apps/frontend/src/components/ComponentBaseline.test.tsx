@@ -9,7 +9,15 @@ import { TextField } from './TextField';
 
 describe('frontend component baseline', () => {
   it('exposes labels, help, validation and an actionable error to assistive technology', () => {
-    render(<TextField id="team" label="Team" helpText="Choose the batting team." error="A team is required." required />);
+    render(
+      <TextField
+        id="team"
+        label="Team"
+        helpText="Choose the batting team."
+        error="A team is required."
+        required
+      />,
+    );
 
     const input = screen.getByLabelText(/team/i);
     expect(input).toBeRequired();
@@ -21,9 +29,24 @@ describe('frontend component baseline', () => {
   it('uses semantic controls, regions and table captions', () => {
     render(
       <PageLayout heading="Fixtures" description="Published T20 cricket fixtures.">
-        <Card heading="Latest fixtures"><Button>Open fixture</Button></Card>
-        <Message variant="error" heading="Could not load fixtures"><p>Try again.</p></Message>
-        <DataTable caption="Latest fixtures"><thead><tr><th scope="col">Fixture</th></tr></thead><tbody><tr><td>South Africa v India</td></tr></tbody></DataTable>
+        <Card heading="Latest fixtures">
+          <Button>Open fixture</Button>
+        </Card>
+        <Message variant="error" heading="Could not load fixtures">
+          <p>Try again.</p>
+        </Message>
+        <DataTable caption="Latest fixtures">
+          <thead>
+            <tr>
+              <th scope="col">Fixture</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>South Africa v India</td>
+            </tr>
+          </tbody>
+        </DataTable>
       </PageLayout>,
     );
 
