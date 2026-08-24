@@ -28,6 +28,11 @@ tags:
   - name: Public Read
     description: Anonymous sport-reference, fixture, accepted-event and statistic reads.
 
+  - name: Weather
+    description: >-
+      Contextual weather lookup for a location and date, backed by the
+      Open-Meteo external API. See ADR-008 for the integration decision.
+
   - name: Submissions
     description: Approved-submitter event-submission operations.
 
@@ -84,6 +89,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
   /api/v1/account:
     delete:
       tags:
@@ -91,13 +97,15 @@ paths:
       summary: Permanently delete the authenticated account
       description: |
         Requires an exact `DELETE` confirmation and a Supabase sign-in no more
-        than 15 minutes old. The backend immediately disables the local account,
-        removes its authorisation grants, hard-deletes its Supabase Auth user,
-        and tombstones local identity fields.
+        than 15 minutes old. With server-only Supabase administration configured,
+        the backend immediately disables the local account, removes its
+        authorisation grants, hard-deletes its Supabase Auth user, and tombstones
+        local identity fields.
 
         Cricket submissions, fixtures, deliveries, statistics and their stable
         provenance link remain available without the former display name or
-        reusable authentication subject.
+        reusable authentication subject. If the server-only key is absent, the
+        operation fails before changing local state.
       operationId: deleteCurrentAccount
       x-implementation-status: implemented
       security:
@@ -129,6 +137,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '501':
+          description: Server-only Supabase Auth administration is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '503':
           description: |
             Deletion could not be completed. The local account remains disabled
@@ -137,6 +151,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+
   /api/v1/submitter-access-requests:
     post:
       tags:
@@ -201,10 +216,17 @@ paths:
         - Administration
       summary: Approve, re-scope, or revoke a submitter
       description: |
-        Atomically changes the target account's authoritative submission role,
-        compatibility approval state, complete competition scope and latest
-        access audit. Approval requires at least one existing competition;
-        revocation requires an empty scope and removes every existing grant.
+        Atomically approves a pending viewer request, re-scopes an approved
+        submitter, or revokes approved submitter access. Approval and scope
+        replacement require at least one existing competition. Revocation
+        requires an empty scope and removes every existing grant while retaining
+        the request's historical `approved` decision state.
+
+        A viewer in `not_requested` or `rejected` cannot be approved directly
+        and must create a new request before an administrator can act.
+
+        Rejecting a pending request is a separate operation at
+        `POST /api/v1/admin/users/{userId}/submitter-access/rejection`.
 
         Administrator accounts, disabled accounts and the acting administrator's
         own account cannot be changed through this operation.
@@ -242,13 +264,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
-          description: The target is the acting administrator, another administrator, or disabled.
+          description: The requested transition is invalid, or the target is the acting administrator, another administrator, or disabled. Invalid lifecycle transitions use `INVALID_SUBMITTER_ACCESS_TRANSITION`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '422':
           description: The update shape or one of the requested competition scopes is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/admin/users/{userId}/submitter-access/rejection:
+    post:
+      tags:
+        - Administration
+      summary: Reject a pending submitter-access request
+      description: |
+        Rejects only a genuine pending viewer request. The atomic decision keeps
+        the authoritative role as `viewer`, changes the request state to
+        `rejected`, removes any submitter competition scopes, and records the
+        acting administrator and decision time.
+
+        This operation is distinct from revocation, which removes access from an
+        existing approved submitter through the PATCH operation. A rejected viewer
+        may create a new request and return to `pending`.
+      operationId: rejectAdministratorSubmitterAccessRequest
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DatabaseIdentifier'
+      responses:
+        '200':
+          description: Updated viewer account with a rejected request and no competition scopes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The target application account does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: The target is not a pending viewer, is the acting administrator, is another administrator, or is disabled. Invalid lifecycle transitions use `INVALID_SUBMITTER_ACCESS_TRANSITION`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The target user identifier is malformed.
           content:
             application/json:
               schema:
@@ -557,6 +633,49 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/weather:
+    get:
+      tags:
+        - Weather
+      summary: Get weather for a location and date
+      description: |
+        Retrieves observed daily weather (temperature range, precipitation and
+        maximum wind speed) for a given latitude, longitude and date from the
+        Open-Meteo external API. Intended to provide contextual weather for a
+        fixture; the caller currently supplies coordinates directly rather
+        than a fixture identifier.
+      operationId: getWeather
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WeatherLatitude'
+        - $ref: '#/components/parameters/WeatherLongitude'
+        - $ref: '#/components/parameters/WeatherDate'
+      responses:
+        '200':
+          description: Observed daily weather for the requested location and date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeatherResponse'
+              example:
+                data:
+                  date: '2026-08-19'
+                  latitude: -26.2041
+                  longitude: 28.0473
+                  temperatureMax: 23.4
+                  temperatureMin: 10.2
+                  precipitationSum: 0
+                  windSpeedMax: 18.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
   /api/v1/competitors:
     get:
       tags:
@@ -670,6 +789,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ParticipantResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/participants/{participantId}/fixtures:
+    get:
+      tags:
+        - Public Read
+      summary: List a participant's published fixture history and performance
+      description: |
+        Returns fixtures in which the participant was selected, newest first,
+        with readable competition and team context plus the participant's
+        available fixture-level batting and bowling figures. A selected player
+        remains in the history when they did not bat or bowl. Partial accepted
+        source data and fixtures without published delivery statistics are
+        represented through statisticsStatus, statisticsWarnings and null
+        batting or bowling values. Submission, account and audit data are not
+        exposed.
+      operationId: listParticipantFixtures
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Paginated published fixture history for the participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantFixtureCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -790,6 +942,35 @@ components:
       schema:
         $ref: '#/components/schemas/ApiIdentifier'
 
+    WeatherLatitude:
+      name: latitude
+      in: query
+      required: true
+      description: Latitude in decimal degrees, between -90 and 90.
+      schema:
+        type: number
+        minimum: -90
+        maximum: 90
+
+    WeatherLongitude:
+      name: longitude
+      in: query
+      required: true
+      description: Longitude in decimal degrees, between -180 and 180.
+      schema:
+        type: number
+        minimum: -180
+        maximum: 180
+
+    WeatherDate:
+      name: date
+      in: query
+      required: true
+      description: Date in YYYY-MM-DD format.
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+
     StatisticId:
       name: statisticId
       in: path
@@ -848,6 +1029,27 @@ components:
 
     NotFound:
       description: The requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    UpstreamError:
+      description: The Open-Meteo external API returned an error response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    UpstreamTimeout:
+      description: The Open-Meteo external API did not respond within the configured timeout.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    ServiceUnavailable:
+      description: An unclassified failure occurred while contacting the external weather provider.
       content:
         application/json:
           schema:
@@ -932,6 +1134,7 @@ components:
               uniqueItems: true
               items:
                 $ref: '#/components/schemas/ApiIdentifier'
+
     AccountDeletionRequest:
       type: object
       additionalProperties: false
@@ -941,6 +1144,7 @@ components:
         confirmation:
           type: string
           const: DELETE
+
     AccountDeletionResponse:
       type: object
       additionalProperties: false
@@ -960,6 +1164,7 @@ components:
             retainedCricketData:
               type: boolean
               const: true
+
     SubmitterAccessRequestResponse:
       type: object
       additionalProperties: false
@@ -1159,6 +1364,59 @@ components:
               items:
                 $ref: '#/components/schemas/ApiErrorDetail'
 
+    WeatherData:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - latitude
+        - longitude
+        - temperatureMax
+        - temperatureMin
+        - precipitationSum
+        - windSpeedMax
+      properties:
+        date:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        temperatureMax:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Maximum daily temperature in degrees Celsius.
+        temperatureMin:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Minimum daily temperature in degrees Celsius.
+        precipitationSum:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Total daily precipitation in millimetres.
+        windSpeedMax:
+          oneOf:
+            - type: number
+            - type: 'null'
+          description: Maximum daily wind speed in km/h.
+
+    WeatherResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/WeatherData'
+
     PaginationMetadata:
       type: object
       additionalProperties: false
@@ -1190,12 +1448,16 @@ components:
       required:
         - seasonId
         - competitionId
+        - competitionName
         - label
       properties:
         seasonId:
           $ref: '#/components/schemas/ApiIdentifier'
         competitionId:
           $ref: '#/components/schemas/ApiIdentifier'
+        competitionName:
+          type: string
+          minLength: 1
         label:
           type: string
           minLength: 1
@@ -1206,8 +1468,11 @@ components:
       required:
         - fixtureId
         - competitionId
+        - competitionName
         - seasonId
         - season
+        - seasonLabel
+        - competitors
         - matchType
         - teamType
         - gender
@@ -1223,6 +1488,11 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
             - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
 
         seasonId:
           oneOf:
@@ -1232,7 +1502,14 @@ components:
         season:
           type: string
           minLength: 1
+        seasonLabel:
+          type: string
+          minLength: 1
 
+        competitors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competitor'
         matchType:
           type: string
           minLength: 1
@@ -1288,6 +1565,112 @@ components:
         displayName:
           type: string
           minLength: 1
+
+    ParticipantFixtureBatting:
+      type: object
+      additionalProperties: false
+      required:
+        - runsScored
+        - ballsFaced
+        - fours
+        - sixes
+        - strikeRate
+      properties:
+        runsScored:
+          type: integer
+          minimum: 0
+        ballsFaced:
+          type: integer
+          minimum: 0
+        fours:
+          type: integer
+          minimum: 0
+        sixes:
+          type: integer
+          minimum: 0
+        strikeRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantFixtureBowling:
+      type: object
+      additionalProperties: false
+      required:
+        - runsConceded
+        - legalBallsBowled
+        - oversBowled
+        - wicketsTaken
+        - economyRate
+      properties:
+        runsConceded:
+          type: integer
+          minimum: 0
+        legalBallsBowled:
+          type: integer
+          minimum: 0
+        oversBowled:
+          type: string
+          pattern: '^\d+\.\d+$'
+        wicketsTaken:
+          type: integer
+          minimum: 0
+        economyRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantFixture:
+      type: object
+      additionalProperties: false
+      required:
+        - fixture
+        - competitionName
+        - competitors
+        - competitor
+        - role
+        - statisticsStatus
+        - statisticsWarnings
+        - batting
+        - bowling
+      properties:
+        fixture:
+          $ref: '#/components/schemas/Fixture'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        competitors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competitor'
+        competitor:
+          $ref: '#/components/schemas/Competitor'
+        role:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        statisticsStatus:
+          type: string
+          enum:
+            - complete
+            - partial
+        statisticsWarnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixtureStatisticsWarning'
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantFixtureBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantFixtureBowling'
+            - type: 'null'
 
     PublicEventFielder:
       type: object
@@ -1449,7 +1832,9 @@ components:
         - inningsOrdinal
         - sequenceNumber
         - strikerParticipantId
+        - strikerParticipantName
         - bowlerParticipantId
+        - bowlerParticipantName
         - runs
         - extras
         - nonBoundary
@@ -1469,8 +1854,14 @@ components:
           minimum: 1
         strikerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        strikerParticipantName:
+          type: string
+          minLength: 1
         bowlerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        bowlerParticipantName:
+          type: string
+          minLength: 1
         runs:
           type: object
           additionalProperties: false
@@ -1559,6 +1950,7 @@ components:
             - inningsId
             - inningsOrdinal
             - competitorId
+            - competitorName
             - metrics
           properties:
             scope:
@@ -1574,6 +1966,9 @@ components:
               minimum: 0
             competitorId:
               $ref: '#/components/schemas/ApiIdentifier'
+            competitorName:
+              type: string
+              minLength: 1
             metrics:
               type: object
               additionalProperties: false
@@ -1597,10 +1992,10 @@ components:
         - $ref: '#/components/schemas/FixtureStatisticCommon'
         - type: object
           required:
-            - scope
-            - statisticCode
             - participantId
+            - participantName
             - competitorId
+            - competitorName
             - batting
             - bowling
           properties:
@@ -1612,10 +2007,19 @@ components:
               const: participant_fixture
             participantId:
               $ref: '#/components/schemas/ApiIdentifier'
+            participantName:
+              type: string
+              minLength: 1
             competitorId:
               oneOf:
                 - $ref: '#/components/schemas/ApiIdentifier'
                 - type: 'null'
+            competitorName:
+              oneOf:
+                - type: string
+                  minLength: 1
+                - type: 'null'
+
             batting:
               oneOf:
                 - type: object
@@ -1714,7 +2118,9 @@ components:
       required:
         - kind
         - winnerCompetitorId
+        - winnerCompetitorName
         - eliminatorCompetitorId
+        - eliminatorCompetitorName
         - margin
         - method
         - decidedByBowlOut
@@ -1730,9 +2136,19 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
             - type: 'null'
+        winnerCompetitorName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
         eliminatorCompetitorId:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        eliminatorCompetitorName:
+          oneOf:
+            - type: string
+              minLength: 1
             - type: 'null'
         margin:
           oneOf:
@@ -1950,6 +2366,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Participant'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    ParticipantFixtureCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantFixture'
         pagination:
           $ref: '#/components/schemas/PaginationMetadata'
 

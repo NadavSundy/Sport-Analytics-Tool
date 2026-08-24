@@ -1,0 +1,47 @@
+<svg viewBox="0 0 375 1000" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="375" height="1000" fill="#FFFFFF" stroke="#3A4650" stroke-width="2"/>
+<rect x="0" y="0" width="375" height="56" rx="4" fill="#101E2B" stroke="#101E2B" stroke-width="1.5"/>
+<text x="16" y="34" font-size="13" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">Stat'sTheGame</text>
+<text x="16" y="84" font-size="16" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Manage Users</text>
+<rect x="16" y="106" width="343" height="250" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="28" y="132" font-size="13" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Person 1</text>
+<text x="28" y="150" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">person1@example.com</text>
+<text x="28" y="170" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Role: Viewer · Pending review</text>
+<text x="28" y="198" font-size="11" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Competition scope</text>
+<rect x="28" y="212" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="50" y="224" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition A</text>
+<rect x="28" y="234" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="50" y="246" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition B</text>
+<rect x="28" y="256" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="50" y="268" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition C</text>
+<rect x="28" y="286" width="315" height="36" rx="6" fill="#5D7E00" stroke="#5D7E00" stroke-width="1.5"/>
+<text x="185.5" y="308.0" font-size="12" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Approve and assign scope</text>
+<rect x="28" y="328" width="150" height="32" rx="6" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="103.0" y="348.0" font-size="12" font-weight="bold" font-style="normal" fill="#102026" text-anchor="middle">Revoke</text>
+<rect x="190" y="328" width="153" height="32" rx="6" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="266.5" y="348.0" font-size="12" font-weight="bold" font-style="normal" fill="#102026" text-anchor="middle">Reject</text>
+<rect x="16" y="372" width="343" height="250" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="28" y="398" font-size="13" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Person 2</text>
+<text x="28" y="416" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">person2@example.com</text>
+<text x="28" y="436" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Role: Submitter · Comp. A</text>
+<text x="28" y="464" font-size="11" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Competition scope</text>
+<rect x="28" y="478" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="50" y="490" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition A</text>
+<rect x="28" y="500" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="50" y="512" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition B</text>
+<rect x="28" y="522" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="50" y="534" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition C</text>
+<rect x="28" y="552" width="315" height="36" rx="6" fill="#5D7E00" stroke="#5D7E00" stroke-width="1.5"/>
+<text x="185.5" y="574.0" font-size="12" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Save scope changes</text>
+<rect x="28" y="594" width="150" height="32" rx="6" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="103.0" y="614.0" font-size="12" font-weight="bold" font-style="normal" fill="#102026" text-anchor="middle">Revoke</text>
+<rect x="190" y="594" width="153" height="32" rx="6" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="266.5" y="614.0" font-size="12" font-weight="bold" font-style="normal" fill="#102026" text-anchor="middle">Reject</text>
+<text x="16" y="622" font-size="12" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">States</text>
+<rect x="16" y="630" width="343" height="56" rx="4" fill="#FBE3E5" stroke="#D64251" stroke-width="1.5"/>
+<text x="28" y="662.0" font-size="11" font-weight="bold" font-style="normal" fill="#D64251" text-anchor="start">Validation: select ≥ 1 scope</text>
+<rect x="16" y="696" width="343" height="56" rx="4" fill="#F2F1EC" stroke="#627078" stroke-width="1.5"/>
+<text x="28" y="728.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">Saving… buttons disabled</text>
+<rect x="16" y="762" width="343" height="56" rx="4" fill="#F2F1EC" stroke="#627078" stroke-width="1.5"/>
+<text x="28" y="794.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">No scopes available yet</text>
+</svg>

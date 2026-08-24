@@ -1,0 +1,95 @@
+<svg viewBox="0 0 1280 900" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="1280" height="900" fill="#FFFFFF" stroke="#3A4650" stroke-width="2"/>
+<rect x="0" y="0" width="1280" height="64" rx="4" fill="#101E2B" stroke="#101E2B" stroke-width="1.5"/>
+<text x="24" y="40" font-size="18" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">Stat'sTheGame</text>
+<text x="280" y="38" font-size="12" font-weight="normal" font-style="normal" fill="#FFFFFF" text-anchor="start">Competitions</text>
+<text x="430" y="38" font-size="12" font-weight="normal" font-style="normal" fill="#FFFFFF" text-anchor="start">Seasons</text>
+<text x="580" y="38" font-size="12" font-weight="normal" font-style="normal" fill="#FFFFFF" text-anchor="start">Fixtures</text>
+<text x="730" y="38" font-size="12" font-weight="normal" font-style="normal" fill="#FFFFFF" text-anchor="start">Competitors</text>
+<text x="880" y="38" font-size="12" font-weight="normal" font-style="normal" fill="#FFFFFF" text-anchor="start">Participants</text>
+<rect x="1120" y="16" width="130" height="32" rx="6" fill="#5D7E00" stroke="#5D7E00" stroke-width="1.5"/>
+<text x="1185.0" y="36.0" font-size="12" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Sign in</text>
+<text x="24" y="96" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Home / Fixtures</text>
+<text x="24" y="132" font-size="24" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Fixtures</text>
+<text x="24" y="154" font-size="12" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Published T20 fixtures. Available without sign-in.</text>
+<rect x="24" y="172" width="1232" height="56" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.5"/>
+<rect x="40" y="186" width="220" height="28" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="48" y="203.85" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition: All ▾</text>
+<rect x="276" y="186" width="220" height="28" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="284" y="203.85" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Season: All ▾</text>
+<rect x="512" y="186" width="220" height="28" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="520" y="203.85" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Team: All ▾</text>
+<rect x="1160" y="184" width="80" height="32" rx="6" fill="#5D7E00" stroke="#5D7E00" stroke-width="1.5"/>
+<text x="1200.0" y="204.0" font-size="12" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Apply</text>
+<rect x="24" y="256" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="40" y="282" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="40" y="308" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="40" y="330" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="40" y="346" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="48" y="360.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="400" y="370" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="440" y="256" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="456" y="282" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="456" y="308" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="456" y="330" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="456" y="346" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="464" y="360.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="816" y="370" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="856" y="256" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="872" y="282" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="872" y="308" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="872" y="330" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="872" y="346" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="880" y="360.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="1232" y="370" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="24" y="408" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="40" y="434" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="40" y="460" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="40" y="482" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="40" y="498" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="48" y="512.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="400" y="522" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="440" y="408" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="456" y="434" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="456" y="460" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="456" y="482" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="456" y="498" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="464" y="512.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="816" y="522" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="856" y="408" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="872" y="434" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="872" y="460" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="872" y="482" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="872" y="498" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="880" y="512.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="1232" y="522" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="24" y="560" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="40" y="586" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="40" y="612" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="40" y="634" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="40" y="650" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="48" y="664.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="400" y="674" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="440" y="560" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="456" y="586" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="456" y="612" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="456" y="634" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="456" y="650" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="464" y="664.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="816" y="674" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<rect x="856" y="560" width="392" height="128" rx="4" fill="#FFFFFF" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="872" y="586" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Competition · Season</text>
+<text x="872" y="612" font-size="15" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Team A  vs  Team B</text>
+<text x="872" y="634" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Venue · Date</text>
+<rect x="872" y="650" width="120" height="22" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="880" y="664.5" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Result: 7 wkts</text>
+<text x="1232" y="674" font-size="11" font-weight="normal" font-style="normal" fill="#5D7E00" text-anchor="end">View fixture →</text>
+<text x="640" y="732" font-size="12" font-weight="normal" font-style="normal" fill="#627078" text-anchor="middle">‹ Prev   1  2  3  › Next</text>
+<text x="24" y="752" font-size="13" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">States</text>
+<rect x="24" y="760" width="390" height="60" rx="4" fill="#F2F1EC" stroke="#627078" stroke-width="1.5"/>
+<text x="36" y="794.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">Loading: skeleton cards shown while fixtures load</text>
+<rect x="438" y="760" width="390" height="60" rx="4" fill="#F2F1EC" stroke="#627078" stroke-width="1.5"/>
+<text x="450" y="794.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">Empty: “No published fixtures match the current filters.”</text>
+<rect x="852" y="760" width="404" height="60" rx="4" fill="#FBE3E5" stroke="#D64251" stroke-width="1.5"/>
+<text x="864" y="794.0" font-size="11" font-weight="bold" font-style="normal" fill="#D64251" text-anchor="start">Error: “Fixtures could not be loaded. Retry.” + Retry button</text>
+</svg>
