@@ -25,15 +25,6 @@ deprecation and retirement rules.
 See [Shared API Contracts](contracts.md) for the complete identifier,
 response, error, filtering, sorting, date/time, event-ordering, and pagination conventions.
 
-- Base path: `/api/v1`
-- Format: JSON unless returning a documented dataset file
-- Stable identifiers: opaque, non-recycled IDs
-- Pagination: cursor pagination for large or changing collections where practical
-- Filtering: explicit documented query parameters
-- Errors: consistent machine-readable code, safe message, and optional field details
-- Authentication: established provider/library for users; separate API-consumer credentials when introduced
-- Versioning: URL major version initially, with a documented deprecation path before any retirement
-
 ## Current endpoints
 
 ```http
@@ -149,6 +140,16 @@ role plus competition scope for submission decisions.
 
 ### Administrator submitter-access decisions
 
+Administrators can list application users through:
+
+```http
+GET /api/v1/admin/users
+Authorization: Bearer <supabase-access-token>
+```
+
+The endpoint is restricted to the `admin` role and provides the account state needed for
+submitter-access review and administration.
+
 Only an authoritative `admin` may manage another active, non-administrator account. Approval and
 scope replacement use `PATCH /api/v1/admin/users/{userId}/submitter-access`; approval requires a
 pending viewer and at least one valid competition scope, while scope replacement requires an
@@ -185,6 +186,7 @@ GET /api/v1/competitors
 GET /api/v1/competitors/{competitorId}
 GET /api/v1/participants
 GET /api/v1/participants/{participantId}
+GET /api/v1/participants/{participantId}/fixtures
 ```
 
 See [Public Read API](public-read.md) for filters, pagination, deterministic ordering and example responses.
@@ -200,18 +202,35 @@ POST /api/v1/submissions
 See [Direct Event Submissions](submissions.md) for the versioned request schema, provenance response,
 validation errors, payload limit, and rate limit.
 
+### Weather integration
+
+The backend exposes the course-required runtime external API integration through:
+
+```http
+GET /api/v1/weather
+```
+
+The endpoint accepts documented location and date parameters, calls Open-Meteo server-side,
+validates the provider response, applies a bounded timeout, and maps upstream failures to safe
+application errors.
+
+See [Weather API](weather.md) for the request parameters, response format, provider behaviour,
+and current limitations.
+
 ## Required future API areas
 
-- competitions, seasons, competitors, and fixtures;
-- review, rejection, correction, and audit history;
-- derived season/career statistics;
-- filtered exports and dataset releases;
+- submission review, correction, and correction-history workflows;
+- derived season, competition, and career statistics;
+- filtered exports and versioned dataset releases;
+- staged and resumable batch ingestion;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
 - API consumers, keys, quotas, rate limits, and usage; and
 - change feeds and release differences for the advanced tier.
 
-An OpenAPI specification should be maintained alongside implementation and verified by contract tests. Do not generate backend behaviour from a third-party database platform.
+The OpenAPI specification is maintained alongside the implementation, with shared request and
+response contracts covered by automated contract tests. Backend behaviour is implemented through
+the handwritten Express API rather than generated database endpoints.
 
 ## AI Declaration
 

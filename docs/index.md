@@ -10,10 +10,14 @@ versioned hand-written HTTP API, in front of a PostgreSQL database of 13,953 mat
 
 > The Express API validates Supabase identities, synchronizes provider-neutral application
 > accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin`
-> roles with competition-scoped submissions. Administrators can review users and atomically
-> approve, re-scope, or revoke submitters. Public reference data, accepted fixture events, and
-> derived fixture statistics remain anonymous. Datasets and external API integration remain
-> future work.
+> roles with competition-scoped submissions. Administrators can review users and approve or
+> reject pending submitter-access requests, re-scope approved submitters, or revoke access.
+> Approved submitters can submit validated, ordered cricket delivery events within their
+> authorised competition scope. Public competition, season, fixture, event, competitor,
+> participant, and derived fixture-statistics reads are available without authentication.
+> The backend also provides the required runtime external API integration through Open-Meteo
+> via `GET /api/v1/weather`. Filtered dataset exports and later-tier aggregation and release
+> features remain future work.
 
 This is copied from the [repository README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool)
 so the two cannot silently drift apart. As with every status statement on this site: a page
@@ -50,6 +54,11 @@ data and decisions behind them:
 - [Authentication and authorisation](security/authentication.md) and
   [roles and permissions](security/roles-and-permissions.md) — the Supabase Auth flow as built,
   not as originally scoped (see `ADR-004`, which supersedes the earlier Firebase decision)
+- [API overview](api/overview.md) — the implemented handwritten HTTP API and current endpoint surface
+- [OpenAPI specification](api/openapi.md) — the version-controlled API contract
+- [Public read API](api/public-read.md) — anonymous cricket data reads, filters and pagination
+- [Direct event submissions](api/submissions.md) — scoped validated event submission
+- [Weather API](api/weather.md) — runtime Open-Meteo external API integration
 - [Azure deployment recovery](deployment/azure-app-service-recovery.md) — the 10–13 August
   deployment incident and how it was resolved
 - [Testing strategy](development/testing.md)
