@@ -6,10 +6,6 @@ This is the canonical onboarding guide for a clean checkout of the Sport Analyti
 
 Each independently developed or operated part of the monorepo has a repository entry point:
 
-## Component getting-started audit
-
-Each independently developed or operated part of the monorepo has a repository entry point:
-
 | Component / location  | Getting-started README                                                                                                                    | Responsibility                                                                  |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Repository root       | [README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/README.md)                                       | Overall project setup, architecture boundaries and links to specialist guides.  |
