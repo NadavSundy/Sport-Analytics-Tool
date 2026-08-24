@@ -66,6 +66,7 @@ nav:
       - Git Methodology: git-methodology.md
       - Project Methodology: project_methodology.md
       - Project Backlog and Milestone Plan: planning/project-backlog.md
+      - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
   - AI Use: ai/usage.md
 
 markdown_extensions:

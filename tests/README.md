@@ -61,26 +61,26 @@ See the [Testing policy and database safety guide](../docs/development/testing.m
 
 ## Browser tests
 
-Install the configured Chromium browser when required:
+Playwright requires its managed Chromium browser before the local end-to-end suite can run. On a
+fresh development environment, or after a Playwright upgrade, install Chromium before the first
+browser-test run:
 
 ```bash
 npx playwright install chromium
 npm run test:e2e
 ```
 
-See:
+On Windows PowerShell, if script execution blocks `npx` or `npm`, use:
 
-- [End-to-end testing guide](e2e/README.md) for end-to-end scope;
-- [Accessibility testing guide](accessibility/README.md) for accessibility evidence expectations; and
-- [Performance testing guide](performance/README.md) for performance-testing guidance.
+```powershell
+npx.cmd playwright install chromium
+npm.cmd run test:e2e
+```
 
-## Browser tests
-
-Install the configured Chromium browser when required:
+CI installs Chromium and its Linux dependencies with:
 
 ```bash
-npx playwright install chromium
-npm run test:e2e
+npx playwright install --with-deps chromium
 ```
 
 See:

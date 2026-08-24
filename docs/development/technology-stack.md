@@ -135,11 +135,11 @@ ADR-005 records the database host and authentication service as separate Supabas
 
 ## External data and integrations
 
-| Source / service              | Current use                                       | Notes                                                                                                                                                                  |
-| ----------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cricsheet                     | Historical event-level T20/IT20 JSON data source. | Downloaded by `scripts/download_cricsheet_t20.py`; generated bulk data remains ignored. Cricsheet is a data source, not the required runtime external API integration. |
-| Google OAuth                  | Identity provider through Supabase Auth.          | OAuth client secrets remain in provider dashboards and are never committed.                                                                                            |
-| Required runtime external API | Not yet selected.                                 | The project brief requires a relevant external API integration. The architecture currently records this choice as undecided; it must be documented when selected.      |
+| Source / service | Current use                                       | Notes                                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cricsheet        | Historical event-level T20/IT20 JSON data source. | Downloaded by `scripts/download_cricsheet_t20.py`; generated bulk data remains ignored. Cricsheet is a historical file/data source rather than the course-required runtime external API integration.                           |
+| Google OAuth     | Identity provider through Supabase Auth.          | Provides the initial managed OAuth sign-in path. OAuth client secrets remain in provider dashboards and are never committed.                                                                                                   |
+| Open-Meteo       | Runtime external weather API integration.         | Selected in ADR-008 and called server-side by the Express backend through `GET /api/v1/weather`. It requires no API key. Provider failures are isolated to the weather feature through validation, timeout and error handling. |
 
 ## Type-only support packages
 
