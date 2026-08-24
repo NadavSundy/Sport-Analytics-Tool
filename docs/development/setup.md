@@ -550,13 +550,23 @@ npm run test:database:local
 
 ### Playwright cannot find a browser
 
-Install the configured Chromium browser:
+Playwright requires its managed Chromium browser for the local end-to-end suite. On a fresh
+development environment, or after a Playwright upgrade, install it with:
 
 ```bash
 npx playwright install chromium
 ```
 
-CI uses `npx playwright install --with-deps chromium` on Linux.
+On Windows PowerShell, use `npx.cmd playwright install chromium` if script execution blocks `npx`.
+
+Then rerun:
+
+```bash
+npm run test:e2e
+```
+
+CI installs Chromium and its Linux dependencies with
+`npx playwright install --with-deps chromium`.
 
 ### MkDocs command is not found
 
