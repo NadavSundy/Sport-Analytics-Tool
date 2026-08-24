@@ -718,6 +718,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../design/frontend-component-baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend Component Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/information-architecture-and-wireframes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Information Architecture and Wireframes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../architecture/overview/" class="md-nav__link">
         
   
@@ -792,10 +848,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="">
             
   
   
@@ -813,8 +869,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -895,6 +951,34 @@
     
   
     Public Read API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/weather/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Weather API
   
 
     
@@ -1298,10 +1382,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_11" >
         
           
-          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3_11" id="__nav_3_11_label" tabindex="">
             
   
   
@@ -1319,8 +1403,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1473,10 +1557,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_14" >
         
           
-          <label class="md-nav__link" for="__nav_3_12" id="__nav_3_12_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3_14" id="__nav_3_14_label" tabindex="">
             
   
   
@@ -1494,8 +1578,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_14">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1548,6 +1632,34 @@
     
   
     Authentication and Authorisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/password-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Password Recovery Ownership
   
 
     
@@ -2051,6 +2163,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../planning/sprint-1-requirements-traceability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sprint 1 Requirements Traceability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2311,24 +2451,35 @@ undefined rate from a real rate of zero.</p>
 <p>Each innings and participant projection has a stable opaque <code>statisticId</code>. The ID is a deterministic
 hash of the fixture and scope identifiers, so replaying the same fixture preserves its resource
 references.</p>
+<p>Published statistics retain stable competitor and participant identifiers while also carrying the
+readable relationship names needed for presentation. Innings totals include <code>competitorName</code>;
+participant statistics include <code>participantName</code> and the participant's <code>competitorName</code> where known;
+and fixture outcomes include <code>winnerCompetitorName</code> and <code>eliminatorCompetitorName</code> where those
+relationships exist.</p>
 <p>Normal list and detail responses return <code>sourceEventCount</code> only. Calling either endpoint with
 <code>includeContributors=true</code> adds the accepted, ordered delivery records used by that projection.
-Each trace record includes the stable delivery <code>eventId</code>, innings and sequence references, the
-participants, run components, extras, boundary flag and credited-bowler wicket count. This is enough
-to reproduce every published metric without exposing submission ownership or internal audit data.</p>
+Each trace record includes the stable delivery <code>eventId</code>, innings and sequence references, striker
+and bowler identifiers and readable names, run components, extras, boundary flag and
+credited-bowler wicket count. This is enough to reproduce every published metric while allowing
+user-facing traces to identify the players without exposing submission ownership or internal audit
+data.</p>
 <p>For an innings total, <code>metrics.deliveryRuns</code> is traceable to delivery event IDs while
 <code>metrics.penaltyRuns</code> is traceable to the returned <code>inningsId</code>, because the approved schema records
 pre/post penalties at innings level rather than inventing a delivery for them.</p>
 <h2 id="public-frontend">Public frontend<a class="headerlink" href="#public-frontend" title="Permanent link">&para;</a></h2>
-<p>Anonymous users can open a fixture's Basic statistics at
-<code>/fixtures/{fixtureId}/statistics</code>. The page shows the typed fixture outcome, completeness state,
-warnings, innings competitor totals, and available participant batting and bowling metrics. Each
-competitor and participant identifier links to its corresponding public record.</p>
+<p>Opening <code>/fixtures/{fixtureId}</code> automatically requests and displays the fixture's Basic statistics
+below its named teams and match metadata. The combined overview shows the typed outcome,
+completeness state, warnings, innings totals, available player batting and bowling metrics, and
+participating players without a separate statistics action. The previous
+<code>/fixtures/{fixtureId}/statistics</code> route remains available for compatible deep links.</p>
+<p>The statistics API exposes readable team and player names alongside stable identifiers so public
+interfaces can present cricket identities without additional name-resolution requests. Identifiers
+remain internal to API requests, routes, and React keys rather than visible page content.</p>
 <p>Each result links to <code>/fixtures/{fixtureId}/statistics/{statisticId}</code>. That route opts into
 <code>includeContributors=true</code> and presents the accepted delivery references and run components used by
 the calculation. It does not expose submission ownership, account information, pending or rejected
-events, or internal audit data. Because there is no standalone public event-detail endpoint, event
-IDs are displayed as trace references rather than links to an unsupported route.</p>
+events, or internal audit data. The calculation trace identifies deliveries by readable match order
+and player names; stable event identifiers remain internal React keys.</p>
 <h2 id="incomplete-data">Incomplete data<a class="headerlink" href="#incomplete-data" title="Permanent link">&para;</a></h2>
 <p>An accepted but incomplete fixture returns HTTP <code>200</code> with <code>status: partial</code>. Warning codes cover:</p>
 <ul>
@@ -2346,8 +2497,8 @@ no-balls, byes, a non-boundary four, a bowler-credited wicket, innings penalty r
 and bowling roles. It also replays the same events in reverse input order and asserts an identical
 result, while the repository test verifies accepted-revision filtering and occurrence ordering.</p>
 <h2 id="ai-declaration">AI Declaration<a class="headerlink" href="#ai-declaration" title="Permanent link">&para;</a></h2>
-<p>The preceding calculation, API and public-interface documentation was generated and verified with
-the assistance of Codex[GPT-5.6 Sol].</p>
+<p>The preceding calculation, API and public-interface documentation was generated, reviewed and edited
+with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].</p>
 
 
 
