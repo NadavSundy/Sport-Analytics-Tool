@@ -718,62 +718,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/frontend-component-baseline/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Frontend Component Baseline
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../design/information-architecture-and-wireframes/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Information Architecture and Wireframes
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../architecture/overview/" class="md-nav__link">
         
   
@@ -846,10 +790,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
         
           
-          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
             
   
   
@@ -867,8 +811,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -949,34 +893,6 @@
     
   
     Public Read API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/weather/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Weather API
   
 
     
@@ -1245,10 +1161,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
         
           
-          <label class="md-nav__link" for="__nav_3_11" id="__nav_3_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="">
             
   
   
@@ -1266,8 +1182,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_11">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1422,10 +1338,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_14" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_12" checked>
         
           
-          <label class="md-nav__link" for="__nav_3_14" id="__nav_3_14_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3_12" id="__nav_3_12_label" tabindex="">
             
   
   
@@ -1443,8 +1359,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_14_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_14">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1497,34 +1413,6 @@
     
   
     Authentication and Authorisation
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../password-recovery/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Password Recovery Ownership
   
 
     
@@ -2119,34 +2007,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../planning/sprint-1-requirements-traceability/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sprint 1 Requirements Traceability
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -2378,15 +2238,10 @@ requested competition exists. In one transaction the backend:</p>
 <li>replaces the target account's complete <code>submitter_competition_scope</code>; and</li>
 <li>records the administrator and change time.</li>
 </ol>
-<p>Rejection and revocation are distinct. Rejection is permitted only for a pending viewer request; it
-keeps <code>application_role = viewer</code>, records <code>rejected</code>, removes every competition scope, and permits a
-later request. Revocation is permitted only for an approved submitter; it assigns
-<code>application_role = viewer</code>, retains the historical <code>approved</code> request decision, and removes every
-competition scope. Scope replacement is likewise limited to an approved submitter. Each transition
-updates role, request state, scopes, administrator attribution, and time in one transaction.</p>
-<p>Invalid lifecycle changes return <code>409 INVALID_SUBMITTER_ACCESS_TRANSITION</code>. Validation and state
-checks occur while the target row is locked, so a failed transition leaves the existing role,
-request state, scopes, and audit fields unchanged.</p>
+<p>Revocation assigns <code>application_role = viewer</code>, records the compatibility state <code>rejected</code>, and
+removes every competition scope in the same transaction. The changed role and scope therefore take
+effect on the user's next authenticated API request. An invalid scope rolls the transaction back
+without partially changing permission.</p>
 <p>The submitter-access operation cannot modify an <code>admin</code> account, a disabled account, or the acting
 administrator's own account. A viewer or submitter receives <code>403 Forbidden</code> before request-body
 processing and therefore cannot approve themselves.</p>
@@ -2401,7 +2256,7 @@ remains visible if the administrator account is later removed.</p>
 <li>Re-authentication may refresh the display name and last-authenticated time, but it never updates
   the persisted role or scopes.</li>
 <li>Only a trusted administrative backend process may change <code>application_role</code>.</li>
-<li>Approval, rejection, scope replacement, audit attribution, and revocation are committed atomically.</li>
+<li>Approval, scope replacement, audit attribution, and revocation are committed atomically.</li>
 <li>Frontend visibility checks may improve the interface, but they are never the security boundary.</li>
 </ul>
 
