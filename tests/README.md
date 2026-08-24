@@ -89,19 +89,6 @@ See:
 - [Accessibility testing guide](accessibility/README.md) for accessibility evidence expectations; and
 - [Performance testing guide](performance/README.md) for performance-testing guidance.
 
-Install the configured Chromium browser when required:
-
-```bash
-npx playwright install chromium
-npm run test:e2e
-```
-
-See:
-
-- [End-to-end testing guide](e2e/README.md) for end-to-end scope;
-- [Accessibility testing guide](accessibility/README.md) for accessibility evidence expectations; and
-- [Performance testing guide](performance/README.md) for performance-testing guidance.
-
 ## Test evidence
 
 Do not claim a suite passed unless it was actually run. Sanitized command-output summaries and verification records belong under `evidence/validation/`. User-testing evidence belongs under `evidence/user-testing/`.
