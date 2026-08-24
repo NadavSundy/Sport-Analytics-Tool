@@ -1,0 +1,22 @@
+<svg viewBox="0 0 375 900" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="375" height="900" fill="#FFFFFF" stroke="#3A4650" stroke-width="2"/>
+<rect x="0" y="0" width="375" height="56" rx="4" fill="#101E2B" stroke="#101E2B" stroke-width="1.5"/>
+<text x="16" y="34" font-size="13" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">Stat'sTheGame</text>
+<text x="16" y="84" font-size="16" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Submit Delivery Events</text>
+<text x="16" y="102" font-size="9" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Fixtures in your scope only.</text>
+<text x="16" y="128" font-size="11" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Fixture</text>
+<rect x="16" y="136" width="343" height="32" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.2"/>
+<text x="24" y="155.85" font-size="11" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">Team X vs Team Y ▾</text>
+<text x="16" y="190" font-size="11" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">Delivery events JSON</text>
+<rect x="16" y="200" width="343" height="260" rx="4" fill="#F2F1EC" stroke="#9AA5AA" stroke-width="1.5"/>
+<text x="26" y="220" font-size="10" font-weight="normal" font-style="normal" fill="#627078" text-anchor="start">{ "events": [...] }</text>
+<rect x="16" y="476" width="343" height="44" rx="6" fill="#5D7E00" stroke="#5D7E00" stroke-width="1.5"/>
+<text x="187.5" y="502.0" font-size="12" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Submit events</text>
+<text x="16" y="532" font-size="12" font-weight="bold" font-style="normal" fill="#102026" text-anchor="start">States</text>
+<rect x="16" y="540" width="343" height="56" rx="4" fill="#F2F1EC" stroke="#627078" stroke-width="1.5"/>
+<text x="28" y="572.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">No in-scope fixtures message</text>
+<rect x="16" y="606" width="343" height="56" rx="4" fill="#FBE3E5" stroke="#D64251" stroke-width="1.5"/>
+<text x="28" y="638.0" font-size="11" font-weight="bold" font-style="normal" fill="#D64251" text-anchor="start">Validation rejected: field + reason list</text>
+<rect x="16" y="672" width="343" height="56" rx="4" fill="#F2F1EC" stroke="#627078" stroke-width="1.5"/>
+<text x="28" y="704.0" font-size="11" font-weight="bold" font-style="normal" fill="#627078" text-anchor="start">Submitting… then success panel</text>
+</svg>
