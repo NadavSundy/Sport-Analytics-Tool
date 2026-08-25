@@ -418,12 +418,12 @@ The final reviewed commit will then be tagged with the annotated tag
 
 Before creating the `sprint-1` tag:
 
-- [ ] Sprint 1 stakeholder review evidence is complete.
-- [ ] Sprint 1 retrospective is complete.
+- [x] Sprint 1 stakeholder review evidence is complete.
+- [x] Sprint 1 retrospective is complete.
 - [ ] Sprint 1 close-out evidence is reviewed.
 - [ ] All intended Sprint 1 documentation changes are merged.
-- [ ] Incomplete and blocked work is correctly classified.
-- [ ] Known defects and limitations are documented.
+- [x] Incomplete and blocked work is correctly classified.
+- [x] Known defects and limitations are documented.
 - [ ] Required checks pass on the final `main` commit, except for explicitly
       documented infrastructure limitations.
 - [ ] The final `main` commit is confirmed as the reviewed Sprint 1 state.
@@ -448,6 +448,7 @@ repository state.
 - Sprint 1 validation evidence
 - Relevant Sprint 1 Pull Requests
 - `sprint-1` annotated milestone tag once created
+- Pull Request #251 — `docs(closeout): record Sprint 1 review and retrospective`
 
 ## Retrospective Evidence
 
