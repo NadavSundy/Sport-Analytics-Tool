@@ -175,3 +175,6 @@ __pycache__/
 
 # Allow the documented database-test environment template
 !apps/backend/.env.test.example
+
+# Generated MkDocs output
+/site/
