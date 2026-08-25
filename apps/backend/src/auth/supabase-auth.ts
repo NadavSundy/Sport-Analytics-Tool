@@ -14,7 +14,7 @@ export interface VerifiedIdentity {
 }
 
 export type VerifyAccessToken = (accessToken: string) => Promise<VerifiedIdentity>;
-export type DeleteAuthUserResult = 'deleted' | 'not_found';
+type DeleteAuthUserResult = 'deleted' | 'not_found';
 export type DeleteAuthUser = (authSubject: string) => Promise<DeleteAuthUserResult>;
 
 export function createSupabaseTokenVerifier(environment: SupabaseEnvironment): VerifyAccessToken {

@@ -29,11 +29,44 @@ npm ci
 
 Do not regenerate the lock file casually during unrelated work.
 
+## Monorepo maintenance checks
+
+Knip and syncpack cover two dependency risks that normal builds, tests and lint rules do not make
+obvious:
+
+- Knip detects unused files, dependencies, exports and types across the root package and npm
+  workspaces.
+- syncpack detects dependency-version drift across the root, frontend, backend and shared-contract
+  package manifests.
+
+Run both checks before opening a Pull Request:
+
+```bash
+npm run hygiene
+```
+
+They can also be run independently while reviewing a finding:
+
+```bash
+npm run hygiene:knip
+npm run hygiene:dependencies
+```
+
+syncpack discovers the current `apps/*` and `packages/*` manifests from the root npm workspace
+configuration. `.syncpackrc.json` records the configuration schema, while `syncpack lint` applies
+its default single-version policy, including exact matches for local workspace packages.
+
+`knip.json` adds only two root-workspace exceptions to automatic discovery: the backend-artifact
+smoke checker is an entry point executed directly by the deployment workflow, and Wrangler is kept
+as a dependency because the documented Cloudflare Pages deployment command invokes its CLI. These
+narrow settings must not be replaced with broad file or dependency ignores to silence new findings.
+
 ## Direct dependency review
 
 Before each milestone:
 
 - inspect direct dependencies for continued use;
+- run `npm run hygiene` and review every reported file, dependency, export or version mismatch;
 - review vulnerability findings according to actual dependency path and exploitability;
 - remove unused packages;
 - document newly added third-party libraries, services and copied/adapted code;

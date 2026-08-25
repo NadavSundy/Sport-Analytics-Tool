@@ -8,7 +8,7 @@ import {
 import type { AuthenticatedApiClient } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
 
-export class SubmissionInterfaceContractError extends Error {
+class SubmissionInterfaceContractError extends Error {
   constructor() {
     super('The API returned an unexpected response. Please try again.');
     this.name = 'SubmissionInterfaceContractError';

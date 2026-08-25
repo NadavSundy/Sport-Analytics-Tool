@@ -12,7 +12,7 @@ interface TextFilterField {
   type?: 'date' | 'search' | 'text';
 }
 
-export interface NameComboboxFilterField {
+interface NameComboboxFilterField {
   clears?: string[];
   dependsOn?: string[];
   entityName: string;

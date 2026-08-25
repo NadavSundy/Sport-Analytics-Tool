@@ -37,7 +37,7 @@ interface TargetAccountRow {
   disabledAt: Date | null;
 }
 
-export interface AdminUserManagementData {
+interface AdminUserManagementData {
   users: AdministratorManagedUser[];
   availableScopes: AdministratorCompetitionScope[];
 }

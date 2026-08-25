@@ -2,7 +2,7 @@ import { executeQuery, getDatabasePool, type QueryExecutor } from '../../databas
 import { isSubmitterApprovalState } from '../accounts/account';
 import { SubmitterAccessConflictError } from './submitter-access.errors';
 
-export interface SubmitterAccessRequestRecord {
+interface SubmitterAccessRequestRecord {
   accountId: string;
   approvalState: 'pending';
 }

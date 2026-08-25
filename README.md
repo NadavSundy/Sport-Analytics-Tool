@@ -99,8 +99,12 @@ after `--`, for example `npm run dev frontend -- --host 0.0.0.0`.
 Run the normal database-independent quality gate:
 
 ```bash
+npm run hygiene
 npm run check
 ```
+
+The separate hygiene command checks for unused monorepo files, dependencies and exports with Knip,
+then checks workspace dependency-version consistency with syncpack.
 
 The normal database-independent test suite can also be run directly:
 

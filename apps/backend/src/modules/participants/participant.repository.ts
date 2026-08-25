@@ -5,14 +5,6 @@ export interface ParticipantRecord {
   displayName: string;
 }
 
-export interface FixtureParticipantRecord {
-  participantId: string;
-  displayName: string;
-  teamId: string;
-  teamName: string;
-  role: string | null;
-}
-
 export interface ParticipantListOptions {
   limit: number;
   fixtureId?: string;
@@ -117,36 +109,6 @@ export async function findParticipantById(
   );
 
   return result.rows[0] ?? null;
-}
-
-export async function listFixtureParticipants(
-  fixtureId: string,
-  executor: QueryExecutor = getDatabasePool(),
-): Promise<FixtureParticipantRecord[]> {
-  const result = await executeQuery<FixtureParticipantRecord>(
-    executor,
-    `
-      SELECT
-        p.person_id::text AS "participantId",
-        p.display_name AS "displayName",
-        t.team_id::text AS "teamId",
-        t.name AS "teamName",
-        fs.role
-      FROM fixture_squad fs
-      INNER JOIN person p
-        ON p.person_id = fs.person_id
-      INNER JOIN team t
-        ON t.team_id = fs.team_id
-      WHERE fs.fixture_id = $1::bigint
-      ORDER BY
-        t.name ASC,
-        p.display_name ASC,
-        p.person_id ASC
-    `,
-    [fixtureId],
-  );
-
-  return result.rows;
 }
 
 export interface ParticipantFixtureRecord {
