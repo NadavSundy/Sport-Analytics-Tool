@@ -15,10 +15,12 @@ npm run check
 ```
 
 `npm run hygiene` is the local monorepo-maintenance gate. It runs Knip to detect unused files,
-dependencies, exports and types, then runs syncpack to enforce consistent dependency versions across
-npm workspaces. Use `npm run hygiene:knip` or `npm run hygiene:dependencies` to run either validator
-independently. The hygiene gate remains separate from `npm run check`, so adding it to remote
-automation can be reviewed independently.
+dependencies, exports and types, syncpack to enforce consistent dependency versions across npm
+workspaces, and dependency-cruiser to detect circular dependencies and inappropriate source imports
+across the frontend, backend and shared-contract boundaries. Use `npm run hygiene:knip`,
+`npm run hygiene:dependencies` or `npm run hygiene:architecture` to run an individual validator.
+The hygiene gate remains separate from `npm run check`, so adding it to remote automation can be
+reviewed independently.
 
 Run the complete backend test workflow with the default disposable PostgreSQL runtime:
 
@@ -71,9 +73,10 @@ tooling never falls back to the normal `DATABASE_URL`.
 
 | Command                        | Purpose                                                                                         | PostgreSQL provisioning          | Docker required |
 | ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------- | --------------- |
-| `npm run hygiene`              | Knip unused-code/dependency checks followed by syncpack version-consistency validation          | None                             | No              |
+| `npm run hygiene`              | Knip, syncpack and dependency-cruiser monorepo-maintenance validation                           | None                             | No              |
 | `npm run hygiene:knip`         | Unused files, dependencies, exports and types across the monorepo                               | None                             | No              |
 | `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                             | No              |
+| `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                             | No              |
 | `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                             | No              |
 | `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST` | No              |
 | `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection      | Yes             |

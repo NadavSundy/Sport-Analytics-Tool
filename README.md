@@ -104,7 +104,8 @@ npm run check
 ```
 
 The separate hygiene command checks for unused monorepo files, dependencies and exports with Knip,
-then checks workspace dependency-version consistency with syncpack.
+checks workspace dependency-version consistency with syncpack, and validates circular dependencies
+and documented application boundaries with dependency-cruiser.
 
 The normal database-independent test suite can also be run directly:
 
