@@ -17,12 +17,12 @@ import {
   SubmissionValidationError,
 } from './submission.errors';
 
-export interface FixtureSubmissionScope {
+interface FixtureSubmissionScope {
   fixtureId: string;
   competitionId: string | null;
 }
 
-export interface AcceptedSubmission {
+interface AcceptedSubmission {
   submissionId: string;
   fixtureId: string;
   submitterId: string;

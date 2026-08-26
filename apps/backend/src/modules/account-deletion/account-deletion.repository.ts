@@ -1,7 +1,7 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 import { isAccountDeletionState, type AccountDeletionState } from '../accounts/account';
 
-export interface PreparedAccountDeletion {
+interface PreparedAccountDeletion {
   authSubject: string;
   state: AccountDeletionState;
 }

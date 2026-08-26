@@ -8,7 +8,7 @@ All contributions must follow [`docs/git-methodology.md`](docs/git-methodology.m
 2. Update local `main` and create a correctly named branch.
 3. Make small, meaningful commits that reference the issue.
 4. Add tests and documentation with the implementation.
-5. Run `npm run check` before opening a Pull Request.
+5. Run `npm run hygiene` and `npm run check` before opening a Pull Request.
 6. Request review from another team member.
 7. Merge only after acceptance criteria and required checks pass.
 

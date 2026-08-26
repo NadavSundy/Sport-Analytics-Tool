@@ -1,11 +1,5 @@
 import { apiErrorResponseSchema, type ApiErrorDetail } from '@sport-analytics/contracts';
 
-export interface HealthResponse {
-  status: 'ok';
-  service: string;
-  timestamp: string;
-}
-
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
 
 export type ApiErrorKind = 'unauthenticated' | 'forbidden' | 'request-failed';
@@ -95,19 +89,4 @@ export function createAuthenticatedApiClient(
       return (await response.json()) as ResponseBody;
     },
   };
-}
-
-export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  const response = await fetch(`${apiBaseUrl}/health`, {
-    headers: {
-      Accept: 'application/json',
-    },
-    signal: signal ?? null,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Health request failed with status ${response.status}`);
-  }
-
-  return (await response.json()) as HealthResponse;
 }

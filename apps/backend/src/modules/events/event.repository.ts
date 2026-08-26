@@ -2,7 +2,7 @@ import type { PublicEvent } from '@sport-analytics/contracts';
 
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 
-export interface PublicEventListOptions {
+interface PublicEventListOptions {
   fixtureId: string;
   limit: number;
   inningsId?: string;
@@ -17,7 +17,7 @@ export interface PublicEventListOptions {
   };
 }
 
-export interface PublicEventPage {
+interface PublicEventPage {
   records: PublicEvent[];
   hasMore: boolean;
 }

@@ -1,6 +1,6 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 
-export interface FixtureCompetitorRecord {
+interface FixtureCompetitorRecord {
   competitorId: string;
   name: string;
 }

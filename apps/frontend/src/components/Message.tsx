@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type MessageVariant = 'info' | 'success' | 'warning' | 'error';
+type MessageVariant = 'info' | 'success' | 'warning' | 'error';
 
 export interface MessageProps {
   children: ReactNode;

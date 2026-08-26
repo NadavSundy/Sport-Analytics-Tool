@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "treatConfigHintsAsErrors": true,
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/smoke-check-backend-artifact.mjs"],
+      "ignoreDependencies": ["wrangler"]
+    }
+  }
+}

@@ -14,7 +14,7 @@ import {
   type AccountDeletionRepository,
 } from './account-deletion.repository';
 
-export const RECENT_AUTHENTICATION_WINDOW_MS = 15 * 60 * 1000;
+const RECENT_AUTHENTICATION_WINDOW_MS = 15 * 60 * 1000;
 
 export interface AccountDeletionService {
   deleteAccount(
