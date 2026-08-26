@@ -6,7 +6,14 @@ import { hashAuthenticationSubject } from '../../src/modules/accounts/account-su
 function createExecutor(row: Record<string, unknown>): QueryExecutor {
   return {
     query: vi.fn().mockResolvedValue({
-      rows: [{ deletionState: 'active', ...row }],
+      rows: [
+        {
+          deletionState: 'active',
+          requestedCompetitionId: null,
+          requestedCompetitionName: null,
+          ...row,
+        },
+      ],
       rowCount: 1,
       command: 'SELECT',
       oid: 0,
@@ -23,6 +30,8 @@ describe('application account repository', () => {
       displayName: 'Verified Name',
       role: 'submitter',
       approvalState: 'approved',
+      requestedCompetitionId: '7',
+      requestedCompetitionName: 'Premier T20',
       competitionIds: ['7', '9'],
       disabledAt: null,
     });
@@ -50,6 +59,7 @@ describe('application account repository', () => {
       displayName: 'Verified Name',
       role: 'submitter',
       approvalState: 'approved',
+      requestedCompetition: { competitionId: '7', name: 'Premier T20' },
       competitionIds: ['7', '9'],
       disabled: false,
       deletionState: 'active',

@@ -33,6 +33,7 @@ describe('account deletion repository', () => {
     expect(sql).toContain('disabled_at = COALESCE(disabled_at, now())');
     expect(sql).toContain("application_role = 'viewer'");
     expect(sql).toContain("submitter_approval_state = 'not_requested'");
+    expect(sql).toContain('submitter_requested_competition_id = NULL');
     expect(sql).toContain('DELETE FROM submitter_competition_scope');
     expect(sql).not.toMatch(/DELETE FROM\s+(submission|delivery|fixture)/i);
     expect(values).toEqual(['42']);
@@ -47,6 +48,7 @@ describe('account deletion repository', () => {
     const [sql, values] = vi.mocked(executor.query).mock.calls[0] ?? [];
     expect(sql).toContain('auth_subject = $2');
     expect(sql).toContain('display_name = NULL');
+    expect(sql).toContain('submitter_requested_competition_id = NULL');
     expect(sql).toContain("deletion_state = 'deleted'");
     expect(sql).toContain('deleted_auth_subject_hash = $3');
     expect(sql).toContain('DELETE FROM submitter_competition_scope');

@@ -29,6 +29,7 @@ test.beforeEach(async ({ page }) => {
 
 test('eligible user requests access and reloads the persisted pending state', async ({ page }) => {
   let approvalState: 'not_requested' | 'pending' = 'not_requested';
+  let requestedCompetition: { competitionId: string; name: string } | null = null;
 
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
@@ -41,8 +42,23 @@ test('eligible user requests access and reloads the persisted pending state', as
           displayName: 'Requesting User',
           role: 'viewer',
           approvalState,
+          requestedCompetition,
           competitionIds: [],
         },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/competitions?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          { competitionId: '5', name: 'Premier T20' },
+          { competitionId: '8', name: 'University League' },
+        ],
+        pagination: { nextCursor: null },
       }),
     });
   });
@@ -50,7 +66,9 @@ test('eligible user requests access and reloads the persisted pending state', as
   await page.route('**/api/v1/submitter-access-requests', async (route) => {
     expect(route.request().method()).toBe('POST');
     expect(route.request().headers().authorization).toBe('Bearer requesting-e2e-token');
+    expect(route.request().postDataJSON()).toEqual({ competitionId: '8' });
     approvalState = 'pending';
+    requestedCompetition = { competitionId: '8', name: 'University League' };
 
     await route.fulfill({
       status: 201,
@@ -59,12 +77,23 @@ test('eligible user requests access and reloads the persisted pending state', as
         data: {
           accountId: '17',
           approvalState: 'pending',
+          requestedCompetition,
         },
       }),
     });
   });
 
   await page.goto('/account');
+
+  const accessPanel = page.getByRole('region', { name: 'Submitter access' });
+  const competitionSelect = accessPanel.getByRole('combobox', { name: 'Competition' });
+  await expect(competitionSelect).toBeVisible();
+  await expect(competitionSelect.locator('option')).toHaveText([
+    'Premier T20',
+    'University League',
+  ]);
+  await competitionSelect.selectOption('8');
+  await expect(accessPanel.getByRole('combobox', { name: /fixture/i })).toHaveCount(0);
 
   const requestButton = page.getByRole('button', { name: 'Request submitter access' });
   await expect(requestButton).toBeVisible();
@@ -73,7 +102,11 @@ test('eligible user requests access and reloads the persisted pending state', as
   await page.keyboard.press('Enter');
 
   await expect(page.getByText('Pending approval')).toBeVisible();
-  await expect(page.getByText(/awaiting administrator approval/i)).toBeVisible();
+  await expect(
+    page
+      .locator('.submitter-access-panel__message')
+      .filter({ hasText: /request for University League.*awaiting administrator/i }),
+  ).toBeVisible();
   await expect(requestButton).toHaveCount(0);
 
   await page.reload();

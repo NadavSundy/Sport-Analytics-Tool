@@ -94,9 +94,11 @@ backend. The page shows the persisted `not_requested`, `pending`, `approved`, or
 request state and the server-owned `viewer | submitter | admin` application role rather than
 inferring permission from the Supabase identity.
 
-Eligible users can send a request through `POST /api/v1/submitter-access-requests`. The interface
+Eligible users choose from public competitions and send that competition through
+`POST /api/v1/submitter-access-requests`. Fixtures are not exposed as request scopes. The interface
 disables the action while it is in progress, reloads `/api/v1/auth/me` after success or a stale
-conflict, and does not offer another request while the persisted state is `pending` or `approved`.
+conflict, displays the named pending competition, and does not offer another request while the
+persisted state is `pending` or `approved`.
 Accounts with the `submitter` or `admin` role can continue to the scoped event-submission
 interface. The deprecated approval state alone never exposes the submission interface. The backend
 remains the authorisation boundary for every request and submission.
@@ -104,10 +106,11 @@ remains the authorisation boundary for every request and submission.
 ## Administrator user management
 
 An authenticated administrator can open `/admin/users` from the account page. The responsive user
-cards expose each account's role, request state, current competition scope, account state, and most
-recent submitter-access audit. Labelled checkboxes are shown only for a viewer with a `pending`
-request or an existing submitter. Administrators can approve or reject a pending request, replace an
-existing submitter's scope, or revoke access. `not_requested` and `rejected` viewers receive a clear
+cards expose each account's role, request state, requested competition, current competition scope,
+account state, and most recent submitter-access audit. A pending request shows its competition as a
+read-only approval scope; labelled checkboxes remain available for re-scoping an existing submitter.
+Administrators can approve or reject a pending request, replace an existing submitter's scope, or
+revoke access. `not_requested` and `rejected` viewers receive a clear
 read-only state without approval or scope controls.
 
 The page checks the current application role before requesting management data, but that check is
@@ -269,3 +272,5 @@ The public related-record overview behavior was documented with the assistance o
 Codex[GPT-5.6 Sol].
 The public match overview behavior was documented with the assistance of Codex[GPT-5.6 Sol].
 The public player overview behavior was documented with the assistance of Codex[GPT-5.6 Sol].
+The issue #255 competition selection and read-only approval scope were documented with the
+assistance of Codex[GPT-5].

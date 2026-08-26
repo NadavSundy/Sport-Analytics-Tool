@@ -14,6 +14,8 @@ interface ApplicationAccountRow {
   displayName: string | null;
   role: string;
   approvalState: string;
+  requestedCompetitionId: string | null;
+  requestedCompetitionName: string | null;
   competitionIds: string[];
   disabledAt: Date | null;
   deletionState: string;
@@ -49,6 +51,8 @@ export async function synchronizeApplicationAccount(
           display_name,
           application_role,
           submitter_approval_state,
+          to_jsonb(app_user) ->> 'submitter_requested_competition_id'
+            AS submitter_requested_competition_id,
           disabled_at,
           COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active') AS deletion_state
         FROM app_user
@@ -85,6 +89,8 @@ export async function synchronizeApplicationAccount(
           display_name,
           application_role,
           submitter_approval_state,
+          to_jsonb(app_user) ->> 'submitter_requested_competition_id'
+            AS submitter_requested_competition_id,
           disabled_at,
           COALESCE(to_jsonb(app_user) ->> 'deletion_state', 'active') AS deletion_state
       ),
@@ -105,6 +111,8 @@ export async function synchronizeApplicationAccount(
           ELSE account.application_role
         END AS role,
         account.submitter_approval_state AS "approvalState",
+        requested_competition.competition_id::text AS "requestedCompetitionId",
+        requested_competition.name AS "requestedCompetitionName",
         COALESCE(
           array_agg(scope.competition_id::text ORDER BY scope.competition_id)
             FILTER (WHERE scope.competition_id IS NOT NULL),
@@ -116,12 +124,15 @@ export async function synchronizeApplicationAccount(
       CROSS JOIN account_schema
       LEFT JOIN submitter_competition_scope scope
         ON scope.app_user_id = account.app_user_id
+      LEFT JOIN competition requested_competition
+        ON requested_competition.competition_id::text = account.submitter_requested_competition_id
       GROUP BY
         account.app_user_id,
         account.auth_subject,
         account.display_name,
         account.application_role,
         account.submitter_approval_state,
+        requested_competition.competition_id,
         account.disabled_at,
         account.deletion_state,
         account_schema."usesCurrentRoleModel"
@@ -147,12 +158,23 @@ export async function synchronizeApplicationAccount(
     throw new Error('Application account has an unsupported deletion state');
   }
 
+  if ((account.requestedCompetitionId === null) !== (account.requestedCompetitionName === null)) {
+    throw new Error('Application account has inconsistent requested competition data');
+  }
+
   return {
     accountId: account.accountId,
     subject: account.subject,
     displayName: account.displayName,
     role: account.role,
     approvalState: account.approvalState,
+    requestedCompetition:
+      account.requestedCompetitionId && account.requestedCompetitionName
+        ? {
+            competitionId: account.requestedCompetitionId,
+            name: account.requestedCompetitionName,
+          }
+        : null,
     competitionIds: account.competitionIds,
     disabled: account.disabledAt !== null,
     deletionState: account.deletionState,
