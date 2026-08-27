@@ -2,6 +2,7 @@ import type {
   ApiErrorDetail,
   SubmissionEvent,
   SubmissionRequest,
+  CorrectionRequest,
 } from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
 
@@ -9,6 +10,7 @@ import {
   DatabaseAccessError,
   executeQuery,
   getDatabasePool,
+  type QueryExecutor,
   withTransaction,
 } from '../../database';
 import {
@@ -32,13 +34,31 @@ interface AcceptedSubmission {
   eventCount: number;
 }
 
+export interface CorrectionTarget {
+  fixtureId: string;
+  competitionId: string | null;
+  sequenceNumber: number;
+}
+
+interface AcceptedCorrection {
+  eventId: string;
+  fixtureId: string;
+  revision: number;
+}
+
 export interface SubmissionRepository {
   findFixtureScope(fixtureId: string): Promise<FixtureSubmissionScope | null>;
   findDismissalKinds(): Promise<Set<string>>;
+  findCorrectionTarget(eventId: string): Promise<CorrectionTarget | null>;
   storeAcceptedSubmission(
     submission: SubmissionRequest,
     submitterId: string,
   ): Promise<AcceptedSubmission>;
+  storeAcceptedCorrection(
+    eventId: string,
+    correction: CorrectionRequest,
+    submitterId: string,
+  ): Promise<AcceptedCorrection>;
 }
 
 interface FixtureScopeRow {
@@ -61,8 +81,15 @@ interface DeliveryRow {
   deliveryId: string;
 }
 
+interface CorrectionTargetRow extends CorrectionTarget {
+  deliveryId: string;
+  submissionId: string;
+  eventOrdinal: number;
+  revision: number;
+}
+
 async function assertSubmissionAuthorized(
-  client: PoolClient,
+  client: QueryExecutor,
   fixtureId: string,
   submitterId: string,
 ): Promise<void> {
@@ -114,6 +141,7 @@ async function validateReferences(
   client: PoolClient,
   fixtureId: string,
   events: SubmissionEvent[],
+  checkDuplicateEventIds = true,
 ): Promise<void> {
   const inningsIds = unique(events.map((event) => event.inningsId));
   const participantIds = referencedParticipantIds(events);
@@ -203,7 +231,7 @@ async function validateReferences(
       }
     }
 
-    if (duplicateEventIds.has(event.eventId)) {
+    if (checkDuplicateEventIds && duplicateEventIds.has(event.eventId)) {
       eventDetails.push({
         code: 'DUPLICATE_EVENT_ID',
         message: 'The event identifier has already been accepted.',
@@ -230,11 +258,42 @@ async function validateReferences(
   }
 }
 
+async function findLiveCorrectionTarget(
+  client: QueryExecutor,
+  eventId: string,
+  lock = false,
+): Promise<CorrectionTargetRow | null> {
+  const result = await executeQuery<CorrectionTargetRow>(
+    client,
+    `
+      SELECT
+        i.fixture_id::text AS "fixtureId",
+        f.competition_id::text AS "competitionId",
+        d.innings_sequence AS "sequenceNumber",
+        d.delivery_id::text AS "deliveryId",
+        d.submission_id::text AS "submissionId",
+        d.submission_event_ordinal AS "eventOrdinal",
+        d.revision
+      FROM delivery d
+      JOIN innings i ON i.innings_id = d.innings_id
+      JOIN fixture f ON f.fixture_id = i.fixture_id
+      JOIN submission s ON s.submission_id = d.submission_id AND s.status = 'accepted'
+      WHERE d.source_event_id = $1::uuid
+        AND d.superseded_at IS NULL
+      ${lock ? 'FOR UPDATE OF d' : ''}
+    `,
+    [eventId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 async function insertDelivery(
   client: PoolClient,
   submissionId: string,
   event: SubmissionEvent,
   ordinal: number,
+  revision = 1,
 ): Promise<string> {
   const result = await executeQuery<DeliveryRow>(
     client,
@@ -259,11 +318,12 @@ async function insertDelivery(
         extra_penalty,
         submission_id,
         source_event_id,
-        submission_event_ordinal
+        submission_event_ordinal,
+        revision
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
       )
       RETURNING delivery_id::text AS "deliveryId"
     `,
@@ -288,6 +348,7 @@ async function insertDelivery(
       submissionId,
       event.eventId,
       ordinal,
+      revision,
     ],
   );
 
@@ -376,6 +437,18 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
       return new Set(result.rows.map((row) => row.code));
     },
 
+    async findCorrectionTarget(eventId) {
+      const databasePool = pool ?? getDatabasePool();
+      const target = await findLiveCorrectionTarget(databasePool, eventId);
+      return (
+        target && {
+          fixtureId: target.fixtureId,
+          competitionId: target.competitionId,
+          sequenceNumber: target.sequenceNumber,
+        }
+      );
+    },
+
     async storeAcceptedSubmission(submission, submitterId) {
       const databasePool = pool ?? getDatabasePool();
       try {
@@ -438,6 +511,70 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
 
         throw error;
       }
+    },
+
+    async storeAcceptedCorrection(eventId, correction, submitterId) {
+      const databasePool = pool ?? getDatabasePool();
+      return withTransaction(databasePool, async (client) => {
+        const target = await findLiveCorrectionTarget(client, eventId, true);
+        if (!target || target.fixtureId !== correction.fixtureId) {
+          throw new SubmissionValidationError('The correction references an unavailable event.', [
+            {
+              code: 'EVENT_NOT_FOUND',
+              message: 'The source event is not an accepted, correctable event for this fixture.',
+              field: 'eventId',
+            },
+          ]);
+        }
+
+        await assertSubmissionAuthorized(client, target.fixtureId, submitterId);
+        const event: SubmissionEvent = {
+          ...correction.event,
+          eventId,
+          sequenceNumber: target.sequenceNumber,
+        };
+        await validateReferences(client, target.fixtureId, [event], false);
+
+        // The base schema requires a superseded row to name a successor. Mark it
+        // temporarily self-superseded inside this transaction, freeing the live
+        // keys before its immutable replacement is inserted.
+        await executeQuery(
+          client,
+          `
+            UPDATE delivery
+            SET source_event_id = NULL,
+                submission_event_ordinal = NULL,
+                superseded_at = now(),
+                superseded_by = delivery_id
+            WHERE delivery_id = $1
+          `,
+          [target.deliveryId],
+        );
+
+        const replacement = await insertDelivery(
+          client,
+          target.submissionId,
+          event,
+          target.eventOrdinal,
+          target.revision + 1,
+        );
+        await insertWickets(client, replacement, event);
+        await executeQuery(
+          client,
+          `
+            UPDATE delivery
+            SET superseded_by = $2
+            WHERE delivery_id = $1
+          `,
+          [target.deliveryId, replacement],
+        );
+
+        return {
+          eventId,
+          fixtureId: target.fixtureId,
+          revision: target.revision + 1,
+        };
+      });
     },
   };
 }

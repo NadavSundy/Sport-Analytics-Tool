@@ -125,7 +125,7 @@ async function queryAcceptedFixtureEvents(
       WITH accepted_delivery AS (
         SELECT DISTINCT ON (delivery.innings_id, delivery.over_number, delivery.position_in_over)
           delivery.*
-        FROM delivery
+        FROM delivery_current delivery
         INNER JOIN innings source_innings
           ON source_innings.innings_id = delivery.innings_id
         INNER JOIN submission source_submission

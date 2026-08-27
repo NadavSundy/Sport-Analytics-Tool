@@ -6,6 +6,8 @@ import { executeQuery } from '../../src/database';
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
 import { createSubmissionRepository } from '../../src/modules/submissions/submission.repository';
 import { createSubmissionService } from '../../src/modules/submissions/submission.service';
+import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
+import { loadFixtureStatisticsSource } from '../../src/modules/statistics/fixture-statistics.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { createTestAccount, createTestApp } from '../test-app';
 
@@ -179,6 +181,9 @@ describe.sequential('direct submission database integration', () => {
       return;
     }
 
+    await executeQuery(pool, 'UPDATE fixture SET first_seen_in = NULL WHERE fixture_id = $1', [
+      records.fixtureId,
+    ]);
     await executeQuery(pool, 'DELETE FROM delivery WHERE innings_id = $1', [records.inningsId]);
     await executeQuery(pool, 'DELETE FROM submission WHERE fixture_id = $1', [records.fixtureId]);
     await executeQuery(pool, 'DELETE FROM fixture WHERE fixture_id = $1', [records.fixtureId]);
@@ -413,5 +418,121 @@ describe.sequential('direct submission database integration', () => {
       [testRecords().fixtureId],
     );
     expect(after.rows[0].count).toBe(before.rows[0].count);
+  });
+
+  test('leaves the accepted source event unchanged when a correction is invalid', async () => {
+    const before = await executeQuery<{ count: number; runsTotal: number }>(
+      databasePool(),
+      `
+        SELECT count(*)::int AS count, sum(runs_total)::int AS "runsTotal"
+        FROM delivery
+        WHERE source_event_id = $1 AND superseded_at IS NULL
+      `,
+      ['123e4567-e89b-42d3-a456-426614174010'],
+    );
+    const original = payload([
+      { eventId: '123e4567-e89b-42d3-a456-426614174010', sequenceNumber: 1, positionInOver: 0 },
+    ]).events[0];
+    const { eventId: _eventId, sequenceNumber: _sequenceNumber, ...event } = original;
+    void _eventId;
+    void _sequenceNumber;
+    event.runs = { offBat: 3, extras: 0, total: 4 };
+
+    await request(app())
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174010')
+      .set('Authorization', 'Bearer database-test-token')
+      .send({ fixtureId: testRecords().fixtureId, schemaVersion: '1.0', event })
+      .expect(422);
+
+    const after = await executeQuery<{ count: number; runsTotal: number }>(
+      databasePool(),
+      `
+        SELECT count(*)::int AS count, sum(runs_total)::int AS "runsTotal"
+        FROM delivery
+        WHERE source_event_id = $1 AND superseded_at IS NULL
+      `,
+      ['123e4567-e89b-42d3-a456-426614174010'],
+    );
+    expect(after.rows).toEqual(before.rows);
+  });
+
+  test('atomically supersedes a corrected event and refreshes only its derived statistics', async () => {
+    const correctedEventId = '123e4567-e89b-42d3-a456-426614174010';
+    const unrelatedEventId = '123e4567-e89b-42d3-a456-426614174013';
+    const unrelated = payload([
+      { eventId: unrelatedEventId, sequenceNumber: 2, positionInOver: 1 },
+    ]);
+    unrelated.events[0].runs = { offBat: 2, extras: 0, total: 2 };
+
+    await request(app())
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer database-test-token')
+      .send(unrelated)
+      .expect(201);
+    await executeQuery(
+      databasePool(),
+      `
+        UPDATE fixture
+        SET first_seen_in = (
+          SELECT submission_id FROM submission WHERE fixture_id = $1 ORDER BY submission_id ASC LIMIT 1
+        )
+        WHERE fixture_id = $1
+      `,
+      [testRecords().fixtureId],
+    );
+
+    const beforeSource = await loadFixtureStatisticsSource(testRecords().fixtureId, databasePool());
+    expect(beforeSource).not.toBeNull();
+    const beforeStatistics = deriveFixtureStatistics(beforeSource!, { includeContributors: false });
+
+    const original = payload([{ eventId: correctedEventId, sequenceNumber: 1, positionInOver: 0 }])
+      .events[0];
+    const { eventId: _eventId, sequenceNumber: _sequenceNumber, ...event } = original;
+    void _eventId;
+    void _sequenceNumber;
+    event.runs = { offBat: 4, extras: 0, total: 4 };
+    const response = await request(app())
+      .put(`/api/v1/submissions/events/${correctedEventId}`)
+      .set('Authorization', 'Bearer database-test-token')
+      .send({ fixtureId: testRecords().fixtureId, schemaVersion: '1.0', event })
+      .expect(200);
+
+    expect(response.body.data).toMatchObject({ eventId: correctedEventId, revision: 2 });
+    const revisions = await executeQuery<{
+      sourceEventId: string | null;
+      revision: number;
+      supersededBy: string | null;
+      runsTotal: number;
+    }>(
+      databasePool(),
+      `
+        SELECT
+          source_event_id::text AS "sourceEventId",
+          revision,
+          superseded_by::text AS "supersededBy",
+          runs_total AS "runsTotal"
+        FROM delivery
+        WHERE innings_id = $1 AND position_in_over = 0
+        ORDER BY revision
+      `,
+      [testRecords().inningsId],
+    );
+    expect(revisions.rows).toEqual([
+      { sourceEventId: null, revision: 1, supersededBy: expect.any(String), runsTotal: 1 },
+      { sourceEventId: correctedEventId, revision: 2, supersededBy: null, runsTotal: 4 },
+    ]);
+
+    const afterSource = await loadFixtureStatisticsSource(testRecords().fixtureId, databasePool());
+    expect(afterSource?.events).toHaveLength(2);
+    expect(afterSource?.events.map((delivery) => delivery.runsTotal)).toEqual([4, 2]);
+    const afterStatistics = deriveFixtureStatistics(afterSource!, { includeContributors: false });
+    const beforeInnings = beforeStatistics.statistics.find(
+      (statistic) => statistic.scope === 'innings',
+    );
+    const afterInnings = afterStatistics.statistics.find(
+      (statistic) => statistic.scope === 'innings',
+    );
+    expect(beforeInnings?.metrics.totalRuns).toBe(3);
+    expect(afterInnings?.metrics.totalRuns).toBe(6);
   });
 });

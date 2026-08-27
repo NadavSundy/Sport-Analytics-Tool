@@ -102,7 +102,7 @@ export const submissionWicketSchema = z
     }
   });
 
-export const submissionEventSchema = z
+const submissionEventBaseSchema = z
   .object({
     eventId: submissionEventIdSchema,
     inningsId: databaseIdentifierSchema,
@@ -144,37 +144,43 @@ export const submissionEventSchema = z
       .default({}),
     wickets: z.array(submissionWicketSchema).max(2).default([]),
   })
-  .strict()
-  .superRefine((event, context) => {
-    if (event.strikerId === event.nonStrikerId) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['nonStrikerId'],
-        message: 'The striker and non-striker must be different participants.',
-      });
-    }
+  .strict();
 
-    if (event.runs.total !== event.runs.offBat + event.runs.extras) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['runs', 'total'],
-        message: 'Total runs must equal off-bat runs plus extras.',
-      });
-    }
+function validateEvent(
+  event: Omit<z.infer<typeof submissionEventBaseSchema>, 'eventId' | 'sequenceNumber'>,
+  context: z.RefinementCtx,
+): void {
+  if (event.strikerId === event.nonStrikerId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['nonStrikerId'],
+      message: 'The striker and non-striker must be different participants.',
+    });
+  }
 
-    const extrasTotal = Object.values(event.extras).reduce<number>(
-      (total, value) => total + (value ?? 0),
-      0,
-    );
+  if (event.runs.total !== event.runs.offBat + event.runs.extras) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['runs', 'total'],
+      message: 'Total runs must equal off-bat runs plus extras.',
+    });
+  }
 
-    if (event.runs.extras !== extrasTotal) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['runs', 'extras'],
-        message: 'Run extras must equal the supplied extras breakdown.',
-      });
-    }
-  });
+  const extrasTotal = Object.values(event.extras).reduce<number>(
+    (total, value) => total + (value ?? 0),
+    0,
+  );
+
+  if (event.runs.extras !== extrasTotal) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['runs', 'extras'],
+      message: 'Run extras must equal the supplied extras breakdown.',
+    });
+  }
+}
+
+export const submissionEventSchema = submissionEventBaseSchema.superRefine(validateEvent);
 
 export const submissionRequestSchema = z
   .object({
@@ -231,6 +237,24 @@ export const submissionRequestSchema = z
     }
   });
 
+// A correction identifies the existing source event in the path. Its occurrence
+// sequence is inherited from the live revision, so a correction cannot reorder
+// an innings while changing its cricket content.
+export const correctionEventSchema = submissionEventBaseSchema
+  .omit({
+    eventId: true,
+    sequenceNumber: true,
+  })
+  .superRefine(validateEvent);
+
+export const correctionRequestSchema = z
+  .object({
+    fixtureId: databaseIdentifierSchema,
+    schemaVersion: z.literal(DIRECT_SUBMISSION_SCHEMA_VERSION),
+    event: correctionEventSchema,
+  })
+  .strict();
+
 export const submissionSchema = z.object({
   submissionId: apiIdentifierSchema,
   fixtureId: apiIdentifierSchema,
@@ -245,6 +269,18 @@ export const submissionResponseSchema = z.object({
   data: submissionSchema,
 });
 
+export const correctionSchema = z.object({
+  eventId: submissionEventIdSchema,
+  fixtureId: apiIdentifierSchema,
+  revision: z.number().int().positive(),
+});
+
+export const correctionResponseSchema = z.object({
+  data: correctionSchema,
+});
+
 export type SubmissionRequest = z.infer<typeof submissionRequestSchema>;
 export type SubmissionEvent = z.infer<typeof submissionEventSchema>;
 export type SubmissionResponse = z.infer<typeof submissionResponseSchema>;
+export type CorrectionRequest = z.infer<typeof correctionRequestSchema>;
+export type CorrectionResponse = z.infer<typeof correctionResponseSchema>;

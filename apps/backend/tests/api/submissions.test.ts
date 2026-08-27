@@ -33,6 +33,21 @@ const validPayload = {
   ],
 };
 
+const validCorrection = {
+  fixtureId: '7',
+  schemaVersion: '1.0' as const,
+  event: {
+    inningsId: '10',
+    overNumber: 0,
+    positionInOver: 0,
+    ballNumber: '0.1',
+    strikerId: '20',
+    nonStrikerId: '21',
+    bowlerId: '22',
+    runs: { offBat: 6, extras: 0, total: 6 },
+  },
+};
+
 const acceptToken: VerifyAccessToken = async () => ({
   uid: 'approved-user',
   displayName: 'Approved User',
@@ -55,10 +70,83 @@ function mockSubmissionService(): SubmissionService {
         eventCount: 1,
       },
     }),
+    correct: vi.fn<SubmissionService['correct']>().mockResolvedValue({
+      data: {
+        eventId: '123e4567-e89b-42d3-a456-426614174000',
+        fixtureId: '7',
+        revision: 2,
+      },
+    }),
   };
 }
 
 describe('direct event submission API', () => {
+  test('corrects a fully validated event for an in-scope submitter', async () => {
+    const service = mockSubmissionService();
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+
+    const response = await request(
+      createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
+    )
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000')
+      .set('Authorization', 'Bearer approved-token')
+      .send(validCorrection)
+      .expect(200);
+
+    expect(service.correct).toHaveBeenCalledWith(
+      account,
+      '123e4567-e89b-42d3-a456-426614174000',
+      expect.objectContaining({
+        fixtureId: '7',
+        schemaVersion: '1.0',
+        event: expect.objectContaining({ runs: expect.objectContaining({ total: 6 }) }),
+      }),
+    );
+    expect(response.body.data).toMatchObject({ fixtureId: '7', revision: 2 });
+  });
+
+  test('rejects an invalid correction before it reaches storage', async () => {
+    const service = mockSubmissionService();
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        service,
+      ),
+    )
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000')
+      .set('Authorization', 'Bearer approved-token')
+      .send({
+        ...validCorrection,
+        event: { ...validCorrection.event, runs: { offBat: 4, extras: 0, total: 5 } },
+      })
+      .expect(422);
+
+    expect(service.correct).not.toHaveBeenCalled();
+  });
+
+  test('rejects an unauthorised correction before service processing', async () => {
+    const service = mockSubmissionService();
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ approvalState: 'approved', competitionIds: ['5'] })),
+        undefined,
+        service,
+      ),
+    )
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000')
+      .set('Authorization', 'Bearer viewer-token')
+      .send(validCorrection)
+      .expect(403);
+
+    expect(service.correct).not.toHaveBeenCalled();
+  });
   test('rejects anonymous requests before submission processing', async () => {
     const verifyAccessToken = vi.fn<VerifyAccessToken>();
     const service = mockSubmissionService();
@@ -172,6 +260,40 @@ describe('direct event submission API', () => {
 
     expect(response.body.error.code).toBe('FORBIDDEN');
     expect(storeAcceptedSubmission).not.toHaveBeenCalled();
+  });
+
+  test('rejects a correction outside the source event competition scope', async () => {
+    const storeAcceptedCorrection = vi.fn<SubmissionRepository['storeAcceptedCorrection']>();
+    const repository: SubmissionRepository = {
+      async findFixtureScope() {
+        return { fixtureId: '7', competitionId: '5' };
+      },
+      async findCorrectionTarget() {
+        return { fixtureId: '7', competitionId: '5', sequenceNumber: 1 };
+      },
+      async findDismissalKinds() {
+        return new Set();
+      },
+      storeAcceptedSubmission: vi.fn<SubmissionRepository['storeAcceptedSubmission']>(),
+      storeAcceptedCorrection,
+    };
+    const service = createSubmissionService(repository);
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['6'] })),
+        undefined,
+        service,
+      ),
+    )
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000')
+      .set('Authorization', 'Bearer out-of-scope-token')
+      .send(validCorrection)
+      .expect(403);
+
+    expect(storeAcceptedCorrection).not.toHaveBeenCalled();
   });
 
   test('returns event-indexed validation details without invoking storage', async () => {
