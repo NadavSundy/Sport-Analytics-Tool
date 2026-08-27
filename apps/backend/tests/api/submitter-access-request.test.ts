@@ -3,7 +3,10 @@ import { describe, expect, test, vi } from 'vitest';
 
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { SubmitterAccessService } from '../../src/modules/submitter-access/submitter-access.service';
-import { SubmitterAccessConflictError } from '../../src/modules/submitter-access/submitter-access.errors';
+import {
+  InvalidRequestedCompetitionError,
+  SubmitterAccessConflictError,
+} from '../../src/modules/submitter-access/submitter-access.errors';
 import { createTestAccount, createTestApp } from '../test-app';
 
 function mockSubmitterAccessService(): SubmitterAccessService {
@@ -12,6 +15,7 @@ function mockSubmitterAccessService(): SubmitterAccessService {
       data: {
         accountId: '1',
         approvalState: 'pending',
+        requestedCompetition: { competitionId: '7', name: 'Premier T20' },
       },
     }),
   };
@@ -53,15 +57,17 @@ describe('submitter access request API', () => {
     )
       .post('/api/v1/submitter-access-requests')
       .set('Authorization', 'Bearer test-token')
+      .send({ competitionId: '7' })
       .expect(201);
 
     expect(service.requestAccess).toHaveBeenCalledOnce();
-    expect(service.requestAccess).toHaveBeenCalledWith(account);
+    expect(service.requestAccess).toHaveBeenCalledWith(account, { competitionId: '7' });
 
     expect(response.body).toEqual({
       data: {
         accountId: '1',
         approvalState: 'pending',
+        requestedCompetition: { competitionId: '7', name: 'Premier T20' },
       },
     });
   });
@@ -81,6 +87,7 @@ describe('submitter access request API', () => {
     )
       .post('/api/v1/submitter-access-requests')
       .set('Authorization', 'Bearer test-token')
+      .send({ competitionId: '7' })
       .expect(409);
 
     expect(response.body).toEqual({
@@ -106,6 +113,7 @@ describe('submitter access request API', () => {
     )
       .post('/api/v1/submitter-access-requests')
       .set('Authorization', 'Bearer test-token')
+      .send({ competitionId: '7' })
       .expect(409);
 
     expect(response.body).toEqual({
@@ -113,6 +121,42 @@ describe('submitter access request API', () => {
         code: 'SUBMITTER_ALREADY_APPROVED',
         message: 'The authenticated account is already an approved submitter.',
       },
+    });
+  });
+
+  test.each([{ fixtureId: '42' }, { competitionId: 'not-an-id' }, {}])(
+    'rejects a request without a valid competition identifier',
+    async (body) => {
+      const service = mockSubmitterAccessService();
+
+      const response = await request(
+        createTestApp(undefined, undefined, undefined, undefined, undefined, service),
+      )
+        .post('/api/v1/submitter-access-requests')
+        .set('Authorization', 'Bearer test-token')
+        .send(body)
+        .expect(422);
+
+      expect(service.requestAccess).not.toHaveBeenCalled();
+      expect(response.body.error).toMatchObject({ code: 'VALIDATION_FAILED' });
+    },
+  );
+
+  test('rejects a competition that no longer exists', async () => {
+    const service = mockSubmitterAccessService();
+    vi.mocked(service.requestAccess).mockRejectedValue(new InvalidRequestedCompetitionError());
+
+    const response = await request(
+      createTestApp(undefined, undefined, undefined, undefined, undefined, service),
+    )
+      .post('/api/v1/submitter-access-requests')
+      .set('Authorization', 'Bearer test-token')
+      .send({ competitionId: '99' })
+      .expect(422);
+
+    expect(response.body.error).toMatchObject({
+      code: 'INVALID_COMPETITION_SCOPE',
+      message: 'The requested competition does not exist.',
     });
   });
 });

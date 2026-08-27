@@ -96,14 +96,20 @@ Default endpoints include:
 
 ## Administrator user management
 
+`POST /api/v1/submitter-access-requests` accepts an existing `competitionId`, stores it with the
+pending request, and returns its identifier and name. `/api/v1/auth/me` exposes the same requested
+competition separately from effective grants.
+
 `GET /api/v1/admin/users` returns registered application accounts, their authoritative role,
-legacy request state, assigned competition scopes, valid scope choices, and the latest submitter
-access audit fields. `PATCH /api/v1/admin/users/:userId/submitter-access` approves a pending request,
-replaces an approved submitter's complete scope, or revokes approved access.
+legacy request state, requested competition, assigned competition scopes, valid scope choices, and
+the latest submitter-access audit fields. `PATCH /api/v1/admin/users/:userId/submitter-access`
+approves a pending request, replaces an approved submitter's complete scope, or revokes approved
+access.
 `POST /api/v1/admin/users/:userId/submitter-access/rejection` separately rejects a pending request.
 
-Both operations require a synchronized `admin` account. Approving requires at least one existing
-competition. Rejection assigns `viewer`, records `rejected`, removes all scopes, and permits a later
+Both operations require a synchronized `admin` account. Approving a pending request requires exactly
+its stored existing competition; a legacy request without one cannot be approved. Rejection assigns
+`viewer`, records `rejected`, removes all scopes, and permits a later
 request. Revocation assigns `viewer`, retains the historical `approved` decision, and removes all
 scopes. Invalid transitions return `409 INVALID_SUBMITTER_ACCESS_TRANSITION` without changing role,
 request state, scopes, or audit data. Administrator and disabled targets are protected, and
@@ -240,4 +246,5 @@ The root `npm run check` already performs that contracts build before repository
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
-ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
+ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5]. The issue #255 competition-scoped access behavior was
+documented with the assistance of Codex[GPT-5].

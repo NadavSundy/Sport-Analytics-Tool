@@ -9,6 +9,7 @@ interface ManagedUser {
   displayName: string;
   role: 'viewer' | 'submitter' | 'admin';
   approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected';
+  requestedCompetition: { competitionId: string; name: string } | null;
   competitionScopes: { competitionId: string; name: string }[];
   disabled: boolean;
   updatedAt: string;
@@ -58,6 +59,7 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
     displayName: 'Amina Administrator',
     role: 'admin',
     approvalState: 'not_requested',
+    requestedCompetition: null,
     competitionScopes: [],
     disabled: false,
     updatedAt: accessTime,
@@ -69,6 +71,7 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
     displayName: 'Pending Contributor',
     role: 'viewer',
     approvalState: 'pending',
+    requestedCompetition: availableScopes[0]!,
     competitionScopes: [],
     disabled: false,
     updatedAt: accessTime,
@@ -87,6 +90,7 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
           displayName: 'Amina Administrator',
           role: 'admin',
           approvalState: 'not_requested',
+          requestedCompetition: null,
           competitionIds: [],
         },
       }),
@@ -115,6 +119,9 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
       approved: boolean;
       competitionIds: string[];
     };
+    if (contributor.role === 'viewer' && update.approved) {
+      expect(update.competitionIds).toEqual(['7']);
+    }
     contributor = {
       ...contributor,
       role: update.approved ? 'submitter' : 'viewer',
@@ -139,8 +146,13 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
     .getByRole('heading', { name: 'Pending Contributor' })
     .locator('xpath=ancestor::article');
   await expect(contributorCard.getByText('Pending approval')).toBeVisible();
+  await expect(
+    contributorCard
+      .getByRole('group', { name: 'Approve requested competition' })
+      .getByText('Premier T20', { exact: true }),
+  ).toBeVisible();
+  await expect(contributorCard.getByRole('checkbox')).toHaveCount(0);
 
-  await contributorCard.getByRole('checkbox', { name: 'Premier T20' }).check();
   const approveButton = contributorCard.getByRole('button', { name: 'Approve submitter' });
   await approveButton.focus();
   await expect(approveButton).toBeFocused();

@@ -18,6 +18,7 @@ function managedUser(overrides: Record<string, unknown> = {}) {
     displayName: 'Pending Contributor',
     role: 'viewer' as const,
     approvalState: 'pending' as const,
+    requestedCompetition: { competitionId: '7', name: 'Premier T20' },
     competitionScopes: [],
     disabled: false,
     updatedAt,
@@ -113,6 +114,7 @@ describe('administrator user-management API', () => {
       id: '42',
       role: 'viewer',
       approvalState: 'pending',
+      requestedCompetition: { competitionId: '7', name: 'Premier T20' },
     });
     expect(response.body.data.availableScopes).toEqual([
       { competitionId: '7', name: 'Premier T20' },

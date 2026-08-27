@@ -158,9 +158,10 @@ paths:
         - Submitter Access
       summary: Request submitter access
       description: |
-        Creates a submitter-access request for the authenticated application
-        account by transitioning an eligible server-owned approval state to
-        `pending`.
+        Creates a competition-scoped submitter-access request for the
+        authenticated application account by validating and storing the
+        requested competition while transitioning an eligible server-owned
+        approval state to `pending`.
 
         Accounts already in `pending` or `approved` state cannot create another
         active request. A previously rejected account may request access again.
@@ -168,6 +169,12 @@ paths:
       x-implementation-status: implemented
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitterAccessRequest'
       responses:
         '201':
           description: Submitter access request created.
@@ -183,6 +190,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The request body or requested competition is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /api/v1/admin/users:
     get:
@@ -191,9 +204,9 @@ paths:
       summary: List registered users and competition scope choices
       description: |
         Returns every registered application account with its authoritative role,
-        compatibility approval state, current named competition scopes, account
-        state and latest submitter-access audit. Only an `admin` may call this
-        operation.
+        compatibility approval state, requested competition, current named
+        competition scopes, account state and latest submitter-access audit.
+        Only an `admin` may call this operation.
       operationId: listAdministratorUsers
       x-implementation-status: implemented
       security:
@@ -217,10 +230,11 @@ paths:
       summary: Approve, re-scope, or revoke a submitter
       description: |
         Atomically approves a pending viewer request, re-scopes an approved
-        submitter, or revokes approved submitter access. Approval and scope
-        replacement require at least one existing competition. Revocation
-        requires an empty scope and removes every existing grant while retaining
-        the request's historical `approved` decision state.
+        submitter, or revokes approved submitter access. Approval requires the
+        single competition stored on the pending request. Scope replacement for
+        an existing submitter requires at least one existing competition.
+        Revocation requires an empty scope and removes every existing grant while
+        retaining the request's historical `approved` decision state.
 
         A viewer in `not_requested` or `rejected` cannot be approved directly
         and must create a new request before an administrator can act.
@@ -1151,6 +1165,7 @@ components:
             - displayName
             - role
             - approvalState
+            - requestedCompetition
             - competitionIds
           properties:
             id:
@@ -1178,6 +1193,11 @@ components:
                 - pending
                 - approved
                 - rejected
+            requestedCompetition:
+              oneOf:
+                - $ref: '#/components/schemas/AdministratorCompetitionScope'
+                - type: 'null'
+              description: Competition stored on the submitter-access request, or null when none has been requested.
             competitionIds:
               type: array
               uniqueItems: true
@@ -1214,6 +1234,15 @@ components:
               type: boolean
               const: true
 
+    SubmitterAccessRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - competitionId
+      properties:
+        competitionId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+
     SubmitterAccessRequestResponse:
       type: object
       additionalProperties: false
@@ -1226,6 +1255,7 @@ components:
           required:
             - accountId
             - approvalState
+            - requestedCompetition
           properties:
             accountId:
               $ref: '#/components/schemas/ApiIdentifier'
@@ -1233,6 +1263,8 @@ components:
               type: string
               enum:
                 - pending
+            requestedCompetition:
+              $ref: '#/components/schemas/AdministratorCompetitionScope'
 
     AdministratorCompetitionScope:
       type: object
@@ -1270,6 +1302,7 @@ components:
         - displayName
         - role
         - approvalState
+        - requestedCompetition
         - competitionScopes
         - disabled
         - updatedAt
@@ -1298,6 +1331,11 @@ components:
             - pending
             - approved
             - rejected
+        requestedCompetition:
+          oneOf:
+            - $ref: '#/components/schemas/AdministratorCompetitionScope'
+            - type: 'null'
+          description: Competition stored on the submitter-access request, or null for legacy and not-requested accounts.
         competitionScopes:
           type: array
           uniqueItems: true
@@ -1357,8 +1395,10 @@ components:
           items:
             $ref: '#/components/schemas/ApiIdentifier'
       description: |
-        When `approved` is true, `competitionIds` must contain at least one item.
-        When false, the array must be empty.
+        For a pending viewer approval, `competitionIds` must contain exactly the
+        competition stored on the request. For an existing submitter scope
+        replacement, it must contain at least one item. When false, the array
+        must be empty.
 
     AdministratorSubmitterAccessResponse:
       type: object

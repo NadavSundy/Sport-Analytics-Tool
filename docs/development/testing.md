@@ -215,14 +215,20 @@ The schema verification for issue #43 is recorded in
 The submitter-access API and repository suites cover:
 
 - anonymous requests being rejected before request processing;
-- an authenticated application account creating a `pending` request;
-- the authenticated account being passed to the request service;
+- an authenticated application account selecting an existing competition and creating a `pending`
+  request;
+- the authenticated account and competition identifier being passed to the request service;
 - duplicate `pending` requests returning a conflict;
 - accounts with the legacy `approved` request state returning a conflict;
-- eligible state changes being implemented as a conditional database update; and
+- invalid or fixture-shaped request bodies being rejected;
+- eligible state and requested-competition changes being implemented as one conditional database
+  update; and
 - unsupported persisted approval states failing closed.
 
-The PostgreSQL integration suite additionally verifies that `not_requested` and previously `rejected` accounts persist as `pending`, a second active request is rejected, and an already-approved account is not modified.
+The PostgreSQL integration suite additionally verifies that `not_requested` and previously
+`rejected` accounts persist the selected competition with `pending`, nonexistent competitions do
+not change account state, a second active request is rejected, and an already-approved account is
+not modified.
 
 Run the focused checks with:
 
@@ -250,7 +256,7 @@ Coverage includes:
 - `not_requested`, `pending`, `approved`, and `rejected` approval states;
 - shared runtime validation of the complete current-user response through
   `@sport-analytics/contracts`;
-- API responses reflecting the synchronized account approval state;
+- API responses reflecting the synchronized account approval state and named requested competition;
 - account re-authentication updating identity metadata without overwriting persisted role or
   submitter approval state;
 - current-user resolution during the ordered role and account-deletion migration rollout, including
@@ -275,8 +281,8 @@ npm run test --workspace=@sport-analytics/frontend
 The Account-page suite verifies the complete user-facing request workflow:
 
 - signed-out users do not load application account data;
-- eligible users can request access and see an in-progress state;
-- successful requests reload the persisted `pending` profile;
+- eligible users load and select competitions rather than fixtures before requesting access;
+- successful requests reload the persisted `pending` profile and named requested competition;
 - a remount restores `pending` without offering another request;
 - stale eligible views refresh after the backend reports an active-request conflict;
 - `submitter` and `admin` roles receive submission access without a request action;
@@ -285,19 +291,23 @@ The Account-page suite verifies the complete user-facing request workflow:
   the historical approved decision without submission access; and
 - malformed profiles and backend request failures produce safe, actionable feedback.
 
-The request-response contract suite additionally verifies that only a persisted `pending` result is
-accepted from the submitter-access endpoint. The browser suite verifies keyboard activation,
+The request-response contract suite additionally verifies the competition-scoped request and that
+only a persisted `pending` result with a named requested competition is accepted from the
+submitter-access endpoint. The browser suite verifies keyboard selection and activation,
 pending state after reload, narrow-screen overflow, and serious or critical Axe findings.
 
 The administrator-management suites verify that `not_requested` and `rejected` viewers have no
-approval or competition-scope controls, pending viewers can be approved or rejected, and approved
-submitters can still be re-scoped or revoked. Rejection coverage includes in-progress, success,
+approval or competition-scope controls, pending viewers expose a read-only requested competition
+that must be granted exactly, legacy pending rows without a competition cannot be approved, and
+approved submitters can still be re-scoped or revoked. Rejection coverage includes in-progress, success,
 authentication, authorisation, conflict, and validation feedback. The administrator browser
 scenario activates rejection from the keyboard at desktop and mobile widths, checks the immediate
 persisted-state update and horizontal overflow, and scans the result for serious or critical Axe
 findings. Backend policy, API, and PostgreSQL integration tests
-also verify that a direct approval attempt without a pending request returns a conflict and cannot
-bypass the state transition.
+also verify that a direct approval attempt without a pending request, or approval with a different
+competition, returns a conflict and cannot bypass the state transition. Direct-submission database
+coverage separately proves that persisted role and competition grants are both required, permitting
+an in-scope fixture and rejecting an out-of-scope fixture.
 
 Run the focused checks with:
 
@@ -480,3 +490,5 @@ The combined match-overview coverage was documented with the assistance of Codex
 The public player-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].
 The connected public-data journey coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #255 competition-scoped submitter access coverage was documented with the assistance of
+Codex[GPT-5].

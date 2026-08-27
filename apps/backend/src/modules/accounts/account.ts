@@ -21,6 +21,7 @@ export interface ApplicationAccount {
   displayName: string | null;
   role: ApplicationRole;
   approvalState: SubmitterApprovalState;
+  requestedCompetition: { competitionId: string; name: string } | null;
   competitionIds: string[];
   disabled: boolean;
   deletionState: AccountDeletionState;

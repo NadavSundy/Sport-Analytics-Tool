@@ -29,6 +29,7 @@ export function createAuthRouter(
           displayName: account.displayName,
           role: account.role,
           approvalState: account.approvalState,
+          requestedCompetition: account.requestedCompetition,
           competitionIds: account.competitionIds,
         },
       });

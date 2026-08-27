@@ -14,6 +14,13 @@ export const submitterApprovalStateSchema = z.enum([
   'rejected',
 ]);
 
+const competitionScopeSchema = z
+  .object({
+    competitionId: apiIdentifierSchema,
+    name: z.string().min(1),
+  })
+  .strict();
+
 export const currentUserProfileSchema = z
   .object({
     id: apiIdentifierSchema,
@@ -21,6 +28,7 @@ export const currentUserProfileSchema = z
     displayName: z.string().min(1).nullable(),
     role: applicationRoleSchema,
     approvalState: submitterApprovalStateSchema,
+    requestedCompetition: competitionScopeSchema.nullable(),
     competitionIds: z
       .array(apiIdentifierSchema)
       .refine((competitionIds) => new Set(competitionIds).size === competitionIds.length, {
@@ -52,23 +60,25 @@ export const accountDeletionResponseSchema = z
   })
   .strict();
 
+export const submitterAccessRequestSchema = z
+  .object({
+    competitionId: apiIdentifierSchema,
+  })
+  .strict();
+
 export const submitterAccessRequestResponseSchema = z
   .object({
     data: z
       .object({
         accountId: apiIdentifierSchema,
         approvalState: z.literal('pending'),
+        requestedCompetition: competitionScopeSchema,
       })
       .strict(),
   })
   .strict();
 
-export const administratorCompetitionScopeSchema = z
-  .object({
-    competitionId: apiIdentifierSchema,
-    name: z.string().min(1),
-  })
-  .strict();
+export const administratorCompetitionScopeSchema = competitionScopeSchema;
 
 export const administratorAuditActorSchema = z
   .object({
@@ -83,6 +93,7 @@ export const administratorManagedUserSchema = z
     displayName: z.string().min(1).nullable(),
     role: applicationRoleSchema,
     approvalState: submitterApprovalStateSchema,
+    requestedCompetition: competitionScopeSchema.nullable(),
     competitionScopes: z
       .array(administratorCompetitionScopeSchema)
       .refine(
@@ -153,6 +164,8 @@ export type CurrentUserProfile = z.infer<typeof currentUserProfileSchema>;
 export type CurrentUserProfileResponse = z.infer<typeof currentUserProfileResponseSchema>;
 export type AccountDeletionRequest = z.infer<typeof accountDeletionRequestSchema>;
 export type AccountDeletionResponse = z.infer<typeof accountDeletionResponseSchema>;
+export type CompetitionScope = z.infer<typeof competitionScopeSchema>;
+export type SubmitterAccessRequest = z.infer<typeof submitterAccessRequestSchema>;
 export type SubmitterAccessRequestResponse = z.infer<typeof submitterAccessRequestResponseSchema>;
 export type AdministratorCompetitionScope = z.infer<typeof administratorCompetitionScopeSchema>;
 export type AdministratorManagedUser = z.infer<typeof administratorManagedUserSchema>;

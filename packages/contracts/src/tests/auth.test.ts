@@ -8,6 +8,7 @@ import {
   administratorUserManagementResponseSchema,
   applicationRoleSchema,
   currentUserProfileResponseSchema,
+  submitterAccessRequestSchema,
   submitterAccessRequestResponseSchema,
   submitterApprovalStateSchema,
 } from '../auth';
@@ -36,6 +37,7 @@ describe('administrator user-management contracts', () => {
               displayName: 'Contributor',
               role: 'submitter',
               approvalState: 'approved',
+              requestedCompetition: { competitionId: '7', name: 'Premier T20' },
               competitionScopes: [{ competitionId: '7', name: 'Premier T20' }],
               disabled: false,
               updatedAt: '2026-08-16T12:00:00.000Z',
@@ -138,6 +140,8 @@ describe('current user profile response contract', () => {
           displayName: 'Example User',
           role: 'viewer',
           approvalState,
+          requestedCompetition:
+            approvalState === 'pending' ? { competitionId: '7', name: 'Premier T20' } : null,
           competitionIds: [],
         },
       });
@@ -154,6 +158,7 @@ describe('current user profile response contract', () => {
         displayName: 'Example User',
         role: 'viewer',
         approvalState: 'approved',
+        requestedCompetition: { competitionId: '7', name: 'Premier T20' },
         competitionIds: ['7', '12'],
       },
     });
@@ -169,6 +174,7 @@ describe('current user profile response contract', () => {
         displayName: null,
         role: 'viewer',
         approvalState: 'not_requested',
+        requestedCompetition: null,
         competitionIds: [],
       },
     });
@@ -183,6 +189,7 @@ describe('current user profile response contract', () => {
         subject: 'supabase-user-123',
         displayName: 'Example User',
         role: 'viewer',
+        requestedCompetition: null,
         competitionIds: [],
       },
     });
@@ -198,6 +205,7 @@ describe('current user profile response contract', () => {
         displayName: 'Example User',
         role: 'viewer',
         approvalState: 'approved',
+        requestedCompetition: { competitionId: '7', name: 'Premier T20' },
         competitionIds: ['7', '7'],
       },
     });
@@ -207,18 +215,30 @@ describe('current user profile response contract', () => {
 });
 
 describe('submitter access request response contract', () => {
+  test('requires one competition identifier in the request', () => {
+    expect(submitterAccessRequestSchema.parse({ competitionId: '7' })).toEqual({
+      competitionId: '7',
+    });
+    expect(submitterAccessRequestSchema.safeParse({ fixtureId: '42' }).success).toBe(false);
+    expect(
+      submitterAccessRequestSchema.safeParse({ competitionId: '7', fixtureId: '42' }).success,
+    ).toBe(false);
+  });
+
   test('accepts the persisted pending request response', () => {
     expect(
       submitterAccessRequestResponseSchema.parse({
         data: {
           accountId: '42',
           approvalState: 'pending',
+          requestedCompetition: { competitionId: '7', name: 'Premier T20' },
         },
       }),
     ).toEqual({
       data: {
         accountId: '42',
         approvalState: 'pending',
+        requestedCompetition: { competitionId: '7', name: 'Premier T20' },
       },
     });
   });
@@ -231,6 +251,7 @@ describe('submitter access request response contract', () => {
           data: {
             accountId: '42',
             approvalState,
+            requestedCompetition: { competitionId: '7', name: 'Premier T20' },
           },
         }).success,
       ).toBe(false);

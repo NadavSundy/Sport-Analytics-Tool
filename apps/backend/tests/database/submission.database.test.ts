@@ -56,9 +56,10 @@ describe.sequential('direct submission database integration', () => {
           auth_provider,
           auth_subject,
           display_name,
+          application_role,
           submitter_approval_state
         )
-        VALUES ('test', $1, 'Submission Database Test', 'approved')
+        VALUES ('test', $1, 'Submission Database Test', 'submitter', 'approved')
         RETURNING app_user_id::text AS "accountId"
       `,
       [sourcePrefix],
@@ -232,6 +233,62 @@ describe.sequential('direct submission database integration', () => {
 
     return createTestApp(undefined, undefined, synchronizeAccount, undefined, service);
   }
+
+  test('rejects writes when the persisted role or competition grant is not authorised', async () => {
+    const current = testRecords();
+    const unauthorizedPayload = payload([
+      {
+        eventId: '123e4567-e89b-42d3-a456-426614174099',
+        sequenceNumber: 99,
+        positionInOver: 99,
+      },
+    ]);
+
+    await executeQuery(
+      databasePool(),
+      "UPDATE app_user SET application_role = 'viewer' WHERE app_user_id = $1",
+      [current.accountId],
+    );
+
+    await request(app())
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer database-test-token')
+      .send(unauthorizedPayload)
+      .expect(403);
+
+    await executeQuery(
+      databasePool(),
+      "UPDATE app_user SET application_role = 'submitter' WHERE app_user_id = $1",
+      [current.accountId],
+    );
+    await executeQuery(
+      databasePool(),
+      'DELETE FROM submitter_competition_scope WHERE app_user_id = $1',
+      [current.accountId],
+    );
+
+    await request(app())
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer database-test-token')
+      .send(unauthorizedPayload)
+      .expect(403);
+
+    await executeQuery(
+      databasePool(),
+      `
+        INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+        VALUES ($1, $2)
+      `,
+      [current.accountId, current.competitionId],
+    );
+
+    const stored = await executeQuery<{ count: number }>(
+      databasePool(),
+      'SELECT count(*)::int AS count FROM delivery WHERE source_event_id = $1',
+      [unauthorizedPayload.events[0]!.eventId],
+    );
+    expect(stored.rows[0].count).toBe(0);
+  });
 
   test('stores a valid submission and its ordered event provenance atomically', async () => {
     const eventId = '123e4567-e89b-42d3-a456-426614174010';

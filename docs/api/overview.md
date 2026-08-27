@@ -60,6 +60,10 @@ Successful response:
     "displayName": "Example User",
     "role": "submitter",
     "approvalState": "approved",
+    "requestedCompetition": {
+      "competitionId": "7",
+      "name": "Premier T20"
+    },
     "competitionIds": ["7", "12"]
   }
 }
@@ -114,29 +118,39 @@ access through:
 ```http
 POST /api/v1/submitter-access-requests
 Authorization: Bearer <supabase-access-token>
+Content-Type: application/json
+
+{"competitionId":"7"}
 ```
 
-A successful request changes the authenticated application account's server-owned approval state to `pending`:
+A successful request validates and persists the selected competition and changes the authenticated
+application account's server-owned approval state to `pending`:
 
 ```json
 {
   "data": {
     "accountId": "42",
-    "approvalState": "pending"
+    "approvalState": "pending",
+    "requestedCompetition": {
+      "competitionId": "7",
+      "name": "Premier T20"
+    }
   }
 }
 ```
 
-The endpoint returns `401 Unauthorized` when no valid authentication is supplied.
+The endpoint returns `401 Unauthorized` when no valid authentication is supplied and `422
+Unprocessable Entity` when the body or competition identifier is invalid.
 
 A `409 Conflict` is returned when the account already has a pending request, has the legacy
 `approved` request state, or already holds the `submitter`/`admin` role. A previously rejected
 viewer may submit a new request.
 
-The request state is stored on the provider-neutral application account and can subsequently be
-consumed by the administrator approval and competition-scope workflow. The request state is not an
-authorization grant: approval must assign `application_role = submitter`, and the backend uses that
-role plus competition scope for submission decisions.
+The requested competition and request state are stored on the provider-neutral application account
+and exposed through `/api/v1/auth/me` and the administrator user list. They are not authorization
+grants: approval must atomically assign `application_role = submitter` and grant exactly the stored
+competition. The backend uses the authoritative role plus granted competition scope for submission
+decisions.
 
 ### Administrator submitter-access decisions
 
@@ -152,9 +166,11 @@ submitter-access review and administration.
 
 Only an authoritative `admin` may manage another active, non-administrator account. Approval and
 scope replacement use `PATCH /api/v1/admin/users/{userId}/submitter-access`; approval requires a
-pending viewer and at least one valid competition scope, while scope replacement requires an
-approved submitter. Sending `approved: false` revokes an approved submitter, removes every scope,
-and retains the historical `approved` request decision.
+pending viewer and exactly the valid competition stored on that request, while scope replacement
+for an approved submitter requires at least one valid competition. A legacy pending request without
+a stored competition cannot be approved and must be rejected before the viewer submits a corrected
+request. Sending `approved: false` revokes an approved submitter, removes every scope, and retains
+the historical `approved` request decision.
 
 Rejecting a pending request is a separate action:
 
@@ -235,4 +251,5 @@ the handwritten Express API rather than generated database endpoints.
 ## AI Declaration
 
 The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]
-and Codex[GPT-5].
+and Codex[GPT-5]. The competition-scoped submitter access behavior was updated with the assistance
+of Codex[GPT-5].

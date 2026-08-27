@@ -133,6 +133,7 @@ function currentUser(
       displayName: 'Submitter User',
       role,
       approvalState,
+      requestedCompetition: null,
       competitionIds,
     },
   });
