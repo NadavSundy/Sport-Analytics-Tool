@@ -7,13 +7,13 @@ import { DatabaseAccessError, translateDatabaseError } from './errors';
 
 let applicationPool: Pool | undefined;
 
-export interface DatabasePoolOptions {
+interface DatabasePoolOptions {
   connectionString: string;
   ssl?: PoolConfig['ssl'];
   max?: number;
 }
 
-export function createDatabasePool(options: DatabasePoolOptions): Pool {
+function createDatabasePool(options: DatabasePoolOptions): Pool {
   const pool = new Pool({
     connectionString: options.connectionString,
     ssl: options.ssl,

@@ -212,7 +212,7 @@ states, shown as annotated strips beneath each wireframe in §5:
 Wireframes are intentionally low-fidelity (structure, hierarchy and states — not final visual
 styling, which is governed by the [brand and interface guidelines](brand-guidelines.md)). Desktop
 frames are shown at a 1280px reference width; mobile frames at a 375px reference width. Source
-SVGs are in [`assets/wireframes/`](assets/wireframes/) and can be reopened and edited directly.
+SVGs are stored in `docs/design/assets/wireframes/` and can be reopened and edited directly.
 
 ### 5.1 Home (public)
 

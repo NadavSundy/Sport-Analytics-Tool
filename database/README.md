@@ -21,6 +21,19 @@ From the repository root:
 - a configured `apps/backend/.env` when using the shared development database; and
 - Docker Desktop or a compatible Docker Compose runtime only for the explicit `test:database:local` workflow.
 
+If PowerShell reports that `docker` is not recognised, Docker Desktop is not installed or is not
+available on `PATH`. Install Docker Desktop using the official Docker Desktop installation guide
+before using `npm run test:database:local`:
+
+https://docs.docker.com/desktop/
+
+After installation, open a new terminal and verify:
+
+    docker --version
+    docker compose version
+
+The default `npm run test:database` workflow does not require Docker.
+
 Install dependencies with:
 
 ```bash
@@ -140,7 +153,11 @@ The importer writes to the configured development `DATABASE_URL`; confirm team a
 
 `app_user.application_role` is server-owned, non-null, defaults to `viewer`, and accepts only `viewer`, `submitter`, or `admin`. The role is authoritative for application-wide submission and administrative capability. A `submitter` or `admin` must still have a matching row in `submitter_competition_scope` for a scoped event submission.
 
-`submitter_approval_state` remains deprecated workflow data rather than an authorisation source. Current role/request transition behaviour is documented by the relevant migrations and backend access-control documentation.
+`submitter_approval_state` remains deprecated workflow data rather than an authorisation source.
+`submitter_requested_competition_id` stores the competition selected by a pending access request and
+is likewise not a grant. Approval must validate it and write the matching
+`submitter_competition_scope` row before submission is authorised. Current transition behaviour is
+documented by the relevant migrations and backend access-control documentation.
 
 ## Related documentation
 
@@ -153,4 +170,6 @@ The importer writes to the configured development `DATABASE_URL`; confirm team a
 
 ## AI Declaration
 
-The preceding document was reviewed, expanded and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed, expanded and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol]. The issue #255 requested-competition persistence behavior was documented
+with the assistance of Codex[GPT-5].

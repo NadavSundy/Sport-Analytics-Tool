@@ -1,7 +1,7 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 import { isAccountDeletionState, type AccountDeletionState } from '../accounts/account';
 
-export interface PreparedAccountDeletion {
+interface PreparedAccountDeletion {
   authSubject: string;
   state: AccountDeletionState;
 }
@@ -48,6 +48,7 @@ export function createAccountDeletionRepository(
               disabled_at = COALESCE(disabled_at, now()),
               application_role = 'viewer',
               submitter_approval_state = 'not_requested',
+              submitter_requested_competition_id = NULL,
               deletion_state = CASE
                 WHEN deletion_state IN ('active', 'auth_failed') THEN 'auth_pending'
                 ELSE deletion_state
@@ -162,6 +163,7 @@ export function createAccountDeletionRepository(
               display_name = NULL,
               application_role = 'viewer',
               submitter_approval_state = 'not_requested',
+              submitter_requested_competition_id = NULL,
               disabled_at = COALESCE(disabled_at, now()),
               deletion_state = 'deleted',
               deletion_failed_at = NULL,

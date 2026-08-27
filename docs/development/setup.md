@@ -6,10 +6,6 @@ This is the canonical onboarding guide for a clean checkout of the Sport Analyti
 
 Each independently developed or operated part of the monorepo has a repository entry point:
 
-## Component getting-started audit
-
-Each independently developed or operated part of the monorepo has a repository entry point:
-
 | Component / location  | Getting-started README                                                                                                                    | Responsibility                                                                  |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Repository root       | [README.md](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/README.md)                                       | Overall project setup, architecture boundaries and links to specialist guides.  |
@@ -516,14 +512,21 @@ Review the resulting diff before committing. Formatting should not be used to hi
 
 ### Docker command is not found
 
-Install or start Docker Desktop, then open a new terminal and verify:
+If PowerShell reports that `docker` is not recognised as a command, Docker Desktop is either not
+installed or is not yet available on `PATH`.
 
-```bash
-docker --version
-docker compose version
-```
+Install Docker Desktop using the official Docker Desktop installation guide:
+https://docs.docker.com/desktop/
 
-Docker is needed only for the explicit `npm run test:database:local` alternative.
+After installation, open a new terminal and verify:
+
+    docker --version
+    docker compose version
+
+If Docker Desktop is already installed, start it and wait until the Docker engine is running.
+
+Docker is required only for the explicit `npm run test:database:local` workflow. The default
+`npm run test:database` workflow does not require Docker.
 
 ### Docker cannot connect to the engine
 
@@ -554,13 +557,23 @@ npm run test:database:local
 
 ### Playwright cannot find a browser
 
-Install the configured Chromium browser:
+Playwright requires its managed Chromium browser for the local end-to-end suite. On a fresh
+development environment, or after a Playwright upgrade, install it with:
 
 ```bash
 npx playwright install chromium
 ```
 
-CI uses `npx playwright install --with-deps chromium` on Linux.
+On Windows PowerShell, use `npx.cmd playwright install chromium` if script execution blocks `npx`.
+
+Then rerun:
+
+```bash
+npm run test:e2e
+```
+
+CI installs Chromium and its Linux dependencies with
+`npx playwright install --with-deps chromium`.
 
 ### MkDocs command is not found
 

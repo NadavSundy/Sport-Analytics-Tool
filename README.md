@@ -2,7 +2,7 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and atomically approve or reject pending requests, re-scope approved submitters, or revoke access. Public reference data, accepted fixture events, and derived fixture statistics remain anonymous. Datasets and external API integration remain future work.
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and approve or reject pending submitter-access requests, re-scope approved submitters, or revoke access. Approved submitters can submit validated, ordered cricket delivery events within their authorised competition scope. Public competition, season, fixture, event, competitor, participant, and derived fixture-statistics reads are available without authentication. The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Filtered dataset exports and later-tier aggregation and release features remain future work.
 
 ## Repository structure
 
@@ -99,8 +99,13 @@ after `--`, for example `npm run dev frontend -- --host 0.0.0.0`.
 Run the normal database-independent quality gate:
 
 ```bash
+npm run hygiene
 npm run check
 ```
+
+The separate hygiene command checks for unused monorepo files, dependencies and exports with Knip,
+checks workspace dependency-version consistency with syncpack, and validates circular dependencies
+and documented application boundaries with dependency-cruiser.
 
 The normal database-independent test suite can also be run directly:
 
@@ -198,7 +203,7 @@ Project documentation is stored in the [`docs`](docs/) directory and is configur
 
 ```bash
 python -m pip install -r requirements-docs.txt
-mkdocs serve
+python -m mkdocs serve
 ```
 
 ### Component guides
@@ -222,6 +227,11 @@ Important detailed documentation:
 - [Technology Stack](docs/development/technology-stack.md)
 - [Environment Variables](docs/environment.md)
 - [Testing Strategy](docs/development/testing.md)
+- [API Overview](docs/api/overview.md)
+- [OpenAPI Specification](docs/api/openapi.md)
+- [Public Read API](docs/api/public-read.md)
+- [Direct Event Submissions](docs/api/submissions.md)
+- [Weather API](docs/api/weather.md)
 - [Authentication Foundation](docs/security/authentication.md)
 - [Password Recovery Ownership](docs/security/password-recovery.md)
 - [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)

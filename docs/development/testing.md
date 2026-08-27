@@ -10,8 +10,17 @@ Install the committed dependency graph:
 
 ```bash
 npm ci
+npm run hygiene
 npm run check
 ```
+
+`npm run hygiene` is the local monorepo-maintenance gate. It runs Knip to detect unused files,
+dependencies, exports and types, syncpack to enforce consistent dependency versions across npm
+workspaces, and dependency-cruiser to detect circular dependencies and inappropriate source imports
+across the frontend, backend and shared-contract boundaries. Use `npm run hygiene:knip`,
+`npm run hygiene:dependencies` or `npm run hygiene:architecture` to run an individual validator.
+The hygiene gate remains separate from `npm run check`, so adding it to remote automation can be
+reviewed independently.
 
 Run the complete backend test workflow with the default disposable PostgreSQL runtime:
 
@@ -62,18 +71,22 @@ tooling never falls back to the normal `DATABASE_URL`.
 
 ## Test command overview
 
-| Command                       | Purpose                                                                                         | PostgreSQL provisioning          | Docker required |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------- | --------------- |
-| `npm run test`                | Unit, frontend, API, contract, and deployment-helper suites                                     | None                             | No              |
-| `npm run test:backend`        | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:backend:local`  | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection      | Yes             |
-| `npm run test:deployment`     | Deployment workflow helper tests                                                                | None                             | No              |
-| `npm run test:database`       | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:database:local` | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection      | Yes             |
-| `npm run test:e2e`            | Playwright browser and accessibility tests                                                      | No dedicated database workflow   | No              |
-| `npm run test:coverage`       | Current configured coverage suites                                                              | None                             | No              |
-| `npm run check`               | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                             | No              |
-| `npm run test:ci`             | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`  | No              |
+| Command                        | Purpose                                                                                         | PostgreSQL provisioning          | Docker required |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------- | --------------- |
+| `npm run hygiene`              | Knip, syncpack and dependency-cruiser monorepo-maintenance validation                           | None                             | No              |
+| `npm run hygiene:knip`         | Unused files, dependencies, exports and types across the monorepo                               | None                             | No              |
+| `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                             | No              |
+| `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                             | No              |
+| `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                             | No              |
+| `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST` | No              |
+| `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection      | Yes             |
+| `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                             | No              |
+| `npm run test:database`        | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
+| `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection      | Yes             |
+| `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow   | No              |
+| `npm run test:coverage`        | Current configured coverage suites                                                              | None                             | No              |
+| `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                             | No              |
+| `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`  | No              |
 
 The backend workspace's ordinary command, `npm run test --workspace=@sport-analytics/backend`,
 builds the shared contracts and runs only its unit and API suites. PostgreSQL tests run only through
@@ -202,14 +215,20 @@ The schema verification for issue #43 is recorded in
 The submitter-access API and repository suites cover:
 
 - anonymous requests being rejected before request processing;
-- an authenticated application account creating a `pending` request;
-- the authenticated account being passed to the request service;
+- an authenticated application account selecting an existing competition and creating a `pending`
+  request;
+- the authenticated account and competition identifier being passed to the request service;
 - duplicate `pending` requests returning a conflict;
 - accounts with the legacy `approved` request state returning a conflict;
-- eligible state changes being implemented as a conditional database update; and
+- invalid or fixture-shaped request bodies being rejected;
+- eligible state and requested-competition changes being implemented as one conditional database
+  update; and
 - unsupported persisted approval states failing closed.
 
-The PostgreSQL integration suite additionally verifies that `not_requested` and previously `rejected` accounts persist as `pending`, a second active request is rejected, and an already-approved account is not modified.
+The PostgreSQL integration suite additionally verifies that `not_requested` and previously
+`rejected` accounts persist the selected competition with `pending`, nonexistent competitions do
+not change account state, a second active request is rejected, and an already-approved account is
+not modified.
 
 Run the focused checks with:
 
@@ -237,7 +256,7 @@ Coverage includes:
 - `not_requested`, `pending`, `approved`, and `rejected` approval states;
 - shared runtime validation of the complete current-user response through
   `@sport-analytics/contracts`;
-- API responses reflecting the synchronized account approval state;
+- API responses reflecting the synchronized account approval state and named requested competition;
 - account re-authentication updating identity metadata without overwriting persisted role or
   submitter approval state;
 - current-user resolution during the ordered role and account-deletion migration rollout, including
@@ -262,8 +281,8 @@ npm run test --workspace=@sport-analytics/frontend
 The Account-page suite verifies the complete user-facing request workflow:
 
 - signed-out users do not load application account data;
-- eligible users can request access and see an in-progress state;
-- successful requests reload the persisted `pending` profile;
+- eligible users load and select competitions rather than fixtures before requesting access;
+- successful requests reload the persisted `pending` profile and named requested competition;
 - a remount restores `pending` without offering another request;
 - stale eligible views refresh after the backend reports an active-request conflict;
 - `submitter` and `admin` roles receive submission access without a request action;
@@ -272,19 +291,23 @@ The Account-page suite verifies the complete user-facing request workflow:
   the historical approved decision without submission access; and
 - malformed profiles and backend request failures produce safe, actionable feedback.
 
-The request-response contract suite additionally verifies that only a persisted `pending` result is
-accepted from the submitter-access endpoint. The browser suite verifies keyboard activation,
+The request-response contract suite additionally verifies the competition-scoped request and that
+only a persisted `pending` result with a named requested competition is accepted from the
+submitter-access endpoint. The browser suite verifies keyboard selection and activation,
 pending state after reload, narrow-screen overflow, and serious or critical Axe findings.
 
 The administrator-management suites verify that `not_requested` and `rejected` viewers have no
-approval or competition-scope controls, pending viewers can be approved or rejected, and approved
-submitters can still be re-scoped or revoked. Rejection coverage includes in-progress, success,
+approval or competition-scope controls, pending viewers expose a read-only requested competition
+that must be granted exactly, legacy pending rows without a competition cannot be approved, and
+approved submitters can still be re-scoped or revoked. Rejection coverage includes in-progress, success,
 authentication, authorisation, conflict, and validation feedback. The administrator browser
 scenario activates rejection from the keyboard at desktop and mobile widths, checks the immediate
 persisted-state update and horizontal overflow, and scans the result for serious or critical Axe
 findings. Backend policy, API, and PostgreSQL integration tests
-also verify that a direct approval attempt without a pending request returns a conflict and cannot
-bypass the state transition.
+also verify that a direct approval attempt without a pending request, or approval with a different
+competition, returns a conflict and cannot bypass the state transition. Direct-submission database
+coverage separately proves that persisted role and competition grants are both required, permitting
+an in-scope fixture and rejecting an out-of-scope fixture.
 
 Run the focused checks with:
 
@@ -423,6 +446,27 @@ npm run test --workspace=@sport-analytics/frontend -- --run src/pages/PublicBrow
 npm run test:e2e -- tests/e2e/public-browsing.spec.ts --workers=1
 ```
 
+## Connected public-data journey coverage
+
+The issue #199 browser verification treats the completed competition, season, fixture, team,
+player, statistics, and calculation-trace redesign as connected tasks. The public-browsing journey
+starts at Competitions and reaches a season and complete fixture overview in three keyboard
+activations, then starts at Teams and reaches the same inline statistics in two. The player journey
+starts at Players and reaches the player overview, named match, inline statistics, and calculation
+trace in three keyboard activations.
+
+Both journeys run in desktop and Pixel 7 Chromium. Day Match and Night Match are selected and
+checked independently; each representative view is audited for readable headings, labels, facts,
+filters, links, and messages, horizontal overflow, and serious or critical Axe findings. The
+interaction matrix, command results, screenshot index, usability walkthrough, and deliberately
+deferred follow-up are recorded in `evidence/validation/issue-199-public-data-journeys.md`.
+
+Run the focused checks with:
+
+```text
+npm run test:e2e -- tests/e2e/public-browsing.spec.ts tests/e2e/player-overview.spec.ts --workers=1
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -444,3 +488,7 @@ The related public detail-overview coverage was documented with the assistance o
 Codex[GPT-5.6 Sol].
 The combined match-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].
 The public player-overview coverage was documented with the assistance of Codex[GPT-5.6 Sol].
+The connected public-data journey coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].
+The issue #255 competition-scoped submitter access coverage was documented with the assistance of
+Codex[GPT-5].

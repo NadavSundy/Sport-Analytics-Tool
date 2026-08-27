@@ -133,8 +133,10 @@ which is why it is settled here rather than deferred.
 **Identity.** `app_user`, keyed on the authentication provider and that provider's
 subject identifier rather than on any provider-specific column, so that the schema
 does not depend on the current choice of provider. Holds the display name, application role,
-submitter-approval state, disabled state, created time, last-updated time, last-authenticated time,
-and the administrator account/time for the latest submitter-access change. `application_role` is
+submitter-approval state, requested competition, disabled state, created time, last-updated time,
+last-authenticated time, and the administrator account/time for the latest submitter-access change.
+The nullable requested-competition foreign key records request workflow state without granting
+access. `application_role` is
 non-null, defaults to `viewer`, and accepts only
 `viewer`, `submitter`, or `admin`. The database maintains the last-updated time for every account
 change. Personal data remains with the authentication provider. The role is authoritative for
@@ -318,4 +320,5 @@ required, the source data remains available for a subsequent migration.
 
 The preceding document was planned and generated with the assistance of
 Claude-Web[Claude Opus 5], from an analysis of the Cricsheet T20 corpus. The issue #44 application
-account and scope description was updated with the assistance of Codex[GPT-5.6 Sol].
+account and scope description was updated with the assistance of Codex[GPT-5.6 Sol]. The issue #255
+requested-competition description was updated with the assistance of Codex[GPT-5].

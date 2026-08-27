@@ -30,17 +30,22 @@ const synchronizeTestAccount: SynchronizeAccount = async (identity) => ({
   displayName: identity.displayName ?? null,
   role: 'viewer',
   approvalState: 'not_requested',
+  requestedCompetition: null,
   competitionIds: [],
   disabled: false,
   deletionState: 'active',
 });
 
 const requestTestSubmitterAccess: SubmitterAccessService = {
-  async requestAccess(account) {
+  async requestAccess(account, accessRequest) {
     return {
       data: {
         accountId: account.accountId,
         approvalState: 'pending',
+        requestedCompetition: {
+          competitionId: accessRequest.competitionId,
+          name: 'Test Competition',
+        },
       },
     };
   },
@@ -101,6 +106,7 @@ export function createTestAccount(overrides: Partial<ApplicationAccount> = {}): 
     displayName: 'Test User',
     role: 'viewer',
     approvalState: 'not_requested',
+    requestedCompetition: null,
     competitionIds: [],
     disabled: false,
     deletionState: 'active',

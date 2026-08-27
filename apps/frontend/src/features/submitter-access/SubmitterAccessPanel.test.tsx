@@ -61,6 +61,9 @@ function createAuthClient(session: Session | null = createSession()) {
 function currentUser(
   approvalState: SubmitterApprovalState,
   role: ApplicationRole = 'viewer',
+  requestedCompetition = approvalState === 'not_requested'
+    ? null
+    : { competitionId: '5', name: 'Premier T20' },
 ): Response {
   return jsonResponse(200, {
     user: {
@@ -69,8 +72,21 @@ function currentUser(
       displayName: 'Requesting User',
       role,
       approvalState,
+      requestedCompetition,
       competitionIds: role === 'submitter' || role === 'admin' ? ['5'] : [],
     },
+  });
+}
+
+function competitionsResponse(
+  competitions = [
+    { competitionId: '5', name: 'Premier T20' },
+    { competitionId: '8', name: 'University League' },
+  ],
+): Response {
+  return jsonResponse(200, {
+    data: competitions,
+    pagination: { nextCursor: null },
   });
 }
 
@@ -124,6 +140,7 @@ describe('submitter access request and status interface', () => {
 
   it('submits an eligible request, exposes progress, and reloads the persisted pending state', async () => {
     let approvalState: SubmitterApprovalState = 'not_requested';
+    let requestedCompetition: { competitionId: string; name: string } | null = null;
     let resolveRequest!: (response: Response) => void;
     const pendingRequest = new Promise<Response>((resolve) => {
       resolveRequest = resolve;
@@ -132,7 +149,11 @@ describe('submitter access request and status interface', () => {
       const path = new URL(String(input)).pathname;
 
       if (path.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser(approvalState));
+        return Promise.resolve(currentUser(approvalState, 'viewer', requestedCompetition));
+      }
+
+      if (path.endsWith('/competitions')) {
+        return Promise.resolve(competitionsResponse());
       }
 
       if (path.endsWith('/submitter-access-requests')) {
@@ -145,28 +166,42 @@ describe('submitter access request and status interface', () => {
 
     renderAccountPage();
 
+    const competitionSelect = await screen.findByRole('combobox', { name: 'Competition' });
+    expect(competitionSelect).toHaveValue('5');
+    fireEvent.change(competitionSelect, { target: { value: '8' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Request submitter access' }));
 
     expect(screen.getByRole('button', { name: 'Requesting access…' })).toBeDisabled();
 
     approvalState = 'pending';
+    requestedCompetition = { competitionId: '8', name: 'University League' };
     await act(async () => {
       resolveRequest(
         jsonResponse(201, {
-          data: { accountId: '17', approvalState: 'pending' },
+          data: {
+            accountId: '17',
+            approvalState: 'pending',
+            requestedCompetition: { competitionId: '8', name: 'University League' },
+          },
         }),
       );
     });
 
     expect(await screen.findByText('Pending approval')).toBeInTheDocument();
     expect(
-      screen.getByText('Your request was submitted and is now awaiting administrator approval.'),
+      screen.getByText(
+        'Your request for University League was submitted and is now awaiting administrator approval.',
+      ),
     ).toHaveAttribute('role', 'status');
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    const [, requestInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    const requestCall = fetchMock.mock.calls.find(([input]) =>
+      new URL(String(input)).pathname.endsWith('/submitter-access-requests'),
+    ) as [string, RequestInit];
+    const [, requestInit] = requestCall;
     expect(requestInit.method).toBe('POST');
+    expect(requestInit.body).toBe(JSON.stringify({ competitionId: '8' }));
     expect(new Headers(requestInit.headers).get('Authorization')).toBe(
       'Bearer viewer-access-token',
     );
@@ -188,10 +223,31 @@ describe('submitter access request and status interface', () => {
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
   });
 
+  it('shows an empty state when no competitions are available to request', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('not_requested'))
+        .mockResolvedValueOnce(competitionsResponse([])),
+    );
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('No competitions are currently available for an access request.'),
+    ).toHaveAttribute('role', 'status');
+    expect(screen.queryByRole('combobox', { name: 'Competition' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Request submitter access' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('refreshes a stale eligible view when the backend reports an active request conflict', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser('not_requested'))
+      .mockResolvedValueOnce(competitionsResponse())
       .mockResolvedValueOnce(
         jsonResponse(409, {
           error: {
@@ -251,12 +307,19 @@ describe('submitter access request and status interface', () => {
   });
 
   it('explains rejected access and permits a new request', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('rejected')));
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('rejected'))
+        .mockResolvedValueOnce(competitionsResponse()),
+    );
 
     renderAccountPage();
 
     expect(await screen.findByText('Not approved')).toBeInTheDocument();
     expect(screen.getByText(/previous request was declined/i)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue('5');
     expect(screen.getByRole('button', { name: 'Request submitter access' })).toBeEnabled();
   });
 
@@ -318,6 +381,7 @@ describe('submitter access request and status interface', () => {
         }),
       )
       .mockResolvedValueOnce(currentUser('not_requested'))
+      .mockResolvedValueOnce(competitionsResponse())
       .mockResolvedValueOnce(
         jsonResponse(503, {
           error: {

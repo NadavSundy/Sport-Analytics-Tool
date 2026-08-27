@@ -35,7 +35,11 @@
     "openapi:lint": "redocly lint docs/api/openapi.yaml",
     "deploy:prepare:backend": "node scripts/prepare-backend-deployment.mjs",
     "check": "npm run structure:check && npm run format:check && npm run lint && npm run build --workspace=@sport-analytics/contracts && npm run typecheck && npm run test && npm run openapi:lint && npm run build",
-    "test:database:local": "node scripts/test-database-local.mjs"
+    "test:database:local": "node scripts/test-database-local.mjs",
+    "hygiene:knip": "knip",
+    "hygiene:dependencies": "syncpack lint",
+    "hygiene": "npm run hygiene:knip && npm run hygiene:dependencies && npm run hygiene:architecture",
+    "hygiene:architecture": "depcruise --config .dependency-cruiser.cjs apps/frontend/src apps/backend/src packages/contracts/src"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -44,10 +48,12 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitest/coverage-v8": "^2.1.9",
-    "axe-core": "^4.13.0",
+    "dependency-cruiser": "^18.2.0",
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^4.6.2",
+    "knip": "^6.32.2",
     "prettier": "^3.3.3",
+    "syncpack": "^15.3.3",
     "typescript": "5.5.4",
     "wrangler": "^4.119.0"
   }

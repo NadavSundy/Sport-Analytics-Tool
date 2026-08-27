@@ -25,15 +25,6 @@ deprecation and retirement rules.
 See [Shared API Contracts](contracts.md) for the complete identifier,
 response, error, filtering, sorting, date/time, event-ordering, and pagination conventions.
 
-- Base path: `/api/v1`
-- Format: JSON unless returning a documented dataset file
-- Stable identifiers: opaque, non-recycled IDs
-- Pagination: cursor pagination for large or changing collections where practical
-- Filtering: explicit documented query parameters
-- Errors: consistent machine-readable code, safe message, and optional field details
-- Authentication: established provider/library for users; separate API-consumer credentials when introduced
-- Versioning: URL major version initially, with a documented deprecation path before any retirement
-
 ## Current endpoints
 
 ```http
@@ -69,6 +60,10 @@ Successful response:
     "displayName": "Example User",
     "role": "submitter",
     "approvalState": "approved",
+    "requestedCompetition": {
+      "competitionId": "7",
+      "name": "Premier T20"
+    },
     "competitionIds": ["7", "12"]
   }
 }
@@ -123,37 +118,59 @@ access through:
 ```http
 POST /api/v1/submitter-access-requests
 Authorization: Bearer <supabase-access-token>
+Content-Type: application/json
+
+{"competitionId":"7"}
 ```
 
-A successful request changes the authenticated application account's server-owned approval state to `pending`:
+A successful request validates and persists the selected competition and changes the authenticated
+application account's server-owned approval state to `pending`:
 
 ```json
 {
   "data": {
     "accountId": "42",
-    "approvalState": "pending"
+    "approvalState": "pending",
+    "requestedCompetition": {
+      "competitionId": "7",
+      "name": "Premier T20"
+    }
   }
 }
 ```
 
-The endpoint returns `401 Unauthorized` when no valid authentication is supplied.
+The endpoint returns `401 Unauthorized` when no valid authentication is supplied and `422
+Unprocessable Entity` when the body or competition identifier is invalid.
 
 A `409 Conflict` is returned when the account already has a pending request, has the legacy
 `approved` request state, or already holds the `submitter`/`admin` role. A previously rejected
 viewer may submit a new request.
 
-The request state is stored on the provider-neutral application account and can subsequently be
-consumed by the administrator approval and competition-scope workflow. The request state is not an
-authorization grant: approval must assign `application_role = submitter`, and the backend uses that
-role plus competition scope for submission decisions.
+The requested competition and request state are stored on the provider-neutral application account
+and exposed through `/api/v1/auth/me` and the administrator user list. They are not authorization
+grants: approval must atomically assign `application_role = submitter` and grant exactly the stored
+competition. The backend uses the authoritative role plus granted competition scope for submission
+decisions.
 
 ### Administrator submitter-access decisions
 
+Administrators can list application users through:
+
+```http
+GET /api/v1/admin/users
+Authorization: Bearer <supabase-access-token>
+```
+
+The endpoint is restricted to the `admin` role and provides the account state needed for
+submitter-access review and administration.
+
 Only an authoritative `admin` may manage another active, non-administrator account. Approval and
 scope replacement use `PATCH /api/v1/admin/users/{userId}/submitter-access`; approval requires a
-pending viewer and at least one valid competition scope, while scope replacement requires an
-approved submitter. Sending `approved: false` revokes an approved submitter, removes every scope,
-and retains the historical `approved` request decision.
+pending viewer and exactly the valid competition stored on that request, while scope replacement
+for an approved submitter requires at least one valid competition. A legacy pending request without
+a stored competition cannot be approved and must be rejected before the viewer submits a corrected
+request. Sending `approved: false` revokes an approved submitter, removes every scope, and retains
+the historical `approved` request decision.
 
 Rejecting a pending request is a separate action:
 
@@ -185,6 +202,7 @@ GET /api/v1/competitors
 GET /api/v1/competitors/{competitorId}
 GET /api/v1/participants
 GET /api/v1/participants/{participantId}
+GET /api/v1/participants/{participantId}/fixtures
 ```
 
 See [Public Read API](public-read.md) for filters, pagination, deterministic ordering and example responses.
@@ -200,20 +218,38 @@ POST /api/v1/submissions
 See [Direct Event Submissions](submissions.md) for the versioned request schema, provenance response,
 validation errors, payload limit, and rate limit.
 
+### Weather integration
+
+The backend exposes the course-required runtime external API integration through:
+
+```http
+GET /api/v1/weather
+```
+
+The endpoint accepts documented location and date parameters, calls Open-Meteo server-side,
+validates the provider response, applies a bounded timeout, and maps upstream failures to safe
+application errors.
+
+See [Weather API](weather.md) for the request parameters, response format, provider behaviour,
+and current limitations.
+
 ## Required future API areas
 
-- competitions, seasons, competitors, and fixtures;
-- review, rejection, correction, and audit history;
-- derived season/career statistics;
-- filtered exports and dataset releases;
+- submission review, correction, and correction-history workflows;
+- derived season, competition, and career statistics;
+- filtered exports and versioned dataset releases;
+- staged and resumable batch ingestion;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
 - API consumers, keys, quotas, rate limits, and usage; and
 - change feeds and release differences for the advanced tier.
 
-An OpenAPI specification should be maintained alongside implementation and verified by contract tests. Do not generate backend behaviour from a third-party database platform.
+The OpenAPI specification is maintained alongside the implementation, with shared request and
+response contracts covered by automated contract tests. Backend behaviour is implemented through
+the handwritten Express API rather than generated database endpoints.
 
 ## AI Declaration
 
 The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]
-and Codex[GPT-5].
+and Codex[GPT-5]. The competition-scoped submitter access behavior was updated with the assistance
+of Codex[GPT-5].

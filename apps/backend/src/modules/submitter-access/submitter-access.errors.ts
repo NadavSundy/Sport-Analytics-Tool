@@ -9,3 +9,10 @@ export class SubmitterAccessConflictError extends Error {
     this.name = 'SubmitterAccessConflictError';
   }
 }
+
+export class InvalidRequestedCompetitionError extends Error {
+  constructor() {
+    super('The requested competition does not exist.');
+    this.name = 'InvalidRequestedCompetitionError';
+  }
+}

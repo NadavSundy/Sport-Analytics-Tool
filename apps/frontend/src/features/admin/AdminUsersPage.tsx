@@ -99,15 +99,22 @@ function ManagedUserCard({
   feedback,
   onUpdate,
 }: ManagedUserCardProps) {
+  const isSubmitter = user.role === 'submitter' && user.approvalState === 'approved';
+  const hasPendingRequest = user.role === 'viewer' && user.approvalState === 'pending';
   const assignedIds = useMemo(
     () => user.competitionScopes.map((scope) => scope.competitionId),
     [user.competitionScopes],
   );
-  const [selectedScopeIds, setSelectedScopeIds] = useState<string[]>(assignedIds);
+  const initialScopeIds = useMemo(
+    () =>
+      hasPendingRequest && user.requestedCompetition
+        ? [user.requestedCompetition.competitionId]
+        : assignedIds,
+    [assignedIds, hasPendingRequest, user.requestedCompetition],
+  );
+  const [selectedScopeIds, setSelectedScopeIds] = useState<string[]>(initialScopeIds);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const isBusy = pendingAction?.userId === user.id;
-  const isSubmitter = user.role === 'submitter' && user.approvalState === 'approved';
-  const hasPendingRequest = user.role === 'viewer' && user.approvalState === 'pending';
   const isManageable = user.role !== 'admin' && !user.disabled;
   const canManageAccess = isManageable && (isSubmitter || hasPendingRequest);
   const audit = accessAudit(user);
@@ -125,9 +132,9 @@ function ManagedUserCard({
             : null;
 
   useEffect(() => {
-    setSelectedScopeIds(assignedIds);
+    setSelectedScopeIds(initialScopeIds);
     setSelectionError(null);
-  }, [assignedIds]);
+  }, [initialScopeIds]);
 
   function toggleScope(competitionId: string) {
     setSelectionError(null);
@@ -183,6 +190,10 @@ function ManagedUserCard({
           </dd>
         </div>
         <div>
+          <dt>Requested competition</dt>
+          <dd>{user.requestedCompetition?.name ?? 'None requested'}</dd>
+        </div>
+        <div>
           <dt>Account state</dt>
           <dd>{user.disabled ? 'Disabled' : 'Active'}</dd>
         </div>
@@ -197,19 +208,22 @@ function ManagedUserCard({
       {hasPendingRequest && isManageable ? (
         <p className="admin-user-card__request-state" role="status">
           <strong>Submitter access requested.</strong> This request is awaiting administrator
-          review. Approval requires at least one competition scope; rejection does not assign any
-          scope.
+          review. Approval grants the requested competition; rejection does not assign any scope.
         </p>
       ) : null}
 
       {canManageAccess ? (
         <form className="admin-access-form" onSubmit={(event) => void saveAccess(event)}>
           <fieldset disabled={isBusy} aria-describedby={`scope-help-${user.id}`}>
-            <legend>{isSubmitter ? 'Update competition scope' : 'Approve and assign scope'}</legend>
+            <legend>
+              {isSubmitter ? 'Update competition scope' : 'Approve requested competition'}
+            </legend>
             <p id={`scope-help-${user.id}`} className="field-help">
-              Submission permission takes effect only for the selected competitions.
+              {isSubmitter
+                ? 'Submission permission takes effect only for the selected competitions.'
+                : 'Approval grants exactly the competition selected by the requester.'}
             </p>
-            {availableScopes.length > 0 ? (
+            {isSubmitter && availableScopes.length > 0 ? (
               <div className="admin-scope-options">
                 {availableScopes.map((scope) => (
                   <label key={scope.competitionId}>
@@ -222,9 +236,18 @@ function ManagedUserCard({
                   </label>
                 ))}
               </div>
+            ) : isSubmitter ? (
+              <p className="admin-access-form__empty" role="status">
+                No competition scopes are available. This submitter cannot be re-scoped yet.
+              </p>
+            ) : user.requestedCompetition ? (
+              <p className="admin-access-form__requested-scope">
+                <strong>{user.requestedCompetition.name}</strong>
+              </p>
             ) : (
               <p className="admin-access-form__empty" role="status">
-                No competition scopes are available. This user cannot be approved yet.
+                This legacy pending request has no competition. Reject it so the user can submit a
+                corrected competition-scoped request.
               </p>
             )}
           </fieldset>
@@ -240,7 +263,10 @@ function ManagedUserCard({
               className="button button--primary"
               type="submit"
               disabled={
-                isBusy || availableScopes.length === 0 || (isSubmitter && !selectionChanged)
+                isBusy ||
+                (isSubmitter
+                  ? availableScopes.length === 0 || !selectionChanged
+                  : !user.requestedCompetition)
               }
             >
               {isBusy && pendingAction?.kind === 'approve'
@@ -436,6 +462,7 @@ export function AdminUsersPage() {
             user.id,
             roleLabels[user.role],
             approvalLabels[user.approvalState],
+            user.requestedCompetition?.name,
             ...user.competitionScopes.map((scope) => scope.name),
           ]
             .filter(Boolean)

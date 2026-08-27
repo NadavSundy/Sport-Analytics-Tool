@@ -17,12 +17,12 @@ import {
   SubmissionValidationError,
 } from './submission.errors';
 
-export interface FixtureSubmissionScope {
+interface FixtureSubmissionScope {
   fixtureId: string;
   competitionId: string | null;
 }
 
-export interface AcceptedSubmission {
+interface AcceptedSubmission {
   submissionId: string;
   fixtureId: string;
   submitterId: string;
@@ -77,7 +77,7 @@ async function assertSubmissionAuthorized(
         JOIN fixture
           ON fixture.competition_id = scope.competition_id
         WHERE account.app_user_id = $1
-          AND account.submitter_approval_state = 'approved'
+          AND account.application_role IN ('submitter', 'admin')
           AND account.disabled_at IS NULL
           AND fixture.fixture_id = $2
       ) AS authorized

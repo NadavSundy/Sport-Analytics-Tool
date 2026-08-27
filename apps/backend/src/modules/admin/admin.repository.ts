@@ -22,6 +22,8 @@ interface AdministratorUserRow {
   displayName: string | null;
   role: string;
   approvalState: string;
+  requestedCompetitionId: string | null;
+  requestedCompetitionName: string | null;
   competitionIds: string[];
   competitionNames: string[];
   disabledAt: Date | null;
@@ -34,10 +36,11 @@ interface AdministratorUserRow {
 interface TargetAccountRow {
   role: string;
   approvalState: string;
+  requestedCompetitionId: string | null;
   disabledAt: Date | null;
 }
 
-export interface AdminUserManagementData {
+interface AdminUserManagementData {
   users: AdministratorManagedUser[];
   availableScopes: AdministratorCompetitionScope[];
 }
@@ -61,6 +64,8 @@ const administratorUserSelect = `
     managed.display_name AS "displayName",
     managed.application_role AS role,
     managed.submitter_approval_state AS "approvalState",
+    requested_competition.competition_id::text AS "requestedCompetitionId",
+    requested_competition.name AS "requestedCompetitionName",
     COALESCE(
       array_agg(competition.competition_id::text ORDER BY competition.name, competition.competition_id)
         FILTER (WHERE competition.competition_id IS NOT NULL),
@@ -79,6 +84,8 @@ const administratorUserSelect = `
   FROM app_user managed
   LEFT JOIN submitter_competition_scope scope
     ON scope.app_user_id = managed.app_user_id
+  LEFT JOIN competition requested_competition
+    ON requested_competition.competition_id = managed.submitter_requested_competition_id
   LEFT JOIN competition
     ON competition.competition_id = scope.competition_id
   LEFT JOIN app_user access_administrator
@@ -98,11 +105,22 @@ function mapAdministratorUser(row: AdministratorUserRow): AdministratorManagedUs
     throw new Error('Managed application account has inconsistent competition scope data');
   }
 
+  if ((row.requestedCompetitionId === null) !== (row.requestedCompetitionName === null)) {
+    throw new Error('Managed application account has inconsistent requested competition data');
+  }
+
   return {
     id: row.id,
     displayName: row.displayName,
     role: row.role,
     approvalState: row.approvalState,
+    requestedCompetition:
+      row.requestedCompetitionId && row.requestedCompetitionName
+        ? {
+            competitionId: row.requestedCompetitionId,
+            name: row.requestedCompetitionName,
+          }
+        : null,
     competitionScopes: row.competitionIds.map((competitionId, index) => ({
       competitionId,
       name: row.competitionNames[index]!,
@@ -125,6 +143,7 @@ async function listUsers(executor: QueryExecutor): Promise<AdministratorManagedU
     `${administratorUserSelect}
       GROUP BY
         managed.app_user_id,
+        requested_competition.competition_id,
         access_administrator.app_user_id
       ORDER BY
         CASE managed.submitter_approval_state WHEN 'pending' THEN 0 ELSE 1 END,
@@ -146,6 +165,7 @@ async function findUserById(
       WHERE managed.app_user_id = $1
       GROUP BY
         managed.app_user_id,
+        requested_competition.competition_id,
         access_administrator.app_user_id
     `,
     [accountId],
@@ -191,6 +211,7 @@ async function applySubmitterAccessTransition(
         SELECT
           application_role AS role,
           submitter_approval_state AS "approvalState",
+          submitter_requested_competition_id::text AS "requestedCompetitionId",
           disabled_at AS "disabledAt"
         FROM app_user
         WHERE app_user_id = $1
@@ -231,7 +252,28 @@ async function applySubmitterAccessTransition(
       action,
     );
     const grantsAccess = transition === 'approve' || transition === 'scope';
-    const requestedCompetitionIds = [...new Set(competitionIds)];
+    let requestedCompetitionIds = [...new Set(competitionIds)];
+
+    if (transition === 'approve') {
+      if (!target.requestedCompetitionId) {
+        throw new AdminManagementConflictError(
+          'REQUESTED_COMPETITION_SCOPE_MISSING',
+          'The pending request does not identify a competition and cannot be approved.',
+        );
+      }
+
+      if (
+        requestedCompetitionIds.length !== 1 ||
+        requestedCompetitionIds[0] !== target.requestedCompetitionId
+      ) {
+        throw new AdminManagementConflictError(
+          'REQUESTED_COMPETITION_SCOPE_MISMATCH',
+          'Approval must grant the competition stored on the pending request.',
+        );
+      }
+
+      requestedCompetitionIds = [target.requestedCompetitionId];
+    }
 
     if (grantsAccess && requestedCompetitionIds.length === 0) {
       throw new InvalidCompetitionScopesError([]);

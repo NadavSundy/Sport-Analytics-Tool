@@ -75,7 +75,7 @@ The uploaded repository contained the following files. They remain in their orig
 
 ## Consequences
 
-The monorepo reduces setup overhead and supports coordinated changes, but the team must review Pull Requests for boundary violations. A shared repository does not make the application monolithic as long as the frontend and backend remain independent deployable applications with HTTP between them.
+The monorepo reduces setup overhead and supports coordinated changes. dependency-cruiser validates the source dependency graph through `npm run hygiene`, including circular dependencies and inappropriate frontend/backend imports. Pull Request review is still required for architectural concerns that static import analysis cannot detect. A shared repository does not make the application monolithic as long as the frontend and backend remain independent deployable applications with HTTP between them.
 
 ## AI Declaration
 
