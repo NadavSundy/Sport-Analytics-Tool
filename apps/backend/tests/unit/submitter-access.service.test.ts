@@ -9,6 +9,7 @@ function createRepository(): SubmitterAccessRepository {
     requestAccess: vi.fn().mockResolvedValue({
       accountId: '42',
       approvalState: 'pending',
+      requestedCompetition: { competitionId: '7', name: 'Premier T20' },
     }),
   };
 }
@@ -18,10 +19,16 @@ describe('submitter access service', () => {
     const repository = createRepository();
     const service = createSubmitterAccessService(repository);
 
-    await expect(service.requestAccess(createTestAccount({ role: 'viewer' }))).resolves.toEqual({
-      data: { accountId: '42', approvalState: 'pending' },
+    await expect(
+      service.requestAccess(createTestAccount({ role: 'viewer' }), { competitionId: '7' }),
+    ).resolves.toEqual({
+      data: {
+        accountId: '42',
+        approvalState: 'pending',
+        requestedCompetition: { competitionId: '7', name: 'Premier T20' },
+      },
     });
-    expect(repository.requestAccess).toHaveBeenCalledWith('1');
+    expect(repository.requestAccess).toHaveBeenCalledWith('1', '7');
   });
 
   test.each(['submitter', 'admin'] as const)(
@@ -30,9 +37,9 @@ describe('submitter access service', () => {
       const repository = createRepository();
       const service = createSubmitterAccessService(repository);
 
-      await expect(service.requestAccess(createTestAccount({ role }))).rejects.toMatchObject({
-        code: 'SUBMITTER_ALREADY_APPROVED',
-      });
+      await expect(
+        service.requestAccess(createTestAccount({ role }), { competitionId: '7' }),
+      ).rejects.toMatchObject({ code: 'SUBMITTER_ALREADY_APPROVED' });
       expect(repository.requestAccess).not.toHaveBeenCalled();
     },
   );

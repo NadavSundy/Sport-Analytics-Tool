@@ -58,11 +58,12 @@ Only an account whose authoritative role is `admin` may call the user-management
 backend does not accept an administrator role from token claims or profile metadata; it uses the
 synchronized PostgreSQL account attached by authentication middleware.
 
-Approval and scope assignment are one operation. An approval is valid only when at least one
-requested competition exists. In one transaction the backend:
+Approval and scope assignment are one operation. An approval is valid only when the pending request
+stores one existing competition and the approval body names that exact competition. In one
+transaction the backend:
 
 1. locks and checks the target account;
-2. validates every requested competition;
+2. validates the stored requested competition and rejects missing or mismatched scopes;
 3. assigns `application_role = submitter` and the compatibility state `approved`;
 4. replaces the target account's complete `submitter_competition_scope`; and
 5. records the administrator and change time.
@@ -77,6 +78,11 @@ updates role, request state, scopes, administrator attribution, and time in one 
 Invalid lifecycle changes return `409 INVALID_SUBMITTER_ACCESS_TRANSITION`. Validation and state
 checks occur while the target row is locked, so a failed transition leaves the existing role,
 request state, scopes, and audit fields unchanged.
+
+Pending rows created before competition-scoped requests may have no stored requested competition.
+They remain visible but cannot be approved; an administrator may reject them so the viewer can
+submit a corrected request. Existing approved submitters may still be assigned multiple competition
+scopes during a later re-scope operation.
 
 The submitter-access operation cannot modify an `admin` account, a disabled account, or the acting
 administrator's own account. A viewer or submitter receives `403 Forbidden` before request-body
@@ -96,3 +102,8 @@ remains visible if the administrator account is later removed.
 - Only a trusted administrative backend process may change `application_role`.
 - Approval, rejection, scope replacement, audit attribution, and revocation are committed atomically.
 - Frontend visibility checks may improve the interface, but they are never the security boundary.
+
+## AI Declaration
+
+The competition-scoped submitter access workflow was documented with the assistance of
+Codex[GPT-5].

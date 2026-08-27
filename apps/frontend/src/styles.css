@@ -792,6 +792,33 @@ main {
   margin-top: 1rem;
 }
 
+.submitter-access-request {
+  display: grid;
+  gap: 0.5rem;
+  width: min(100%, 32rem);
+  margin-top: 1rem;
+}
+
+.submitter-access-request label {
+  color: var(--colour-text);
+  font-weight: 700;
+}
+
+.submitter-access-request select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+
+.submitter-access-request .field-help,
+.submitter-access-panel__empty {
+  margin: 0;
+}
+
 .submitter-access-panel__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1025,6 +1052,7 @@ main {
 .admin-access-form__error,
 .admin-access-form__empty,
 .admin-access-form__progress,
+.admin-access-form__requested-scope,
 .admin-user-card__protected,
 .admin-access-feedback {
   margin: 1rem 0 0;

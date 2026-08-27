@@ -33,20 +33,23 @@ describe('submitter access repository', () => {
         accountId: '42',
         approvalState: 'pending',
         disabledAt: null,
+        requestedCompetitionId: '7',
+        requestedCompetitionName: 'Premier T20',
       },
     ]);
 
     const repository = createSubmitterAccessRepository(executor);
 
-    await expect(repository.requestAccess('42')).resolves.toEqual({
+    await expect(repository.requestAccess('42', '7')).resolves.toEqual({
       accountId: '42',
       approvalState: 'pending',
+      requestedCompetition: { competitionId: '7', name: 'Premier T20' },
     });
 
     expect(query).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("submitter_approval_state IN ('not_requested', 'rejected')"),
-      ['42'],
+      ['42', '7'],
     );
   });
 
@@ -58,13 +61,14 @@ describe('submitter access repository', () => {
           accountId: '42',
           approvalState: 'pending',
           disabledAt: null,
+          competitionExists: true,
         },
       ],
     );
 
     const repository = createSubmitterAccessRepository(executor);
 
-    await expect(repository.requestAccess('42')).rejects.toMatchObject({
+    await expect(repository.requestAccess('42', '7')).rejects.toMatchObject({
       code: 'REQUEST_ALREADY_PENDING',
     });
   });
@@ -77,13 +81,14 @@ describe('submitter access repository', () => {
           accountId: '42',
           approvalState: 'approved',
           disabledAt: null,
+          competitionExists: true,
         },
       ],
     );
 
     const repository = createSubmitterAccessRepository(executor);
 
-    await expect(repository.requestAccess('42')).rejects.toMatchObject({
+    await expect(repository.requestAccess('42', '7')).rejects.toMatchObject({
       code: 'SUBMITTER_ALREADY_APPROVED',
     });
   });
@@ -96,12 +101,33 @@ describe('submitter access repository', () => {
           accountId: '42',
           approvalState: 'unexpected-state',
           disabledAt: null,
+          competitionExists: true,
         },
       ],
     );
 
     const repository = createSubmitterAccessRepository(executor);
 
-    await expect(repository.requestAccess('42')).rejects.toThrow('unsupported approval state');
+    await expect(repository.requestAccess('42', '7')).rejects.toThrow('unsupported approval state');
+  });
+
+  test('rejects a competition that does not exist without changing the account', async () => {
+    const { executor } = createExecutor(
+      [],
+      [
+        {
+          accountId: '42',
+          approvalState: 'not_requested',
+          disabledAt: null,
+          competitionExists: false,
+        },
+      ],
+    );
+
+    const repository = createSubmitterAccessRepository(executor);
+
+    await expect(repository.requestAccess('42', '99')).rejects.toThrow(
+      'The requested competition does not exist.',
+    );
   });
 });

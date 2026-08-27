@@ -74,6 +74,7 @@ test.beforeEach(async ({ page }) => {
           displayName: 'Submitter User',
           role: 'submitter',
           approvalState: 'approved',
+          requestedCompetition: { competitionId: '5', name: 'Premier T20' },
           competitionIds: ['5'],
         },
       }),

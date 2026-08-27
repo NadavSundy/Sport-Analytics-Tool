@@ -48,6 +48,7 @@ describe('GET /api/v1/auth/me', () => {
         displayName: 'Supabase User',
         role: 'admin',
         approvalState: 'approved',
+        requestedCompetition: null,
         competitionIds: ['7', '12'],
       }),
     );
@@ -69,6 +70,7 @@ describe('GET /api/v1/auth/me', () => {
         displayName: 'Supabase User',
         role: 'admin',
         approvalState: 'approved',
+        requestedCompetition: null,
         competitionIds: ['7', '12'],
       },
     });
@@ -86,6 +88,8 @@ describe('GET /api/v1/auth/me', () => {
           subject: `supabase-user-${approvalState}`,
           displayName: 'Supabase User',
           approvalState,
+          requestedCompetition:
+            approvalState === 'pending' ? { competitionId: '7', name: 'Premier T20' } : null,
           competitionIds: [],
         }),
       );
@@ -98,6 +102,9 @@ describe('GET /api/v1/auth/me', () => {
         .expect(200);
 
       expect(response.body.user.approvalState).toBe(approvalState);
+      expect(response.body.user.requestedCompetition).toEqual(
+        approvalState === 'pending' ? { competitionId: '7', name: 'Premier T20' } : null,
+      );
     },
   );
 

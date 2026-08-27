@@ -231,6 +231,10 @@ not_requested -> pending
 rejected      -> pending
 ```
 
+Each transition requires an existing `competitionId`. The backend stores it as
+`app_user.submitter_requested_competition_id` in the same conditional update that creates the
+pending state. This requested scope is workflow data, not a grant.
+
 An existing `pending` request is rejected with `409 Conflict`, preventing duplicate active requests.
 
 An account that already has the `submitter` or `admin` role is rejected with `409 Conflict` because
@@ -240,8 +244,9 @@ deprecated request workflow remains in place.
 The state transition is performed with a conditional PostgreSQL update so that concurrent duplicate requests cannot both create a new active request.
 
 The signed-in Account page loads `/api/v1/auth/me` whenever it mounts and displays the persisted
-state. Viewer accounts in `not_requested` and `rejected` receive the request action, while `pending`
-viewers see an awaiting-review state without another action. Accounts with `submitter` or `admin`
+state. Viewer accounts in `not_requested` and `rejected` choose from public competitions, while
+`pending` viewers see the named requested competition and an awaiting-review state without another
+action. Fixtures are not request-scope choices. Accounts with `submitter` or `admin`
 receive a link to the scoped submission interface regardless of the deprecated request state. The
 request action has explicit progress, success and error feedback. After a
 successful request, or a `409 Conflict` caused by a stale eligible view, the frontend reloads the
@@ -258,8 +263,11 @@ approved submitter -> approved submitter with replacement scope
 approved submitter -> viewer with no scope (request decision remains approved)
 ```
 
-Approval and rejection are permitted only from `pending`. Scope replacement and revocation are
-permitted only for an existing approved submitter. Other lifecycle changes receive `409 Conflict`
+Approval and rejection are permitted only from `pending`. Approval grants exactly the competition
+stored on the request; a mismatched approval body or a legacy pending row without a stored
+competition fails closed. The administrator can reject a legacy row so the viewer can create a
+corrected request. Scope replacement and revocation are permitted only for an existing approved
+submitter. Other lifecycle changes receive `409 Conflict`
 with `INVALID_SUBMITTER_ACCESS_TRANSITION`, so hiding frontend controls is never the authorization
 boundary. A rejected viewer must create a new request to return to `pending` before approval.
 
@@ -299,6 +307,7 @@ HTTP/1.1 200 OK
     "displayName": "Example User",
     "role": "viewer",
     "approvalState": "not_requested",
+    "requestedCompetition": null,
     "competitionIds": []
   }
 }
@@ -533,7 +542,9 @@ management, submitter access requests and event-submission routes remain separat
 - Use separate development and production configuration.
 - Return safe authentication errors.
 - Fail closed when persisted role or request-state values are unsupported.
-- Never accept role, request state, or granted competition scopes from a request or token claim.
+- Never accept role, request state, or granted competition scopes from a request or token claim;
+  only the selected requested competition identifier is client input, and it is validated before
+  persistence.
 - Apply rate limiting before exposing sensitive production endpoints.
 - Define Row Level Security and backend authorisation separately.
 - Rotate credentials immediately if exposure is suspected.
@@ -569,3 +580,5 @@ with the assistance of Codex[GPT-5.6 Sol].
 The submitter access-request section was documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The account-deletion security and recovery flow was documented with the assistance of Codex[GPT-5].
 The submitter access-request frontend workflow was documented with the assistance of Codex[GPT-5].
+The competition-scoped submitter access correction was documented with the assistance of
+Codex[GPT-5].

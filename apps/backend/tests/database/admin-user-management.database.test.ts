@@ -11,6 +11,7 @@ const sourcePrefix = `admin-management-test-${process.pid}`;
 interface PersistedSubmitterAccess {
   role: string;
   approvalState: string;
+  requestedCompetitionId: string | null;
   competitionIds: string[];
   submitterAccessUpdatedAt: Date | null;
   submitterAccessUpdatedBy: string | null;
@@ -34,6 +35,7 @@ describe.sequential('administrator user-management database integration', () => 
         SELECT
           account.application_role AS role,
           account.submitter_approval_state AS "approvalState",
+          account.submitter_requested_competition_id::text AS "requestedCompetitionId",
           COALESCE(
             array_agg(scope.competition_id::text ORDER BY scope.competition_id)
               FILTER (WHERE scope.competition_id IS NOT NULL),
@@ -92,7 +94,7 @@ describe.sequential('administrator user-management database integration', () => 
         )
         VALUES
           ('test', $1, 'Database Administrator', 'admin', 'not_requested'),
-          ('test', $2, 'Database Contributor', 'viewer', 'pending')
+          ('test', $2, 'Database Contributor', 'viewer', 'not_requested')
         RETURNING
           app_user_id::text AS "accountId",
           auth_subject AS subject
@@ -116,7 +118,19 @@ describe.sequential('administrator user-management database integration', () => 
     const universityScope = competitions.rows.find((row) =>
       row.name.endsWith('University League'),
     )!;
+    const requestRepository = createSubmitterAccessRepository(databasePool());
     const repository = createAdminRepository(databasePool());
+
+    await expect(
+      requestRepository.requestAccess(contributorId, premierScope.competitionId),
+    ).resolves.toMatchObject({
+      accountId: contributorId,
+      approvalState: 'pending',
+      requestedCompetition: {
+        competitionId: premierScope.competitionId,
+        name: premierScope.name,
+      },
+    });
 
     const listed = await repository.listUserManagementData();
     expect(listed.users).toEqual(
@@ -125,6 +139,10 @@ describe.sequential('administrator user-management database integration', () => 
           id: contributorId,
           role: 'viewer',
           approvalState: 'pending',
+          requestedCompetition: {
+            competitionId: premierScope.competitionId,
+            name: premierScope.name,
+          },
         }),
       ]),
     );
@@ -135,9 +153,18 @@ describe.sequential('administrator user-management database integration', () => 
       ]),
     );
 
+    const beforeMismatchedApproval = await loadPersistedAccess(contributorId);
+    await expect(
+      repository.updateSubmitterAccess(contributorId, administratorId, {
+        approved: true,
+        competitionIds: [universityScope.competitionId],
+      }),
+    ).rejects.toMatchObject({ code: 'REQUESTED_COMPETITION_SCOPE_MISMATCH' });
+    await expect(loadPersistedAccess(contributorId)).resolves.toEqual(beforeMismatchedApproval);
+
     const approved = await repository.updateSubmitterAccess(contributorId, administratorId, {
       approved: true,
-      competitionIds: [premierScope.competitionId, universityScope.competitionId],
+      competitionIds: [premierScope.competitionId],
     });
     expect(approved).toMatchObject({
       id: contributorId,
@@ -149,9 +176,9 @@ describe.sequential('administrator user-management database integration', () => 
       },
     });
     expect(approved.submitterAccessUpdatedAt).not.toBeNull();
-    expect(approved.competitionScopes.map((scope) => scope.competitionId)).toEqual(
-      expect.arrayContaining([premierScope.competitionId, universityScope.competitionId]),
-    );
+    expect(approved.competitionScopes).toEqual([
+      { competitionId: premierScope.competitionId, name: premierScope.name },
+    ]);
 
     const reScoped = await repository.updateSubmitterAccess(contributorId, administratorId, {
       approved: true,
@@ -243,8 +270,30 @@ describe.sequential('administrator user-management database integration', () => 
       await expect(loadPersistedAccess(targetId)).resolves.toEqual(before);
     }
 
+    const legacyPendingId = accountId('-pending');
+    const beforeMissingRequestedScope = await loadPersistedAccess(legacyPendingId);
     await expect(
-      repository.updateSubmitterAccess(accountId('-pending'), administratorId, {
+      repository.updateSubmitterAccess(legacyPendingId, administratorId, {
+        approved: true,
+        competitionIds: [competitionId],
+      }),
+    ).rejects.toMatchObject({ code: 'REQUESTED_COMPETITION_SCOPE_MISSING' });
+    await expect(loadPersistedAccess(legacyPendingId)).resolves.toEqual(
+      beforeMissingRequestedScope,
+    );
+
+    await executeQuery(
+      databasePool(),
+      `
+        UPDATE app_user
+        SET submitter_requested_competition_id = $2
+        WHERE app_user_id = $1
+      `,
+      [legacyPendingId, competitionId],
+    );
+
+    await expect(
+      repository.updateSubmitterAccess(legacyPendingId, administratorId, {
         approved: true,
         competitionIds: [competitionId],
       }),
@@ -297,6 +346,16 @@ describe.sequential('administrator user-management database integration', () => 
     await executeQuery(
       databasePool(),
       `
+        UPDATE app_user
+        SET submitter_requested_competition_id = $2
+        WHERE app_user_id = $1
+      `,
+      [pendingId, competitionId],
+    );
+
+    await executeQuery(
+      databasePool(),
+      `
         INSERT INTO submitter_competition_scope (app_user_id, competition_id)
         VALUES ($1, $2), ($3, $2)
       `,
@@ -308,6 +367,7 @@ describe.sequential('administrator user-management database integration', () => 
       id: pendingId,
       role: 'viewer',
       approvalState: 'rejected',
+      requestedCompetition: { competitionId },
       competitionScopes: [],
       submitterAccessUpdatedBy: { id: administratorId },
     });
@@ -329,9 +389,13 @@ describe.sequential('administrator user-management database integration', () => 
     await expect(loadPersistedAccess(viewerId)).resolves.toEqual(beforeInvalidRevocation);
 
     const requestRepository = createSubmitterAccessRepository(databasePool());
-    await expect(requestRepository.requestAccess(pendingId)).resolves.toEqual({
+    await expect(requestRepository.requestAccess(pendingId, competitionId)).resolves.toEqual({
       accountId: pendingId,
       approvalState: 'pending',
+      requestedCompetition: {
+        competitionId,
+        name: `${sourcePrefix}-Rejection League`,
+      },
     });
     await expect(loadPersistedAccess(pendingId)).resolves.toMatchObject({
       role: 'viewer',

@@ -16,6 +16,7 @@ const account: ApplicationAccount = {
   displayName: 'Personal Name',
   role: 'administrator',
   approvalState: 'approved',
+  requestedCompetition: { competitionId: '7', name: 'Premier T20' },
   competitionIds: ['7'],
   disabled: false,
   deletionState: 'active',

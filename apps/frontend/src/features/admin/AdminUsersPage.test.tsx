@@ -65,6 +65,7 @@ function currentUser(role: 'viewer' | 'admin' = 'admin') {
       displayName: role === 'admin' ? 'Administrator' : 'Viewer',
       role,
       approvalState: 'not_requested',
+      requestedCompetition: null,
       competitionIds: [],
     },
   });
@@ -76,6 +77,7 @@ function managedUser(
   overrides: Partial<{
     role: 'viewer' | 'submitter' | 'admin';
     approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected';
+    requestedCompetition: { competitionId: string; name: string } | null;
     competitionScopes: { competitionId: string; name: string }[];
     disabled: boolean;
   }> = {},
@@ -85,6 +87,7 @@ function managedUser(
     displayName: 'Pending Contributor',
     role: 'viewer' as const,
     approvalState: 'pending' as const,
+    requestedCompetition: { competitionId: '7', name: 'Premier T20' },
     competitionScopes: [],
     disabled: false,
     updatedAt: accessTime,
@@ -206,7 +209,9 @@ describe('administrator user management page', () => {
     const card = within(await userCard());
     expect(card.getByText('Submitter access requested.')).toBeInTheDocument();
     expect(card.getByText(/awaiting administrator review/i)).toBeInTheDocument();
-    expect(card.getByText(/rejection does not assign any scope/i)).toBeInTheDocument();
+    expect(card.getByText(/approval grants the requested competition/i)).toBeInTheDocument();
+    expect(card.getAllByText('Premier T20').length).toBeGreaterThan(0);
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(card.getByRole('button', { name: 'Approve submitter' })).toBeEnabled();
     expect(card.getByRole('button', { name: 'Reject request' })).toBeEnabled();
   });
@@ -229,6 +234,23 @@ describe('administrator user management page', () => {
     expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
     expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
     expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('fails closed for a legacy pending request without a competition', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(managementResponse(managedUser({ requestedCompetition: null }))),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(card.getByText(/legacy pending request has no competition/i)).toBeInTheDocument();
+    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeDisabled();
+    expect(card.getByRole('button', { name: 'Reject request' })).toBeEnabled();
   });
 
   it('does not treat a rejected request as pending approval', async () => {
@@ -292,7 +314,7 @@ describe('administrator user management page', () => {
     expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
-  it('approves a pending user with a selected scope and updates the card immediately', async () => {
+  it('approves a pending user for the requested competition and updates the card immediately', async () => {
     const approved = managedUser({
       role: 'submitter',
       approvalState: 'approved',
@@ -308,14 +330,7 @@ describe('administrator user management page', () => {
     renderPage();
 
     const card = within(await userCard());
-    const scopeCheckbox = card.getByRole('checkbox', { name: 'Premier T20' });
-
-    fireEvent.click(scopeCheckbox);
-
-    await waitFor(() => {
-      expect(scopeCheckbox).toBeChecked();
-    });
-
+    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
     fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
 
     expect(
@@ -492,7 +507,7 @@ describe('administrator user management page', () => {
     });
   });
 
-  it('keeps controls usable after client or API validation errors', async () => {
+  it('keeps the requested-scope approval usable after an API validation error', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser())
@@ -511,17 +526,11 @@ describe('administrator user management page', () => {
 
     const card = within(await userCard());
     fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Select at least one competition scope.',
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-
-    fireEvent.click(card.getByRole('checkbox', { name: 'Premier T20' }));
-    fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('Competition scope 7 does not exist.'),
     );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(card.getByRole('button', { name: 'Approve submitter' })).toBeEnabled();
   });
 });
