@@ -178,3 +178,5 @@ __pycache__/
 
 # Generated MkDocs output
 /site/
+# Local Codex instructions
+/AGENTS.md
