@@ -73,6 +73,39 @@ accounts, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for 
 validation, and `429` after 30 requests from one account in 60 seconds. Validation details include a
 field path and `eventIndex` where applicable.
 
+## Correct an accepted event
+
+`PUT /api/v1/submissions/events/{eventId}` corrects an accepted direct-submission event. The path
+event ID is the original client UUID; the request supplies the fixture, contract version, and corrected
+delivery content. The occurrence sequence is inherited from the live source event and is not client-editable.
+
+Only an authenticated `submitter` or `admin` with the fixture's server-owned competition scope may
+correct it. The replacement is validated against the same cricket contract, participant, innings, and
+dismissal-kind rules as a new submission. Invalid, unknown, unauthorised, or out-of-scope corrections
+leave the live event unchanged.
+
+The database transaction inserts a new immutable delivery revision and marks the previous live row
+superseded; it never accepts statistic totals. Fixture, participant, and public-event reads use live
+deliveries, so the affected derived statistics change automatically while unrelated delivery statistics
+remain unchanged.
+
+```json
+{
+  "fixtureId": "42",
+  "schemaVersion": "1.0",
+  "event": {
+    "inningsId": "81",
+    "overNumber": 0,
+    "positionInOver": 0,
+    "ballNumber": "0.1",
+    "strikerId": "101",
+    "nonStrikerId": "102",
+    "bowlerId": "201",
+    "runs": { "offBat": 6, "extras": 0, "total": 6 }
+  }
+}
+```
+
 ## Rejection format
 
 A rejected submission returns an `error` object carrying a code, a human-readable
@@ -138,3 +171,4 @@ removing a partial result.
 ## AI Declaration
 
 The direct submission API documentation was generated with the assistance of Codex[GPT-5.6 Sol].
+The correction workflow was added with the assistance of Codex[GPT-5].

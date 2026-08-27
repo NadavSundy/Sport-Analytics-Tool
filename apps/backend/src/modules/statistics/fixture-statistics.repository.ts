@@ -108,7 +108,7 @@ export async function loadFixtureStatisticsSource(
     WITH accepted_delivery AS (
       SELECT DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)
         d.*
-      FROM delivery d
+      FROM delivery_current d
       JOIN submission source_submission
         ON source_submission.submission_id = d.submission_id
        AND source_submission.status = 'accepted'

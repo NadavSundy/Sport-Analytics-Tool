@@ -9,9 +9,9 @@ implementation.
 The derivation repository applies these rules before calculation:
 
 1. The fixture's originating submission must have `status = accepted`.
-2. For each delivery natural key `(innings, over_number, position_in_over)`, only the highest
-   accepted revision is selected. A pending or rejected correction cannot displace the last
-   accepted revision.
+2. Only the accepted, live delivery revision is selected for each natural key
+   `(innings, over_number, position_in_over)`. A protected correction atomically supersedes the
+   prior row, so its replacement is the sole calculation input without any manual statistic edit.
 3. Events are ordered by innings ordinal and then `innings_sequence`. `ball_number` is display-only
    and is never used for order.
 4. Standard fixture batting, bowling and team aggregates exclude innings marked
@@ -126,3 +126,4 @@ result, while the repository test verifies accepted-revision filtering and occur
 
 The preceding calculation, API and public-interface documentation was generated, reviewed and edited
 with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
+The live-revision correction rule was updated with the assistance of Codex[GPT-5].

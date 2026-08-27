@@ -230,7 +230,7 @@ export async function listParticipantFixtures(
         SELECT DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)
           d.*,
           i.fixture_id
-        FROM delivery d
+        FROM delivery_current d
         JOIN innings i
           ON i.innings_id = d.innings_id
          AND i.is_super_over = false

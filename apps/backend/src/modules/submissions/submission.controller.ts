@@ -1,4 +1,8 @@
-import { submissionRequestSchema } from '@sport-analytics/contracts';
+import {
+  correctionRequestSchema,
+  submissionEventIdSchema,
+  submissionRequestSchema,
+} from '@sport-analytics/contracts';
 import type { RequestHandler, Response } from 'express';
 
 import { rejectAuthorization } from '../../middleware/authorization-response';
@@ -79,6 +83,77 @@ export function createSubmissionController(service: SubmissionService): RequestH
               code: error.code,
               message: error.message,
             },
+          });
+          return;
+        }
+
+        next(error);
+      });
+  };
+}
+
+export function createCorrectionController(service: SubmissionService): RequestHandler {
+  return (request, response, next) => {
+    const eventId = submissionEventIdSchema.safeParse(request.params.eventId);
+    const parsed = correctionRequestSchema.safeParse(request.body);
+
+    if (!eventId.success || !parsed.success) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The correction is invalid.',
+          details: [
+            ...(!eventId.success
+              ? eventId.error.issues.map((issue) => ({
+                  code: 'INVALID_FIELD',
+                  message: issue.message,
+                  field: 'eventId',
+                }))
+              : []),
+            ...(!parsed.success
+              ? parsed.error.issues.map((issue) => ({
+                  code: 'INVALID_FIELD',
+                  message: issue.message,
+                  ...(issue.path.length > 0 ? { field: issue.path.join('.') } : {}),
+                }))
+              : []),
+          ],
+        },
+      });
+      return;
+    }
+
+    let account: ApplicationAccount;
+    try {
+      account = getAuthenticatedAccount(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+
+    void service
+      .correct(account, eventId.data, parsed.data)
+      .then((correction) => response.status(200).json(correction))
+      .catch((error: unknown) => {
+        if (error instanceof SubmissionForbiddenError) {
+          rejectAuthorization(response);
+          return;
+        }
+
+        if (error instanceof SubmissionValidationError) {
+          response.status(422).json({
+            error: {
+              code: 'VALIDATION_FAILED',
+              message: error.message,
+              details: error.details,
+            },
+          });
+          return;
+        }
+
+        if (error instanceof SubmissionConflictError) {
+          response.status(409).json({
+            error: { code: error.code, message: error.message },
           });
           return;
         }

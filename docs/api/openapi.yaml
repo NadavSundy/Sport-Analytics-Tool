@@ -825,6 +825,55 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/submissions/events/{eventId}:
+    put:
+      tags:
+        - Submissions
+      summary: Correct an accepted fixture event
+      description: Supersedes a live direct-submission delivery with a revalidated revision; derived statistics use the live revision.
+      operationId: correctSubmissionEvent
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectionRequest'
+      responses:
+        '200':
+          description: The event was atomically superseded by a corrected revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: The correction conflicts with a concurrently accepted delivery revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The correction failed contract, reference, or source-event validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
   /api/v1/submissions:
     post:
       tags:
@@ -2588,3 +2637,97 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Submission'
+
+    CorrectionEvent:
+      type: object
+      description: Corrected delivery content. The source event ID and occurrence sequence are inherited from the target event.
+      additionalProperties: false
+      required:
+        - inningsId
+        - overNumber
+        - positionInOver
+        - ballNumber
+        - strikerId
+        - nonStrikerId
+        - bowlerId
+        - runs
+      properties:
+        inningsId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        overNumber:
+          type: integer
+          minimum: 0
+          maximum: 32767
+        positionInOver:
+          type: integer
+          minimum: 0
+          maximum: 32767
+        ballNumber:
+          type: string
+          pattern: '^\\d{1,3}\\.\\d{1,2}$'
+        strikerId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        nonStrikerId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        bowlerId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        runs:
+          type: object
+          additionalProperties: false
+          required: [offBat, extras, total]
+          properties:
+            offBat: { type: integer, minimum: 0, maximum: 32767 }
+            extras: { type: integer, minimum: 0, maximum: 32767 }
+            total: { type: integer, minimum: 0, maximum: 32767 }
+            nonBoundary: { type: boolean, default: false }
+        extras:
+          type: object
+          additionalProperties: false
+          default: {}
+          properties:
+            wides: { type: integer, minimum: 0, maximum: 32767 }
+            noBalls: { type: integer, minimum: 0, maximum: 32767 }
+            byes: { type: integer, minimum: 0, maximum: 32767 }
+            legByes: { type: integer, minimum: 0, maximum: 32767 }
+            penalty: { type: integer, minimum: 0, maximum: 32767 }
+        wickets:
+          type: array
+          maxItems: 2
+          default: []
+          items:
+            $ref: '#/components/schemas/SubmissionWicket'
+
+    CorrectionRequest:
+      type: object
+      additionalProperties: false
+      required: [fixtureId, schemaVersion, event]
+      properties:
+        fixtureId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        schemaVersion:
+          type: string
+          const: '1.0'
+        event:
+          $ref: '#/components/schemas/CorrectionEvent'
+
+    Correction:
+      type: object
+      additionalProperties: false
+      required: [eventId, fixtureId, revision]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        revision:
+          type: integer
+          minimum: 1
+
+    CorrectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Correction'
