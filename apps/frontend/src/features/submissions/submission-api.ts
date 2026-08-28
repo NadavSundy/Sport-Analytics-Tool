@@ -99,3 +99,23 @@ export async function submitEvents(
 
   return parsed.data;
 }
+
+export async function submitSubmissionFile(
+  client: AuthenticatedApiClient,
+  file: File,
+): Promise<SubmissionResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await client.request<unknown>('/submissions/uploads', {
+    method: 'POST',
+    body: formData,
+  });
+  const parsed = submissionResponseSchema.safeParse(response);
+
+  if (!parsed.success) {
+    throw new SubmissionInterfaceContractError();
+  }
+
+  return parsed.data;
+}

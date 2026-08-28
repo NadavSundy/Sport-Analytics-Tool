@@ -113,6 +113,7 @@ test('submitter completes the responsive workflow with a keyboard', async ({ pag
   });
 
   await page.goto('/submissions/new');
+  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
 
   const fixtureSelector = page.getByLabel('Fixture');
   const editor = page.getByLabel('Delivery events JSON');
@@ -167,6 +168,7 @@ test('validation results remain associated with the editor and receive focus', a
   });
 
   await page.goto('/submissions/new');
+  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
   const editor = page.getByLabel('Delivery events JSON');
   await editor.fill(JSON.stringify(events));
   await page.getByRole('button', { name: 'Submit events' }).click();
@@ -175,4 +177,80 @@ test('validation results remain associated with the editor and receive focus', a
   await expect(page.getByText('Event 1 — runs.total')).toBeVisible();
   await expect(editor).toHaveAttribute('aria-invalid', 'true');
   await expect(editor).toHaveAttribute('aria-describedby', /submission-validation-results/);
+});
+
+test('submitter uploads a JSON file through the accessible file-first workflow', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/submissions/uploads', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().headers().authorization).toBe('Bearer approved-e2e-token');
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          submissionId: '301',
+          fixtureId: '7',
+          submitterId: '17',
+          status: 'accepted',
+          receivedAt: '2026-08-16T09:30:00.000Z',
+          schemaVersion: '1.0',
+          eventCount: 1,
+        },
+      }),
+    });
+  });
+
+  await page.goto('/submissions/new');
+  await expect(page.getByText('Example Competition')).toBeVisible();
+  const fileInput = page.getByLabel('Event data file');
+  await fileInput.setInputFiles({
+    name: 'events.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ fixtureId: '7', schemaVersion: '1.0', events })),
+  });
+  await expect(page.getByText(/Selected: events.json/)).toBeVisible();
+  await page.getByRole('button', { name: 'Upload and submit file' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Submission accepted' })).toBeFocused();
+  await expect(page.getByText('301')).toBeVisible();
+});
+
+test('file validation identifies a rejected CSV row and returns focus to the result', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/submissions/uploads', async (route) => {
+    await route.fulfill({
+      status: 422,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The uploaded submission file is invalid.',
+          details: [
+            {
+              code: 'INVALID_FILE_ROW',
+              message: 'CSV row 2 is invalid.',
+              field: 'file',
+              eventIndex: 0,
+            },
+          ],
+        },
+      }),
+    });
+  });
+
+  await page.goto('/submissions/new');
+  const fileInput = page.getByLabel('Event data file');
+  await fileInput.setInputFiles({
+    name: 'events.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('bad'),
+  });
+  await page.getByRole('button', { name: 'Upload and submit file' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Submission rejected' })).toBeFocused();
+  await expect(page.getByText(/Row 1.*file/)).toBeVisible();
+  await expect(fileInput).toHaveAttribute('aria-invalid', 'true');
 });
