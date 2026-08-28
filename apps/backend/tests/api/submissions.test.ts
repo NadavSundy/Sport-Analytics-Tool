@@ -48,6 +48,34 @@ const validCorrection = {
   },
 };
 
+const csvHeader = [
+  'fixtureId',
+  'schemaVersion',
+  'eventId',
+  'inningsId',
+  'sequenceNumber',
+  'overNumber',
+  'positionInOver',
+  'ballNumber',
+  'strikerId',
+  'nonStrikerId',
+  'bowlerId',
+  'runsOffBat',
+  'runsExtras',
+  'runsTotal',
+  'runsNonBoundary',
+  'extraWides',
+  'extraNoBalls',
+  'extraByes',
+  'extraLegByes',
+  'extraPenalty',
+  'wickets',
+].join(',');
+
+function validCsv(eventId = validPayload.events[0]!.eventId): string {
+  return `${csvHeader}\n7,1.0,${eventId},10,1,0,0,0.1,20,21,22,4,0,4,false,,,,,,[]\n`;
+}
+
 const acceptToken: VerifyAccessToken = async () => ({
   uid: 'approved-user',
   displayName: 'Approved User',
@@ -217,6 +245,145 @@ describe('direct event submission API', () => {
         eventCount: 1,
       },
     });
+  });
+
+  test('normalises an uploaded JSON file through the direct submission contract', async () => {
+    const service = mockSubmissionService();
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+
+    await request(
+      createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
+    )
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer approved-token')
+      .attach('file', Buffer.from(JSON.stringify(validPayload)), {
+        filename: 'match-events.json',
+        contentType: 'application/json',
+      })
+      .expect(201);
+
+    const [submittedAccount, submission, sourceFile] = vi.mocked(service.submit).mock.calls[0]!;
+    expect(submittedAccount).toBe(account);
+    expect(submission).toMatchObject(validPayload);
+    expect(sourceFile).toMatchObject({
+      fileName: 'match-events.json',
+      mediaType: 'application/json',
+      sizeBytes: expect.any(Number),
+    });
+  });
+
+  test('normalises an uploaded CSV file through the direct submission contract', async () => {
+    const service = mockSubmissionService();
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+
+    await request(
+      createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
+    )
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer approved-token')
+      .attach('file', Buffer.from(validCsv()), {
+        filename: 'match-events.csv',
+        contentType: 'text/csv',
+      })
+      .expect(201);
+
+    expect(service.submit).toHaveBeenCalledWith(
+      account,
+      expect.objectContaining({ fixtureId: '7', schemaVersion: '1.0' }),
+      expect.objectContaining({ fileName: 'match-events.csv', mediaType: 'text/csv' }),
+    );
+  });
+
+  test('rejects an invalid uploaded row before it reaches the submission service', async () => {
+    const service = mockSubmissionService();
+
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer approved-token')
+      .attach('file', Buffer.from(validCsv().replace(',4,0,4,false,', ',4,0,5,false,')), {
+        filename: 'invalid-events.csv',
+        contentType: 'text/csv',
+      })
+      .expect(422);
+
+    expect(response.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ eventIndex: 0, field: 'events.0.runs.total' }),
+      ]),
+    );
+    expect(service.submit).not.toHaveBeenCalled();
+  });
+
+  test('rejects unsupported and oversized uploaded files', async () => {
+    const service = mockSubmissionService();
+    const app = createTestApp(
+      acceptToken,
+      undefined,
+      synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      service,
+    );
+
+    await request(app)
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer approved-token')
+      .attach('file', Buffer.from('not a spreadsheet'), {
+        filename: 'events.txt',
+        contentType: 'text/plain',
+      })
+      .expect(422);
+
+    const oversized = await request(app)
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer approved-token')
+      .attach('file', Buffer.alloc(1_000_001), {
+        filename: 'events.json',
+        contentType: 'application/json',
+      })
+      .expect(413);
+
+    expect(oversized.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+    expect(service.submit).not.toHaveBeenCalled();
+  });
+
+  test('enforces competition scope for an uploaded submission in the shared service', async () => {
+    const storeAcceptedSubmission = vi.fn<SubmissionRepository['storeAcceptedSubmission']>();
+    const service = createSubmissionService({
+      async findFixtureScope() {
+        return { fixtureId: '7', competitionId: '5' };
+      },
+      async findDismissalKinds() {
+        return new Set();
+      },
+      storeAcceptedSubmission,
+    });
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['6'] })),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer out-of-scope-token')
+      .attach('file', Buffer.from(JSON.stringify(validPayload)), {
+        filename: 'match-events.json',
+        contentType: 'application/json',
+      })
+      .expect(403);
+
+    expect(storeAcceptedSubmission).not.toHaveBeenCalled();
   });
 
   test('allows an admin to perform a permitted submission operation', async () => {

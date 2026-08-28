@@ -13,6 +13,7 @@ import {
   SubmissionValidationError,
 } from './submission.errors';
 import type { SubmissionService } from './submission.service';
+import { parseSubmissionUpload } from './submission-upload';
 
 function getAuthenticatedAccount(response: Response): ApplicationAccount {
   const account = response.locals.authenticatedAccount as ApplicationAccount | undefined;
@@ -87,6 +88,94 @@ export function createSubmissionController(service: SubmissionService): RequestH
           return;
         }
 
+        next(error);
+      });
+  };
+}
+
+function rejectInvalidSubmission(
+  response: Response,
+  message: string,
+  issues: { path: (string | number)[]; message: string }[],
+): void {
+  response.status(422).json({
+    error: {
+      code: 'VALIDATION_FAILED',
+      message,
+      details: issues.map((issue) => {
+        const eventPathIndex = issue.path[0] === 'events' ? issue.path[1] : undefined;
+        return {
+          code: 'INVALID_FIELD',
+          message: issue.message,
+          ...(issue.path.length > 0 ? { field: issue.path.join('.') } : {}),
+          ...(typeof eventPathIndex === 'number' ? { eventIndex: eventPathIndex } : {}),
+        };
+      }),
+    },
+  });
+}
+
+export function createSubmissionUploadController(service: SubmissionService): RequestHandler {
+  return (request, response, next) => {
+    if (!request.file) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The uploaded submission file is invalid.',
+          details: [
+            { code: 'INVALID_FILE', field: 'file', message: 'Attach one submission file.' },
+          ],
+        },
+      });
+      return;
+    }
+
+    let upload;
+    try {
+      upload = parseSubmissionUpload(request.file);
+    } catch (error) {
+      if (error instanceof SubmissionValidationError) {
+        response.status(422).json({
+          error: { code: 'VALIDATION_FAILED', message: error.message, details: error.details },
+        });
+        return;
+      }
+      next(error);
+      return;
+    }
+
+    const parsed = submissionRequestSchema.safeParse(upload.submission);
+    if (!parsed.success) {
+      rejectInvalidSubmission(response, 'The uploaded submission is invalid.', parsed.error.issues);
+      return;
+    }
+
+    let account: ApplicationAccount;
+    try {
+      account = getAuthenticatedAccount(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+
+    void service
+      .submit(account, parsed.data, upload.sourceFile)
+      .then((submission) => response.status(201).json(submission))
+      .catch((error: unknown) => {
+        if (error instanceof SubmissionForbiddenError) {
+          rejectAuthorization(response);
+          return;
+        }
+        if (error instanceof SubmissionValidationError) {
+          response.status(422).json({
+            error: { code: 'VALIDATION_FAILED', message: error.message, details: error.details },
+          });
+          return;
+        }
+        if (error instanceof SubmissionConflictError) {
+          response.status(409).json({ error: { code: error.code, message: error.message } });
+          return;
+        }
         next(error);
       });
   };

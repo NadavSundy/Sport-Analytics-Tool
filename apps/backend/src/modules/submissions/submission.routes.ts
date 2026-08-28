@@ -4,9 +4,14 @@ import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
 import { requireSubmitter } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
-import { createCorrectionController, createSubmissionController } from './submission.controller';
+import {
+  createCorrectionController,
+  createSubmissionController,
+  createSubmissionUploadController,
+} from './submission.controller';
 import { createSubmissionRateLimit } from './submission-rate-limit';
 import type { SubmissionService } from './submission.service';
+import { createSubmissionUploadMiddleware } from './submission-upload';
 
 export function createSubmissionRouter(
   verifyAccessToken: VerifyAccessToken,
@@ -21,6 +26,15 @@ export function createSubmissionRouter(
     requireSubmitter(),
     createSubmissionRateLimit(),
     createSubmissionController(service),
+  );
+
+  router.post(
+    '/submissions/uploads',
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireSubmitter(),
+    createSubmissionRateLimit(),
+    createSubmissionUploadMiddleware(),
+    createSubmissionUploadController(service),
   );
 
   router.put(

@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import { DIRECT_SUBMISSION_SCHEMA_VERSION, submissionRequestSchema } from '../submissions';
+import {
+  DIRECT_SUBMISSION_SCHEMA_VERSION,
+  submissionRequestSchema,
+  submissionResponseSchema,
+} from '../submissions';
 
 function validEvent() {
   return {
@@ -22,6 +26,32 @@ function validEvent() {
 }
 
 describe('direct submission contract', () => {
+  test('accepts source-file provenance only within the documented upload limits', () => {
+    const response = {
+      data: {
+        submissionId: '30',
+        fixtureId: '7',
+        submitterId: '1',
+        status: 'accepted',
+        receivedAt: '2026-08-28T12:00:00.000Z',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        eventCount: 1,
+        sourceFile: { fileName: 'events.csv', mediaType: 'text/csv', sizeBytes: 512 },
+      },
+    };
+
+    expect(submissionResponseSchema.safeParse(response).success).toBe(true);
+    expect(
+      submissionResponseSchema.safeParse({
+        ...response,
+        data: {
+          ...response.data,
+          sourceFile: { ...response.data.sourceFile, sizeBytes: 1_000_001 },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
   test('accepts a complete delivery event and applies safe optional defaults', () => {
     const result = submissionRequestSchema.parse({
       fixtureId: '7',

@@ -159,6 +159,10 @@ is likewise not a grant. Approval must validate it and write the matching
 `submitter_competition_scope` row before submission is authorised. Current transition behaviour is
 documented by the relevant migrations and backend access-control documentation.
 
+Accepted file submissions retain their original filename, canonical JSON/CSV media type, and byte
+length on `submission`. Deliveries remain linked to that submission, preserving source-file and
+submitter provenance without duplicating a separate event model.
+
 `submitter_access_history` retains every new request, approval, rejection, and revocation. A
 revoked viewer may request access again, but the history remains available to flag that prior
 revocation to administrators. Pending requests and currently authorised submitters cannot create
@@ -177,4 +181,5 @@ duplicates.
 
 The preceding document was reviewed, expanded and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol]. The issue #255 requested-competition persistence behavior and issue #256
-access-history lifecycle were documented with the assistance of Codex[GPT-5].
+access-history lifecycle, and issue #265 file-submission provenance, were documented with the
+assistance of Codex[GPT-5].

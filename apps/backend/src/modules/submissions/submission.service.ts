@@ -3,6 +3,7 @@ import type {
   CorrectionResponse,
   SubmissionRequest,
   SubmissionResponse,
+  SubmissionSourceFile,
 } from '@sport-analytics/contracts';
 
 import { hasCompetitionScope } from '../../middleware/require-authorization';
@@ -11,7 +12,11 @@ import { SubmissionForbiddenError, SubmissionValidationError } from './submissio
 import { createSubmissionRepository, type SubmissionRepository } from './submission.repository';
 
 export interface SubmissionService {
-  submit(account: ApplicationAccount, submission: SubmissionRequest): Promise<SubmissionResponse>;
+  submit(
+    account: ApplicationAccount,
+    submission: SubmissionRequest,
+    sourceFile?: SubmissionSourceFile,
+  ): Promise<SubmissionResponse>;
   correct(
     account: ApplicationAccount,
     eventId: string,
@@ -23,7 +28,7 @@ export function createSubmissionService(
   repository: SubmissionRepository = createSubmissionRepository(),
 ): SubmissionService {
   return {
-    async submit(account, submission) {
+    async submit(account, submission, sourceFile) {
       const fixture = await repository.findFixtureScope(submission.fixtureId);
       if (!fixture) {
         throw new SubmissionValidationError('The submission references an unavailable fixture.', [
@@ -68,6 +73,7 @@ export function createSubmissionService(
       const acceptedSubmission = await repository.storeAcceptedSubmission(
         submission,
         account.accountId,
+        sourceFile,
       );
 
       return {

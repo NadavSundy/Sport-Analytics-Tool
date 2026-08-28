@@ -26,11 +26,16 @@ The competition-scoped request migration adds nullable
 historical pending rows; those rows fail closed during approval and can be rejected before the user
 submits a corrected request.
 
+The submission-file provenance migration adds nullable source-file metadata to `submission`. It is
+populated only after a bounded JSON or CSV upload has passed the same validation and transaction path
+as direct submissions; historical and direct JSON submissions retain null file metadata.
+
 The submitter-access history migration creates an immutable record of requests, approvals,
 rejections, and revocations. It backfills the identifiable currently revoked accounts so a later
 re-request can remain visibly flagged for administrators.
 
 ## AI Declaration
 
-The issue #255 competition-scoped request migration and issue #256 history migration were
+The issue #255 competition-scoped request migration, issue #256 history migration, and issue #265
+file provenance migration were documented with the assistance of Codex[GPT-5].
 documented with the assistance of Codex[GPT-5].

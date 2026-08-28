@@ -153,8 +153,10 @@ local finalisation stages; the subject becomes a random tombstone, the display n
 a one-way former-subject revocation marker prevents unexpired JWTs from recreating an active local
 account. The internal identifier and submission relationship remain for provenance.
 
-**Provenance.** `submission`, recording who submitted what, when, from which
-source file, with what checksum, and whether it was accepted.
+**Provenance.** `submission`, recording who submitted what, when, whether it
+was accepted, and—where a JSON or CSV file was used—the original filename,
+canonical media type, and byte length. Linked deliveries retain that submission
+and source-file provenance without duplicating uploaded event content.
 
 **Match structure.** `fixture`; `fixture_team`; `fixture_squad`;
 `fixture_official`; `innings`; `innings_powerplay`; `innings_absent`;

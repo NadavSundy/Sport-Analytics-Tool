@@ -218,6 +218,17 @@ POST /api/v1/submissions
 See [Direct Event Submissions](submissions.md) for the versioned request schema, provenance response,
 validation errors, payload limit, and rate limit.
 
+### File event submission
+
+```text
+POST /api/v1/submissions/uploads
+```
+
+An approved, in-scope submitter may upload one bounded JSON or CSV event file. The backend
+normalises it into the direct-submission contract and applies the same authorisation, validation,
+and atomic persistence path. See [Direct Event Submissions](submissions.md#file-uploads) for the
+file types, CSV columns, limits, and errors.
+
 ### Weather integration
 
 The backend exposes the course-required runtime external API integration through:
