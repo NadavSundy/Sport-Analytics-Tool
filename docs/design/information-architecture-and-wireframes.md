@@ -244,7 +244,9 @@ Single sign-in method (Google, via Supabase Auth), reached from any page's heade
 
 ### 5.5 Submit delivery events (submitter)
 
-Single-column form restricted to fixtures within the account's confirmed scope.
+Single-column form restricted to fixtures within the account's confirmed scope. The normal route is
+an accessible JSON/CSV file upload with downloadable format templates and readable competition
+scope guidance; the direct JSON editor remains an advanced alternative.
 
 ![Submission – desktop](assets/wireframes/submission-desktop.svg)
 ![Submission – mobile](assets/wireframes/submission-mobile.svg)
@@ -277,3 +279,5 @@ state.
 This document is merged through the Pull Request referenced by `Closes #56`, per the project's
 git methodology. Detailed page implementation should not begin until this document has been
 reviewed by the team, per the acceptance criteria on #56.
+
+The issue #266 guided file-submission interface was documented with the assistance of Codex[GPT-5].
