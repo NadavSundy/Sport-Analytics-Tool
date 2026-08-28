@@ -14,14 +14,14 @@ theme:
     text: IBM Plex Sans
     code: IBM Plex Mono
   palette:
-    - media: "(prefers-color-scheme: light)"
+    - media: '(prefers-color-scheme: light)'
       scheme: default
       primary: custom
       accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to Night Match
-    - media: "(prefers-color-scheme: dark)"
+    - media: '(prefers-color-scheme: dark)'
       scheme: slate
       primary: custom
       accent: custom

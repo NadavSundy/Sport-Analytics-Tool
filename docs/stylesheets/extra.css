@@ -8,12 +8,12 @@
  */
 
 :root {
-  --md-text-font: "IBM Plex Sans", sans-serif;
-  --md-code-font: "IBM Plex Mono", monospace;
+  --md-text-font: 'IBM Plex Sans', sans-serif;
+  --md-code-font: 'IBM Plex Mono', monospace;
 }
 
 /* Day Match -> Material "default" (light) scheme */
-[data-md-color-scheme="default"] {
+[data-md-color-scheme='default'] {
   /* Primary = navigation header/tabs, active nav item, links in the sidebar */
   --md-primary-fg-color: #102026; /* Match Ink, keeps header readable and on-brand rather than loud */
   --md-primary-fg-color--light: #52636a; /* Commentary Ink */
@@ -51,7 +51,7 @@
 }
 
 /* Night Match -> Material "slate" (dark) scheme */
-[data-md-color-scheme="slate"] {
+[data-md-color-scheme='slate'] {
   --md-primary-fg-color: #08121b; /* Night Match */
   --md-primary-fg-color--light: #b8c3cc; /* Commentary Grey */
   --md-primary-fg-color--dark: #050b10;
@@ -95,7 +95,7 @@
 /* External-link icon added by docs/javascripts/external-links.js.
    Kept small and muted so it doesn't compete with normal text contrast. */
 .md-typeset a.md-external-link::after {
-  content: "";
+  content: '';
   display: inline-block;
   width: 0.7em;
   height: 0.7em;

@@ -15,18 +15,13 @@
   function markExternalLinks() {
     var origin = window.location.origin;
     var anchors = document.querySelectorAll(
-      ".md-content a[href], .md-footer a[href], .md-header__source a[href]"
+      '.md-content a[href], .md-footer a[href], .md-header__source a[href]',
     );
 
     anchors.forEach(function (anchor) {
-      var href = anchor.getAttribute("href");
+      var href = anchor.getAttribute('href');
 
-      if (
-        !href ||
-        href.startsWith("#") ||
-        href.startsWith("mailto:") ||
-        href.startsWith("tel:")
-      ) {
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
         return;
       }
 
@@ -42,24 +37,24 @@
         return;
       }
 
-      anchor.setAttribute("target", "_blank");
-      anchor.setAttribute("rel", "noopener noreferrer");
-      anchor.classList.add("md-external-link");
+      anchor.setAttribute('target', '_blank');
+      anchor.setAttribute('rel', 'noopener noreferrer');
+      anchor.classList.add('md-external-link');
 
-      if (!anchor.hasAttribute("aria-label")) {
+      if (!anchor.hasAttribute('aria-label')) {
         var label = anchor.textContent.trim();
         anchor.setAttribute(
-          "aria-label",
-          label ? label + " (opens in a new tab)" : "Opens in a new tab"
+          'aria-label',
+          label ? label + ' (opens in a new tab)' : 'Opens in a new tab',
         );
       }
     });
   }
 
-  if (typeof document$ !== "undefined") {
+  if (typeof document$ !== 'undefined') {
     // Material for MkDocs instant-navigation observable.
     document$.subscribe(markExternalLinks);
   } else {
-    document.addEventListener("DOMContentLoaded", markExternalLinks);
+    document.addEventListener('DOMContentLoaded', markExternalLinks);
   }
 })();
