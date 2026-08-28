@@ -29,6 +29,7 @@ nav:
       - Information Architecture and Wireframes: design/information-architecture-and-wireframes.md
       - Architecture: architecture/overview.md
       - System Architecture and Roadmap: architecture/system-architecture.md
+      - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
       - API:
           - Overview: api/overview.md
           - Shared Contracts: api/contracts.md
