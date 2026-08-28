@@ -3,6 +3,7 @@ import type {
   SubmissionEvent,
   SubmissionRequest,
   CorrectionRequest,
+  SubmissionSourceFile,
 } from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
 
@@ -53,6 +54,7 @@ export interface SubmissionRepository {
   storeAcceptedSubmission(
     submission: SubmissionRequest,
     submitterId: string,
+    sourceFile?: SubmissionSourceFile,
   ): Promise<AcceptedSubmission>;
   storeAcceptedCorrection(
     eventId: string,
@@ -449,7 +451,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
       );
     },
 
-    async storeAcceptedSubmission(submission, submitterId) {
+    async storeAcceptedSubmission(submission, submitterId, sourceFile) {
       const databasePool = pool ?? getDatabasePool();
       try {
         return await withTransaction(databasePool, async (client) => {
@@ -466,14 +468,25 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
                 fixture_id,
                 schema_version,
                 event_count,
+                source_file_name,
+                source_file_media_type,
+                source_file_size_bytes,
                 status
               )
-              VALUES ($1, $2, $3, $4, 'accepted')
+              VALUES ($1, $2, $3, $4, $5, $6, $7, 'accepted')
               RETURNING
                 submission_id::text AS "submissionId",
                 received_at AS "receivedAt"
             `,
-            [submitterId, submission.fixtureId, submission.schemaVersion, submission.events.length],
+            [
+              submitterId,
+              submission.fixtureId,
+              submission.schemaVersion,
+              submission.events.length,
+              sourceFile?.fileName ?? null,
+              sourceFile?.mediaType ?? null,
+              sourceFile?.sizeBytes ?? null,
+            ],
           );
 
           const storedSubmission = submissionResult.rows[0];
@@ -499,6 +512,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
             receivedAt: storedSubmission.receivedAt.toISOString(),
             schemaVersion: submission.schemaVersion,
             eventCount: submission.events.length,
+            ...(sourceFile ? { sourceFile } : {}),
           };
         });
       } catch (error) {

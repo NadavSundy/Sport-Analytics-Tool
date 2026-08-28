@@ -73,6 +73,28 @@ accounts, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for 
 validation, and `429` after 30 requests from one account in 60 seconds. Validation details include a
 field path and `eventIndex` where applicable.
 
+## File uploads
+
+`POST /api/v1/submissions/uploads` accepts one multipart form-data field named `file` from an
+authenticated, in-scope `submitter` or `admin`. It accepts only a `.json` file with
+`application/json` media type or a `.csv` file with `text/csv` media type, and limits the file to
+1 MB. Both formats are normalised into the same `fixtureId`, `schemaVersion`, and ordered `events`
+contract shown above before the existing scope, cricket-rule, reference, replay, and transaction
+checks run.
+
+JSON files contain the direct-submission JSON object. CSV files contain one event per row and must
+use this exact header order:
+
+```text
+fixtureId,schemaVersion,eventId,inningsId,sequenceNumber,overNumber,positionInOver,ballNumber,strikerId,nonStrikerId,bowlerId,runsOffBat,runsExtras,runsTotal,runsNonBoundary,extraWides,extraNoBalls,extraByes,extraLegByes,extraPenalty,wickets
+```
+
+`wickets` is a JSON array in the CSV cell; blank optional extras are treated as absent and a blank
+`wickets` cell is an empty array. Every CSV row must name the same fixture and schema version.
+Invalid file or normalised row errors return `422` with actionable details and an `eventIndex` for
+row-specific failures; oversized files return `413`. Uploads remain atomic and persist original
+filename, canonical media type, and byte length on the accepted submission.
+
 ## Correct an accepted event
 
 `PUT /api/v1/submissions/events/{eventId}` corrects an accepted direct-submission event. The path
@@ -171,4 +193,5 @@ removing a partial result.
 ## AI Declaration
 
 The direct submission API documentation was generated with the assistance of Codex[GPT-5.6 Sol].
-The correction workflow was added with the assistance of Codex[GPT-5].
+The correction workflow and file-upload submission support were added with the assistance of
+Codex[GPT-5].

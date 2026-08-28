@@ -263,6 +263,14 @@ export const submissionSchema = z.object({
   receivedAt: apiDateTimeSchema,
   schemaVersion: z.literal(DIRECT_SUBMISSION_SCHEMA_VERSION),
   eventCount: z.number().int().positive(),
+  sourceFile: z
+    .object({
+      fileName: z.string().min(1).max(255),
+      mediaType: z.enum(['application/json', 'text/csv']),
+      sizeBytes: z.number().int().positive().max(1_000_000),
+    })
+    .strict()
+    .optional(),
 });
 
 export const submissionResponseSchema = z.object({
@@ -282,5 +290,6 @@ export const correctionResponseSchema = z.object({
 export type SubmissionRequest = z.infer<typeof submissionRequestSchema>;
 export type SubmissionEvent = z.infer<typeof submissionEventSchema>;
 export type SubmissionResponse = z.infer<typeof submissionResponseSchema>;
+export type SubmissionSourceFile = NonNullable<z.infer<typeof submissionSchema>['sourceFile']>;
 export type CorrectionRequest = z.infer<typeof correctionRequestSchema>;
 export type CorrectionResponse = z.infer<typeof correctionResponseSchema>;

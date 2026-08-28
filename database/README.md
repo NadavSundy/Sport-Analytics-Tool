@@ -159,6 +159,10 @@ is likewise not a grant. Approval must validate it and write the matching
 `submitter_competition_scope` row before submission is authorised. Current transition behaviour is
 documented by the relevant migrations and backend access-control documentation.
 
+Accepted file submissions retain their original filename, canonical JSON/CSV media type, and byte
+length on `submission`. Deliveries remain linked to that submission, preserving source-file and
+submitter provenance without duplicating a separate event model.
+
 ## Related documentation
 
 - [Database overview](../docs/database/overview.md)
@@ -172,4 +176,5 @@ documented by the relevant migrations and backend access-control documentation.
 
 The preceding document was reviewed, expanded and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol]. The issue #255 requested-competition persistence behavior was documented
-with the assistance of Codex[GPT-5].
+with the assistance of Codex[GPT-5]. File-submission provenance was documented with the assistance
+of Codex[GPT-5].

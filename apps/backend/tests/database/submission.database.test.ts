@@ -535,4 +535,54 @@ describe.sequential('direct submission database integration', () => {
     expect(beforeInnings?.metrics.totalRuns).toBe(3);
     expect(afterInnings?.metrics.totalRuns).toBe(6);
   });
+
+  test('stores uploaded JSON source-file provenance with the accepted submission', async () => {
+    const eventId = '123e4567-e89b-42d3-a456-426614174014';
+    const uploadPayload = payload([{ eventId, sequenceNumber: 20, positionInOver: 20 }]);
+    const source = Buffer.from(JSON.stringify(uploadPayload));
+
+    const response = await request(app())
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer database-test-token')
+      .attach('file', source, {
+        filename: 'database-submission.json',
+        contentType: 'application/json',
+      })
+      .expect(201);
+
+    expect(response.body.data.sourceFile).toEqual({
+      fileName: 'database-submission.json',
+      mediaType: 'application/json',
+      sizeBytes: source.length,
+    });
+
+    const provenance = await executeQuery<{
+      fileName: string;
+      mediaType: string;
+      sizeBytes: number;
+      eventId: string;
+    }>(
+      databasePool(),
+      `
+        SELECT
+          s.source_file_name AS "fileName",
+          s.source_file_media_type AS "mediaType",
+          s.source_file_size_bytes AS "sizeBytes",
+          d.source_event_id::text AS "eventId"
+        FROM submission s
+        JOIN delivery d ON d.submission_id = s.submission_id
+        WHERE s.submission_id = $1
+      `,
+      [response.body.data.submissionId],
+    );
+
+    expect(provenance.rows).toEqual([
+      {
+        fileName: 'database-submission.json',
+        mediaType: 'application/json',
+        sizeBytes: source.length,
+        eventId,
+      },
+    ]);
+  });
 });
