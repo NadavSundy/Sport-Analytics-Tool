@@ -10,7 +10,12 @@ import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import { listScopedFixtures, SubmissionInputError, submitEvents } from './submission-api';
+import {
+  listScopedFixtures,
+  SubmissionInputError,
+  submitEvents,
+  submitSubmissionFile,
+} from './submission-api';
 
 const EMPTY_EVENTS = '[]';
 
@@ -41,9 +46,13 @@ function formatFixtureOption(fixture: Fixture): string {
   return `${fixture.startDate} — ${fixture.matchType}, ${fixture.season} (fixture ${fixture.fixtureId})`;
 }
 
-function formatValidationLocation(detail: ApiErrorDetail): string {
+function formatValidationLocation(detail: ApiErrorDetail, uploadedFile: boolean): string {
   const eventLabel =
-    detail.eventIndex === undefined ? 'Submission' : `Event ${detail.eventIndex + 1}`;
+    detail.eventIndex === undefined
+      ? uploadedFile
+        ? 'File'
+        : 'Submission'
+      : `${uploadedFile ? 'Row' : 'Event'} ${detail.eventIndex + 1}`;
   let field = detail.field;
 
   if (field && detail.eventIndex !== undefined) {
@@ -85,7 +94,15 @@ function ForbiddenState({
   );
 }
 
-function ValidationResults({ message, details }: { message: string; details: ApiErrorDetail[] }) {
+function ValidationResults({
+  message,
+  details,
+  uploadedFile,
+}: {
+  message: string;
+  details: ApiErrorDetail[];
+  uploadedFile: boolean;
+}) {
   return (
     <div className="submission-result submission-result--error" role="alert">
       <h2 tabIndex={-1} data-result-heading>
@@ -98,7 +115,7 @@ function ValidationResults({ message, details }: { message: string; details: Api
             <li
               key={`${detail.code}-${detail.eventIndex ?? 'submission'}-${detail.field ?? index}`}
             >
-              <strong>{formatValidationLocation(detail)}</strong>
+              <strong>{formatValidationLocation(detail, uploadedFile)}</strong>
               <span>{detail.message}</span>
             </li>
           ))}
@@ -112,6 +129,8 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
   const client = useAuthenticatedApiClient();
   const [fixtureId, setFixtureId] = useState(fixtures[0]?.fixtureId ?? '');
   const [eventJson, setEventJson] = useState(EMPTY_EVENTS);
+  const [mode, setMode] = useState<'file' | 'json'>('file');
+  const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ResultState>({ kind: 'idle' });
   const resultRegionRef = useRef<HTMLDivElement>(null);
 
@@ -129,10 +148,23 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (mode === 'file' && !file) {
+      setResult({
+        kind: 'rejected',
+        message: 'Choose a JSON or CSV file before submitting.',
+        details: [],
+      });
+      return;
+    }
+
     setResult({ kind: 'submitting' });
 
     try {
-      const response = await submitEvents(client, fixtureId, eventJson);
+      const response =
+        mode === 'file' && file
+          ? await submitSubmissionFile(client, file)
+          : await submitEvents(client, fixtureId, eventJson);
       setResult({ kind: 'accepted', response });
     } catch (error) {
       if (error instanceof SubmissionInputError) {
@@ -171,61 +203,148 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
 
   const resultDescriptionId =
     result.kind === 'rejected' ? 'submission-validation-results' : undefined;
+  const competitions = [...new Set(fixtures.map((fixture) => fixture.competitionName))];
 
   return (
     <form className="submission-form" onSubmit={handleSubmit}>
-      <div className="submission-field">
-        <label htmlFor="submission-fixture">Fixture</label>
-        <select
-          id="submission-fixture"
-          value={fixtureId}
-          onChange={(event) => {
-            setFixtureId(event.target.value);
-            resetResult();
-          }}
-          disabled={result.kind === 'submitting'}
-        >
-          {fixtures.map((fixture) => (
-            <option key={fixture.fixtureId} value={fixture.fixtureId}>
-              {formatFixtureOption(fixture)}
-            </option>
-          ))}
-        </select>
+      <fieldset className="submission-mode" disabled={result.kind === 'submitting'}>
+        <legend>Choose how to submit</legend>
         <p className="field-help">
-          Only fixtures in your server-returned competition scope appear.
+          Upload is the normal submitter workflow. The technical JSON editor remains available for
+          advanced use.
         </p>
-      </div>
+        <label>
+          <input
+            type="radio"
+            name="submission-mode"
+            value="file"
+            checked={mode === 'file'}
+            onChange={() => {
+              setMode('file');
+              resetResult();
+            }}
+          />
+          Upload a JSON or CSV file
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="submission-mode"
+            value="json"
+            checked={mode === 'json'}
+            onChange={() => {
+              setMode('json');
+              resetResult();
+            }}
+          />
+          Paste technical JSON
+        </label>
+      </fieldset>
 
-      <div className="submission-field">
-        <label htmlFor="submission-events">Delivery events JSON</label>
-        <p id="submission-events-help" className="field-help">
-          Paste the <code>events</code> array for Basic schema 1.0. Fixture and schema version are
-          added automatically. Final statistic totals are derived by the platform and are not
-          accepted here.
+      <section className="submission-scope" aria-labelledby="submission-scope-title">
+        <h2 id="submission-scope-title">Your authorised competitions</h2>
+        <p>
+          {competitions.join(', ')}. The backend checks this scope again when it receives your
+          submission.
         </p>
-        <textarea
-          id="submission-events"
-          value={eventJson}
-          onChange={(event) => {
-            setEventJson(event.target.value);
-            resetResult();
-          }}
-          aria-describedby={
-            ['submission-events-help', resultDescriptionId].filter(Boolean).join(' ') || undefined
-          }
-          aria-invalid={result.kind === 'rejected'}
-          disabled={result.kind === 'submitting'}
-          spellCheck={false}
-          rows={18}
-        />
-      </div>
+      </section>
+
+      {mode === 'file' ? (
+        <div className="submission-field">
+          <label htmlFor="submission-file">Event data file</label>
+          <p id="submission-file-help" className="field-help">
+            Choose one <code>.json</code> or <code>.csv</code> file up to 1 MB. CSV must use the
+            documented header order.{' '}
+            <a href="/submission-template.json" download>
+              Download a JSON template
+            </a>{' '}
+            or{' '}
+            <a href="/submission-template.csv" download>
+              CSV template
+            </a>
+            .
+          </p>
+          <input
+            id="submission-file"
+            type="file"
+            accept=".json,application/json,.csv,text/csv"
+            onChange={(event) => {
+              setFile(event.target.files?.[0] ?? null);
+              resetResult();
+            }}
+            aria-describedby={
+              ['submission-file-help', resultDescriptionId].filter(Boolean).join(' ') || undefined
+            }
+            aria-invalid={result.kind === 'rejected'}
+            disabled={result.kind === 'submitting'}
+          />
+          {file ? (
+            <p className="field-help">
+              Selected: {file.name} ({Math.ceil(file.size / 1024)} KB)
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          <div className="submission-field">
+            <label htmlFor="submission-fixture">Fixture</label>
+            <select
+              id="submission-fixture"
+              value={fixtureId}
+              onChange={(event) => {
+                setFixtureId(event.target.value);
+                resetResult();
+              }}
+              disabled={result.kind === 'submitting'}
+            >
+              {fixtures.map((fixture) => (
+                <option key={fixture.fixtureId} value={fixture.fixtureId}>
+                  {formatFixtureOption(fixture)}
+                </option>
+              ))}
+            </select>
+            <p className="field-help">
+              Only fixtures in your server-returned competition scope appear.
+            </p>
+          </div>
+
+          <div className="submission-field">
+            <label htmlFor="submission-events">Delivery events JSON</label>
+            <p id="submission-events-help" className="field-help">
+              Paste the <code>events</code> array for Basic schema 1.0. Fixture and schema version
+              are added automatically. Final statistic totals are derived by the platform and are
+              not accepted here.
+            </p>
+            <textarea
+              id="submission-events"
+              value={eventJson}
+              onChange={(event) => {
+                setEventJson(event.target.value);
+                resetResult();
+              }}
+              aria-describedby={
+                ['submission-events-help', resultDescriptionId].filter(Boolean).join(' ') ||
+                undefined
+              }
+              aria-invalid={result.kind === 'rejected'}
+              disabled={result.kind === 'submitting'}
+              spellCheck={false}
+              rows={18}
+            />
+          </div>
+        </>
+      )}
 
       <button
         className="button button--primary"
         type="submit"
         disabled={result.kind === 'submitting'}
       >
-        {result.kind === 'submitting' ? 'Submitting events…' : 'Submit events'}
+        {result.kind === 'submitting'
+          ? 'Submitting…'
+          : mode === 'file'
+            ? 'Upload and submit file'
+            : 'Submit events'}
       </button>
 
       {result.kind === 'submitting' ? (
@@ -260,7 +379,11 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
             </dl>
           </div>
         ) : result.kind === 'rejected' ? (
-          <ValidationResults message={result.message} details={result.details} />
+          <ValidationResults
+            message={result.message}
+            details={result.details}
+            uploadedFile={mode === 'file'}
+          />
         ) : result.kind === 'error' ? (
           <div className="submission-result submission-result--error" role="alert">
             <h2 tabIndex={-1} data-result-heading>
