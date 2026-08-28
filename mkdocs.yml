@@ -8,10 +8,37 @@ exclude_docs: |
 
 theme:
   name: material
+  logo: design/assets/logo/statsthegame-mark-light.svg
+  favicon: design/assets/logo/statsthegame-favicon.svg
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to Night Match
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to Day Match
   features:
     - navigation.tabs
     - navigation.sections
+    - navigation.footer
     - content.code.copy
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/external-links.js
 
 nav:
   - Home: index.md
@@ -29,6 +56,7 @@ nav:
       - Information Architecture and Wireframes: design/information-architecture-and-wireframes.md
       - Architecture: architecture/overview.md
       - System Architecture and Roadmap: architecture/system-architecture.md
+      - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
       - API:
           - Overview: api/overview.md
           - Shared Contracts: api/contracts.md

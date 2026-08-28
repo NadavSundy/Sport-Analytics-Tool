@@ -1099,6 +1099,48 @@ main {
   gap: 0.625rem;
 }
 
+.submission-mode,
+.submission-scope {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  background: var(--colour-surface-raised);
+}
+
+.submission-mode legend,
+.submission-scope h2 {
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.submission-mode label {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  width: fit-content;
+}
+
+.submission-scope p {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  line-height: 1.5;
+}
+
+.submission-field input[type='file'] {
+  max-width: 100%;
+  padding: 0.625rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+
 .submission-field label {
   font-family: var(--font-display);
   font-size: 1.25rem;
