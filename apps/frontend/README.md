@@ -103,6 +103,23 @@ Accounts with the `submitter` or `admin` role can continue to the scoped event-s
 interface. The deprecated approval state alone never exposes the submission interface. The backend
 remains the authorisation boundary for every request and submission.
 
+## Accepted event correction
+
+After the backend accepts a direct submission, `/submissions/new` offers its events for correction
+only to the already verified `submitter` or `admin`. The selected event is prefilled into labelled
+delivery, player, run, extras, and wicket controls. Participating players use public display names;
+the immutable event identity and backend-owned occurrence order remain read-only.
+
+The form sends only event content to `PUT /api/v1/submissions/events/{eventId}`. Delivery extras and
+the delivery total are calculated from the editable event values, while published match and player
+statistics are never editable. After success, the current event display is updated and the embedded
+fixture statistics are requested again. Validation and conflict feedback identifies the relevant control;
+authentication or scope denial withdraws the correction action without changing the accepted event.
+
+The Basic interface uses events accepted in the current direct-submission interaction because the
+current API does not yet expose historical submission list/detail context. Historical correction
+discovery belongs to that separate planned workflow.
+
 ## Administrator user management
 
 An authenticated administrator can open `/admin/users` from the account page. The responsive user
@@ -274,3 +291,4 @@ The public match overview behavior was documented with the assistance of Codex[G
 The public player overview behavior was documented with the assistance of Codex[GPT-5.6 Sol].
 The issue #255 competition selection and read-only approval scope were documented with the
 assistance of Codex[GPT-5].
+The accepted-event correction workflow was documented with the assistance of Codex[GPT-5.6 Sol].

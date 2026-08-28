@@ -355,6 +355,23 @@ npm run test --workspace=@sport-analytics/frontend
 npm run test:e2e -- tests/e2e/submissions.spec.ts --workers=1
 ```
 
+## Accepted event correction coverage
+
+The correction frontend suite covers the submitter/admin presentation gate, prefilled event values,
+readable participant labels, event-only request payloads, field-associated validation, denied or
+revoked scope, refreshed event values, and a fresh fixture-statistics request after success. The
+browser suite runs success, validation failure, and viewer denial at the configured desktop and
+Pixel 7 widths. It additionally checks keyboard submission and result focus, horizontal overflow,
+and serious or critical Axe findings on the successful workflow.
+
+Run the focused checks with:
+
+```text
+npm run build --workspace=@sport-analytics/contracts
+npm run test --workspace=@sport-analytics/frontend -- --run src/features/submissions/SubmissionPage.test.tsx
+npm run test:e2e -- tests/e2e/corrections.spec.ts --workers=1
+```
+
 ## Fixture statistics coverage
 
 The Basic fixture-statistics suite includes a manually verified golden fixture, deterministic replay,
@@ -492,3 +509,5 @@ The connected public-data journey coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The issue #255 competition-scoped submitter access coverage was documented with the assistance of
 Codex[GPT-5].
+The accepted-event correction coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].

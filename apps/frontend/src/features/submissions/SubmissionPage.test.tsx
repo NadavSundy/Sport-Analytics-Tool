@@ -147,6 +147,49 @@ function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null } });
 }
 
+function fixtureStatistics(totalRuns: number) {
+  return response(200, {
+    data: {
+      fixtureId: '7',
+      status: 'complete',
+      scope: { superOversIncluded: false },
+      outcome: {
+        kind: 'no_result',
+        winnerCompetitorId: null,
+        winnerCompetitorName: null,
+        eliminatorCompetitorId: null,
+        eliminatorCompetitorName: null,
+        margin: null,
+        method: null,
+        decidedByBowlOut: false,
+      },
+      warnings: [],
+      statistics: [
+        {
+          statisticId: '100',
+          fixtureId: '7',
+          scope: 'innings',
+          statisticCode: 'team_total',
+          inningsId: '10',
+          inningsOrdinal: 0,
+          competitorId: '20',
+          competitorName: 'Wanderers',
+          sourceEventCount: 1,
+          metrics: { deliveryRuns: totalRuns, penaltyRuns: 0, totalRuns },
+        },
+      ],
+    },
+  });
+}
+
+function participatingPlayers() {
+  return fixtures([
+    { participantId: '20', displayName: 'Opening Batter' },
+    { participantId: '21', displayName: 'Non-striker' },
+    { participantId: '22', displayName: 'Opening Bowler' },
+  ]);
+}
+
 describe('role-gated event submission page', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -266,6 +309,12 @@ describe('role-gated event submission page', () => {
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
+      if (url.includes('/participants?fixtureId=7')) {
+        return Promise.resolve(participatingPlayers());
+      }
+      if (url.endsWith('/fixtures/7/statistics')) {
+        return Promise.resolve(fixtureStatistics(4));
+      }
       if (url.endsWith('/submissions') && init?.method === 'POST') {
         return new Promise<Response>((resolve) => {
           resolveSubmission = resolve;
@@ -317,6 +366,223 @@ describe('role-gated event submission page', () => {
       events: validEvents,
     });
     expect(String(request.body)).not.toMatch(/finalStatistic|totalWickets|finalScore/i);
+    expect(await screen.findByRole('button', { name: 'Save correction' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Striker')).toHaveDisplayValue('Opening Batter');
+    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('4');
+  });
+
+  it('saves a prefilled correction and refreshes the event and statistic displays', async () => {
+    let statisticsRequests = 0;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.endsWith('/submissions') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(201, {
+            data: {
+              submissionId: '300',
+              fixtureId: '7',
+              submitterId: '17',
+              status: 'accepted',
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              schemaVersion: '1.0',
+              eventCount: 1,
+            },
+          }),
+        );
+      }
+      if (url.includes('/participants?fixtureId=7')) {
+        return Promise.resolve(participatingPlayers());
+      }
+      if (url.endsWith('/fixtures/7/statistics')) {
+        statisticsRequests += 1;
+        return Promise.resolve(fixtureStatistics(statisticsRequests === 1 ? 4 : 6));
+      }
+      if (url.endsWith(`/submissions/events/${validEvents[0]!.eventId}`)) {
+        expect(init?.method).toBe('PUT');
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          fixtureId: '7',
+          event: {
+            runs: { offBat: 6, extras: 0, total: 6 },
+          },
+        });
+        expect(String(init?.body)).not.toMatch(/statistics|sequenceNumber|finalScore/i);
+        return Promise.resolve(
+          response(200, {
+            data: { eventId: validEvents[0]!.eventId, fixtureId: '7', revision: 2 },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
+      target: { value: JSON.stringify(validEvents) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    fireEvent.change(await screen.findByLabelText(/Runs off the bat/), { target: { value: '6' } });
+    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
+    fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+
+    const heading = await screen.findByRole('heading', { name: 'Correction saved' });
+    expect(heading).toHaveFocus();
+    expect(screen.getByText(/Revision 2 is now current/)).toBeInTheDocument();
+    await waitFor(() => expect(statisticsRequests).toBe(2));
+    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
+    expect(screen.getAllByText('6').length).toBeGreaterThan(1);
+  });
+
+  it.each([
+    {
+      body: {
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The correction is invalid.',
+          details: [
+            {
+              code: 'INVALID_FIELD',
+              message: 'Use a printed ball number such as 5.1.',
+              field: 'event.ballNumber',
+            },
+          ],
+        },
+      },
+      errorText: 'Use a printed ball number such as 5.1.',
+      inputLabel: /Printed ball number/,
+      kind: 'validation',
+      status: 422,
+    },
+    {
+      body: {
+        error: {
+          code: 'EVENT_CONFLICT',
+          message: 'That delivery position is already occupied.',
+        },
+      },
+      errorText: 'That delivery position is already occupied.',
+      inputLabel: /Delivery position in over/,
+      kind: 'conflict',
+      status: 409,
+    },
+  ])(
+    'associates correction $kind errors with the relevant input without refreshing statistics',
+    async ({ body, errorText, inputLabel, status }) => {
+      let statisticsRequests = 0;
+      const fetchMock = vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input);
+          if (url.endsWith('/auth/me')) {
+            return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+          }
+          if (url.includes('/fixtures?')) {
+            return Promise.resolve(fixtures([fixture]));
+          }
+          if (url.endsWith('/submissions') && init?.method === 'POST') {
+            return Promise.resolve(
+              response(201, {
+                data: {
+                  submissionId: '300',
+                  fixtureId: '7',
+                  submitterId: '17',
+                  status: 'accepted',
+                  receivedAt: '2026-08-16T09:30:00.000Z',
+                  schemaVersion: '1.0',
+                  eventCount: 1,
+                },
+              }),
+            );
+          }
+          if (url.includes('/participants?fixtureId=7')) {
+            return Promise.resolve(participatingPlayers());
+          }
+          if (url.endsWith('/fixtures/7/statistics')) {
+            statisticsRequests += 1;
+            return Promise.resolve(fixtureStatistics(4));
+          }
+          if (url.endsWith(`/submissions/events/${validEvents[0]!.eventId}`)) {
+            return Promise.resolve(response(status, body));
+          }
+          throw new Error(`Unexpected request: ${url}`);
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderSubmissionPage();
+      await selectTechnicalJson();
+      fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
+        target: { value: JSON.stringify(validEvents) },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+      const relevantInput = await screen.findByLabelText(inputLabel);
+      fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+
+      expect(await screen.findByRole('heading', { name: 'Correction rejected' })).toHaveFocus();
+      expect(relevantInput).toHaveAttribute('aria-invalid', 'true');
+      expect(relevantInput).toHaveAttribute('aria-describedby', expect.stringContaining('error'));
+      expect(screen.getAllByText(errorText).length).toBeGreaterThan(0);
+      expect(statisticsRequests).toBe(1);
+    },
+  );
+
+  it('withdraws correction actions when backend scope is denied', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.endsWith('/submissions') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(201, {
+            data: {
+              submissionId: '300',
+              fixtureId: '7',
+              submitterId: '17',
+              status: 'accepted',
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              schemaVersion: '1.0',
+              eventCount: 1,
+            },
+          }),
+        );
+      }
+      if (url.includes('/participants?fixtureId=7')) {
+        return Promise.resolve(participatingPlayers());
+      }
+      if (url.endsWith('/fixtures/7/statistics')) {
+        return Promise.resolve(fixtureStatistics(4));
+      }
+      if (url.endsWith(`/submissions/events/${validEvents[0]!.eventId}`)) {
+        return Promise.resolve(
+          response(403, { error: { code: 'FORBIDDEN', message: 'Forbidden.' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
+      target: { value: JSON.stringify(validEvents) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save correction' }));
+
+    expect(await screen.findByRole('heading', { name: 'Correction access denied' })).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Save correction' })).not.toBeInTheDocument();
+    expect(screen.getByText(/accepted event was not changed/i)).toBeInTheDocument();
   });
 
   it('shows event-specific and field-specific validation results', async () => {
