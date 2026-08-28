@@ -2,6 +2,7 @@ import type {
   ApiErrorDetail,
   CurrentUserProfile,
   Fixture,
+  SubmissionEvent,
   SubmissionResponse,
 } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
@@ -10,6 +11,7 @@ import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
+import { CorrectionWorkspace } from './CorrectionWorkspace';
 import { listScopedFixtures, SubmissionInputError, submitEvents } from './submission-api';
 
 const EMPTY_EVENTS = '[]';
@@ -27,7 +29,12 @@ type AccessState =
 type ResultState =
   | { kind: 'idle' }
   | { kind: 'submitting' }
-  | { kind: 'accepted'; response: SubmissionResponse }
+  | {
+      kind: 'accepted';
+      response: SubmissionResponse;
+      events: SubmissionEvent[];
+      fixture: Fixture;
+    }
   | { kind: 'rejected'; message: string; details: ApiErrorDetail[] }
   | { kind: 'error'; message: string };
 
@@ -132,8 +139,17 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
     setResult({ kind: 'submitting' });
 
     try {
-      const response = await submitEvents(client, fixtureId, eventJson);
-      setResult({ kind: 'accepted', response });
+      const accepted = await submitEvents(client, fixtureId, eventJson);
+      const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
+      if (!fixture) {
+        throw new SubmissionInputError('Select an available fixture before submitting.');
+      }
+      setResult({
+        kind: 'accepted',
+        response: accepted.response,
+        events: accepted.events,
+        fixture,
+      });
     } catch (error) {
       if (error instanceof SubmissionInputError) {
         setResult({ kind: 'rejected', message: error.message, details: [] });
@@ -173,104 +189,113 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
     result.kind === 'rejected' ? 'submission-validation-results' : undefined;
 
   return (
-    <form className="submission-form" onSubmit={handleSubmit}>
-      <div className="submission-field">
-        <label htmlFor="submission-fixture">Fixture</label>
-        <select
-          id="submission-fixture"
-          value={fixtureId}
-          onChange={(event) => {
-            setFixtureId(event.target.value);
-            resetResult();
-          }}
+    <>
+      <form className="submission-form" onSubmit={handleSubmit}>
+        <div className="submission-field">
+          <label htmlFor="submission-fixture">Fixture</label>
+          <select
+            id="submission-fixture"
+            value={fixtureId}
+            onChange={(event) => {
+              setFixtureId(event.target.value);
+              resetResult();
+            }}
+            disabled={result.kind === 'submitting'}
+          >
+            {fixtures.map((fixture) => (
+              <option key={fixture.fixtureId} value={fixture.fixtureId}>
+                {formatFixtureOption(fixture)}
+              </option>
+            ))}
+          </select>
+          <p className="field-help">
+            Only fixtures in your server-returned competition scope appear.
+          </p>
+        </div>
+
+        <div className="submission-field">
+          <label htmlFor="submission-events">Delivery events JSON</label>
+          <p id="submission-events-help" className="field-help">
+            Paste the <code>events</code> array for Basic schema 1.0. Fixture and schema version are
+            added automatically. Final statistic totals are derived by the platform and are not
+            accepted here.
+          </p>
+          <textarea
+            id="submission-events"
+            value={eventJson}
+            onChange={(event) => {
+              setEventJson(event.target.value);
+              resetResult();
+            }}
+            aria-describedby={
+              ['submission-events-help', resultDescriptionId].filter(Boolean).join(' ') || undefined
+            }
+            aria-invalid={result.kind === 'rejected'}
+            disabled={result.kind === 'submitting'}
+            spellCheck={false}
+            rows={18}
+          />
+        </div>
+
+        <button
+          className="button button--primary"
+          type="submit"
           disabled={result.kind === 'submitting'}
         >
-          {fixtures.map((fixture) => (
-            <option key={fixture.fixtureId} value={fixture.fixtureId}>
-              {formatFixtureOption(fixture)}
-            </option>
-          ))}
-        </select>
-        <p className="field-help">
-          Only fixtures in your server-returned competition scope appear.
-        </p>
-      </div>
+          {result.kind === 'submitting' ? 'Submitting events…' : 'Submit events'}
+        </button>
 
-      <div className="submission-field">
-        <label htmlFor="submission-events">Delivery events JSON</label>
-        <p id="submission-events-help" className="field-help">
-          Paste the <code>events</code> array for Basic schema 1.0. Fixture and schema version are
-          added automatically. Final statistic totals are derived by the platform and are not
-          accepted here.
-        </p>
-        <textarea
-          id="submission-events"
-          value={eventJson}
-          onChange={(event) => {
-            setEventJson(event.target.value);
-            resetResult();
-          }}
-          aria-describedby={
-            ['submission-events-help', resultDescriptionId].filter(Boolean).join(' ') || undefined
-          }
-          aria-invalid={result.kind === 'rejected'}
-          disabled={result.kind === 'submitting'}
-          spellCheck={false}
-          rows={18}
-        />
-      </div>
-
-      <button
-        className="button button--primary"
-        type="submit"
-        disabled={result.kind === 'submitting'}
-      >
-        {result.kind === 'submitting' ? 'Submitting events…' : 'Submit events'}
-      </button>
-
-      {result.kind === 'submitting' ? (
-        <p className="submission-progress" role="status">
-          Validating and storing the submission…
-        </p>
-      ) : null}
-
-      <div id={resultDescriptionId} ref={resultRegionRef}>
-        {result.kind === 'accepted' ? (
-          <div className="submission-result submission-result--success" role="status">
-            <h2 tabIndex={-1} data-result-heading>
-              Submission accepted
-            </h2>
-            <p>
-              The backend accepted and stored {result.response.data.eventCount}{' '}
-              {result.response.data.eventCount === 1 ? 'event' : 'events'}.
-            </p>
-            <dl className="submission-reference">
-              <div>
-                <dt>Submission reference</dt>
-                <dd>{result.response.data.submissionId}</dd>
-              </div>
-              <div>
-                <dt>Fixture</dt>
-                <dd>{result.response.data.fixtureId}</dd>
-              </div>
-              <div>
-                <dt>Received</dt>
-                <dd>{new Date(result.response.data.receivedAt).toLocaleString()}</dd>
-              </div>
-            </dl>
-          </div>
-        ) : result.kind === 'rejected' ? (
-          <ValidationResults message={result.message} details={result.details} />
-        ) : result.kind === 'error' ? (
-          <div className="submission-result submission-result--error" role="alert">
-            <h2 tabIndex={-1} data-result-heading>
-              Submission failed
-            </h2>
-            <p>{result.message}</p>
-          </div>
+        {result.kind === 'submitting' ? (
+          <p className="submission-progress" role="status">
+            Validating and storing the submission…
+          </p>
         ) : null}
-      </div>
-    </form>
+
+        <div id={resultDescriptionId} ref={resultRegionRef}>
+          {result.kind === 'accepted' ? (
+            <div className="submission-result submission-result--success" role="status">
+              <h2 tabIndex={-1} data-result-heading>
+                Submission accepted
+              </h2>
+              <p>
+                The backend accepted and stored {result.response.data.eventCount}{' '}
+                {result.response.data.eventCount === 1 ? 'event' : 'events'}.
+              </p>
+              <dl className="submission-reference">
+                <div>
+                  <dt>Submission reference</dt>
+                  <dd>{result.response.data.submissionId}</dd>
+                </div>
+                <div>
+                  <dt>Fixture</dt>
+                  <dd>{result.response.data.fixtureId}</dd>
+                </div>
+                <div>
+                  <dt>Received</dt>
+                  <dd>{new Date(result.response.data.receivedAt).toLocaleString()}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : result.kind === 'rejected' ? (
+            <ValidationResults message={result.message} details={result.details} />
+          ) : result.kind === 'error' ? (
+            <div className="submission-result submission-result--error" role="alert">
+              <h2 tabIndex={-1} data-result-heading>
+                Submission failed
+              </h2>
+              <p>{result.message}</p>
+            </div>
+          ) : null}
+        </div>
+      </form>
+      {result.kind === 'accepted' ? (
+        <CorrectionWorkspace
+          fixture={result.fixture}
+          initialEvents={result.events}
+          key={result.response.data.submissionId}
+        />
+      ) : null}
+    </>
   );
 }
 
