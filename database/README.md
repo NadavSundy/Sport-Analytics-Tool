@@ -159,6 +159,11 @@ is likewise not a grant. Approval must validate it and write the matching
 `submitter_competition_scope` row before submission is authorised. Current transition behaviour is
 documented by the relevant migrations and backend access-control documentation.
 
+`submitter_access_history` retains every new request, approval, rejection, and revocation. A
+revoked viewer may request access again, but the history remains available to flag that prior
+revocation to administrators. Pending requests and currently authorised submitters cannot create
+duplicates.
+
 ## Related documentation
 
 - [Database overview](../docs/database/overview.md)
@@ -171,5 +176,5 @@ documented by the relevant migrations and backend access-control documentation.
 ## AI Declaration
 
 The preceding document was reviewed, expanded and edited with the assistance of
-ChatGPT-Web[GPT-5.6 Sol]. The issue #255 requested-competition persistence behavior was documented
-with the assistance of Codex[GPT-5].
+ChatGPT-Web[GPT-5.6 Sol]. The issue #255 requested-competition persistence behavior and issue #256
+access-history lifecycle were documented with the assistance of Codex[GPT-5].

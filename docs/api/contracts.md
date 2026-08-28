@@ -108,13 +108,16 @@ Revocation always sends an empty scope:
 Approval is valid only for a `pending` viewer and fails closed when the request lacks a stored
 competition or the body names a different scope. Scope replacement and revocation are valid only
 for an existing `approved` submitter; scope replacement may still grant multiple competitions.
-Revocation removes the `submitter` role and all scopes while
-retaining the historical `approved` request decision. Rejection applies only to a `pending` viewer,
-keeps the `viewer` role, writes `rejected`, and removes all scopes. A rejected viewer may request
-access again.
+Revocation removes the `submitter` role and all scopes while retaining the historical `approved`
+request decision. Rejection applies only to a `pending` viewer, keeps the `viewer` role, writes
+`rejected`, and removes all scopes. Rejected and revoked viewers may each request access again;
+pending requests and currently authorised submitters still receive `409`. Every request, approval,
+rejection, and revocation is retained in immutable submitter-access history. Administrator user
+responses expose `previouslyRevoked` so a pending re-request is visibly flagged for review.
 
 The returned user includes the effective role, compatibility approval state, named requested
-competition, named granted competition scopes, and the latest submitter-access change actor/time.
+competition, named granted competition scopes, prior-revocation flag, and the latest
+submitter-access change actor/time.
 `403` means the caller is not an
 administrator; malformed or nonexistent scopes return `422`; protected, self-targeted, or invalid
 lifecycle changes return `409`. Invalid lifecycle changes use the stable
@@ -141,5 +144,5 @@ Errors
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
-ChatGPT-Web[GPT-5.6 Sol]. The competition-scoped submitter access contract was updated with the
-assistance of Codex[GPT-5].
+ChatGPT-Web[GPT-5.6 Sol]. The competition-scoped submitter access contract and issue #256
+re-request lifecycle were updated with the assistance of Codex[GPT-5].

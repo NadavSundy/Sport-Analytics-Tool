@@ -21,6 +21,7 @@ function repository(): AdminRepository {
       updatedAt: '2026-08-16T12:00:00.000Z',
       submitterAccessUpdatedAt: '2026-08-16T12:00:00.000Z',
       submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
+      previouslyRevoked: false,
     }),
     rejectSubmitterAccessRequest: vi.fn().mockResolvedValue({
       id: '42',
@@ -33,6 +34,7 @@ function repository(): AdminRepository {
       updatedAt: '2026-08-16T12:00:00.000Z',
       submitterAccessUpdatedAt: '2026-08-16T12:00:00.000Z',
       submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
+      previouslyRevoked: false,
     }),
   };
 }

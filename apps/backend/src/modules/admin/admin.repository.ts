@@ -31,6 +31,7 @@ interface AdministratorUserRow {
   submitterAccessUpdatedAt: Date | null;
   submitterAccessUpdatedById: string | null;
   submitterAccessUpdatedByDisplayName: string | null;
+  previouslyRevoked: boolean;
 }
 
 interface TargetAccountRow {
@@ -80,7 +81,13 @@ const administratorUserSelect = `
     managed.updated_at AS "updatedAt",
     managed.submitter_access_updated_at AS "submitterAccessUpdatedAt",
     access_administrator.app_user_id::text AS "submitterAccessUpdatedById",
-    access_administrator.display_name AS "submitterAccessUpdatedByDisplayName"
+    access_administrator.display_name AS "submitterAccessUpdatedByDisplayName",
+    EXISTS (
+      SELECT 1
+      FROM submitter_access_history history
+      WHERE history.app_user_id = managed.app_user_id
+        AND history.action = 'revoked'
+    ) AS "previouslyRevoked"
   FROM app_user managed
   LEFT JOIN submitter_competition_scope scope
     ON scope.app_user_id = managed.app_user_id
@@ -134,6 +141,7 @@ function mapAdministratorUser(row: AdministratorUserRow): AdministratorManagedUs
           displayName: row.submitterAccessUpdatedByDisplayName,
         }
       : null,
+    previouslyRevoked: row.previouslyRevoked,
   };
 }
 
@@ -317,6 +325,24 @@ async function applySubmitterAccessTransition(
         administratorAccountId,
       ],
     );
+
+    if (transition === 'approve' || transition === 'reject' || transition === 'revoke') {
+      await executeQuery(
+        client,
+        `
+          INSERT INTO submitter_access_history (
+            app_user_id, action, competition_id, administrator_app_user_id
+          )
+          VALUES ($1, $2, $3, $4)
+        `,
+        [
+          targetAccountId,
+          transition === 'approve' ? 'approved' : transition === 'reject' ? 'rejected' : 'revoked',
+          target.requestedCompetitionId,
+          administratorAccountId,
+        ],
+      );
+    }
 
     await executeQuery(client, 'DELETE FROM submitter_competition_scope WHERE app_user_id = $1', [
       targetAccountId,
