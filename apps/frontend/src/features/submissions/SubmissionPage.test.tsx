@@ -105,6 +105,10 @@ function renderSubmissionPage(session: Session | null = createSession()) {
   );
 }
 
+async function selectTechnicalJson() {
+  fireEvent.click(await screen.findByRole('radio', { name: 'Paste technical JSON' }));
+}
+
 function useSystemTheme() {
   vi.stubGlobal(
     'matchMedia',
@@ -239,6 +243,7 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
 
     const selector = await screen.findByLabelText('Fixture');
     expect(within(selector).getAllByRole('option')).toHaveLength(2);
@@ -271,13 +276,14 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
 
     fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
       target: { value: JSON.stringify(validEvents) },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
 
-    expect(screen.getByRole('button', { name: 'Submitting events…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent('Validating and storing');
 
     await act(async () => {
@@ -348,6 +354,7 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, { target: { value: JSON.stringify(validEvents) } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
@@ -381,6 +388,7 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, { target: { value: '{' } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
@@ -395,5 +403,91 @@ describe('role-gated event submission page', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Submission failed' })).toHaveFocus(),
     );
+  });
+
+  it('uploads a JSON file and shows the stored submission reference', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.endsWith('/submissions/uploads') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(201, {
+            data: {
+              submissionId: '301',
+              fixtureId: '7',
+              submitterId: '17',
+              status: 'accepted',
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              schemaVersion: '1.0',
+              eventCount: 1,
+            },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+
+    const input = await screen.findByLabelText('Event data file');
+    const file = new File(
+      [JSON.stringify({ fixtureId: '7', schemaVersion: '1.0', events: validEvents })],
+      'events.json',
+      { type: 'application/json' },
+    );
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload and submit file' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission accepted' })).toHaveFocus();
+    expect(screen.getByText('301')).toBeInTheDocument();
+    expect(screen.getByText(/Example Competition/)).toBeInTheDocument();
+    const uploadCall = fetchMock.mock.calls.find(([request]) =>
+      String(request).endsWith('/submissions/uploads'),
+    );
+    expect(uploadCall?.[1]).toMatchObject({ method: 'POST' });
+    expect((uploadCall?.[1] as RequestInit).body).toBeInstanceOf(FormData);
+  });
+
+  it('shows file and row validation errors clearly', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      return Promise.resolve(
+        response(422, {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'The uploaded submission file is invalid.',
+            details: [
+              {
+                code: 'INVALID_FILE_ROW',
+                message: 'CSV row 2 is invalid.',
+                field: 'file',
+                eventIndex: 0,
+              },
+            ],
+          },
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+    const input = await screen.findByLabelText('Event data file');
+    fireEvent.change(input, {
+      target: { files: [new File(['invalid'], 'events.csv', { type: 'text/csv' })] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload and submit file' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(screen.getByText('Row 1 — file')).toBeInTheDocument();
+    expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
   });
 });
