@@ -26,7 +26,11 @@ The competition-scoped request migration adds nullable
 historical pending rows; those rows fail closed during approval and can be rejected before the user
 submits a corrected request.
 
+The submitter-access history migration creates an immutable record of requests, approvals,
+rejections, and revocations. It backfills the identifiable currently revoked accounts so a later
+re-request can remain visibly flagged for administrators.
+
 ## AI Declaration
 
-The issue #255 competition-scoped request migration was documented with the assistance of
-Codex[GPT-5].
+The issue #255 competition-scoped request migration and issue #256 history migration were
+documented with the assistance of Codex[GPT-5].

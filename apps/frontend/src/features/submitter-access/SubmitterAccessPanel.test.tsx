@@ -295,15 +295,20 @@ describe('submitter access request and status interface', () => {
     );
   });
 
-  it('does not expose submission access from the deprecated approval state alone', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('approved')));
+  it('permits a revoked viewer to request access again without restoring submission access', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('approved'))
+        .mockResolvedValueOnce(competitionsResponse()),
+    );
 
     renderAccountPage();
 
-    expect(
-      await screen.findByText(/previously approved submitter access has been revoked/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/previous submitter access was revoked/i)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Submit events' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Request submitter access' })).toBeEnabled();
   });
 
   it('explains rejected access and permits a new request', async () => {

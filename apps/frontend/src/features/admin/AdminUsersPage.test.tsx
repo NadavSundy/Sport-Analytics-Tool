@@ -80,6 +80,7 @@ function managedUser(
     requestedCompetition: { competitionId: string; name: string } | null;
     competitionScopes: { competitionId: string; name: string }[];
     disabled: boolean;
+    previouslyRevoked: boolean;
   }> = {},
 ) {
   return {
@@ -90,6 +91,7 @@ function managedUser(
     requestedCompetition: { competitionId: '7', name: 'Premier T20' },
     competitionScopes: [],
     disabled: false,
+    previouslyRevoked: false,
     updatedAt: accessTime,
     submitterAccessUpdatedAt: null,
     submitterAccessUpdatedBy: null,
@@ -214,6 +216,22 @@ describe('administrator user management page', () => {
     expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(card.getByRole('button', { name: 'Approve submitter' })).toBeEnabled();
     expect(card.getByRole('button', { name: 'Reject request' })).toBeEnabled();
+  });
+
+  it('visibly flags a pending request from a previously revoked user', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser())
+        .mockResolvedValueOnce(managementResponse(managedUser({ previouslyRevoked: true }))),
+    );
+
+    renderPage();
+
+    const card = within(await userCard());
+    expect(card.getByText('Previously revoked')).toBeInTheDocument();
+    expect(card.getByText(/this user was previously revoked/i)).toBeInTheDocument();
   });
 
   it('does not offer approval or scope controls before a submitter request is made', async () => {

@@ -193,6 +193,12 @@ function ManagedUserCard({
           <dt>Requested competition</dt>
           <dd>{user.requestedCompetition?.name ?? 'None requested'}</dd>
         </div>
+        {user.previouslyRevoked ? (
+          <div className="admin-user-facts__warning">
+            <dt>Access history</dt>
+            <dd>Previously revoked</dd>
+          </div>
+        ) : null}
         <div>
           <dt>Account state</dt>
           <dd>{user.disabled ? 'Disabled' : 'Active'}</dd>
@@ -208,7 +214,8 @@ function ManagedUserCard({
       {hasPendingRequest && isManageable ? (
         <p className="admin-user-card__request-state" role="status">
           <strong>Submitter access requested.</strong> This request is awaiting administrator
-          review. Approval grants the requested competition; rejection does not assign any scope.
+          review. {user.previouslyRevoked ? 'This user was previously revoked. ' : ''}Approval
+          grants the requested competition; rejection does not assign any scope.
         </p>
       ) : null}
 

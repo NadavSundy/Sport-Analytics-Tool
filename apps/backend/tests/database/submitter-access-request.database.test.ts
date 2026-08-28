@@ -36,6 +36,7 @@ describe.sequential('submitter access request database integration', () => {
     client: PoolClient,
     suffix: string,
     approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected',
+    role: 'viewer' | 'submitter' = 'viewer',
   ): Promise<string> {
     const result = await executeQuery<{ accountId: string }>(
       client,
@@ -43,12 +44,13 @@ describe.sequential('submitter access request database integration', () => {
         INSERT INTO app_user (
           auth_provider,
           auth_subject,
-          submitter_approval_state
+          submitter_approval_state,
+          application_role
         )
-        VALUES ('test', $1, $2)
+        VALUES ('test', $1, $2, $3)
         RETURNING app_user_id::text AS "accountId"
       `,
-      [`${sourcePrefix}-${suffix}`, approvalState],
+      [`${sourcePrefix}-${suffix}`, approvalState, role],
     );
 
     return result.rows[0].accountId;
@@ -156,7 +158,7 @@ describe.sequential('submitter access request database integration', () => {
 
   test('does not change an already-approved submitter', async () => {
     await withRolledBackTransaction(async (client) => {
-      const accountId = await insertAccount(client, 'approved-request', 'approved');
+      const accountId = await insertAccount(client, 'approved-request', 'approved', 'submitter');
       const competitionId = await insertCompetition(client, 'approved-request-competition');
       const repository = createSubmitterAccessRepository(client);
 
@@ -175,6 +177,34 @@ describe.sequential('submitter access request database integration', () => {
       );
 
       expect(persisted.rows[0].approvalState).toBe('approved');
+    });
+  });
+
+  test('allows a revoked account to request access again and retains the previous revocation', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const accountId = await insertAccount(client, 'revoked-request', 'approved');
+      const competitionId = await insertCompetition(client, 'revoked-request-competition');
+      const repository = createSubmitterAccessRepository(client);
+
+      await executeQuery(
+        client,
+        `INSERT INTO submitter_access_history (app_user_id, action, competition_id)
+         VALUES ($1, 'revoked', $2)`,
+        [accountId, competitionId],
+      );
+
+      await expect(repository.requestAccess(accountId, competitionId)).resolves.toMatchObject({
+        accountId,
+        approvalState: 'pending',
+      });
+
+      const history = await executeQuery<{ action: string }>(
+        client,
+        `SELECT action FROM submitter_access_history
+         WHERE app_user_id = $1 ORDER BY submitter_access_history_id`,
+        [accountId],
+      );
+      expect(history.rows).toEqual([{ action: 'revoked' }, { action: 'requested' }]);
     });
   });
 
