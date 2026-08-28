@@ -25,7 +25,9 @@ function hasSubmissionRole(profile: CurrentUserProfile): boolean {
 function canRequestAccess(profile: CurrentUserProfile): boolean {
   return (
     profile.role === 'viewer' &&
-    (profile.approvalState === 'not_requested' || profile.approvalState === 'rejected')
+    (profile.approvalState === 'not_requested' ||
+      profile.approvalState === 'rejected' ||
+      profile.approvalState === 'approved')
   );
 }
 
@@ -246,17 +248,14 @@ export function SubmitterAccessPanel() {
           is awaiting administrator review. You cannot submit another request while this one is
           pending.
         </p>
-      ) : profileState.profile.approvalState === 'approved' ? (
-        <p className="submitter-access-panel__message" role="status">
-          Your previously approved submitter access has been revoked. Your account no longer permits
-          submissions.
-        </p>
       ) : (
         <div className="submitter-access-panel__message">
           <p>
             {profileState.profile.approvalState === 'rejected'
               ? 'Your previous request was declined. You can send a new request for review.'
-              : 'Request permission to contribute cricket delivery-event data for one competition. An administrator will review the requested competition scope.'}
+              : profileState.profile.approvalState === 'approved'
+                ? 'Your previous submitter access was revoked. You can send a new request for review.'
+                : 'Request permission to contribute cricket delivery-event data for one competition. An administrator will review the requested competition scope.'}
           </p>
           {profileState.competitions.length > 0 ? (
             <form

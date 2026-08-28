@@ -1365,6 +1365,7 @@ components:
         - updatedAt
         - submitterAccessUpdatedAt
         - submitterAccessUpdatedBy
+        - previouslyRevoked
       properties:
         id:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -1412,6 +1413,9 @@ components:
           oneOf:
             - $ref: '#/components/schemas/AdministratorAuditActor'
             - type: 'null'
+        previouslyRevoked:
+          type: boolean
+          description: Whether this user has a retained prior submitter-access revocation.
 
     AdministratorUserManagementResponse:
       type: object

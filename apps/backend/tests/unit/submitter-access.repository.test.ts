@@ -93,6 +93,28 @@ describe('submitter access repository', () => {
     });
   });
 
+  test('allows a revoked viewer to request access again', async () => {
+    const { executor, query } = createExecutor([
+      {
+        accountId: '42',
+        approvalState: 'pending',
+        disabledAt: null,
+        requestedCompetitionId: '7',
+        requestedCompetitionName: 'Premier T20',
+      },
+    ]);
+
+    const repository = createSubmitterAccessRepository(executor);
+
+    await expect(repository.requestAccess('42', '7')).resolves.toMatchObject({
+      accountId: '42',
+      approvalState: 'pending',
+    });
+    expect(query.mock.calls[0]?.[0]).toContain("account.application_role = 'viewer'");
+    expect(query.mock.calls[0]?.[0]).toContain("account.submitter_approval_state = 'approved'");
+    expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO submitter_access_history');
+  });
+
   test('fails closed for an unsupported persisted approval state', async () => {
     const { executor } = createExecutor(
       [],

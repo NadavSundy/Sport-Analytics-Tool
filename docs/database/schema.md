@@ -144,7 +144,9 @@ submission capability, while `submitter_competition_scope` remains separate and 
 or admin to a specific competition. The legacy `submitter_approval_state` column is retained as
 deprecated request-workflow data and is not used for submission authorization. Authentication
 never creates a privileged role or competition grant. Administrator approval, scope replacement,
-revocation, and access-audit attribution are written in one transaction.
+revocation, and access-audit attribution are written in one transaction. Immutable
+`submitter_access_history` rows retain each request, approval, rejection, and revocation, including
+when a rejected or revoked viewer later makes a new request.
 
 Account deletion does not remove this row. A deletion state machine records the external Auth and
 local finalisation stages; the subject becomes a random tombstone, the display name is cleared, and

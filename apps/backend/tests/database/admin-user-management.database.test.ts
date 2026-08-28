@@ -81,7 +81,7 @@ describe.sequential('administrator user-management database integration', () => 
     }
   });
 
-  test('atomically approves, re-scopes, and revokes a submitter with an administrator audit', async () => {
+  test('atomically approves, revokes, and re-requests access while retaining revocation history', async () => {
     const accounts = await executeQuery<{ accountId: string; subject: string }>(
       databasePool(),
       `
@@ -208,16 +208,30 @@ describe.sequential('administrator user-management database integration', () => 
       approvalState: 'approved',
       competitionScopes: [],
       submitterAccessUpdatedBy: { id: administratorId },
+      previouslyRevoked: true,
     });
 
-    const afterRevocation = await loadPersistedAccess(contributorId);
+    await expect(
+      requestRepository.requestAccess(contributorId, premierScope.competitionId),
+    ).resolves.toMatchObject({ approvalState: 'pending' });
+    await expect(repository.listUserManagementData()).resolves.toMatchObject({
+      users: expect.arrayContaining([
+        expect.objectContaining({
+          id: contributorId,
+          approvalState: 'pending',
+          previouslyRevoked: true,
+        }),
+      ]),
+    });
+
+    const afterRerequest = await loadPersistedAccess(contributorId);
     await expect(
       repository.updateSubmitterAccess(contributorId, administratorId, {
         approved: false,
         competitionIds: [],
       }),
     ).rejects.toMatchObject({ code: 'INVALID_SUBMITTER_ACCESS_TRANSITION' });
-    await expect(loadPersistedAccess(contributorId)).resolves.toEqual(afterRevocation);
+    await expect(loadPersistedAccess(contributorId)).resolves.toEqual(afterRerequest);
   });
 
   test('rejects invalid approvals without changing persisted access', async () => {

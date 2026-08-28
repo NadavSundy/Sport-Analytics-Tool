@@ -44,7 +44,13 @@ export function createSubmitterAccessRepository(
               submitter_requested_competition_id = requested_competition.competition_id
             FROM requested_competition
             WHERE account.app_user_id = $1
-              AND account.submitter_approval_state IN ('not_requested', 'rejected')
+              AND (
+                account.submitter_approval_state IN ('not_requested', 'rejected')
+                OR (
+                  account.application_role = 'viewer'
+                  AND account.submitter_approval_state = 'approved'
+                )
+              )
               AND account.disabled_at IS NULL
             RETURNING
               account.app_user_id::text AS "accountId",
@@ -52,6 +58,11 @@ export function createSubmitterAccessRepository(
               account.disabled_at AS "disabledAt",
               requested_competition.competition_id::text AS "requestedCompetitionId",
               requested_competition.name AS "requestedCompetitionName"
+          ),
+          recorded_request AS (
+            INSERT INTO submitter_access_history (app_user_id, action, competition_id)
+            SELECT "accountId"::bigint, 'requested', "requestedCompetitionId"::bigint
+            FROM updated_account
           )
           SELECT * FROM updated_account
         `,

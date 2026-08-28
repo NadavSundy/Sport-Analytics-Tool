@@ -104,6 +104,7 @@ export const administratorManagedUserSchema = z
     updatedAt: apiDateTimeSchema,
     submitterAccessUpdatedAt: apiDateTimeSchema.nullable(),
     submitterAccessUpdatedBy: administratorAuditActorSchema.nullable(),
+    previouslyRevoked: z.boolean().default(false),
   })
   .strict();
 
