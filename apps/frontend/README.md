@@ -99,9 +99,11 @@ Eligible users choose from public competitions and send that competition through
 disables the action while it is in progress, reloads `/api/v1/auth/me` after success or a stale
 conflict, displays the named pending competition, and does not offer another request while the
 persisted state is `pending` or `approved`.
-Accounts with the `submitter` or `admin` role can continue to the scoped event-submission
-interface. The deprecated approval state alone never exposes the submission interface. The backend
-remains the authorisation boundary for every request and submission.
+Accounts with the `submitter` or `admin` role can continue to the event-submission interface. It
+labels an ordinary submitter's assigned competition scope, while it labels administrator access as
+unrestricted and lists eligible fixtures from every competition. The deprecated approval state alone
+never exposes the submission interface. The backend remains the authorisation boundary for every
+request and submission.
 
 ## Accepted event correction
 
@@ -292,3 +294,4 @@ The public player overview behavior was documented with the assistance of Codex[
 The issue #255 competition selection and read-only approval scope were documented with the
 assistance of Codex[GPT-5].
 The accepted-event correction workflow was documented with the assistance of Codex[GPT-5.6 Sol].
+The Issue #311 administrator submission interface was documented with the assistance of Codex[GPT-5].

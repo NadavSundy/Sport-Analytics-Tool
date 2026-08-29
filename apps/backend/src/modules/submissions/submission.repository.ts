@@ -101,14 +101,20 @@ async function assertSubmissionAuthorized(
       SELECT EXISTS (
         SELECT 1
         FROM app_user account
-        JOIN submitter_competition_scope scope
-          ON scope.app_user_id = account.app_user_id
         JOIN fixture
-          ON fixture.competition_id = scope.competition_id
+          ON fixture.fixture_id = $2
         WHERE account.app_user_id = $1
           AND account.application_role IN ('submitter', 'admin')
           AND account.disabled_at IS NULL
-          AND fixture.fixture_id = $2
+          AND (
+            account.application_role = 'admin'
+            OR EXISTS (
+              SELECT 1
+              FROM submitter_competition_scope scope
+              WHERE scope.app_user_id = account.app_user_id
+                AND scope.competition_id = fixture.competition_id
+            )
+          )
       ) AS authorized
     `,
     [submitterId, fixtureId],

@@ -220,13 +220,13 @@ describe.sequential('direct submission database integration', () => {
     };
   }
 
-  function app() {
+  function app(overrides: { role?: 'submitter' | 'admin'; competitionIds?: string[] } = {}) {
     const current = testRecords();
     const account = createTestAccount({
       accountId: current.accountId,
-      role: 'submitter',
+      role: overrides.role ?? 'submitter',
       approvalState: 'approved',
-      competitionIds: [current.competitionId],
+      competitionIds: overrides.competitionIds ?? [current.competitionId],
     });
     const synchronizeAccount: SynchronizeAccount = async () => account;
     const service = createSubmissionService(createSubmissionRepository(databasePool()));
@@ -288,6 +288,50 @@ describe.sequential('direct submission database integration', () => {
       [unauthorizedPayload.events[0]!.eventId],
     );
     expect(stored.rows[0].count).toBe(0);
+  });
+
+  test('allows an administrator without a persisted competition scope to submit', async () => {
+    const current = testRecords();
+    const administratorPayload = payload([
+      {
+        eventId: '123e4567-e89b-42d3-a456-426614174098',
+        sequenceNumber: 2,
+        positionInOver: 1,
+      },
+    ]);
+
+    await executeQuery(
+      databasePool(),
+      "UPDATE app_user SET application_role = 'admin' WHERE app_user_id = $1",
+      [current.accountId],
+    );
+    await executeQuery(
+      databasePool(),
+      'DELETE FROM submitter_competition_scope WHERE app_user_id = $1',
+      [current.accountId],
+    );
+
+    try {
+      await request(app({ role: 'admin', competitionIds: [] }))
+        .post('/api/v1/submissions')
+        .set('Authorization', 'Bearer database-test-token')
+        .send(administratorPayload)
+        .expect(201);
+    } finally {
+      await executeQuery(
+        databasePool(),
+        "UPDATE app_user SET application_role = 'submitter' WHERE app_user_id = $1",
+        [current.accountId],
+      );
+      await executeQuery(
+        databasePool(),
+        `
+          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+          VALUES ($1, $2)
+        `,
+        [current.accountId, current.competitionId],
+      );
+    }
   });
 
   test('stores a valid submission and its ordered event provenance atomically', async () => {

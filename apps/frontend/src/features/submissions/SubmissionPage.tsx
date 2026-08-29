@@ -13,6 +13,7 @@ import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
 import {
+  listAllFixtures,
   listScopedFixtures,
   SubmissionInputError,
   submitEvents,
@@ -29,7 +30,7 @@ type AccessState =
       role: CurrentUserProfile['role'];
       approvalState: CurrentUserProfile['approvalState'];
     }
-  | { kind: 'permitted'; fixtures: Fixture[] };
+  | { kind: 'permitted'; fixtures: Fixture[]; role: 'submitter' | 'admin' };
 
 type ResultState =
   | { kind: 'idle' }
@@ -137,7 +138,7 @@ function ValidationResults({
   );
 }
 
-function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
+function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submitter' | 'admin' }) {
   const client = useAuthenticatedApiClient();
 
   const [fixtureId, setFixtureId] = useState(fixtures[0]?.fixtureId ?? '');
@@ -291,11 +292,20 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
         </fieldset>
 
         <section className="submission-scope" aria-labelledby="submission-scope-title">
-          <h2 id="submission-scope-title">Your authorised competitions</h2>
-          <p>
-            {competitions.join(', ')}. The backend checks this scope again when it receives your
-            submission.
-          </p>
+          <h2 id="submission-scope-title">
+            {role === 'admin' ? 'Administrator submission access' : 'Your authorised competitions'}
+          </h2>
+          {role === 'admin' ? (
+            <p>
+              You may submit event data for any competition. The backend confirms your administrator
+              role when it receives your submission.
+            </p>
+          ) : (
+            <p>
+              {competitions.join(', ')}. The backend checks this scope again when it receives your
+              submission.
+            </p>
+          )}
         </section>
 
         {mode === 'file' ? (
@@ -358,7 +368,9 @@ function SubmissionForm({ fixtures }: { fixtures: Fixture[] }) {
               </select>
 
               <p className="field-help">
-                Only fixtures in your server-returned competition scope appear.
+                {role === 'admin'
+                  ? 'Eligible fixtures from every competition appear for administrators.'
+                  : 'Only fixtures in your server-returned competition scope appear.'}
               </p>
             </div>
 
@@ -496,11 +508,15 @@ export function SubmissionPage() {
           return;
         }
 
-        const fixtures = await listScopedFixtures(profile.competitionIds, controller.signal);
+        const fixtures =
+          profile.role === 'admin'
+            ? await listAllFixtures(controller.signal)
+            : await listScopedFixtures(profile.competitionIds, controller.signal);
 
         setAccessState({
           kind: 'permitted',
           fixtures,
+          role: profile.role,
         });
       })
       .catch((error: unknown) => {
@@ -545,7 +561,7 @@ export function SubmissionPage() {
       ) : accessState.kind === 'forbidden' ? (
         <ForbiddenState role={accessState.role} approvalState={accessState.approvalState} />
       ) : (
-        <SubmissionForm fixtures={accessState.fixtures} />
+        <SubmissionForm fixtures={accessState.fixtures} role={accessState.role} />
       )}
     </section>
   );
