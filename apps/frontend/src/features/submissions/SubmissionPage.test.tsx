@@ -300,6 +300,7 @@ describe('role-gated event submission page', () => {
   });
 
   it('lists fixtures from every competition for an administrator without scopes', async () => {
+    const unassignedFixture = { ...fixture, fixtureId: '99', competitionId: null };
     const otherCompetitionFixture = {
       ...fixture,
       fixtureId: '8',
@@ -313,7 +314,7 @@ describe('role-gated event submission page', () => {
         return Promise.resolve(currentUser('admin', 'not_requested'));
       }
       if (url.includes('/fixtures?')) {
-        return Promise.resolve(fixtures([fixture, otherCompetitionFixture]));
+        return Promise.resolve(fixtures([fixture, otherCompetitionFixture, unassignedFixture]));
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -331,6 +332,7 @@ describe('role-gated event submission page', () => {
     expect(within(selector).getAllByRole('option')).toHaveLength(2);
     expect(within(selector).getByRole('option', { name: /fixture 7/i })).toBeInTheDocument();
     expect(within(selector).getByRole('option', { name: /fixture 8/i })).toBeInTheDocument();
+    expect(within(selector).queryByRole('option', { name: /fixture 99/i })).toBeNull();
 
     const fixtureRequests = fetchMock.mock.calls
       .map(([input]) => String(input))

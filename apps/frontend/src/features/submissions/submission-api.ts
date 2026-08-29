@@ -59,11 +59,13 @@ export async function listAllFixtures(signal?: AbortSignal): Promise<Fixture[]> 
     cursor = response.pagination.nextCursor;
   } while (cursor);
 
-  return fixtures.sort(
-    (left, right) =>
-      left.startDate.localeCompare(right.startDate) ||
-      left.fixtureId.localeCompare(right.fixtureId),
-  );
+  return fixtures
+    .filter((fixture) => fixture.competitionId !== null)
+    .sort(
+      (left, right) =>
+        left.startDate.localeCompare(right.startDate) ||
+        left.fixtureId.localeCompare(right.fixtureId),
+    );
 }
 
 export async function listScopedFixtures(
