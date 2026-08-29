@@ -429,20 +429,20 @@ deployment credentials. Real secrets are never committed.
 
 ### Pipeline controls
 
-The existing Pull Request workflow uses Node.js 20, runs `npm ci`, then `npm run check`. The
-repository check verifies required files, formatting, lint, TypeScript, automated tests, and
-all workspace builds. Before deployment is considered reliable, the pipeline must also:
+The configured Pull Request workflow uses Node.js 22 and installs the JavaScript workspace reproducibly
+with `npm ci`. It runs the repository quality gate, builds the MkDocs documentation strictly
+from the documented Python dependency set, resets and migrates an isolated PostgreSQL 16 test
+database, runs database integration tests, runs Playwright browser and accessibility tests,
+and generates coverage. Before deployment is considered reliable, deployment automation must
+still:
 
-1. build MkDocs with `mkdocs build --strict`;
-2. correct the frontend/backend deployment path and workspace references so they match
-   `apps/frontend` and `apps/backend`;
-3. make deployments depend on the same green quality checks used for Pull Requests;
-4. run reviewed database migrations as an explicit, observable, and recoverable step rather
+1. make deployments depend on the same green quality checks used for Pull Requests;
+2. run reviewed database migrations as an explicit, observable, and recoverable step rather
    than on application startup;
-5. deploy immutable build output to the correct application;
-6. smoke-test frontend, API health, CORS, authentication callback, and database connectivity;
-7. record release identity and support rollback to the previous application version; and
-8. keep destructive migration changes backward-compatible across the deployment window.
+3. deploy immutable build output to the correct application;
+4. smoke-test frontend, API health, CORS, authentication callback, and database connectivity;
+5. record release identity and support rollback to the previous application version; and
+6. keep destructive migration changes backward-compatible across the deployment window.
 
 Path filters should deploy only affected units, while changes to contracts, root lockfiles,
 or shared configuration must trigger every dependent unit. Production approval gates may be
