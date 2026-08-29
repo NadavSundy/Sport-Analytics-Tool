@@ -1,8 +1,10 @@
 # Frontend features
 
 Organise user-facing functionality by feature rather than by technical file type. Current feature
-directories include `auth`, `browse`, `statistics`, `submissions`, and `submitter-access`. The
-statistics feature provides the reusable match-overview outcome, innings totals, player batting and
+directories include `auth`, `browse`, `home`, `statistics`, `submissions`, and `submitter-access`.
+The home feature keeps the no-fetch landing-page narrative, static SVG fallback and lazy procedural
+Three.js enhancement isolated from routing and general page components. The statistics feature
+provides the reusable match-overview outcome, innings totals, player batting and
 bowling figures, and accepted-event calculation traces. Player match-history cards reuse those
 batting and bowling metric components without calculating aggregate player statistics. The
 submitter-access feature provides persisted account status, request submission, stale-state refresh,
@@ -22,3 +24,4 @@ The embedded match-overview description was updated with the assistance of Codex
 The reusable player-performance description was updated with the assistance of Codex[GPT-5.6 Sol].
 The accepted-event correction feature description was updated with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #314 home feature description was updated with the assistance of Codex[GPT-5.6 Sol].

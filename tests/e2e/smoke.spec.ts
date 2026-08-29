@@ -6,14 +6,14 @@ test('public landing page is responsive and supports persisted keyboard theme se
   const pageErrors: string[] = [];
 
   page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
+    pageErrors.push(error.stack ?? error.message);
   });
 
   await page.goto('/');
 
   await expect(
     page.getByRole('heading', {
-      name: 'Stat’sTheGame',
+      name: 'The game, measured ball by ball.',
     }),
   ).toBeVisible();
   await expect(page.getByText('The game, measured ball by ball.').first()).toBeVisible();

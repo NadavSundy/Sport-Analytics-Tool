@@ -42,6 +42,8 @@ The frontend may communicate directly with Supabase Auth for managed sign-in and
 | `@vitejs/plugin-react`       | `^4.3.3`         | React support in Vite.                                | Connects the selected React frontend to the Vite build pipeline.                                                                                                    |
 | `@supabase/supabase-js`      | `^2.112.1`       | Managed browser authentication and session handling.  | Reuses the selected Supabase Auth platform rather than implementing authentication. Application data still uses the handwritten API.                                |
 | `@sport-analytics/contracts` | `0.1.0`          | Shared request/response schemas and TypeScript types. | Prevents the frontend and backend from independently redefining the same contracts. Its exact version matches the local workspace package, as enforced by syncpack. |
+| Three.js                     | `^0.185.1`       | Procedural homepage hero enhancement.                 | Adds one isolated, lazy-loaded 3D delivery-to-statistic metaphor without models, textures, post-processing, backend data or a general UI-animation dependency.      |
+| Fontsource brand families    | `^5.3.0`         | Self-hosted approved interface typography.            | Packages only Barlow Condensed, IBM Plex Sans and IBM Plex Mono so the approved font roles do not depend on a third-party runtime font request.                     |
 
 ## Backend API
 
@@ -150,6 +152,7 @@ The following direct packages provide TypeScript declarations for JavaScript lib
 
 - `@types/react ^18.3.12`
 - `@types/react-dom ^18.3.1`
+- `@types/three ^0.185.4`
 - `@types/cors ^2.8.17`
 - `@types/express ^4.17.21`
 - `@types/node ^22.9.0`
@@ -176,3 +179,5 @@ AI usage is governed separately by the course AI policy and the repository AI ev
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #314 Three.js and self-hosted font dependency records were updated with the assistance of
+Codex[GPT-5.6 Sol].
