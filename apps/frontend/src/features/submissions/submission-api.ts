@@ -44,6 +44,28 @@ async function listCompetitionFixtures(
   return fixtures;
 }
 
+export async function listAllFixtures(signal?: AbortSignal): Promise<Fixture[]> {
+  const fixtures: Fixture[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const parameters = new URLSearchParams({ limit: '100' });
+    if (cursor) {
+      parameters.set('cursor', cursor);
+    }
+
+    const response = await publicReadApi.listFixtures(`?${parameters.toString()}`, signal);
+    fixtures.push(...response.data);
+    cursor = response.pagination.nextCursor;
+  } while (cursor);
+
+  return fixtures.sort(
+    (left, right) =>
+      left.startDate.localeCompare(right.startDate) ||
+      left.fixtureId.localeCompare(right.fixtureId),
+  );
+}
+
 export async function listScopedFixtures(
   competitionIds: string[],
   signal?: AbortSignal,

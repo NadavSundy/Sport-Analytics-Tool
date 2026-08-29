@@ -299,6 +299,45 @@ describe('role-gated event submission page', () => {
     );
   });
 
+  it('lists fixtures from every competition for an administrator without scopes', async () => {
+    const otherCompetitionFixture = {
+      ...fixture,
+      fixtureId: '8',
+      competitionId: '6',
+      competitionName: 'Premier League',
+      startDate: '2026-08-21',
+    };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'not_requested'));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture, otherCompetitionFixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Administrator submission access' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/may submit event data for any competition/i)).toBeInTheDocument();
+
+    const selector = screen.getByLabelText('Fixture');
+    expect(within(selector).getAllByRole('option')).toHaveLength(2);
+    expect(within(selector).getByRole('option', { name: /fixture 7/i })).toBeInTheDocument();
+    expect(within(selector).getByRole('option', { name: /fixture 8/i })).toBeInTheDocument();
+
+    const fixtureRequests = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .filter((url) => url.includes('/fixtures?'));
+    expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
+  });
+
   it('submits valid delivery events and focuses the stored reference summary', async () => {
     let resolveSubmission!: (value: Response) => void;
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
