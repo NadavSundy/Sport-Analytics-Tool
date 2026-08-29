@@ -3,7 +3,7 @@
 **User:** Anonymous  
 **Created:** 8/26/2026 20:55:34  
 **Updated:** 8/26/2026 21:11:50  
-**Exported:** 8/26/2026 21:16:22  
+**Exported:** 8/28/2026 17:18:43  
 **Link:** [https://chatgpt.com/g/g-p-6a5e0bd23e64819186e0767b14cff2a3/c/6a8f3694-f4e4-83ea-9db4-0a42cd055a71](https://chatgpt.com/g/g-p-6a5e0bd23e64819186e0767b14cff2a3/c/6a8f3694-f4e4-83ea-9db4-0a42cd055a71)  
 
 ## Prompt:
