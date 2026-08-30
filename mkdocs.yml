@@ -96,6 +96,9 @@ nav:
       - Project Methodology: project_methodology.md
       - Project Backlog and Milestone Plan: planning/project-backlog.md
       - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
+  - Testing:
+      - User Testing Protocol: testing/user-testing-protocol.md
+      - User Testing Task Bank: testing/user-testing-task-bank.md
   - AI Use: ai/usage.md
 
 markdown_extensions:
