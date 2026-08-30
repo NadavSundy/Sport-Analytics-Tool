@@ -26,6 +26,47 @@ project's own `/api/v1/weather` endpoint, and Open-Meteo is called exclusively f
 GET /api/v1/weather?latitude={latitude}&longitude={longitude}&date={date}
 ```
 
+### Fixture weather
+
+```http
+GET /api/v1/fixtures/{fixtureId}/weather
+```
+
+This endpoint automatically uses the fixture's `start_date` and optional stored venue coordinates.
+It is the appropriate endpoint for fixture pages: the frontend calls this backend endpoint only and
+never calls Open-Meteo. Weather is contextual external information; it does not change or
+authoritatively describe fixture, event, or statistic records.
+
+When weather is available, the response includes fixture and venue context plus the same daily
+temperature, precipitation, and wind fields returned by `/weather`:
+
+```json
+{
+  "data": {
+    "fixtureId": "17",
+    "date": "2026-08-19",
+    "availability": "available",
+    "venue": { "name": "Wits Cricket Oval", "city": "Johannesburg" },
+    "weather": {
+      "date": "2026-08-19",
+      "latitude": -26.1929,
+      "longitude": 28.0305,
+      "temperatureMax": 24,
+      "temperatureMin": 11,
+      "precipitationSum": 0,
+      "windSpeedMax": 17
+    }
+  }
+}
+```
+
+An existing fixture without a venue, complete coordinates, or supported coordinate values returns
+`200 OK` with `availability: "unavailable"`, a machine-readable reason (`MISSING_VENUE`,
+`MISSING_COORDINATES`, or `UNSUPPORTED_LOCATION`), and `weather: null`. This does not call the
+provider or invent a location. An unknown fixture returns `404 NOT_FOUND`. Provider failures return
+the same `502`, `503`, or `504` codes as the direct weather endpoint and affect only this weather
+request, not ordinary fixture reads.
+
 | Parameter   | Required | Description                                |
 | ----------- | -------- | ------------------------------------------ |
 | `latitude`  | Yes      | Decimal degrees, between `-90` and `90`.   |
@@ -89,8 +130,9 @@ error internals to the client.
 
 ## Known limitations
 
-- The endpoint currently takes raw `latitude`/`longitude` rather than a `fixtureId`. Resolving a
-  fixture's venue to coordinates automatically is deferred (see ADR-008).
+- Venue coordinates are optional stored data (`venue.latitude` and `venue.longitude`); imported
+  Cricsheet venue names/cities are not geocoded. Fixtures without stored coordinates therefore
+  return the documented unavailable state.
 - Open-Meteo's forecast endpoint may not have data for dates far outside its supported historical
   window; requesting such a date currently surfaces as a `502 UPSTREAM_ERROR`.
 - Responses are not cached; repeated requests for the same location and date each call Open-Meteo
@@ -114,11 +156,13 @@ No API key or account is required.
    cd apps/backend
    npx vitest run tests/unit/weather.service.test.ts
    npx vitest run tests/api/weather.test.ts
+   npx vitest run tests/unit/fixture-weather.service.test.ts tests/api/fixture-weather.test.ts
    ```
 
    The unit tests mock `fetch` directly to cover a successful response, a non-2xx response,
-   invalid JSON, and an unexpected response shape. The API-level tests mock `WeatherService` to
-   confirm the controller maps each failure type to the correct HTTP status and error code.
+   invalid JSON, and an unexpected response shape. Fixture-weather tests mock the existing
+   `WeatherService` to confirm fixture dates and stored coordinates are passed through, unavailable
+   locations avoid provider calls, and provider failures map to safe API responses.
 
 ## OpenAPI
 

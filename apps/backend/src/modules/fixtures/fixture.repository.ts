@@ -20,6 +20,17 @@ export interface FixtureRecord {
   endDate: string;
 }
 
+export interface FixtureWeatherContextRecord {
+  fixtureId: string;
+  date: string;
+  venue: {
+    name: string;
+    city: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  } | null;
+}
+
 export interface FixtureListOptions {
   limit: number;
   competitionId?: string;
@@ -185,6 +196,32 @@ export async function findFixtureById(
       FROM fixture f
       LEFT JOIN competition c
         ON c.competition_id = f.competition_id
+      WHERE f.fixture_id = $1::bigint
+    `,
+    [fixtureId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findFixtureWeatherContext(
+  fixtureId: string,
+  executor: QueryExecutor = getDatabasePool(),
+): Promise<FixtureWeatherContextRecord | null> {
+  const result = await executeQuery<FixtureWeatherContextRecord>(
+    executor,
+    `
+      SELECT
+        f.fixture_id::text AS "fixtureId",
+        f.start_date::text AS "date",
+        CASE WHEN v.venue_id IS NULL THEN NULL ELSE jsonb_build_object(
+          'name', v.name,
+          'city', v.city,
+          'latitude', v.latitude,
+          'longitude', v.longitude
+        ) END AS venue
+      FROM fixture f
+      LEFT JOIN venue v ON v.venue_id = f.venue_id
       WHERE f.fixture_id = $1::bigint
     `,
     [fixtureId],

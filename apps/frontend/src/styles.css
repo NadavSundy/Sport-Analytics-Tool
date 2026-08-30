@@ -2758,6 +2758,44 @@ h3 {
   background: var(--colour-surface-raised);
 }
 
+.event-export-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem 1.5rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  background: var(--colour-surface-raised);
+}
+
+.event-export-controls h2,
+.event-export-controls p {
+  margin: 0;
+}
+
+.event-export-controls > div > p:last-child,
+.event-export-controls__empty,
+.event-export-controls__error {
+  margin-top: 0.5rem;
+  color: var(--colour-text-secondary);
+  line-height: 1.5;
+}
+
+.event-export-controls__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.event-export-controls__error {
+  grid-column: 1 / -1;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--colour-error);
+  color: var(--colour-error);
+}
+
 @media (max-width: 56.25rem) {
   .site-header__inner {
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3215,6 +3253,16 @@ h3 {
   .participant-statistics {
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .event-export-controls {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .event-export-controls__actions,
+  .event-export-controls__actions .button {
+    width: 100%;
   }
 
   .statistic-card,

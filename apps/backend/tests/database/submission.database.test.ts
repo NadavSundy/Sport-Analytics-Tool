@@ -331,6 +331,19 @@ describe.sequential('direct submission database integration', () => {
         `,
         [current.accountId, current.competitionId],
       );
+      await executeQuery(
+        databasePool(),
+        `
+          WITH removed_deliveries AS (
+            DELETE FROM delivery
+            WHERE source_event_id = $1::uuid
+            RETURNING submission_id
+          )
+          DELETE FROM submission
+          WHERE submission_id IN (SELECT submission_id FROM removed_deliveries)
+        `,
+        [administratorPayload.events[0].eventId],
+      );
     }
   });
 

@@ -113,6 +113,17 @@ test('anonymous users open the responsive match overview and calculation trace',
       return;
     }
 
+    if (
+      url.pathname.endsWith('/events/export.csv') ||
+      url.pathname.endsWith('/events/export.json')
+    ) {
+      await route.fulfill({
+        body: url.pathname.endsWith('.csv') ? 'eventId\n event-1\n' : JSON.stringify({ data: [] }),
+        contentType: url.pathname.endsWith('.csv') ? 'text/csv; charset=utf-8' : 'application/json',
+      });
+      return;
+    }
+
     if (url.pathname.endsWith('/statistics')) {
       await route.fulfill({
         json: {
@@ -231,6 +242,35 @@ test('anonymous users open the responsive match overview and calculation trace',
   await expect(page.getByRole('link', { name: 'Opening Bowler' })).toBeVisible();
   await expect(page.getByText('event-1')).toHaveCount(0);
   expect(requestedUrls.some((url) => url.includes('includeContributors=true'))).toBe(true);
+
+  const csvDownload = page.getByRole('button', { name: 'Download CSV' });
+  await csvDownload.focus();
+  await expect(csvDownload).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect
+    .poll(() =>
+      requestedUrls.some(
+        (url) =>
+          url.includes('/events/export.csv') &&
+          url.includes('inningsId=innings-1') &&
+          url.includes('competitorId=team-1') &&
+          !url.includes('cursor=') &&
+          !url.includes('limit='),
+      ),
+    )
+    .toBe(true);
+
+  await page.getByRole('button', { name: 'Download JSON' }).click();
+  await expect
+    .poll(() =>
+      requestedUrls.some(
+        (url) =>
+          url.includes('/events/export.json') &&
+          url.includes('inningsId=innings-1') &&
+          url.includes('competitorId=team-1'),
+      ),
+    )
+    .toBe(true);
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
