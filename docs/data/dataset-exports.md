@@ -37,5 +37,7 @@ private account information, submitter identities, submission IDs, source/revisi
 audit timestamps or secrets. It is a current accepted-data view, not an immutable release or
 checksum-backed snapshot.
 
-Versioned dataset releases, larger asynchronous export jobs, object storage and frontend export
-controls are intentionally outside Basic scope.
+The public calculation trace provides labelled CSV and JSON controls for the displayed event slice.
+It carries the trace's visible innings/team or player context into the export request without exposing
+pagination or technical-only controls. Versioned dataset releases, larger asynchronous export jobs
+and object storage remain outside Basic scope.

@@ -198,6 +198,9 @@ statistics action.
 Each published statistic retains a secondary calculation-trace link. The trace displays accepted
 deliveries with readable player names and returns to the match overview; stable fixture, statistic,
 team, player, and event identifiers remain confined to API requests, route values, and React keys.
+When trace events are available, labelled CSV and JSON controls export the displayed innings/team or
+player slice without exposing raw filter identifiers or pagination controls. Empty and failed exports
+remain explicit to assistive technology.
 
 ## Public player overviews
 

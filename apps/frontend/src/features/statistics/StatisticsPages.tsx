@@ -17,6 +17,7 @@ import {
   RelatedLinks,
 } from '../browse/RecordDetail';
 import { usePublicData } from '../browse/usePublicData';
+import { EventExportControls } from './EventExportControls';
 
 function recordPath(resource: 'competitors' | 'participants', identifier: string) {
   return `/${resource}/${encodeURIComponent(identifier)}`;
@@ -400,6 +401,10 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
       ? `${statistic.competitorName} innings ${statistic.inningsOrdinal + 1} total`
       : `${statistic.participantName} performance`;
   const contributingEvents = statistic.contributingEvents ?? [];
+  const exportFilters =
+    statistic.scope === 'innings'
+      ? { inningsId: statistic.inningsId, competitorId: statistic.competitorId }
+      : { participantId: statistic.participantId };
 
   return (
     <article className="detail-page statistics-page content-boundary">
@@ -437,6 +442,11 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
             runs are recorded at innings level.
           </p>
         ) : null}
+        <EventExportControls
+          filters={exportFilters}
+          fixtureId={statistic.fixtureId}
+          hasEvents={contributingEvents.length > 0}
+        />
         {contributingEvents.length > 0 ? (
           <ol className="event-trace-list">
             {contributingEvents.map((event) => (
