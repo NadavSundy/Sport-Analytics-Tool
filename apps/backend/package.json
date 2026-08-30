@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare:contracts": "npm run build --workspace=@sport-analytics/contracts && node ../../scripts/check-contracts-public-api.mjs",
+    "predev": "npm run prepare:contracts",
     "dev": "tsx watch src/index.ts",
+    "prebuild": "npm run prepare:contracts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "eslint src tests --ext .ts",
