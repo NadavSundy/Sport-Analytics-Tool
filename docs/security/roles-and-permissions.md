@@ -3,17 +3,17 @@
 Application roles define application-wide capability. Competition scopes separately limit where a
 submission-capable account may operate.
 
-| Capability                | Viewer | Submitter                  | Admin                      |
-| ------------------------- | ------ | -------------------------- | -------------------------- |
-| View fixtures/statistics  | Yes    | Yes                        | Yes                        |
-| Manage own account        | Yes    | Yes                        | Yes                        |
-| Submit event data         | No     | Yes, within assigned scope | Yes, within assigned scope |
-| Correct submitted data    | No     | Yes, where permitted       | Yes                        |
-| View submission history   | No     | Yes                        | Yes                        |
-| Manage users              | No     | No                         | Yes                        |
-| Assign roles              | No     | No                         | Yes                        |
-| Assign competition scopes | No     | No                         | Yes                        |
-| Access admin endpoints    | No     | No                         | Yes                        |
+| Capability                | Viewer | Submitter                  | Admin                    |
+| ------------------------- | ------ | -------------------------- | ------------------------ |
+| View fixtures/statistics  | Yes    | Yes                        | Yes                      |
+| Manage own account        | Yes    | Yes                        | Yes                      |
+| Submit event data         | No     | Yes, within assigned scope | Yes, for any competition |
+| Correct submitted data    | No     | Yes, within assigned scope | Yes, for any competition |
+| View submission history   | No     | Yes                        | Yes                      |
+| Manage users              | No     | No                         | Yes                      |
+| Assign roles              | No     | No                         | Yes                      |
+| Assign competition scopes | No     | No                         | Yes                      |
+| Access admin endpoints    | No     | No                         | Yes                      |
 
 ## Authoritative role
 
@@ -30,9 +30,10 @@ application_role
 - `submitter` can use submission workflows but cannot use administrator endpoints.
 - `admin` can use administrator workflows and permitted submission workflows.
 
-The backend treats `submitter` and `admin` as submission-capable roles. It then independently
-checks `submitter_competition_scope` for the target competition. Role checks alone are never
-sufficient for a scoped submission.
+The backend treats `submitter` and `admin` as submission-capable roles. It independently checks
+`submitter_competition_scope` for every ordinary submitter's target competition; role checks alone
+are never sufficient for a scoped submission. An `admin` is unrestricted for submission and
+correction operations, and does not need a `submitter_competition_scope` assignment.
 
 ```text
 application_role = submitter
@@ -43,6 +44,15 @@ This account may submit only for Competition A and Competition B. It receives `4
 another competition. A viewer also receives `403 Forbidden`, even if an old approval record says
 `approved`. Missing, malformed, expired, or otherwise invalid authentication receives
 `401 Unauthorized` before authorization is evaluated.
+
+```text
+application_role = admin
+competition_scopes = []
+```
+
+This account may submit or correct events for any eligible fixture. The backend derives this
+unrestricted access from the persisted administrator role, not from frontend visibility or a
+submitter scope row.
 
 ## Deprecated approval state
 
@@ -107,3 +117,4 @@ remains visible if the administrator account is later removed.
 
 The competition-scoped submitter access workflow was documented with the assistance of
 Codex[GPT-5].
+The Issue #311 administrator submission rule was documented with the assistance of Codex[GPT-5].

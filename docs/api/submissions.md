@@ -2,8 +2,9 @@
 
 `POST /api/v1/submissions` accepts JSON from an authenticated account whose server-owned role is
 `submitter` or `admin`. The backend
-looks up the fixture's competition and compares it with the account's server-owned competition
-scope. Client-supplied roles or scope values are ignored.
+looks up the fixture's competition. An ordinary `submitter` must have that competition in its
+server-owned scope; an `admin` may submit for any eligible competition without a scope assignment.
+Client-supplied roles or scope values are ignored.
 
 The current schema version is `1.0`. A request contains one fixture and 1–1,000 ordered cricket
 delivery events. Events for each innings must appear in ascending `sequenceNumber` order. Statistics
@@ -68,15 +69,16 @@ and zero-based event-array position. A globally unique event UUID protects again
 or replay. If any event is invalid or conflicts, the transaction rolls back and stores neither the
 submission nor any of its events.
 
-Responses are `401` for missing or invalid authentication, `403` for a viewer or out-of-scope
-accounts, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for contract or reference
-validation, and `429` after 30 requests from one account in 60 seconds. Validation details include a
-field path and `eventIndex` where applicable.
+Responses are `401` for missing or invalid authentication, `403` for a viewer or an ordinary
+submitter outside its scope, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for
+contract or reference validation, and `429` after 30 requests from one account in 60 seconds.
+Validation details include a field path and `eventIndex` where applicable.
 
 ## File uploads
 
 `POST /api/v1/submissions/uploads` accepts one multipart form-data field named `file` from an
-authenticated, in-scope `submitter` or `admin`. It accepts only a `.json` file with
+authenticated `submitter` or `admin`. A submitter must be in scope, while an administrator may upload
+for any eligible competition without a scope assignment. It accepts only a `.json` file with
 `application/json` media type or a `.csv` file with `text/csv` media type, and limits the file to
 1 MB. Both formats are normalised into the same `fixtureId`, `schemaVersion`, and ordered `events`
 contract shown above before the existing scope, cricket-rule, reference, replay, and transaction
@@ -101,10 +103,11 @@ filename, canonical media type, and byte length on the accepted submission.
 event ID is the original client UUID; the request supplies the fixture, contract version, and corrected
 delivery content. The occurrence sequence is inherited from the live source event and is not client-editable.
 
-Only an authenticated `submitter` or `admin` with the fixture's server-owned competition scope may
-correct it. The replacement is validated against the same cricket contract, participant, innings, and
-dismissal-kind rules as a new submission. Invalid, unknown, unauthorised, or out-of-scope corrections
-leave the live event unchanged.
+Only an authenticated `submitter` or `admin` may correct it. An ordinary submitter needs the
+fixture's server-owned competition scope; an administrator may correct any eligible fixture without a
+scope assignment. The replacement is validated against the same cricket contract, participant,
+innings, and dismissal-kind rules as a new submission. Invalid, unknown, unauthorised, or out-of-scope
+corrections leave the live event unchanged.
 
 The database transaction inserts a new immutable delivery revision and marks the previous live row
 superseded; it never accepts statistic totals. Fixture, participant, and public-event reads use live
@@ -158,16 +161,16 @@ without discovering its faults one at a time.
 
 ### Response codes
 
-| Status | Code                    | Meaning                                                                                                                  |
-| ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 400    | `INVALID_JSON`          | The request body is not valid JSON.                                                                                      |
-| 401    | `UNAUTHORIZED`          | Authentication is missing or could not be verified.                                                                      |
-| 403    | `FORBIDDEN`             | The account is authenticated but lacks the `submitter`/`admin` role, or the fixture falls outside its competition scope. |
-| 409    | `DUPLICATE_EVENT_ID`    | One or more event identifiers have already been accepted. The submission is a replay rather than an invalid payload.     |
-| 413    | `PAYLOAD_TOO_LARGE`     | The request exceeds the 1 MB limit.                                                                                      |
-| 422    | `VALIDATION_FAILED`     | The submission is structurally or referentially invalid. See `details`.                                                  |
-| 429    | `RATE_LIMIT_EXCEEDED`   | More than 30 requests from one account in 60 seconds. `Retry-After` gives the wait in seconds.                           |
-| 500    | `INTERNAL_SERVER_ERROR` | An unexpected failure. No detail is returned, and the cause is recorded server-side.                                     |
+| Status | Code                    | Meaning                                                                                                                         |
+| ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | `INVALID_JSON`          | The request body is not valid JSON.                                                                                             |
+| 401    | `UNAUTHORIZED`          | Authentication is missing or could not be verified.                                                                             |
+| 403    | `FORBIDDEN`             | The account is authenticated but lacks the `submitter`/`admin` role, or an ordinary submitter is outside its competition scope. |
+| 409    | `DUPLICATE_EVENT_ID`    | One or more event identifiers have already been accepted. The submission is a replay rather than an invalid payload.            |
+| 413    | `PAYLOAD_TOO_LARGE`     | The request exceeds the 1 MB limit.                                                                                             |
+| 422    | `VALIDATION_FAILED`     | The submission is structurally or referentially invalid. See `details`.                                                         |
+| 429    | `RATE_LIMIT_EXCEEDED`   | More than 30 requests from one account in 60 seconds. `Retry-After` gives the wait in seconds.                                  |
+| 500    | `INTERNAL_SERVER_ERROR` | An unexpected failure. No detail is returned, and the cause is recorded server-side.                                            |
 
 ### Detail codes
 
@@ -195,3 +198,4 @@ removing a partial result.
 The direct submission API documentation was generated with the assistance of Codex[GPT-5.6 Sol].
 The correction workflow and file-upload submission support were added with the assistance of
 Codex[GPT-5].
+The Issue #311 administrator submission rule was documented with the assistance of Codex[GPT-5].

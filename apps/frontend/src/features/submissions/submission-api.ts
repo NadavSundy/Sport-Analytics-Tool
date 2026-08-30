@@ -1,5 +1,6 @@
 import {
   DIRECT_SUBMISSION_SCHEMA_VERSION,
+  submissionRequestSchema,
   submissionResponseSchema,
   type Fixture,
   type SubmissionEvent,
@@ -43,6 +44,30 @@ async function listCompetitionFixtures(
   return fixtures;
 }
 
+export async function listAllFixtures(signal?: AbortSignal): Promise<Fixture[]> {
+  const fixtures: Fixture[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const parameters = new URLSearchParams({ limit: '100' });
+    if (cursor) {
+      parameters.set('cursor', cursor);
+    }
+
+    const response = await publicReadApi.listFixtures(`?${parameters.toString()}`, signal);
+    fixtures.push(...response.data);
+    cursor = response.pagination.nextCursor;
+  } while (cursor);
+
+  return fixtures
+    .filter((fixture) => fixture.competitionId !== null)
+    .sort(
+      (left, right) =>
+        left.startDate.localeCompare(right.startDate) ||
+        left.fixtureId.localeCompare(right.fixtureId),
+    );
+}
+
 export async function listScopedFixtures(
   competitionIds: string[],
   signal?: AbortSignal,
@@ -69,7 +94,7 @@ export async function submitEvents(
   client: AuthenticatedApiClient,
   fixtureId: string,
   eventJson: string,
-): Promise<SubmissionResponse> {
+): Promise<{ response: SubmissionResponse; events: SubmissionEvent[] }> {
   let events: unknown;
 
   try {
@@ -82,14 +107,36 @@ export async function submitEvents(
     throw new SubmissionInputError('The event JSON must be an array of delivery events.');
   }
 
+  const payload = {
+    fixtureId,
+    schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+    events: events as SubmissionEvent[],
+  };
   const response = await client.request<unknown>('/submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fixtureId,
-      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
-      events: events as SubmissionEvent[],
-    }),
+    body: JSON.stringify(payload),
+  });
+  const parsed = submissionResponseSchema.safeParse(response);
+  const acceptedPayload = submissionRequestSchema.safeParse(payload);
+
+  if (!parsed.success || !acceptedPayload.success) {
+    throw new SubmissionInterfaceContractError();
+  }
+
+  return { response: parsed.data, events: acceptedPayload.data.events };
+}
+
+export async function submitSubmissionFile(
+  client: AuthenticatedApiClient,
+  file: File,
+): Promise<SubmissionResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await client.request<unknown>('/submissions/uploads', {
+    method: 'POST',
+    body: formData,
   });
   const parsed = submissionResponseSchema.safeParse(response);
 

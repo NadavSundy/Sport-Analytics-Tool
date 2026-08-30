@@ -105,6 +105,10 @@ function renderSubmissionPage(session: Session | null = createSession()) {
   );
 }
 
+async function selectTechnicalJson() {
+  fireEvent.click(await screen.findByRole('radio', { name: 'Paste technical JSON' }));
+}
+
 function useSystemTheme() {
   vi.stubGlobal(
     'matchMedia',
@@ -141,6 +145,49 @@ function currentUser(
 
 function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null } });
+}
+
+function fixtureStatistics(totalRuns: number) {
+  return response(200, {
+    data: {
+      fixtureId: '7',
+      status: 'complete',
+      scope: { superOversIncluded: false },
+      outcome: {
+        kind: 'no_result',
+        winnerCompetitorId: null,
+        winnerCompetitorName: null,
+        eliminatorCompetitorId: null,
+        eliminatorCompetitorName: null,
+        margin: null,
+        method: null,
+        decidedByBowlOut: false,
+      },
+      warnings: [],
+      statistics: [
+        {
+          statisticId: '100',
+          fixtureId: '7',
+          scope: 'innings',
+          statisticCode: 'team_total',
+          inningsId: '10',
+          inningsOrdinal: 0,
+          competitorId: '20',
+          competitorName: 'Wanderers',
+          sourceEventCount: 1,
+          metrics: { deliveryRuns: totalRuns, penaltyRuns: 0, totalRuns },
+        },
+      ],
+    },
+  });
+}
+
+function participatingPlayers() {
+  return fixtures([
+    { participantId: '20', displayName: 'Opening Batter' },
+    { participantId: '21', displayName: 'Non-striker' },
+    { participantId: '22', displayName: 'Opening Bowler' },
+  ]);
 }
 
 describe('role-gated event submission page', () => {
@@ -239,6 +286,7 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
 
     const selector = await screen.findByLabelText('Fixture');
     expect(within(selector).getAllByRole('option')).toHaveLength(2);
@@ -251,6 +299,47 @@ describe('role-gated event submission page', () => {
     );
   });
 
+  it('lists fixtures from every competition for an administrator without scopes', async () => {
+    const unassignedFixture = { ...fixture, fixtureId: '99', competitionId: null };
+    const otherCompetitionFixture = {
+      ...fixture,
+      fixtureId: '8',
+      competitionId: '6',
+      competitionName: 'Premier League',
+      startDate: '2026-08-21',
+    };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'not_requested'));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture, otherCompetitionFixture, unassignedFixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Administrator submission access' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/may submit event data for any competition/i)).toBeInTheDocument();
+
+    const selector = screen.getByLabelText('Fixture');
+    expect(within(selector).getAllByRole('option')).toHaveLength(2);
+    expect(within(selector).getByRole('option', { name: /fixture 7/i })).toBeInTheDocument();
+    expect(within(selector).getByRole('option', { name: /fixture 8/i })).toBeInTheDocument();
+    expect(within(selector).queryByRole('option', { name: /fixture 99/i })).toBeNull();
+
+    const fixtureRequests = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .filter((url) => url.includes('/fixtures?'));
+    expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
+  });
+
   it('submits valid delivery events and focuses the stored reference summary', async () => {
     let resolveSubmission!: (value: Response) => void;
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
@@ -260,6 +349,12 @@ describe('role-gated event submission page', () => {
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.includes('/participants?fixtureId=7')) {
+        return Promise.resolve(participatingPlayers());
+      }
+      if (url.endsWith('/fixtures/7/statistics')) {
+        return Promise.resolve(fixtureStatistics(4));
       }
       if (url.endsWith('/submissions') && init?.method === 'POST') {
         return new Promise<Response>((resolve) => {
@@ -271,13 +366,14 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
 
     fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
       target: { value: JSON.stringify(validEvents) },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
 
-    expect(screen.getByRole('button', { name: 'Submitting events…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent('Validating and storing');
 
     await act(async () => {
@@ -311,6 +407,223 @@ describe('role-gated event submission page', () => {
       events: validEvents,
     });
     expect(String(request.body)).not.toMatch(/finalStatistic|totalWickets|finalScore/i);
+    expect(await screen.findByRole('button', { name: 'Save correction' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Striker')).toHaveDisplayValue('Opening Batter');
+    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('4');
+  });
+
+  it('saves a prefilled correction and refreshes the event and statistic displays', async () => {
+    let statisticsRequests = 0;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.endsWith('/submissions') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(201, {
+            data: {
+              submissionId: '300',
+              fixtureId: '7',
+              submitterId: '17',
+              status: 'accepted',
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              schemaVersion: '1.0',
+              eventCount: 1,
+            },
+          }),
+        );
+      }
+      if (url.includes('/participants?fixtureId=7')) {
+        return Promise.resolve(participatingPlayers());
+      }
+      if (url.endsWith('/fixtures/7/statistics')) {
+        statisticsRequests += 1;
+        return Promise.resolve(fixtureStatistics(statisticsRequests === 1 ? 4 : 6));
+      }
+      if (url.endsWith(`/submissions/events/${validEvents[0]!.eventId}`)) {
+        expect(init?.method).toBe('PUT');
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          fixtureId: '7',
+          event: {
+            runs: { offBat: 6, extras: 0, total: 6 },
+          },
+        });
+        expect(String(init?.body)).not.toMatch(/statistics|sequenceNumber|finalScore/i);
+        return Promise.resolve(
+          response(200, {
+            data: { eventId: validEvents[0]!.eventId, fixtureId: '7', revision: 2 },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
+      target: { value: JSON.stringify(validEvents) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    fireEvent.change(await screen.findByLabelText(/Runs off the bat/), { target: { value: '6' } });
+    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
+    fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+
+    const heading = await screen.findByRole('heading', { name: 'Correction saved' });
+    expect(heading).toHaveFocus();
+    expect(screen.getByText(/Revision 2 is now current/)).toBeInTheDocument();
+    await waitFor(() => expect(statisticsRequests).toBe(2));
+    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
+    expect(screen.getAllByText('6').length).toBeGreaterThan(1);
+  });
+
+  it.each([
+    {
+      body: {
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The correction is invalid.',
+          details: [
+            {
+              code: 'INVALID_FIELD',
+              message: 'Use a printed ball number such as 5.1.',
+              field: 'event.ballNumber',
+            },
+          ],
+        },
+      },
+      errorText: 'Use a printed ball number such as 5.1.',
+      inputLabel: /Printed ball number/,
+      kind: 'validation',
+      status: 422,
+    },
+    {
+      body: {
+        error: {
+          code: 'EVENT_CONFLICT',
+          message: 'That delivery position is already occupied.',
+        },
+      },
+      errorText: 'That delivery position is already occupied.',
+      inputLabel: /Delivery position in over/,
+      kind: 'conflict',
+      status: 409,
+    },
+  ])(
+    'associates correction $kind errors with the relevant input without refreshing statistics',
+    async ({ body, errorText, inputLabel, status }) => {
+      let statisticsRequests = 0;
+      const fetchMock = vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input);
+          if (url.endsWith('/auth/me')) {
+            return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+          }
+          if (url.includes('/fixtures?')) {
+            return Promise.resolve(fixtures([fixture]));
+          }
+          if (url.endsWith('/submissions') && init?.method === 'POST') {
+            return Promise.resolve(
+              response(201, {
+                data: {
+                  submissionId: '300',
+                  fixtureId: '7',
+                  submitterId: '17',
+                  status: 'accepted',
+                  receivedAt: '2026-08-16T09:30:00.000Z',
+                  schemaVersion: '1.0',
+                  eventCount: 1,
+                },
+              }),
+            );
+          }
+          if (url.includes('/participants?fixtureId=7')) {
+            return Promise.resolve(participatingPlayers());
+          }
+          if (url.endsWith('/fixtures/7/statistics')) {
+            statisticsRequests += 1;
+            return Promise.resolve(fixtureStatistics(4));
+          }
+          if (url.endsWith(`/submissions/events/${validEvents[0]!.eventId}`)) {
+            return Promise.resolve(response(status, body));
+          }
+          throw new Error(`Unexpected request: ${url}`);
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderSubmissionPage();
+      await selectTechnicalJson();
+      fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
+        target: { value: JSON.stringify(validEvents) },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+      const relevantInput = await screen.findByLabelText(inputLabel);
+      fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+
+      expect(await screen.findByRole('heading', { name: 'Correction rejected' })).toHaveFocus();
+      expect(relevantInput).toHaveAttribute('aria-invalid', 'true');
+      expect(relevantInput).toHaveAttribute('aria-describedby', expect.stringContaining('error'));
+      expect(screen.getAllByText(errorText).length).toBeGreaterThan(0);
+      expect(statisticsRequests).toBe(1);
+    },
+  );
+
+  it('withdraws correction actions when backend scope is denied', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.endsWith('/submissions') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(201, {
+            data: {
+              submissionId: '300',
+              fixtureId: '7',
+              submitterId: '17',
+              status: 'accepted',
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              schemaVersion: '1.0',
+              eventCount: 1,
+            },
+          }),
+        );
+      }
+      if (url.includes('/participants?fixtureId=7')) {
+        return Promise.resolve(participatingPlayers());
+      }
+      if (url.endsWith('/fixtures/7/statistics')) {
+        return Promise.resolve(fixtureStatistics(4));
+      }
+      if (url.endsWith(`/submissions/events/${validEvents[0]!.eventId}`)) {
+        return Promise.resolve(
+          response(403, { error: { code: 'FORBIDDEN', message: 'Forbidden.' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
+      target: { value: JSON.stringify(validEvents) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save correction' }));
+
+    expect(await screen.findByRole('heading', { name: 'Correction access denied' })).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Save correction' })).not.toBeInTheDocument();
+    expect(screen.getByText(/accepted event was not changed/i)).toBeInTheDocument();
   });
 
   it('shows event-specific and field-specific validation results', async () => {
@@ -348,6 +661,7 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, { target: { value: JSON.stringify(validEvents) } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
@@ -381,6 +695,7 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
+    await selectTechnicalJson();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, { target: { value: '{' } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
@@ -395,5 +710,91 @@ describe('role-gated event submission page', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Submission failed' })).toHaveFocus(),
     );
+  });
+
+  it('uploads a JSON file and shows the stored submission reference', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (url.endsWith('/submissions/uploads') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(201, {
+            data: {
+              submissionId: '301',
+              fixtureId: '7',
+              submitterId: '17',
+              status: 'accepted',
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              schemaVersion: '1.0',
+              eventCount: 1,
+            },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+
+    const input = await screen.findByLabelText('Event data file');
+    const file = new File(
+      [JSON.stringify({ fixtureId: '7', schemaVersion: '1.0', events: validEvents })],
+      'events.json',
+      { type: 'application/json' },
+    );
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload and submit file' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission accepted' })).toHaveFocus();
+    expect(screen.getByText('301')).toBeInTheDocument();
+    expect(screen.getByText(/Example Competition/)).toBeInTheDocument();
+    const uploadCall = fetchMock.mock.calls.find(([request]) =>
+      String(request).endsWith('/submissions/uploads'),
+    );
+    expect(uploadCall?.[1]).toMatchObject({ method: 'POST' });
+    expect((uploadCall?.[1] as RequestInit).body).toBeInstanceOf(FormData);
+  });
+
+  it('shows file and row validation errors clearly', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      return Promise.resolve(
+        response(422, {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'The uploaded submission file is invalid.',
+            details: [
+              {
+                code: 'INVALID_FILE_ROW',
+                message: 'CSV row 2 is invalid.',
+                field: 'file',
+                eventIndex: 0,
+              },
+            ],
+          },
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+    const input = await screen.findByLabelText('Event data file');
+    fireEvent.change(input, {
+      target: { files: [new File(['invalid'], 'events.csv', { type: 'text/csv' })] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload and submit file' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(screen.getByText('Row 1 — file')).toBeInTheDocument();
+    expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
   });
 });

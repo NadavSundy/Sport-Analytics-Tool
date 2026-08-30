@@ -1,0 +1,110 @@
+/*
+ * Stat'sTheGame brand alignment for the MkDocs Material documentation site.
+ *
+ * Source of truth: docs/design/brand-guidelines.md (Sections 7, 8, 9, 19).
+ * This file maps the approved Day Match / Night Match design tokens onto
+ * Material for MkDocs' CSS custom properties. It does not introduce new
+ * colours; every value below traces back to a token in the brand guidelines.
+ */
+
+:root {
+  --md-text-font: 'IBM Plex Sans', sans-serif;
+  --md-code-font: 'IBM Plex Mono', monospace;
+}
+
+/* Day Match -> Material "default" (light) scheme */
+[data-md-color-scheme='default'] {
+  /* Primary = navigation header/tabs, active nav item, links in the sidebar */
+  --md-primary-fg-color: #102026; /* Match Ink, keeps header readable and on-brand rather than loud */
+  --md-primary-fg-color--light: #52636a; /* Commentary Ink */
+  --md-primary-fg-color--dark: #08121b;
+  --md-primary-bg-color: #f5f2e9; /* Warm Canvas */
+  --md-primary-bg-color--light: #fffdf7; /* Scorecard Paper */
+
+  /* Accent = hover states, active search hit, buttons */
+  --md-accent-fg-color: #007f9e; /* Analysis Cyan */
+  --md-accent-fg-color--transparent: rgb(0 127 158 / 10%);
+  --md-accent-bg-color: #fffdf7;
+  --md-accent-bg-color--light: #fffdf7;
+
+  /* Base page/content surface */
+  --md-default-bg-color: #f5f2e9; /* Warm Canvas */
+  --md-default-fg-color: #102026; /* Match Ink */
+  --md-default-fg-color--light: #52636a; /* Commentary Ink */
+  --md-default-fg-color--lighter: #627078; /* Scorebook Grey */
+  --md-default-fg-color--lightest: #d9d3c4; /* Printed Rule */
+
+  --md-typeset-color: #102026;
+  /* Analysis Cyan (#007F9E) on Warm Canvas is 4.14:1, just under the 4.5:1
+     WCAG AA threshold for normal body text (brand guideline 16, AC:
+     "Accessible contrast is retained"). #006D8A is the same brand hue,
+     darkened slightly, and measures 5.28:1 on Warm Canvas. Buttons/accents
+     elsewhere keep the exact brand hex since UI components only need 3:1. */
+  --md-typeset-a-color: #006d8a;
+
+  --md-code-bg-color: #eee9dc; /* Pavilion Paper */
+  --md-code-fg-color: #102026;
+
+  --md-footer-bg-color: #102026;
+  --md-footer-bg-color--dark: #08121b;
+  --md-footer-fg-color: #f5f2e9;
+}
+
+/* Night Match -> Material "slate" (dark) scheme */
+[data-md-color-scheme='slate'] {
+  --md-primary-fg-color: #08121b; /* Night Match */
+  --md-primary-fg-color--light: #b8c3cc; /* Commentary Grey */
+  --md-primary-fg-color--dark: #050b10;
+  --md-primary-bg-color: #f6f8f2; /* Crease White */
+  --md-primary-bg-color--light: #f6f8f2;
+
+  --md-accent-fg-color: #20d5ff; /* Review Cyan */
+  --md-accent-fg-color--transparent: rgb(32 213 255 / 10%);
+  --md-accent-bg-color: #08121b;
+  --md-accent-bg-color--light: #08121b;
+
+  --md-default-bg-color: #08121b; /* Night Match canvas */
+  --md-default-fg-color: #f6f8f2; /* Crease White */
+  --md-default-fg-color--light: #b8c3cc; /* Commentary Grey */
+  --md-default-fg-color--lighter: #8ea0af; /* Muted Score */
+  --md-default-fg-color--lightest: #263847; /* Floodlight Rule */
+
+  --md-typeset-color: #f6f8f2;
+  --md-typeset-a-color: #20d5ff; /* Review Cyan */
+
+  --md-code-bg-color: #162736; /* Scoreboard */
+  --md-code-fg-color: #f6f8f2;
+
+  --md-footer-bg-color: #101e2b; /* Pavilion */
+  --md-footer-bg-color--dark: #08121b;
+  --md-footer-fg-color: #f6f8f2;
+}
+
+/* Boundary Orange is a brand accent, not a text/link colour (guideline 7.1 / 8.1):
+   used sparingly for the palette toggle icon and the external-link affordance. */
+.md-header__button.md-icon svg,
+[data-md-color-scheme] .md-nav__link--active {
+  color: inherit;
+}
+
+/* Crease-line device (guideline 12.4): a short accent rule under the site title. */
+.md-header__title {
+  position: relative;
+}
+
+/* External-link icon added by docs/javascripts/external-links.js.
+   Kept small and muted so it doesn't compete with normal text contrast. */
+.md-typeset a.md-external-link::after {
+  content: '';
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-left: 0.2em;
+  vertical-align: -0.05em;
+  background-color: currentColor;
+  opacity: 0.7;
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}

@@ -844,7 +844,7 @@ paths:
       tags:
         - Submissions
       summary: Correct an accepted fixture event
-      description: Supersedes a live direct-submission delivery with a revalidated revision; derived statistics use the live revision.
+      description: Supersedes a live direct-submission delivery with a revalidated revision; derived statistics use the live revision. Submitters require the fixture competition scope, while administrators may correct any eligible fixture without a scope assignment.
       operationId: correctSubmissionEvent
       x-implementation-status: implemented
       security:
@@ -893,7 +893,7 @@ paths:
       tags:
         - Submissions
       summary: Upload fixture event data from a JSON or CSV file
-      description: Accepts one JSON or CSV file no larger than 1 MB. The file is normalised into the same SubmissionRequest contract and follows the existing authorisation, validation, and atomic storage path.
+      description: Accepts one JSON or CSV file no larger than 1 MB. The file is normalised into the same SubmissionRequest contract and follows the existing authorisation, validation, and atomic storage path. Submitters require the fixture competition scope, while administrators may upload for any eligible fixture without a scope assignment.
       operationId: createSubmissionUpload
       x-implementation-status: implemented
       security:
@@ -952,9 +952,10 @@ paths:
       summary: Submit fixture event data
       description: |
         Accept an ordered set of cricket delivery events. The bearer identity
-        must have the `submitter` or `admin` application role and the fixture's competition must
-        be in that account's server-owned scope. Validation and storage are
-        synchronous and atomic; clients submit events, never statistic totals.
+        must have the `submitter` or `admin` application role. An ordinary submitter requires the
+        fixture competition in that account's server-owned scope; an administrator may submit for
+        any eligible competition without a scope assignment. Validation and storage are synchronous
+        and atomic; clients submit events, never statistic totals.
       operationId: createSubmission
       x-implementation-status: implemented
       security:

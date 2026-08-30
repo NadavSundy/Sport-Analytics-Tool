@@ -76,6 +76,16 @@ See:
 - [Cloudflare Pages deployment guide](deployment/cloudflare_pages.md) for documentation-site deployment; and
 - [MkDocs configuration and navigation](../mkdocs.yml) for the documentation-site configuration.
 
+## Theming
+
+The site's colours, fonts, logo and favicon follow the [Stat'sTheGame brand guidelines](design/brand-guidelines.md):
+
+- `mkdocs.yml` sets the Material `palette` (Day Match / Night Match), `font`, `logo` and `favicon`.
+- `docs/stylesheets/extra.css` maps the brand's Day Match and Night Match tokens onto Material's `--md-*` CSS variables, and documents one deliberate contrast adjustment (see the comment above `--md-typeset-a-color`).
+- `docs/javascripts/external-links.js` opens links that leave the documentation site (repository, third-party references) in a new tab with `rel="noopener noreferrer"`. Internal MkDocs navigation, in-page anchors, `mailto:` and `tel:` links are left untouched.
+
+Run `python -m mkdocs build --strict` after any theming change and check both the light and dark toggle, and a narrow-viewport layout, before opening a Pull Request.
+
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]. The Theming section, and the branding/external-link implementation it describes, were added with the assistance of Claude[Claude Sonnet 5].

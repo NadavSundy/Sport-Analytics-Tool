@@ -386,9 +386,25 @@ describe('direct event submission API', () => {
     expect(storeAcceptedSubmission).not.toHaveBeenCalled();
   });
 
-  test('allows an admin to perform a permitted submission operation', async () => {
-    const service = mockSubmissionService();
-    const account = createTestAccount({ role: 'admin', competitionIds: ['5'] });
+  test('allows an admin without a competition scope to submit for any competition', async () => {
+    const storeAcceptedSubmission = vi.fn<SubmissionRepository['storeAcceptedSubmission']>(
+      async () => ({
+        submissionId: '30',
+        fixtureId: '7',
+        submitterId: '1',
+        status: 'accepted',
+        receivedAt: '2026-08-13T16:00:00.000Z',
+        schemaVersion: '1.0',
+        eventCount: 1,
+      }),
+    );
+    const service = createSubmissionService({
+      async findFixtureScope() {
+        return { fixtureId: '7', competitionId: '5' };
+      },
+      storeAcceptedSubmission,
+    });
+    const account = createTestAccount({ role: 'admin' });
 
     await request(
       createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
@@ -398,7 +414,50 @@ describe('direct event submission API', () => {
       .send(validPayload)
       .expect(201);
 
-    expect(service.submit).toHaveBeenCalledWith(account, expect.any(Object));
+    expect(storeAcceptedSubmission).toHaveBeenCalledWith(
+      expect.objectContaining({ fixtureId: validPayload.fixtureId }),
+      account.accountId,
+      undefined,
+    );
+  });
+
+  test('allows an admin without a competition scope to upload a submission', async () => {
+    const storeAcceptedSubmission = vi.fn<SubmissionRepository['storeAcceptedSubmission']>(
+      async () => ({
+        submissionId: '30',
+        fixtureId: '7',
+        submitterId: '1',
+        status: 'accepted',
+        receivedAt: '2026-08-13T16:00:00.000Z',
+        schemaVersion: '1.0',
+        eventCount: 1,
+      }),
+    );
+    const service = createSubmissionService({
+      async findFixtureScope() {
+        return { fixtureId: '7', competitionId: '5' };
+      },
+      storeAcceptedSubmission,
+    });
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'admin' })),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer admin-token')
+      .attach('file', Buffer.from(validCsv('123e4567-e89b-42d3-a456-426614174098')), {
+        filename: 'match-events.csv',
+        contentType: 'text/csv',
+      })
+      .expect(201);
+
+    expect(storeAcceptedSubmission).toHaveBeenCalledOnce();
   });
 
   test('rejects a submitter outside the fixture competition scope', async () => {
@@ -461,6 +520,43 @@ describe('direct event submission API', () => {
       .expect(403);
 
     expect(storeAcceptedCorrection).not.toHaveBeenCalled();
+  });
+
+  test('allows an admin without a competition scope to correct an event', async () => {
+    const storeAcceptedCorrection = vi.fn<SubmissionRepository['storeAcceptedCorrection']>(
+      async () => ({
+        eventId: '123e4567-e89b-42d3-a456-426614174000',
+        fixtureId: '7',
+        revision: 2,
+      }),
+    );
+    const repository: SubmissionRepository = {
+      async findCorrectionTarget() {
+        return { fixtureId: '7', competitionId: '5', sequenceNumber: 1 };
+      },
+      async findDismissalKinds() {
+        return new Set();
+      },
+      storeAcceptedSubmission: vi.fn<SubmissionRepository['storeAcceptedSubmission']>(),
+      storeAcceptedCorrection,
+    };
+    const service = createSubmissionService(repository);
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'admin' })),
+        undefined,
+        service,
+      ),
+    )
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000')
+      .set('Authorization', 'Bearer admin-token')
+      .send(validCorrection)
+      .expect(200);
+
+    expect(storeAcceptedCorrection).toHaveBeenCalledOnce();
   });
 
   test('returns event-indexed validation details without invoking storage', async () => {

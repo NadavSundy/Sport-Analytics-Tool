@@ -54,8 +54,15 @@ export function requireSubmitter(): RequestHandler {
   };
 }
 
-export function hasCompetitionScope(account: ApplicationAccount, competitionId: string): boolean {
+function hasCompetitionScope(account: ApplicationAccount, competitionId: string): boolean {
   return account.competitionIds.includes(competitionId);
+}
+
+export function canSubmitToCompetition(
+  account: ApplicationAccount,
+  competitionId: string,
+): boolean {
+  return account.role === 'admin' || hasCompetitionScope(account, competitionId);
 }
 
 export function requireCompetitionScope(

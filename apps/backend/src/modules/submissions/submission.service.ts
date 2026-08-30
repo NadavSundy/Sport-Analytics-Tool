@@ -6,7 +6,7 @@ import type {
   SubmissionSourceFile,
 } from '@sport-analytics/contracts';
 
-import { hasCompetitionScope } from '../../middleware/require-authorization';
+import { canSubmitToCompetition } from '../../middleware/require-authorization';
 import type { ApplicationAccount } from '../accounts/account';
 import { SubmissionForbiddenError, SubmissionValidationError } from './submission.errors';
 import { createSubmissionRepository, type SubmissionRepository } from './submission.repository';
@@ -40,7 +40,7 @@ export function createSubmissionService(
         ]);
       }
 
-      if (!fixture.competitionId || !hasCompetitionScope(account, fixture.competitionId)) {
+      if (!fixture.competitionId || !canSubmitToCompetition(account, fixture.competitionId)) {
         throw new SubmissionForbiddenError();
       }
 
@@ -93,7 +93,7 @@ export function createSubmissionService(
         ]);
       }
 
-      if (!target.competitionId || !hasCompetitionScope(account, target.competitionId)) {
+      if (!target.competitionId || !canSubmitToCompetition(account, target.competitionId)) {
         throw new SubmissionForbiddenError();
       }
 
