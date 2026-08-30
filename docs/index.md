@@ -16,8 +16,8 @@ versioned hand-written HTTP API, in front of a PostgreSQL database of 13,953 mat
 > authorised competition scope. Public competition, season, fixture, event, competitor,
 > participant, and derived fixture-statistics reads are available without authentication.
 > The backend also provides the required runtime external API integration through Open-Meteo
-> via `GET /api/v1/weather`. Filtered dataset exports and later-tier aggregation and release
-> features remain future work.
+> via `GET /api/v1/weather`. Basic filtered fixture-event exports are available as JSON and CSV;
+> later-tier aggregation and versioned release features remain future work.
 
 This is copied from the [repository README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool)
 so the two cannot silently drift apart. As with every status statement on this site: a page
