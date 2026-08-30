@@ -31,7 +31,7 @@ test('homepage presents the public event-to-statistic journey in both themes', a
     page.getByRole('heading', { name: 'See the event inside the statistic.' }),
   ).toBeVisible();
   await expect(page.getByText('/api/v1/fixtures/{fixtureId}/statistics')).toBeVisible();
-  await expect(page.getByText('Visual metaphor, not ball-tracking data')).toBeVisible();
+  await expect(page.getByText('Event → derived values')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
   for (const theme of ['day', 'night'] as const) {
@@ -103,7 +103,7 @@ test('homepage remains complete with reduced motion and without WebGL', async ({
 
   await expect(visual).toHaveAttribute('data-hero-enhancement', 'fallback');
   await expect(visual.locator('canvas')).toHaveCount(0);
-  await expect(page.getByText('Visual metaphor, not ball-tracking data')).toBeVisible();
+  await expect(page.getByText('Event → derived values')).toBeVisible();
 });
 
 test('primary homepage journey works from the keyboard', async ({ page }) => {

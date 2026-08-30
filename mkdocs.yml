@@ -47,7 +47,6 @@ nav:
       - Technology Stack: development/technology-stack.md
       - Environment Variables: environment.md
       - Repository Structure: architecture/repository-structure.md
-      - Testing: development/testing.md
       - Reference Fixtures: development/reference-fixtures.md
       - Dependencies: development/dependencies.md
       - Gitea Issue Export: development/gitea-issue-export.md
@@ -98,6 +97,7 @@ nav:
       - Project Backlog and Milestone Plan: planning/project-backlog.md
       - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
   - Testing:
+      - Automated & End-to-End Testing: development/testing.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
       - Bug Tracking: testing/bug-tracking.md
