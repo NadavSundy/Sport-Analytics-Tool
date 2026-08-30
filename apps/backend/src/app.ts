@@ -5,6 +5,10 @@ import pinoHttp from 'pino-http';
 import { createWeatherRouter } from './modules/weather/weather.routes';
 import { WeatherService } from './modules/weather/weather.service';
 import {
+  createFixtureWeatherService,
+  type FixtureWeatherService,
+} from './modules/weather/fixture-weather.service';
+import {
   createSupabaseAdminUserDeleter,
   createSupabaseTokenVerifier,
   type VerifyAccessToken,
@@ -58,6 +62,7 @@ export interface AppDependencies {
   accountDeletionService?: AccountDeletionService;
   adminService?: AdminService;
   weatherService?: WeatherService;
+  fixtureWeatherService?: FixtureWeatherService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -83,6 +88,8 @@ export function createApp(dependencies: AppDependencies = {}) {
       : createUnavailableAccountDeletionService());
   const adminService = dependencies.adminService ?? createAdminService();
   const weatherService = dependencies.weatherService ?? new WeatherService();
+  const fixtureWeatherService =
+    dependencies.fixtureWeatherService ?? createFixtureWeatherService(weatherService);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -122,7 +129,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   );
   app.use('/api/v1', createAdminRouter(verifyAccessToken, synchronizeAccount, adminService));
   app.use('/api/v1', createPublicReadRouter(publicReadService));
-  app.use('/api/v1', createWeatherRouter(weatherService));
+  app.use('/api/v1', createWeatherRouter(weatherService, fixtureWeatherService));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

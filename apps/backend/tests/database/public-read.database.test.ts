@@ -4,7 +4,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
-import { findFixtureById, listFixtures } from '../../src/modules/fixtures/fixture.repository';
+import {
+  findFixtureById,
+  findFixtureWeatherContext,
+  listFixtures,
+} from '../../src/modules/fixtures/fixture.repository';
 import { findSeason, listSeasons } from '../../src/modules/seasons/season.repository';
 
 const seedPath = resolve(__dirname, '../../../../database/seeds/matches/423788.json');
@@ -153,5 +157,31 @@ describe.sequential('public read relationship summaries database integration', (
         },
       ]),
     );
+  });
+
+  test('returns stored venue coordinates for fixture weather resolution', async () => {
+    const executor = databaseClient();
+    const currentFixtureId = ingestedFixtureId();
+
+    await executor.query(
+      `
+        UPDATE venue v
+        SET latitude = -43.4894, longitude = 172.5405
+        FROM fixture f
+        WHERE f.venue_id = v.venue_id
+          AND f.fixture_id = $1::bigint
+      `,
+      [currentFixtureId],
+    );
+
+    await expect(findFixtureWeatherContext(currentFixtureId, executor)).resolves.toMatchObject({
+      fixtureId: currentFixtureId,
+      date: '2010-02-28',
+      venue: {
+        name: 'AMI Stadium',
+        latitude: -43.4894,
+        longitude: 172.5405,
+      },
+    });
   });
 });
