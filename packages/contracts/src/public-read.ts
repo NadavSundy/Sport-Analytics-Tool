@@ -10,6 +10,10 @@ import {
 
 const filterTextSchema = z.string().trim().min(1);
 
+// Basic exports are deliberately synchronous and capped. Larger or paginated
+// dataset releases belong to the later asynchronous export work.
+export const FIXTURE_EVENT_EXPORT_LIMIT = 100;
+
 export const competitionSchema = z.object({
   competitionId: apiIdentifierSchema,
   name: z.string().min(1),
@@ -255,13 +259,21 @@ export const participantListQuerySchema = paginationQuerySchema.extend({
   name: filterTextSchema.optional(),
 });
 
-export const fixtureEventListQuerySchema = paginationQuerySchema.extend({
+const fixtureEventFilterQueryShape = {
   inningsId: apiIdentifierSchema.optional(),
   competitorId: apiIdentifierSchema.optional(),
   participantId: apiIdentifierSchema.optional(),
   overNumber: z.coerce.number().int().nonnegative().max(32_767).optional(),
   wicketKind: filterTextSchema.optional(),
-});
+};
+
+export const fixtureEventListQuerySchema = paginationQuerySchema.extend(
+  fixtureEventFilterQueryShape,
+);
+
+// Exports intentionally accept the same event filters as the paginated read,
+// but not cursor or limit: every export has the fixed Basic-tier row cap.
+export const fixtureEventExportQuerySchema = z.object(fixtureEventFilterQueryShape).strict();
 
 export const fixtureStatisticsQuerySchema = z.object({
   includeContributors: z
@@ -366,6 +378,7 @@ export type FixtureListQuery = z.infer<typeof fixtureListQuerySchema>;
 export type CompetitorListQuery = z.infer<typeof competitorListQuerySchema>;
 export type ParticipantListQuery = z.infer<typeof participantListQuerySchema>;
 export type FixtureEventListQuery = z.infer<typeof fixtureEventListQuerySchema>;
+export type FixtureEventExportQuery = z.infer<typeof fixtureEventExportQuerySchema>;
 export type FixtureStatisticsQuery = z.infer<typeof fixtureStatisticsQuerySchema>;
 export type ParticipantFixtureBatting = z.infer<typeof participantFixtureBattingSchema>;
 export type ParticipantFixtureBowling = z.infer<typeof participantFixtureBowlingSchema>;

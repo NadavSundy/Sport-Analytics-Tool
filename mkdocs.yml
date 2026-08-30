@@ -69,6 +69,7 @@ nav:
           - Versioning and Deprecation: api/versioning.md
       - Submission field mapping: api/submission-field-mapping.md
       - Event to statistic mapping: api/event-statistic-mapping.md
+      - Dataset Exports: data/dataset-exports.md
       - Sport Domain Definition: requirements/sport-domain-definition.md
       - Cricsheet Data Source: data/cricsheet.md
       - Database:

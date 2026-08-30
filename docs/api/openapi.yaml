@@ -593,6 +593,122 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/fixtures/{fixtureId}/events/export.json:
+    get:
+      tags:
+        - Public Read
+      summary: Export accepted fixture events as JSON
+      description: |
+        Exports up to 100 current accepted fixture events in deterministic innings
+        and sequence order. It accepts the same filters as the public event
+        collection except for cursor and limit, which are intentionally omitted
+        so that Basic-tier exports remain bounded. Submission ownership,
+        revision history and internal audit fields are not exposed.
+      operationId: exportFixtureEventsJson
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: Limit events to those involving this participant.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: A bounded accepted-event export in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventExportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/fixtures/{fixtureId}/events/export.csv:
+    get:
+      tags:
+        - Public Read
+      summary: Export accepted fixture events as CSV
+      description: |
+        Exports the same filtered, bounded slice as `export.json` in CSV form.
+        Rows use the same deterministic occurrence order and the response is an
+        attachment named `fixture-{fixtureId}-events.csv`.
+      operationId: exportFixtureEventsCsv
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: Limit events to those involving this participant.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: A bounded CSV attachment of accepted events in occurrence order.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the CSV export.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/fixtures/{fixtureId}/statistics:
     get:
       tags:
@@ -2473,6 +2589,18 @@ components:
             $ref: '#/components/schemas/PublicEvent'
         pagination:
           $ref: '#/components/schemas/PaginationMetadata'
+
+    PublicEventExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PublicEvent'
 
     CompetitorResponse:
       type: object

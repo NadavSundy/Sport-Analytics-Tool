@@ -447,6 +447,132 @@ describe('public read API', () => {
     expect(response.body.data[0]).not.toHaveProperty('recordedAt');
   });
 
+  test('exports a filtered fixture-event JSON slice with the fixed Basic limit', async () => {
+    const verifyAccessToken = vi.fn<VerifyAccessToken>();
+    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>().mockResolvedValue({
+      data: [publicEvent()],
+      pagination: {
+        nextCursor: 'not-exported',
+      },
+    });
+
+    const response = await request(
+      createTestApp(
+        verifyAccessToken,
+        createService({
+          listFixtureEvents,
+        }),
+      ),
+    )
+      .get('/api/v1/fixtures/100/events/export.json')
+      .query({
+        inningsId: '200',
+        competitorId: '20',
+        participantId: '30',
+        overNumber: '0',
+        wicketKind: 'caught',
+      })
+      .expect('Content-Type', /application\/json/)
+      .expect(200);
+
+    expect(verifyAccessToken).not.toHaveBeenCalled();
+    expect(listFixtureEvents).toHaveBeenCalledWith('100', {
+      inningsId: '200',
+      competitorId: '20',
+      participantId: '30',
+      overNumber: 0,
+      wicketKind: 'caught',
+      limit: 100,
+    });
+    expect(response.body).toEqual({
+      data: [publicEvent()],
+    });
+    expect(JSON.stringify(response.body)).not.toContain('submissionId');
+    expect(JSON.stringify(response.body)).not.toContain('audit');
+  });
+
+  test('exports deterministic CSV rows with a download filename', async () => {
+    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>().mockResolvedValue({
+      data: [
+        publicEvent({
+          wickets: [
+            {
+              wicketId: '700',
+              kind: 'caught, "behind"',
+              playerOutParticipantId: '30',
+              fielders: [
+                {
+                  participantId: '33',
+                  isSubstitute: false,
+                },
+              ],
+            },
+          ],
+        }),
+      ],
+      pagination: {
+        nextCursor: null,
+      },
+    });
+
+    const response = await request(
+      createTestApp(
+        undefined,
+        createService({
+          listFixtureEvents,
+        }),
+      ),
+    )
+      .get('/api/v1/fixtures/100/events/export.csv?wicketKind=caught')
+      .expect('Content-Type', /text\/csv/)
+      .expect('Content-Disposition', 'attachment; filename="fixture-100-events.csv"')
+      .expect(200);
+
+    expect(listFixtureEvents).toHaveBeenCalledWith('100', {
+      wicketKind: 'caught',
+      limit: 100,
+    });
+    expect(response.text).toBe(
+      'eventId,fixtureId,inningsId,inningsOrdinal,sequenceNumber,overNumber,positionInOver,ballNumber,battingCompetitorId,bowlingCompetitorId,strikerParticipantId,nonStrikerParticipantId,bowlerParticipantId,runsOffBat,runsExtras,runsTotal,runsNonBoundary,extrasWides,extrasNoBalls,extrasByes,extrasLegByes,extrasPenalty,wicketCount,wicketIds,wicketKinds,playersOutParticipantIds,fielderParticipantIds\r\n' +
+        '"500","100","200","0","1","0","0","0.1","20","21","30","31","32","4","0","4","false","","","","","","1","700","caught, ""behind""","30","33"\r\n',
+    );
+  });
+
+  test('returns empty fixture-event exports without pagination metadata', async () => {
+    const app = createTestApp(
+      undefined,
+      createService({
+        listFixtureEvents: async () => ({
+          data: [],
+          pagination: { nextCursor: null },
+        }),
+      }),
+    );
+
+    await request(app)
+      .get('/api/v1/fixtures/100/events/export.json')
+      .expect('Content-Type', /application\/json/)
+      .expect(200)
+      .expect({ data: [] });
+
+    const csv = await request(app)
+      .get('/api/v1/fixtures/100/events/export.csv')
+      .expect('Content-Type', /text\/csv/)
+      .expect(200);
+
+    expect(csv.text).toMatch(/^eventId,fixtureId,/);
+  });
+
+  test('rejects invalid and paginated fixture-event export filters', async () => {
+    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>();
+    const app = createTestApp(undefined, createService({ listFixtureEvents }));
+
+    await request(app).get('/api/v1/fixtures/100/events/export.json?overNumber=-1').expect(400);
+    await request(app).get('/api/v1/fixtures/100/events/export.csv?limit=101').expect(400);
+
+    expect(listFixtureEvents).not.toHaveBeenCalled();
+  });
+
   test('retrieves an accepted fixture event by stable identifier', async () => {
     const getFixtureEvent = vi
       .fn<PublicReadService['getFixtureEvent']>()

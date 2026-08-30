@@ -154,6 +154,8 @@ fixtureId ASC
 ```http
 GET /api/v1/fixtures/{fixtureId}/events
 GET /api/v1/fixtures/{fixtureId}/events/{eventId}
+GET /api/v1/fixtures/{fixtureId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/events/export.csv
 ```
 
 Both endpoints are public. They return only the current accepted revision of each cricket delivery
@@ -236,6 +238,42 @@ used with the detail endpoint. `ballNumber` is display-only and never controls i
 An event cursor is bound to its fixture; using it for another fixture returns `INVALID_CURSOR`.
 A known fixture with no accepted events returns an empty collection, while an unknown fixture or
 event returns HTTP `404`.
+
+## Fixture event exports
+
+The two export endpoints provide the Basic-tier dataset slice for the tabular accepted fixture
+event resource:
+
+```http
+GET /api/v1/fixtures/{fixtureId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/events/export.csv
+```
+
+They are public and derive exclusively from the same accepted-event public-read model as the event
+collection. Consequently, they preserve stable event, fixture, innings, competitor and participant
+identifiers plus readable delivery fields such as `ballNumber`, runs, extras and wicket kinds, while
+never exposing account data, submission administration fields, revision history, audit data or
+secrets.
+
+Both formats accept the same filters as `GET /fixtures/{fixtureId}/events`:
+`inningsId`, `competitorId`, `participantId`, `overNumber` and `wicketKind`. They deliberately do
+not accept `cursor` or `limit`: each response is synchronously capped at **100 events** in the
+collection's fixed occurrence order. Passing either pagination parameter is a validation error.
+This predictable cap keeps the Basic export endpoint bounded; versioned snapshots, larger exports
+and background jobs are outside this scope.
+
+The JSON endpoint returns `{ "data": [...] }` without pagination metadata. The CSV endpoint returns
+`text/csv; charset=utf-8` as an attachment named `fixture-{fixtureId}-events.csv`. Its columns and
+their order are stable: event and fixture identifiers; innings and delivery position; competitor and
+participant identifiers; run and extras fields; then flattened wicket identifiers, kinds, dismissed
+participants and fielder participant identifiers. Multiple wicket values use `|` within their
+escaped CSV field.
+
+Example:
+
+```http
+GET /api/v1/fixtures/481/events/export.csv?participantId=30&overNumber=4
+```
 
 ## Fixture statistics endpoints
 

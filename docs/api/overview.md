@@ -196,6 +196,8 @@ GET /api/v1/fixtures
 GET /api/v1/fixtures/{fixtureId}
 GET /api/v1/fixtures/{fixtureId}/events
 GET /api/v1/fixtures/{fixtureId}/events/{eventId}
+GET /api/v1/fixtures/{fixtureId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/events/export.csv
 GET /api/v1/fixtures/{fixtureId}/statistics
 GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}
 GET /api/v1/competitors
@@ -248,7 +250,7 @@ and current limitations.
 
 - submission review, correction, and correction-history workflows;
 - derived season, competition, and career statistics;
-- filtered exports and versioned dataset releases;
+- versioned dataset releases and larger asynchronous exports;
 - staged and resumable batch ingestion;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
