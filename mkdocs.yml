@@ -21,6 +21,7 @@ nav:
       - Environment Variables: environment.md
       - Repository Structure: architecture/repository-structure.md
       - Testing: development/testing.md
+      - Reference Fixtures: development/reference-fixtures.md
       - Dependencies: development/dependencies.md
       - Gitea Issue Export: development/gitea-issue-export.md
   - Design:
