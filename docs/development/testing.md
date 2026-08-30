@@ -509,6 +509,56 @@ npm run test:e2e -- tests/e2e/homepage.spec.ts tests/e2e/smoke.spec.ts tests/e2e
 npm run build --workspace=@sport-analytics/frontend
 ```
 
+## Basic end-to-end acceptance workflow
+
+The Sprint 2 Basic acceptance workflow verifies the completed user journeys across three separate
+layers rather than treating browser mocks alone as full integration proof:
+
+1. Playwright verifies the user-visible browser journeys in desktop Chromium and the Pixel 7
+   Chromium profile.
+2. The backend API suite verifies the handwritten HTTP boundary, validation and authorization.
+3. The PostgreSQL integration suite verifies persistence, competition scope, provenance,
+   corrections and statistic refresh against a real isolated PostgreSQL database.
+
+From a prepared repository, run:
+
+```text
+npm run test:e2e
+npm run test:api
+npm run test:database:local
+npm run check
+```
+
+On Windows PowerShell installations where script execution blocks the npm or npx PowerShell
+wrappers, use:
+
+```text
+npm.cmd run test:e2e
+npm.cmd run test:api
+npm.cmd run test:database:local
+npm.cmd run check
+```
+
+Playwright requires its managed Chromium installation. The browser suite builds and previews the
+frontend automatically and runs the complete `tests/e2e/` suite against both configured browser
+projects.
+
+The Docker database workflow requires Docker with Compose support. It provisions the dedicated
+PostgreSQL 16 test database `sport_analytics_test` on `127.0.0.1:55432`, resets it, applies current
+migrations, loads deterministic seed data and runs every database integration test. It must never
+be redirected to development or production data.
+
+`npm run check` remains the database-independent repository quality gate; the explicit database and
+browser commands are therefore retained as separate acceptance steps.
+
+A genuine product defect discovered during formal acceptance testing must be logged as a separate
+bug issue and linked to the acceptance work rather than silently fixed or hidden inside the
+acceptance issue.
+
+The executed Issue #272 environment, acceptance-criteria traceability, command results and
+test-maintenance investigation are retained in
+`evidence/validation/issue-272-basic-e2e-acceptance.md`.
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -538,3 +588,5 @@ The accepted-event correction coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The issue #314 homepage component, browser, accessibility, fallback and bundle coverage was
 documented with the assistance of Codex[GPT-5.6 Sol].
+The Basic end-to-end acceptance workflow was documented with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].
