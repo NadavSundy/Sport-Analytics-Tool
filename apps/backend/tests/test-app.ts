@@ -10,6 +10,7 @@ import type { SubmitterAccessService } from '../src/modules/submitter-access/sub
 import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
 import type { AdminService } from '../src/modules/admin/admin.service';
 import type { WeatherService } from '../src/modules/weather/weather.service';
+import type { FixtureWeatherService } from '../src/modules/weather/fixture-weather.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -84,6 +85,7 @@ export function createTestApp(
   accountDeletionService: AccountDeletionService = deleteTestAccount,
   adminService: AdminService = testAdminService,
   weatherService?: WeatherService,
+  fixtureWeatherService?: FixtureWeatherService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -96,6 +98,7 @@ export function createTestApp(
     accountDeletionService,
     adminService,
     ...(weatherService !== undefined ? { weatherService } : {}),
+    ...(fixtureWeatherService !== undefined ? { fixtureWeatherService } : {}),
   });
 }
 
