@@ -570,6 +570,38 @@ This foundation intentionally does not implement:
 - [API keys](https://supabase.com/docs/guides/getting-started/api-keys)
 - [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
 
+## Basic security and privacy hardening audit
+
+The completed Basic workflows are reviewed for security and privacy risks across server-side
+authorization, file and input validation, public-data exposure, authentication and administrator
+boundaries, secret handling and dependency health.
+
+The Sprint 2 Issue #274 review included:
+
+- competition-scoped submission and correction authorization;
+- administrator and authenticated-route role enforcement;
+- uploaded-file size, type and content validation;
+- malformed and oversized request handling;
+- public and export response exposure checks;
+- environment-variable and secret-reference inspection;
+- npm production and development dependency audits; and
+- monorepo dependency and architecture hygiene checks.
+
+Material dependency findings were remediated without forcing breaking framework upgrades.
+After remediation:
+
+```text
+npm.cmd audit --omit=dev
+found 0 vulnerabilities
+```
+
+The remaining Vite/esbuild advisory is limited to development tooling and npm currently requires a
+breaking Vite 8 migration to remove it. That upgrade was explicitly deferred rather than applying
+`npm audit fix --force` during Sprint 2 hardening.
+
+The complete review, findings, decisions and verification results are retained in
+[the Issue #274 security/privacy audit evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md).
+
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of Codex[GPT-5]. The
@@ -582,3 +614,5 @@ The account-deletion security and recovery flow was documented with the assistan
 The submitter access-request frontend workflow was documented with the assistance of Codex[GPT-5].
 The competition-scoped submitter access correction was documented with the assistance of
 Codex[GPT-5].
+The Basic security/privacy hardening audit documentation was produced with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].
