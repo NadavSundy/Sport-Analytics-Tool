@@ -367,4 +367,128 @@ describe('public fixture statistics pages', () => {
       ),
     );
   });
+
+  it('exports the visible innings trace as labelled CSV or JSON without pagination filters', async () => {
+    const exportBlob = new Blob(['event data'], { type: 'text/csv' });
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/events/export.')) {
+        return Promise.resolve({ ok: true, blob: vi.fn().mockResolvedValue(exportBlob) });
+      }
+      return Promise.resolve(
+        response(200, {
+          data: {
+            ...inningsStatistic,
+            contributingEvents: [
+              {
+                eventId: 'event-1',
+                fixtureId: 'fixture-1',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                sequenceNumber: 1,
+                strikerParticipantId: 'striker-1',
+                strikerParticipantName: 'Opening Batter',
+                bowlerParticipantId: 'bowler-1',
+                bowlerParticipantName: 'Opening Bowler',
+                runs: { offBat: 4, extras: 0, total: 4 },
+                extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
+                nonBoundary: false,
+                bowlerWickets: 0,
+              },
+            ],
+          },
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn(() => 'blob:event-data'),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+
+    expect(await screen.findByRole('heading', { name: 'Export this trace' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download CSV' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download JSON' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/fixtures/fixture-1/events/export.csv?inningsId=innings-1&competitorId=team-1',
+        expect.objectContaining({ headers: { Accept: 'text/csv' } }),
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Download JSON' }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/fixtures/fixture-1/events/export.json?inningsId=innings-1&competitorId=team-1',
+        expect.objectContaining({ headers: { Accept: 'application/json' } }),
+      ),
+    );
+    expect(fetchMock.mock.calls.flatMap(([url]) => String(url))).not.toContain('cursor=');
+    expect(fetchMock.mock.calls.flatMap(([url]) => String(url))).not.toContain('limit=');
+  });
+
+  it('explains an invalid export response', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/events/export.')) {
+        return Promise.resolve(
+          response(400, {
+            error: { code: 'INVALID_FILTER', message: 'The export filter is invalid.' },
+          }),
+        );
+      }
+      return Promise.resolve(
+        response(200, {
+          data: {
+            ...inningsStatistic,
+            contributingEvents: [
+              {
+                eventId: 'event-1',
+                fixtureId: 'fixture-1',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                sequenceNumber: 1,
+                strikerParticipantId: 'striker-1',
+                strikerParticipantName: 'Opening Batter',
+                bowlerParticipantId: 'bowler-1',
+                bowlerParticipantName: 'Opening Bowler',
+                runs: { offBat: 4, extras: 0, total: 4 },
+                extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
+                nonBoundary: false,
+                bowlerWickets: 0,
+              },
+            ],
+          },
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download CSV' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The export filter is invalid.');
+  });
+
+  it('explains when no trace events are available to export', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          response(200, { data: { ...inningsStatistic, contributingEvents: [] } }),
+        ),
+    );
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+
+    expect(
+      await screen.findByText('No accepted events are available to export for this trace.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Download CSV' })).not.toBeInTheDocument();
+  });
 });

@@ -27,6 +27,14 @@ import { ApiResponseError } from './client';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
 
+export type FixtureEventExportFormat = 'csv' | 'json';
+export type FixtureEventExportFilters = Partial<
+  Pick<
+    Record<'inningsId' | 'competitorId' | 'participantId' | 'overNumber' | 'wicketKind', string>,
+    'inningsId' | 'competitorId' | 'participantId' | 'overNumber' | 'wicketKind'
+  >
+>;
+
 interface ResponseSchema<ResponseBody> {
   parse(value: unknown): ResponseBody;
 }
@@ -75,6 +83,35 @@ export async function requestPublicApi<ResponseBody>(
   } catch {
     throw new ApiContractError();
   }
+}
+
+export async function downloadFixtureEventExport(
+  fixtureId: string,
+  format: FixtureEventExportFormat,
+  filters: FixtureEventExportFilters,
+): Promise<Blob> {
+  const parameters = new URLSearchParams();
+  for (const [name, value] of Object.entries(filters)) {
+    if (value) {
+      parameters.set(name, value);
+    }
+  }
+  const search = parameters.size > 0 ? `?${parameters.toString()}` : '';
+  const response = await fetch(
+    `${apiBaseUrl}/fixtures/${encodeURIComponent(fixtureId)}/events/export.${format}${search}`,
+    { headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' } },
+  );
+
+  if (!response.ok) {
+    const body = await readResponseBody(response);
+    const errorResponse = apiErrorResponseSchema.safeParse(body);
+    throw new ApiResponseError(
+      response.status,
+      errorResponse.success ? errorResponse.data.error.message : undefined,
+    );
+  }
+
+  return response.blob();
 }
 
 export const publicReadApi = {
