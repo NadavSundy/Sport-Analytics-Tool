@@ -100,6 +100,7 @@ nav:
   - Testing:
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
+      - Bug Tracking: testing/bug-tracking.md
   - AI Use: ai/usage.md
 
 markdown_extensions:
