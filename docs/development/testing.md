@@ -484,6 +484,31 @@ Run the focused checks with:
 npm run test:e2e -- tests/e2e/public-browsing.spec.ts tests/e2e/player-overview.spec.ts --workers=1
 ```
 
+## Public homepage coverage
+
+The issue #314 component suite verifies the approved headline, primary and secondary actions,
+existing public route targets, principle and event-derivation content, implemented API paths, the
+no-fetch static page, and the intentional fallback used when WebGL is unavailable or reduced motion
+is selected.
+
+The browser suite runs at the configured desktop and Pixel 7 widths. It checks Day Match and Night
+Match, semantic heading and navigation content, keyboard entry into Fixtures, serious or critical
+Axe findings, page-level horizontal overflow, 200 percent desktop reflow, reduced motion without a
+Three.js canvas or running fallback animation, and the WebGL-unavailable fallback. The production
+build output is also inspected to confirm that `HeroScene` and Three.js remain outside the initial
+application chunk. Lifecycle coverage holds the StrictMode scene open beyond its initial animation,
+checks that it pauses off-screen and disposes on navigation, and deliberately loses and restores the
+WebGL context to verify that the static fallback replaces the canvas presentation without creating a
+second canvas.
+
+Run the focused checks with:
+
+```text
+npm run test --workspace=@sport-analytics/frontend -- --run src/features/home/HomePage.test.tsx src/App.test.tsx
+npm run test:e2e -- tests/e2e/homepage.spec.ts tests/e2e/smoke.spec.ts tests/e2e/accessibility.spec.ts --workers=1
+npm run build --workspace=@sport-analytics/frontend
+```
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -511,3 +536,5 @@ The issue #255 competition-scoped submitter access coverage was documented with 
 Codex[GPT-5].
 The accepted-event correction coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #314 homepage component, browser, accessibility, fallback and bundle coverage was
+documented with the assistance of Codex[GPT-5.6 Sol].

@@ -218,6 +218,21 @@ SVGs are stored in `docs/design/assets/wireframes/` and can be reopened and edit
 
 Landing page — static hero and principles content; no data fetch, so no loading state applies.
 
+Issue #314 extends the approved low-fidelity structure into an editorial landing-page narrative:
+
+- one headline and immediate links to Fixtures and Competitions, with Players at lower emphasis;
+- the Explosive, Exact and Traceable principles presented as a paced broadcast-style sequence;
+- a semantic delivery-to-statistic example using supported `runs.offBat`, extras, team-total and
+  player-statistic relationships;
+- public gateways to Fixtures, Competitions, Players and Teams;
+- a restrained technical section containing only implemented public API paths; and
+- a final return to public fixture browsing.
+
+The hero's moving delivery is explicitly illustrative because the source model contains no physical
+ball trajectory or pitch-location coordinates. The SVG fallback carries the same event-to-derived
+value idea at first paint, with reduced motion, without WebGL, or if the lazy Three.js enhancement
+cannot load. Mobile stacks copy before a simplified visual rather than shrinking the desktop split.
+
 ![Home – desktop](assets/wireframes/home-desktop.svg)
 ![Home – mobile](assets/wireframes/home-mobile.svg)
 
@@ -281,3 +296,5 @@ git methodology. Detailed page implementation should not begin until this docume
 reviewed by the team, per the acceptance criteria on #56.
 
 The issue #266 guided file-submission interface was documented with the assistance of Codex[GPT-5].
+The issue #314 homepage narrative, illustrative-trajectory constraint and progressive fallback were
+documented with the assistance of Codex[GPT-5.6 Sol].

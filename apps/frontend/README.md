@@ -87,6 +87,30 @@ http://localhost:5173
 
 The backend should normally be running at the same time.
 
+## Public homepage
+
+The `/` route is a static, no-fetch introduction to the public T20 record. Its editorial sequence
+moves from the approved tagline through the Explosive, Exact and Traceable principles, an
+illustrative accepted-delivery example, the existing Fixtures, Competitions, Players and Teams
+journeys, real public API paths, and a final Fixtures action. The explanatory values use implemented
+delivery fields and fixture-statistic rules; they are labelled as an example and are not presented
+as live match data.
+
+The hero renders semantic copy, links and a lightweight SVG pitch immediately. A single procedural
+Three.js canvas is then imported as a separate browser chunk only when WebGL is available and the
+user has not requested reduced motion. The moving ball is a visual metaphor for an event entering
+derived values. It is not an actual delivery trajectory, and the application does not have or
+request ball-location, bounce-coordinate or shot-direction data.
+
+The scene uses no models, textures, shadows or post-processing. It clamps device pixel ratio to
+`1.5`, pauses outside the viewport and while the document is hidden, rests between short delivery
+sequences, and disposes its frames, timers, observers, renderer, geometries and materials on
+unmount. Day Match and Night Match colours are read from the existing semantic CSS tokens and
+updated while the scene remains mounted. Reduced motion, unavailable WebGL, a delayed or failed
+chunk, and pre-enhancement first paint all retain the complete static visual and page content.
+Unexpected WebGL context loss stops the animation and immediately reveals the same fallback; a
+restored context resumes the existing scene without replacing its canvas or renderer.
+
 ## Submitter access workflow
 
 After authentication, `/account` loads the current application profile from the handwritten
@@ -295,3 +319,5 @@ The issue #255 competition selection and read-only approval scope were documente
 assistance of Codex[GPT-5].
 The accepted-event correction workflow was documented with the assistance of Codex[GPT-5.6 Sol].
 The Issue #311 administrator submission interface was documented with the assistance of Codex[GPT-5].
+The issue #314 static homepage, progressive Three.js enhancement, fallback, motion and performance
+behavior were documented with the assistance of Codex[GPT-5.6 Sol].

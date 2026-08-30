@@ -159,7 +159,9 @@ describe('public application and authentication interface', () => {
 
     renderApp();
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Stat’sTheGame' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
+    ).toBeInTheDocument();
     const accountNavigation = await screen.findByRole('navigation', { name: 'Account' });
     const authenticationCallToAction = within(accountNavigation).getByRole('link', {
       name: 'Login or Sign up',
@@ -389,7 +391,10 @@ describe('public application and authentication interface', () => {
     await act(async () => resolveSignOut({ error: null }));
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Stat’sTheGame' }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'The game, measured ball by ball.',
+      }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Login or Sign up' })).toBeInTheDocument();
   });
@@ -461,7 +466,10 @@ describe('public application and authentication interface', () => {
     });
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Stat’sTheGame' }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'The game, measured ball by ball.',
+      }),
     ).toBeInTheDocument();
     const accountNavigation = screen.getByRole('navigation', { name: 'Account' });
     expect(within(accountNavigation).getAllByRole('link')).toHaveLength(1);
