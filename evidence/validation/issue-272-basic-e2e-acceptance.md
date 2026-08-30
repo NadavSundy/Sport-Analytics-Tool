@@ -227,10 +227,8 @@ without changing production behaviour and successfully retested.
 
 ## Remaining Definition of Done steps
 
-- Add the documented Basic acceptance workflow to the testing documentation.
-- Run final documentation and repository validation after the evidence changes.
-- Record AI assistance.
-- Commit the issue changes.
+- Run final repository and documentation validation.
+- Commit the Issue #272 changes.
 - Create the Pull Request.
 - Obtain peer review and required verification.
 - Merge into `main`.

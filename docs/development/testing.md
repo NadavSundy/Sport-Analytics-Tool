@@ -559,6 +559,26 @@ The executed Issue #272 environment, acceptance-criteria traceability, command r
 test-maintenance investigation are retained in
 `evidence/validation/issue-272-basic-e2e-acceptance.md`.
 
+## Accessibility and responsive-design audit
+
+The completed Basic journeys are periodically audited across public, submitter, administrator,
+correction and export workflows.
+
+The audit combines:
+
+- Axe accessibility checks for serious and critical violations;
+- keyboard navigation and focus-management verification;
+- validation-label and status/error association checks;
+- desktop and representative mobile-width Playwright projects;
+- horizontal-overflow assertions; and
+- manual browser-zoom and responsive-layout inspection.
+
+The Sprint 2 Basic audit for Issue #273 is retained in
+[the Issue #273 accessibility and responsive-design evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-273-accessibility-responsive-audit.md).
+
+Serious or critical product findings discovered during an audit must be fixed within scope or tracked
+as separate issues with an explicit rationale.
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -590,3 +610,5 @@ The issue #314 homepage component, browser, accessibility, fallback and bundle c
 documented with the assistance of Codex[GPT-5.6 Sol].
 The Basic end-to-end acceptance workflow was documented with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The Basic accessibility and responsive-design audit documentation was produced with the assistance
+of ChatGPT-Web[GPT-5.6 Sol].
