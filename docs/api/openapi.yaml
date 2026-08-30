@@ -806,6 +806,68 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
 
+  /api/v1/fixtures/{fixtureId}/weather:
+    get:
+      tags:
+        - Weather
+      summary: Get contextual weather for a fixture
+      description: |
+        Resolves the fixture's start date and its stored venue coordinates, then
+        retrieves daily weather through the server-side Open-Meteo integration.
+        Weather is contextual external information and is not authoritative
+        fixture, event, or statistic data. If the fixture exists but cannot be
+        located with stored coordinates, a successful unavailable response is
+        returned and Open-Meteo is not called.
+      operationId: getFixtureWeather
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+      responses:
+        '200':
+          description: Contextual fixture weather, or an explicit unavailable state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureWeatherResponse'
+              examples:
+                available:
+                  value:
+                    data:
+                      fixtureId: '17'
+                      date: '2026-08-19'
+                      availability: available
+                      venue:
+                        name: Wits Cricket Oval
+                        city: Johannesburg
+                      weather:
+                        date: '2026-08-19'
+                        latitude: -26.1929
+                        longitude: 28.0305
+                        temperatureMax: 24
+                        temperatureMin: 11
+                        precipitationSum: 0
+                        windSpeedMax: 17
+                unavailable:
+                  value:
+                    data:
+                      fixtureId: '17'
+                      date: '2026-08-19'
+                      availability: unavailable
+                      reason: MISSING_COORDINATES
+                      venue:
+                        name: Wits Cricket Oval
+                        city: Johannesburg
+                      weather: null
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
   /api/v1/competitors:
     get:
       tags:
@@ -1683,6 +1745,83 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/WeatherData'
+
+    FixtureWeatherVenue:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - city
+      properties:
+        name:
+          type: string
+        city:
+          oneOf:
+            - type: string
+            - type: 'null'
+
+    FixtureWeatherAvailable:
+      type: object
+      additionalProperties: false
+      required:
+        - fixtureId
+        - date
+        - availability
+        - venue
+        - weather
+      properties:
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        date:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        availability:
+          type: string
+          enum: [available]
+        venue:
+          $ref: '#/components/schemas/FixtureWeatherVenue'
+        weather:
+          $ref: '#/components/schemas/WeatherData'
+
+    FixtureWeatherUnavailable:
+      type: object
+      additionalProperties: false
+      required:
+        - fixtureId
+        - date
+        - availability
+        - reason
+        - venue
+        - weather
+      properties:
+        fixtureId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        date:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        availability:
+          type: string
+          enum: [unavailable]
+        reason:
+          type: string
+          enum: [MISSING_VENUE, MISSING_COORDINATES, UNSUPPORTED_LOCATION]
+        venue:
+          oneOf:
+            - $ref: '#/components/schemas/FixtureWeatherVenue'
+            - type: 'null'
+        weather:
+          type: 'null'
+
+    FixtureWeatherResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/FixtureWeatherAvailable'
+            - $ref: '#/components/schemas/FixtureWeatherUnavailable'
 
     PaginationMetadata:
       type: object
