@@ -773,7 +773,9 @@ paths:
         maximum wind speed) for a given latitude, longitude and date from the
         Open-Meteo external API. Intended to provide contextual weather for a
         fixture; the caller currently supplies coordinates directly rather
-        than a fixture identifier.
+        than a fixture identifier. The backend selects Open-Meteo's forecast
+        or archive endpoint based on the requested date; dates outside both
+        endpoints' supported ranges return `422 DATE_UNSUPPORTED`.
       operationId: getWeather
       x-implementation-status: implemented
       security: []
@@ -799,6 +801,8 @@ paths:
                   windSpeedMax: 18.5
         '400':
           $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnsupportedDate'
         '502':
           $ref: '#/components/responses/UpstreamError'
         '503':
@@ -816,8 +820,9 @@ paths:
         retrieves daily weather through the server-side Open-Meteo integration.
         Weather is contextual external information and is not authoritative
         fixture, event, or statistic data. If the fixture exists but cannot be
-        located with stored coordinates, a successful unavailable response is
-        returned and Open-Meteo is not called.
+        located with stored coordinates, or its date falls outside Open-Meteo's
+        supported forecast and archive ranges, a successful unavailable
+        response is returned and Open-Meteo is not called.
       operationId: getFixtureWeather
       x-implementation-status: implemented
       security: []
@@ -1333,6 +1338,15 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
 
+    UnsupportedDate:
+      description: >-
+        The requested date is validly formatted but falls outside both the Open-Meteo forecast
+        and archive endpoints' supported ranges.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
     UpstreamError:
       description: The Open-Meteo external API returned an error response.
       content:
@@ -1804,7 +1818,7 @@ components:
           enum: [unavailable]
         reason:
           type: string
-          enum: [MISSING_VENUE, MISSING_COORDINATES, UNSUPPORTED_LOCATION]
+          enum: [MISSING_VENUE, MISSING_COORDINATES, UNSUPPORTED_LOCATION, UNSUPPORTED_DATE]
         venue:
           oneOf:
             - $ref: '#/components/schemas/FixtureWeatherVenue'

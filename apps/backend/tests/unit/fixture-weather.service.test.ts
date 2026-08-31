@@ -79,6 +79,20 @@ describe('fixture weather service', () => {
     expect(weather.getWeather).not.toHaveBeenCalled();
   });
 
+  test('does not query Open-Meteo when the fixture date is outside all supported ranges', async () => {
+    const weather = weatherService();
+    const result = await createFixtureWeatherService(
+      weather,
+      vi.fn().mockResolvedValue({
+        ...venueContext,
+        date: '1900-01-01',
+      }),
+    ).getFixtureWeather('17');
+
+    expect(result).toMatchObject({ availability: 'unavailable', reason: 'UNSUPPORTED_DATE' });
+    expect(weather.getWeather).not.toHaveBeenCalled();
+  });
+
   test('returns null without querying data for an invalid or unknown fixture', async () => {
     const weather = weatherService();
     const findContext = vi.fn().mockResolvedValue(null);

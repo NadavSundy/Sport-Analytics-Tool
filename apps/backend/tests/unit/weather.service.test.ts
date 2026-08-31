@@ -1,5 +1,37 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WeatherService } from '../../src/modules/weather/weather.service';
+import { classifyWeatherDate, WeatherService } from '../../src/modules/weather/weather.service';
+
+describe('classifyWeatherDate', () => {
+  const referenceDate = new Date('2026-08-31T00:00:00Z');
+
+  it('selects the forecast endpoint for today', () => {
+    expect(classifyWeatherDate('2026-08-31', referenceDate)).toBe('forecast');
+  });
+
+  it('selects the forecast endpoint for a date 90 days in the past', () => {
+    expect(classifyWeatherDate('2026-06-02', referenceDate)).toBe('forecast');
+  });
+
+  it('selects the forecast endpoint for a date 10 days in the future', () => {
+    expect(classifyWeatherDate('2026-09-10', referenceDate)).toBe('forecast');
+  });
+
+  it('selects the archive endpoint for a date 200 days in the past', () => {
+    expect(classifyWeatherDate('2026-02-12', referenceDate)).toBe('archive');
+  });
+
+  it('selects the archive endpoint for a date near the earliest supported year', () => {
+    expect(classifyWeatherDate('1945-01-01', referenceDate)).toBe('archive');
+  });
+
+  it('is unsupported for a date before the archive endpoint begins', () => {
+    expect(classifyWeatherDate('1900-01-01', referenceDate)).toBe('unsupported');
+  });
+
+  it('is unsupported for a date far in the future', () => {
+    expect(classifyWeatherDate('2026-10-15', referenceDate)).toBe('unsupported');
+  });
+});
 
 describe('WeatherService', () => {
   afterEach(() => {
@@ -124,6 +156,47 @@ describe('WeatherService', () => {
 
     await expect(service.getWeather(-26.2041, 28.0473, '19-08-2026')).rejects.toThrow(
       'Date must use YYYY-MM-DD format',
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('uses the archive endpoint for a historical date', async () => {
+    const mockResponse = {
+      daily: {
+        time: ['1995-06-14'],
+        temperature_2m_max: [19.1],
+        temperature_2m_min: [7.4],
+        precipitation_sum: [2.1],
+        wind_speed_10m_max: [12.3],
+      },
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockResponse), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const service = new WeatherService();
+
+    const result = await service.getWeather(-26.2041, 28.0473, '1995-06-14');
+
+    expect(result.temperatureMax).toBe(19.1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    const requestedUrl = fetchSpy.mock.calls[0]?.[0] as string;
+    expect(requestedUrl.startsWith('https://archive-api.open-meteo.com')).toBe(true);
+  });
+
+  it('throws WeatherDateUnsupportedError without calling Open-Meteo for an out-of-range date', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const service = new WeatherService();
+
+    await expect(service.getWeather(-26.2041, 28.0473, '1900-01-01')).rejects.toThrow(
+      'Weather data is not available for the requested date',
     );
 
     expect(fetchSpy).not.toHaveBeenCalled();

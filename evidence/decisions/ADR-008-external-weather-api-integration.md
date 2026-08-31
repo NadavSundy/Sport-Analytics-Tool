@@ -98,8 +98,26 @@ This ADR does not decide:
 
 - resolving `fixtureId` to venue coordinates automatically (currently the caller supplies raw `latitude`/`longitude`);
 - caching or rate-limiting outbound requests to Open-Meteo;
-- frontend UI for displaying weather alongside a fixture;
-- behaviour for fixture dates outside Open-Meteo's supported historical range.
+- frontend UI for displaying weather alongside a fixture.
+
+## Amendment: forecast/archive endpoint selection (issue #334)
+
+The "behaviour for fixture dates outside Open-Meteo's supported historical range" item above was
+resolved by #334. `WeatherService` now selects between two Open-Meteo endpoints based on the
+requested date, entirely inside the backend's weather integration:
+
+- **Forecast** (`api.open-meteo.com/v1/forecast`) for dates from 92 days in the past through 16
+  days in the future.
+- **Archive** (`archive-api.open-meteo.com/v1/archive`, ERA5 reanalysis) for historical dates from
+  `1940-01-01` up to the start of the forecast endpoint's supported window.
+
+A new `WeatherDateUnsupportedError` is thrown for dates outside both ranges. `GET /api/v1/weather`
+maps this to `422 DATE_UNSUPPORTED`. `FixtureWeatherService` checks the date before calling
+`WeatherService` at all (the same short-circuit pattern already used for missing venues and
+coordinates) and returns `availability: "unavailable"` with reason `UNSUPPORTED_DATE`, so an
+out-of-range date never reaches Open-Meteo and never surfaces provider internals to the client.
+
+The response parsing logic is unchanged: both endpoints return the same `daily.*` field shape.
 
 ## AI Declaration
 

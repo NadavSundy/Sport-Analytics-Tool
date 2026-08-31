@@ -1,131 +1,76 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WeatherService } from '../../src/modules/weather/weather.service';
+import request from 'supertest';
+import { describe, expect, test, vi } from 'vitest';
 
-describe('WeatherService', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+import { WeatherDateUnsupportedError, type WeatherService } from '../../src/modules/weather/weather.service';
+import { createTestApp } from '../test-app';
 
-  it('returns weather data from Open-Meteo', async () => {
-    const mockResponse = {
-      daily: {
-        time: ['2026-08-19'],
-        temperature_2m_max: [23.4],
-        temperature_2m_min: [10.2],
-        precipitation_sum: [0],
-        wind_speed_10m_max: [18.5],
-      },
-    };
+function createService(overrides: Partial<WeatherService> = {}): WeatherService {
+  return {
+    async getWeather() {
+      throw new Error('The test weather service was not configured for this call.');
+    },
+    ...overrides,
+  } as WeatherService;
+}
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(mockResponse), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    );
+function createApp(service: WeatherService) {
+  return createTestApp(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    service,
+  );
+}
 
-    const service = new WeatherService();
-
-    const result = await service.getWeather(-26.2041, 28.0473, '2026-08-19');
-
-    expect(result).toEqual({
-      date: '2026-08-19',
+describe('weather API', () => {
+  test('returns weather for a historical date served by the archive endpoint', async () => {
+    const getWeather = vi.fn<WeatherService['getWeather']>().mockResolvedValue({
+      date: '1995-06-14',
       latitude: -26.2041,
       longitude: 28.0473,
-      temperatureMax: 23.4,
-      temperatureMin: 10.2,
-      precipitationSum: 0,
-      windSpeedMax: 18.5,
+      temperatureMax: 19.1,
+      temperatureMin: 7.4,
+      precipitationSum: 2.1,
+      windSpeedMax: 12.3,
     });
 
-    expect(fetch).toHaveBeenCalledTimes(1);
+    const response = await request(createApp(createService({ getWeather })))
+      .get('/api/v1/weather')
+      .query({ latitude: -26.2041, longitude: 28.0473, date: '1995-06-14' })
+      .expect(200);
+
+    expect(getWeather).toHaveBeenCalledWith(-26.2041, 28.0473, '1995-06-14');
+    expect(response.body.data).toMatchObject({ date: '1995-06-14', temperatureMax: 19.1 });
   });
 
-  it('handles an external API failure', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('Service unavailable', {
-        status: 503,
-      }),
-    );
-
-    const service = new WeatherService();
-
-    await expect(service.getWeather(-26.2041, 28.0473, '2026-08-19')).rejects.toThrow(
-      'Open-Meteo request failed with status 503',
-    );
-  });
-
-  it('handles invalid JSON from the external API', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('not valid json', {
-        status: 200,
-      }),
-    );
-
-    const service = new WeatherService();
-
-    await expect(service.getWeather(-26.2041, 28.0473, '2026-08-19')).rejects.toThrow(
-      'Open-Meteo returned invalid JSON',
-    );
-  });
-
-  it('handles an invalid weather response', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          daily: {},
-        }),
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+  test('returns 422 DATE_UNSUPPORTED for a date outside all supported ranges', async () => {
+    const app = createApp(
+      createService({
+        async getWeather() {
+          throw new WeatherDateUnsupportedError();
         },
-      ),
+      }),
     );
 
-    const service = new WeatherService();
+    const response = await request(app)
+      .get('/api/v1/weather')
+      .query({ latitude: -26.2041, longitude: 28.0473, date: '1900-01-01' })
+      .expect(422);
 
-    await expect(service.getWeather(-26.2041, 28.0473, '2026-08-19')).rejects.toThrow(
-      'Open-Meteo returned an invalid weather response',
-    );
+    expect(response.body.error.code).toBe('DATE_UNSUPPORTED');
   });
 
-  it('rejects invalid latitude', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+  test('rejects a request missing required parameters', async () => {
+    const response = await request(createApp(createService()))
+      .get('/api/v1/weather')
+      .query({ latitude: -26.2041, longitude: 28.0473 })
+      .expect(400);
 
-    const service = new WeatherService();
-
-    await expect(service.getWeather(100, 28.0473, '2026-08-19')).rejects.toThrow(
-      'Latitude must be between -90 and 90',
-    );
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('rejects invalid longitude', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-
-    const service = new WeatherService();
-
-    await expect(service.getWeather(-26.2041, 200, '2026-08-19')).rejects.toThrow(
-      'Longitude must be between -180 and 180',
-    );
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('rejects an incorrectly formatted date', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-
-    const service = new WeatherService();
-
-    await expect(service.getWeather(-26.2041, 28.0473, '19-08-2026')).rejects.toThrow(
-      'Date must use YYYY-MM-DD format',
-    );
-
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(response.body.error.code).toBe('VALIDATION_FAILED');
   });
 });

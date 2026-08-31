@@ -1,8 +1,11 @@
 import { findFixtureWeatherContext } from '../fixtures/fixture.repository';
-import { type WeatherData, type WeatherService } from './weather.service';
+import { classifyWeatherDate, type WeatherData, type WeatherService } from './weather.service';
 
 export type FixtureWeatherUnavailableReason =
-  'MISSING_VENUE' | 'MISSING_COORDINATES' | 'UNSUPPORTED_LOCATION';
+  | 'MISSING_VENUE'
+  | 'MISSING_COORDINATES'
+  | 'UNSUPPORTED_LOCATION'
+  | 'UNSUPPORTED_DATE';
 
 export interface FixtureWeatherContext {
   fixtureId: string;
@@ -108,6 +111,17 @@ export function createFixtureWeatherService(
           date: context.date,
           availability: 'unavailable',
           reason: 'UNSUPPORTED_LOCATION',
+          venue,
+          weather: null,
+        };
+      }
+
+      if (classifyWeatherDate(context.date) === 'unsupported') {
+        return {
+          fixtureId: context.fixtureId,
+          date: context.date,
+          availability: 'unavailable',
+          reason: 'UNSUPPORTED_DATE',
           venue,
           weather: null,
         };

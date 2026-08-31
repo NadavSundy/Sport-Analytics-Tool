@@ -60,6 +60,61 @@ describe('fixture weather API', () => {
     expect(response.body.data).toMatchObject({ availability: 'available', fixtureId: '17' });
   });
 
+  test('returns contextual weather for a historical fixture date', async () => {
+    const getFixtureWeather = vi
+      .fn<FixtureWeatherService['getFixtureWeather']>()
+      .mockResolvedValue({
+        fixtureId: '3',
+        date: '1995-06-14',
+        availability: 'available',
+        venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+        weather: {
+          date: '1995-06-14',
+          latitude: -26.1929,
+          longitude: 28.0305,
+          temperatureMax: 19.1,
+          temperatureMin: 7.4,
+          precipitationSum: 2.1,
+          windSpeedMax: 12.3,
+        },
+      });
+
+    const response = await request(createApp(createService({ getFixtureWeather })))
+      .get('/api/v1/fixtures/3/weather')
+      .expect(200);
+
+    expect(response.body.data).toMatchObject({
+      availability: 'available',
+      weather: { temperatureMax: 19.1 },
+    });
+  });
+
+  test('reports an unsupported date without exposing provider internals', async () => {
+    const response = await request(
+      createApp(
+        createService({
+          async getFixtureWeather() {
+            return {
+              fixtureId: '17',
+              date: '1900-01-01',
+              availability: 'unavailable',
+              reason: 'UNSUPPORTED_DATE',
+              venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+              weather: null,
+            };
+          },
+        }),
+      ),
+    )
+      .get('/api/v1/fixtures/17/weather')
+      .expect(200);
+
+    expect(response.body.data).toMatchObject({
+      availability: 'unavailable',
+      reason: 'UNSUPPORTED_DATE',
+    });
+  });
+
   test('distinguishes an unknown fixture from an unavailable fixture location', async () => {
     await request(createApp(createService()))
       .get('/api/v1/fixtures/999/weather')
