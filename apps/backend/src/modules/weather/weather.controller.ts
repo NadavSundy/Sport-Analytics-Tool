@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { WeatherService } from './weather.service';
 import {
+  WeatherDateUnsupportedError,
   WeatherTimeoutError,
   WeatherUpstreamError,
   WeatherValidationError,
@@ -32,6 +33,13 @@ export function getWeather(weatherService: WeatherService) {
       if (error instanceof WeatherValidationError) {
         res.status(400).json({
           error: { code: 'VALIDATION_FAILED', message: error.message },
+        });
+        return;
+      }
+
+      if (error instanceof WeatherDateUnsupportedError) {
+        res.status(422).json({
+          error: { code: 'DATE_UNSUPPORTED', message: error.message },
         });
         return;
       }

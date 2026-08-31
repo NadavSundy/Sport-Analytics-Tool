@@ -20,6 +20,18 @@ API that requires no API key. The frontend never calls Open-Meteo directly; it o
 project's own `/api/v1/weather` endpoint, and Open-Meteo is called exclusively from the backend
 (`apps/backend/src/modules/weather/weather.service.ts`).
 
+Open-Meteo splits its data across two endpoints, and the backend selects between them based on the
+requested date:
+
+- **Forecast** (`api.open-meteo.com/v1/forecast`) — used for dates from 92 days in the past through
+  16 days in the future.
+- **Archive** (`archive-api.open-meteo.com/v1/archive`) — used for historical dates from
+  `1940-01-01` up to the start of the forecast endpoint's supported window.
+
+This selection happens entirely inside the backend's weather integration; callers of
+`/api/v1/weather` and `/api/v1/fixtures/{fixtureId}/weather` do not need to know or specify which
+provider endpoint served a given date.
+
 ## Request
 
 ```http
@@ -62,8 +74,10 @@ temperature, precipitation, and wind fields returned by `/weather`:
 
 An existing fixture without a venue, complete coordinates, or supported coordinate values returns
 `200 OK` with `availability: "unavailable"`, a machine-readable reason (`MISSING_VENUE`,
-`MISSING_COORDINATES`, or `UNSUPPORTED_LOCATION`), and `weather: null`. This does not call the
-provider or invent a location. An unknown fixture returns `404 NOT_FOUND`. Provider failures return
+`MISSING_COORDINATES`, `UNSUPPORTED_LOCATION`, or `UNSUPPORTED_DATE`), and `weather: null`. This
+does not call the provider or invent a location or date. `UNSUPPORTED_DATE` is returned when the
+fixture's date falls outside both the forecast and archive endpoints' supported ranges (see
+"External provider" above). An unknown fixture returns `404 NOT_FOUND`. Provider failures return
 the same `502`, `503`, or `504` codes as the direct weather endpoint and affect only this weather
 request, not ordinary fixture reads.
 
@@ -119,6 +133,7 @@ The endpoint uses the shared machine-readable API error format:
 | Status | Code                          | Cause                                                                                           |
 | ------ | ----------------------------- | ----------------------------------------------------------------------------------------------- |
 | `400`  | `VALIDATION_FAILED`           | Missing/non-numeric `latitude` or `longitude`, out-of-range coordinates, or a malformed `date`. |
+| `422`  | `DATE_UNSUPPORTED`            | `date` is validly formatted but falls outside both the forecast and archive endpoints' supported ranges. |
 | `502`  | `UPSTREAM_ERROR`              | Open-Meteo returned a non-2xx response, invalid JSON, or an unexpected response shape.          |
 | `503`  | `WEATHER_SERVICE_UNAVAILABLE` | An unclassified failure occurred while contacting Open-Meteo.                                   |
 | `504`  | `UPSTREAM_TIMEOUT`            | Open-Meteo did not respond within the configured timeout (5000ms).                              |
@@ -133,8 +148,10 @@ error internals to the client.
 - Venue coordinates are optional stored data (`venue.latitude` and `venue.longitude`); imported
   Cricsheet venue names/cities are not geocoded. Fixtures without stored coordinates therefore
   return the documented unavailable state.
-- Open-Meteo's forecast endpoint may not have data for dates far outside its supported historical
-  window; requesting such a date currently surfaces as a `502 UPSTREAM_ERROR`.
+- Open-Meteo's archive endpoint only covers dates from `1940-01-01` onward, and the forecast
+  endpoint only extends 16 days into the future. Dates outside this combined range return
+  `422 DATE_UNSUPPORTED` from `/api/v1/weather`, or `availability: "unavailable"` with reason
+  `UNSUPPORTED_DATE` from the fixture-weather endpoint, rather than an upstream error.
 - Responses are not cached; repeated requests for the same location and date each call Open-Meteo
   again.
 
