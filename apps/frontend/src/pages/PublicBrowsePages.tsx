@@ -91,8 +91,22 @@ async function loadTeamOptions(
   filters: URLSearchParams,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const response = await publicReadApi.listCompetitors(optionSearch(filters), signal);
-  return response.data.map((team) => ({
+  const params = new URLSearchParams(filters);
+  params.set('limit', '100');
+  params.delete('cursor');
+  const teams: Competitor[] = [];
+  let nextCursor: string | null = null;
+
+  do {
+    if (nextCursor) {
+      params.set('cursor', nextCursor);
+    }
+    const response = await publicReadApi.listCompetitors(`?${params.toString()}`, signal);
+    teams.push(...response.data);
+    nextCursor = response.pagination.nextCursor;
+  } while (nextCursor);
+
+  return teams.map((team) => ({
     label: team.name,
     value: team.competitorId,
   }));
