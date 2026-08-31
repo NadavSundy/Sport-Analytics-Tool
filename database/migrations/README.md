@@ -34,8 +34,13 @@ The submitter-access history migration creates an immutable record of requests, 
 rejections, and revocations. It backfills the identifiable currently revoked accounts so a later
 re-request can remain visibly flagged for administrators.
 
+The batch-ingestion models migration creates the durable `batch`, `batch_item`, and
+`batch_checkpoint` staging relations. It preserves the existing `submission` and `delivery`
+publication model and reuses the existing live-delivery natural-key index rather than changing
+correction revision semantics.
+
 ## AI Declaration
 
 The issue #255 competition-scoped request migration, issue #256 history migration, and issue #265
 file provenance migration were documented with the assistance of Codex[GPT-5].
-documented with the assistance of Codex[GPT-5].
+The issue #276 batch-ingestion migration was documented with the assistance of Codex[GPT-5].
