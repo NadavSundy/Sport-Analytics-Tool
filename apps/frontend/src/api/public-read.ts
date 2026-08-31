@@ -6,6 +6,7 @@ import {
   competitorResponseSchema,
   fixtureCollectionResponseSchema,
   fixtureResponseSchema,
+  fixtureWeatherResponseSchema,
   fixtureStatisticResponseSchema,
   fixtureStatisticsResponseSchema,
   participantCollectionResponseSchema,
@@ -16,6 +17,7 @@ import {
   type Competition,
   type Competitor,
   type Fixture,
+  type FixtureWeather,
   type FixtureStatistic,
   type FixtureStatistics,
   type PaginationMetadata,
@@ -154,6 +156,13 @@ export const publicReadApi = {
     return requestPublicApi<{ data: Fixture }>(
       `/fixtures/${encodeURIComponent(fixtureId)}`,
       fixtureResponseSchema,
+      signal,
+    );
+  },
+  getFixtureWeather(fixtureId: string, signal?: AbortSignal) {
+    return requestPublicApi<{ data: FixtureWeather }>(
+      `/fixtures/${encodeURIComponent(fixtureId)}/weather`,
+      fixtureWeatherResponseSchema,
       signal,
     );
   },

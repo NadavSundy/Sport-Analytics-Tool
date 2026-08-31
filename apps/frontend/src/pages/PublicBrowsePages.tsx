@@ -2,6 +2,7 @@ import type {
   Competition,
   Competitor,
   Fixture,
+  FixtureWeather,
   Participant,
   ParticipantFixture,
   Season,
@@ -630,6 +631,112 @@ function DetailState<Value>({
   return render(state.data);
 }
 
+const weatherNumber = new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 1 });
+
+function WeatherFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function availableWeatherFacts(weather: Extract<FixtureWeather, { availability: 'available' }>) {
+  const facts: Array<{ label: string; value: string }> = [];
+
+  if (weather.weather.temperatureMax !== null) {
+    facts.push({
+      label: 'Maximum temperature',
+      value: `${weatherNumber.format(weather.weather.temperatureMax)} °C`,
+    });
+  }
+  if (weather.weather.temperatureMin !== null) {
+    facts.push({
+      label: 'Minimum temperature',
+      value: `${weatherNumber.format(weather.weather.temperatureMin)} °C`,
+    });
+  }
+  if (weather.weather.precipitationSum !== null) {
+    facts.push({
+      label: 'Rainfall',
+      value: `${weatherNumber.format(weather.weather.precipitationSum)} mm`,
+    });
+  }
+  if (weather.weather.windSpeedMax !== null) {
+    facts.push({
+      label: 'Maximum wind speed',
+      value: `${weatherNumber.format(weather.weather.windSpeedMax)} km/h`,
+    });
+  }
+
+  return facts;
+}
+
+function FixtureWeatherOverview({ fixtureId }: { fixtureId: string }) {
+  const load = useCallback(
+    (signal: AbortSignal) => publicReadApi.getFixtureWeather(fixtureId, signal),
+    [fixtureId],
+  );
+  const state = usePublicData(load, fixtureId);
+
+  if (state.status === 'loading') {
+    return (
+      <section aria-labelledby="fixture-weather-heading" className="fixture-weather">
+        <h2 id="fixture-weather-heading">Match weather</h2>
+        <p className="fixture-weather__state" role="status">
+          Loading match weather…
+        </p>
+      </section>
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <section aria-labelledby="fixture-weather-heading" className="fixture-weather">
+        <h2 id="fixture-weather-heading">Match weather</h2>
+        <div className="fixture-weather__state fixture-weather__state--error" role="alert">
+          <p>Weather could not be loaded. The match overview is still available.</p>
+          <button className="button button--secondary" onClick={state.reload} type="button">
+            Try weather again
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const fixtureWeather = state.data.data;
+  if (fixtureWeather.availability === 'unavailable') {
+    return (
+      <section aria-labelledby="fixture-weather-heading" className="fixture-weather">
+        <h2 id="fixture-weather-heading">Match weather</h2>
+        <p className="fixture-weather__state">Weather is unavailable for this fixture’s venue.</p>
+      </section>
+    );
+  }
+
+  const facts = availableWeatherFacts(fixtureWeather);
+  const venue = [fixtureWeather.venue.name, fixtureWeather.venue.city].filter(Boolean).join(', ');
+
+  return (
+    <section aria-labelledby="fixture-weather-heading" className="fixture-weather">
+      <div className="fixture-weather__heading">
+        <h2 id="fixture-weather-heading">Match weather</h2>
+        <p>{venue}</p>
+      </div>
+      {facts.length > 0 ? (
+        <dl className="fixture-weather__facts">
+          {facts.map((fact) => (
+            <WeatherFact key={fact.label} {...fact} />
+          ))}
+        </dl>
+      ) : (
+        <p className="fixture-weather__state">Weather readings are unavailable for this date.</p>
+      )}
+    </section>
+  );
+}
+
 export function CompetitionDetailPage() {
   const { competitionId = '' } = useParams();
   const load = useCallback(
@@ -808,6 +915,7 @@ export function FixtureDetailPage() {
                 value={fixture.scheduledOvers ?? 'Not specified'}
               />
             </RecordFacts>
+            <FixtureWeatherOverview fixtureId={fixture.fixtureId} />
             <FixtureStatisticsOverview fixtureId={fixture.fixtureId} />
             <RelatedCollection
               emptyMessage="No published players are available for this match."

@@ -6,6 +6,7 @@ import {
   fixtureSchema,
   fixtureStatisticsQuerySchema,
   fixtureStatisticsResponseSchema,
+  fixtureWeatherResponseSchema,
   participantFixtureCollectionResponseSchema,
   participantFixtureListQuerySchema,
   participantListQuerySchema,
@@ -51,6 +52,41 @@ describe('public read contracts', () => {
         scheduledOvers: 20,
         startDate: '2026-01-10',
         endDate: '2026-01-10',
+      }).success,
+    ).toBe(true);
+  });
+
+  test('validates available and unavailable fixture weather', () => {
+    expect(
+      fixtureWeatherResponseSchema.safeParse({
+        data: {
+          fixtureId: '100',
+          date: '2026-08-09',
+          availability: 'available',
+          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+          weather: {
+            date: '2026-08-09',
+            latitude: -26.1929,
+            longitude: 28.0305,
+            temperatureMax: 24,
+            temperatureMin: 11,
+            precipitationSum: 0,
+            windSpeedMax: 17,
+          },
+        },
+      }).success,
+    ).toBe(true);
+
+    expect(
+      fixtureWeatherResponseSchema.safeParse({
+        data: {
+          fixtureId: '100',
+          date: '2026-08-09',
+          availability: 'unavailable',
+          reason: 'MISSING_COORDINATES',
+          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+          weather: null,
+        },
       }).success,
     ).toBe(true);
   });

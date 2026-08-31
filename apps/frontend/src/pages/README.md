@@ -15,6 +15,10 @@ available without an account; there is no global authentication gate.
 
 Published fixture statistics load directly in `/fixtures/:fixtureId` with the fixture outcome,
 completeness state, innings totals, player batting and bowling figures, and participating players.
+The fixture overview also requests contextual weather from the handwritten
+`/api/v1/fixtures/:fixtureId/weather` endpoint and presents available temperature, rainfall, wind,
+and venue context. Weather loading, unavailable-location, and provider-error states remain
+independent from the fixture record so external-service failures do not hide match information.
 The previous `/fixtures/:fixtureId/statistics` route remains available for compatible deep links,
 but it is not required to view the primary statistics. Each statistic links to
 `/fixtures/:fixtureId/statistics/:statisticId`, which requests the accepted contributing events used
@@ -66,3 +70,4 @@ The combined match-overview route behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The embedded player-overview route behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The fixture-weather overview behavior was documented with the assistance of Codex[GPT-5].

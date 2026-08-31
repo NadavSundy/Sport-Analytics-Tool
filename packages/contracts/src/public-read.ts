@@ -48,6 +48,41 @@ export const fixtureSchema = z.object({
   endDate: apiDateSchema,
 });
 
+export const fixtureWeatherVenueSchema = z.object({
+  name: z.string().min(1),
+  city: z.string().min(1).nullable(),
+});
+
+export const weatherDataSchema = z.object({
+  date: apiDateSchema,
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  temperatureMax: z.number().nullable(),
+  temperatureMin: z.number().nullable(),
+  precipitationSum: z.number().nonnegative().nullable(),
+  windSpeedMax: z.number().nonnegative().nullable(),
+});
+
+export const fixtureWeatherSchema = z.discriminatedUnion('availability', [
+  z.object({
+    fixtureId: apiIdentifierSchema,
+    date: apiDateSchema,
+    availability: z.literal('available'),
+    venue: fixtureWeatherVenueSchema,
+    weather: weatherDataSchema,
+  }),
+  z.object({
+    fixtureId: apiIdentifierSchema,
+    date: apiDateSchema,
+    availability: z.literal('unavailable'),
+    reason: z.enum(['MISSING_VENUE', 'MISSING_COORDINATES', 'UNSUPPORTED_LOCATION']),
+    venue: fixtureWeatherVenueSchema.nullable(),
+    weather: z.null(),
+  }),
+]);
+
+export const fixtureWeatherResponseSchema = createResourceResponseSchema(fixtureWeatherSchema);
+
 export const competitorSchema = z.object({
   competitorId: apiIdentifierSchema,
   name: z.string().min(1),
@@ -361,6 +396,7 @@ export const fixtureStatisticResponseSchema = createResourceResponseSchema(fixtu
 export type Competition = z.infer<typeof competitionSchema>;
 export type Season = z.infer<typeof seasonSchema>;
 export type Fixture = z.infer<typeof fixtureSchema>;
+export type FixtureWeather = z.infer<typeof fixtureWeatherSchema>;
 export type Competitor = z.infer<typeof competitorSchema>;
 export type Participant = z.infer<typeof participantSchema>;
 export type PublicEvent = z.infer<typeof publicEventSchema>;
