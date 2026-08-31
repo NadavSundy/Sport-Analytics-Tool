@@ -1,4 +1,4 @@
-name: Deploy frontend
+name: Sport Analytics - Deploy Frontend
 
 on:
   push:
@@ -16,7 +16,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL }}
     timeout-minutes: 25
     env:
       FRONTEND_URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net

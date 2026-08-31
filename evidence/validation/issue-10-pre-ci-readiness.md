@@ -246,6 +246,65 @@ The following acceptance evidence cannot be completed until the Wits Gitea Actio
 - resolve any runner-specific incompatibility revealed by hosted execution;
 - enable required `main` status checks only after a successful hosted run.
 
+
+## Gitea runner-readiness update — 31 August 2026
+
+The repository-side CI/CD configuration was reviewed and updated in preparation
+for the university-hosted Gitea Actions runners.
+
+At the time of this validation, the university runner infrastructure was not
+available, so hosted workflow execution could not yet be verified. The changes
+therefore focus on removing unverified runner assumptions and reducing the
+configuration required once runners are provisioned.
+
+### Changes made
+
+The following workflow configuration was updated:
+
+- `.gitea/workflows/ci.yml`
+- `.gitea/workflows/deploy-backend.yml`
+- `.gitea/workflows/deploy-frontend.yml`
+
+Changes include:
+
+- replaced the provisional hard-coded `ubuntu-latest` runner label with the
+  repository Actions variable `${{ vars.RUNNER_LABEL }}`
+- added `workflow_dispatch` to the main CI workflow so it can be manually
+  executed immediately after runner provisioning
+- retained manual execution support for the frontend and backend deployment
+  workflows
+- renamed the workflows to:
+  - `Sport Analytics CI`
+  - `Sport Analytics - Deploy Backend`
+  - `Sport Analytics - Deploy Frontend`
+- documented the externally managed runner configuration in
+  `docs/deployment/overview.md`
+- documented PostgreSQL service networking as an item that must be confirmed
+  during the first hosted runner execution
+
+### Runner configuration approach
+
+The correct runner label cannot currently be determined because the
+university-hosted runners have not yet been provisioned.
+
+Rather than hard-coding another assumed runner environment, all workflows now
+reference:
+
+`RUNNER_LABEL`
+
+Once Gitea runners become available, this repository variable must be set to
+an actual label advertised by the university runner.
+
+This means that runner provisioning should not require a further source-code
+change solely to select the runner.
+
+### Local validation
+
+The workflow files were checked using:
+
+```text
+npx prettier --check .gitea/workflows/*.yml
+
 Issue #10 must therefore remain blocked by the server-side runner dependency until hosted verification is complete.
 
 Refs #10
