@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const CURRENT_API_VERSION = 'v1' as const;
+export const API_BASE_PATH = `/api/${CURRENT_API_VERSION}` as const;
+
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 100;
 
