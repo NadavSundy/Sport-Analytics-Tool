@@ -102,6 +102,12 @@ nav:
       - User Testing Task Bank: testing/user-testing-task-bank.md
       - Bug Tracking: testing/bug-tracking.md
   - AI Use: ai/usage.md
+  - Project Process & Evidence:
+      - Overview: process/index.md
+      - Sprint Evidence: process/sprint-evidence.md
+      - Decisions Index: process/decisions.md
+      - Testing & Validation Evidence: process/validation-and-user-testing.md
+      - AI Use & Evidence: process/ai-use-evidence.md
 
 markdown_extensions:
   - admonition
