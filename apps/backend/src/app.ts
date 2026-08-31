@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
+import { API_BASE_PATH, CURRENT_API_VERSION } from '@sport-analytics/contracts';
 import { createWeatherRouter } from './modules/weather/weather.routes';
 import { WeatherService } from './modules/weather/weather.service';
 import {
@@ -112,24 +113,45 @@ export function createApp(dependencies: AppDependencies = {}) {
     }),
   );
 
-  app.use('/api/v1/health', healthRouter);
-  app.use('/api/v1/auth', createAuthRouter(verifyAccessToken, synchronizeAccount));
-  app.use('/api/v1', createFixtureStatisticsRouter(fixtureStatisticsService));
+  app.use(API_BASE_PATH, (_request, response, next) => {
+    response.setHeader('API-Version', CURRENT_API_VERSION);
+    next();
+  });
+
+  app.use(`${API_BASE_PATH}/health`, healthRouter);
+  app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));
+  app.use(API_BASE_PATH, createFixtureStatisticsRouter(fixtureStatisticsService));
   app.use(
-    '/api/v1',
+    API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
   );
   app.use(
-    '/api/v1',
+    API_BASE_PATH,
     createSubmitterAccessRouter(verifyAccessToken, synchronizeAccount, submitterAccessService),
   );
   app.use(
-    '/api/v1',
+    API_BASE_PATH,
     createAccountDeletionRouter(verifyAccessToken, synchronizeAccount, accountDeletionService),
   );
-  app.use('/api/v1', createAdminRouter(verifyAccessToken, synchronizeAccount, adminService));
-  app.use('/api/v1', createPublicReadRouter(publicReadService));
-  app.use('/api/v1', createWeatherRouter(weatherService, fixtureWeatherService));
+  app.use(API_BASE_PATH, createAdminRouter(verifyAccessToken, synchronizeAccount, adminService));
+  app.use(API_BASE_PATH, createPublicReadRouter(publicReadService));
+  app.use(API_BASE_PATH, createWeatherRouter(weatherService, fixtureWeatherService));
+
+  app.use('/api', (request, response, next) => {
+    const requestedVersion = request.path.split('/').filter(Boolean)[0];
+
+    if (requestedVersion !== undefined && /^v\d+$/.test(requestedVersion)) {
+      response.status(404).json({
+        error: {
+          code: 'UNSUPPORTED_API_VERSION',
+          message: `API version ${requestedVersion} is not supported. Use ${API_BASE_PATH}.`,
+        },
+      });
+      return;
+    }
+
+    next();
+  });
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import {
+  API_BASE_PATH,
+  CURRENT_API_VERSION,
   apiDateSchema,
   apiDateTimeSchema,
   apiErrorResponseSchema,
@@ -11,6 +13,13 @@ import {
   eventSequenceSchema,
   listQuerySchema,
 } from '../api';
+
+describe('API version contracts', () => {
+  test('publishes the supported URI major version and base path', () => {
+    expect(CURRENT_API_VERSION).toBe('v1');
+    expect(API_BASE_PATH).toBe('/api/v1');
+  });
+});
 
 describe('shared identifier and ordering contracts', () => {
   test('accepts opaque string identifiers', () => {
