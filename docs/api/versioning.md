@@ -109,4 +109,5 @@ The OpenAPI description documents the handwritten Express API. It is not generat
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
