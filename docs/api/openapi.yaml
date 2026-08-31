@@ -6,12 +6,25 @@ info:
   description: |
     Version-controlled contract for the handwritten Sport Analytics backend API.
 
+    The supported API major version is `v1`; every documented path is served
+    beneath `/api/v1`. URI paths are the only version-selection mechanism.
+    Unsupported major-version paths return `404` with
+    `UNSUPPORTED_API_VERSION`; request headers do not negotiate another API version.
+
     Operations marked with `x-implementation-status: planned` document agreed
     contracts that are not yet implemented. Implemented operations describe
     current backend behaviour.
 x-ai-declaration: >-
   The preceding OpenAPI document was planned, generated, reviewed and edited
   with the assistance of ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
+x-api-versioning:
+  versioning: uri-major
+  supportedVersions: [v1]
+  basePath: /api/v1
+  responseHeader: API-Version
+  unsupportedVersion:
+    status: 404
+    code: UNSUPPORTED_API_VERSION
 servers:
   - url: statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
     description: Development API
