@@ -413,6 +413,8 @@ describe('public browsing pages', () => {
   });
 
   it('opens a fixture and displays its match statistics and participating players', async () => {
+    let resolveWeather!: (value: Response) => void;
+    const requestedUrls: string[] = [];
     const fixture = {
       fixtureId: 'fixture-1',
       competitionId: 'competition-1',
@@ -435,7 +437,13 @@ describe('public browsing pages', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
         const url = new URL(input);
+        if (url.pathname.endsWith('/fixtures/fixture-1/weather')) {
+          return new Promise<Response>((resolve) => {
+            resolveWeather = resolve;
+          });
+        }
         if (url.pathname.endsWith('/fixtures/fixture-1')) {
           return Promise.resolve(response(200, { data: fixture }));
         }
@@ -477,6 +485,37 @@ describe('public browsing pages', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Loading match weather…')).toBeVisible();
+    resolveWeather(
+      response(200, {
+        data: {
+          fixtureId: 'fixture-1',
+          date: '2026-08-09',
+          availability: 'available',
+          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+          weather: {
+            date: '2026-08-09',
+            latitude: -26.1929,
+            longitude: 28.0305,
+            temperatureMax: 24,
+            temperatureMin: 11,
+            precipitationSum: 0,
+            windSpeedMax: 17,
+          },
+        },
+      }),
+    );
+    await screen.findByText('Wits Cricket Oval, Johannesburg');
+    const weatherSection = screen
+      .getByRole('heading', { name: 'Match weather' })
+      .closest('section');
+    expect(weatherSection).not.toBeNull();
+    expect(within(weatherSection!).getByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
+    expect(within(weatherSection!).getByText('24 °C')).toBeVisible();
+    expect(within(weatherSection!).getByText('11 °C')).toBeVisible();
+    expect(within(weatherSection!).getByText('0 mm')).toBeVisible();
+    expect(within(weatherSection!).getByText('17 km/h')).toBeVisible();
+    expect(requestedUrls.some((url) => url.endsWith('/fixtures/fixture-1/weather'))).toBe(true);
     expect(screen.getByRole('link', { name: 'Premier Cricket League' })).toHaveAttribute(
       'href',
       '/competitions/competition-1',
@@ -489,6 +528,109 @@ describe('public browsing pages', () => {
     expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
     expect(screen.queryByText('Fixture ID')).not.toBeInTheDocument();
   });
+
+  it.each([
+    {
+      name: 'unavailable weather',
+      weatherStatus: 200,
+      weatherBody: {
+        data: {
+          fixtureId: 'fixture-1',
+          date: '2026-08-09',
+          availability: 'unavailable',
+          reason: 'MISSING_COORDINATES',
+          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+          weather: null,
+        },
+      },
+      message: 'Weather is unavailable for this fixture’s venue.',
+      retry: false,
+    },
+    {
+      name: 'weather provider errors',
+      weatherStatus: 503,
+      weatherBody: {
+        error: {
+          code: 'WEATHER_SERVICE_UNAVAILABLE',
+          message: 'Weather is temporarily unavailable.',
+        },
+      },
+      message: 'Weather could not be loaded. The match overview is still available.',
+      retry: true,
+    },
+  ])(
+    'keeps the fixture overview usable during $name',
+    async ({ weatherStatus, weatherBody, message, retry }) => {
+      const fixture = {
+        fixtureId: 'fixture-1',
+        competitionId: 'competition-1',
+        competitionName: 'Premier Cricket League',
+        seasonId: 'season-1',
+        season: '2026',
+        seasonLabel: '2026',
+        competitors: [
+          { competitorId: 'team-1', name: 'Wanderers' },
+          { competitorId: 'team-2', name: 'Strikers' },
+        ],
+        matchType: 'T20',
+        teamType: 'international',
+        gender: 'female',
+        ballsPerOver: 6,
+        scheduledOvers: 20,
+        startDate: '2026-08-09',
+        endDate: '2026-08-09',
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((input: string) => {
+          const url = new URL(input);
+          if (url.pathname.endsWith('/fixtures/fixture-1/weather')) {
+            return Promise.resolve(response(weatherStatus, weatherBody));
+          }
+          if (url.pathname.endsWith('/fixtures/fixture-1')) {
+            return Promise.resolve(response(200, { data: fixture }));
+          }
+          if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
+            return Promise.resolve(
+              response(200, {
+                data: {
+                  fixtureId: 'fixture-1',
+                  status: 'complete',
+                  scope: { superOversIncluded: false },
+                  outcome: {
+                    kind: 'no_result',
+                    winnerCompetitorId: null,
+                    winnerCompetitorName: null,
+                    eliminatorCompetitorId: null,
+                    eliminatorCompetitorName: null,
+                    margin: null,
+                    method: null,
+                    decidedByBowlOut: false,
+                  },
+                  warnings: [],
+                  statistics: [],
+                },
+              }),
+            );
+          }
+          return Promise.resolve(collection([]));
+        }),
+      );
+
+      renderRoute('/fixtures/fixture-1');
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+      ).toBeVisible();
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(screen.getByText('Premier Cricket League')).toBeVisible();
+      if (retry) {
+        expect(screen.getByRole('button', { name: 'Try weather again' })).toBeEnabled();
+      } else {
+        expect(screen.queryByRole('button', { name: 'Try weather again' })).not.toBeInTheDocument();
+      }
+    },
+  );
 
   it('displays readable seasons, season-grouped fixtures, and teams on a competition overview', async () => {
     const requestedUrls: string[] = [];

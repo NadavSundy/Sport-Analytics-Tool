@@ -145,6 +145,29 @@ test('competition, season, and team overviews embed readable related records', a
       return;
     }
 
+    if (url.pathname.endsWith('/fixtures/fixture-1/weather')) {
+      await route.fulfill({
+        json: {
+          data: {
+            fixtureId: 'fixture-1',
+            date: '2026-08-09',
+            availability: 'available',
+            venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+            weather: {
+              date: '2026-08-09',
+              latitude: -26.1929,
+              longitude: 28.0305,
+              temperatureMax: 24,
+              temperatureMin: 11,
+              precipitationSum: 0,
+              windSpeedMax: 17,
+            },
+          },
+        },
+      });
+      return;
+    }
+
     if (url.pathname.endsWith('/fixtures/fixture-1')) {
       await route.fulfill({ json: { data: { ...fixture, seasonLabel: '2026 season' } } });
       return;
@@ -256,6 +279,10 @@ test('competition, season, and team overviews embed readable related records', a
     page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Premier Cricket League' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Match weather' })).toBeVisible();
+  await expect(page.getByText('24 °C')).toBeVisible();
+  await expect(page.getByText('0 mm')).toBeVisible();
+  await expect(page.getByText('17 km/h')).toBeVisible();
   await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Innings totals' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
