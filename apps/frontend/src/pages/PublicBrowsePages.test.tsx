@@ -382,7 +382,11 @@ describe('public browsing pages', () => {
           return Promise.resolve(collection([fixture]));
         }
         if (url.pathname.endsWith('/competitors')) {
-          return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
+          return Promise.resolve(
+            url.searchParams.get('cursor') === 'teams-page-2'
+              ? collection([{ competitorId: 'team-sa', name: 'South Africa' }])
+              : collection([{ competitorId: 'team-1', name: 'Wanderers' }], 'teams-page-2'),
+          );
         }
         if (url.pathname.endsWith('/participants') && url.searchParams.has('limit')) {
           return Promise.resolve(
@@ -397,7 +401,12 @@ describe('public browsing pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show fixture options' }));
     fireEvent.click(await screen.findByRole('option', { name: /Wanderers vs Strikers/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Show team options' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Wanderers' }));
+    const teamInput = screen.getByRole('combobox', { name: 'Team' });
+    fireEvent.change(teamInput, { target: { value: 'South Africa' } });
+    expect(await screen.findByRole('option', { name: 'South Africa' })).toBeVisible();
+    fireEvent.keyDown(teamInput, { key: 'ArrowDown' });
+    fireEvent.keyDown(teamInput, { key: 'Enter' });
+    expect(teamInput).toHaveValue('South Africa');
     fireEvent.change(screen.getByRole('combobox', { name: 'Player name' }), {
       target: { value: 'A Pl' },
     });
@@ -406,8 +415,11 @@ describe('public browsing pages', () => {
     expect(requestedUrls.some((url) => url.includes('/fixtures?limit=100'))).toBe(true);
     expect(requestedUrls.some((url) => url.includes('/competitors?limit=100'))).toBe(true);
     expect(
+      requestedUrls.some((url) => url.includes('/competitors?limit=100&cursor=teams-page-2')),
+    ).toBe(true);
+    expect(
       requestedUrls.some((url) =>
-        url.includes('/participants?fixtureId=fixture-1&competitorId=team-1&limit=100'),
+        url.includes('/participants?fixtureId=fixture-1&competitorId=team-sa&limit=100'),
       ),
     ).toBe(true);
   });

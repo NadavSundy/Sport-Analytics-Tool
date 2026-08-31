@@ -398,8 +398,13 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
     if (url.pathname.endsWith('/competitors')) {
       await route.fulfill({
         json: {
-          data: [{ competitorId: 'competitor-1', name: 'Wanderers' }],
-          pagination: { nextCursor: null },
+          data:
+            url.searchParams.get('cursor') === 'teams-page-2'
+              ? [{ competitorId: 'competitor-sa', name: 'South Africa' }]
+              : [{ competitorId: 'competitor-1', name: 'Wanderers' }],
+          pagination: {
+            nextCursor: url.searchParams.get('cursor') === 'teams-page-2' ? null : 'teams-page-2',
+          },
         },
       });
       return;
@@ -448,6 +453,18 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
   expect(
     requestedUrls.some((url) => url.includes('/seasons?competitionId=competition-1&limit=100')),
   ).toBe(true);
+
+  const scopedTeam = page.getByRole('combobox', { name: 'Team' });
+  await scopedTeam.fill('South Africa');
+  await expect(page.getByRole('option', { name: 'South Africa' })).toBeVisible();
+  expect(
+    requestedUrls.some((url) =>
+      url.includes(
+        '/competitors?competitionId=competition-1&seasonId=season-1&limit=100&cursor=teams-page-2',
+      ),
+    ),
+  ).toBe(true);
+  await scopedTeam.press('Escape');
 
   await page.getByRole('button', { name: 'Clear competition' }).click();
   await expect(competition).toHaveValue('');
