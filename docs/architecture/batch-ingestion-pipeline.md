@@ -282,6 +282,18 @@ The cross-event rules currently enforced in `submissionRequestSchema.superRefine
 
 Index selection must account for the size of the `delivery` relation, which at 705 MB already carries 319 MB of indexes. Indexes on `batch_item` are to be added only where a defined query requires them, and the set reviewed under #290 rather than expanded speculatively here.
 
+### 6.4 Implementation record (#276)
+
+Migration `20260831100000000_batch-ingestion-models` implements these three relations with
+PostgreSQL enum types, named checks and foreign keys. The two batch-item uniqueness constraints
+also support the repository's ordered per-batch reads; no speculative secondary item indexes were
+added. The required live-delivery constraint was already present as the partial unique index
+`delivery_natural_key_live`, so #276 leaves it unchanged and preserves correction revision semantics.
+
+Published items reference `delivery`, whose required `submission_id` continues the established
+publication provenance chain. Batch and batch-item deletion are rejected by the database;
+supersession retains and links records instead.
+
 ---
 
 ## 7. Validation and Processing Boundary
@@ -392,6 +404,13 @@ A checkpoint records the phase and the highest ordinal durably completed in that
 ### 9.5 Relationship to the corpus importer
 
 The corpus importer already performs chunked ingestion at this scale, and its chunking is a useful reference for sizing. Its transactional guarantees must not be assumed to transfer: it is an operator-initiated process over trusted input which does not stage, review or publish. The requirements in this section apply to the batch worker on their own terms.
+
+### 9.6 Repository transaction boundary (#276)
+
+The batch repository accepts any database query executor, including an existing transaction client.
+A future worker can therefore write chunk results and call the checkpoint upsert through the same
+client before committing. The repository does not open an independent transaction or implement
+leasing, resume policy, lifecycle transitions, or worker behaviour.
 
 ---
 
@@ -579,3 +598,4 @@ The printed `ballNumber` is not verified against the `overNumber` and `positionI
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of Claude-Web[Claude Opus 5].
+The issue #276 implementation record was added with the assistance of Codex[GPT-5].

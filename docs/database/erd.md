@@ -11,10 +11,17 @@ migrated, not a separate design document. Column detail is in
 ```mermaid
 erDiagram
     app_user ||--o{ submission : submits
+    app_user ||--o{ batch : submits
+    competition ||--o{ batch : targets
     app_user ||--o{ submitter_competition_scope : receives
     competition ||--o{ submitter_competition_scope : grants
     submission ||--o{ fixture : "first seen in"
     submission ||--o{ delivery : supplies
+    batch ||--o| batch : supersedes
+    batch ||--o{ batch_item : expands
+    batch ||--o| batch_checkpoint : checkpoints
+    innings ||--o{ batch_item : identifies
+    delivery ||--o{ batch_item : publishes
     person ||--o{ person_alias : "known as"
 ```
 
@@ -25,6 +32,13 @@ kept separately and are never a join key.
 
 Deleting an account tombstones `app_user` in place. The `submission.submitted_by` relationship is
 retained and does not cascade; only the account's competition-scope rows are removed.
+
+A batch retains its submitter, target competition and original object identity. Its items point to
+the innings natural key before publication and to the resulting delivery revision afterwards. That
+delivery continues to point to `submission`, so batch publication extends the existing provenance
+chain rather than introducing a second published-event model. Batch and batch-item rows are
+append-only provenance records and cannot be deleted; a replacement is represented by the
+self-reference instead.
 
 ## Match structure
 
@@ -83,4 +97,4 @@ rows not yet superseded.
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5]. The
 application-account scope relationships and source-file cleanup were updated with the assistance of
-Codex[GPT-5.6 Sol].
+Codex[GPT-5.6 Sol]. The issue #276 batch relationships were added with the assistance of Codex[GPT-5].

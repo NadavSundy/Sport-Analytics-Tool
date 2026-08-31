@@ -158,6 +158,16 @@ was accepted, and—where a JSON or CSV file was used—the original filename,
 canonical media type, and byte length. Linked deliveries retain that submission
 and source-file provenance without duplicating uploaded event content.
 
+The durable batch-staging model adds `batch`, `batch_item`, and `batch_checkpoint`.
+`batch` records the submitter, target competition, idempotency key, SHA-256 object
+identity, lifecycle and optional superseding batch. `batch_item` retains each submitted
+JSON event in payload order, with explicit innings/natural-key columns, validation outcome,
+and an optional link to the published `delivery`. `batch_checkpoint` has the batch identifier
+as its primary key and stores the phase, highest completed ordinal, lease and attempt count.
+The live-delivery natural-key guarantee remains the existing partial unique index
+`delivery_natural_key_live`; it permits historical revisions while preventing two live
+deliveries at one innings/over/position. Batch and batch-item provenance is not deletable.
+
 **Match structure.** `fixture`; `fixture_team`; `fixture_squad`;
 `fixture_official`; `innings`; `innings_powerplay`; `innings_absent`;
 `innings_miscounted_over`.
@@ -326,3 +336,4 @@ The preceding document was planned and generated with the assistance of
 Claude-Web[Claude Opus 5], from an analysis of the Cricsheet T20 corpus. The issue #44 application
 account and scope description was updated with the assistance of Codex[GPT-5.6 Sol]. The issue #255
 requested-competition description was updated with the assistance of Codex[GPT-5].
+The issue #276 batch-staging description was added with the assistance of Codex[GPT-5].
