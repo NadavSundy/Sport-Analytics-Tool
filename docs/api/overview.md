@@ -14,7 +14,9 @@ The API is a primary product. It must be designed and implemented by the team as
 - Sorting: endpoint-specific whitelisted fields with deterministic tie-breaking
 - Errors: consistent machine-readable code, safe message, and optional field or event details
 - Authentication: established provider/library for users; separate API-consumer credentials when introduced
-- Versioning: URL major version initially, with a documented deprecation path before any retirement
+- Versioning: URI major version only; `v1` is supported at `/api/v1`, confirmed by the
+  `API-Version: v1` response header, and unsupported major versions return
+  `404 UNSUPPORTED_API_VERSION`
 
 The version-controlled API contract is published in the
 [OpenAPI specification](openapi.md).

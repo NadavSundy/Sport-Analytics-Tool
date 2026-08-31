@@ -12,7 +12,18 @@ The initial API base path is:
 
 All initial handwritten application endpoints are published beneath this path.
 
-The OpenAPI `info.version` value may identify revisions to the published contract, while the URL major version represents compatibility for API consumers.
+`v1` is the only supported API major version. The backend sends `API-Version: v1` on every
+response served from `/api/v1`, allowing consumers to confirm the contract that handled their
+request.
+
+Version selection is URI-based only. Clients must request the required major version in the path;
+the backend does not negotiate a resource version from `Accept`, query, or custom request headers.
+An unknown major-version path, such as `/api/v2/health`, returns `404 Not Found` with the stable
+error code `UNSUPPORTED_API_VERSION` and directs consumers to `/api/v1`. A non-versioned path is
+not an alias for a versioned endpoint.
+
+The OpenAPI `info.version` value may identify revisions to the published contract, while the URL
+major version represents compatibility for API consumers.
 
 ## Compatible changes
 
