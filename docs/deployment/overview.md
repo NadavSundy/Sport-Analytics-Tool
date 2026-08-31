@@ -36,6 +36,40 @@ See:
 - `docs/deployment/cloudflare_pages.md`
 - `docs/development/technology-stack.md`
 
+## Gitea Actions runner configuration
+
+The university-hosted Gitea Actions runner infrastructure is managed
+externally to this repository and is not currently available.
+
+The CI/CD workflows use the repository Actions variable:
+
+`RUNNER_LABEL`
+
+This value must match a label advertised by an available Gitea Actions
+runner. The value must not be guessed or hard-coded into the workflows.
+
+When the university runners become available:
+
+1. Identify the available runner label in Gitea.
+2. Set the repository Actions variable `RUNNER_LABEL` to that exact value.
+3. Manually run the `Sport Analytics CI` workflow.
+4. Resolve any runner-specific compatibility issues.
+5. Verify pull-request CI.
+6. Verify CI on the `main` branch.
+7. Verify the backend deployment workflow.
+8. Verify the frontend deployment workflow.
+9. Configure branch protection so that the successful CI check is required.
+
+Until hosted runners are available, the repository-side workflow
+configuration and local quality checks can be prepared and validated, but
+hosted CI/CD execution cannot be confirmed.
+
+### Runner validation note
+
+The PostgreSQL test-service hostname must be verified during the first hosted
+runner execution. The required hostname may depend on how the university
+runner executes workflow and service containers.
+
 ## AI Declaration
 
 The preceding document was reviewed and aligned with the current repository architecture with the assistance of ChatGPT-Web[GPT-5.6 Sol].

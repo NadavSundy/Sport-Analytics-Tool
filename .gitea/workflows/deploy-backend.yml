@@ -1,4 +1,4 @@
-name: Deploy backend
+name: Sport Analytics - Deploy Backend
 
 on:
   push:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL }}
     timeout-minutes: 30
     env:
       BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
