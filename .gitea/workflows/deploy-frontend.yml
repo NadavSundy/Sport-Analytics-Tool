@@ -16,7 +16,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ${{ vars.RUNNER_LABEL }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       FRONTEND_URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net

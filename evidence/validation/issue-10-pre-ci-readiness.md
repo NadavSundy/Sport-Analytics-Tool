@@ -246,7 +246,6 @@ The following acceptance evidence cannot be completed until the Wits Gitea Actio
 - resolve any runner-specific incompatibility revealed by hosted execution;
 - enable required `main` status checks only after a successful hosted run.
 
-
 ## Gitea runner-readiness update — 31 August 2026
 
 The repository-side CI/CD configuration was reviewed and updated in preparation
@@ -307,6 +306,29 @@ npx prettier --check .gitea/workflows/*.yml
 
 Issue #10 must therefore remain blocked by the server-side runner dependency until hosted verification is complete.
 
+### Hosted runner availability update — 1 September 2026
+
+The university Gitea Actions runner infrastructure is now available.
+
+Two global runners were observed online:
+
+- `sdp-runner-1`
+- `sdp-runner-2`
+
+Both runners advertise:
+
+- `ubuntu-latest`
+- `ubuntu-24.04`
+- `ubuntu-22.04`
+
+The project workflows have therefore been pinned to `ubuntu-24.04`.
+
+This replaces the previous provisional `RUNNER_LABEL` configuration, which
+was introduced while the available runner labels were unknown.
+
+Hosted execution is now being validated.
+
 Refs #10
 
 The preceding document was generated with the assistance of: ChatGPT-Web[GPT-5.6 Sol]
+```
