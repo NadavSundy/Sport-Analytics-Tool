@@ -14,3 +14,6 @@ The database is planned as PostgreSQL-compatible storage, potentially hosted by 
 - Dataset releases are immutable, versioned, documented, and checksummed.
 
 The schema is intentionally not final because the sport and event vocabulary require stakeholder confirmation. See [Event Model Direction](schema.md). The executable schema artefacts remain under `database/` in the repository.
+
+The intermediate batch-ingestion persistence foundation and its additive extension are documented
+in [Batch persistence extensions](batch-persistence.md).

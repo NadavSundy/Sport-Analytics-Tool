@@ -158,23 +158,26 @@ was accepted, and—where a JSON or CSV file was used—the original filename,
 canonical media type, and byte length. Linked deliveries retain that submission
 and source-file provenance without duplicating uploaded event content.
 
-The durable batch-staging model adds `batch`, `batch_item`, and `batch_checkpoint`.
-`batch` records the submitter, target competition, idempotency key, SHA-256 object
-identity, lifecycle and optional superseding batch. `batch_item` retains each submitted
-JSON event in payload order, with explicit innings/natural-key columns, validation outcome,
-and an optional link to the published `delivery`. `batch_checkpoint` has the batch identifier
-as its primary key and stores the phase, highest completed ordinal, lease and attempt count.
+The durable batch-staging model adds `batch`, `batch_item`, `batch_checkpoint`,
+`batch_validation_result`, and `batch_review_decision`. `batch` records the submitter, target
+competition, idempotency key, package version, SHA-256 object identity, lifecycle and optional
+superseding batch. `batch_item` retains each submitted JSON event in payload order, source identity
+and location, reference-resolution evidence, validation outcome, and an optional link to the
+published `delivery`. Its canonical innings reference is nullable only while resolution remains
+unresolved, ambiguous, or invalid. `batch_checkpoint` has a composite batch-and-phase primary key,
+so validation and publication retain independent ordinal, lease, and attempt data. Validation and
+review records are append-only; a published delivery revision carries its explicit source item.
 The live-delivery natural-key guarantee remains the existing partial unique index
 `delivery_natural_key_live`; it permits historical revisions while preventing two live
 deliveries at one innings/over/position. Batch and batch-item provenance is not deletable.
 
 The batch foreign keys are canonical storage references, not fields a submitter must know. The
-receipt API resolves a human-facing competition reference before creating `batch`; the worker adds a
-`batch_item` only after its fixture and innings context resolves. Source rows that cannot yet resolve
-are retained by a downstream batch-source issue model with their original ordinal/path rather than
-by inserting placeholder identifiers into `batch_item`. `batch.source_uri` is reserved for an
-opaque application object reference resolved by the backend object-store adapter, never a public or
-signed provider URL.
+receipt API resolves a human-facing competition reference before creating `batch`; workers retain a
+source identity, normalised location, and resolution outcome on `batch_item` while canonical fixture
+or innings context remains unresolved. This preserves evidence without placeholder identifiers.
+`batch.source_uri` is reserved for an opaque application object reference resolved by the backend
+object-store adapter, never a public or signed provider URL. See
+[Batch persistence extensions](batch-persistence.md) for the #359 gap analysis and migration record.
 
 **Match structure.** `fixture`; `fixture_team`; `fixture_squad`;
 `fixture_official`; `innings`; `innings_powerplay`; `innings_absent`;
@@ -347,3 +350,4 @@ requested-competition description was updated with the assistance of Codex[GPT-5
 The issue #276 batch-staging description was added with the assistance of Codex[GPT-5].
 The issue #356 downstream reference and object-storage boundaries were documented with the
 assistance of Codex[GPT-5].
+The issue #359 batch-persistence extension was documented with the assistance of Codex[GPT-5].
