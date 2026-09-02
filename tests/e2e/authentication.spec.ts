@@ -41,45 +41,49 @@ function createStoredSession() {
   });
 }
 
-test('signed-out authentication pages are responsive and keyboard operable', async ({ page }) => {
-  await isolateSupabaseClientLock(page);
-  await page.goto('/');
+test(
+  'signed-out authentication pages are responsive and keyboard operable',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    await isolateSupabaseClientLock(page);
+    await page.goto('/');
 
-  const accountNavigation = page.getByRole('navigation', { name: 'Account' });
-  const authenticationAction = accountNavigation.getByRole('link', {
-    name: 'Login or Sign up',
-  });
-  await expect(authenticationAction).toHaveAttribute('href', '/sign-in');
-  await expect(accountNavigation.getByRole('link')).toHaveCount(1);
-  await expect(accountNavigation.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
-  await expect(accountNavigation.getByRole('link', { name: 'Sign In' })).toHaveCount(0);
+    const accountNavigation = page.getByRole('navigation', { name: 'Account' });
+    const authenticationAction = accountNavigation.getByRole('link', {
+      name: 'Login or Sign up',
+    });
+    await expect(authenticationAction).toHaveAttribute('href', '/sign-in');
+    await expect(accountNavigation.getByRole('link')).toHaveCount(1);
+    await expect(accountNavigation.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
+    await expect(accountNavigation.getByRole('link', { name: 'Sign In' })).toHaveCount(0);
 
-  const hasHorizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-  );
-  expect(hasHorizontalOverflow).toBe(false);
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
 
-  await authenticationAction.click();
-  await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.getByRole('heading', { name: 'Login or Sign up' })).toBeVisible();
+    await authenticationAction.click();
+    await expect(page).toHaveURL(/\/sign-in$/);
+    await expect(page.getByRole('heading', { name: 'Login or Sign up' })).toBeVisible();
 
-  const googleAction = page.getByRole('button', { name: 'Continue with Google' });
-  await googleAction.focus();
-  await expect(googleAction).toBeFocused();
+    const googleAction = page.getByRole('button', { name: 'Continue with Google' });
+    await googleAction.focus();
+    await expect(googleAction).toBeFocused();
 
-  const oauthRequest = page.waitForRequest(
-    (request) =>
-      request.url().startsWith('https://e2e.supabase.co/auth/v1/authorize') &&
-      request.url().includes('provider=google'),
-  );
-  await page.route('https://e2e.supabase.co/auth/v1/authorize**', async (route) => {
-    await route.fulfill({ contentType: 'text/html', body: '<p>Managed OAuth boundary</p>' });
-  });
+    const oauthRequest = page.waitForRequest(
+      (request) =>
+        request.url().startsWith('https://e2e.supabase.co/auth/v1/authorize') &&
+        request.url().includes('provider=google'),
+    );
+    await page.route('https://e2e.supabase.co/auth/v1/authorize**', async (route) => {
+      await route.fulfill({ contentType: 'text/html', body: '<p>Managed OAuth boundary</p>' });
+    });
 
-  await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
 
-  expect((await oauthRequest).url()).toContain(encodeURIComponent('http://127.0.0.1:4173/'));
-});
+    expect((await oauthRequest).url()).toContain(encodeURIComponent('http://127.0.0.1:4173/'));
+  },
+);
 
 test('OAuth cancellation returns a safe signed-out callback state', async ({ page }) => {
   await isolateSupabaseClientLock(page);

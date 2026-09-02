@@ -9,71 +9,72 @@ async function expectNoHorizontalOverflow(page: Page) {
   ).toBe(false);
 }
 
-test('homepage presents the public event-to-statistic journey in both themes', async ({
-  page,
-  isMobile,
-}) => {
-  await page.goto('/');
+test(
+  'homepage presents the public event-to-statistic journey in both themes',
+  { tag: '@mobile' },
+  async ({ page, isMobile }) => {
+    await page.goto('/');
 
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
-  ).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Browse fixtures' }).first()).toHaveAttribute(
-    'href',
-    '/fixtures',
-  );
-  await expect(page.getByRole('link', { name: 'Explore competitions' }).first()).toHaveAttribute(
-    'href',
-    '/competitions',
-  );
-  await expect(page.getByRole('heading', { name: 'Explosive', exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'See the event inside the statistic.' }),
-  ).toBeVisible();
-  await expect(page.getByText('/api/v1/fixtures/{fixtureId}/statistics')).toBeVisible();
-  await expect(page.getByText('Event → derived values')).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-
-  for (const theme of ['day', 'night'] as const) {
-    await page.evaluate((selectedTheme) => {
-      document.documentElement.dataset.theme = selectedTheme;
-      document.documentElement.style.colorScheme = selectedTheme === 'night' ? 'dark' : 'light';
-    }, theme);
-
-    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    const canvas = page.locator('.hero-scene');
-    if ((await canvas.count()) > 0) {
-      await expect(canvas).toHaveAttribute('data-scene-theme', theme);
-    }
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(
-      results.violations.filter(
-        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-      ),
-      `${theme} homepage accessibility violations`,
-    ).toEqual([]);
-  }
-
-  if (!isMobile) {
-    const viewport = page.viewportSize();
-    if (!viewport) {
-      throw new Error('The desktop viewport is unavailable.');
-    }
-    const session = await page.context().newCDPSession(page);
-    await session.send('Emulation.setDeviceMetricsOverride', {
-      width: Math.floor(viewport.width / 2),
-      height: viewport.height,
-      deviceScaleFactor: 2,
-      mobile: false,
-    });
     await expect(
       page.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
     ).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Browse fixtures' }).first()).toHaveAttribute(
+      'href',
+      '/fixtures',
+    );
+    await expect(page.getByRole('link', { name: 'Explore competitions' }).first()).toHaveAttribute(
+      'href',
+      '/competitions',
+    );
+    await expect(page.getByRole('heading', { name: 'Explosive', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'See the event inside the statistic.' }),
+    ).toBeVisible();
+    await expect(page.getByText('/api/v1/fixtures/{fixtureId}/statistics')).toBeVisible();
+    await expect(page.getByText('Event → derived values')).toBeVisible();
     await expectNoHorizontalOverflow(page);
-    await session.send('Emulation.clearDeviceMetricsOverride');
-    await session.detach();
-  }
-});
+
+    for (const theme of ['day', 'night'] as const) {
+      await page.evaluate((selectedTheme) => {
+        document.documentElement.dataset.theme = selectedTheme;
+        document.documentElement.style.colorScheme = selectedTheme === 'night' ? 'dark' : 'light';
+      }, theme);
+
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      const canvas = page.locator('.hero-scene');
+      if ((await canvas.count()) > 0) {
+        await expect(canvas).toHaveAttribute('data-scene-theme', theme);
+      }
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.filter(
+          (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+        ),
+        `${theme} homepage accessibility violations`,
+      ).toEqual([]);
+    }
+
+    if (!isMobile) {
+      const viewport = page.viewportSize();
+      if (!viewport) {
+        throw new Error('The desktop viewport is unavailable.');
+      }
+      const session = await page.context().newCDPSession(page);
+      await session.send('Emulation.setDeviceMetricsOverride', {
+        width: Math.floor(viewport.width / 2),
+        height: viewport.height,
+        deviceScaleFactor: 2,
+        mobile: false,
+      });
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'The game, measured ball by ball.' }),
+      ).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await session.send('Emulation.clearDeviceMetricsOverride');
+      await session.detach();
+    }
+  },
+);
 
 test('homepage remains complete with reduced motion and without WebGL', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });

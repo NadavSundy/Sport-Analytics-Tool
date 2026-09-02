@@ -31,24 +31,34 @@ Only public-safe configuration may be exposed through `VITE_` variables.
 
 ## Deployment
 
-`.gitea/workflows/deploy-frontend.yml` deploys the frontend after a push to `main` changes the
-frontend workspace, shared contracts, root npm manifests, shared TypeScript configuration, the
-deployment smoke-check script or the workflow itself. It can also be started manually with
-`workflow_dispatch`.
+Automatic frontend deployment is gated by the change-aware `Sport Analytics CI` workflow. A
+production-impacting frontend change merged to `main` must first complete the `quality` job
+successfully. The planner exposes `deployFrontend=true` only for changes that can affect the deployed
+browser application, such as frontend implementation, shared contracts and relevant root dependency
+configuration. Test-only, documentation, evidence and CI-only changes do not redeploy the frontend.
 
-The workflow runs from the repository root and:
+After `quality` succeeds, the automatic deployment job:
 
 1. installs the complete workspace reproducibly with `npm ci`;
-2. lints, type-checks, tests and builds `@sport-analytics/contracts`;
-3. lints, type-checks and tests `@sport-analytics/frontend`;
-4. builds `apps/frontend/dist` with the deployed Vite configuration;
+2. validates the required deployment secrets;
+3. builds `@sport-analytics/contracts`;
+4. builds `apps/frontend/dist` with `NODE_ENV=production` and the deployed Vite configuration;
 5. deploys that directory to `statsthegame-web-dev`, cleaning the old deployment first; and
 6. retries the public frontend URL until it returns a successful response containing the expected
    `Stat'sTheGame` page title.
 
-The smoke-check helper reports each failed attempt and fails the workflow after the configured
-attempt limit. This allows normal App Service restart time while keeping an unavailable or incorrect
-deployment visible as a failed Action.
+The deployment job deliberately does **not** re-run the frontend unit-test suite. Relevant unit tests,
+linting, type checking, production build validation and browser checks are already enforced by the
+required CI quality path before deployment is allowed to start. This avoids duplicate runner work and
+prevents a repeated flaky unit test from blocking an otherwise validated deployment.
+
+`.gitea/workflows/deploy-frontend.yml` remains available through `workflow_dispatch` as a manual
+recovery/redeployment path. It performs the deployment-specific build, Azure publication and smoke
+check without duplicating the authoritative unit-test suite.
+
+The smoke-check helper reports each failed attempt and fails the workflow after the configured attempt
+limit. This allows normal App Service restart time while keeping an unavailable or incorrect deployment
+visible as a failed Action.
 
 ## Gitea Action secrets
 

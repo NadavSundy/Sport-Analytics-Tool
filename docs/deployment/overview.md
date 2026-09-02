@@ -59,6 +59,7 @@ The following workflows use this runner:
 - `Sport Analytics CI`
 - `Sport Analytics - Deploy Backend`
 - `Sport Analytics - Deploy Frontend`
+- `Sport Analytics - Deploy Docs`
 
 The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. When
 PostgreSQL integration is required, database validation may run in parallel with the normal
@@ -73,15 +74,12 @@ baseline and retain a successful hosted run as evidence.
 
 The established hosted baseline confirms:
 
-1. jobs can be accepted by a university runner;
-2. repository checkout and Node setup succeed;
-3. PostgreSQL 16 works through host networking on port `55432`;
-4. linting, type checking, tests and builds can execute remotely;
-5. Playwright Chromium can execute in the hosted environment; and
-6. deployment workflows can be scheduled independently on the hosted runner infrastructure.
-
-Application deployment success is verified by the relevant deployment issue and smoke checks rather
-than being inferred from CI runner availability.
+1. the job is accepted by a university runner
+2. repository checkout and Node setup succeed
+3. PostgreSQL service-container networking works
+4. linting, type checking, tests and builds succeed
+5. Playwright can execute in the hosted environment
+6. backend and frontend deployment workflows can execute successfully
 
 ## AI Declaration
 

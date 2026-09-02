@@ -24,6 +24,7 @@ jobs:
       deployment: ${{ steps.plan.outputs.deployment }}
       openapi: ${{ steps.plan.outputs.openapi }}
       coverage: ${{ steps.plan.outputs.coverage }}
+      deployFrontend: ${{ steps.plan.outputs.deployFrontend }}
       needsNpm: ${{ steps.plan.outputs.needsNpm }}
 
     steps:
@@ -107,12 +108,6 @@ jobs:
           npm run typecheck --workspace=@sport-analytics/frontend
           npm run test:frontend
 
-      - name: Build frontend production bundle
-        if: needs.plan.outputs.frontend == 'true'
-        env:
-          NODE_ENV: production
-        run: npm run build --workspace=@sport-analytics/frontend
-
       - name: Run deployment-helper tests
         if: needs.plan.outputs.deployment == 'true'
         run: npm run test:deployment
@@ -137,19 +132,50 @@ jobs:
         if: needs.plan.outputs.docs == 'true'
         run: python -m mkdocs build --strict
 
-      - name: Install Playwright Chromium
-        if: needs.plan.outputs.e2e == 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Run browser and accessibility tests
-        if: needs.plan.outputs.e2e == 'true'
-        env:
-          NODE_ENV: production
-        run: npm run test:e2e
-
       - name: Generate coverage on main or deliberate full validation
         if: needs.plan.outputs.coverage == 'true'
         run: npm run test:coverage
+
+  browser:
+    needs: plan
+    if: needs.plan.outputs.e2e == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_REUSE_BUILD: '1'
+      PLAYWRIGHT_WORKERS: '2'
+      VITE_SUPABASE_URL: https://e2e.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: e2e-public-key
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared contracts for browser validation
+        run: npm run build --workspace=@sport-analytics/contracts
+
+      - name: Build frontend production bundle once
+        env:
+          NODE_ENV: production
+        run: npm run build --workspace=@sport-analytics/frontend
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser and accessibility tests
+        env:
+          NODE_ENV: production
+        run: npm run test:e2e
 
   database:
     needs: plan
@@ -209,6 +235,7 @@ jobs:
     needs:
       - plan
       - validation
+      - browser
       - database
     if: always()
     runs-on: ubuntu-24.04
@@ -220,6 +247,8 @@ jobs:
           PLAN_RESULT: ${{ needs.plan.result }}
           VALIDATION_REQUIRED: ${{ needs.plan.outputs.needsNpm }}
           VALIDATION_RESULT: ${{ needs.validation.result }}
+          BROWSER_REQUIRED: ${{ needs.plan.outputs.e2e }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
           DATABASE_REQUIRED: ${{ needs.plan.outputs.database }}
           DATABASE_RESULT: ${{ needs.database.result }}
         run: |
@@ -233,9 +262,88 @@ jobs:
             exit 1
           fi
 
+          if [ "$BROWSER_REQUIRED" = "true" ] && [ "$BROWSER_RESULT" != "success" ]; then
+            echo "::error::Required browser validation did not complete successfully ($BROWSER_RESULT)."
+            exit 1
+          fi
+
           if [ "$DATABASE_REQUIRED" = "true" ] && [ "$DATABASE_RESULT" != "success" ]; then
             echo "::error::Required database validation did not complete successfully ($DATABASE_RESULT)."
             exit 1
           fi
 
           echo "Required change-aware validation passed."
+
+  deploy_frontend:
+    needs:
+      - plan
+      - quality
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.deployFrontend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      FRONTEND_URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net
+
+    steps:
+      - name: Check out validated main commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root workspace dependencies
+        run: npm ci
+
+      - name: Validate deployment secrets
+        env:
+          AZURE_FRONTEND_PUBLISH_PROFILE: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        run: |
+          missing=0
+          for name in AZURE_FRONTEND_PUBLISH_PROFILE VITE_API_BASE_URL VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Build shared contracts for deployment
+        run: npm run build --workspace=@sport-analytics/contracts
+
+      - name: Build frontend deployment bundle
+        env:
+          NODE_ENV: production
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run build --workspace=@sport-analytics/frontend
+
+      - name: Deploy frontend
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: statsthegame-web-dev
+          publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
+          package: apps/frontend/dist
+          clean: true
+          restart: true
+
+      - name: Smoke check deployed frontend
+        env:
+          SMOKE_CHECK_ATTEMPTS: 18
+          SMOKE_CHECK_DELAY_MS: 10000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed frontend"
+          "$FRONTEND_URL"
+          "<title>Stat'sTheGame</title>"

@@ -845,15 +845,19 @@ limit.
 
 ## 23. Frontend CI deployment checks
 
-The frontend workflow:
+The current frontend CI/CD path:
 
-1. install dependencies reproducibly;
-2. run frontend tests;
-3. build with the intended deployment environment;
-4. provide `VITE_API_BASE_URL` at build time;
-5. deploy the resulting frontend artifact;
-6. verify the frontend URL is reachable;
-7. fails if the deployed response does not contain the expected application title.
+1. validates relevant frontend changes in the required `Sport Analytics CI / quality` path before merge;
+2. re-validates the merged `main` commit through change-aware CI;
+3. starts automatic frontend deployment only after `quality` succeeds and `deployFrontend=true`;
+4. installs dependencies reproducibly and builds the shared contracts;
+5. builds with the intended deployment environment and `VITE_API_BASE_URL`;
+6. deploys the resulting frontend artifact;
+7. verifies the frontend URL is reachable and contains the expected application title.
+
+The deployment stage does not repeat the frontend unit-test suite. That suite is authoritative in CI;
+repeating it after merge previously allowed a flaky asynchronous test to block deployment after a valid
+quality result. The manual frontend deployment workflow is retained as a recovery path.
 
 The value of:
 
