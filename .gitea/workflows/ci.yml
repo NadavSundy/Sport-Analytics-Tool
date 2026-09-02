@@ -37,6 +37,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Check required repository structure
+        run: node scripts/check-required-files.mjs
+
       - name: Plan change-aware validation
         id: plan
         env:
@@ -44,13 +47,14 @@ jobs:
           CI_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           CI_PUSH_BEFORE_SHA: ${{ github.event.before }}
           CI_HEAD_SHA: ${{ github.sha }}
-        run: npm run ci:plan
+        run: node scripts/ci-change-plan.mjs
 
       - name: Test CI change-routing rules
-        run: npm run test:ci-routing
+        run: node --test tests/ci/*.test.mjs
 
   validation:
     needs: plan
+    if: needs.plan.outputs.needsNpm == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -69,15 +73,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Check required repository structure
-        run: npm run structure:check
-
       - name: Install dependencies
-        if: needs.plan.outputs.needsNpm == 'true'
         run: npm ci
 
       - name: Check repository formatting
-        if: needs.plan.outputs.needsNpm == 'true'
         run: npm run format:check
 
       - name: Run monorepo architecture and hygiene checks
@@ -103,13 +102,16 @@ jobs:
 
       - name: Verify frontend workspace
         if: needs.plan.outputs.frontend == 'true'
-        env:
-          NODE_ENV: production
         run: |
           npm run lint --workspace=@sport-analytics/frontend
           npm run typecheck --workspace=@sport-analytics/frontend
           npm run test:frontend
-          npm run build --workspace=@sport-analytics/frontend
+
+      - name: Build frontend production bundle
+        if: needs.plan.outputs.frontend == 'true'
+        env:
+          NODE_ENV: production
+        run: npm run build --workspace=@sport-analytics/frontend
 
       - name: Run deployment-helper tests
         if: needs.plan.outputs.deployment == 'true'
@@ -145,15 +147,13 @@ jobs:
           NODE_ENV: production
         run: npm run test:e2e
 
-      - name: Generate coverage for deliberate full validation
+      - name: Generate coverage on main or deliberate full validation
         if: needs.plan.outputs.coverage == 'true'
         run: npm run test:coverage
 
   database:
-    needs:
-      - plan
-      - validation
-    if: needs.validation.result == 'success' && needs.plan.outputs.database == 'true'
+    needs: plan
+    if: needs.plan.outputs.database == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -218,6 +218,7 @@ jobs:
       - name: Enforce required validation results
         env:
           PLAN_RESULT: ${{ needs.plan.result }}
+          VALIDATION_REQUIRED: ${{ needs.plan.outputs.needsNpm }}
           VALIDATION_RESULT: ${{ needs.validation.result }}
           DATABASE_REQUIRED: ${{ needs.plan.outputs.database }}
           DATABASE_RESULT: ${{ needs.database.result }}
@@ -227,7 +228,7 @@ jobs:
             exit 1
           fi
 
-          if [ "$VALIDATION_RESULT" != "success" ]; then
+          if [ "$VALIDATION_REQUIRED" = "true" ] && [ "$VALIDATION_RESULT" != "success" ]; then
             echo "::error::Required validation did not complete successfully ($VALIDATION_RESULT)."
             exit 1
           fi

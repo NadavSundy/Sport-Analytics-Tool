@@ -78,13 +78,20 @@ test('root dependency changes select full CI', () => {
   assert.equal(plan.database, true);
   assert.equal(plan.e2e, true);
   assert.equal(plan.hygiene, true);
-  assert.equal(plan.coverage, true);
+  assert.equal(plan.coverage, false);
 });
 
 test('unknown files fail safely to full CI', () => {
   const plan = classifyChangedFiles(['unexpected-root-file.xyz']);
 
   assert.equal(plan.full, true);
+});
+
+test('application changes on main generate coverage after merge', () => {
+  const plan = classifyChangedFiles(['apps/frontend/src/App.tsx'], { eventName: 'push' });
+
+  assert.equal(plan.frontend, true);
+  assert.equal(plan.coverage, true);
 });
 
 test('manual workflow dispatch always selects full CI', () => {

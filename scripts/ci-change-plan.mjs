@@ -72,7 +72,6 @@ function markFull(plan) {
   plan.hygiene = true;
   plan.deployment = true;
   plan.openapi = true;
-  plan.coverage = true;
   plan.needsNpm = true;
 }
 
@@ -254,15 +253,12 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
 
   if (eventName === 'workflow_dispatch' || files.length === 0) {
     markFull(plan);
-    return plan;
+  } else {
+    for (const file of files) {
+      if (plan.full) break;
+      applyPath(plan, file.replaceAll('\\', '/'));
+    }
   }
-
-  for (const file of files) {
-    if (plan.full) break;
-    applyPath(plan, file.replaceAll('\\', '/'));
-  }
-
-  if (plan.full) return plan;
 
   if (plan.frontend || plan.backend || plan.contracts) {
     plan.hygiene = true;
@@ -270,8 +266,11 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
   }
 
   // Coverage duplicates unit suites and currently enforces no repository-wide
-  // threshold, so reserve it for deliberate full validation rather than every PR.
-  plan.coverage = false;
+  // threshold. Keep Pull Request feedback fast, then generate coverage for
+  // affected application code after merge to main or on an explicit full run.
+  plan.coverage =
+    eventName === 'workflow_dispatch' ||
+    (eventName === 'push' && (plan.full || plan.frontend || plan.backend || plan.contracts));
 
   return plan;
 }

@@ -62,6 +62,7 @@ data and decisions behind them:
 - [Azure deployment recovery](deployment/azure-app-service-recovery.md) — the 10–13 August
   deployment incident and how it was resolved
 - [Testing strategy](development/testing.md)
+- [CI/CD and quality gates](development/ci-cd.md) — hosted runner routing, required checks and deployment relationship
 
 ## Core project boundary
 

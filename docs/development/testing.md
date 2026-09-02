@@ -1,8 +1,8 @@
 # Testing
 
 The repository keeps fast application tests and PostgreSQL integration tests in separate suites.
-The normal repository quality gate remains database-independent, while CI runs the database suite
-as its own required step.
+The normal repository quality gate remains database-independent, while hosted CI runs the database
+suite as a separate required lane only when the change plan identifies a persisted-data risk.
 
 ## Quick start
 
@@ -100,34 +100,26 @@ supplies that connection directly, and runs `npm run test:database` as an explic
 
 ## Change-aware hosted CI
 
-The required Gitea Pull Request status remains `Sport Analytics CI / quality`. The workflow first
-classifies the changed paths and then runs only the validation that can be affected by those changes.
-Unknown paths, root dependency changes and CI configuration changes deliberately fall back to full CI.
-A manual `workflow_dispatch` run also always selects full validation.
+The required Gitea Pull Request status remains `Sport Analytics CI / quality`. CI first classifies
+the changed paths, then runs only the validation that can be affected by those changes. The
+PostgreSQL lane starts in parallel with normal validation when it is required, so a full backend/data
+change can use both university-hosted runners rather than waiting for one long serial pipeline.
 
-| Change class               | Hosted validation                                                                                                                                | Expensive work intentionally skipped                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Evidence-only              | changed-line whitespace, required repository structure, formatting when the evidence format is Prettier-managed                                  | PostgreSQL, application tests/builds, MkDocs, Playwright, coverage |
-| Documentation-only         | repository checks, formatting, OpenAPI lint where relevant, strict MkDocs build                                                                  | application tests, PostgreSQL, Playwright, coverage                |
-| Frontend                   | shared contracts, hygiene, frontend lint/typecheck/unit/build, Playwright for implementation/browser changes                                     | PostgreSQL                                                         |
-| Backend                    | shared contracts, hygiene, backend lint/typecheck/unit/API/build, OpenAPI lint, PostgreSQL integration tests for backend source/database changes | Playwright unless another affected path requires it                |
-| Shared contracts           | hygiene plus contract, frontend, backend and browser validation                                                                                  | PostgreSQL unless another changed path requires it                 |
-| Root/dependency/CI/unknown | full validation, including docs, database, browser, deployment-helper and coverage suites                                                        | nothing                                                            |
+Lightweight evidence changes can skip the npm-based validation job entirely after the planner has
+checked the required repository structure. Unknown paths, root dependency changes and CI
+configuration changes deliberately fall back to full Pull Request application validation. A manual
+`workflow_dispatch` always selects full validation.
 
-The planner is implemented in `scripts/ci-change-plan.mjs`. Its routing rules are regression-tested by
-`tests/ci/change-plan.test.mjs`. Run those tests directly with:
+Frontend unit tests run with `NODE_ENV=test`; only the production frontend build and Playwright
+browser checks run with `NODE_ENV=production`. This keeps React Testing Library on the React build
+that supports `act(...)` while still testing the production browser bundle.
 
-```bash
-npm run test:ci-routing
-```
+Coverage does not currently enforce a repository-wide threshold and duplicates already-executed unit
+suites. It therefore runs for relevant pushes to `main` and manual full validation rather than
+duplicating work on every Pull Request.
 
-PostgreSQL is started by CI only when the change plan requests database integration tests. The hosted
-runner uses host networking, so the disposable PostgreSQL 16 container listens on port `55432`, matching
-`DATABASE_URL_TEST` and avoiding the shared runner's occupied default `5432` port.
-
-Coverage currently duplicates already-executed unit suites and does not enforce a repository-wide
-threshold. It is therefore reserved for deliberate full validation instead of running on every Pull
-Request.
+The detailed routing matrix, job graph, branch-protection contract, runner policy, failure semantics
+and local parity commands are documented in [CI/CD and quality gates](ci-cd.md).
 
 ## Deployment workflow helper coverage
 
