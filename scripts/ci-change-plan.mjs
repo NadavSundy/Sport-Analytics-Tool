@@ -57,6 +57,7 @@ function emptyPlan() {
     deployment: false,
     openapi: false,
     coverage: false,
+    deployFrontend: false,
     needsNpm: false,
   };
 }
@@ -112,7 +113,15 @@ function applyPath(plan, file) {
     return;
   }
 
-  if (FULL_ROOT_FILES.has(file) || file === '.gitea/workflows/ci.yml') {
+  if (FULL_ROOT_FILES.has(file)) {
+    markFull(plan);
+    if (file === 'package.json' || file === 'package-lock.json' || file === 'tsconfig.base.json') {
+      plan.deployFrontend = true;
+    }
+    return;
+  }
+
+  if (file === '.gitea/workflows/ci.yml') {
     markFull(plan);
     return;
   }
@@ -137,6 +146,7 @@ function applyPath(plan, file) {
 
   if (file.startsWith('packages/contracts/')) {
     plan.contracts = true;
+    plan.deployFrontend = true;
     plan.frontend = true;
     plan.backend = true;
     plan.e2e = true;
@@ -153,7 +163,10 @@ function applyPath(plan, file) {
     plan.needsNpm = true;
 
     const isFrontendTest = /(?:\.test\.[cm]?[jt]sx?|\/test\/)/.test(file);
-    if (!isFrontendTest) plan.e2e = true;
+    if (!isFrontendTest) {
+      plan.e2e = true;
+      plan.deployFrontend = true;
+    }
     return;
   }
 
@@ -197,6 +210,7 @@ function applyPath(plan, file) {
 
   if (file === 'scripts/smoke-check-deployment.mjs') {
     plan.deployment = true;
+    plan.deployFrontend = true;
     plan.needsNpm = true;
     return;
   }

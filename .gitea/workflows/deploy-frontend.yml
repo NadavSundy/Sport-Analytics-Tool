@@ -1,23 +1,12 @@
 name: Sport Analytics - Deploy Frontend
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'apps/frontend/**'
-      - 'packages/contracts/**'
-      - 'scripts/smoke-check-deployment.mjs'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.base.json'
-      - '.gitea/workflows/deploy-frontend.yml'
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 20
     env:
       FRONTEND_URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net
 
@@ -51,25 +40,16 @@ jobs:
           done
           exit "$missing"
 
-      - name: Verify shared contracts
-        run: |
-          npm run lint --workspace=@sport-analytics/contracts
-          npm run typecheck --workspace=@sport-analytics/contracts
-          npm run test:contracts
-          npm run build --workspace=@sport-analytics/contracts
-
-      - name: Verify frontend workspace
-        run: |
-          npm run lint --workspace=@sport-analytics/frontend
-          npm run typecheck --workspace=@sport-analytics/frontend
-          npm run test:frontend
+      - name: Build shared contracts for deployment
+        run: npm run build --workspace=@sport-analytics/contracts
 
       - name: Build frontend deployment bundle
-        run: npm run build --workspace=@sport-analytics/frontend
         env:
+          NODE_ENV: production
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run build --workspace=@sport-analytics/frontend
 
       - name: Deploy frontend
         uses: azure/webapps-deploy@v3

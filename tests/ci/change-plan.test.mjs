@@ -39,6 +39,7 @@ test('frontend implementation changes run frontend and browser validation withou
   assert.equal(plan.e2e, true);
   assert.equal(plan.database, false);
   assert.equal(plan.hygiene, true);
+  assert.equal(plan.deployFrontend, true);
 });
 
 test('frontend unit-test-only changes do not force Playwright', () => {
@@ -46,6 +47,7 @@ test('frontend unit-test-only changes do not force Playwright', () => {
 
   assert.equal(plan.frontend, true);
   assert.equal(plan.e2e, false);
+  assert.equal(plan.deployFrontend, false);
 });
 
 test('backend source changes conservatively include database integration validation', () => {
@@ -66,6 +68,7 @@ test('shared contracts validate both applications and browser integration', () =
   assert.equal(plan.backend, true);
   assert.equal(plan.e2e, true);
   assert.equal(plan.database, false);
+  assert.equal(plan.deployFrontend, true);
 });
 
 test('root dependency changes select full CI', () => {
@@ -79,6 +82,14 @@ test('root dependency changes select full CI', () => {
   assert.equal(plan.e2e, true);
   assert.equal(plan.hygiene, true);
   assert.equal(plan.coverage, false);
+  assert.equal(plan.deployFrontend, true);
+});
+
+test('CI workflow changes select full validation without redeploying unchanged application code', () => {
+  const plan = classifyChangedFiles(['.gitea/workflows/ci.yml']);
+
+  assert.equal(plan.full, true);
+  assert.equal(plan.deployFrontend, false);
 });
 
 test('unknown files fail safely to full CI', () => {
