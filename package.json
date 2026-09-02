@@ -18,7 +18,7 @@
     "check:contracts-public-api": "node scripts/check-contracts-public-api.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test:unit && npm run test:frontend && npm run test:api && npm run test:contracts && npm run test:deployment",
+    "test": "npm run test:unit && npm run test:frontend && npm run test:api && npm run test:contracts && npm run test:deployment && npm run test:ci-routing",
     "test:backend": "npm run test --workspace=@sport-analytics/backend && npm run test:database",
     "test:backend:local": "npm run test --workspace=@sport-analytics/backend && npm run test:database:local",
     "test:unit": "npm run test:unit --workspace=@sport-analytics/backend",
@@ -40,7 +40,9 @@
     "hygiene:knip": "knip",
     "hygiene:dependencies": "syncpack lint",
     "hygiene": "npm run hygiene:knip && npm run hygiene:dependencies && npm run hygiene:architecture",
-    "hygiene:architecture": "depcruise --config .dependency-cruiser.cjs apps/frontend/src apps/backend/src packages/contracts/src"
+    "hygiene:architecture": "depcruise --config .dependency-cruiser.cjs apps/frontend/src apps/backend/src packages/contracts/src",
+    "ci:plan": "node scripts/ci-change-plan.mjs",
+    "test:ci-routing": "node --test tests/ci/*.test.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

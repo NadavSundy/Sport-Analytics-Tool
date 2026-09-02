@@ -16,6 +16,7 @@ const requiredFiles = [
   'packages/contracts/package.json',
   'packages/contracts/README.md',
   'docs/development/technology-stack.md',
+  'docs/development/ci-cd.md',
   'database/README.md',
   'docs/index.md',
   'docs/git-methodology.md',
