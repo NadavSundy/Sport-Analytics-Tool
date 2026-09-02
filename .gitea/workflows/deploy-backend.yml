@@ -18,7 +18,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ${{ vars.RUNNER_LABEL }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net

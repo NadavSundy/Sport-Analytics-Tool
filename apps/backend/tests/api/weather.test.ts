@@ -1,7 +1,10 @@
 import request from 'supertest';
 import { describe, expect, test, vi } from 'vitest';
 
-import { WeatherDateUnsupportedError, type WeatherService } from '../../src/modules/weather/weather.service';
+import {
+  WeatherDateUnsupportedError,
+  type WeatherService,
+} from '../../src/modules/weather/weather.service';
 import { createTestApp } from '../test-app';
 
 function createService(overrides: Partial<WeatherService> = {}): WeatherService {

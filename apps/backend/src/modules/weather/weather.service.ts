@@ -43,7 +43,11 @@ export function classifyWeatherDate(
 ): WeatherEndpoint | 'unsupported' {
   const target = new Date(`${date}T00:00:00Z`);
   const today = new Date(
-    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate()),
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate(),
+    ),
   );
   const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
 

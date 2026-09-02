@@ -130,13 +130,13 @@ The endpoint uses the shared machine-readable API error format:
 }
 ```
 
-| Status | Code                          | Cause                                                                                           |
-| ------ | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `400`  | `VALIDATION_FAILED`           | Missing/non-numeric `latitude` or `longitude`, out-of-range coordinates, or a malformed `date`. |
+| Status | Code                          | Cause                                                                                                    |
+| ------ | ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `400`  | `VALIDATION_FAILED`           | Missing/non-numeric `latitude` or `longitude`, out-of-range coordinates, or a malformed `date`.          |
 | `422`  | `DATE_UNSUPPORTED`            | `date` is validly formatted but falls outside both the forecast and archive endpoints' supported ranges. |
-| `502`  | `UPSTREAM_ERROR`              | Open-Meteo returned a non-2xx response, invalid JSON, or an unexpected response shape.          |
-| `503`  | `WEATHER_SERVICE_UNAVAILABLE` | An unclassified failure occurred while contacting Open-Meteo.                                   |
-| `504`  | `UPSTREAM_TIMEOUT`            | Open-Meteo did not respond within the configured timeout (5000ms).                              |
+| `502`  | `UPSTREAM_ERROR`              | Open-Meteo returned a non-2xx response, invalid JSON, or an unexpected response shape.                   |
+| `503`  | `WEATHER_SERVICE_UNAVAILABLE` | An unclassified failure occurred while contacting Open-Meteo.                                            |
+| `504`  | `UPSTREAM_TIMEOUT`            | Open-Meteo did not respond within the configured timeout (5000ms).                                       |
 
 A `502`/`503`/`504` means the external provider is unavailable or misbehaving; it does not indicate
 a problem with the project's own API surface. The backend logs the underlying error before

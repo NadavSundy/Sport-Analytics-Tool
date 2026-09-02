@@ -38,37 +38,41 @@ See:
 
 ## Gitea Actions runner configuration
 
-The university-hosted Gitea Actions runner infrastructure is managed
-externally to this repository and is not currently available.
+The university provides global Gitea Actions runners for project CI/CD.
 
-The CI/CD workflows use the repository Actions variable:
+The available runners currently advertise the following labels:
 
-`RUNNER_LABEL`
+- `ubuntu-latest`
+- `ubuntu-24.04`
+- `ubuntu-22.04`
 
-This value must match a label advertised by an available Gitea Actions
-runner. The value must not be guessed or hard-coded into the workflows.
+The Sport Analytics Tool workflows are pinned to:
 
-When the university runners become available:
+`ubuntu-24.04`
 
-1. Identify the available runner label in Gitea.
-2. Set the repository Actions variable `RUNNER_LABEL` to that exact value.
-3. Manually run the `Sport Analytics CI` workflow.
-4. Resolve any runner-specific compatibility issues.
-5. Verify pull-request CI.
-6. Verify CI on the `main` branch.
-7. Verify the backend deployment workflow.
-8. Verify the frontend deployment workflow.
-9. Configure branch protection so that the successful CI check is required.
+Using a fixed runner label provides a more reproducible CI environment than
+`ubuntu-latest`, while targeting an environment currently supported by the
+university-hosted runners.
 
-Until hosted runners are available, the repository-side workflow
-configuration and local quality checks can be prepared and validated, but
-hosted CI/CD execution cannot be confirmed.
+The following workflows use this runner:
 
-### Runner validation note
+- `Sport Analytics CI`
+- `Sport Analytics - Deploy Backend`
+- `Sport Analytics - Deploy Frontend`
 
-The PostgreSQL test-service hostname must be verified during the first hosted
-runner execution. The required hostname may depend on how the university
-runner executes workflow and service containers.
+Runner availability and compatibility must still be validated through hosted
+workflow execution.
+
+### Runner validation
+
+The first hosted CI execution must confirm:
+
+1. the job is accepted by a university runner
+2. repository checkout and Node setup succeed
+3. PostgreSQL service-container networking works
+4. linting, type checking, tests and builds succeed
+5. Playwright can execute in the hosted environment
+6. backend and frontend deployment workflows can execute successfully
 
 ## AI Declaration
 
