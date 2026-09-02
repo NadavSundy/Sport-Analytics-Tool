@@ -50,6 +50,15 @@ test('frontend unit-test-only changes do not force Playwright', () => {
   assert.equal(plan.deployFrontend, false);
 });
 
+test('browser-suite changes request browser validation without production deployment', () => {
+  const plan = classifyChangedFiles(['tests/e2e/accessibility.spec.ts']);
+
+  assert.equal(plan.frontend, true);
+  assert.equal(plan.e2e, true);
+  assert.equal(plan.database, false);
+  assert.equal(plan.deployFrontend, false);
+});
+
 test('backend source changes conservatively include database integration validation', () => {
   const plan = classifyChangedFiles(['apps/backend/src/modules/submissions/submission.service.ts']);
 

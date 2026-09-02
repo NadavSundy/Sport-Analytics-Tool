@@ -3,11 +3,11 @@
 ## Status
 
 **Implemented:** change-aware Gitea Pull Request CI, required quality gating, PostgreSQL integration
-validation, monorepo hygiene enforcement, Azure frontend deployment and Azure backend deployment
-workflow foundations.
+validation, monorepo hygiene enforcement, Azure frontend deployment, Azure backend deployment
+workflow foundations and automated MkDocs deployment to Cloudflare Pages.
 
-**Tracked separately:** automated MkDocs deployment to Cloudflare Pages is still handled by the
-existing documentation-deployment work item and is not claimed as implemented here.
+**Tracked separately:** backend/documentation deployment alignment with the shared validated-main
+quality flow remains follow-up infrastructure work.
 
 ## Purpose and methodology relationship
 
@@ -50,17 +50,20 @@ ubuntu-24.04
 Node workflows use Node.js 22. Database integration uses PostgreSQL 16. The hosted runners use host
 networking, so CI PostgreSQL listens on `55432` instead of the normally occupied `5432` port.
 
-The CI graph is deliberately able to use both hosted runners when a database check is required. This
-reduces elapsed feedback time for the project while retaining the same required quality gate:
+The CI graph separates browser validation from normal workspace validation. This lets frontend-heavy
+Pull Requests use both hosted runners when capacity is available while retaining the same required
+quality gate:
 
 ```text
-                         +-> validation --------+
-plan --------------------+                      +-> quality
-                         +-> database (if needed)+
+                         +-> validation ----------------+
+                         +-> browser (if required) ------+-> quality
+plan --------------------+                               |
+                         +-> database (if required) -----+
 ```
 
-The database lane no longer waits for the normal validation lane. Both start after planning and the
-final `quality` job waits for whichever lanes the change plan requires.
+The validation, browser and database lanes all depend only on `plan`. They may therefore overlap when
+multiple runners are available, and they safely queue when only one runner is available. The final
+`quality` job waits for every lane that the change plan marked as required.
 
 ## Change-aware planning
 
@@ -71,18 +74,45 @@ The planner is conservative. Unknown files, root dependency changes and workflow
 select full application validation rather than guessing that a check can be skipped. A manual
 `workflow_dispatch` also selects full validation.
 
-| Change class                                                             | Required hosted work                                                                      | Work normally skipped                                                   |
-| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Lightweight evidence (`.csv`, images, PDFs, DOCX, ZIP under `evidence/`) | plan, required-file structure check, final quality gate                                   | npm install, app tests/builds, MkDocs, PostgreSQL, Playwright, coverage |
-| Prettier-managed evidence / documentation                                | formatting and strict documentation checks as applicable                                  | unrelated app, database and browser suites                              |
-| Frontend unit-test-only                                                  | contracts/hygiene as required, frontend lint/typecheck/unit/build                         | PostgreSQL and Playwright                                               |
-| Frontend implementation/browser                                          | contracts/hygiene, frontend lint/typecheck/unit/build, Playwright                         | PostgreSQL                                                              |
-| Backend source                                                           | contracts/hygiene, backend lint/typecheck/unit/API/build, OpenAPI, PostgreSQL integration | Playwright unless another changed path requires it                      |
-| Shared contracts                                                         | contracts plus affected frontend/backend and browser validation                           | PostgreSQL unless another changed path requires it                      |
-| Root dependency, shared tooling, CI workflow or unknown path             | full Pull Request application validation                                                  | nothing except duplicate PR coverage                                    |
+| Change class                                                             | Required hosted work                                                                          | Work normally skipped                                                   |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Lightweight evidence (`.csv`, images, PDFs, DOCX, ZIP under `evidence/`) | plan, required-file structure check, final quality gate                                       | npm install, app tests/builds, MkDocs, PostgreSQL, Playwright, coverage |
+| Prettier-managed evidence / documentation                                | formatting and strict documentation checks as applicable                                      | unrelated app, database and browser suites                              |
+| Frontend unit-test-only                                                  | contracts/hygiene as required, frontend lint/typecheck/unit                                   | production browser build, PostgreSQL and Playwright                     |
+| Frontend implementation/browser                                          | contracts/hygiene, frontend lint/typecheck/unit plus browser-lane production build/Playwright | PostgreSQL                                                              |
+| Backend source                                                           | contracts/hygiene, backend lint/typecheck/unit/API/build, OpenAPI, PostgreSQL integration     | Playwright unless another changed path requires it                      |
+| Shared contracts                                                         | contracts plus affected frontend/backend and browser-lane validation                          | PostgreSQL unless another changed path requires it                      |
+| Root dependency, shared tooling, CI workflow or unknown path             | full Pull Request application validation                                                      | nothing except duplicate PR coverage                                    |
 
 Documentation-only changes still run a strict MkDocs build. OpenAPI-related documentation also runs
 Redocly linting.
+
+## Browser and accessibility execution strategy
+
+Browser validation remains authoritative when the planner sets `e2e=true`, but the hosted execution
+matrix avoids duplicating every journey at every viewport:
+
+- desktop Chromium runs the complete Playwright suite;
+- Pixel 7 Chromium runs the representative tests tagged `@mobile` for authentication, homepage,
+  public browsing, player/statistics views, submission/access workflows, administrator feedback and
+  accessibility;
+- the dedicated accessibility matrix keeps all three core routes in both Day Match and Night Match
+  on desktop, while mobile uses a focused public/sign-in scan and relies on the tagged responsive
+  journeys for additional Axe coverage;
+- CI defaults to two Playwright workers on the shared university runners. A hosted four-worker trial
+  saturated the runner and caused unrelated Axe/navigation tests to exceed their 30-second limits.
+  `PLAYWRIGHT_WORKERS=1` remains available for diagnosis, while higher values should only be adopted
+  after hosted benchmarking; and
+- the browser lane builds the shared contracts workspace first, then builds the production frontend once and
+  sets `PLAYWRIGHT_REUSE_BUILD=1` so the Playwright preview server does not rebuild the same bundle.
+
+Hosted Playwright allows 45 seconds per test and one retry. The longer hosted timeout is a runner-load
+allowance rather than an application-performance target; one retry is retained for transient browser
+flakiness without multiplying a persistent failure across three expensive attempts.
+
+The representative mobile subset is a reduction in duplicate viewport execution, not removal of
+mobile accessibility testing. New journeys whose behaviour materially changes at narrow widths should
+be tagged `@mobile` and covered by the browser-strategy regression tests.
 
 ## Test and production environment separation
 
@@ -93,7 +123,7 @@ The normal validation job therefore keeps:
 NODE_ENV=test
 ```
 
-for frontend unit tests. Only the frontend production bundle and Playwright browser run override the
+for frontend unit tests. Only the browser lane's production frontend bundle and Playwright run override the
 environment with:
 
 ```text
@@ -194,8 +224,10 @@ Application deployment paths are documented in:
 - [Azure frontend](../deployment/azure-fronted.md)
 - [Deployment overview](../deployment/overview.md)
 
-The public MkDocs site is deliberately separate. Until the tracked Cloudflare automation work is
-completed, this CI document must not claim that documentation deployment is automated.
+The public MkDocs site is deployed by the separate `Sport Analytics - Deploy Docs` workflow for
+published documentation changes. It performs a strict MkDocs build, Cloudflare Pages deployment and
+live smoke check. Aligning that deployment with the shared validated-main quality flow is tracked
+separately from this browser-optimisation work.
 
 ## Failure interpretation
 
@@ -204,8 +236,10 @@ The job graph should be read as follows:
 - `plan` failure: changed paths could not be safely planned or planner regression tests failed;
 - `validation` skipped: expected only when the plan requires no npm-based validation, such as a
   lightweight evidence-only change;
-- `validation` failure: one or more required formatting, hygiene, workspace, documentation,
-  Playwright or coverage checks failed;
+- `validation` failure: one or more required formatting, hygiene, workspace, documentation or
+  coverage checks failed;
+- `browser` skipped: expected when the planner marks the change as unable to affect browser behaviour;
+- `browser` failure: the production browser build, Playwright journey or accessibility validation failed;
 - `database` skipped: expected when the change cannot affect the persisted backend data path;
 - `database` failure: required PostgreSQL reset/migration/seed/integration validation failed;
 - `quality` failure: at least one required predecessor did not complete successfully.

@@ -1,28 +1,33 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-test('public and authentication page themes have no serious accessibility violations', async ({
-  page,
-}) => {
-  for (const route of ['/', '/sign-in', '/account']) {
-    await page.goto(route);
+test(
+  'public and authentication page themes have no serious accessibility violations',
+  { tag: '@mobile' },
+  async ({ page, isMobile }) => {
+    const routes = isMobile ? ['/', '/sign-in'] : ['/', '/sign-in', '/account'];
+    const themes = isMobile ? (['day'] as const) : (['day', 'night'] as const);
 
-    for (const theme of ['day', 'night'] as const) {
-      await page.evaluate((selectedTheme) => {
-        document.documentElement.dataset.theme = selectedTheme;
-        document.documentElement.style.colorScheme = selectedTheme === 'night' ? 'dark' : 'light';
-      }, theme);
+    for (const route of routes) {
+      await page.goto(route);
 
-      const results = await new AxeBuilder({ page }).analyze();
+      for (const theme of themes) {
+        await page.evaluate((selectedTheme) => {
+          document.documentElement.dataset.theme = selectedTheme;
+          document.documentElement.style.colorScheme = selectedTheme === 'night' ? 'dark' : 'light';
+        }, theme);
 
-      const seriousOrCriticalViolations = results.violations.filter(
-        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-      );
+        const results = await new AxeBuilder({ page }).analyze();
 
-      expect(
-        seriousOrCriticalViolations,
-        `${route} ${theme} theme: ${JSON.stringify(seriousOrCriticalViolations, null, 2)}`,
-      ).toEqual([]);
+        const seriousOrCriticalViolations = results.violations.filter(
+          (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+        );
+
+        expect(
+          seriousOrCriticalViolations,
+          `${route} ${theme} theme: ${JSON.stringify(seriousOrCriticalViolations, null, 2)}`,
+        ).toEqual([]);
+      }
     }
-  }
-});
+  },
+);

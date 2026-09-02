@@ -90,60 +90,64 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
-  await page.route('**/api/v1/submissions', async (route) => {
-    const body = route.request().postDataJSON();
-    expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });
+test(
+  'submitter completes the responsive workflow with a keyboard',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    await page.route('**/api/v1/submissions', async (route) => {
+      const body = route.request().postDataJSON();
+      expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });
 
-    await route.fulfill({
-      status: 201,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          submissionId: '300',
-          fixtureId: '7',
-          submitterId: '17',
-          status: 'accepted',
-          receivedAt: '2026-08-16T09:30:00.000Z',
-          schemaVersion: '1.0',
-          eventCount: 1,
-        },
-      }),
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            submissionId: '300',
+            fixtureId: '7',
+            submitterId: '17',
+            status: 'accepted',
+            receivedAt: '2026-08-16T09:30:00.000Z',
+            schemaVersion: '1.0',
+            eventCount: 1,
+          },
+        }),
+      });
     });
-  });
 
-  await page.goto('/submissions/new');
-  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
+    await page.goto('/submissions/new');
+    await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
 
-  const fixtureSelector = page.getByLabel('Fixture');
-  const editor = page.getByLabel('Delivery events JSON');
-  const submitButton = page.getByRole('button', { name: 'Submit events' });
+    const fixtureSelector = page.getByLabel('Fixture');
+    const editor = page.getByLabel('Delivery events JSON');
+    const submitButton = page.getByRole('button', { name: 'Submit events' });
 
-  await expect(fixtureSelector).toHaveValue('7');
-  await editor.fill(JSON.stringify(events, null, 2));
+    await expect(fixtureSelector).toHaveValue('7');
+    await editor.fill(JSON.stringify(events, null, 2));
 
-  await fixtureSelector.focus();
-  await page.keyboard.press('Tab');
-  await expect(editor).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(submitButton).toBeFocused();
-  await page.keyboard.press('Enter');
+    await fixtureSelector.focus();
+    await page.keyboard.press('Tab');
+    await expect(editor).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(submitButton).toBeFocused();
+    await page.keyboard.press('Enter');
 
-  const acceptedHeading = page.getByRole('heading', { name: 'Submission accepted' });
-  await expect(acceptedHeading).toBeFocused();
-  await expect(page.getByText('300')).toBeVisible();
+    const acceptedHeading = page.getByRole('heading', { name: 'Submission accepted' });
+    await expect(acceptedHeading).toBeFocused();
+    await expect(page.getByText('300')).toBeVisible();
 
-  const hasHorizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-  );
-  expect(hasHorizontalOverflow).toBe(false);
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
 
-  const results = await new AxeBuilder({ page }).analyze();
-  const seriousOrCriticalViolations = results.violations.filter(
-    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-  );
-  expect(seriousOrCriticalViolations).toEqual([]);
-});
+    const results = await new AxeBuilder({ page }).analyze();
+    const seriousOrCriticalViolations = results.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    );
+    expect(seriousOrCriticalViolations).toEqual([]);
+  },
+);
 
 test('validation results remain associated with the editor and receive focus', async ({ page }) => {
   await page.route('**/api/v1/submissions', async (route) => {
