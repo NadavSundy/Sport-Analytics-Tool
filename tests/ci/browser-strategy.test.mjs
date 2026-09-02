@@ -22,12 +22,12 @@ test('browser validation is an independent required lane rather than the tail of
   assert.doesNotMatch(validation, /playwright install|npm run test:e2e/);
 });
 
-test('hosted browser validation reuses one production build and defaults to four workers', () => {
+test('hosted browser validation reuses one production build and uses a conservative two-worker hosted default', () => {
   const workflow = read('.gitea/workflows/ci.yml');
   const config = read('playwright.config.ts');
 
   assert.match(workflow, /PLAYWRIGHT_REUSE_BUILD: '1'/);
-  assert.match(workflow, /PLAYWRIGHT_WORKERS: '4'/);
+  assert.match(workflow, /PLAYWRIGHT_WORKERS: '2'/);
   assert.match(workflow, /Build shared contracts for browser validation/);
   assert.match(workflow, /Build frontend production bundle once/);
   const browserStart = workflow.indexOf('  browser:');
@@ -43,7 +43,9 @@ test('hosted browser validation reuses one production build and defaults to four
     'shared contracts must be built before the standalone browser lane builds the frontend',
   );
   assert.match(config, /PLAYWRIGHT_REUSE_BUILD === '1'/);
-  assert.match(config, /PLAYWRIGHT_WORKERS \?\? '4'/);
+  assert.match(config, /PLAYWRIGHT_WORKERS \?\? '2'/);
+  assert.match(config, /retries: process\.env\.CI \? 1 : 0/);
+  assert.match(config, /timeout: process\.env\.CI \? 45_000 : 30_000/);
   assert.match(config, /reuseProductionBuild\s*\?\s*previewCommand/);
 });
 

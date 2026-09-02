@@ -99,10 +99,16 @@ matrix avoids duplicating every journey at every viewport:
 - the dedicated accessibility matrix keeps all three core routes in both Day Match and Night Match
   on desktop, while mobile uses a focused public/sign-in scan and relies on the tagged responsive
   journeys for additional Axe coverage;
-- CI defaults to four Playwright workers. `PLAYWRIGHT_WORKERS=1` remains available for hosted-runner
-  diagnosis if resource contention is observed; and
+- CI defaults to two Playwright workers on the shared university runners. A hosted four-worker trial
+  saturated the runner and caused unrelated Axe/navigation tests to exceed their 30-second limits.
+  `PLAYWRIGHT_WORKERS=1` remains available for diagnosis, while higher values should only be adopted
+  after hosted benchmarking; and
 - the browser lane builds the shared contracts workspace first, then builds the production frontend once and
   sets `PLAYWRIGHT_REUSE_BUILD=1` so the Playwright preview server does not rebuild the same bundle.
+
+Hosted Playwright allows 45 seconds per test and one retry. The longer hosted timeout is a runner-load
+allowance rather than an application-performance target; one retry is retained for transient browser
+flakiness without multiplying a persistent failure across three expensive attempts.
 
 The representative mobile subset is a reduction in duplicate viewport execution, not removal of
 mobile accessibility testing. New journeys whose behaviour materially changes at narrow widths should

@@ -64,12 +64,17 @@ mobile or theme-sensitive accessibility coverage.
 
 ### Hosted worker and build reuse
 
-Local benchmarking selected four hosted Playwright workers as the default. The optimised 36-test matrix
-completed in 28.5 seconds with four workers versus 35.2 seconds with two workers, while remaining close
-to the 27.4-second unconstrained local run using eight workers. Four workers therefore provided most of
-the local parallelism benefit without adopting the more aggressive eight-worker setting.
-`PLAYWRIGHT_WORKERS=1` remains an explicit diagnostic fallback if a university runner shows resource
-contention.
+Local benchmarking initially favoured four workers (28.5 seconds for the 36-test matrix versus 35.2
+seconds with two workers), but the university-hosted runner behaved very differently. The first hosted
+four-worker Playwright execution took 3m31s and saturated the runner: three desktop tests repeatedly
+hit the 30-second timeout and one mobile player-overview test became flaky. The failures occurred in
+Axe evaluation, focus/click/navigation and CDP operations rather than in a common application assertion,
+which is consistent with runner resource contention rather than a product regression.
+
+The hosted default is therefore two workers. CI also uses a 45-second per-test timeout to tolerate normal
+shared-runner variance and only one retry so a persistent failure does not consume two additional full
+attempts. `PLAYWRIGHT_WORKERS=1` remains an explicit diagnostic fallback. Higher worker counts must be
+reintroduced only after successful hosted benchmarking.
 
 The browser job builds the frontend production bundle once and sets `PLAYWRIGHT_REUSE_BUILD=1` before
 Playwright. The preview server therefore reuses that bundle instead of rebuilding it.
@@ -87,13 +92,25 @@ The browser job now explicitly builds `@sport-analytics/contracts` before the fr
 A regression assertion verifies this ordering so future CI refactors cannot silently reintroduce the same
 clean-run failure.
 
+## Second hosted Pull Request run — worker saturation
+
+After the shared-contract prerequisite was fixed, the browser lane reached Playwright with 36 tests and
+four workers. The Playwright step took 3m31s. Three desktop tests failed after repeated 30-second timeouts
+and the mobile player-overview test passed only on retry. The timeout locations spanned Axe, navigation,
+focus and CDP calls, indicating host saturation rather than one deterministic application defect. The job
+therefore failed despite 32 tests passing.
+
+The corrective action is to use two hosted workers, a 45-second hosted test timeout and one retry. Hosted
+verification must now confirm that the reduced concurrency lowers both flakiness and wall-clock time on the
+actual university runner.
+
 ## Regression protection
 
 Pure Node regression tests verify that:
 
 - browser validation is a separate required lane;
 - `quality` fails when required browser validation fails;
-- hosted browser CI requests four workers and production-build reuse;
+- hosted browser CI requests two workers, a bounded hosted timeout/retry policy, and production-build reuse;
 - mobile Chromium is restricted to the representative `@mobile` subset;
 - nine representative mobile tests remain tagged; and
 - the focused mobile accessibility matrix retains the broader desktop route/theme matrix.
@@ -119,7 +136,7 @@ Also verify the hosted-style browser configuration locally where practical:
 
 ```powershell
 $env:CI='true'
-$env:PLAYWRIGHT_WORKERS='4'
+$env:PLAYWRIGHT_WORKERS='2'
 npm.cmd run test:e2e
 Remove-Item Env:PLAYWRIGHT_WORKERS
 Remove-Item Env:CI
@@ -136,7 +153,7 @@ Record from the Pull Request run:
 - any retries or worker-resource failures; and
 - before/after full/frontend-focused CI wall-clock timing.
 
-If four workers prove unstable on the university runner, reduce only the hosted worker count and retain
+The four-worker hosted trial proved unstable, so the hosted default was reduced to two while retaining
 the matrix/build/job-graph optimisations. Do not remove browser or accessibility gates to obtain a
 faster green run.
 

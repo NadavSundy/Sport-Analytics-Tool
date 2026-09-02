@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 const testPort = process.env.PLAYWRIGHT_PORT ?? '4173';
 const baseURL = `http://127.0.0.1:${testPort}`;
 const reuseProductionBuild = process.env.PLAYWRIGHT_REUSE_BUILD === '1';
-const ciWorkers = Number.parseInt(process.env.PLAYWRIGHT_WORKERS ?? '4', 10);
+const ciWorkers = Number.parseInt(process.env.PLAYWRIGHT_WORKERS ?? '2', 10);
 
 if (process.env.CI && (!Number.isInteger(ciWorkers) || ciWorkers < 1)) {
   throw new Error('PLAYWRIGHT_WORKERS must be a positive integer when CI is enabled.');
@@ -19,7 +19,8 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
+  timeout: process.env.CI ? 45_000 : 30_000,
   workers: process.env.CI ? ciWorkers : undefined,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
