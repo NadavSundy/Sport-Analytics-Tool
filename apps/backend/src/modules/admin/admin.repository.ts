@@ -48,7 +48,7 @@ interface AdminUserManagementData {
   availableScopes: AdministratorCompetitionScope[];
 }
 
-export type AdministratorManagedUserWithAuthSubject = AdministratorManagedUser & {
+type AdministratorManagedUserWithAuthSubject = Omit<AdministratorManagedUser, 'email'> & {
   authSubject: string;
 };
 

@@ -75,7 +75,10 @@ interface BatchItemPageOptions {
   afterOrdinal?: number;
   limit: number;
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4486fa07 (fix(hygiene): retain required module exports)
 interface BatchCheckpointRecord {
   batchId: string;
   phase: BatchCheckpointPhase;

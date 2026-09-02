@@ -75,21 +75,29 @@ export function createAdminUpdateRoleController(service: AdminService): RequestH
     const targetAccountId = request.params.userId;
     const parsed = administratorRoleUpdateSchema.safeParse(request.body);
 
-    if (!targetAccountId || !isDatabaseIdentifier(targetAccountId) || !parsed.success) {
+    if (!targetAccountId || !isDatabaseIdentifier(targetAccountId)) {
       response.status(422).json({
         error: {
           code: 'VALIDATION_FAILED',
           message: 'The role update is invalid.',
-          details:
-            !targetAccountId || !isDatabaseIdentifier(targetAccountId)
-              ? [
-                  {
-                    code: 'INVALID_FIELD',
-                    field: 'userId',
-                    message: 'The user identifier is invalid.',
-                  },
-                ]
-              : validationDetails(parsed.error.issues),
+          details: [
+            {
+              code: 'INVALID_FIELD',
+              field: 'userId',
+              message: 'The user identifier is invalid.',
+            },
+          ],
+        },
+      });
+      return;
+    }
+
+    if (!parsed.success) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The role update is invalid.',
+          details: validationDetails(parsed.error.issues),
         },
       });
       return;
