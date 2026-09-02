@@ -1,0 +1,271 @@
+import { z } from 'zod';
+
+/** The first published package format for season and back-catalogue uploads. */
+export const SEASON_UPLOAD_CONTRACT_VERSION = '1.0' as const;
+
+const readableNameSchema = z.string().trim().min(1).max(200);
+const localDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected an ISO date (YYYY-MM-DD).');
+
+/**
+ * An externally owned, namespaced identity. It deliberately cannot be an
+ * application database key: the entity type and provider namespace are always
+ * present, for example `cricsheet:fixture:1412526`.
+ */
+export const sourceIdentifierSchema = z
+  .string()
+  .regex(
+    /^[a-z][a-z0-9_-]{0,63}:[a-z][a-z0-9_-]{0,63}:[^\s:][^\s]*$/,
+    'A source identifier must be namespace:entityType:value, for example cricsheet:fixture:1412526.',
+  )
+  .max(512);
+
+function sourceIdentifierFor(entityType: string) {
+  return sourceIdentifierSchema.refine(
+    (value) => value.split(':', 3)[1] === entityType,
+    `Expected a source identifier for a ${entityType}.`,
+  );
+}
+
+function referenceSchema<T extends z.ZodTypeAny>(entityType: string, context: T) {
+  return z
+    .object({
+      sourceId: sourceIdentifierFor(entityType).optional(),
+      context: context.optional(),
+    })
+    .strict()
+    .superRefine((reference, issueContext) => {
+      if (!reference.sourceId && !reference.context) {
+        issueContext.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'A reference needs a sourceId or sufficient readable context for later resolution.',
+        });
+      }
+    });
+}
+
+export const teamReferenceSchema = referenceSchema(
+  'team',
+  z.object({ name: readableNameSchema }).strict(),
+);
+
+export const participantReferenceSchema = referenceSchema(
+  'participant',
+  z.object({ name: readableNameSchema, team: teamReferenceSchema.optional() }).strict(),
+);
+
+export const competitionReferenceSchema = referenceSchema(
+  'competition',
+  z.object({ name: readableNameSchema, country: readableNameSchema.optional() }).strict(),
+);
+
+export const seasonReferenceSchema = referenceSchema(
+  'season',
+  z.object({ name: readableNameSchema, startDate: localDateSchema.optional() }).strict(),
+);
+
+const fixtureContextSchema = z
+  .object({
+    date: localDateSchema,
+    teams: z.array(teamReferenceSchema).length(2),
+    venue: readableNameSchema.optional(),
+  })
+  .strict();
+
+const inningsContextSchema = z
+  .object({
+    ordinal: z.number().int().positive().max(8),
+    battingTeam: teamReferenceSchema,
+  })
+  .strict();
+
+const runsSchema = z
+  .object({
+    offBat: z.number().int().min(0).max(32_767),
+    extras: z.number().int().min(0).max(32_767),
+    total: z.number().int().min(0).max(32_767),
+    nonBoundary: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((runs, context) => {
+    if (runs.total !== runs.offBat + runs.extras) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['total'],
+        message: 'Total runs must equal off-bat runs plus extras.',
+      });
+    }
+  });
+
+const extrasSchema = z
+  .object({
+    wides: z.number().int().min(0).max(32_767).optional(),
+    noBalls: z.number().int().min(0).max(32_767).optional(),
+    byes: z.number().int().min(0).max(32_767).optional(),
+    legByes: z.number().int().min(0).max(32_767).optional(),
+    penalty: z.number().int().min(0).max(32_767).optional(),
+  })
+  .strict()
+  .default({});
+
+export const seasonUploadEventSchema = z
+  .object({
+    // This value is the retry/deduplication identity. It is not a displayed
+    // ball number and remains unchanged when a correction is submitted.
+    eventId: sourceIdentifierFor('delivery'),
+    occurrenceSequence: z.number().int().positive().max(2_147_483_647),
+    ballLabel: z.string().max(32).optional(),
+    operation: z.enum(['upsert', 'correction']).default('upsert'),
+    correctsEventId: sourceIdentifierFor('delivery').optional(),
+    striker: participantReferenceSchema,
+    nonStriker: participantReferenceSchema,
+    bowler: participantReferenceSchema,
+    runs: runsSchema,
+    extras: extrasSchema,
+  })
+  .strict()
+  .superRefine((event, context) => {
+    if (event.striker.sourceId && event.striker.sourceId === event.nonStriker.sourceId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['nonStriker'],
+        message: 'The striker and non-striker must be different participants.',
+      });
+    }
+
+    if (event.operation === 'correction' && !event.correctsEventId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['correctsEventId'],
+        message: 'A correction must identify the stable delivery event it corrects.',
+      });
+    }
+
+    if (event.operation === 'upsert' && event.correctsEventId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['correctsEventId'],
+        message: 'Only a correction may name a corrected delivery event.',
+      });
+    }
+  });
+
+const inningsSchema = z
+  .object({
+    sourceId: sourceIdentifierFor('innings').optional(),
+    context: inningsContextSchema.optional(),
+    events: z.array(seasonUploadEventSchema).min(1),
+  })
+  .strict()
+  .superRefine((innings, context) => {
+    if (!innings.sourceId && !innings.context) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'An innings needs a sourceId or readable innings context.',
+      });
+    }
+
+    const eventIds = new Set<string>();
+    const occurrenceSequences = new Set<number>();
+    for (const [index, event] of innings.events.entries()) {
+      if (eventIds.has(event.eventId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['events', index, 'eventId'],
+          message: 'Delivery event identities must be unique within an innings.',
+        });
+      }
+      eventIds.add(event.eventId);
+
+      if (occurrenceSequences.has(event.occurrenceSequence)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['events', index, 'occurrenceSequence'],
+          message: 'Occurrence sequences must be unique within an innings.',
+        });
+      }
+      occurrenceSequences.add(event.occurrenceSequence);
+    }
+  });
+
+const fixtureSchema = z
+  .object({
+    sourceId: sourceIdentifierFor('fixture').optional(),
+    context: fixtureContextSchema.optional(),
+    innings: z.array(inningsSchema).min(1).max(8),
+  })
+  .strict()
+  .superRefine((fixture, context) => {
+    if (!fixture.sourceId && !fixture.context) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A fixture needs a sourceId or readable fixture context.',
+      });
+    }
+  });
+
+/** Canonical one-file JSON package for a fixture, season, or back catalogue. */
+export const seasonUploadPackageSchema = z
+  .object({
+    contractVersion: z.literal(SEASON_UPLOAD_CONTRACT_VERSION),
+    packageId: sourceIdentifierFor('package'),
+    competition: competitionReferenceSchema,
+    season: seasonReferenceSchema,
+    fixtures: z.array(fixtureSchema).min(1),
+  })
+  .strict();
+
+/**
+ * A manifest is used when a package is split across JSON, CSV, or NDJSON files.
+ * Each referenced file is independently checksummed and its row/record order is
+ * only an arrival aid; `occurrenceSequence` remains the delivery ordering value.
+ */
+export const seasonUploadManifestSchema = z
+  .object({
+    contractVersion: z.literal(SEASON_UPLOAD_CONTRACT_VERSION),
+    packageId: sourceIdentifierFor('package'),
+    files: z
+      .array(
+        z
+          .object({
+            path: z.string().regex(/^[^/\\][^\\]*$/, 'File paths must be relative package paths.'),
+            mediaType: z.enum(['application/json', 'text/csv', 'application/x-ndjson']),
+            sha256: z.string().regex(/^[a-f0-9]{64}$/, 'Expected a lowercase SHA-256 checksum.'),
+          })
+          .strict(),
+      )
+      .min(2),
+  })
+  .strict()
+  .superRefine((manifest, context) => {
+    const paths = new Set<string>();
+    for (const [index, file] of manifest.files.entries()) {
+      if (paths.has(file.path)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['files', index, 'path'],
+          message: 'A manifest file path may appear only once.',
+        });
+      }
+      paths.add(file.path);
+    }
+  });
+
+/** A staged result requiring a human choice instead of unsafe name matching. */
+export const referenceResolutionRequirementSchema = z
+  .object({
+    code: z.enum(['AMBIGUOUS_REFERENCE', 'UNRESOLVED_REFERENCE']),
+    referencePath: z.string().min(1),
+    submittedReference: z.unknown(),
+    candidates: z.array(
+      z.object({ sourceId: sourceIdentifierSchema, label: readableNameSchema }).strict(),
+    ),
+    resolutionRequired: z.literal(true),
+  })
+  .strict();
+
+export type SeasonUploadPackage = z.infer<typeof seasonUploadPackageSchema>;
+export type SeasonUploadManifest = z.infer<typeof seasonUploadManifestSchema>;
+export type SeasonUploadEvent = z.infer<typeof seasonUploadEventSchema>;

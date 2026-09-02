@@ -1,0 +1,16 @@
+{
+  "contractVersion": "1.0",
+  "packageId": "replace-with-provider:package:stable-package-id",
+  "files": [
+    {
+      "path": "fixtures.json",
+      "mediaType": "application/json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "path": "deliveries.csv",
+      "mediaType": "text/csv",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

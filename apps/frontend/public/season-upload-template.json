@@ -1,0 +1,51 @@
+{
+  "contractVersion": "1.0",
+  "packageId": "replace-with-provider:package:stable-package-id",
+  "competition": {
+    "context": {
+      "name": "Competition name",
+      "country": "Country or governing body"
+    }
+  },
+  "season": {
+    "context": {
+      "name": "2026"
+    }
+  },
+  "fixtures": [
+    {
+      "sourceId": "replace-with-provider:fixture:stable-fixture-id",
+      "context": {
+        "date": "2026-03-14",
+        "teams": [{ "context": { "name": "Home team" } }, { "context": { "name": "Away team" } }]
+      },
+      "innings": [
+        {
+          "sourceId": "replace-with-provider:innings:stable-innings-id",
+          "context": {
+            "ordinal": 1,
+            "battingTeam": { "context": { "name": "Home team" } }
+          },
+          "events": [
+            {
+              "eventId": "replace-with-provider:delivery:stable-delivery-id",
+              "occurrenceSequence": 1,
+              "ballLabel": "0.1",
+              "striker": {
+                "context": { "name": "Striker", "team": { "context": { "name": "Home team" } } }
+              },
+              "nonStriker": {
+                "context": { "name": "Non-striker", "team": { "context": { "name": "Home team" } } }
+              },
+              "bowler": {
+                "context": { "name": "Bowler", "team": { "context": { "name": "Away team" } } }
+              },
+              "runs": { "offBat": 0, "extras": 0, "total": 0 },
+              "extras": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
