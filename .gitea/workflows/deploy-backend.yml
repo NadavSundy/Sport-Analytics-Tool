@@ -120,9 +120,12 @@ jobs:
         run: |
           python3 - <<'PY'
           import base64
+          import json
           import os
           import sys
+          import time
           import urllib.error
+          import urllib.parse
           import urllib.request
           import xml.etree.ElementTree as ET
           from pathlib import Path
@@ -189,6 +192,11 @@ jobs:
               )
               sys.exit(1)
 
+          # Some Azure publishing credentials may include a site prefix.
+          # Kudu ZIP deployment expects the application-scope "$site" portion.
+          if "\\" in username:
+              username = username.split("\\")[-1]
+
           publish_url = publish_url.removeprefix("https://")
           publish_url = publish_url.removeprefix("http://")
 
@@ -211,13 +219,48 @@ jobs:
               )
               sys.exit(1)
 
-          deployment_url = (
-              f"https://{host}/api/zipdeploy"
-          )
-
           credentials = base64.b64encode(
               f"{username}:{password}".encode("utf-8")
           ).decode("ascii")
+
+          auth_header = f"Basic {credentials}"
+
+          def redact(value):
+              if not isinstance(value, str):
+                  return value
+
+              return (
+                  value
+                  .replace(password, "***")
+                  .replace(credentials, "***")
+                  .replace(auth_header, "***")
+              )
+
+          def request_json(url):
+              request = urllib.request.Request(
+                  url,
+                  method="GET",
+                  headers={
+                      "Authorization": auth_header,
+                      "Accept": "application/json",
+                      "User-Agent": "Sport-Analytics-Gitea-Actions",
+                  },
+              )
+
+              with urllib.request.urlopen(
+                  request,
+                  timeout=60,
+              ) as response:
+                  body = response.read().decode(
+                      "utf-8",
+                      errors="replace",
+                  )
+
+              return json.loads(body)
+
+          deployment_url = (
+              f"https://{host}/api/zipdeploy?isAsync=true"
+          )
 
           payload = zip_path.read_bytes()
 
@@ -226,7 +269,7 @@ jobs:
               data=payload,
               method="POST",
               headers={
-                  "Authorization": f"Basic {credentials}",
+                  "Authorization": auth_header,
                   "Content-Type": "application/zip",
                   "Content-Length": str(len(payload)),
                   "User-Agent": "Sport-Analytics-Gitea-Actions",
@@ -234,36 +277,41 @@ jobs:
           )
 
           print(
-              f"Deploying {len(payload)} byte backend artifact "
-              f"to Azure App Service..."
+              f"Uploading {len(payload)} byte backend artifact "
+              "to Azure App Service..."
           )
 
           try:
               with urllib.request.urlopen(
                   request,
-                  timeout=600,
+                  timeout=180,
               ) as response:
-                  body = response.read().decode(
-                      "utf-8",
-                      errors="replace",
-                  )
-
                   status = response.status
+                  location = response.headers.get("Location")
 
                   print(
-                      f"Azure deployment HTTP status: {status}"
+                      f"Azure ZIP upload HTTP status: {status}"
                   )
 
-                  if body:
-                      print(body[:4000])
-
-                  if status < 200 or status >= 300:
+                  if status not in (200, 202):
                       print(
-                          "Azure deployment returned an "
-                          "unsuccessful status.",
+                          "Azure did not accept the ZIP deployment.",
                           file=sys.stderr,
                       )
                       sys.exit(1)
+
+                  if not location:
+                      print(
+                          "Azure accepted the deployment but did not "
+                          "return a deployment status URL.",
+                          file=sys.stderr,
+                      )
+                      sys.exit(1)
+
+                  status_url = urllib.parse.urljoin(
+                      deployment_url,
+                      location,
+                  )
 
           except urllib.error.HTTPError as exc:
               body = exc.read().decode(
@@ -272,39 +320,150 @@ jobs:
               )
 
               print(
-                  f"Azure deployment failed with HTTP {exc.code}.",
+                  f"Azure ZIP upload failed with HTTP {exc.code}.",
                   file=sys.stderr,
               )
 
               if body:
-                  print(body[:4000], file=sys.stderr)
+                  print(redact(body[:8000]), file=sys.stderr)
 
               sys.exit(1)
 
           except urllib.error.URLError as exc:
               print(
-                  f"Azure deployment connection failed: "
-                  f"{exc.reason}",
+                  f"Azure ZIP upload connection failed: {exc.reason}",
                   file=sys.stderr,
               )
               sys.exit(1)
 
-          except TimeoutError:
+          print("Azure accepted the ZIP. Waiting for deployment...")
+
+          deployment = None
+
+          for attempt in range(1, 61):
+              try:
+                  deployment = request_json(status_url)
+              except Exception as exc:
+                  print(
+                      f"Deployment status check {attempt} failed: {exc}"
+                  )
+                  time.sleep(10)
+                  continue
+
+              status = deployment.get("status")
+              complete = deployment.get("complete")
+              progress = deployment.get("progress") or ""
+              status_text = deployment.get("status_text") or ""
+
               print(
-                  "Azure deployment request timed out.",
-                  file=sys.stderr,
+                  f"Deployment status check {attempt}: "
+                  f"status={status}, complete={complete}"
               )
-              sys.exit(1)
 
-          except Exception as exc:
+              if progress:
+                  print(f"Progress: {redact(progress)}")
+
+              if status_text:
+                  print(f"Status text: {redact(status_text)}")
+
+              if status == 4:
+                  print("Azure backend deployment completed successfully.")
+                  sys.exit(0)
+
+              if status == 3:
+                  break
+
+              if complete and status != 4:
+                  break
+
+              time.sleep(10)
+
+          if deployment is None:
               print(
-                  f"Azure deployment request failed: {exc}",
+                  "Unable to retrieve Azure deployment status.",
                   file=sys.stderr,
               )
               sys.exit(1)
 
-          print("Azure backend deployment request completed successfully.")
+          print(
+              "Azure backend deployment failed.",
+              file=sys.stderr,
+          )
+
+          message = deployment.get("message")
+          if message:
+              print(
+                  f"Deployment message: {redact(str(message))}",
+                  file=sys.stderr,
+              )
+
+          log_url = deployment.get("log_url")
+
+          if log_url:
+              try:
+                  logs = request_json(log_url)
+
+                  print(
+                      "----- Azure Kudu deployment log -----",
+                      file=sys.stderr,
+                  )
+
+                  for entry in logs:
+                      log_message = redact(
+                          str(entry.get("message", ""))
+                      )
+
+                      if log_message:
+                          print(
+                              log_message,
+                              file=sys.stderr,
+                          )
+
+                      details_url = entry.get("details_url")
+
+                      if details_url:
+                          try:
+                              details = request_json(details_url)
+
+                              if isinstance(details, list):
+                                  for detail in details:
+                                      detail_message = redact(
+                                          str(
+                                              detail.get(
+                                                  "message",
+                                                  ""
+                                              )
+                                          )
+                                      )
+
+                                      if detail_message:
+                                          print(
+                                              f"  {detail_message}",
+                                              file=sys.stderr,
+                                          )
+
+                          except Exception as exc:
+                              print(
+                                  "Could not retrieve deployment "
+                                  f"log details: {exc}",
+                                  file=sys.stderr,
+                              )
+
+                  print(
+                      "--------------------------------------",
+                      file=sys.stderr,
+                  )
+
+              except Exception as exc:
+                  print(
+                      f"Could not retrieve Azure deployment logs: {exc}",
+                      file=sys.stderr,
+                  )
+
+          sys.exit(1)
           PY
+    
+
 
       - name: Smoke check deployed backend health
         env:
