@@ -64,6 +64,7 @@ test(
             users: [
               {
                 id: '42',
+                email: 'pending.contributor@example.com',
                 displayName: 'Pending Contributor',
                 role: 'viewer',
                 approvalState: 'pending',
@@ -91,6 +92,7 @@ test(
         body: JSON.stringify({
           data: {
             id: '42',
+            email: 'pending.contributor@example.com',
             displayName: 'Pending Contributor',
             role: 'viewer',
             approvalState: 'rejected',

@@ -301,7 +301,7 @@ change solely to select the runner.
 
 The workflow files were checked using:
 
-```text
+````text
 npx prettier --check .gitea/workflows/*.yml
 
 Issue #10 must therefore remain blocked by the server-side runner dependency until hosted verification is complete.
@@ -330,5 +330,64 @@ Hosted execution is now being validated.
 
 Refs #10
 
+
+
+## Gitea Runner Readiness Update - 31 August 2026
+
+The repository CI/CD workflows were updated to prepare for the future
+university-hosted Gitea Actions runners.
+
+At the time of this validation, hosted Gitea runners were not available,
+therefore hosted workflow execution could not yet be verified. The changes
+focused on removing unverified runner assumptions and reducing the
+configuration required once runners are provisioned.
+
+## Changes Implemented
+
+Updated workflows:
+
+- `.gitea/workflows/ci.yml`
+- `.gitea/workflows/deploy-backend.yml`
+- `.gitea/workflows/deploy-frontend.yml`
+
+Changes:
+
+- replaced the hard-coded `ubuntu-latest` runner label with the configurable
+  repository Actions variable `${{ vars.RUNNER_LABEL }}`;
+- added `workflow_dispatch` support to allow manual workflow execution;
+- renamed workflows for clearer identification:
+  - Sport Analytics CI
+  - Sport Analytics - Deploy Backend
+  - Sport Analytics - Deploy Frontend;
+- documented runner configuration requirements in:
+  - `docs/deployment/overview.md`.
+
+## Runner Configuration Approach
+
+The final runner label cannot currently be confirmed because the university
+Gitea runner infrastructure has not yet been provisioned.
+
+Instead of assuming a runner environment, workflows now use:
+
+`RUNNER_LABEL`
+
+Once runners become available:
+
+1. Identify the runner label provided by Gitea.
+2. Configure the repository Actions variable `RUNNER_LABEL`.
+3. Run the CI workflow manually.
+4. Validate hosted execution.
+5. Verify deployment workflows.
+
+No source-code change should be required only to select the runner.
+
+## Local Validation
+
+The workflow YAML files were validated using:
+
+```bash
+
+
+npx prettier --check .gitea/workflows/*.yml
 The preceding document was generated with the assistance of: ChatGPT-Web[GPT-5.6 Sol]
-```
+````

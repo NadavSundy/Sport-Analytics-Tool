@@ -85,6 +85,7 @@ function managedUser(
 ) {
   return {
     id: '42',
+    email: 'pending.contributor@example.com',
     displayName: 'Pending Contributor',
     role: 'viewer' as const,
     approvalState: 'pending' as const,

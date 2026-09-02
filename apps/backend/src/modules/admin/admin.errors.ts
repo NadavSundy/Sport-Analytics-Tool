@@ -1,6 +1,7 @@
 export type AdminManagementConflictCode =
   | 'SELF_MANAGEMENT_NOT_ALLOWED'
   | 'ADMIN_ACCOUNT_NOT_MANAGEABLE'
+  | 'ROLE_TRANSITION_MANAGED_BY_SUBMITTER_ACCESS'
   | 'DISABLED_ACCOUNT_NOT_MANAGEABLE'
   | 'INVALID_SUBMITTER_ACCESS_TRANSITION'
   | 'REQUESTED_COMPETITION_SCOPE_MISSING'
@@ -20,6 +21,13 @@ export class AdminUserNotFoundError extends Error {
   constructor() {
     super('The requested user does not exist.');
     this.name = 'AdminUserNotFoundError';
+  }
+}
+
+export class AdminEmailLookupUnavailableError extends Error {
+  constructor() {
+    super('Administrator email lookup is temporarily unavailable.');
+    this.name = 'AdminEmailLookupUnavailableError';
   }
 }
 

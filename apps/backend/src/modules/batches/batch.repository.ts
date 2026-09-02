@@ -75,7 +75,6 @@ interface BatchItemPageOptions {
   afterOrdinal?: number;
   limit: number;
 }
-
 interface BatchCheckpointRecord {
   batchId: string;
   phase: BatchCheckpointPhase;

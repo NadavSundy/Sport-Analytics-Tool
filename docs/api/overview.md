@@ -164,7 +164,10 @@ Authorization: Bearer <supabase-access-token>
 ```
 
 The endpoint is restricted to the `admin` role and provides the account state needed for
-submitter-access review and administration.
+submitter-access review and administration. Each user includes the safe email address required by
+the administration interface. The backend obtains this value with its server-only Supabase Admin
+client and returns no provider metadata, credentials, or tokens. If that server-only configuration
+is unavailable or the provider lookup fails, the endpoint returns a controlled `503` response.
 
 Only an authoritative `admin` may manage another active, non-administrator account. Approval and
 scope replacement use `PATCH /api/v1/admin/users/{userId}/submitter-access`; approval requires a
@@ -180,6 +183,12 @@ Rejecting a pending request is a separate action:
 POST /api/v1/admin/users/{userId}/submitter-access/rejection
 Authorization: Bearer <supabase-access-token>
 ```
+
+An administrator may promote an active non-administrator through
+`PATCH /api/v1/admin/users/{userId}/role` with `{"role":"admin"}`. The route validates the
+role value server-side and prohibits self-management, disabled targets, and administrator
+demotion. Direct `viewer` and `submitter` changes are rejected: those states must use the
+submitter-access lifecycle so that approval and competition scopes remain consistent.
 
 Rejection keeps the account as a viewer, writes `rejected`, clears all scopes, and allows the user
 to request again. Invalid lifecycle changes return `409 INVALID_SUBMITTER_ACCESS_TRANSITION` and

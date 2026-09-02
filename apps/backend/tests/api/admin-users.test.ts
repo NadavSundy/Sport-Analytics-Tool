@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import {
   AdminManagementConflictError,
+  AdminEmailLookupUnavailableError,
   AdminUserNotFoundError,
   InvalidCompetitionScopesError,
 } from '../../src/modules/admin/admin.errors';
@@ -15,6 +16,7 @@ const updatedAt = '2026-08-16T12:00:00.000Z';
 function managedUser(overrides: Record<string, unknown> = {}) {
   return {
     id: '42',
+    email: 'contributor@example.com',
     displayName: 'Pending Contributor',
     role: 'viewer' as const,
     approvalState: 'pending' as const,
@@ -54,6 +56,9 @@ function mockAdminService(): AdminService {
           submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
         }),
       }),
+    updateRole: vi.fn<AdminService['updateRole']>().mockResolvedValue({
+      data: managedUser({ role: 'admin', approvalState: 'not_requested' }),
+    }),
   };
 }
 
@@ -121,6 +126,21 @@ describe('administrator user-management API', () => {
     ]);
   });
 
+  test('returns a controlled response when the server-only email lookup is unavailable', async () => {
+    const service = mockAdminService();
+    vi.mocked(service.listUsers).mockRejectedValue(new AdminEmailLookupUnavailableError());
+
+    const response = await request(appWithAdminService(service))
+      .get('/api/v1/admin/users')
+      .set('Authorization', 'Bearer admin-token')
+      .expect(503);
+
+    expect(response.body.error).toEqual({
+      code: 'ADMIN_EMAIL_LOOKUP_UNAVAILABLE',
+      message: 'Administrator email lookup is temporarily unavailable.',
+    });
+  });
+
   test('approves a submitter with a selected scope', async () => {
     const service = mockAdminService();
     const administrator = createTestAccount({ accountId: '1', role: 'admin' });
@@ -141,6 +161,27 @@ describe('administrator user-management API', () => {
       approvalState: 'approved',
       competitionScopes: [{ competitionId: '7', name: 'Premier T20' }],
     });
+  });
+
+  test('promotes a non-administrator through the server-authorised role endpoint', async () => {
+    const service = mockAdminService();
+    const administrator = createTestAccount({ accountId: '1', role: 'admin' });
+    await request(appWithAdminService(service, administrator))
+      .patch('/api/v1/admin/users/42/role')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ role: 'admin' })
+      .expect(200);
+    expect(service.updateRole).toHaveBeenCalledWith(administrator, '42', { role: 'admin' });
+  });
+
+  test('rejects invalid roles before role management reaches the service', async () => {
+    const service = mockAdminService();
+    await request(appWithAdminService(service))
+      .patch('/api/v1/admin/users/42/role')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ role: 'owner' })
+      .expect(422);
+    expect(service.updateRole).not.toHaveBeenCalled();
   });
 
   test('revokes submitter access and all scopes', async () => {

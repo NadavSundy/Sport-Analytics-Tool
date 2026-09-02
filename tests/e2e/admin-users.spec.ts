@@ -6,6 +6,7 @@ const accessTime = '2026-08-16T12:00:00.000Z';
 
 interface ManagedUser {
   id: string;
+  email: string;
   displayName: string;
   role: 'viewer' | 'submitter' | 'admin';
   approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected';
@@ -56,6 +57,7 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
 }, testInfo) => {
   const administrator: ManagedUser = {
     id: '1',
+    email: 'amina.administrator@example.com',
     displayName: 'Amina Administrator',
     role: 'admin',
     approvalState: 'not_requested',
@@ -68,6 +70,7 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
   };
   let contributor: ManagedUser = {
     id: '42',
+    email: 'pending.contributor@example.com',
     displayName: 'Pending Contributor',
     role: 'viewer',
     approvalState: 'pending',

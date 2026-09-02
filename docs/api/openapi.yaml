@@ -217,7 +217,7 @@ paths:
       summary: List registered users and competition scope choices
       description: |
         Returns every registered application account with its authoritative role,
-        compatibility approval state, requested competition, current named
+        safe email address, compatibility approval state, requested competition, current named
         competition scopes, account state and latest submitter-access audit.
         Only an `admin` may call this operation.
       operationId: listAdministratorUsers
@@ -235,6 +235,71 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '503':
+          description: The server-only identity-provider email lookup is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/admin/users/{userId}/role:
+    patch:
+      tags:
+        - Administration
+      summary: Promote a user to administrator
+      description: |
+        Promotes an active non-administrator account to the authoritative `admin` role.
+        Viewer and submitter transitions remain governed by the submitter-access lifecycle
+        endpoints, so approval state and scoped grants cannot be bypassed. The acting
+        administrator cannot change their own role and existing administrators cannot be
+        demoted through this operation.
+      operationId: updateAdministratorUserRole
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DatabaseIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdministratorRoleUpdate'
+      responses:
+        '200':
+          description: Updated administrator account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The role transition is protected or must use the submitter-access lifecycle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The user identifier or requested role is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: The server-only identity-provider email lookup is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 
   /api/v1/admin/users/{userId}/submitter-access:
     patch:
@@ -1562,6 +1627,7 @@ components:
       additionalProperties: false
       required:
         - id
+        - email
         - displayName
         - role
         - approvalState
@@ -1575,6 +1641,10 @@ components:
       properties:
         id:
           $ref: '#/components/schemas/ApiIdentifier'
+        email:
+          type: string
+          format: email
+          description: Email retrieved by trusted backend code for an administrator only.
         displayName:
           oneOf:
             - type: string
@@ -1645,6 +1715,20 @@ components:
               uniqueItems: true
               items:
                 $ref: '#/components/schemas/AdministratorCompetitionScope'
+
+    AdministratorRoleUpdate:
+      type: object
+      additionalProperties: false
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum:
+            - viewer
+            - submitter
+            - admin
+      description: Only `admin` is a direct role transition. Viewer and submitter values are validated but return a conflict directing callers to the submitter-access lifecycle endpoints.
 
     AdministratorSubmitterAccessUpdate:
       type: object

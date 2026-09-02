@@ -34,9 +34,7 @@ interface FixtureWeatherUnavailable {
 
 type FixtureWeatherResult = FixtureWeatherAvailable | FixtureWeatherUnavailable;
 
-export type FindFixtureWeatherContext = (
-  fixtureId: string,
-) => Promise<FixtureWeatherContext | null>;
+type FindFixtureWeatherContext = (fixtureId: string) => Promise<FixtureWeatherContext | null>;
 
 const databaseIdPattern = /^\d+$/;
 
@@ -59,7 +57,6 @@ function hasUsableCoordinates(
     venue.longitude <= 180
   );
 }
-
 export interface FixtureWeatherService {
   getFixtureWeather(fixtureId: string): Promise<FixtureWeatherResult | null>;
 }

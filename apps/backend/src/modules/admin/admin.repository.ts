@@ -2,6 +2,7 @@ import type {
   AdministratorCompetitionScope,
   AdministratorManagedUser,
   AdministratorSubmitterAccessUpdate,
+  AdministratorRoleUpdate,
 } from '@sport-analytics/contracts';
 import type { Pool } from 'pg';
 
@@ -19,6 +20,7 @@ import {
 
 interface AdministratorUserRow {
   id: string;
+  authSubject: string;
   displayName: string | null;
   role: string;
   approvalState: string;
@@ -42,9 +44,13 @@ interface TargetAccountRow {
 }
 
 interface AdminUserManagementData {
-  users: AdministratorManagedUser[];
+  users: AdministratorManagedUserWithAuthSubject[];
   availableScopes: AdministratorCompetitionScope[];
 }
+
+type AdministratorManagedUserWithAuthSubject = Omit<AdministratorManagedUser, 'email'> & {
+  authSubject: string;
+};
 
 export interface AdminRepository {
   listUserManagementData(): Promise<AdminUserManagementData>;
@@ -52,16 +58,22 @@ export interface AdminRepository {
     targetAccountId: string,
     administratorAccountId: string,
     update: AdministratorSubmitterAccessUpdate,
-  ): Promise<AdministratorManagedUser>;
+  ): Promise<AdministratorManagedUserWithAuthSubject>;
   rejectSubmitterAccessRequest(
     targetAccountId: string,
     administratorAccountId: string,
-  ): Promise<AdministratorManagedUser>;
+  ): Promise<AdministratorManagedUserWithAuthSubject>;
+  updateRole(
+    targetAccountId: string,
+    administratorAccountId: string,
+    update: AdministratorRoleUpdate,
+  ): Promise<AdministratorManagedUserWithAuthSubject>;
 }
 
 const administratorUserSelect = `
   SELECT
     managed.app_user_id::text AS id,
+    managed.auth_subject AS "authSubject",
     managed.display_name AS "displayName",
     managed.application_role AS role,
     managed.submitter_approval_state AS "approvalState",
@@ -99,7 +111,7 @@ const administratorUserSelect = `
     ON access_administrator.app_user_id = managed.submitter_access_updated_by
 `;
 
-function mapAdministratorUser(row: AdministratorUserRow): AdministratorManagedUser {
+function mapAdministratorUser(row: AdministratorUserRow): AdministratorManagedUserWithAuthSubject {
   if (!isApplicationRole(row.role)) {
     throw new Error('Managed application account has an unsupported role');
   }
@@ -118,6 +130,7 @@ function mapAdministratorUser(row: AdministratorUserRow): AdministratorManagedUs
 
   return {
     id: row.id,
+    authSubject: row.authSubject,
     displayName: row.displayName,
     role: row.role,
     approvalState: row.approvalState,
@@ -145,7 +158,9 @@ function mapAdministratorUser(row: AdministratorUserRow): AdministratorManagedUs
   };
 }
 
-async function listUsers(executor: QueryExecutor): Promise<AdministratorManagedUser[]> {
+async function listUsers(
+  executor: QueryExecutor,
+): Promise<AdministratorManagedUserWithAuthSubject[]> {
   const result = await executeQuery<AdministratorUserRow>(
     executor,
     `${administratorUserSelect}
@@ -166,7 +181,7 @@ async function listUsers(executor: QueryExecutor): Promise<AdministratorManagedU
 async function findUserById(
   accountId: string,
   executor: QueryExecutor,
-): Promise<AdministratorManagedUser> {
+): Promise<AdministratorManagedUserWithAuthSubject> {
   const result = await executeQuery<AdministratorUserRow>(
     executor,
     `${administratorUserSelect}
@@ -211,7 +226,7 @@ async function applySubmitterAccessTransition(
   administratorAccountId: string,
   action: SubmitterAccessAction,
   competitionIds: string[],
-): Promise<AdministratorManagedUser> {
+): Promise<AdministratorManagedUserWithAuthSubject> {
   return withTransaction(pool, async (client) => {
     const targetResult = await executeQuery<TargetAccountRow>(
       client,
@@ -393,6 +408,45 @@ export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepo
         'reject',
         [],
       );
+    },
+    async updateRole(targetAccountId, administratorAccountId, update) {
+      return withTransaction(pool, async (client) => {
+        const targetResult = await executeQuery<TargetAccountRow>(
+          client,
+          `
+            SELECT application_role AS role, submitter_approval_state AS "approvalState",
+              submitter_requested_competition_id::text AS "requestedCompetitionId", disabled_at AS "disabledAt"
+            FROM app_user WHERE app_user_id = $1 FOR UPDATE
+          `,
+          [targetAccountId],
+        );
+        const target = targetResult.rows[0];
+        if (!target) throw new AdminUserNotFoundError();
+        if (target.disabledAt) {
+          throw new AdminManagementConflictError(
+            'DISABLED_ACCOUNT_NOT_MANAGEABLE',
+            'Disabled accounts cannot be changed through role management.',
+          );
+        }
+        if (target.role === 'admin') {
+          throw new AdminManagementConflictError(
+            'ADMIN_ACCOUNT_NOT_MANAGEABLE',
+            'Administrator accounts cannot be changed through role management.',
+          );
+        }
+        if (update.role !== 'admin') {
+          throw new AdminManagementConflictError(
+            'ROLE_TRANSITION_MANAGED_BY_SUBMITTER_ACCESS',
+            'Viewer and submitter transitions must use the submitter access management endpoints.',
+          );
+        }
+        await executeQuery(
+          client,
+          `UPDATE app_user SET application_role = 'admin', submitter_access_updated_at = now(), submitter_access_updated_by = $2 WHERE app_user_id = $1`,
+          [targetAccountId, administratorAccountId],
+        );
+        return findUserById(targetAccountId, client);
+      });
     },
   };
 }

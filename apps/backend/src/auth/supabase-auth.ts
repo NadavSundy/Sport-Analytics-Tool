@@ -16,6 +16,8 @@ export interface VerifiedIdentity {
 export type VerifyAccessToken = (accessToken: string) => Promise<VerifiedIdentity>;
 type DeleteAuthUserResult = 'deleted' | 'not_found';
 export type DeleteAuthUser = (authSubject: string) => Promise<DeleteAuthUserResult>;
+/** Reads only the provider field that the administrator management API is allowed to expose. */
+export type ReadAuthUserEmail = (authSubject: string) => Promise<string>;
 
 export function createSupabaseTokenVerifier(environment: SupabaseEnvironment): VerifyAccessToken {
   const supabase = createClient(environment.SUPABASE_URL, environment.SUPABASE_PUBLISHABLE_KEY, {
@@ -69,6 +71,36 @@ export function createSupabaseAdminUserDeleter(
     // Provider details can contain internal information. Keep them out of logs
     // and public error responses by raising a stable local failure instead.
     throw new Error('Supabase Auth administrative deletion failed');
+  };
+}
+
+/**
+ * Keep provider administration at the backend boundary.  The returned function
+ * intentionally exposes an email address only; callers never receive the
+ * provider user object, its tokens, or its metadata.
+ */
+export function createSupabaseAdminUserEmailReader(
+  environment: SupabaseAdminEnvironment,
+): ReadAuthUserEmail {
+  const supabaseAdmin = createClient(environment.SUPABASE_URL, environment.SUPABASE_SECRET_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+
+  return async (authSubject) => {
+    const {
+      data: { user },
+      error,
+    } = await supabaseAdmin.auth.admin.getUserById(authSubject);
+
+    if (error || !user?.email) {
+      throw new Error('Supabase Auth administrative email lookup failed');
+    }
+
+    return user.email;
   };
 }
 
