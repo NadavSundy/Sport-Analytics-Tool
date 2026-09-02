@@ -10,6 +10,17 @@ The selected deployment architecture is:
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
 | Public documentation   | Cloudflare Pages           | Wrangler CLI                                    |
 
+The following approved Intermediate targets are not yet provisioned or deployed:
+
+| Component              | Approved target                                                | Deployment responsibility                                                                |
+| ---------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Private object storage | Azure Storage account with private Blob containers             | Infrastructure provisioning, managed identity/RBAC, lifecycle and recovery configuration |
+| Durable job delivery   | PostgreSQL transactional outbox and Azure Service Bus Standard | Database migration, relay deployment, broker configuration and monitoring                |
+| Batch worker           | Separate Node.js Azure Container App                           | Worker artifact, managed identity and bounded Service Bus KEDA scaling                   |
+
+ADR-010 and ADR-011 select these targets for Intermediate implementation. Their accepted status does
+not mean the resources currently exist.
+
 Azure App Service was accepted in ADR 0003 for the frontend and backend. The documentation site is deliberately hosted separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
 
 ## Minimum environments
@@ -84,3 +95,5 @@ The established hosted baseline confirms:
 ## AI Declaration
 
 The preceding document was reviewed and aligned with the current repository architecture with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #356 approved Intermediate deployment targets were documented with the assistance of
+Codex[GPT-5].
