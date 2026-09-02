@@ -59,6 +59,7 @@ The following workflows use this runner:
 - `Sport Analytics CI`
 - `Sport Analytics - Deploy Backend`
 - `Sport Analytics - Deploy Frontend`
+- `Sport Analytics - Deploy Docs`
 
 Runner availability and compatibility must still be validated through hosted
 workflow execution.
@@ -72,7 +73,7 @@ The first hosted CI execution must confirm:
 3. PostgreSQL service-container networking works
 4. linting, type checking, tests and builds succeed
 5. Playwright can execute in the hosted environment
-6. backend and frontend deployment workflows can execute successfully
+6. backend, frontend and documentation deployment workflows can execute successfully
 
 ## AI Declaration
 

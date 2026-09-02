@@ -62,22 +62,35 @@ Public documentation URL:
 
 https://sports-analytics-tool.pages.dev
 
-## Future Automated Deployment
+## Automated Deployment
 
-Once a Gitea Actions runner is available, the documentation deployment can be automated by:
+Documentation deployment is automated by the `Sport Analytics - Deploy Docs` Gitea Actions workflow at `.gitea/workflows/deploy-docs.yml`. The workflow runs on every push to `main` that changes `docs/**`, `mkdocs.yml`, `requirements-docs.txt`, or the workflow file itself, and can also be triggered manually with `workflow_dispatch`.
 
-1. Checking out the repository.
-2. Installing the documentation dependencies.
-3. Building the documentation using:
+On each run, the workflow:
+
+1. Checks out the repository.
+2. Validates that the required Cloudflare secrets are configured, failing fast if either is missing.
+3. Installs the documentation dependencies.
+4. Builds the documentation using:
 
    ```bash
    python -m mkdocs build --strict
    ```
 
-4. Deploying the generated `site/` directory using Wrangler.
-5. Using the following repository secrets:
+5. Installs the root workspace dependencies (so `wrangler` is available via `npx`).
+6. Deploys the generated `site/` directory using Wrangler:
 
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
+   ```bash
+   npx wrangler pages deploy site --project-name=sports-analytics-tool
+   ```
 
-No Cloudflare credentials or API tokens should be committed to the repository.
+7. Smoke checks the deployed documentation home page to confirm the site is reachable and serving current content.
+
+The workflow authenticates using the following repository Actions secrets, which must be configured under the Gitea repository settings and are never committed to the repository:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+The Cloudflare API token should be limited to the permissions required to deploy the `sports-analytics-tool` Pages project.
+
+Manual deployment using the steps above remains available as a fallback and for local verification before opening a Pull Request.
