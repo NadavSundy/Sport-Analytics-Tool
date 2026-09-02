@@ -76,6 +76,7 @@ nav:
       - Database:
           - Overview: database/overview.md
           - Access and Transactions: database/access.md
+          - Batch Persistence Extensions: database/batch-persistence.md
       - Event Model: database/schema.md
       - Entity Relationships: database/erd.md
       - Security:
