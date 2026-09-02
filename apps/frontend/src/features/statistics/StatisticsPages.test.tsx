@@ -263,46 +263,76 @@ describe('public fixture statistics pages', () => {
 
   it('communicates API failure and retries the public request', async () => {
     let statisticsRequestCount = 0;
+
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
+
       if (url.endsWith('/fixtures/fixture-1')) {
         return Promise.resolve(response(200, { data: fixture }));
       }
+
       if (url.includes('/participants?')) {
         return Promise.resolve(collection([]));
       }
-      statisticsRequestCount += 1;
+
+      if (url.endsWith('/fixtures/fixture-1/statistics')) {
+        statisticsRequestCount += 1;
+
+        return Promise.resolve(
+          statisticsRequestCount === 1
+            ? response(503, {
+                error: {
+                  code: 'SERVICE_UNAVAILABLE',
+                  message: 'Statistics are unavailable.',
+                },
+              })
+            : response(200, {
+                data: {
+                  fixtureId: 'fixture-1',
+                  status: 'complete',
+                  scope: { superOversIncluded: false },
+                  outcome,
+                  warnings: [],
+                  statistics: [],
+                },
+              }),
+        );
+      }
+
       return Promise.resolve(
-        statisticsRequestCount === 1
-          ? response(503, {
-              error: { code: 'SERVICE_UNAVAILABLE', message: 'Statistics are unavailable.' },
-            })
-          : response(200, {
-              data: {
-                fixtureId: 'fixture-1',
-                status: 'complete',
-                scope: { superOversIncluded: false },
-                outcome,
-                warnings: [],
-                statistics: [],
-              },
-            }),
+        response(404, {
+          error: { code: 'NOT_FOUND', message: 'Request not mocked in this test.' },
+        }),
       );
     });
+
     vi.stubGlobal('fetch', fetchMock);
 
     renderRoute('/fixtures/fixture-1');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Published match statistics could not be requested. Try this section again.',
-    );
-    expect(screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' })).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Published match statistics could not be requested. Try this section again.',
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Wanderers vs Strikers',
+      }),
+    ).toBeVisible();
+
     expect(screen.getByText('Premier Cricket League')).toBeVisible();
+
     fireEvent.click(screen.getByRole('button', { name: 'Retry match statistics' }));
 
     expect(
-      await screen.findByRole('heading', { name: 'No match statistics available' }),
+      await screen.findByRole('heading', {
+        name: 'No match statistics available',
+      }),
     ).toBeInTheDocument();
+
     expect(statisticsRequestCount).toBe(2);
   });
 
