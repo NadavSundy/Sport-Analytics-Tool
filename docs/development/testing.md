@@ -101,18 +101,26 @@ supplies that connection directly, and runs `npm run test:database` as an explic
 ## Change-aware hosted CI
 
 The required Gitea Pull Request status remains `Sport Analytics CI / quality`. CI first classifies
-the changed paths, then runs only the validation that can be affected by those changes. The
-PostgreSQL lane starts in parallel with normal validation when it is required, so a full backend/data
-change can use both university-hosted runners rather than waiting for one long serial pipeline.
+the changed paths, then runs only the validation that can be affected by those changes. Normal
+workspace validation, browser validation and PostgreSQL validation are independent lanes after the
+planner. They may overlap when both university-hosted runners are available and safely queue when
+only one runner is available.
 
 Lightweight evidence changes can skip the npm-based validation job entirely after the planner has
 checked the required repository structure. Unknown paths, root dependency changes and CI
 configuration changes deliberately fall back to full Pull Request application validation. A manual
 `workflow_dispatch` always selects full validation.
 
-Frontend unit tests run with `NODE_ENV=test`; only the production frontend build and Playwright
-browser checks run with `NODE_ENV=production`. This keeps React Testing Library on the React build
-that supports `act(...)` while still testing the production browser bundle.
+Frontend unit tests run with `NODE_ENV=test`; the dedicated browser lane builds and previews the
+frontend with `NODE_ENV=production`. This keeps React Testing Library on the React build that supports
+`act(...)` while still testing the production browser bundle.
+
+Hosted Playwright runs the complete suite in desktop Chromium and a representative `@mobile` subset
+in the Pixel 7 project. The mobile subset covers the journeys where viewport, keyboard, overflow or
+accessibility behaviour materially changes rather than replaying every desktop-only business-flow
+test at a second viewport. CI defaults to four Playwright workers and builds the production bundle once
+before previewing it; local `npm run test:e2e` still builds automatically when no reusable build is
+provided.
 
 Coverage does not currently enforce a repository-wide threshold and duplicates already-executed unit
 suites. It therefore runs for relevant pushes to `main` and manual full validation rather than
@@ -382,10 +390,10 @@ npm run test:e2e -- tests/e2e/submissions.spec.ts --workers=1
 
 The correction frontend suite covers the submitter/admin presentation gate, prefilled event values,
 readable participant labels, event-only request payloads, field-associated validation, denied or
-revoked scope, refreshed event values, and a fresh fixture-statistics request after success. The
-browser suite runs success, validation failure, and viewer denial at the configured desktop and
-Pixel 7 widths. It additionally checks keyboard submission and result focus, horizontal overflow,
-and serious or critical Axe findings on the successful workflow.
+revoked scope, refreshed event values, and a fresh fixture-statistics request after success. The full
+correction browser suite runs in desktop Chromium. Responsive submission behaviour is retained in the
+tagged Pixel 7 submission journey, while the correction success path still checks keyboard submission,
+result focus, horizontal overflow and serious or critical Axe findings.
 
 Run the focused checks with:
 
@@ -457,9 +465,9 @@ npm run openapi:lint
 The public collection filter suites cover the shared competition, season, fixture, team, and player
 name-combobox pattern; fuzzy typing; opening without text; direct and keyboard selection; dismissal;
 individual and parent-dependent clearing; readable routed summaries; validation; option loading;
-no-match, request-failure, and retry states; and the resulting handwritten-API requests. The browser
-suite runs the interaction in Day Match and Night Match at the configured desktop and mobile sizes
-and scans the rendered page for serious or critical Axe findings.
+no-match, request-failure, and retry states; and the resulting handwritten-API requests. The complete
+filter interaction runs in desktop Chromium. The tagged public-browsing journey retains representative
+Pixel 7 routing, keyboard, overflow and Axe coverage without replaying every filter case on mobile.
 
 Run the focused checks with:
 
@@ -474,10 +482,9 @@ npm run test:e2e -- tests/e2e/public-browsing.spec.ts --workers=1
 The competition, season, and team detail-page suites verify readable related seasons, fixtures,
 teams, and players; season-grouped competition fixtures; direct fixture-overview links; fixture-first
 season content; independent loading, empty, error, retry, and cursor-pagination states; and the
-absence of visible technical identifiers and backend resource terminology. The public-browsing
-browser suite follows the competition-to-season-to-fixture journey in three keyboard activations,
-visits the team overview, checks desktop and mobile overflow, and scans the result for serious or
-critical Axe findings.
+absence of visible technical identifiers and backend resource terminology. The full connected-detail
+journey remains in desktop Chromium. Representative Pixel 7 public browsing separately verifies
+responsive filters, pagination, keyboard navigation, overflow and Axe behaviour.
 
 Run the focused checks with:
 
@@ -495,11 +502,11 @@ activations, then starts at Teams and reaches the same inline statistics in two.
 starts at Players and reaches the player overview, named match, inline statistics, and calculation
 trace in three keyboard activations.
 
-Both journeys run in desktop and Pixel 7 Chromium. Day Match and Night Match are selected and
-checked independently; each representative view is audited for readable headings, labels, facts,
-filters, links, and messages, horizontal overflow, and serious or critical Axe findings. The
-interaction matrix, command results, screenshot index, usability walkthrough, and deliberately
-deferred follow-up are recorded in `evidence/validation/issue-199-public-data-journeys.md`.
+The full connected journeys remain in desktop Chromium, and the player journey plus the representative
+public-browsing flow are tagged for Pixel 7 coverage. Day Match and Night Match, readable headings,
+labels, facts, filters, links and messages, horizontal overflow, and serious or critical Axe findings
+remain covered across that combined matrix. The original Issue #199 interaction matrix, screenshots
+and usability walkthrough are retained in `evidence/validation/issue-199-public-data-journeys.md`.
 
 Run the focused checks with:
 
@@ -514,15 +521,11 @@ existing public route targets, principle and event-derivation content, implement
 no-fetch static page, and the intentional fallback used when WebGL is unavailable or reduced motion
 is selected.
 
-The browser suite runs at the configured desktop and Pixel 7 widths. It checks Day Match and Night
-Match, semantic heading and navigation content, keyboard entry into Fixtures, serious or critical
-Axe findings, page-level horizontal overflow, 200 percent desktop reflow, reduced motion without a
-Three.js canvas or running fallback animation, and the WebGL-unavailable fallback. The production
-build output is also inspected to confirm that `HeroScene` and Three.js remain outside the initial
-application chunk. Lifecycle coverage holds the StrictMode scene open beyond its initial animation,
-checks that it pauses off-screen and disposes on navigation, and deliberately loses and restores the
-WebGL context to verify that the static fallback replaces the canvas presentation without creating a
-second canvas.
+The primary homepage presentation journey runs at desktop and Pixel 7 widths and checks both themes,
+semantic heading/navigation content, serious or critical Axe findings and horizontal overflow. The
+complete desktop suite additionally checks keyboard entry into Fixtures, 200 percent reflow, reduced
+motion, WebGL fallback and Three.js lifecycle/context-loss behaviour. The production build output is
+also inspected to confirm that `HeroScene` and Three.js remain outside the initial application chunk.
 
 Run the focused checks with:
 
@@ -537,8 +540,8 @@ npm run build --workspace=@sport-analytics/frontend
 The Sprint 2 Basic acceptance workflow verifies the completed user journeys across three separate
 layers rather than treating browser mocks alone as full integration proof:
 
-1. Playwright verifies the user-visible browser journeys in desktop Chromium and the Pixel 7
-   Chromium profile.
+1. Playwright verifies every user-visible browser journey in desktop Chromium and a representative
+   `@mobile` subset in the Pixel 7 Chromium profile.
 2. The backend API suite verifies the handwritten HTTP boundary, validation and authorization.
 3. The PostgreSQL integration suite verifies persistence, competition scope, provenance,
    corrections and statistic refresh against a real isolated PostgreSQL database.
@@ -562,9 +565,11 @@ npm.cmd run test:database:local
 npm.cmd run check
 ```
 
-Playwright requires its managed Chromium installation. The browser suite builds and previews the
-frontend automatically and runs the complete `tests/e2e/` suite against both configured browser
-projects.
+Playwright requires its managed Chromium installation. Local runs build and preview the frontend
+automatically. Hosted CI builds the production bundle once, reuses it for preview, runs every
+`tests/e2e/` test in desktop Chromium and runs only tests tagged `@mobile` in the Pixel 7 project.
+The hosted browser lane defaults to four workers; set `PLAYWRIGHT_WORKERS=1` only for runner-resource
+diagnosis or a deliberate serial reproduction.
 
 The Docker database workflow requires Docker with Compose support. It provisions the dedicated
 PostgreSQL 16 test database `sport_analytics_test` on `127.0.0.1:55432`, resets it, applies current
