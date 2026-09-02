@@ -62,6 +62,42 @@ The validation, browser and database lanes all depend only on `plan`. They may t
 multiple runners are available, and they safely queue when only one runner is available. The final
 `quality` job waits for every lane that the change plan marked as required.
 
+### Dedicated repository runner
+
+The repository supplements the shared Wits Gitea runners with a
+repository-scoped Azure-hosted runner named `sport-analytics-runner-1`.
+
+The dedicated runner advertises the same `ubuntu-24.04` label as the shared
+runners. This preserves the existing workflow definitions while adding
+repository-specific capacity when the Azure VM is running.
+
+The dedicated runner is intentionally supplementary:
+
+- when it is running, repository jobs have additional available runner capacity;
+- when it is stopped, workflows continue to use the shared Wits runners;
+- runner capacity is limited to one concurrent job;
+- the Azure VM is manually started when extra capacity is useful;
+- Azure automatically shuts the VM down at 22:00 South Africa time.
+
+The runner host uses:
+
+- Azure Ubuntu Server 24.04 LTS;
+- `Standard_B2als_v2` with 2 vCPU and 4 GiB RAM;
+- 4 GiB swap;
+- Docker-based Gitea Actions execution;
+- persistent runner identity storage under `/opt/gitea-runner/data`.
+
+The repository registration token is not retained after successful
+registration. Runner restarts use the persisted `.runner` identity instead.
+
+Team members who require the additional CI capacity receive Azure RBAC access
+scoped to the runner VM. They can start or deallocate the VM without receiving
+the Azure account owner's credentials, SSH private key, or Gitea registration
+token.
+
+Operational, recovery, security and cost-control procedures are documented in
+[Dedicated CI runner operations](../deployment/runner-operations.md).
+
 ## Change-aware planning
 
 `scripts/ci-change-plan.mjs` compares the Pull Request base with the current head and classifies the

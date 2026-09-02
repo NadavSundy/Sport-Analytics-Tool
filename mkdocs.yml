@@ -92,6 +92,7 @@ nav:
       - Azure Backend: deployment/azure-backend.md
       - Azure Frontend: deployment/azure-fronted.md
       - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
+      - Dedicated CI Runner Operations: deployment/runner-operations.md
       - Cloudflare Documentation: deployment/cloudflare_pages.md
   - Methodology:
       - Git Methodology: git-methodology.md
