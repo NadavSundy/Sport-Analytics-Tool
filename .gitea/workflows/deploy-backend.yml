@@ -462,8 +462,6 @@ jobs:
 
           sys.exit(1)
           PY
-    
-
 
       - name: Smoke check deployed backend health
         env:
