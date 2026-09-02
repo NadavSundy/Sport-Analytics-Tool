@@ -23,6 +23,7 @@ npm ci
 | `check-required-files.mjs`         | `npm run structure:check`                                    | Verifies repository files required by the project structure and onboarding rules.                                                               |
 | `test-database-local.mjs`          | `npm run test:database:local`                                | Starts the isolated Docker PostgreSQL 16 test environment and runs database integration tests. Never repoint it at development/production data. |
 | `prepare-backend-deployment.mjs`   | `npm run deploy:prepare:backend`                             | Builds the backend deployment artifact used by the Azure workflow. Generated deployment output is not source code.                              |
+| `deploy-backend-azure.py`          | automatic/manual backend deployment                          | Creates the prepared backend ZIP and performs the shared Azure Kudu deployment/status logic after quality validation.                           |
 | `smoke-check-backend-artifact.mjs` | deployment workflow/helper use                               | Checks the prepared backend artifact locally before deployment.                                                                                 |
 | `smoke-check-deployment.mjs`       | deployment workflow/helper use                               | Performs retrying content-aware HTTP checks against deployed services. Use only against the intended documented target.                         |
 

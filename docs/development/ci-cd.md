@@ -3,11 +3,8 @@
 ## Status
 
 **Implemented:** change-aware Gitea Pull Request CI, required quality gating, PostgreSQL integration
-validation, monorepo hygiene enforcement, Azure frontend deployment, Azure backend deployment
-workflow foundations and automated MkDocs deployment to Cloudflare Pages.
-
-**Tracked separately:** backend/documentation deployment alignment with the shared validated-main
-quality flow remains follow-up infrastructure work.
+validation, monorepo hygiene enforcement, independent browser/accessibility validation and
+quality-gated automatic deployment of affected frontend, backend and documentation targets.
 
 ## Purpose and methodology relationship
 
@@ -192,42 +189,75 @@ local hooks can be skipped and do not provide repository-level merge evidence.
 ## Deployment relationship
 
 Pull Request validation and deployment have separate responsibilities. Pull Request CI proves that a
-change satisfies the required quality gate. Deployment then builds with environment-specific secrets,
-publishes the validated application and verifies the live endpoint. Deployment must not repeat the
-same unit-test suite merely to rediscover whether the source was valid.
+change satisfies the required quality gate. After merge, the same change-aware planner runs against the
+`main` push and automatic deployment is permitted only after that commit's `quality` job succeeds.
 
-For the frontend, automatic deployment is part of the `Sport Analytics CI` workflow after merge. On a
-`main` push the planner records a separate `deployFrontend` decision for production-impacting changes.
-The deployment job depends on both `plan` and the successful `quality` job:
+The validated-main flow is:
 
 ```text
-Pull Request quality -> merge -> main change-aware quality -> frontend deployment -> live smoke check
+Pull Request quality -> review/merge -> main change-aware quality
+                                      -> affected deployment target(s)
+                                      -> target-specific live smoke checks
 ```
 
-Frontend implementation, shared-contract and relevant root dependency changes can request deployment.
-Frontend test-only, documentation, evidence and CI-only changes do not redeploy an unchanged browser
-application. The standalone `.gitea/workflows/deploy-frontend.yml` workflow remains available only as a
-manual recovery/redeployment path.
+The planner records independent production-impact decisions for `deployFrontend`, `deployBackend` and
+`deployDocs`. A deployment job depends on both `plan` and `quality`, runs only for a push to `main`, and
+runs only when its own production target is affected.
 
-The automatic frontend deployment intentionally does not re-run `npm run test:frontend`. Those tests
-are already authoritative in the relevant `validation` lane before `quality` succeeds. The deployment
-job still performs deployment-specific checks: reproducible installation, secret validation, shared
-contract build, production Vite build, Azure publication and the public smoke check.
+| Change                                          | Automatic deployment after main quality          |
+| ----------------------------------------------- | ------------------------------------------------ |
+| Frontend production implementation              | Frontend only                                    |
+| Frontend test-only                              | None                                             |
+| Backend production implementation/configuration | Backend only                                     |
+| Backend test-only                               | None                                             |
+| Shared contracts                                | Frontend and backend                             |
+| Published MkDocs content/configuration          | Documentation only                               |
+| Evidence-only                                   | None                                             |
+| CI/workflow-only                                | None merely because CI changed                   |
+| Root production dependency manifests            | Conservatively affected application/docs targets |
 
-The backend deployment remains a separately tracked workflow while its hosted Azure defect is resolved.
-A deployment failure occurs after the Pull Request has already been merged and cannot undo that merge;
-it must be recorded and resolved through the normal bug/infrastructure issue process.
+Deployment jobs do not repeat authoritative unit/API/browser suites already used to make the quality
+decision. They retain deployment-specific work: reproducible installation, production builds/artifact
+preparation, secret validation, publication and live verification.
+
+### Frontend
+
+Automatic frontend deployment builds shared contracts and the production Vite bundle with deployment
+secrets, publishes to Azure App Service and smoke checks the public site. It intentionally does not
+re-run `npm run test:frontend`.
+
+### Backend
+
+Automatic backend deployment builds the production backend (whose prebuild prepares shared contracts),
+creates and locally smoke checks the deployment artifact, publishes the ZIP to Azure and verifies both
+`/api/v1/health` and the read-only database path. It intentionally does not repeat backend lint,
+typecheck, unit or API suites after `quality` has already passed.
+
+The Azure ZIP/Kudu implementation is shared by automatic and manual recovery deployment through
+`scripts/deploy-backend-azure.py`, preventing those paths from drifting.
+
+### Documentation
+
+Published `docs/**`, `mkdocs.yml` and `requirements-docs.txt` changes can request documentation
+deployment. Pull Request/main validation performs the strict MkDocs quality check; the deployment job
+builds the site strictly again because the generated `site/` directory is the artifact that Wrangler
+publishes, then smoke checks Cloudflare Pages. Application-only and evidence-only changes do not deploy
+documentation.
+
+The standalone `.gitea/workflows/deploy-frontend.yml`, `deploy-backend.yml` and `deploy-docs.yml`
+workflows are manual `workflow_dispatch` recovery/redeployment paths. They are not independent push
+pipelines and therefore cannot race or deploy before the shared validated-main quality decision.
 
 Application deployment paths are documented in:
 
 - [Azure backend](../deployment/azure-backend.md)
 - [Azure frontend](../deployment/azure-fronted.md)
+- [Cloudflare Pages](../deployment/cloudflare_pages.md)
 - [Deployment overview](../deployment/overview.md)
 
-The public MkDocs site is deployed by the separate `Sport Analytics - Deploy Docs` workflow for
-published documentation changes. It performs a strict MkDocs build, Cloudflare Pages deployment and
-live smoke check. Aligning that deployment with the shared validated-main quality flow is tracked
-separately from this browser-optimisation work.
+An environment-specific deployment failure still occurs after the source commit has been merged and
+cannot undo that merge. Record and resolve the deployment failure through the normal bug/infrastructure
+process; do not weaken the required quality gate to hide it.
 
 ## Failure interpretation
 

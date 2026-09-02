@@ -54,22 +54,33 @@ The Express application uses Pino HTTP for structured request logging. Azure App
 
 ## Deployment
 
-`.gitea/workflows/deploy-backend.yml` deploys the backend after a push to `main` changes the backend
-workspace, shared contracts, root npm manifests, shared TypeScript configuration, either deployment
-helper or the workflow itself. It can also be started manually with `workflow_dispatch`.
+Automatic backend deployment is part of `Sport Analytics CI`. After a production-impacting backend or
+shared-contract change is merged, the change-aware planner validates the `main` commit and the
+`deploy_backend` job runs only after the required `quality` job succeeds.
 
-The workflow runs from the repository root and:
+The automatic deployment job:
 
-1. installs the complete workspace reproducibly with `npm ci`;
-2. lints, type-checks, tests and builds `@sport-analytics/contracts`;
-3. lints, type-checks, runs the non-database backend unit/API suites and builds
-   `@sport-analytics/backend`;
-4. creates `.deployment/backend` from the root lockfile with production dependencies, compiled
-   backend output, the runtime CA certificate and a physical copy of the compiled contracts package;
+1. installs the committed workspace reproducibly with `npm ci`;
+2. validates `AZURE_BACKEND_PUBLISH_PROFILE`;
+3. builds `@sport-analytics/backend` for production (the backend prebuild prepares shared contracts);
+4. creates `.deployment/backend` from the root lockfile with production dependencies, compiled backend
+   output, the runtime CA certificate and a physical copy of the compiled contracts package;
 5. starts that artifact with non-secret smoke configuration and verifies its local health endpoint;
-6. deploys the artifact to `statsthegame-api-dev`, cleaning the old deployment first; and
+6. creates and publishes the Azure ZIP using `scripts/deploy-backend-azure.py`; and
 7. retries the deployed health endpoint before checking the read-only
    `/api/v1/competitions?limit=1` database path.
+
+Backend lint, typecheck, unit, API and required PostgreSQL integration tests remain authoritative in the
+change-aware CI lanes before `quality` succeeds and are not duplicated inside deployment.
+
+`apps/backend/src/**`, runtime backend configuration and shared-contract changes can request backend
+deployment. Backend test-only, frontend-only, documentation, evidence and CI-only changes do not
+redeploy an unchanged API. Root dependency/configuration changes are handled conservatively when they
+can affect the production backend.
+
+`.gitea/workflows/deploy-backend.yml` is retained as a manual `workflow_dispatch` recovery/redeployment
+path. It shares the same Azure ZIP/Kudu implementation through `scripts/deploy-backend-azure.py` but is
+not an independent push-triggered deployment workflow.
 
 The local artifact check proves that the compiled server and runtime dependency tree can start before
 Azure is changed. The deployed checks report every failed attempt and fail the Action when the service

@@ -37,7 +37,7 @@ Azure App Service was accepted in ADR 0003 for the frontend and backend. The doc
 - Keep frontend and backend configuration environment-specific.
 - Keep Supabase generated data endpoints outside the application API boundary.
 - Verify HTTPS, CORS, logs, authentication callbacks and health endpoints after deployment changes.
-- Keep documentation deployment independent from application deployment.
+- Deploy frontend, backend and documentation independently by production impact, but only after the shared validated-main quality gate.
 
 See:
 
@@ -65,12 +65,7 @@ Using a fixed runner label provides a more reproducible CI environment than
 `ubuntu-latest`, while targeting an environment currently supported by the
 university-hosted runners.
 
-The following workflows use this runner:
-
-- `Sport Analytics CI`
-- `Sport Analytics - Deploy Backend`
-- `Sport Analytics - Deploy Frontend`
-- `Sport Analytics - Deploy Docs`
+The automatic validation and affected-target deployments run through `Sport Analytics CI`. The standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Deploy Backend` and `Sport Analytics - Deploy Docs` workflows use the same runner only for manual recovery/redeployment.
 
 The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. When
 PostgreSQL integration is required, database validation may run in parallel with the normal
@@ -90,7 +85,7 @@ The established hosted baseline confirms:
 3. PostgreSQL service-container networking works
 4. linting, type checking, tests and builds succeed
 5. Playwright can execute in the hosted environment
-6. backend and frontend deployment workflows can execute successfully
+6. affected frontend, backend and documentation deployment paths can execute after validated `main` quality
 
 ## AI Declaration
 
