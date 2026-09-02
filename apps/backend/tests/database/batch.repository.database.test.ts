@@ -364,7 +364,12 @@ describe.sequential('batch repository database integration', () => {
         leaseExpiresAt: null,
         attemptCount: 2,
       });
-      await expect(repository.findCheckpoint(created.batchId)).resolves.toEqual(updatedCheckpoint);
+      await expect(repository.findCheckpoint(created.batchId, 'validating')).resolves.toEqual(
+        firstCheckpoint,
+      );
+      await expect(repository.findCheckpoint(created.batchId, 'publishing')).resolves.toEqual(
+        updatedCheckpoint,
+      );
     });
   });
 
@@ -495,7 +500,7 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
-  test('allows exactly one checkpoint row per batch', async () => {
+  test('keeps one independent checkpoint row for each processing phase', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
       const repository = createBatchRepository(client);
@@ -509,9 +514,13 @@ describe.sequential('batch repository database integration', () => {
         "INSERT INTO batch_checkpoint (batch_id, phase, last_ordinal) VALUES ($1, 'validating', 0)",
         [batch.batchId],
       );
+      await client.query(
+        "INSERT INTO batch_checkpoint (batch_id, phase, last_ordinal) VALUES ($1, 'publishing', 1)",
+        [batch.batchId],
+      );
       await expect(
         client.query(
-          "INSERT INTO batch_checkpoint (batch_id, phase, last_ordinal) VALUES ($1, 'publishing', 1)",
+          "INSERT INTO batch_checkpoint (batch_id, phase, last_ordinal) VALUES ($1, 'publishing', 2)",
           [batch.batchId],
         ),
       ).rejects.toMatchObject({ code: '23505' });
