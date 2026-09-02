@@ -85,6 +85,7 @@ function managedUser(
 ) {
   return {
     id: '42',
+    email: 'pending.contributor@example.com',
     displayName: 'Pending Contributor',
     role: 'viewer' as const,
     approvalState: 'pending' as const,
@@ -106,16 +107,20 @@ const availableScopes = [
 
 function managementResponse(user = managedUser()) {
   return jsonResponse(200, {
-    users: [user],
-    availableScopes,
+    data: {
+      users: [user],
+      availableScopes,
+    },
   });
 }
 
 function updateResponse(user: ReturnType<typeof managedUser>) {
   return jsonResponse(200, {
-    ...user,
-    submitterAccessUpdatedAt: accessTime,
-    submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
+    data: {
+      ...user,
+      submitterAccessUpdatedAt: accessTime,
+      submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
+    },
   });
 }
 

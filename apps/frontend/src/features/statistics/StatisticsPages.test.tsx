@@ -164,7 +164,7 @@ describe('public fixture statistics pages', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+        'http://localhost:3001/api/v1/fixtures/fixture-1/statistics',
         expect.objectContaining({ headers: { Accept: 'application/json' } }),
       ),
     );
@@ -207,7 +207,7 @@ describe('public fixture statistics pages', () => {
     expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
 
     const statisticsCall = fetchMock.mock.calls.find(
-      ([url]) => String(url) === 'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+      ([url]) => String(url) === 'http://localhost:3001/api/v1/fixtures/fixture-1/statistics',
     );
     const request = statisticsCall?.[1] as RequestInit;
     expect(new Headers(request.headers).has('Authorization')).toBe(false);
@@ -392,7 +392,7 @@ describe('public fixture statistics pages', () => {
     );
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true',
+        'http://localhost:3001/api/v1/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true',
         expect.any(Object),
       ),
     );
@@ -446,14 +446,14 @@ describe('public fixture statistics pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/events/export.csv?inningsId=innings-1&competitorId=team-1',
+        'http://localhost:3001/api/v1/fixtures/fixture-1/events/export.csv?inningsId=innings-1&competitorId=team-1',
         expect.objectContaining({ headers: { Accept: 'text/csv' } }),
       ),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Download JSON' }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/events/export.json?inningsId=innings-1&competitorId=team-1',
+        'http://localhost:3001/api/v1/fixtures/fixture-1/events/export.json?inningsId=innings-1&competitorId=team-1',
         expect.objectContaining({ headers: { Accept: 'application/json' } }),
       ),
     );

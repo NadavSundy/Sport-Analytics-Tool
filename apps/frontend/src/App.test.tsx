@@ -374,7 +374,7 @@ describe('public application and authentication interface', () => {
     expect(screen.getByText('Deleting your account…')).toHaveAttribute('role', 'status');
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/v1/account',
+      'http://localhost:3001/api/v1/account',
       expect.objectContaining({ method: 'DELETE' }),
     );
 
