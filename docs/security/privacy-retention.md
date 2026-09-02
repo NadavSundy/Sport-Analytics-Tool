@@ -64,9 +64,25 @@ returns to the public home page.
 - The retained revocation hash is intentionally linkable only to the same former high-entropy
   subject. Access to it is restricted to backend database operations.
 
+## Batch source payloads
+
+Private batch source bytes are retained in Azure Blob Storage for 90 days from receipt and then
+deleted through a recorded, retryable lifecycle operation. The application account owns the batch
+provenance in PostgreSQL; it does not own the Blob object through an Azure or Supabase user identity.
+
+Deletion of the raw bytes does not delete the batch identifier, checksum, expanded items, validation
+results, review decisions, correction history, or links to published events. Those records remain so
+published statistics can be reproduced and attributed after account tombstoning or source-byte
+expiry. A legal or licence hold may extend the 90-day period only through an explicitly authorised
+and recorded decision.
+
+Batch containers deny public access. Object keys are server-generated, and payload content, storage
+credentials, provider keys, and signed access tokens must not appear in logs or public responses.
+
 See `evidence/decisions/ADR-006-account-deletion-retention.md` for the complete decision and
 rollback considerations.
 
 ## AI Declaration
 
 This policy was drafted and reconciled with the repository with the assistance of Codex[GPT-5].
+The issue #356 batch-retention policy was added with the assistance of Codex[GPT-5].

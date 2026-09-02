@@ -10,6 +10,17 @@ The selected deployment architecture is:
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
 | Public documentation   | Cloudflare Pages           | Wrangler CLI                                    |
 
+The following approved Intermediate targets are not yet provisioned or deployed:
+
+| Component              | Approved target                                                | Deployment responsibility                                                                |
+| ---------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Private object storage | Azure Storage account with private Blob containers             | Infrastructure provisioning, managed identity/RBAC, lifecycle and recovery configuration |
+| Durable job delivery   | PostgreSQL transactional outbox and Azure Service Bus Standard | Database migration, relay deployment, broker configuration and monitoring                |
+| Batch worker           | Separate Node.js Azure Container App                           | Worker artifact, managed identity and bounded Service Bus KEDA scaling                   |
+
+ADR-010 and ADR-011 select these targets for Intermediate implementation. Their accepted status does
+not mean the resources currently exist.
+
 Azure App Service was accepted in ADR 0003 for the frontend and backend. The documentation site is deliberately hosted separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
 
 ## Minimum environments
@@ -26,7 +37,7 @@ Azure App Service was accepted in ADR 0003 for the frontend and backend. The doc
 - Keep frontend and backend configuration environment-specific.
 - Keep Supabase generated data endpoints outside the application API boundary.
 - Verify HTTPS, CORS, logs, authentication callbacks and health endpoints after deployment changes.
-- Keep documentation deployment independent from application deployment.
+- Deploy frontend, backend and documentation independently by production impact, but only after the shared validated-main quality gate.
 
 See:
 
@@ -54,12 +65,7 @@ Using a fixed runner label provides a more reproducible CI environment than
 `ubuntu-latest`, while targeting an environment currently supported by the
 university-hosted runners.
 
-The following workflows use this runner:
-
-- `Sport Analytics CI`
-- `Sport Analytics - Deploy Backend`
-- `Sport Analytics - Deploy Frontend`
-- `Sport Analytics - Deploy Docs`
+The automatic validation and affected-target deployments run through `Sport Analytics CI`. The standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Deploy Backend` and `Sport Analytics - Deploy Docs` workflows use the same runner only for manual recovery/redeployment.
 
 The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. When
 PostgreSQL integration is required, database validation may run in parallel with the normal
@@ -79,8 +85,10 @@ The established hosted baseline confirms:
 3. PostgreSQL service-container networking works
 4. linting, type checking, tests and builds succeed
 5. Playwright can execute in the hosted environment
-6. backend and frontend deployment workflows can execute successfully
+6. affected frontend, backend and documentation deployment paths can execute after validated `main` quality
 
 ## AI Declaration
 
 The preceding document was reviewed and aligned with the current repository architecture with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #356 approved Intermediate deployment targets were documented with the assistance of
+Codex[GPT-5].

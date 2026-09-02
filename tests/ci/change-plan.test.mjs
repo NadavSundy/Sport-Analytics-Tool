@@ -40,6 +40,8 @@ test('frontend implementation changes run frontend and browser validation withou
   assert.equal(plan.database, false);
   assert.equal(plan.hygiene, true);
   assert.equal(plan.deployFrontend, true);
+  assert.equal(plan.deployBackend, false);
+  assert.equal(plan.deployDocs, false);
 });
 
 test('frontend unit-test-only changes do not force Playwright', () => {
@@ -48,6 +50,8 @@ test('frontend unit-test-only changes do not force Playwright', () => {
   assert.equal(plan.frontend, true);
   assert.equal(plan.e2e, false);
   assert.equal(plan.deployFrontend, false);
+  assert.equal(plan.deployBackend, false);
+  assert.equal(plan.deployDocs, false);
 });
 
 test('browser-suite changes request browser validation without production deployment', () => {
@@ -67,6 +71,9 @@ test('backend source changes conservatively include database integration validat
   assert.equal(plan.database, true);
   assert.equal(plan.e2e, false);
   assert.equal(plan.hygiene, true);
+  assert.equal(plan.deployBackend, true);
+  assert.equal(plan.deployFrontend, false);
+  assert.equal(plan.deployDocs, false);
 });
 
 test('shared contracts validate both applications and browser integration', () => {
@@ -78,6 +85,8 @@ test('shared contracts validate both applications and browser integration', () =
   assert.equal(plan.e2e, true);
   assert.equal(plan.database, false);
   assert.equal(plan.deployFrontend, true);
+  assert.equal(plan.deployBackend, true);
+  assert.equal(plan.deployDocs, false);
 });
 
 test('root dependency changes select full CI', () => {
@@ -92,6 +101,8 @@ test('root dependency changes select full CI', () => {
   assert.equal(plan.hygiene, true);
   assert.equal(plan.coverage, false);
   assert.equal(plan.deployFrontend, true);
+  assert.equal(plan.deployBackend, true);
+  assert.equal(plan.deployDocs, true);
 });
 
 test('CI workflow changes select full validation without redeploying unchanged application code', () => {
@@ -99,6 +110,56 @@ test('CI workflow changes select full validation without redeploying unchanged a
 
   assert.equal(plan.full, true);
   assert.equal(plan.deployFrontend, false);
+  assert.equal(plan.deployBackend, false);
+  assert.equal(plan.deployDocs, false);
+});
+
+test('full validation still preserves deployment impacts from other changed files', () => {
+  const plan = classifyChangedFiles([
+    '.gitea/workflows/ci.yml',
+    'apps/backend/src/app.ts',
+    'docs/index.md',
+  ]);
+
+  assert.equal(plan.full, true);
+  assert.equal(plan.deployBackend, true);
+  assert.equal(plan.deployDocs, true);
+  assert.equal(plan.deployFrontend, false);
+});
+
+test('backend test-only changes validate backend without redeploying production', () => {
+  const plan = classifyChangedFiles(['apps/backend/tests/unit/weather.service.test.ts']);
+
+  assert.equal(plan.backend, true);
+  assert.equal(plan.deployBackend, false);
+  assert.equal(plan.deployFrontend, false);
+  assert.equal(plan.deployDocs, false);
+});
+
+test('published MkDocs changes validate and deploy documentation only', () => {
+  const plan = classifyChangedFiles(['docs/deployment/overview.md']);
+
+  assert.equal(plan.docs, true);
+  assert.equal(plan.deployDocs, true);
+  assert.equal(plan.deployFrontend, false);
+  assert.equal(plan.deployBackend, false);
+});
+
+test('non-published root documentation does not redeploy the MkDocs site', () => {
+  const plan = classifyChangedFiles(['README.md']);
+
+  assert.equal(plan.docs, true);
+  assert.equal(plan.deployDocs, false);
+});
+
+test('backend deployment helpers request backend deployment without unrelated targets', () => {
+  const plan = classifyChangedFiles(['scripts/prepare-backend-deployment.mjs']);
+
+  assert.equal(plan.backend, true);
+  assert.equal(plan.deployment, true);
+  assert.equal(plan.deployBackend, true);
+  assert.equal(plan.deployFrontend, false);
+  assert.equal(plan.deployDocs, false);
 });
 
 test('unknown files fail safely to full CI', () => {

@@ -58,6 +58,8 @@ function emptyPlan() {
     openapi: false,
     coverage: false,
     deployFrontend: false,
+    deployBackend: false,
+    deployDocs: false,
     needsNpm: false,
   };
 }
@@ -103,6 +105,11 @@ function applyPath(plan, file) {
   if (isDocumentationPath(file)) {
     plan.docs = true;
     plan.needsNpm = true;
+
+    if (file.startsWith('docs/') || file === 'mkdocs.yml' || file === 'requirements-docs.txt') {
+      plan.deployDocs = true;
+    }
+
     if (
       file === 'redocly.yaml' ||
       file === '.redocly.lint-ignore.yaml' ||
@@ -115,8 +122,13 @@ function applyPath(plan, file) {
 
   if (FULL_ROOT_FILES.has(file)) {
     markFull(plan);
-    if (file === 'package.json' || file === 'package-lock.json' || file === 'tsconfig.base.json') {
+    if (file === 'package.json' || file === 'package-lock.json') {
       plan.deployFrontend = true;
+      plan.deployBackend = true;
+      plan.deployDocs = true;
+    } else if (file === 'tsconfig.base.json') {
+      plan.deployFrontend = true;
+      plan.deployBackend = true;
     }
     return;
   }
@@ -147,6 +159,7 @@ function applyPath(plan, file) {
   if (file.startsWith('packages/contracts/')) {
     plan.contracts = true;
     plan.deployFrontend = true;
+    plan.deployBackend = true;
     plan.frontend = true;
     plan.backend = true;
     plan.e2e = true;
@@ -183,6 +196,16 @@ function applyPath(plan, file) {
     if (file.startsWith('apps/backend/src/') || file.startsWith('apps/backend/tests/database/')) {
       plan.database = true;
     }
+
+    const affectsBackendRuntime =
+      file.startsWith('apps/backend/src/') ||
+      file.startsWith('apps/backend/certs/') ||
+      file === 'apps/backend/package.json' ||
+      file === 'apps/backend/tsconfig.json';
+
+    if (affectsBackendRuntime) {
+      plan.deployBackend = true;
+    }
     return;
   }
 
@@ -198,11 +221,13 @@ function applyPath(plan, file) {
 
   if (
     file === 'scripts/prepare-backend-deployment.mjs' ||
-    file === 'scripts/smoke-check-backend-artifact.mjs'
+    file === 'scripts/smoke-check-backend-artifact.mjs' ||
+    file === 'scripts/deploy-backend-azure.py'
   ) {
     plan.backend = true;
     plan.contracts = true;
     plan.deployment = true;
+    plan.deployBackend = true;
     plan.hygiene = true;
     plan.needsNpm = true;
     return;
@@ -211,6 +236,8 @@ function applyPath(plan, file) {
   if (file === 'scripts/smoke-check-deployment.mjs') {
     plan.deployment = true;
     plan.deployFrontend = true;
+    plan.deployBackend = true;
+    plan.deployDocs = true;
     plan.needsNpm = true;
     return;
   }
@@ -269,7 +296,9 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     markFull(plan);
   } else {
     for (const file of files) {
-      if (plan.full) break;
+      // A full-validation path must not stop deployment-impact discovery for
+      // other files in the same commit. Continue classifying so a CI/config
+      // change plus real application/docs changes still deploys those targets.
       applyPath(plan, file.replaceAll('\\', '/'));
     }
   }

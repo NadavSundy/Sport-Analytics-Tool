@@ -40,6 +40,12 @@ chain rather than introducing a second published-event model. Batch and batch-it
 append-only provenance records and cannot be deleted; a replacement is represented by the
 self-reference instead.
 
+The competition and innings foreign keys are populated only after human-facing or namespaced source
+references have resolved; submitters do not enter these database keys. Unresolved source rows remain
+associated with their batch through a downstream source-issue model rather than placeholder foreign
+keys. The batch source URI is an opaque application reference resolved through the private object
+store, not a public Azure location.
+
 ## Match structure
 
 ```mermaid
@@ -98,3 +104,4 @@ rows not yet superseded.
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5]. The
 application-account scope relationships and source-file cleanup were updated with the assistance of
 Codex[GPT-5.6 Sol]. The issue #276 batch relationships were added with the assistance of Codex[GPT-5].
+The issue #356 reference-resolution boundary was documented with the assistance of Codex[GPT-5].

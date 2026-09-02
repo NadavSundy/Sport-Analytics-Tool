@@ -1,14 +1,6 @@
 name: Sport Analytics - Deploy Docs
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'requirements-docs.txt'
-      - '.gitea/workflows/deploy-docs.yml'
   workflow_dispatch:
 
 jobs:
