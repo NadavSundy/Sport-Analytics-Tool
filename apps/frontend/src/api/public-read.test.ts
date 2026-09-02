@@ -33,7 +33,7 @@ describe('public read API client', () => {
 
     expect(result.data[0]?.name).toBe('Premier League');
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3001/api/v1/competitions?name=Premier',
+      'http://localhost:3000/api/v1/competitions?name=Premier',
       expect.objectContaining({
         headers: { Accept: 'application/json' },
       }),
