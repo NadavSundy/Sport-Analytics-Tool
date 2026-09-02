@@ -28,6 +28,7 @@ test('hosted browser validation reuses one production build and defaults to four
 
   assert.match(workflow, /PLAYWRIGHT_REUSE_BUILD: '1'/);
   assert.match(workflow, /PLAYWRIGHT_WORKERS: '4'/);
+  assert.match(workflow, /Build shared contracts for browser validation/);
   assert.match(workflow, /Build frontend production bundle once/);
   const browserStart = workflow.indexOf('  browser:');
   const databaseStart = workflow.indexOf('  database:', browserStart);
@@ -35,6 +36,11 @@ test('hosted browser validation reuses one production build and defaults to four
   assert.ok(
     browser.indexOf('run: npm ci') < browser.indexOf('NODE_ENV: production'),
     'npm ci must install dev dependencies before the browser lane switches to production mode',
+  );
+  assert.ok(
+    browser.indexOf('npm run build --workspace=@sport-analytics/contracts') <
+      browser.indexOf('npm run build --workspace=@sport-analytics/frontend'),
+    'shared contracts must be built before the standalone browser lane builds the frontend',
   );
   assert.match(config, /PLAYWRIGHT_REUSE_BUILD === '1'/);
   assert.match(config, /PLAYWRIGHT_WORKERS \?\? '4'/);

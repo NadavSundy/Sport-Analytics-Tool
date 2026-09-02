@@ -74,6 +74,19 @@ contention.
 The browser job builds the frontend production bundle once and sets `PLAYWRIGHT_REUSE_BUILD=1` before
 Playwright. The preview server therefore reuses that bundle instead of rebuilding it.
 
+## First hosted Pull Request run
+
+The first hosted browser-lane run exposed a dependency-ordering defect introduced by separating browser
+validation from the normal validation job. After a clean `npm ci`, the standalone browser job attempted
+to build the frontend before the `@sport-analytics/contracts` workspace had produced its `dist/` output.
+TypeScript therefore could not resolve `@sport-analytics/contracts`, and the frontend build failed before
+Playwright started. The remaining TypeScript errors in that log were downstream inference errors caused by
+the missing shared contract types.
+
+The browser job now explicitly builds `@sport-analytics/contracts` before the frontend production bundle.
+A regression assertion verifies this ordering so future CI refactors cannot silently reintroduce the same
+clean-run failure.
+
 ## Regression protection
 
 Pure Node regression tests verify that:

@@ -101,8 +101,8 @@ matrix avoids duplicating every journey at every viewport:
   journeys for additional Axe coverage;
 - CI defaults to four Playwright workers. `PLAYWRIGHT_WORKERS=1` remains available for hosted-runner
   diagnosis if resource contention is observed; and
-- the browser lane builds the production frontend once, then sets `PLAYWRIGHT_REUSE_BUILD=1` so the
-  Playwright preview server does not rebuild the same bundle.
+- the browser lane builds the shared contracts workspace first, then builds the production frontend once and
+  sets `PLAYWRIGHT_REUSE_BUILD=1` so the Playwright preview server does not rebuild the same bundle.
 
 The representative mobile subset is a reduction in duplicate viewport execution, not removal of
 mobile accessibility testing. New journeys whose behaviour materially changes at narrow widths should
