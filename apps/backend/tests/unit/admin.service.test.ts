@@ -93,9 +93,7 @@ describe('administrator user-management service', () => {
 
     await expect(service.listUsers()).resolves.toEqual({
       data: {
-        users: [
-          expect.objectContaining({ id: '42', email: 'contributor@example.com' }),
-        ],
+        users: [expect.objectContaining({ id: '42', email: 'contributor@example.com' })],
         availableScopes: [],
       },
     });

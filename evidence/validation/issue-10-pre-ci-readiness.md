@@ -301,7 +301,7 @@ change solely to select the runner.
 
 The workflow files were checked using:
 
-```text
+````text
 npx prettier --check .gitea/workflows/*.yml
 
 Issue #10 must therefore remain blocked by the server-side runner dependency until hosted verification is complete.
@@ -390,4 +390,4 @@ The workflow YAML files were validated using:
 
 npx prettier --check .gitea/workflows/*.yml
 The preceding document was generated with the assistance of: ChatGPT-Web[GPT-5.6 Sol]
-```
+````

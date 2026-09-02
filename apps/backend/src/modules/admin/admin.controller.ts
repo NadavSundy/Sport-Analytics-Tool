@@ -80,15 +80,16 @@ export function createAdminUpdateRoleController(service: AdminService): RequestH
         error: {
           code: 'VALIDATION_FAILED',
           message: 'The role update is invalid.',
-          details: !targetAccountId || !isDatabaseIdentifier(targetAccountId)
-            ? [
-                {
-                  code: 'INVALID_FIELD',
-                  field: 'userId',
-                  message: 'The user identifier is invalid.',
-                },
-              ]
-            : validationDetails(parsed.error.issues),
+          details:
+            !targetAccountId || !isDatabaseIdentifier(targetAccountId)
+              ? [
+                  {
+                    code: 'INVALID_FIELD',
+                    field: 'userId',
+                    message: 'The user identifier is invalid.',
+                  },
+                ]
+              : validationDetails(parsed.error.issues),
         },
       });
       return;

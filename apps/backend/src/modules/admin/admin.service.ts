@@ -96,7 +96,11 @@ export function createAdminService(
     },
     async updateRole(administrator, targetAccountId, update) {
       prohibitSelfManagement(administrator, targetAccountId);
-      const user = await getRepository().updateRole(targetAccountId, administrator.accountId, update);
+      const user = await getRepository().updateRole(
+        targetAccountId,
+        administrator.accountId,
+        update,
+      );
       return { data: await withEmail(user) };
     },
   };
