@@ -14,13 +14,13 @@ npm run hygiene
 npm run check
 ```
 
-`npm run hygiene` is the local monorepo-maintenance gate. It runs Knip to detect unused files,
+`npm run hygiene` is the monorepo-maintenance gate. It runs Knip to detect unused files,
 dependencies, exports and types, syncpack to enforce consistent dependency versions across npm
 workspaces, and dependency-cruiser to detect circular dependencies and inappropriate source imports
 across the frontend, backend and shared-contract boundaries. Use `npm run hygiene:knip`,
 `npm run hygiene:dependencies` or `npm run hygiene:architecture` to run an individual validator.
-The hygiene gate remains separate from `npm run check`, so adding it to remote automation can be
-reviewed independently.
+The hygiene gate remains separate from `npm run check` locally, but hosted Pull Request CI now runs it
+automatically for application, shared-contract, dependency, configuration and full-validation changes.
 
 Run the complete backend test workflow with the default disposable PostgreSQL runtime:
 
@@ -97,6 +97,37 @@ When `DATABASE_URL_TEST` is supplied, it must pass the safety checks and be reac
 fails rather than falling back to another database. CI provisions its own PostgreSQL 16 service,
 supplies that connection directly, and runs `npm run test:database` as an explicit step. Set
 `DATABASE_TEST_VERBOSE=1` only when diagnostics from the default embedded server are needed.
+
+## Change-aware hosted CI
+
+The required Gitea Pull Request status remains `Sport Analytics CI / quality`. The workflow first
+classifies the changed paths and then runs only the validation that can be affected by those changes.
+Unknown paths, root dependency changes and CI configuration changes deliberately fall back to full CI.
+A manual `workflow_dispatch` run also always selects full validation.
+
+| Change class               | Hosted validation                                                                                                                                | Expensive work intentionally skipped                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Evidence-only              | changed-line whitespace, required repository structure, formatting when the evidence format is Prettier-managed                                  | PostgreSQL, application tests/builds, MkDocs, Playwright, coverage |
+| Documentation-only         | repository checks, formatting, OpenAPI lint where relevant, strict MkDocs build                                                                  | application tests, PostgreSQL, Playwright, coverage                |
+| Frontend                   | shared contracts, hygiene, frontend lint/typecheck/unit/build, Playwright for implementation/browser changes                                     | PostgreSQL                                                         |
+| Backend                    | shared contracts, hygiene, backend lint/typecheck/unit/API/build, OpenAPI lint, PostgreSQL integration tests for backend source/database changes | Playwright unless another affected path requires it                |
+| Shared contracts           | hygiene plus contract, frontend, backend and browser validation                                                                                  | PostgreSQL unless another changed path requires it                 |
+| Root/dependency/CI/unknown | full validation, including docs, database, browser, deployment-helper and coverage suites                                                        | nothing                                                            |
+
+The planner is implemented in `scripts/ci-change-plan.mjs`. Its routing rules are regression-tested by
+`tests/ci/change-plan.test.mjs`. Run those tests directly with:
+
+```bash
+npm run test:ci-routing
+```
+
+PostgreSQL is started by CI only when the change plan requests database integration tests. The hosted
+runner uses host networking, so the disposable PostgreSQL 16 container listens on port `55432`, matching
+`DATABASE_URL_TEST` and avoiding the shared runner's occupied default `5432` port.
+
+Coverage currently duplicates already-executed unit suites and does not enforce a repository-wide
+threshold. It is therefore reserved for deliberate full validation instead of running on every Pull
+Request.
 
 ## Deployment workflow helper coverage
 

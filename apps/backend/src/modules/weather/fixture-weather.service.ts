@@ -1,7 +1,7 @@
 import { findFixtureWeatherContext } from '../fixtures/fixture.repository';
 import { classifyWeatherDate, type WeatherData, type WeatherService } from './weather.service';
 
-export type FixtureWeatherUnavailableReason =
+type FixtureWeatherUnavailableReason =
   'MISSING_VENUE' | 'MISSING_COORDINATES' | 'UNSUPPORTED_LOCATION' | 'UNSUPPORTED_DATE';
 
 export interface FixtureWeatherContext {
@@ -15,7 +15,7 @@ export interface FixtureWeatherContext {
   } | null;
 }
 
-export interface FixtureWeatherAvailable {
+interface FixtureWeatherAvailable {
   fixtureId: string;
   date: string;
   availability: 'available';
@@ -23,7 +23,7 @@ export interface FixtureWeatherAvailable {
   weather: WeatherData;
 }
 
-export interface FixtureWeatherUnavailable {
+interface FixtureWeatherUnavailable {
   fixtureId: string;
   date: string;
   availability: 'unavailable';
@@ -32,7 +32,7 @@ export interface FixtureWeatherUnavailable {
   weather: null;
 }
 
-export type FixtureWeatherResult = FixtureWeatherAvailable | FixtureWeatherUnavailable;
+type FixtureWeatherResult = FixtureWeatherAvailable | FixtureWeatherUnavailable;
 
 export type FindFixtureWeatherContext = (
   fixtureId: string,

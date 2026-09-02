@@ -1,6 +1,6 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 
-export type BatchState =
+type BatchState =
   | 'received'
   | 'stored'
   | 'validating'
@@ -12,21 +12,19 @@ export type BatchState =
   | 'failed'
   | 'superseded';
 
-export type BatchItemState =
-  'pending' | 'accepted' | 'rejected' | 'published' | 'duplicate_skipped';
+type BatchItemState = 'pending' | 'accepted' | 'rejected' | 'published' | 'duplicate_skipped';
 
-export type BatchCheckpointPhase = 'validating' | 'publishing';
+type BatchCheckpointPhase = 'validating' | 'publishing';
 
-export type JsonValue =
-  null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
-export interface BatchSource {
+interface BatchSource {
   checksum: string;
   uri: string;
   sizeBytes: number;
 }
 
-export interface BatchRecord {
+interface BatchRecord {
   batchId: string;
   submitterId: string;
   competitionId: string;
@@ -39,7 +37,7 @@ export interface BatchRecord {
   updatedAt: string;
 }
 
-export interface CreateBatchInput {
+interface CreateBatchInput {
   submitterId: string;
   competitionId: string;
   idempotencyKey: string;
@@ -47,7 +45,7 @@ export interface CreateBatchInput {
   state?: BatchState;
 }
 
-export interface InsertBatchItemInput {
+interface InsertBatchItemInput {
   ordinal: number;
   inningsId: string;
   overNumber: number;
@@ -59,7 +57,7 @@ export interface InsertBatchItemInput {
   publishedEventId?: string | null;
 }
 
-export interface BatchItemRecord {
+interface BatchItemRecord {
   batchItemId: string;
   batchId: string;
   ordinal: number;
@@ -73,12 +71,12 @@ export interface BatchItemRecord {
   publishedEventId: string | null;
 }
 
-export interface BatchItemPageOptions {
+interface BatchItemPageOptions {
   afterOrdinal?: number;
   limit: number;
 }
 
-export interface BatchCheckpointRecord {
+interface BatchCheckpointRecord {
   batchId: string;
   phase: BatchCheckpointPhase;
   lastOrdinal: number;
@@ -87,7 +85,7 @@ export interface BatchCheckpointRecord {
   attemptCount: number;
 }
 
-export interface UpsertBatchCheckpointInput {
+interface UpsertBatchCheckpointInput {
   batchId: string;
   phase: BatchCheckpointPhase;
   lastOrdinal: number;

@@ -35,7 +35,7 @@ interface AcceptedSubmission {
   eventCount: number;
 }
 
-export interface CorrectionTarget {
+interface CorrectionTarget {
   fixtureId: string;
   competitionId: string | null;
   sequenceNumber: number;
