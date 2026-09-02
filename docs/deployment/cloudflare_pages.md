@@ -64,33 +64,48 @@ https://sports-analytics-tool.pages.dev
 
 ## Automated Deployment
 
-Documentation deployment is automated by the `Sport Analytics - Deploy Docs` Gitea Actions workflow at `.gitea/workflows/deploy-docs.yml`. The workflow runs on every push to `main` that changes `docs/**`, `mkdocs.yml`, `requirements-docs.txt`, or the workflow file itself, and can also be triggered manually with `workflow_dispatch`.
+Automatic documentation deployment is part of `Sport Analytics CI`. Published documentation changes
+are first validated by the change-aware CI flow; after merge, the `main` commit must pass the required
+`quality` job before `deploy_docs` can publish to Cloudflare Pages.
 
-On each run, the workflow:
+The planner requests documentation deployment for production MkDocs inputs such as `docs/**`,
+`mkdocs.yml` and `requirements-docs.txt`. Application-only, evidence-only and CI-only changes do not
+redeploy the documentation site merely because a commit reached `main`.
 
-1. Checks out the repository.
-2. Validates that the required Cloudflare secrets are configured, failing fast if either is missing.
-3. Installs the documentation dependencies.
-4. Builds the documentation using:
+On an automatic deployment, CI:
+
+1. checks out the validated `main` commit;
+2. validates `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
+3. installs the documentation dependencies;
+4. builds the deployable site using:
 
    ```bash
    python -m mkdocs build --strict
    ```
 
-5. Installs the root workspace dependencies (so `wrangler` is available via `npx`).
-6. Deploys the generated `site/` directory using Wrangler:
+5. installs the root workspace dependencies so the pinned Wrangler dependency is available;
+6. deploys the generated `site/` directory using:
 
    ```bash
    npx wrangler pages deploy site --project-name=sports-analytics-tool
    ```
 
-7. Smoke checks the deployed documentation home page to confirm the site is reachable and serving current content.
+7. smoke checks the public documentation home page.
 
-The workflow authenticates using the following repository Actions secrets, which must be configured under the Gitea repository settings and are never committed to the repository:
+The strict MkDocs build is intentionally present both in validation and deployment: validation proves
+the source before the quality decision, while deployment must create the generated `site/` artifact on
+its own runner before Wrangler can publish it.
+
+`.gitea/workflows/deploy-docs.yml` remains available as a manual `workflow_dispatch` recovery or
+redeployment path. It no longer runs independently on every docs push to `main`, preventing a docs
+publish from racing ahead of the shared validated-main quality decision.
+
+The workflow authenticates using repository Actions secrets and never commits Cloudflare credentials:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-The Cloudflare API token should be limited to the permissions required to deploy the `sports-analytics-tool` Pages project.
+The Cloudflare API token should be limited to the permissions required to deploy the
+`sports-analytics-tool` Pages project.
 
-Manual deployment using the steps above remains available as a fallback and for local verification before opening a Pull Request.
+Manual Wrangler deployment using the commands above remains a local/fallback option when required.

@@ -25,6 +25,8 @@ jobs:
       openapi: ${{ steps.plan.outputs.openapi }}
       coverage: ${{ steps.plan.outputs.coverage }}
       deployFrontend: ${{ steps.plan.outputs.deployFrontend }}
+      deployBackend: ${{ steps.plan.outputs.deployBackend }}
+      deployDocs: ${{ steps.plan.outputs.deployDocs }}
       needsNpm: ${{ steps.plan.outputs.needsNpm }}
 
     steps:
@@ -347,3 +349,146 @@ jobs:
           "deployed frontend"
           "$FRONTEND_URL"
           "<title>Stat'sTheGame</title>"
+  deploy_backend:
+    needs:
+      - plan
+      - quality
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.deployBackend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
+
+    steps:
+      - name: Check out validated main commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root workspace dependencies
+        run: npm ci
+
+      - name: Validate deployment secret
+        env:
+          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+        run: |
+          if [ -z "$AZURE_BACKEND_PUBLISH_PROFILE" ]; then
+            echo "::error::Required Gitea secret AZURE_BACKEND_PUBLISH_PROFILE is not configured."
+            exit 1
+          fi
+
+      - name: Build backend deployment bundle
+        run: npm run build --workspace=@sport-analytics/backend
+
+      - name: Prepare backend deployment artifact
+        run: npm run deploy:prepare:backend
+
+      - name: Smoke check backend deployment artifact
+        run: node scripts/smoke-check-backend-artifact.mjs
+
+      - name: Deploy backend artifact to Azure
+        env:
+          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+        run: python3 scripts/deploy-backend-azure.py
+
+      - name: Smoke check deployed backend health
+        env:
+          SMOKE_CHECK_ATTEMPTS: 18
+          SMOKE_CHECK_DELAY_MS: 10000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed backend health"
+          "$BACKEND_URL/api/v1/health"
+          "sport-analytics-api"
+
+      - name: Smoke check deployed database access
+        env:
+          SMOKE_CHECK_ATTEMPTS: 6
+          SMOKE_CHECK_DELAY_MS: 5000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed backend database access"
+          "$BACKEND_URL/api/v1/competitions?limit=1"
+          "pagination"
+
+  deploy_docs:
+    needs:
+      - plan
+      - quality
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.deployDocs == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DOCS_URL: https://sports-analytics-tool.pages.dev
+      CLOUDFLARE_PROJECT_NAME: sports-analytics-tool
+
+    steps:
+      - name: Check out validated main commit
+        uses: actions/checkout@v4
+
+      - name: Validate deployment secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Required Gitea secret CLOUDFLARE_API_TOKEN is not configured."
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Required Gitea secret CLOUDFLARE_ACCOUNT_ID is not configured."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install documentation dependencies
+        run: python -m pip install -r requirements-docs.txt
+
+      - name: Build documentation strictly
+        run: python -m mkdocs build --strict
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root workspace dependencies
+        run: npm ci
+
+      - name: Deploy documentation to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy site --project-name=$CLOUDFLARE_PROJECT_NAME
+
+      - name: Smoke check deployed documentation site
+        env:
+          SMOKE_CHECK_ATTEMPTS: 12
+          SMOKE_CHECK_DELAY_MS: 10000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed documentation site"
+          "$DOCS_URL/"
+          "Sport Analytics Tool"
