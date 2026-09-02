@@ -36,8 +36,8 @@ Session records follow the
 [user-testing evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/README.md)
 and the [session template](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/session-template.md).
 
-| Date | Session |
-| --- | --- |
+| Date        | Session                                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 23 Aug 2026 | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md) |
 
 Further Sprint 2 formal user-testing sessions will be added to this table as they are produced.
