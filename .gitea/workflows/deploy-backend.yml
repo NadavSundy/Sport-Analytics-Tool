@@ -212,7 +212,7 @@ jobs:
               sys.exit(1)
 
           deployment_url = (
-              f"https://{host}/api/publish?type=zip"
+              f"https://{host}/api/zipdeploy"
           )
 
           credentials = base64.b64encode(
