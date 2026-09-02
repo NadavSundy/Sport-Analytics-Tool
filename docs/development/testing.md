@@ -1,8 +1,8 @@
 # Testing
 
 The repository keeps fast application tests and PostgreSQL integration tests in separate suites.
-The normal repository quality gate remains database-independent, while CI runs the database suite
-as its own required step.
+The normal repository quality gate remains database-independent, while hosted CI runs the database
+suite as a separate required lane only when the change plan identifies a persisted-data risk.
 
 ## Quick start
 
@@ -14,13 +14,13 @@ npm run hygiene
 npm run check
 ```
 
-`npm run hygiene` is the local monorepo-maintenance gate. It runs Knip to detect unused files,
+`npm run hygiene` is the monorepo-maintenance gate. It runs Knip to detect unused files,
 dependencies, exports and types, syncpack to enforce consistent dependency versions across npm
 workspaces, and dependency-cruiser to detect circular dependencies and inappropriate source imports
 across the frontend, backend and shared-contract boundaries. Use `npm run hygiene:knip`,
 `npm run hygiene:dependencies` or `npm run hygiene:architecture` to run an individual validator.
-The hygiene gate remains separate from `npm run check`, so adding it to remote automation can be
-reviewed independently.
+The hygiene gate remains separate from `npm run check` locally, but hosted Pull Request CI now runs it
+automatically for application, shared-contract, dependency, configuration and full-validation changes.
 
 Run the complete backend test workflow with the default disposable PostgreSQL runtime:
 
@@ -97,6 +97,29 @@ When `DATABASE_URL_TEST` is supplied, it must pass the safety checks and be reac
 fails rather than falling back to another database. CI provisions its own PostgreSQL 16 service,
 supplies that connection directly, and runs `npm run test:database` as an explicit step. Set
 `DATABASE_TEST_VERBOSE=1` only when diagnostics from the default embedded server are needed.
+
+## Change-aware hosted CI
+
+The required Gitea Pull Request status remains `Sport Analytics CI / quality`. CI first classifies
+the changed paths, then runs only the validation that can be affected by those changes. The
+PostgreSQL lane starts in parallel with normal validation when it is required, so a full backend/data
+change can use both university-hosted runners rather than waiting for one long serial pipeline.
+
+Lightweight evidence changes can skip the npm-based validation job entirely after the planner has
+checked the required repository structure. Unknown paths, root dependency changes and CI
+configuration changes deliberately fall back to full Pull Request application validation. A manual
+`workflow_dispatch` always selects full validation.
+
+Frontend unit tests run with `NODE_ENV=test`; only the production frontend build and Playwright
+browser checks run with `NODE_ENV=production`. This keeps React Testing Library on the React build
+that supports `act(...)` while still testing the production browser bundle.
+
+Coverage does not currently enforce a repository-wide threshold and duplicates already-executed unit
+suites. It therefore runs for relevant pushes to `main` and manual full validation rather than
+duplicating work on every Pull Request.
+
+The detailed routing matrix, job graph, branch-protection contract, runner policy, failure semantics
+and local parity commands are documented in [CI/CD and quality gates](ci-cd.md).
 
 ## Deployment workflow helper coverage
 
