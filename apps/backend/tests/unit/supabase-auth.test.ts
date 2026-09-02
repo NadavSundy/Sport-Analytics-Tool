@@ -1,24 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { createClientMock, deleteUserMock } = vi.hoisted(() => ({
+const { createClientMock, deleteUserMock, getUserByIdMock } = vi.hoisted(() => ({
   createClientMock: vi.fn(),
   deleteUserMock: vi.fn(),
+  getUserByIdMock: vi.fn(),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: createClientMock,
 }));
 
-import { createSupabaseAdminUserDeleter } from '../../src/auth/supabase-auth';
+import {
+  createSupabaseAdminUserDeleter,
+  createSupabaseAdminUserEmailReader,
+} from '../../src/auth/supabase-auth';
 
 describe('Supabase Auth administration', () => {
   beforeEach(() => {
     createClientMock.mockReset();
     deleteUserMock.mockReset();
+    getUserByIdMock.mockReset();
     createClientMock.mockReturnValue({
       auth: {
         admin: {
           deleteUser: deleteUserMock,
+          getUserById: getUserByIdMock,
         },
       },
     });
@@ -75,5 +81,19 @@ describe('Supabase Auth administration', () => {
     await expect(deleteAuthUser('auth-user-42')).rejects.toThrow(
       'Supabase Auth administrative deletion failed',
     );
+  });
+
+  it('reads only an email through the server-only provider client', async () => {
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email: 'contributor@example.com', access_token: 'must-not-leak' } },
+      error: null,
+    });
+    const readAuthUserEmail = createSupabaseAdminUserEmailReader({
+      SUPABASE_URL: 'https://test-project.supabase.co',
+      SUPABASE_SECRET_KEY: 'test-server-only-secret-key',
+    });
+
+    await expect(readAuthUserEmail('auth-user-42')).resolves.toBe('contributor@example.com');
+    expect(getUserByIdMock).toHaveBeenCalledWith('auth-user-42');
   });
 });

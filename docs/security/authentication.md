@@ -480,8 +480,10 @@ rationale.
 
 Normal token verification uses `SUPABASE_PUBLISHABLE_KEY`. The backend creates a separate,
 non-persistent Supabase Admin client only when the optional server-only `SUPABASE_SECRET_KEY` is
-configured. Without that secret, `DELETE /api/v1/account` returns `501
-ACCOUNT_DELETION_UNAVAILABLE` before the account-deletion state machine changes application data;
+configured. This client supports account deletion and the administrator-only user-management
+email lookup; it returns the email field only and never passes provider user objects, credentials,
+or tokens to the application response. Without that secret, `DELETE /api/v1/account` returns `501
+ACCOUNT_DELETION_UNAVAILABLE` and `GET /api/v1/admin/users` returns a controlled server error;
 backend startup and unrelated routes are unaffected.
 
 The endpoint accepts no target account ID, validates the exact `DELETE` confirmation, and implements

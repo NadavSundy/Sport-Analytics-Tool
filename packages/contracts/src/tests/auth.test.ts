@@ -5,6 +5,7 @@ import {
   accountDeletionResponseSchema,
   APPLICATION_ROLES,
   administratorSubmitterAccessUpdateSchema,
+  administratorRoleUpdateSchema,
   administratorUserManagementResponseSchema,
   applicationRoleSchema,
   currentUserProfileResponseSchema,
@@ -34,6 +35,7 @@ describe('administrator user-management contracts', () => {
           users: [
             {
               id: '42',
+              email: 'contributor@example.com',
               displayName: 'Contributor',
               role: 'submitter',
               approvalState: 'approved',
@@ -92,6 +94,11 @@ describe('administrator user-management contracts', () => {
         competitionIds: [],
       }).success,
     ).toBe(true);
+  });
+
+  test('accepts only supported application roles for administrator role changes', () => {
+    expect(administratorRoleUpdateSchema.parse({ role: 'admin' })).toEqual({ role: 'admin' });
+    expect(administratorRoleUpdateSchema.safeParse({ role: 'owner' }).success).toBe(false);
   });
 });
 

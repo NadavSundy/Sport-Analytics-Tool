@@ -90,6 +90,7 @@ export const administratorAuditActorSchema = z
 export const administratorManagedUserSchema = z
   .object({
     id: apiIdentifierSchema,
+    email: z.string().email(),
     displayName: z.string().min(1).nullable(),
     role: applicationRoleSchema,
     approvalState: submitterApprovalStateSchema,
@@ -158,6 +159,12 @@ export const administratorSubmitterAccessResponseSchema = z
   })
   .strict();
 
+export const administratorRoleUpdateSchema = z
+  .object({
+    role: applicationRoleSchema,
+  })
+  .strict();
+
 export type ApplicationRole = z.infer<typeof applicationRoleSchema>;
 /** @deprecated Request-workflow state only. Use ApplicationRole for authorization. */
 export type SubmitterApprovalState = z.infer<typeof submitterApprovalStateSchema>;
@@ -179,3 +186,4 @@ export type AdministratorSubmitterAccessUpdate = z.infer<
 export type AdministratorSubmitterAccessResponse = z.infer<
   typeof administratorSubmitterAccessResponseSchema
 >;
+export type AdministratorRoleUpdate = z.infer<typeof administratorRoleUpdateSchema>;

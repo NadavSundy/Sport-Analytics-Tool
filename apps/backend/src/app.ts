@@ -11,6 +11,7 @@ import {
 } from './modules/weather/fixture-weather.service';
 import {
   createSupabaseAdminUserDeleter,
+  createSupabaseAdminUserEmailReader,
   createSupabaseTokenVerifier,
   type VerifyAccessToken,
 } from './auth/supabase-auth';
@@ -87,7 +88,17 @@ export function createApp(dependencies: AppDependencies = {}) {
           }),
         )
       : createUnavailableAccountDeletionService());
-  const adminService = dependencies.adminService ?? createAdminService();
+  const adminService =
+    dependencies.adminService ??
+    createAdminService(
+      undefined,
+      environment.SUPABASE_SECRET_KEY
+        ? createSupabaseAdminUserEmailReader({
+            SUPABASE_URL: environment.SUPABASE_URL,
+            SUPABASE_SECRET_KEY: environment.SUPABASE_SECRET_KEY,
+          })
+        : undefined,
+    );
   const weatherService = dependencies.weatherService ?? new WeatherService();
   const fixtureWeatherService =
     dependencies.fixtureWeatherService ?? createFixtureWeatherService(weatherService);

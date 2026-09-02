@@ -6,6 +6,7 @@ import { requireAdministrator } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import {
   createAdminListUsersController,
+  createAdminUpdateRoleController,
   createAdminRejectSubmitterAccessRequestController,
   createAdminUpdateSubmitterAccessController,
 } from './admin.controller';
@@ -21,6 +22,12 @@ export function createAdminRouter(
   const authorize = requireAdministrator();
 
   router.get('/admin/users', authenticate, authorize, createAdminListUsersController(service));
+  router.patch(
+    '/admin/users/:userId/role',
+    authenticate,
+    authorize,
+    createAdminUpdateRoleController(service),
+  );
   router.patch(
     '/admin/users/:userId/submitter-access',
     authenticate,
