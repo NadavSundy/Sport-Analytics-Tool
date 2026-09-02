@@ -176,6 +176,12 @@ by inserting placeholder identifiers into `batch_item`. `batch.source_uri` is re
 opaque application object reference resolved by the backend object-store adapter, never a public or
 signed provider URL.
 
+The `stored_object` relation holds the provider-independent metadata for those private bytes:
+application object ID, owner, sanitised original filename, media type, byte size, SHA-256 checksum,
+server-generated storage key, provider version, expiry time, and retention state. Its row is
+non-deletable provenance. The expiry workflow deletes the raw provider object and records `expired`
+plus `deleted_at` without removing the metadata needed to interpret a retained batch.
+
 **Match structure.** `fixture`; `fixture_team`; `fixture_squad`;
 `fixture_official`; `innings`; `innings_powerplay`; `innings_absent`;
 `innings_miscounted_over`.
@@ -347,3 +353,4 @@ requested-competition description was updated with the assistance of Codex[GPT-5
 The issue #276 batch-staging description was added with the assistance of Codex[GPT-5].
 The issue #356 downstream reference and object-storage boundaries were documented with the
 assistance of Codex[GPT-5].
+The issue #358 stored-object schema was documented with the assistance of Codex[GPT-5].

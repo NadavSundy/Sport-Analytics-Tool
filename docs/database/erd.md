@@ -12,6 +12,7 @@ migrated, not a separate design document. Column detail is in
 erDiagram
     app_user ||--o{ submission : submits
     app_user ||--o{ batch : submits
+    app_user ||--o{ stored_object : owns
     competition ||--o{ batch : targets
     app_user ||--o{ submitter_competition_scope : receives
     competition ||--o{ submitter_competition_scope : grants
@@ -45,6 +46,12 @@ references have resolved; submitters do not enter these database keys. Unresolve
 associated with their batch through a downstream source-issue model rather than placeholder foreign
 keys. The batch source URI is an opaque application reference resolved through the private object
 store, not a public Azure location.
+
+`stored_object` permanently records the owner, sanitised original filename, media type, byte count,
+SHA-256 checksum, server-generated provider key, provider version and retention state for private
+payload bytes. Expiry changes its lifecycle state and deletes only the provider bytes; the metadata
+row cannot be deleted. A future batch receipt created by #277 stores the opaque application object
+identity in `batch.source_uri`, not the provider key.
 
 ## Match structure
 
@@ -105,3 +112,4 @@ The preceding document was generated with the assistance of Claude-Web[Claude Op
 application-account scope relationships and source-file cleanup were updated with the assistance of
 Codex[GPT-5.6 Sol]. The issue #276 batch relationships were added with the assistance of Codex[GPT-5].
 The issue #356 reference-resolution boundary was documented with the assistance of Codex[GPT-5].
+The issue #358 stored-object provenance relationship was added with the assistance of Codex[GPT-5].

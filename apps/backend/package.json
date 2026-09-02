@@ -33,6 +33,7 @@
     "db:test:seed": "cross-env NODE_ENV=test tsx scripts/seed-test-database.ts"
   },
   "dependencies": {
+    "@azure/storage-blob": "12.27.0",
     "@sport-analytics/contracts": "0.1.0",
     "@supabase/supabase-js": "^2.112.1",
     "cors": "^2.8.5",

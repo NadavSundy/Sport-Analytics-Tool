@@ -44,6 +44,11 @@ These services are approved targets under ADR-010 and ADR-011 but are not yet pr
 resource names, environment settings, health checks, deployment workflows, recovery exercises and
 cost evidence belong to the implementation issues that introduce them.
 
+The issue #358 private object-storage adapter, streaming safeguards and durable metadata are
+implemented in the backend. Provisioning and the batch receipt endpoint remain separate work. See
+the [private object-storage operations guide](object-storage-operations.md) for access, recovery and
+credential-rotation requirements.
+
 `API_VERSION`, `CORS_ALLOWED_ORIGINS` and `LOG_LEVEL` appear as reserved placeholders in the current backend example environment file but are not read by the current application runtime. In particular, deployed CORS configuration must use `CORS_ORIGINS` unless the application code is deliberately changed.
 
 Database credentials and other secrets are configured through Azure App Service and are never committed.
@@ -119,3 +124,5 @@ Azure supports redeploying a previous successful application package/workflow re
 The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol]
 and updated for the automated deployment checks with the assistance of Codex[GPT-5].
 The issue #356 Intermediate service boundary was documented with the assistance of Codex[GPT-5].
+The issue #358 object-storage implementation status was documented with the assistance of
+Codex[GPT-5].
