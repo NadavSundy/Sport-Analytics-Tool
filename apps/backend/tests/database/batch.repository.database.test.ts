@@ -19,12 +19,9 @@ interface TestRecords {
 const sourcePrefix = `batch-repository-test-${process.pid}`;
 const checksum = 'a'.repeat(64);
 
-async function batchMigrationSections(): Promise<{ down: string; up: string }> {
+async function migrationSections(filename: string): Promise<{ down: string; up: string }> {
   const migration = await readFile(
-    new URL(
-      '../../../../database/migrations/20260831100000000_batch-ingestion-models.sql',
-      import.meta.url,
-    ),
+    new URL(`../../../../database/migrations/${filename}`, import.meta.url),
     'utf8',
   );
   const downMarker = '-- Down Migration';
@@ -38,6 +35,14 @@ async function batchMigrationSections(): Promise<{ down: string; up: string }> {
     up: migration.slice(0, downMarkerIndex),
     down: migration.slice(downMarkerIndex + downMarker.length),
   };
+}
+
+function batchMigrationSections(): Promise<{ down: string; up: string }> {
+  return migrationSections('20260831100000000_batch-ingestion-models.sql');
+}
+
+function extendedBatchMigrationSections(): Promise<{ down: string; up: string }> {
+  return migrationSections('20260902120000000_extend-batch-persistence.sql');
 }
 
 describe.sequential('batch repository database integration', () => {
@@ -241,11 +246,12 @@ describe.sequential('batch repository database integration', () => {
     await pool.end();
   });
 
-  test('round-trips the batch migration in an isolated PostgreSQL schema', async () => {
+  test('round-trips the batch persistence migrations in an isolated PostgreSQL schema', async () => {
     const client = await databasePool().connect();
-    const schemaName = `issue276_roundtrip_${process.pid}`;
+    const schemaName = `issue359_roundtrip_${process.pid}`;
     const quotedSchemaName = `"${schemaName}"`;
-    const migration = await batchMigrationSections();
+    const batchMigration = await batchMigrationSections();
+    const extensionMigration = await extendedBatchMigrationSections();
 
     try {
       await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
@@ -256,14 +262,16 @@ describe.sequential('batch repository database integration', () => {
         CREATE TABLE innings (innings_id bigint PRIMARY KEY);
         CREATE TABLE delivery (delivery_id bigint PRIMARY KEY);
       `);
-      await client.query(migration.up);
+      await client.query(batchMigration.up);
+      await client.query(extensionMigration.up);
 
       const created = await client.query<{ relationName: string | null }>(
         `SELECT to_regclass('batch_checkpoint')::text AS "relationName"`,
       );
       expect(created.rows[0].relationName).toBe('batch_checkpoint');
 
-      await client.query(migration.down);
+      await client.query(extensionMigration.down);
+      await client.query(batchMigration.down);
       const removed = await client.query<{ relationName: string | null }>(
         `SELECT to_regclass('batch')::text AS "relationName"`,
       );
@@ -373,6 +381,112 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('retains package, resolution, validation, review and publication provenance', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-extended-provenance`,
+        packageVersion: '1.0',
+      });
+      expect(batch.packageVersion).toBe('1.0');
+
+      const [unresolvedItem, resolvedItem] = await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 0,
+          payload: { source: 'ambiguous' },
+          sourceIdentity: 'cricsheet:delivery:ambiguous-0',
+          sourceLocation: { file: 'fixtures.json', row: 2, field: 'deliveries[0]' },
+          referenceResolutionState: 'ambiguous',
+          resolvedReferences: { participantCandidates: ['player:1', 'player:2'] },
+        },
+        {
+          ordinal: 1,
+          inningsId: current.inningsId,
+          overNumber: 0,
+          positionInOver: 1,
+          payload: { source: 'resolved' },
+          sourceIdentity: 'cricsheet:delivery:resolved-1',
+          sourceLocation: { file: 'fixtures.json', row: 3, field: 'deliveries[1]' },
+          referenceResolutionState: 'resolved',
+          resolvedReferences: { innings: current.inningsId },
+        },
+      ]);
+
+      expect(unresolvedItem).toMatchObject({
+        inningsId: null,
+        sourceIdentity: 'cricsheet:delivery:ambiguous-0',
+        referenceResolutionState: 'ambiguous',
+        sourceLocation: { file: 'fixtures.json', row: 2, field: 'deliveries[0]' },
+      });
+      expect(resolvedItem).toMatchObject({
+        inningsId: current.inningsId,
+        referenceResolutionState: 'resolved',
+      });
+
+      const validation = {
+        batchId: batch.batchId,
+        batchItemId: unresolvedItem.batchItemId,
+        ruleCode: 'AMBIGUOUS_PARTICIPANT',
+        ruleVersion: '1.0',
+        severity: 'error' as const,
+        filePath: 'fixtures.json',
+        rowNumber: 2,
+        fieldPath: 'deliveries[0].striker',
+        message: 'Participant reference requires review.',
+      };
+      await repository.recordValidationResult(validation);
+      await repository.recordValidationResult(validation);
+      await repository.recordReviewDecision({
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decision: 'rejected',
+        reason: 'The participant cannot be resolved safely.',
+      });
+      await repository.linkPublishedDelivery(resolvedItem.batchItemId, current.deliveryId);
+
+      const provenance = await client.query<{
+        decision: string;
+        linkedItemId: string;
+        resultCount: string;
+        ruleCode: string;
+      }>(
+        `
+          SELECT
+            (SELECT count(*)::text FROM batch_validation_result WHERE batch_id = $1) AS "resultCount",
+            (SELECT rule_code FROM batch_validation_result WHERE batch_id = $1) AS "ruleCode",
+            (SELECT decision::text FROM batch_review_decision WHERE batch_id = $1) AS decision,
+            (SELECT source_batch_item_id::text FROM delivery WHERE delivery_id = $2) AS "linkedItemId"
+        `,
+        [batch.batchId, current.deliveryId],
+      );
+      expect(provenance.rows).toEqual([
+        {
+          resultCount: '1',
+          ruleCode: 'AMBIGUOUS_PARTICIPANT',
+          decision: 'rejected',
+          linkedItemId: resolvedItem.batchItemId,
+        },
+      ]);
+
+      await expect(
+        repository.insertBatchItems(batch.batchId, [
+          {
+            ordinal: 2,
+            overNumber: 0,
+            positionInOver: 2,
+            payload: {},
+            sourceIdentity: 'cricsheet:delivery:ambiguous-0',
+          },
+        ]),
+      ).rejects.toMatchObject({ code: 'DATABASE_CONFLICT' });
+    });
+  });
+
   test.each([
     [
       'batch',
@@ -445,6 +559,29 @@ describe.sequential('batch repository database integration', () => {
           [current.accountId, current.competitionId, `${sourcePrefix}-partial-source`, checksum],
         ),
       ).rejects.toMatchObject({ code: 'DATABASE_CONSTRAINT_ERROR' });
+    });
+  });
+
+  test('rejects invalid extended batch-persistence values', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-invalid-extended-values`,
+      });
+
+      await expect(
+        client.query(
+          `
+            INSERT INTO batch_item (
+              batch_id, ordinal, over_number, position_in_over, payload, source_location
+            ) VALUES ($1, 0, 0, 0, '{}', '[]')
+          `,
+          [batch.batchId],
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
     });
   });
 
@@ -567,7 +704,7 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
-  test.each(['batch', 'batch item'])(
+  test.each(['batch', 'batch item', 'validation result', 'review decision'])(
     'prevents deletion of %s provenance records',
     async (target) => {
       await withRolledBackTransaction(async (client) => {
@@ -579,8 +716,8 @@ describe.sequential('batch repository database integration', () => {
           idempotencyKey: `${sourcePrefix}-no-delete`,
         });
 
-        if (target === 'batch item') {
-          await repository.insertBatchItems(batch.batchId, [
+        if (target !== 'batch') {
+          const [item] = await repository.insertBatchItems(batch.batchId, [
             {
               ordinal: 0,
               inningsId: current.inningsId,
@@ -589,13 +726,35 @@ describe.sequential('batch repository database integration', () => {
               payload: {},
             },
           ]);
+
+          if (target === 'validation result') {
+            await repository.recordValidationResult({
+              batchId: batch.batchId,
+              batchItemId: item.batchItemId,
+              ruleCode: 'INVALID_VALUE',
+              ruleVersion: '1.0',
+              severity: 'error',
+              message: 'Example validation result.',
+            });
+          }
+          if (target === 'review decision') {
+            await repository.recordReviewDecision({
+              batchId: batch.batchId,
+              actorId: current.accountId,
+              decision: 'approved',
+            });
+          }
         }
 
         await expect(
           client.query(
             target === 'batch'
               ? 'DELETE FROM batch WHERE batch_id = $1'
-              : 'DELETE FROM batch_item WHERE batch_id = $1',
+              : target === 'batch item'
+                ? 'DELETE FROM batch_item WHERE batch_id = $1'
+                : target === 'validation result'
+                  ? 'DELETE FROM batch_validation_result WHERE batch_id = $1'
+                  : 'DELETE FROM batch_review_decision WHERE batch_id = $1',
             [batch.batchId],
           ),
         ).rejects.toMatchObject({

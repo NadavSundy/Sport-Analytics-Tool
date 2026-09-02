@@ -15,6 +15,7 @@ type BatchState =
 type BatchItemState = 'pending' | 'accepted' | 'rejected' | 'published' | 'duplicate_skipped';
 
 type BatchCheckpointPhase = 'validating' | 'publishing';
+type BatchReferenceResolutionState = 'unresolved' | 'resolved' | 'ambiguous' | 'invalid';
 type BatchValidationSeverity = 'error' | 'warning';
 type BatchReviewDecisionKind = 'approved' | 'rejected';
 
@@ -51,10 +52,14 @@ interface CreateBatchInput {
 
 interface InsertBatchItemInput {
   ordinal: number;
-  inningsId: string;
+  inningsId?: string | null;
   overNumber: number;
   positionInOver: number;
   payload: JsonValue;
+  sourceIdentity?: string | null;
+  sourceLocation?: JsonValue | null;
+  referenceResolutionState?: BatchReferenceResolutionState;
+  resolvedReferences?: JsonValue | null;
   state?: BatchItemState;
   rejectionCode?: string | null;
   rejectionDetail?: JsonValue | null;
@@ -65,10 +70,14 @@ interface BatchItemRecord {
   batchItemId: string;
   batchId: string;
   ordinal: number;
-  inningsId: string;
+  inningsId: string | null;
   overNumber: number;
   positionInOver: number;
   payload: JsonValue;
+  sourceIdentity: string | null;
+  sourceLocation: JsonValue | null;
+  referenceResolutionState: BatchReferenceResolutionState;
+  resolvedReferences: JsonValue | null;
   state: BatchItemState;
   rejectionCode: string | null;
   rejectionDetail: JsonValue | null;
@@ -185,6 +194,10 @@ const batchItemSelection = `
   over_number AS "overNumber",
   position_in_over AS "positionInOver",
   payload,
+  source_identity AS "sourceIdentity",
+  source_location AS "sourceLocation",
+  reference_resolution_state::text AS "referenceResolutionState",
+  resolved_references AS "resolvedReferences",
   state::text AS state,
   rejection_code AS "rejectionCode",
   rejection_detail AS "rejectionDetail",
@@ -309,10 +322,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         const first = values.length + 1;
         values.push(
           item.ordinal,
-          item.inningsId,
+          item.inningsId ?? null,
           item.overNumber,
           item.positionInOver,
           JSON.stringify(item.payload),
+          item.sourceIdentity ?? null,
+          item.sourceLocation === undefined || item.sourceLocation === null
+            ? null
+            : JSON.stringify(item.sourceLocation),
+          item.referenceResolutionState ?? 'resolved',
+          item.resolvedReferences === undefined || item.resolvedReferences === null
+            ? null
+            : JSON.stringify(item.resolvedReferences),
           item.state ?? 'pending',
           item.rejectionCode ?? null,
           item.rejectionDetail === undefined || item.rejectionDetail === null
@@ -328,10 +349,14 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           $${first + 2}::smallint,
           $${first + 3}::smallint,
           $${first + 4}::jsonb,
-          $${first + 5}::batch_item_state,
-          $${first + 6}::text,
-          $${first + 7}::jsonb,
-          $${first + 8}::bigint
+          $${first + 5}::text,
+          $${first + 6}::jsonb,
+          $${first + 7}::batch_reference_resolution_state,
+          $${first + 8}::jsonb,
+          $${first + 9}::batch_item_state,
+          $${first + 10}::text,
+          $${first + 11}::jsonb,
+          $${first + 12}::bigint
         )`;
       });
 
@@ -345,6 +370,10 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             over_number,
             position_in_over,
             payload,
+            source_identity,
+            source_location,
+            reference_resolution_state,
+            resolved_references,
             state,
             rejection_code,
             rejection_detail,
@@ -464,11 +493,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       await executeQuery(
         database(),
         `
+          WITH linked_item AS (
+            UPDATE batch_item
+            SET published_event_id = $2::bigint
+            WHERE batch_item_id = $1::bigint
+            RETURNING batch_item_id
+          )
           UPDATE delivery
-          SET source_batch_item_id = $2::bigint
-          WHERE delivery_id = $1::bigint
+          SET source_batch_item_id = linked_item.batch_item_id
+          FROM linked_item
+          WHERE delivery.delivery_id = $2::bigint
         `,
-        [deliveryId, batchItemId],
+        [batchItemId, deliveryId],
       );
     },
   };

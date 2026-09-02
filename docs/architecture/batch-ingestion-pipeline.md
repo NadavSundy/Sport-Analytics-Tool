@@ -257,7 +257,9 @@ _Satisfies acceptance criterion 3._
 
 ### 6.1 Relations
 
-Issue #276 introduced the following three relations.
+Issue #276 introduced the batch, item, and checkpoint foundation. Issue #359 extends it with the
+package, resolution, validation, review, and publication-provenance storage required by the later
+pipeline work.
 
 **`batch`** — one row per submitted payload.
 
@@ -267,6 +269,7 @@ Issue #276 introduced the following three relations.
 | `submitter_id`             | The authenticated submitter.         |
 | `competition_id`           | The declared target competition.     |
 | `idempotency_key`          | Submitter-supplied. See section 8.2. |
+| `package_version`          | Submitted package contract version.  |
 | `source_checksum`          | SHA-256 of the payload.              |
 | `source_uri`               | Opaque application object reference. |
 | `source_size_bytes`        | Payload size.                        |
@@ -277,27 +280,34 @@ Issue #276 introduced the following three relations.
 
 **`batch_item`** — one row per expanded event.
 
-| Column                                          | Purpose                                                |
-| ----------------------------------------------- | ------------------------------------------------------ |
-| `id`                                            | Primary key.                                           |
-| `batch_id`                                      | Owning batch.                                          |
-| `ordinal`                                       | Position within the payload. Defines processing order. |
-| `innings_id`, `over_number`, `position_in_over` | The natural key. See section 8.3.                      |
-| `payload`                                       | Canonical event normalized from the submitted item.    |
-| `state`                                         | Section 4.2.                                           |
-| `rejection_code`, `rejection_detail`            | Rejection reason, machine- and human-readable.         |
-| `published_event_id`                            | Nullable reference to the created event.               |
+| Column                                              | Purpose                                                  |
+| --------------------------------------------------- | -------------------------------------------------------- |
+| `id`                                                | Primary key.                                             |
+| `batch_id`                                          | Owning batch.                                            |
+| `ordinal`                                           | Position within the payload. Defines processing order.   |
+| `source_identity`, `source_location`                | Stable source identity and normalised original location. |
+| `reference_resolution_state`, `resolved_references` | Resolution outcome and evidence; may require review.     |
+| `innings_id`, `over_number`, `position_in_over`     | The natural key when innings context resolves.           |
+| `payload`                                           | Canonical event normalized from the submitted item.      |
+| `state`                                             | Section 4.2.                                             |
+| `rejection_code`, `rejection_detail`                | Rejection reason, machine- and human-readable.           |
+| `published_event_id`                                | Nullable reference to the created event.                 |
 
-**`batch_checkpoint`** — one row per batch.
+**`batch_checkpoint`** — one row per batch phase.
 
-| Column             | Purpose                                          |
-| ------------------ | ------------------------------------------------ |
-| `batch_id`         | Primary key.                                     |
-| `phase`            | `validating` or `publishing`.                    |
-| `last_ordinal`     | Highest ordinal durably completed in this phase. |
-| `lease_owner`      | Worker identity holding the batch.               |
-| `lease_expires_at` | Lease expiry. See section 9.4.                   |
-| `attempt_count`    | Retry budget consumption. See section 11.        |
+| Column              | Purpose                                          |
+| ------------------- | ------------------------------------------------ |
+| `batch_id`, `phase` | Composite primary key.                           |
+| `phase`             | `validating` or `publishing`.                    |
+| `last_ordinal`      | Highest ordinal durably completed in this phase. |
+| `lease_owner`       | Worker identity holding the batch.               |
+| `lease_expires_at`  | Lease expiry. See section 9.4.                   |
+| `attempt_count`     | Retry budget consumption. See section 11.        |
+
+**`batch_validation_result`** retains the rule code and version, severity, source file/row/field,
+human-readable message, and the staged item or source ordinal. **`batch_review_decision`** records
+the reviewer, decision, reason, and timestamp. A published `delivery` records its `source_batch_item_id`
+in addition to the staged item's optional event link.
 
 ### 6.2 Constraints
 
@@ -315,9 +325,9 @@ The cross-event rules currently enforced in `submissionRequestSchema.superRefine
 
 Index selection must account for the size of the `delivery` relation, which at 705 MB already carries 319 MB of indexes. Indexes on `batch_item` are to be added only where a defined query requires them, and the set reviewed under #290 rather than expanded speculatively here.
 
-### 6.4 Implementation record (#276)
+### 6.4 Implementation record (#276 and #359)
 
-Migration `20260831100000000_batch-ingestion-models` implements these three relations with
+Migration `20260831100000000_batch-ingestion-models` implements the foundation with
 PostgreSQL enum types, named checks and foreign keys. The two batch-item uniqueness constraints
 also support the repository's ordered per-batch reads; no speculative secondary item indexes were
 added. The required live-delivery constraint was already present as the partial unique index
@@ -325,18 +335,20 @@ added. The required live-delivery constraint was already present as the partial 
 
 Published items reference `delivery`, whose required `submission_id` continues the established
 publication provenance chain. Batch and batch-item deletion are rejected by the database;
-supersession retains and links records instead.
+supersession retains and links records instead. Migration
+`20260902120000000_extend-batch-persistence` adds package version, resolution evidence,
+validation results, review decisions, independent checkpoint keys, and explicit delivery source-item
+links without adding worker or publication behaviour.
 
 The implemented `batch.competition_id` is a canonical foreign key, but it is not a submitter-facing
 input. The receipt API resolves the human-selected competition or namespaced competition reference,
 then verifies the authenticated account's scope before creating the batch.
 
-The implemented `batch_item.innings_id` is non-null, so `batch_item` owns only parsed events whose
-fixture and innings references have resolved. A downstream validation migration must retain package
-records that fail parsing or reference resolution in a separate batch-source issue relation keyed by
-batch and source ordinal/path. It must not insert placeholder identifiers or weaken the event natural
-key. After resolution, the canonical event is inserted into `batch_item` and passes the shared event
-schema.
+`batch_item.innings_id` is nullable while a source reference is unresolved, ambiguous, or invalid.
+Its source identity, normalised location, resolution state, and reference evidence retain the
+actionable record without a placeholder canonical identifier. Once resolved, the canonical innings
+foreign key and existing natural-key constraint apply; the later workflow still performs shared-event
+validation and publication.
 
 The implemented `batch.source_uri` must hold an opaque application object reference issued by the
 `ObjectStore` boundary, never a public URL, SAS token, user path, container name or bare Blob key.

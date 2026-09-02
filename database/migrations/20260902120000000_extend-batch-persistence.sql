@@ -25,6 +25,7 @@ COMMENT ON COLUMN batch.package_version IS
     'Version declared by the received batch package; independent from the delivery-event schema version.';
 
 ALTER TABLE batch_item
+    ALTER COLUMN innings_id DROP NOT NULL,
     ADD COLUMN source_identity text,
     ADD COLUMN source_location jsonb,
     ADD COLUMN reference_resolution_state batch_reference_resolution_state NOT NULL DEFAULT 'resolved',

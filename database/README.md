@@ -168,10 +168,17 @@ revoked viewer may request access again, but the history remains available to fl
 revocation to administrators. Pending requests and currently authorised submitters cannot create
 duplicates.
 
+The batch-ingestion foundation retains receipts, staged items, validation and review provenance,
+independent worker checkpoints, and source links to published delivery revisions. The executable
+additive extension is `20260902120000000_extend-batch-persistence.sql`; see
+[Batch persistence extensions](../docs/database/batch-persistence.md) for the gap analysis,
+constraints, and verification workflow.
+
 ## Related documentation
 
 - [Database overview](../docs/database/overview.md)
 - [Database schema](../docs/database/schema.md)
+- [Batch persistence extensions](../docs/database/batch-persistence.md)
 - [Database ERD](../docs/database/erd.md)
 - [Database access and connection](../docs/database/access.md)
 - [Testing guide](../docs/development/testing.md)
@@ -182,4 +189,5 @@ duplicates.
 The preceding document was reviewed, expanded and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol]. The issue #255 requested-competition persistence behavior and issue #256
 access-history lifecycle, and issue #265 file-submission provenance, were documented with the
+assistance of Codex[GPT-5]. The Issue #359 batch-persistence extension was documented with the
 assistance of Codex[GPT-5].
