@@ -13,26 +13,28 @@ flowchart LR
     Frontend -->|JSON over HTTPS| API
     API -->|SQL through server-side driver| DB[(PostgreSQL / Supabase-hosted Postgres)]
     API -->|Server-side request| External[Relevant external API]
-    API -.->|Transactional outbox| Queue[[Future Azure Service Bus]]
-    Queue -.-> Worker[Future background worker]
+    API -.->|Transactional outbox| Queue[[Approved Azure Service Bus target]]
+    Queue -.-> Worker[Approved Azure Container App worker target]
     Worker --> DB
-    API -.-> Files[(Future Azure Blob Storage)]
+    API -.-> Files[(Approved private Azure Blob Storage target)]
     API -.-> Cache[(Future Azure Managed Redis)]
     Docs[Public MkDocs site] -. documents .-> Frontend
     Docs -. documents .-> API
     Docs -. documents .-> DB
 ```
 
-A background worker is shown as a future deployment boundary for batch imports, large exports, and
-expensive derivations. It should only be introduced when asynchronous work is implemented; it is not
-required for the initial scaffold. The same adoption gate applies to object storage and caching.
+A background worker is shown as the approved, not-yet-provisioned deployment boundary for batch
+imports, large exports, and expensive derivations. Issue #356 accepted Azure Container Apps, a
+PostgreSQL transactional outbox and Azure Service Bus Standard for this boundary, and private Azure
+Blob Storage for retained batch bytes. Caching retains its separate measured adoption gate.
 
-## Planned advanced-service decisions
+## Later-tier service decisions
 
-Issue #55 records the initial recommendations for later-tier services. These ADRs are proposals
-pending project-team review; they do not claim that the services are provisioned or implemented.
+Issue #55 records the initial recommendations for later-tier services. Issue #356 accepted ADR-010
+and ADR-011 for Intermediate implementation. ADR-009 and ADR-012 remain proposals, and no ADR status
+claims that its service is already provisioned or implemented.
 
-| Concern         | Proposed direction                                                                                                                                       | Decision record                                                                                                                                       |
+| Concern         | Direction                                                                                                                                                | Decision record                                                                                                                                       |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Caching         | Measure and optimise PostgreSQL first; use versioned cache-aside reads in Azure Managed Redis only for demonstrated hot paths.                           | [ADR-009](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-009-cache-and-invalidation.md)          |
 | Background jobs | Commit domain state and a PostgreSQL outbox atomically, relay identifiers through Azure Service Bus Standard, and process them with idempotent workers.  | [ADR-010](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-010-background-jobs-and-workers.md)     |
@@ -108,4 +110,5 @@ A monorepo simplifies shared tooling, atomic Pull Requests, and contracts while 
 ## AI Declaration
 
 The issue #55 advanced-service decision summary was drafted and reconciled with the repository with
-the assistance of Codex[GPT-5].
+the assistance of Codex[GPT-5]. The issue #356 adoption status was documented with the assistance of
+Codex[GPT-5].

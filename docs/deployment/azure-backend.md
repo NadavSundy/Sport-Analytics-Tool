@@ -28,6 +28,22 @@ Development deployment
 | `SUPABASE_SECRET_KEY`      | Required for issue #66      | Server-only Supabase key used by Auth Admin account deletion.               |
 | `DATABASE_URL`             | Used                        | PostgreSQL session-pooler connection string.                                |
 
+## Approved Intermediate service boundary
+
+Batch ingestion will keep the Express API on Azure App Service. The API will stream source bytes to
+private Azure Blob Storage and commit batch/job metadata through PostgreSQL. A transactional outbox
+relay will deliver job identifiers to Azure Service Bus Standard, and a separately deployed Node.js
+worker in Azure Container Apps will process them.
+
+The API and worker will use managed identity and least-privilege Azure RBAC for Blob Storage and
+Service Bus where available. Provider connection strings or account keys, if temporarily required
+during deployment, remain server-only settings and must never enter frontend configuration or the
+deployment artifact.
+
+These services are approved targets under ADR-010 and ADR-011 but are not yet provisioned. Their
+resource names, environment settings, health checks, deployment workflows, recovery exercises and
+cost evidence belong to the implementation issues that introduce them.
+
 `API_VERSION`, `CORS_ALLOWED_ORIGINS` and `LOG_LEVEL` appear as reserved placeholders in the current backend example environment file but are not read by the current application runtime. In particular, deployed CORS configuration must use `CORS_ORIGINS` unless the application code is deliberately changed.
 
 Database credentials and other secrets are configured through Azure App Service and are never committed.
@@ -91,3 +107,4 @@ Azure supports redeploying a previous successful application package/workflow re
 
 The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol]
 and updated for the automated deployment checks with the assistance of Codex[GPT-5].
+The issue #356 Intermediate service boundary was documented with the assistance of Codex[GPT-5].

@@ -2,7 +2,7 @@
 
 **Issue:** #275 — Design the batch staging, file storage and processing pipeline
 **Roadmap mapping:** S2-18 — Intermediate batch-pipeline foundation
-**Status:** Draft for review
+**Status:** Approved for implementation; remaining decisions resolved by #356 on 2 September 2026
 **Author:** B. Swartz
 
 ---
@@ -15,7 +15,8 @@ This document defines the implementation design for batch ingestion: the staging
 
 ### 1.2 Scope
 
-This document defines design intent only. It contains no implementation. The issues listed in section 13 carry the implementation.
+This document defines the approved design intent. Issue #276 has implemented the database staging
+foundation; the remaining issues listed in section 13 carry the application and infrastructure work.
 
 ### 1.3 Out of scope
 
@@ -56,7 +57,10 @@ Batch ingestion requires the submission API's trust model at the corpus importer
 
 The architecture overview records a background worker as a future deployment boundary for batch imports, to be introduced when asynchronous work is implemented. This design activates that boundary.
 
-The architecture overview records **no object storage component**, and #265 introduced none: `multer.memoryStorage()` holds the payload in application heap. Section 5 introduces object storage. The overview and its diagram must be amended, and the choice recorded as a decision record.
+Issue #265 introduced no object-storage component: `multer.memoryStorage()` holds the payload in
+application heap. Section 5 activates the private Azure Blob Storage boundary accepted in ADR-011.
+ADR-010 similarly fixes the worker boundary as an Azure Container App consuming identifiers from
+Azure Service Bus Standard through a PostgreSQL transactional outbox.
 
 ### 2.5 Measured constraints
 
@@ -103,13 +107,37 @@ Sharing `submissionEventSchema` also means that #282, which implements impossibl
 
 ### 3.4 Consequence
 
-The submission contract provides no path for creating fixtures or innings. A whole-season or back-catalogue upload must create both.
-
-This decision therefore makes the absence of a fixture and innings submission path a **blocking dependency** of #277, not an adjacent gap. It is raised as a new issue in section 13.3 and is drawn to the reviewer's attention.
+The direct-submission contract provides no path for creating fixtures or innings and is not extended
+to do so. Batch receipt stores the original package before reference resolution, so #277 does not
+require canonical fixture or innings identifiers at upload time. During expansion, the batch worker
+resolves the human-facing references described in section 3.6. Unresolved or proposed match
+structure remains staged until the later review and publication workflow makes an authorised
+decision.
 
 ### 3.5 Rejected alternative
 
 A parallel batch-only validation of individual events was considered and rejected. It would unblock #277 without resolving the fixture and innings gap, at the cost of a second definition of a valid delivery. The schedule benefit does not justify a permanent divergence in the platform's correctness guarantees.
+
+### 3.6 Human-facing packages and reference resolution
+
+Issue #356 approves JSON, CSV and NDJSON as the first batch package formats. Archive formats remain
+excluded. Every format carries a batch envelope version separately from the shared event schema
+version. Format-specific parsing produces one canonical staged representation before reference and
+event validation.
+
+Submitters do not provide PostgreSQL identifiers. A reference may contain a stable source identity
+as `{ namespace, entityType, value }`, where the namespace identifies its owner, for example
+`cricsheet`. Identifiers are compared only within the same namespace and entity type. Where a source
+has no stable identifier, the package uses human-readable competition, season, fixture date, teams,
+innings ordinal and participant names. Resolution is scoped from competition to fixture to innings
+and participant; names are never treated as globally unique.
+
+Exact source matches may resolve automatically. A unique exact alias in the resolved fixture context
+may resolve automatically and is recorded. Missing or ambiguous references become actionable staged
+validation results; the platform must not fuzzy-match or create canonical records silently. Later
+review can select an existing record or approve a proposed canonical record, retaining the original
+reference and the resolution decision for provenance. See
+[`docs/data/batch-submission-packages.md`](../data/batch-submission-packages.md).
 
 ---
 
@@ -195,11 +223,12 @@ Object storage holds the evidential record of what a submitter actually sent. It
 6. The stored object key must not be derived from a submitter-supplied filename.
 7. The rate limit must be applied before the multipart parser, as it already is on `POST /submissions/uploads`.
 
-### 5.4 Proposed limits
+### 5.4 Approved limits
 
-> **Open decision D3.** These figures are proposed and require confirmation against a measured season export.
+The following limits were approved by Nadav Sundy under issue #356 on 2 September 2026. Their owner
+is the batch-ingestion architecture; changing them requires a measured follow-up decision.
 
-| Limit                                         | Proposed value                                         | Basis                                                                                                                                                         |
+| Limit                                         | Approved value                                         | Basis                                                                                                                                                         |
 | --------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Maximum payload size                          | 50 MB                                                  | A 70-match season is of the order of 16,000 events; at CSV row sizes observed in the existing 21-column format this is single-digit megabytes, with headroom. |
 | Maximum items per batch                       | 50,000                                                 | Approximately three seasons.                                                                                                                                  |
@@ -208,13 +237,17 @@ Object storage holds the evidential record of what a submitter actually sent. It
 
 Archive formats are excluded from the first implementation. An archive requires decompression-bomb defences that are not justified before a submitter has requested the capability.
 
-### 5.5 Open decision D1: storage provider
+### 5.5 Approved storage provider
 
-> **Open decision D1.** No object storage component exists in the architecture or the deployment. A provider must be selected and a decision record written before #277 can begin.
->
-> Candidates are Azure Blob Storage, consistent with the existing deployment target recorded in `adr/0003-azure-hosting.md`, and Supabase Storage, consistent with the existing database host. The choice must account for the platform's split between two Supabase projects — authentication on the earlier project, the database on the later one recorded in ADR-005 — and for egress between the application region and the storage region.
->
-> This decision record is a prerequisite of #277 and is raised in section 13.3.
+Private Azure Blob Storage is approved under ADR-011. The API and worker access it only through a
+backend-owned `ObjectStore` adapter. PostgreSQL owns authorisation, lifecycle and provenance; Blob
+Storage owns the original bytes.
+
+Approval selects the provider but does not claim that the account, private containers, managed
+identity, lifecycle rules or reconciliation process are provisioned. Provisioning must account for
+the application and storage regions, recovery, security and cost controls specified by ADR-011.
+
+The provider decision no longer blocks #277.
 
 ---
 
@@ -224,7 +257,7 @@ _Satisfies acceptance criterion 3._
 
 ### 6.1 Relations
 
-Three relations are introduced. Their implementation is #276.
+Issue #276 introduced the following three relations.
 
 **`batch`** — one row per submitted payload.
 
@@ -235,7 +268,7 @@ Three relations are introduced. Their implementation is #276.
 | `competition_id`           | The declared target competition.     |
 | `idempotency_key`          | Submitter-supplied. See section 8.2. |
 | `source_checksum`          | SHA-256 of the payload.              |
-| `source_uri`               | Object storage key.                  |
+| `source_uri`               | Opaque application object reference. |
 | `source_size_bytes`        | Payload size.                        |
 | `state`                    | Section 4.1.                         |
 | `item_count`               | Populated at expansion.              |
@@ -250,7 +283,7 @@ Three relations are introduced. Their implementation is #276.
 | `batch_id`                                      | Owning batch.                                          |
 | `ordinal`                                       | Position within the payload. Defines processing order. |
 | `innings_id`, `over_number`, `position_in_over` | The natural key. See section 8.3.                      |
-| `payload`                                       | The item as submitted.                                 |
+| `payload`                                       | Canonical event normalized from the submitted item.    |
 | `state`                                         | Section 4.2.                                           |
 | `rejection_code`, `rejection_detail`            | Rejection reason, machine- and human-readable.         |
 | `published_event_id`                            | Nullable reference to the created event.               |
@@ -273,7 +306,7 @@ The cross-event rules currently enforced in `submissionRequestSchema.superRefine
 1. `batch` must carry a unique constraint on (`submitter_id`, `idempotency_key`).
 2. `batch_item` must carry a unique constraint on (`batch_id`, `ordinal`).
 3. `batch_item` must carry a unique constraint on (`batch_id`, `innings_id`, `over_number`, `position_in_over`), detecting duplication within a payload.
-4. **The event tables must carry a unique constraint on the live revision of (`innings_id`, `over_number`, `position_in_over`).** This is the check that `superRefine` cannot perform across requests, and it is what makes publication safe to retry. It must be added whether or not batch ingestion ships.
+4. **The event tables must carry a unique constraint on the live revision of (`innings_id`, `over_number`, `position_in_over`).** The existing `delivery_natural_key_live` partial unique index already supplies this constraint and must remain the publication backstop.
 5. Ascending `sequence_number` within an innings must be verified at publication rather than at expansion, because a batch may be chunked and a season may span batches.
 6. `batch_item.state` may only be `published` where `published_event_id` is not null.
 7. Deletion of a `batch` row must be prohibited. Section 12.3 depends on the record surviving the payload.
@@ -293,6 +326,22 @@ added. The required live-delivery constraint was already present as the partial 
 Published items reference `delivery`, whose required `submission_id` continues the established
 publication provenance chain. Batch and batch-item deletion are rejected by the database;
 supersession retains and links records instead.
+
+The implemented `batch.competition_id` is a canonical foreign key, but it is not a submitter-facing
+input. The receipt API resolves the human-selected competition or namespaced competition reference,
+then verifies the authenticated account's scope before creating the batch.
+
+The implemented `batch_item.innings_id` is non-null, so `batch_item` owns only parsed events whose
+fixture and innings references have resolved. A downstream validation migration must retain package
+records that fail parsing or reference resolution in a separate batch-source issue relation keyed by
+batch and source ordinal/path. It must not insert placeholder identifiers or weaken the event natural
+key. After resolution, the canonical event is inserted into `batch_item` and passes the shared event
+schema.
+
+The implemented `batch.source_uri` must hold an opaque application object reference issued by the
+`ObjectStore` boundary, never a public URL, SAS token, user path, container name or bare Blob key.
+When the general object-provenance relation from ADR-011 is introduced, this value identifies that
+application object and the provider adapter alone resolves it to Azure coordinates.
 
 ---
 
@@ -496,9 +545,9 @@ _Satisfies acceptance criterion 9._
 
 ### 12.2 Retention
 
-> **Open decision D4.** The retention period is proposed and should be confirmed with the stakeholder, and aligned with `security/privacy-retention.md`.
+Nadav Sundy approved the retention outcome under issue #356 on 2 September 2026.
 
-1. The original payload should be retained for 90 days and then deleted from object storage.
+1. The original payload is retained privately for 90 days from receipt and then deleted from object storage.
 2. The `batch` record, its items and its checksum must be retained indefinitely. They are the provenance chain and must survive deletion of the payload.
 3. Deletion of a payload must be recorded against the batch, so that the absence of a stored object is distinguishable from a storage fault.
 
@@ -523,43 +572,39 @@ _Satisfies acceptance criterion 10._
 
 ### 13.1 Confirmed dependencies
 
-| Issue | Title                                                       | Relationship                                                         |
-| ----- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
-| #276  | Batch, batch-item and processing-checkpoint database models | Implements section 6. Blocked by this issue.                         |
-| #277  | Whole-season and back-catalogue batch upload and staging    | Implements sections 5 and 7.1. Blocked by this issue, D1 and N1.     |
-| #278  | Asynchronous batch validation and processing                | Implements section 7.3. Blocked by #276.                             |
-| #279  | Accepted and rejected batch processing reports              | Implements section 11.4. Blocked by #278.                            |
-| #280  | Idempotent batch resubmission, preventing double counting   | Implements section 8. Blocked by #276.                               |
-| #281  | Resumable batch processing from durable checkpoints         | Implements section 9. Blocked by #276.                               |
-| #282  | Impossible and conflicting event validation rules           | Provides the per-event validation shared under section 3.1. Related. |
-| #283  | Submission review and publication workflow                  | Implements section 10. Related, not blocking.                        |
-| #291  | Explicit API versioning and compatibility behaviour         | Section 7.2 introduces a new route and response contract. Related.   |
+| Issue | Title                                                       | Relationship                                                           |
+| ----- | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| #276  | Batch, batch-item and processing-checkpoint database models | Completed; implements and constrains the section 6 staging foundation. |
+| #277  | Whole-season and back-catalogue batch upload and staging    | Implements sections 5 and 7.1 using the decisions approved by #356.    |
+| #278  | Asynchronous batch validation and processing                | Implements section 7.3. Blocked by #276.                               |
+| #279  | Accepted and rejected batch processing reports              | Implements section 11.4. Blocked by #278.                              |
+| #280  | Idempotent batch resubmission, preventing double counting   | Implements section 8. Blocked by #276.                                 |
+| #281  | Resumable batch processing from durable checkpoints         | Implements section 9. Blocked by #276.                                 |
+| #282  | Impossible and conflicting event validation rules           | Provides the per-event validation shared under section 3.1. Related.   |
+| #283  | Submission review and publication workflow                  | Implements section 10. Related, not blocking.                          |
+| #291  | Explicit API versioning and compatibility behaviour         | Section 7.2 introduces a new route and response contract. Related.     |
 
 ### 13.2 Sequencing
 
 ```text
-#275 (this issue)
-  ├─▶ N3 storage decision record ──┐
-  ├─▶ N1 fixture/innings path ─────┤
-  ├─▶ #276 database models ────────┼─▶ #277 upload and staging
-  │        ├─▶ #278 ──▶ #279       │
-  │        ├─▶ #280                │
-  │        └─▶ #281                │
-  └─▶ N4 worker deployment ────────┘
+#275 design ──▶ #356 decisions ──▶ #277 upload and staging
+                   │
+#276 database models ──────────────┘
+                   ├─▶ #278 processing ──▶ #279 reporting
+                   ├─▶ #280 idempotency
+                   ├─▶ #281 resumability
+                   └─▶ #283 review and publication
 ```
 
 ### 13.3 New issues required
 
-| Ref | Proposed title                                                            | Type                   | Rationale                                                                                                                                                                                                                                    |
-| --- | ------------------------------------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| N1  | Add fixture and innings creation to the submission contract               | `type: feature`        | **Blocks #277.** Section 3.4. A back-catalogue upload must create fixtures and innings; the submission contract provides no path. A team total is delivery totals plus innings penalties, and innings penalties are presently unsubmittable. |
-| N2  | Select and record the object storage provider                             | `type: research`       | **Blocks #277.** Section 5.5. No storage component exists in the architecture or the deployment.                                                                                                                                             |
-| N3  | Add a unique constraint on the live revision of (innings, over, position) | `type: bug`            | Section 6.2 requirement 4. Uniqueness is enforced only within a single request by `superRefine`. Two submissions may currently carry the same delivery. Required whether or not batch ships.                                                 |
-| N4  | Provision the worker deployment target                                    | `type: infrastructure` | Blocks #278. Section 7.3 requires a separately deployable worker process.                                                                                                                                                                    |
-| N5  | Collect all CSV row faults rather than throwing on the first              | `type: bug`            | Section 11.2. `csvRows` throws inside `map`, so a submitter learns of one malformed row per round trip, while `normaliseCsv` correctly accumulates. The two are inconsistent with each other.                                                |
-| N6  | Strip the byte-order mark and widen accepted CSV media types              | `type: bug`            | Section 12.1 requirement 7. A spreadsheet-exported UTF-8 CSV carries a BOM and fails header matching; a `.csv` file offered as `application/vnd.ms-excel` or `text/plain` is rejected by `normaliseMediaType`.                               |
-| N7  | Reconcile the upload size limit between multer and the contract           | `type: bug`            | Section 2.5. The 1 MB limit is defined independently in `submission-upload.ts` and in `submissionSchema.sourceFile.sizeBytes` and will drift.                                                                                                |
-| N8  | Investigate delayed responses after backend idle                          | `type: bug`            | Section 7.5. Approximately 2.03 seconds is added to every request after idling, including endpoints performing no database work. Invalidates throughput measurement taken without a restart.                                                 |
+| Ref | Proposed title                                                  | Type                   | Rationale                                                                                                                                                                                                      |
+| --- | --------------------------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| N4  | Provision the worker deployment target                          | `type: infrastructure` | Blocks #278. Section 7.3 requires a separately deployable worker process.                                                                                                                                      |
+| N5  | Collect all CSV row faults rather than throwing on the first    | `type: bug`            | Section 11.2. `csvRows` throws inside `map`, so a submitter learns of one malformed row per round trip, while `normaliseCsv` correctly accumulates. The two are inconsistent with each other.                  |
+| N6  | Strip the byte-order mark and widen accepted CSV media types    | `type: bug`            | Section 12.1 requirement 7. A spreadsheet-exported UTF-8 CSV carries a BOM and fails header matching; a `.csv` file offered as `application/vnd.ms-excel` or `text/plain` is rejected by `normaliseMediaType`. |
+| N7  | Reconcile the upload size limit between multer and the contract | `type: bug`            | Section 2.5. The 1 MB limit is defined independently in `submission-upload.ts` and in `submissionSchema.sourceFile.sizeBytes` and will drift.                                                                  |
+| N8  | Investigate delayed responses after backend idle                | `type: bug`            | Section 7.5. Approximately 2.03 seconds is added to every request after idling, including endpoints performing no database work. Invalidates throughput measurement taken without a restart.                   |
 
 ### 13.4 Deferred
 
@@ -567,14 +612,20 @@ The printed `ballNumber` is not verified against the `overNumber` and `positionI
 
 ---
 
-## 14. Open Decisions
+## 14. Decision Outcomes
 
-| Ref | Decision                                                                                                  | Required by | Owner                     |
-| --- | --------------------------------------------------------------------------------------------------------- | ----------- | ------------------------- |
-| D1  | Object storage provider                                                                                   | #277        | Team, via decision record |
-| D2  | Confirmation of section 3.1 — the per-event contract is shared, the envelope, response and parser are not | #277, #282  | Reviewer                  |
-| D3  | Payload size and item-count limits (section 5.4)                                                          | #277        | Reviewer                  |
-| D4  | Payload retention period (section 12.2)                                                                   | #277        | Stakeholder               |
+| Ref | Owner                             | Recorded outcome                                                                                                                                                 |
+| --- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Dean Feldman, ADR-011 owner       | Private Azure Blob Storage behind a backend-owned adapter, as approved by Nadav Sundy under #356.                                                                |
+| D2  | B. Swartz, batch-design owner     | Direct and batch envelopes and parsers remain separate; both use `submissionEventSchema` after batch reference resolution.                                       |
+| D3  | B. Swartz, batch-design owner     | 50 MB, 50,000 items, JSON/CSV/NDJSON, and three concurrent non-terminal batches per submitter, as approved by Nadav Sundy under #356.                            |
+| D4  | Nadav Sundy, stakeholder approver | Private raw payload bytes are retained for 90 days; provenance metadata survives deletion.                                                                       |
+| D5  | Dean Feldman, ADR-010 owner       | A PostgreSQL transactional outbox relays identifiers through Azure Service Bus Standard to a Node.js worker hosted as a separate Azure Container App.            |
+| D6  | B. Swartz, batch-design owner     | Packages use namespaced source identifiers where available and scoped human-readable references otherwise; ambiguous or missing references remain staged.        |
+| D7  | B. Swartz, batch-design owner     | Source adapters may add provider identity, revision and timing metadata, but all canonical events converge on the shared validation and immutable-revision path. |
+
+There are no unresolved decisions in this document that block #277. Provisioning and implementation
+remain owned by their follow-on issues.
 
 ---
 
@@ -598,4 +649,6 @@ The printed `ballNumber` is not verified against the `overNumber` and `positionI
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of Claude-Web[Claude Opus 5].
+The issue #356 decision outcomes and #276 reconciliation were updated with the assistance of
+Codex[GPT-5].
 The issue #276 implementation record was added with the assistance of Codex[GPT-5].

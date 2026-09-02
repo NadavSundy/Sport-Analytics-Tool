@@ -168,6 +168,14 @@ The live-delivery natural-key guarantee remains the existing partial unique inde
 `delivery_natural_key_live`; it permits historical revisions while preventing two live
 deliveries at one innings/over/position. Batch and batch-item provenance is not deletable.
 
+The batch foreign keys are canonical storage references, not fields a submitter must know. The
+receipt API resolves a human-facing competition reference before creating `batch`; the worker adds a
+`batch_item` only after its fixture and innings context resolves. Source rows that cannot yet resolve
+are retained by a downstream batch-source issue model with their original ordinal/path rather than
+by inserting placeholder identifiers into `batch_item`. `batch.source_uri` is reserved for an
+opaque application object reference resolved by the backend object-store adapter, never a public or
+signed provider URL.
+
 **Match structure.** `fixture`; `fixture_team`; `fixture_squad`;
 `fixture_official`; `innings`; `innings_powerplay`; `innings_absent`;
 `innings_miscounted_over`.
@@ -337,3 +345,5 @@ Claude-Web[Claude Opus 5], from an analysis of the Cricsheet T20 corpus. The iss
 account and scope description was updated with the assistance of Codex[GPT-5.6 Sol]. The issue #255
 requested-competition description was updated with the assistance of Codex[GPT-5].
 The issue #276 batch-staging description was added with the assistance of Codex[GPT-5].
+The issue #356 downstream reference and object-storage boundaries were documented with the
+assistance of Codex[GPT-5].

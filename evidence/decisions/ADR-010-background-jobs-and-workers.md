@@ -1,9 +1,11 @@
 # ADR-010: Transactional outbox, Azure Service Bus, and idempotent workers
 
-- **Status:** Proposed
+- **Status:** Accepted for Intermediate implementation
 - **Date:** 2026-08-21
-- **Participants:** Dean Feldman (document owner); project team (review requested)
-- **Related issue:** #55
+- **Participants:** Dean Feldman (document owner); Nadav Sundy (issue #356 approval)
+- **Related issues:** #55, #356
+- **Approval:** Nadav Sundy approved the worker-hosting and job-delivery decision for issue #356
+  on 2026-09-02.
 
 ## Context
 
@@ -175,14 +177,15 @@ has a measured advantage.
 
 ## Verification and review date
 
-The project team must review this proposal in the Pull Request for #55. Review again before the
-first asynchronous endpoint is merged and after a representative failure rehearsal. Tests must
+The decision was accepted for Intermediate implementation under issue #356 on 2026-09-02. Review
+again before the first asynchronous endpoint is merged and after a representative failure
+rehearsal. Tests must
 cover the commit/enqueue crash windows, duplicate sends and deliveries, worker restart, retry
 classification, max delivery and DLQ handling, idempotent output, per-fixture ordering where used,
 cancellation, incompatible message versions, reconciliation, and unauthorised job access.
 
-Before merge, record the reviewer and review evidence in the Pull Request and change this record to
-`Accepted` only if the proposal is approved without an unresolved architectural objection.
+Provisioning remains separate implementation work. Acceptance of this ADR selects the target
+architecture; it does not claim that Service Bus, the relay, or the worker is deployed.
 
 ## References considered
 
@@ -198,3 +201,4 @@ Before merge, record the reviewer and review evidence in the Pull Request and ch
 
 This decision record was drafted and reconciled with the repository with the assistance of
 Codex[GPT-5].
+Its issue #356 approval status was recorded with the assistance of Codex[GPT-5].

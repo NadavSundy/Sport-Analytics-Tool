@@ -1,9 +1,11 @@
 # ADR-011: Private Azure Blob Storage with PostgreSQL provenance
 
-- **Status:** Proposed
+- **Status:** Accepted for Intermediate implementation
 - **Date:** 2026-08-21
-- **Participants:** Dean Feldman (document owner); project team (review requested)
-- **Related issue:** #55
+- **Participants:** Dean Feldman (document owner); Nadav Sundy (issue #356 approval)
+- **Related issues:** #55, #356
+- **Approval:** Nadav Sundy approved Azure Blob Storage and 90-day batch-source retention for issue
+  #356 on 2026-09-02.
 
 ## Context
 
@@ -12,9 +14,9 @@ binary objects in PostgreSQL. Azure App Service's local filesystem is a deployme
 than shared durable storage. At the same time, a storage service must not bypass the handwritten API,
 submission authorisation, validation, provenance, or deletion policy.
 
-The current system accepts structured cricket data rather than arbitrary public media. The required
-retention period, expected file volume, malware-scanning service, data residency, and production
-budget are not yet approved, so the decision needs safe defaults and explicit provisioning gates.
+The current system accepts structured cricket data rather than arbitrary public media. Batch source
+payloads use the approved 90-day retention period. Malware scanning, residency, recovery, and cost
+remain provisioning checks rather than reasons to leave the provider choice unresolved.
 
 ## Decision
 
@@ -82,6 +84,12 @@ Deletion is a stateful operation. The database first records the authorised life
 then a retryable worker deletes the blob and records completion. Legal, licence, audit, backup, and
 privacy retention rules are resolved before enabling arbitrary uploads or public releases. Hashes
 and minimum provenance may be retained after byte deletion only when the approved policy allows it.
+
+Original batch source bytes remain private for 90 days from receipt and are then deleted through the
+stateful operation above. Batch metadata, checksum, expanded items, validation results, review
+decisions, and event provenance are retained after byte deletion so published figures remain
+reproducible and attributable. A legal or licence hold may extend source-byte retention only through
+an explicitly recorded authorised decision.
 
 ### Failure and reconciliation
 
@@ -152,8 +160,8 @@ justify their cost or privacy risk.
 
 - File-upload and export APIs refer to stable application object IDs, never provider keys.
 - ADR-010 workers handle large imports, release generation, promotion, and retryable deletion.
-- Schema migrations and Azure resources are deferred until the first retained-file use case has
-  approved volume, retention, scanning, residency, and cost requirements.
+- Schema migrations and Azure resources are introduced by the retained-file implementation issues.
+  Scanning, residency, recovery and cost controls must be verified while provisioning.
 - Backups and recovery exercises must cover both PostgreSQL metadata and Blob Storage; restoring one
   without reconciling the other is incomplete.
 - A provider change does not alter domain records or public URLs because only the adapter resolves
@@ -161,15 +169,16 @@ justify their cost or privacy risk.
 
 ## Verification and review date
 
-The project team must review this proposal in the Pull Request for #55. Review again before large or
-public uploads are enabled, after the retention/licence decision, and after a recovery rehearsal.
+The provider and batch-source retention decisions were accepted for Intermediate implementation
+under issue #356 on 2026-09-02. Review again before large or public uploads are enabled and after a
+recovery rehearsal.
 Tests must cover size and type rejection, malicious filenames, compressed expansion limits,
 checksum verification, duplicate bytes with distinct source revisions, interrupted uploads,
 scan/validation failure, unauthorised access, SAS scope/expiry where used, immutable release
 publication, deletion retry, orphan reconciliation, storage outage degradation, and restore.
 
-Before merge, record the reviewer and review evidence in the Pull Request and change this record to
-`Accepted` only if the proposal is approved without an unresolved architectural objection.
+Provisioning remains separate implementation work. Acceptance of this ADR does not claim that the
+storage account, containers, managed identity, lifecycle rules, or reconciliation jobs are deployed.
 
 ## References considered
 
@@ -182,3 +191,4 @@ Before merge, record the reviewer and review evidence in the Pull Request and ch
 
 This decision record was drafted and reconciled with the repository with the assistance of
 Codex[GPT-5].
+Its issue #356 approval and retention outcome were recorded with the assistance of Codex[GPT-5].

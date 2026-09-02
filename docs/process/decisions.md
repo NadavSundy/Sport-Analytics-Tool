@@ -17,8 +17,8 @@ rather than duplicating its content. New decisions should be added to this table
 | [ADR-007](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-007-public-information-architecture.md)         | Public cricket information architecture and interaction model           | See record            |
 | [ADR-008](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-008-external-weather-api-integration.md)        | External Weather API Integration                                        | See record            |
 | [ADR-009](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-009-cache-and-invalidation.md)                  | Measured cache-aside reads with versioned invalidation                  | See record            |
-| [ADR-010](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-010-background-jobs-and-workers.md)             | Transactional outbox, Azure Service Bus, and idempotent workers         | See record            |
-| [ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)                 | Private Azure Blob Storage with PostgreSQL provenance                   | See record            |
+| [ADR-010](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-010-background-jobs-and-workers.md)             | Transactional outbox, Azure Service Bus, and idempotent workers         | Accepted under #356   |
+| [ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)                 | Private Azure Blob Storage with PostgreSQL provenance                   | Accepted under #356   |
 | [ADR-012](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-012-live-event-transport-and-replay.md)         | Adapter-based live ingestion with durable replay and server-sent events | See record            |
 
 ## Supporting decisions
@@ -30,3 +30,4 @@ rather than duplicating its content. New decisions should be added to this table
 
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5],
 resolving issue #254.
+The issue #356 ADR statuses were updated with the assistance of Codex[GPT-5].
