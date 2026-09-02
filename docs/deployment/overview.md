@@ -60,19 +60,28 @@ The following workflows use this runner:
 - `Sport Analytics - Deploy Backend`
 - `Sport Analytics - Deploy Frontend`
 
-Runner availability and compatibility must still be validated through hosted
-workflow execution.
+The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. When
+PostgreSQL integration is required, database validation may run in parallel with the normal
+validation lane to reduce elapsed feedback time. See [CI/CD and quality gates](../development/ci-cd.md)
+for the authoritative workflow and branch-protection behaviour.
 
-### Runner validation
+Hosted runner scheduling, Node setup, PostgreSQL host-network operation, repository validation and
+Playwright execution were established through Issue #10. New workflow changes must preserve that
+baseline and retain a successful hosted run as evidence.
 
-The first hosted CI execution must confirm:
+### Runner validation baseline
 
-1. the job is accepted by a university runner
-2. repository checkout and Node setup succeed
-3. PostgreSQL service-container networking works
-4. linting, type checking, tests and builds succeed
-5. Playwright can execute in the hosted environment
-6. backend and frontend deployment workflows can execute successfully
+The established hosted baseline confirms:
+
+1. jobs can be accepted by a university runner;
+2. repository checkout and Node setup succeed;
+3. PostgreSQL 16 works through host networking on port `55432`;
+4. linting, type checking, tests and builds can execute remotely;
+5. Playwright Chromium can execute in the hosted environment; and
+6. deployment workflows can be scheduled independently on the hosted runner infrastructure.
+
+Application deployment success is verified by the relevant deployment issue and smoke checks rather
+than being inferred from CI runner availability.
 
 ## AI Declaration
 
