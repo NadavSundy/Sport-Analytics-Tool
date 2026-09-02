@@ -106,20 +106,16 @@ const availableScopes = [
 
 function managementResponse(user = managedUser()) {
   return jsonResponse(200, {
-    data: {
-      users: [user],
-      availableScopes,
-    },
+    users: [user],
+    availableScopes,
   });
 }
 
 function updateResponse(user: ReturnType<typeof managedUser>) {
   return jsonResponse(200, {
-    data: {
-      ...user,
-      submitterAccessUpdatedAt: accessTime,
-      submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
-    },
+    ...user,
+    submitterAccessUpdatedAt: accessTime,
+    submitterAccessUpdatedBy: { id: '1', displayName: 'Administrator' },
   });
 }
 
