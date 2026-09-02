@@ -20,6 +20,7 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+
     env:
       BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
 
@@ -67,14 +68,243 @@ jobs:
       - name: Smoke check backend deployment artifact
         run: node scripts/smoke-check-backend-artifact.mjs
 
+      - name: Create backend deployment ZIP
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          source = Path(".deployment/backend")
+          target = Path(".deployment/backend.zip")
+
+          if not source.is_dir():
+              print(
+                  f"Backend deployment directory does not exist: {source}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          files = [path for path in source.rglob("*") if path.is_file()]
+
+          if not files:
+              print(
+                  "Backend deployment directory contains no files.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          if target.exists():
+              target.unlink()
+
+          with zipfile.ZipFile(
+              target,
+              "w",
+              compression=zipfile.ZIP_DEFLATED,
+          ) as archive:
+              for path in files:
+                  archive.write(
+                      path,
+                      path.relative_to(source),
+                  )
+
+          print(
+              f"Created {target} containing {len(files)} files "
+              f"({target.stat().st_size} bytes)."
+          )
+          PY
+
       - name: Deploy backend
-        uses: azure/webapps-deploy@v3.0.7
-        with:
-          app-name: statsthegame-api-dev
-          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-          package: .deployment/backend
-          clean: true
-          restart: true
+        env:
+          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          profile_xml = os.environ.get(
+              "AZURE_BACKEND_PUBLISH_PROFILE",
+              "",
+          ).strip()
+
+          if not profile_xml:
+              print(
+                  "Azure backend publish profile is empty.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          try:
+              root = ET.fromstring(profile_xml)
+          except ET.ParseError as exc:
+              print(
+                  f"Invalid Azure publish profile XML: {exc}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          profiles = root.findall(".//publishProfile")
+
+          profile = next(
+              (
+                  candidate
+                  for candidate in profiles
+                  if candidate.attrib.get("publishMethod") == "ZipDeploy"
+              ),
+              None,
+          )
+
+          if profile is None:
+              profile = next(
+                  (
+                      candidate
+                      for candidate in profiles
+                      if candidate.attrib.get("publishMethod") == "MSDeploy"
+                  ),
+                  None,
+              )
+
+          if profile is None:
+              print(
+                  "No ZipDeploy or MSDeploy profile was found "
+                  "in the Azure publish profile.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          username = profile.attrib.get("userName", "").strip()
+          password = profile.attrib.get("userPWD", "")
+          publish_url = profile.attrib.get("publishUrl", "").strip()
+
+          if not username or not password or not publish_url:
+              print(
+                  "Azure publish profile is missing the deployment "
+                  "URL or deployment credentials.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          publish_url = publish_url.removeprefix("https://")
+          publish_url = publish_url.removeprefix("http://")
+
+          host = publish_url.split("/", 1)[0]
+          host = host.split(":", 1)[0]
+
+          if not host:
+              print(
+                  "Could not determine the Azure SCM hostname.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          zip_path = Path(".deployment/backend.zip")
+
+          if not zip_path.is_file():
+              print(
+                  f"Deployment ZIP does not exist: {zip_path}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          deployment_url = (
+              f"https://{host}/api/publish?type=zip"
+          )
+
+          credentials = base64.b64encode(
+              f"{username}:{password}".encode("utf-8")
+          ).decode("ascii")
+
+          payload = zip_path.read_bytes()
+
+          request = urllib.request.Request(
+              deployment_url,
+              data=payload,
+              method="POST",
+              headers={
+                  "Authorization": f"Basic {credentials}",
+                  "Content-Type": "application/zip",
+                  "Content-Length": str(len(payload)),
+                  "User-Agent": "Sport-Analytics-Gitea-Actions",
+              },
+          )
+
+          print(
+              f"Deploying {len(payload)} byte backend artifact "
+              f"to Azure App Service..."
+          )
+
+          try:
+              with urllib.request.urlopen(
+                  request,
+                  timeout=600,
+              ) as response:
+                  body = response.read().decode(
+                      "utf-8",
+                      errors="replace",
+                  )
+
+                  status = response.status
+
+                  print(
+                      f"Azure deployment HTTP status: {status}"
+                  )
+
+                  if body:
+                      print(body[:4000])
+
+                  if status < 200 or status >= 300:
+                      print(
+                          "Azure deployment returned an "
+                          "unsuccessful status.",
+                          file=sys.stderr,
+                      )
+                      sys.exit(1)
+
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode(
+                  "utf-8",
+                  errors="replace",
+              )
+
+              print(
+                  f"Azure deployment failed with HTTP {exc.code}.",
+                  file=sys.stderr,
+              )
+
+              if body:
+                  print(body[:4000], file=sys.stderr)
+
+              sys.exit(1)
+
+          except urllib.error.URLError as exc:
+              print(
+                  f"Azure deployment connection failed: "
+                  f"{exc.reason}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          except TimeoutError:
+              print(
+                  "Azure deployment request timed out.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          except Exception as exc:
+              print(
+                  f"Azure deployment request failed: {exc}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          print("Azure backend deployment request completed successfully.")
+          PY
 
       - name: Smoke check deployed backend health
         env:
