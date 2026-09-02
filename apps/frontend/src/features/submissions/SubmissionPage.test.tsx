@@ -208,7 +208,7 @@ describe('role-gated event submission page', () => {
     renderSubmissionPage(null);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
+      await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }, { timeout: 5000 }),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });

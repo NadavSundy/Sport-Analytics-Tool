@@ -161,13 +161,32 @@ local hooks can be skipped and do not provide repository-level merge evidence.
 
 ## Deployment relationship
 
-Frontend and backend deployment workflows are separate from the Pull Request quality gate. They run
-on `main` only when paths relevant to that deployable component change, and they also support manual
-`workflow_dispatch` recovery.
+Pull Request validation and deployment have separate responsibilities. Pull Request CI proves that a
+change satisfies the required quality gate. Deployment then builds with environment-specific secrets,
+publishes the validated application and verifies the live endpoint. Deployment must not repeat the
+same unit-test suite merely to rediscover whether the source was valid.
 
-A deployment failure occurs after the Pull Request has already been merged and cannot undo that
-merge. It must instead be recorded and resolved through the normal bug/infrastructure issue process.
-Deployment smoke checks remain part of each deployment workflow.
+For the frontend, automatic deployment is part of the `Sport Analytics CI` workflow after merge. On a
+`main` push the planner records a separate `deployFrontend` decision for production-impacting changes.
+The deployment job depends on both `plan` and the successful `quality` job:
+
+```text
+Pull Request quality -> merge -> main change-aware quality -> frontend deployment -> live smoke check
+```
+
+Frontend implementation, shared-contract and relevant root dependency changes can request deployment.
+Frontend test-only, documentation, evidence and CI-only changes do not redeploy an unchanged browser
+application. The standalone `.gitea/workflows/deploy-frontend.yml` workflow remains available only as a
+manual recovery/redeployment path.
+
+The automatic frontend deployment intentionally does not re-run `npm run test:frontend`. Those tests
+are already authoritative in the relevant `validation` lane before `quality` succeeds. The deployment
+job still performs deployment-specific checks: reproducible installation, secret validation, shared
+contract build, production Vite build, Azure publication and the public smoke check.
+
+The backend deployment remains a separately tracked workflow while its hosted Azure defect is resolved.
+A deployment failure occurs after the Pull Request has already been merged and cannot undo that merge;
+it must be recorded and resolved through the normal bug/infrastructure issue process.
 
 Application deployment paths are documented in:
 
