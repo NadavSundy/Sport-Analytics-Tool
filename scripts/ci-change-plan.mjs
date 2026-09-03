@@ -326,11 +326,10 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
   }
 
   // Coverage duplicates unit suites and currently enforces no repository-wide
-  // threshold. Keep Pull Request feedback fast, then generate coverage for
-  // affected application code after merge to main or on an explicit full run.
-  plan.coverage =
-    eventName === 'workflow_dispatch' ||
-    (eventName === 'push' && (plan.full || plan.frontend || plan.backend || plan.contracts));
+  // threshold. Pull Requests remain the authoritative automated quality gate,
+  // and main pushes are deployment-only after that gate. Generate coverage only
+  // for an explicit full workflow dispatch until a threshold makes it merge-affecting.
+  plan.coverage = eventName === 'workflow_dispatch';
 
   return plan;
 }

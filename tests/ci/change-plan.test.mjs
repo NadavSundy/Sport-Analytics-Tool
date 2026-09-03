@@ -182,11 +182,12 @@ test('unknown files fail safely to full CI', () => {
   assert.equal(plan.full, true);
 });
 
-test('application changes on main generate coverage after merge', () => {
+test('main pushes preserve deployment routing without repeating coverage suites', () => {
   const plan = classifyChangedFiles(['apps/frontend/src/App.tsx'], { eventName: 'push' });
 
   assert.equal(plan.frontend, true);
-  assert.equal(plan.coverage, true);
+  assert.equal(plan.deployFrontend, true);
+  assert.equal(plan.coverage, false);
 });
 
 test('manual workflow dispatch always selects full CI', () => {
