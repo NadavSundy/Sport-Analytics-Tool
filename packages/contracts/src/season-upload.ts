@@ -76,7 +76,7 @@ const fixtureContextSchema = z
 
 const inningsContextSchema = z
   .object({
-    ordinal: z.number().int().positive().max(8),
+    ordinal: z.number().int().nonnegative().max(7),
     battingTeam: teamReferenceSchema,
   })
   .strict();
