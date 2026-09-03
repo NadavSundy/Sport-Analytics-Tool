@@ -23,8 +23,8 @@ flowchart LR
     Docs -. documents .-> DB
 ```
 
-A background worker is shown as the approved, not-yet-provisioned deployment boundary for batch
-imports, large exports, and expensive derivations. Issue #356 accepted Azure Container Apps, a
+A background worker is shown as the approved independently deployable boundary for batch imports,
+large exports, and expensive derivations. Issue #356 accepted Azure Container Apps, a
 PostgreSQL transactional outbox and Azure Service Bus Standard for this boundary, and private Azure
 Blob Storage for retained batch bytes. Caching retains its separate measured adoption gate.
 
@@ -112,3 +112,4 @@ A monorepo simplifies shared tooling, atomic Pull Requests, and contracts while 
 The issue #55 advanced-service decision summary was drafted and reconciled with the repository with
 the assistance of Codex[GPT-5]. The issue #356 adoption status was documented with the assistance of
 Codex[GPT-5].
+The issue #365 worker target status was documented with the assistance of Codex[GPT-5].

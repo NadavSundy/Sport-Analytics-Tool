@@ -9,6 +9,7 @@ Event-driven sports analytics platform providing validated submissions, derived 
 ```text
 apps/frontend       React web application
 apps/backend        Hand-written Node.js HTTP API
+apps/worker         Independently deployable asynchronous ingestion worker
 packages/contracts  Shared API schemas and TypeScript types
 database            Migrations, seeds, and schema documentation
 docs                Source for the public MkDocs documentation site
@@ -83,6 +84,16 @@ npm run dev:backend
 ```bash
 npm run dev:frontend
 ```
+
+The asynchronous worker is started separately after its PostgreSQL, Service Bus, Blob and Azure
+identity settings are configured:
+
+```bash
+npm run dev:worker
+```
+
+See [Azure asynchronous batch worker](docs/deployment/azure-worker.md) for the local dependency and
+recovery walkthrough.
 
 Once both are running, verify the local services:
 
@@ -176,6 +187,14 @@ URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebs
 - Environment: Development
 - Deployment: Azure App Service
 - Built using Vite.
+
+### Asynchronous ingestion worker
+
+- Platform: Azure Container Apps
+- Runtime: Node.js 22 LTS container
+- Job delivery: Azure Service Bus Standard with peek-lock and bounded KEDA scaling
+- Data access: Supabase PostgreSQL and private Azure Blob Storage
+- Deployment: manual reviewed Gitea workflow using Bicep and immutable ACR images
 
 ### CI/CD
 
@@ -277,3 +296,4 @@ See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level re
 shared register remains available while its entries are migrated.
 
 The preceding README was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The asynchronous worker setup and deployment summary were added with the assistance of Codex[GPT-5].
