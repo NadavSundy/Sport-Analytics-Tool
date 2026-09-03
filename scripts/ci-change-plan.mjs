@@ -271,6 +271,12 @@ function applyPath(plan, file) {
     return;
   }
 
+  if (file.startsWith('infra/ci/')) {
+    // Local CI parity infrastructure can affect every validation lane.
+    markFull(plan);
+    return;
+  }
+
   if (file.startsWith('infra/') || file.startsWith('database/')) {
     plan.backend = true;
     plan.database = true;

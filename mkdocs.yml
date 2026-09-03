@@ -103,6 +103,7 @@ nav:
       - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
   - Testing:
       - CI/CD and Quality Gates: development/ci-cd.md
+      - Local CI Validation: development/local-ci.md
       - Automated & End-to-End Testing: development/testing.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
