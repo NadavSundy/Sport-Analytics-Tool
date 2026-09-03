@@ -202,25 +202,78 @@ The policy is therefore:
 If a repository-wide coverage threshold is introduced later, this policy must be reviewed because
 coverage may then become a merge-affecting gate.
 
-## Local parity before opening or updating a Pull Request
+## Optional local CI parity before a push
 
-Developers should select checks based on the affected area, while CI remains authoritative. For a
-CI/CD or cross-cutting change, use:
+Hosted Gitea CI remains the authoritative merge gate, but developers can optionally run the same
+change-aware validation locally before spending hosted runner time. Local CI is a convenience, not a
+mandatory step.
+
+The native command is:
 
 ```bash
-npm ci
-npm run test:ci-routing
-npm run hygiene
-npm run check
-npm run test:database:local
-npm run test:e2e
+npm run ci:local
 ```
 
-A smaller feature change may use the focused workspace/test commands documented in
-[Testing](testing.md), but required hosted CI still makes the final merge decision.
+It compares the current branch and working tree with `origin/main` (falling back to local `main`),
+reuses `scripts/ci-change-plan.mjs`, and runs only the validation lanes selected for that change set.
+Native execution validates the frozen dependency graph with `npm ci --dry-run`, so
+`package.json`/`package-lock.json` drift is caught without deleting or rebuilding the developer's
+existing `node_modules`.
 
-Git hooks may be used for fast developer feedback but are not a replacement for hosted validation;
-local hooks can be skipped and do not provide repository-level merge evidence.
+Native execution uses the developer's current operating system. Ubuntu/Linux gives the closest native
+match to the hosted `ubuntu-24.04` jobs. Windows and macOS remain useful for early feedback but can
+differ in filesystem, shell and platform-specific dependency behaviour. Database-selected native runs
+use the repository's disposable embedded PostgreSQL 16 runtime and do not require Docker.
+
+Docker execution uses a real `npm ci` inside its isolated Linux workspace, matching hosted dependency
+installation without modifying the developer's host `node_modules`.
+
+For higher Linux parity from any supported development host, use:
+
+```bash
+npm run ci:docker
+```
+
+The Docker command runs the same local CI orchestrator in an Ubuntu 24.04 Playwright image with
+Node.js 22 pinned to match hosted CI. The repository is copied into the container before validation so
+Linux `node_modules` and generated output do not overwrite the developer's host installation. Browser
+validation uses the pinned Playwright 1.62.1 Noble image. Database validation uses the same migrations,
+seed and integration-test suite with a disposable PostgreSQL 16 runtime inside the Linux environment.
+
+Both commands are change-aware. Documentation-only changes do not deliberately start browser or
+database suites, while unknown/root tooling changes conservatively select full validation just as the
+hosted planner does. `CI_LOCAL_BASE=<ref>` may be supplied to override the normal `origin/main`/`main`
+comparison when reproducing a special branch scenario.
+
+### Optional pre-push hook
+
+Developers who want automatic local feedback may opt in to the repository-owned pre-push hook:
+
+```bash
+npm run hooks:install
+```
+
+The hook only calls `npm run ci:local`; it does not define a second quality policy and it does not force
+Docker execution. Developers who do not install the hook can push normally. Remove the opt-in hook for
+the current clone with:
+
+```bash
+npm run hooks:remove
+```
+
+The installer refuses to overwrite a different existing `core.hooksPath`. As with any local Git hook,
+the pre-push check can be bypassed and therefore never replaces the hosted required status.
+
+Recommended use is:
+
+```text
+normal development -> optional npm run ci:local -> git push -> authoritative hosted CI
+                                   |
+                                   +-> npm run ci:docker when Linux parity is important
+```
+
+For command selection, optional pre-push setup and troubleshooting, see
+[Local CI validation](local-ci.md).
 
 ## Deployment relationship
 

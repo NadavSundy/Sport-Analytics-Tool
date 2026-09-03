@@ -183,3 +183,14 @@ test('manual workflow dispatch always selects full CI', () => {
   assert.equal(plan.full, true);
   assert.equal(plan.coverage, true);
 });
+
+test('local CI Docker infrastructure changes select full validation', () => {
+  const plan = classifyChangedFiles(['infra/ci/Dockerfile']);
+
+  assert.equal(plan.full, true);
+  assert.equal(plan.frontend, true);
+  assert.equal(plan.backend, true);
+  assert.equal(plan.database, true);
+  assert.equal(plan.e2e, true);
+  assert.equal(plan.hygiene, true);
+});

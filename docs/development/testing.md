@@ -71,22 +71,30 @@ tooling never falls back to the normal `DATABASE_URL`.
 
 ## Test command overview
 
-| Command                        | Purpose                                                                                         | PostgreSQL provisioning          | Docker required |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------- | --------------- |
-| `npm run hygiene`              | Knip, syncpack and dependency-cruiser monorepo-maintenance validation                           | None                             | No              |
-| `npm run hygiene:knip`         | Unused files, dependencies, exports and types across the monorepo                               | None                             | No              |
-| `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                             | No              |
-| `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                             | No              |
-| `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                             | No              |
-| `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection      | Yes             |
-| `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                             | No              |
-| `npm run test:database`        | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection      | Yes             |
-| `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow   | No              |
-| `npm run test:coverage`        | Current configured coverage suites                                                              | None                             | No              |
-| `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                             | No              |
-| `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`  | No              |
+| Command                        | Purpose                                                                                         | PostgreSQL provisioning                         | Docker required |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------- |
+| `npm run ci:local`             | Optional change-aware native reproduction of the hosted validation plan                         | Disposable embedded PostgreSQL 16 when selected | No              |
+| `npm run ci:docker`            | Optional change-aware Ubuntu 24.04 / Node 22 Docker parity run                                  | Change-dependent                                | Yes             |
+| `npm run hygiene`              | Knip, syncpack and dependency-cruiser monorepo-maintenance validation                           | None                                            | No              |
+| `npm run hygiene:knip`         | Unused files, dependencies, exports and types across the monorepo                               | None                                            | No              |
+| `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                                            | No              |
+| `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                                            | No              |
+| `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                                            | No              |
+| `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST`                | No              |
+| `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection                     | Yes             |
+| `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                                            | No              |
+| `npm run test:database`        | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST`                | No              |
+| `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection                     | Yes             |
+| `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow                  | No              |
+| `npm run test:coverage`        | Current configured coverage suites                                                              | None                                            | No              |
+| `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                                            | No              |
+| `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`                 | No              |
+
+Local CI commands are optional developer feedback tools. `npm run ci:local` uses the current operating
+system and `npm run ci:docker` provides closer Linux parity in an Ubuntu 24.04 container. Both reuse
+the hosted change planner and run only the checks selected by the current branch diff. Hosted Gitea CI
+remains the final merge authority. Developers who want automatic native validation before their own
+pushes can opt in with `npm run hooks:install` and remove it with `npm run hooks:remove`.
 
 The backend workspace's ordinary command, `npm run test --workspace=@sport-analytics/backend`,
 builds the shared contracts and runs only its unit and API suites. PostgreSQL tests run only through
