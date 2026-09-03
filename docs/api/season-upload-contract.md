@@ -14,9 +14,9 @@ reject an unsupported version rather than attempting a best-effort parse.
 
 The deployed frontend publishes these downloadable starter files:
 
-- [Canonical JSON template](/season-upload-template.json)
-- [Spreadsheet CSV template](/season-upload-template.csv)
-- [Multi-file manifest template](/season-upload-manifest-template.json)
+- [Canonical JSON template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-template.json)
+- [Spreadsheet CSV template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-template.csv)
+- [Multi-file manifest template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-manifest-template.json)
 
 The CSV is a spreadsheet-oriented flat view of the same values. Repeating
 fixture and innings context in each row is intentional: spreadsheet users do
