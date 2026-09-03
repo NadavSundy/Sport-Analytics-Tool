@@ -1,8 +1,8 @@
 # Issue #383 � Hosted CI optimisation verification
 
-**Issue:** #383 � Optimise hosted CI with fail-fast preflight validation and eliminate duplicate checks  
-**Implementation PR:** #387 � `perf(ci): eliminate duplicate hosted validation`  
-**Date:** 3 September 2026  
+**Issue:** #383 - Optimise hosted CI with fail-fast preflight validation and eliminate duplicate checks
+**Implementation PR:** #387 - `perf(ci): eliminate duplicate hosted validation`
+**Date:** 3 September 2026
 **Author:** Shayna Unterslak
 
 ## Objective

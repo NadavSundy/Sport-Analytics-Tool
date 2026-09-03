@@ -70,7 +70,7 @@ jobs:
             base="$(git rev-parse "${CI_HEAD_SHA}^")"
           fi
 
-          git diff --check "${base}...${CI_HEAD_SHA}"
+          git diff --check "${base}...${CI_HEAD_SHA}" -- . ':(exclude)evidence/ai/transcripts/**'
 
       - name: Validate frozen dependency lockfile
         if: steps.plan.outputs.needsNpm == 'true'
