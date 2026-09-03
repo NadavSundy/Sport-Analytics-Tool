@@ -98,7 +98,7 @@ its own runner before Wrangler can publish it.
 
 `.gitea/workflows/deploy-docs.yml` remains available as a manual `workflow_dispatch` recovery or
 redeployment path. It no longer runs independently on every docs push to `main`, preventing a docs
-publish from racing ahead of the shared validated-main quality decision.
+publish from racing ahead of the shared post-merge quality and deployment decision.
 
 The workflow authenticates using repository Actions secrets and never commits Cloudflare credentials:
 

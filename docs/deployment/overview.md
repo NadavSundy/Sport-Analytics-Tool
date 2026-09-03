@@ -40,7 +40,7 @@ Azure App Service was accepted in ADR 0003 for the frontend and backend. The doc
 - Keep frontend and backend configuration environment-specific.
 - Keep Supabase generated data endpoints outside the application API boundary.
 - Verify HTTPS, CORS, logs, authentication callbacks and health endpoints after deployment changes.
-- Deploy frontend, backend and documentation independently by production impact, but only after the shared validated-main quality gate.
+- Deploy frontend, backend and documentation independently by production impact, but only after the shared post-merge quality and deployment gate.
 - Deploy the worker manually from a reviewed commit; verify its active revision, dependencies,
   recovery and scaling before recording it as operational.
 

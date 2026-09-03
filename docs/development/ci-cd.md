@@ -319,7 +319,7 @@ Request, the required `Sport Analytics CI / quality (pull_request)` status must 
 must be up to date with `main` before merge. If those protections are not available or are intentionally
 bypassed, the deployment-only main path must not be treated as equivalent to a fresh full validation.
 
-The validated-main flow is:
+The post-merge main flow is:
 
 ```text
 up-to-date Pull Request -> required quality -> review/merge
@@ -376,7 +376,7 @@ documentation.
 
 The standalone `.gitea/workflows/deploy-frontend.yml`, `deploy-backend.yml` and `deploy-docs.yml`
 workflows are manual `workflow_dispatch` recovery/redeployment paths. They are not independent push
-pipelines and therefore cannot race or deploy before the shared validated-main quality decision.
+pipelines and therefore cannot race or deploy before the shared post-merge quality and deployment decision.
 
 Application deployment paths are documented in:
 

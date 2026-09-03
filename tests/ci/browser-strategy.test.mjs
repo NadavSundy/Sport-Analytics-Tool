@@ -129,3 +129,11 @@ test('mobile accessibility matrix is focused while desktop keeps both themes and
     /isMobile \? \(\['day'\] as const\) : \(\['day', 'night'\] as const\)/,
   );
 });
+test('AI transcript exports are excluded from patch whitespace validation', () => {
+  const workflow = read('.gitea/workflows/ci.yml');
+
+  assert.ok(
+    workflow.includes("':(exclude)evidence/ai/transcripts/**'"),
+    'CI must preserve unedited AI transcript exports when running git diff --check',
+  );
+});
