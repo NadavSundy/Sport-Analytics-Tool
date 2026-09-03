@@ -137,7 +137,14 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(
     express.json({
       limit: '1mb',
-      type: (request) => !request.url?.startsWith(`${API_BASE_PATH}/batches`),
+      type: (request) => {
+        if (request.url?.startsWith(`${API_BASE_PATH}/batches`)) {
+          return false;
+        }
+
+        const contentType = request.headers['content-type'] ?? '';
+        return /^application\/(?:[a-z0-9!#$&^_.+-]+\+)?json(?:;|$)/i.test(contentType);
+      },
     }),
   );
   app.use(
