@@ -6,7 +6,7 @@ import type {
 } from '@sport-analytics/contracts';
 
 import type { ApplicationAccount } from '../accounts/account';
-import type { ReadAuthUserEmail } from '../../auth/supabase-auth';
+import { SupabaseAdminEmailLookupError, type ReadAuthUserEmail } from '../../auth/supabase-auth';
 import { AdminEmailLookupUnavailableError, AdminManagementConflictError } from './admin.errors';
 import { createAdminRepository, type AdminRepository } from './admin.repository';
 
@@ -47,8 +47,10 @@ export function createAdminService(
     const { authSubject, ...safeUser } = user;
     try {
       return { ...safeUser, email: await readAuthUserEmail(authSubject) };
-    } catch {
-      throw new AdminEmailLookupUnavailableError();
+    } catch (error) {
+      throw new AdminEmailLookupUnavailableError(
+        error instanceof SupabaseAdminEmailLookupError ? error.failure : 'provider_error',
+      );
     }
   }
 
