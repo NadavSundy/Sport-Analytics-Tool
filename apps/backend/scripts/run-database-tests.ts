@@ -81,12 +81,15 @@ async function runDisposableDatabaseTests(): Promise<void> {
   const port = await findAvailablePort();
   const databaseDirectory = await mkdtemp(join(tmpdir(), 'sport-analytics-postgres-'));
   const verbose = process.env.DATABASE_TEST_VERBOSE === '1';
+  const runningAsRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+
   const postgres = new EmbeddedPostgres({
     databaseDir: databaseDirectory,
     user: databaseUser,
     password: databasePassword,
     port,
     persistent: false,
+    createPostgresUser: runningAsRoot,
     onLog: verbose ? console.log : () => undefined,
     onError: verbose ? console.error : () => undefined,
   });
