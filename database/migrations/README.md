@@ -39,8 +39,13 @@ The batch-ingestion models migration creates the durable `batch`, `batch_item`, 
 publication model and reuses the existing live-delivery natural-key index rather than changing
 correction revision semantics.
 
+The Issue #277 batch receipt migration adds an opaque UUID reference to `batch`. It is the only
+batch identifier exposed in receipt and status responses; internal bigint primary keys remain
+server-only.
+
 ## AI Declaration
 
 The issue #255 competition-scoped request migration, issue #256 history migration, and issue #265
 file provenance migration were documented with the assistance of Codex[GPT-5].
 The issue #276 batch-ingestion migration was documented with the assistance of Codex[GPT-5].
+The Issue #277 batch receipt migration was documented with the assistance of Codex[GPT-5].

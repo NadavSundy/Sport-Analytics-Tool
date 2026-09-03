@@ -29,6 +29,7 @@ interface BatchSource {
 
 interface BatchRecord {
   batchId: string;
+  batchReference: string;
   submitterId: string;
   competitionId: string;
   idempotencyKey: string;
@@ -42,6 +43,7 @@ interface BatchRecord {
 }
 
 interface CreateBatchInput {
+  batchReference: string;
   submitterId: string;
   competitionId: string;
   idempotencyKey: string;
@@ -133,6 +135,8 @@ export interface BatchRepository {
     submitterId: string,
     idempotencyKey: string,
   ): Promise<BatchRecord | null>;
+  findBatchByReference(batchReference: string): Promise<BatchRecord | null>;
+  countNonTerminalBatches(submitterId: string): Promise<number>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
   listBatchItems(batchId: string, options: BatchItemPageOptions): Promise<BatchItemRecord[]>;
   findCheckpoint(
@@ -147,6 +151,7 @@ export interface BatchRepository {
 
 interface BatchRow {
   batchId: string;
+  batchReference: string;
   submitterId: string;
   competitionId: string;
   idempotencyKey: string;
@@ -172,6 +177,7 @@ interface BatchCheckpointRow {
 
 const batchSelection = `
   batch_id::text AS "batchId",
+  batch_reference::text AS "batchReference",
   submitter_id::text AS "submitterId",
   competition_id::text AS "competitionId",
   idempotency_key AS "idempotencyKey",
@@ -225,6 +231,7 @@ function mapBatch(row: BatchRow): BatchRecord {
 
   return {
     batchId: row.batchId,
+    batchReference: row.batchReference,
     submitterId: row.submitterId,
     competitionId: row.competitionId,
     idempotencyKey: row.idempotencyKey,
@@ -274,6 +281,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         database(),
         `
           INSERT INTO batch (
+            batch_reference,
             submitter_id,
             competition_id,
             idempotency_key,
@@ -283,10 +291,11 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             source_size_bytes,
             state
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING ${batchSelection}
         `,
         [
+          input.batchReference,
           input.submitterId,
           input.competitionId,
           input.idempotencyKey,
@@ -310,6 +319,21 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         submitterId,
         idempotencyKey,
       ]);
+    },
+
+    findBatchByReference(batchReference) {
+      return findBatch('batch_reference = $1::uuid', [batchReference]);
+    },
+
+    async countNonTerminalBatches(submitterId) {
+      const result = await executeQuery<{ count: string }>(
+        database(),
+        `SELECT count(*)::text AS count FROM batch
+         WHERE submitter_id = $1::bigint
+           AND state NOT IN ('rejected', 'published', 'partially_published', 'superseded')`,
+        [submitterId],
+      );
+      return Number(result.rows[0]?.count ?? 0);
     },
 
     async insertBatchItems(batchId, items) {

@@ -54,6 +54,8 @@ import { createAdminRouter } from './modules/admin/admin.routes';
 import { createAdminService, type AdminService } from './modules/admin/admin.service';
 import { createAzureObjectStorageComposition } from './modules/object-storage/azure-object-storage.composition';
 import type { BatchPayloadStorageService } from './modules/object-storage/batch-payload-storage.service';
+import { createBatchRouter } from './modules/batches/batch.routes';
+import { createBatchService, type BatchService } from './modules/batches/batch.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -68,6 +70,7 @@ export interface AppDependencies {
   weatherService?: WeatherService;
   fixtureWeatherService?: FixtureWeatherService;
   batchPayloadStorageService?: BatchPayloadStorageService;
+  batchService?: BatchService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -110,6 +113,9 @@ export function createApp(dependencies: AppDependencies = {}) {
     (environment.NODE_ENV === 'production'
       ? createAzureObjectStorageComposition(environment).batchPayloadStorageService
       : undefined);
+  const batchService =
+    dependencies.batchService ??
+    (batchPayloadStorageService ? createBatchService(batchPayloadStorageService) : undefined);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -128,7 +134,12 @@ export function createApp(dependencies: AppDependencies = {}) {
       credentials: true,
     }),
   );
-  app.use(express.json({ limit: '1mb' }));
+  app.use(
+    express.json({
+      limit: '1mb',
+      type: (request) => !request.url?.startsWith(`${API_BASE_PATH}/batches`),
+    }),
+  );
   app.use(
     pinoHttp({
       autoLogging: process.env.NODE_ENV !== 'test',
@@ -148,6 +159,9 @@ export function createApp(dependencies: AppDependencies = {}) {
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
   );
+  if (batchService) {
+    app.use(API_BASE_PATH, createBatchRouter(verifyAccessToken, synchronizeAccount, batchService));
+  }
   app.use(
     API_BASE_PATH,
     createSubmitterAccessRouter(verifyAccessToken, synchronizeAccount, submitterAccessService),
