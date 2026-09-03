@@ -20,13 +20,11 @@ const metadata = {
 
 function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
   return {
-    createBatch: vi
-      .fn()
-      .mockResolvedValue({
-        batchReference: '123e4567-e89b-42d3-a456-426614174000',
-        state: 'stored',
-        createdAt: '2026-09-03T10:00:00.000Z',
-      }),
+    createBatch: vi.fn().mockResolvedValue({
+      batchReference: '123e4567-e89b-42d3-a456-426614174000',
+      state: 'stored',
+      createdAt: '2026-09-03T10:00:00.000Z',
+    }),
     findBatchById: vi.fn(),
     findBatchByReference: vi.fn(),
     findBatchByIdempotencyKey: vi.fn().mockResolvedValue(null),
@@ -58,13 +56,11 @@ describe('batch receipt service', () => {
 
   test('records a private object checksum and opaque staged reference', async () => {
     const storage = {
-      upload: vi
-        .fn()
-        .mockResolvedValue({
-          objectId: '123e4567-e89b-42d3-a456-426614174001',
-          sha256: 'a'.repeat(64),
-          byteSize: 20,
-        }),
+      upload: vi.fn().mockResolvedValue({
+        objectId: '123e4567-e89b-42d3-a456-426614174001',
+        sha256: 'a'.repeat(64),
+        byteSize: 20,
+      }),
     } as unknown as BatchPayloadStorageService;
     const batches = repository();
     const result = await createBatchService(storage, batches).receive(
