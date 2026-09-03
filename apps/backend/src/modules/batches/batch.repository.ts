@@ -128,6 +128,21 @@ interface ReviewDecisionInput {
   reason?: string | null;
 }
 
+/**
+ * The outcome of resolving one staged item's references.
+ *
+ * `inningsId` stays null while the reference is unresolved, ambiguous or
+ * invalid. `batch_item.innings_id` is nullable for exactly that reason, so that
+ * an actionable record is retained without a placeholder canonical identifier.
+ */
+interface ReferenceResolutionUpdate {
+  batchItemId: string;
+  inningsId: string | null;
+  sourceIdentity: string | null;
+  referenceResolutionState: BatchReferenceResolutionState;
+  resolvedReferences: JsonValue | null;
+}
+
 export interface BatchRepository {
   createBatch(input: CreateBatchInput): Promise<BatchRecord>;
   findBatchById(batchId: string): Promise<BatchRecord | null>;
@@ -146,6 +161,7 @@ export interface BatchRepository {
   upsertCheckpoint(input: UpsertBatchCheckpointInput): Promise<BatchCheckpointRecord>;
   recordValidationResult(input: ValidationResultInput): Promise<void>;
   recordReviewDecision(input: ReviewDecisionInput): Promise<void>;
+  applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
 }
 
@@ -511,6 +527,59 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         `,
         [input.batchId, input.actorId, input.decision, input.reason ?? null],
       );
+    },
+
+    async applyReferenceResolution(updates) {
+      if (updates.length === 0) {
+        return [];
+      }
+
+      // One statement for the whole chunk. Section 7.4 forbids a round trip per
+      // item, and resolution produces an outcome for every item in the batch.
+      const values: unknown[] = [];
+      const tuples = updates.map((update) => {
+        const first = values.length + 1;
+        values.push(
+          update.batchItemId,
+          update.inningsId,
+          update.sourceIdentity,
+          update.referenceResolutionState,
+          update.resolvedReferences === null ? null : JSON.stringify(update.resolvedReferences),
+        );
+
+        return `(
+          $${String(first)}::bigint,
+          $${String(first + 1)}::bigint,
+          $${String(first + 2)}::text,
+          $${String(first + 3)}::batch_reference_resolution_state,
+          $${String(first + 4)}::jsonb
+        )`;
+      });
+
+      const result = await executeQuery<BatchItemRecord>(
+        database(),
+        `
+          UPDATE batch_item AS item
+          SET innings_id = resolution.resolved_innings_id,
+              source_identity = resolution.resolved_source_identity,
+              reference_resolution_state = resolution.resolved_state,
+              resolved_references = resolution.resolved_evidence
+          -- The alias columns are named apart from batch_item's own, so that the
+          -- unqualified names in RETURNING stay unambiguous.
+          FROM (VALUES ${tuples.join(',')}) AS resolution (
+            resolved_item_id,
+            resolved_innings_id,
+            resolved_source_identity,
+            resolved_state,
+            resolved_evidence
+          )
+          WHERE item.batch_item_id = resolution.resolved_item_id
+          RETURNING ${batchItemSelection}
+        `,
+        values,
+      );
+
+      return result.rows.sort((left, right) => left.ordinal - right.ordinal);
     },
 
     async linkPublishedDelivery(batchItemId, deliveryId) {

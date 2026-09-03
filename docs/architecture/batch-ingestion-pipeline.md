@@ -139,6 +139,26 @@ review can select an existing record or approve a proposed canonical record, ret
 reference and the resolution decision for provenance. See
 [`docs/data/batch-submission-packages.md`](../data/batch-submission-packages.md).
 
+### 3.7 Source identifiers unsupported for competition, team and innings
+
+Three entity types hold no source-reference column: `competition`, `team` and `innings`. Only
+`fixture.source_ref` and `person.source_ref` exist, and #360 adds no further columns. A source
+identifier for one of those three therefore has nothing to be compared against and can never
+resolve, on the first attempt or any later one. That is a different situation from a reference the
+platform has not seen yet, and the resolver reports it as such.
+
+1. Where the reference also carries a usable name, or an ordinal in the case of an innings, that
+   value is the supported key and resolution proceeds on it. The submitted identifier is recorded as
+   having had no effect, so a submitter learns the field was ignored rather than assuming it
+   resolved.
+2. Where the reference carries only the identifier, the reference is staged with a reason stating
+   that source identifiers are not supported for that entity type and naming the key that is. A bare
+   "not found" would invite the submitter to resubmit the same package unchanged.
+3. The package schemas remain permissive and continue to accept `sourceId` for all three. The policy
+   is enforced in the resolver, not by forbidding the field, because the shipped season-upload
+   templates emit an innings carrying both a `sourceId` and readable context. Rejecting the field
+   would make a template-derived package unresolvable.
+
 ---
 
 ## 4. Batch Lifecycle States

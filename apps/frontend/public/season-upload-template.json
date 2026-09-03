@@ -23,7 +23,7 @@
         {
           "sourceId": "replace-with-provider:innings:stable-innings-id",
           "context": {
-            "ordinal": 1,
+            "ordinal": 0,
             "battingTeam": { "context": { "name": "Home team" } }
           },
           "events": [
