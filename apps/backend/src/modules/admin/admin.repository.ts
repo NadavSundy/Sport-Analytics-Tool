@@ -164,6 +164,7 @@ async function listUsers(
   const result = await executeQuery<AdministratorUserRow>(
     executor,
     `${administratorUserSelect}
+      WHERE managed.deletion_state = 'active'
       GROUP BY
         managed.app_user_id,
         requested_competition.competition_id,
@@ -186,6 +187,7 @@ async function findUserById(
     executor,
     `${administratorUserSelect}
       WHERE managed.app_user_id = $1
+        AND managed.deletion_state = 'active'
       GROUP BY
         managed.app_user_id,
         requested_competition.competition_id,

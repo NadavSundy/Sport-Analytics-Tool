@@ -25,7 +25,7 @@ export class AdminUserNotFoundError extends Error {
 }
 
 export class AdminEmailLookupUnavailableError extends Error {
-  constructor() {
+  constructor(public readonly failure: string = 'provider_error') {
     super('Administrator email lookup is temporarily unavailable.');
     this.name = 'AdminEmailLookupUnavailableError';
   }

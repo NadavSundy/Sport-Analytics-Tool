@@ -156,7 +156,7 @@ decisions.
 
 ### Administrator submitter-access decisions
 
-Administrators can list application users through:
+Administrators can list active application users through:
 
 ```http
 GET /api/v1/admin/users
