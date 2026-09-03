@@ -18,15 +18,17 @@ Development deployment
 
 ## Environment Variables
 
-| Variable                   | Current status              | Description                                                                 |
-| -------------------------- | --------------------------- | --------------------------------------------------------------------------- |
-| `NODE_ENV`                 | Used                        | Set to `production` for the deployed runtime.                               |
-| `PORT`                     | Platform-provided/defaulted | HTTP listen port.                                                           |
-| `CORS_ORIGINS`             | Used                        | Comma-separated allowed browser origins; include the deployed frontend URL. |
-| `SUPABASE_URL`             | Used                        | Supabase Auth project URL.                                                  |
-| `SUPABASE_PUBLISHABLE_KEY` | Used                        | Supabase publishable key used for backend token verification.               |
-| `SUPABASE_SECRET_KEY`      | Required for issue #66      | Server-only Supabase key used by Auth Admin account deletion.               |
-| `DATABASE_URL`             | Used                        | PostgreSQL session-pooler connection string.                                |
+| Variable                       | Current status              | Description                                                                 |
+| ------------------------------ | --------------------------- | --------------------------------------------------------------------------- |
+| `NODE_ENV`                     | Used                        | Set to `production` for the deployed runtime.                               |
+| `PORT`                         | Platform-provided/defaulted | HTTP listen port.                                                           |
+| `CORS_ORIGINS`                 | Used                        | Comma-separated allowed browser origins; include the deployed frontend URL. |
+| `SUPABASE_URL`                 | Used                        | Supabase Auth project URL.                                                  |
+| `SUPABASE_PUBLISHABLE_KEY`     | Used                        | Supabase publishable key used for backend token verification.               |
+| `SUPABASE_SECRET_KEY`          | Required for issue #66      | Server-only Supabase key used by Auth Admin account deletion.               |
+| `DATABASE_URL`                 | Used                        | PostgreSQL session-pooler connection string.                                |
+| `AZURE_STORAGE_ACCOUNT_NAME`   | Required in production      | Non-secret Blob account name; `statsthegameblobdev` in development.         |
+| `AZURE_STORAGE_CONTAINER_NAME` | Required in production      | Non-secret private container name; `staged-ingestion` in development.       |
 
 ## Approved Intermediate service boundary
 
@@ -35,17 +37,19 @@ private Azure Blob Storage and commit batch/job metadata through PostgreSQL. A t
 relay will deliver job identifiers to Azure Service Bus Standard, and a separately deployed Node.js
 worker in Azure Container Apps will process them.
 
-The API and worker will use managed identity and least-privilege Azure RBAC for Blob Storage and
-Service Bus where available. Provider connection strings or account keys, if temporarily required
-during deployment, remain server-only settings and must never enter frontend configuration or the
-deployment artifact.
+The API now uses `DefaultAzureCredential` and the App Service managed identity for Blob Storage.
+Blob account keys, connection strings, SAS tokens, and shared-key credentials are intentionally
+unsupported. The future worker will require its own managed-identity wiring when its separate
+deployment is implemented.
 
-These services are approved targets under ADR-010 and ADR-011 but are not yet provisioned. Their
-resource names, environment settings, health checks, deployment workflows, recovery exercises and
-cost evidence belong to the implementation issues that introduce them.
+The development Blob resources are provisioned outside this repository: backend identity
+`statsthegame-api-dev`, storage account `statsthegameblobdev`, and private container
+`staged-ingestion`, with **Storage Blob Data Contributor** assigned to the backend identity. The
+repository does not create or mutate these Azure resources or RBAC assignments.
 
-The issue #358 private object-storage adapter, streaming safeguards and durable metadata are
-implemented in the backend. Provisioning and the batch receipt endpoint remain separate work. See
+The issue #358 private object-storage adapter, streaming safeguards, durable metadata, and
+production runtime composition are implemented in the backend. The batch receipt endpoint remains
+separate work. See
 the [private object-storage operations guide](object-storage-operations.md) for access, recovery and
 credential-rotation requirements.
 
@@ -101,6 +105,11 @@ Backend application secrets such as `DATABASE_URL` and Supabase configuration re
 Service settings. They are not copied into the deployment artifact or exposed to the workflow's
 local artifact check.
 
+The two Azure storage identifiers are also Azure App Service settings, but are non-secret. The ZIP
+deployment workflow does not manage App Settings, identity assignment, or RBAC; an Azure operator
+must confirm those external settings before deployment. Its local production-mode artifact smoke
+check supplies inert non-secret storage identifiers and never calls Azure.
+
 `SUPABASE_SECRET_KEY` is intentionally optional during process startup. This keeps health and public
 routes available if the App Service setting is missing, while `DELETE /api/v1/account` returns a
 safe `501` until the setting is configured. Deployed issue #66 verification must confirm that the
@@ -126,3 +135,5 @@ and updated for the automated deployment checks with the assistance of Codex[GPT
 The issue #356 Intermediate service boundary was documented with the assistance of Codex[GPT-5].
 The issue #358 object-storage implementation status was documented with the assistance of
 Codex[GPT-5].
+The production managed-identity composition and deployed storage settings were documented with the
+assistance of Codex[GPT-5].

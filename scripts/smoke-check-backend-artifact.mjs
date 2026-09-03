@@ -21,6 +21,8 @@ const backend = spawn(process.execPath, [artifactEntryPoint], {
   cwd: repositoryRoot,
   env: {
     ...process.env,
+    AZURE_STORAGE_ACCOUNT_NAME: 'deploymentstorage',
+    AZURE_STORAGE_CONTAINER_NAME: 'deployment-smoke-check',
     CORS_ORIGINS: `http://127.0.0.1:${port}`,
     NODE_ENV: 'production',
     PORT: String(port),

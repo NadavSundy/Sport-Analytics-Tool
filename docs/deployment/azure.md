@@ -6,10 +6,11 @@ The decision is recorded in `docs/adr/0003-azure-hosting.md`.
 
 ## Selected mapping
 
-| Component           | Service                   | Runtime/build context                                |
-| ------------------- | ------------------------- | ---------------------------------------------------- |
-| React frontend      | Azure App Service (Linux) | Node.js 22 LTS build environment; Vite static bundle |
-| Express backend API | Azure App Service (Linux) | Node.js 22 LTS runtime                               |
+| Component            | Service                   | Runtime/build context                                |
+| -------------------- | ------------------------- | ---------------------------------------------------- |
+| React frontend       | Azure App Service (Linux) | Node.js 22 LTS build environment; Vite static bundle |
+| Express backend API  | Azure App Service (Linux) | Node.js 22 LTS runtime                               |
+| Private object bytes | Azure Blob Storage        | Backend managed identity and private container       |
 
 The PostgreSQL database and managed authentication remain on Supabase. The public MkDocs documentation site is hosted separately on Cloudflare Pages.
 
@@ -57,8 +58,16 @@ retain the corresponding passing Gitea Action link and smoke-check output. Rollb
 runner availability remain operational evidence rather than claims made by this technology-selection
 document.
 
+The development backend uses its `statsthegame-api-dev` managed identity to access the private
+`staged-ingestion` container in `statsthegameblobdev`. Azure App Service supplies only the non-secret
+account and container names; `DefaultAzureCredential` obtains the runtime identity. See the
+[private object-storage operations guide](object-storage-operations.md) for the external RBAC and
+verification requirements.
+
 ## AI Declaration
 
 The preceding document was reviewed and aligned with the accepted Azure ADR with the assistance of
 ChatGPT-Web[GPT-5.6 Sol] and updated for the automated deployment checks with the assistance of
+Codex[GPT-5].
+The managed-identity Blob Storage deployment mapping was updated with the assistance of
 Codex[GPT-5].

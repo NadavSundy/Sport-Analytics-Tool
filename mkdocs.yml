@@ -91,6 +91,7 @@ nav:
       - Azure Application Hosting: deployment/azure.md
       - Azure Hosting Decision Record: adr/0003-azure-hosting.md
       - Azure Backend: deployment/azure-backend.md
+      - Private Object Storage Operations: deployment/object-storage-operations.md
       - Azure Frontend: deployment/azure-fronted.md
       - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
       - Dedicated CI Runner Operations: deployment/runner-operations.md

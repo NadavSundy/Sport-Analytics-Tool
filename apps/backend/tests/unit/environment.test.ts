@@ -30,4 +30,46 @@ describe('backend environment', () => {
       }).SUPABASE_SECRET_KEY,
     ).toBeUndefined();
   });
+
+  it('requires the Azure storage account in production', () => {
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        NODE_ENV: 'production',
+        AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: AZURE_STORAGE_ACCOUNT_NAME: Azure storage account name is required in production',
+    );
+  });
+
+  it('requires the Azure storage container in production', () => {
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        NODE_ENV: 'production',
+        AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: AZURE_STORAGE_CONTAINER_NAME: Azure storage container name is required in production',
+    );
+  });
+
+  it('accepts only non-secret Azure object-storage identifiers', () => {
+    const environment = loadEnvironment({
+      ...requiredEnvironment,
+      NODE_ENV: 'production',
+      AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+      AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+      AZURE_STORAGE_CONNECTION_STRING: 'unsupported',
+      AZURE_STORAGE_ACCOUNT_KEY: 'unsupported',
+      AZURE_STORAGE_SAS_TOKEN: 'unsupported',
+    });
+
+    expect(environment.AZURE_STORAGE_ACCOUNT_NAME).toBe('statsthegameblobdev');
+    expect(environment.AZURE_STORAGE_CONTAINER_NAME).toBe('staged-ingestion');
+    expect(environment).not.toHaveProperty('AZURE_STORAGE_CONNECTION_STRING');
+    expect(environment).not.toHaveProperty('AZURE_STORAGE_ACCOUNT_KEY');
+    expect(environment).not.toHaveProperty('AZURE_STORAGE_SAS_TOKEN');
+  });
 });

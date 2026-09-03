@@ -18,6 +18,8 @@ Express backend API
     +--> Supabase Auth for managed identity verification
     |
     +--> PostgreSQL for application data
+    |
+    +--> Private Azure Blob Storage through managed identity
 ```
 
 The frontend may communicate directly with Supabase Auth for managed sign-in and session handling. Application-domain data must pass through the handwritten Express API; generated Supabase Data API endpoints are not used as the application API.
@@ -47,17 +49,19 @@ The frontend may communicate directly with Supabase Auth for managed sign-in and
 
 ## Backend API
 
-| Technology / dependency      | Declared version | Purpose                                                         | Motivation / notes                                                                                                                                |
-| ---------------------------- | ---------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Express                      | `^4.21.1`        | Handwritten HTTP API, routing and middleware.                   | Satisfies the requirement for a separately implemented backend and handwritten API. No formal backend-framework comparison is currently recorded. |
-| `@supabase/supabase-js`      | `^2.112.1`       | Validates Supabase access tokens on protected backend requests. | Uses the same managed identity platform as the frontend without trusting browser-only claims.                                                     |
-| `pg`                         | `^8.22.0`        | PostgreSQL driver and connection pooling.                       | Keeps database access provider-neutral and communicates with PostgreSQL directly instead of generated Supabase data endpoints.                    |
-| Zod                          | `^3.23.8`        | Runtime validation and schema-derived TypeScript types.         | Shared validation at the API boundary reduces drift between declared types and runtime payload validation.                                        |
-| CORS                         | `^2.8.5`         | Cross-origin request policy.                                    | Explicitly limits which browser origins may call the API.                                                                                         |
-| Helmet                       | `^8.0.0`         | Secure HTTP response-header defaults.                           | Adds established defensive HTTP headers instead of reimplementing them manually.                                                                  |
-| Pino HTTP                    | `^10.3.0`        | Structured HTTP request logging.                                | Produces machine-readable request logs and supports redaction of sensitive headers such as `Authorization`.                                       |
-| dotenv                       | `^17.4.2`        | Loads ignored local backend environment files.                  | Keeps local configuration outside committed source while preserving a simple developer setup.                                                     |
-| `@sport-analytics/contracts` | `0.1.0`          | Shared API schemas/types.                                       | Keeps backend responses and validation aligned with the shared contract boundary.                                                                 |
+| Technology / dependency      | Declared version | Purpose                                                         | Motivation / notes                                                                                                                                 |
+| ---------------------------- | ---------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Express                      | `^4.21.1`        | Handwritten HTTP API, routing and middleware.                   | Satisfies the requirement for a separately implemented backend and handwritten API. No formal backend-framework comparison is currently recorded.  |
+| `@supabase/supabase-js`      | `^2.112.1`       | Validates Supabase access tokens on protected backend requests. | Uses the same managed identity platform as the frontend without trusting browser-only claims.                                                      |
+| `pg`                         | `^8.22.0`        | PostgreSQL driver and connection pooling.                       | Keeps database access provider-neutral and communicates with PostgreSQL directly instead of generated Supabase data endpoints.                     |
+| Zod                          | `^3.23.8`        | Runtime validation and schema-derived TypeScript types.         | Shared validation at the API boundary reduces drift between declared types and runtime payload validation.                                         |
+| CORS                         | `^2.8.5`         | Cross-origin request policy.                                    | Explicitly limits which browser origins may call the API.                                                                                          |
+| Helmet                       | `^8.0.0`         | Secure HTTP response-header defaults.                           | Adds established defensive HTTP headers instead of reimplementing them manually.                                                                   |
+| Pino HTTP                    | `^10.3.0`        | Structured HTTP request logging.                                | Produces machine-readable request logs and supports redaction of sensitive headers such as `Authorization`.                                        |
+| dotenv                       | `^17.4.2`        | Loads ignored local backend environment files.                  | Keeps local configuration outside committed source while preserving a simple developer setup.                                                      |
+| `@azure/identity`            | `4.13.1`         | Supplies `DefaultAzureCredential` for production Blob access.   | Uses the Azure App Service managed identity without Blob account keys, connection strings, SAS tokens, or another application-held storage secret. |
+| `@azure/storage-blob`        | `12.27.0`        | Streams retained object bytes to private Azure Blob Storage.    | Implements the accepted ADR-011 provider behind the backend-owned `ObjectStore` boundary.                                                          |
+| `@sport-analytics/contracts` | `0.1.0`          | Shared API schemas/types.                                       | Keeps backend responses and validation aligned with the shared contract boundary.                                                                  |
 
 ## Shared contracts
 
@@ -181,3 +185,5 @@ AI usage is governed separately by the course AI policy and the repository AI ev
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #314 Three.js and self-hosted font dependency records were updated with the assistance of
 Codex[GPT-5.6 Sol].
+The Azure Blob Storage and managed-identity dependency records were updated with the assistance of
+Codex[GPT-5].

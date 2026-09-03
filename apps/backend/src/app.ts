@@ -52,6 +52,8 @@ import {
 } from './modules/account-deletion/account-deletion.service';
 import { createAdminRouter } from './modules/admin/admin.routes';
 import { createAdminService, type AdminService } from './modules/admin/admin.service';
+import { createAzureObjectStorageComposition } from './modules/object-storage/azure-object-storage.composition';
+import type { BatchPayloadStorageService } from './modules/object-storage/batch-payload-storage.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -65,6 +67,7 @@ export interface AppDependencies {
   adminService?: AdminService;
   weatherService?: WeatherService;
   fixtureWeatherService?: FixtureWeatherService;
+  batchPayloadStorageService?: BatchPayloadStorageService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -102,11 +105,20 @@ export function createApp(dependencies: AppDependencies = {}) {
   const weatherService = dependencies.weatherService ?? new WeatherService();
   const fixtureWeatherService =
     dependencies.fixtureWeatherService ?? createFixtureWeatherService(weatherService);
+  const batchPayloadStorageService =
+    dependencies.batchPayloadStorageService ??
+    (environment.NODE_ENV === 'production'
+      ? createAzureObjectStorageComposition(environment).batchPayloadStorageService
+      : undefined);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
   const app = express();
+
+  if (batchPayloadStorageService) {
+    app.locals.batchPayloadStorageService = batchPayloadStorageService;
+  }
 
   app.disable('x-powered-by');
   app.use(helmet());

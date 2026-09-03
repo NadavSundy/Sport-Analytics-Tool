@@ -6,13 +6,18 @@ the application.
 
 ## Provisioning and access
 
-- Use a general-purpose v2 Azure Storage account and an `incoming` container with anonymous access
-  disabled. Disable account-wide public blob access.
-- Give only the API and batch-worker managed identities the minimum Blob Data Contributor access
-  required for upload, download, and lifecycle deletion. Do not grant browser identities, public
-  users, or the frontend access to the container.
-- Construct `AzureBlobObjectStore` with a server-side `ContainerClient`. The adapter does not issue
-  URLs or signed tokens and does not expose provider credentials through its interface.
+- The development deployment uses storage account `statsthegameblobdev` and private container
+  `staged-ingestion`. Anonymous container access and account-wide public Blob access must remain
+  disabled.
+- The backend App Service identity is `statsthegame-api-dev`. Azure must enable/assign that managed
+  identity and grant it **Storage Blob Data Contributor** on the account or the narrower container
+  scope. Do not grant browser identities, public users, or the frontend access to the container.
+- Azure resources and RBAC assignments already exist outside this repository. The repository
+  configures application startup and documents the required settings; its publish-profile workflow
+  deploys code and does not create the account, container, identity, or role assignment.
+- Production App Service configuration supplies only
+  `AZURE_STORAGE_ACCOUNT_NAME=statsthegameblobdev` and
+  `AZURE_STORAGE_CONTAINER_NAME=staged-ingestion`. These identifiers are non-secret App Settings.
 - Enable secure transfer. Apply network restrictions, soft delete, versioning, and abandoned-block
   cleanup according to ADR-011 before enabling the batch receipt endpoint.
 - Keep Azure SDK HTTP logging disabled for payload bodies and authorisation headers. Application logs
@@ -23,6 +28,45 @@ The application generates every Blob key as an opaque UUID under a date-partitio
 `incoming/batch-source` prefix. A submitted filename is sanitised and retained only as display and
 provenance metadata. The 50 MB limit and SHA-256 calculation are enforced while bytes flow through
 the backend, both before the metadata is marked retained and again on download.
+
+## Production startup and authentication
+
+When `NODE_ENV=production`, environment validation requires the account and container identifiers.
+Startup derives the HTTPS endpoint
+`https://statsthegameblobdev.blob.core.windows.net`, constructs `DefaultAzureCredential`, creates a
+`BlobServiceClient`, resolves the configured `ContainerClient`, wraps it in
+`AzureBlobObjectStore`, and injects that adapter into `BatchPayloadStorageService`. Constructing this
+dependency path performs no storage request; the adapter checks that the container is private before
+its first read, write, or delete.
+
+On Azure App Service, `DefaultAzureCredential` obtains a Microsoft Entra token from the assigned
+managed identity. Blob account keys, Azure Storage connection strings, SAS tokens,
+`SharedKeyCredential`, and public or pre-signed Blob URLs are intentionally unsupported. Do not add
+any of them to Gitea secrets, App Settings, source, tests, examples, or operational recovery steps.
+Local and unit tests inject `FakeObjectStore` or constructor fakes and do not require an Azure
+account.
+
+## Runtime verification and diagnosis
+
+After deploying, verify through an authorised backend-only operational path that the runtime can:
+
+1. write a disposable object using a server-generated key;
+2. read it back and match its byte count and SHA-256 checksum; and
+3. delete it and confirm a subsequent read is unavailable.
+
+Do not verify by making the container public, exposing a Blob URL, or placing credentials in a
+client. Until issue #277 introduces the authorised batch receipt boundary, this is an Azure-side or
+temporary backend diagnostic performed by an operator, not a public HTTP workflow.
+
+For `401` authentication failures, confirm the `statsthegame-api-dev` identity is enabled on the
+running App Service and that the deployment is using the intended App Service instance. For `403`
+authorisation failures, inspect the identity's role assignment scope and confirm **Storage Blob Data
+Contributor** applies to `statsthegameblobdev` or `staged-ingestion`. New role assignments can take
+time to propagate; wait for propagation and retry with the same managed identity rather than adding
+a key, connection string, or SAS fallback. Also verify the account/container names, private-access
+setting, secure-transfer requirement, and any storage-network restrictions. Record only safe status
+and object IDs; do not dump environment variables, Azure SDK credential details, tokens, provider
+URLs, or payloads.
 
 ## Recovery and reconciliation
 
@@ -52,27 +96,27 @@ Raw batch bytes expire after 90 days through the retryable `deletion_pending` to
 Expiry deletes only the Blob. The object ID, filename, media type, size, checksum, generated storage
 key, retention timestamps, batch metadata, expanded items, and published-event provenance remain.
 
-## Credential and identity rotation
+## Managed-identity changes
 
-Managed identity is the normal production credential and avoids an application-held secret. Rotate
-access by granting the replacement identity the same least-privilege role, verifying upload and
-authorised download through the backend, moving the deployment to the new identity, and only then
-removing the old role assignment. A storage account or container move follows the same overlap,
-verification, cutover, and revocation sequence.
+Managed identity is the only production credential and avoids an application-held storage secret.
+There are therefore no Blob keys, SAS tokens, or connection strings for the application team to
+rotate. Change identity access by granting the replacement identity the same least-privilege role,
+verifying upload and authorised download through the backend, moving the deployment to the new
+identity, and only then removing the old role assignment. A storage account or container move
+follows the same overlap, verification, cutover, and revocation sequence.
 
-If an account key or connection string is temporarily required for recovery, store it only in the
-Azure App Service or Container App secret settings. Use Azure's two-key sequence: switch the
-application to the inactive key, verify storage operations, regenerate the old key, and remove the
-temporary secret after managed-identity access is restored. Never place either key in source,
-frontend configuration, command output, tickets, or logs. Revoke a suspected exposed key first when
-the incident risk outweighs availability, then reconcile any interrupted storage operations.
+Do not introduce a temporary account-key, connection-string, SAS, or shared-key recovery path. If
+managed-identity access is unavailable, diagnose the identity, RBAC, networking, or Azure service
+failure and keep file-dependent operations failed closed.
 
 ## Related records
 
-- [ADR-011: Private Azure Blob Storage with PostgreSQL provenance](../../evidence/decisions/ADR-011-file-and-object-storage.md)
+- [ADR-011: Private Azure Blob Storage with PostgreSQL provenance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)
 - [Batch staging, file storage and processing pipeline](../architecture/batch-ingestion-pipeline.md)
 - [Privacy and retention](../security/privacy-retention.md)
 
 ## AI Declaration
 
 This operations guide was created with the assistance of Codex[GPT-5].
+The production managed-identity wiring and credential-safe operational guidance were updated with
+the assistance of Codex[GPT-5].
