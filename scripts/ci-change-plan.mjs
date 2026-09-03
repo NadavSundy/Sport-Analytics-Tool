@@ -50,6 +50,7 @@ function emptyPlan() {
     docs: false,
     frontend: false,
     backend: false,
+    worker: false,
     contracts: false,
     database: false,
     e2e: false,
@@ -69,6 +70,7 @@ function markFull(plan) {
   plan.docs = true;
   plan.frontend = true;
   plan.backend = true;
+  plan.worker = true;
   plan.contracts = true;
   plan.database = true;
   plan.e2e = true;
@@ -209,6 +211,15 @@ function applyPath(plan, file) {
     return;
   }
 
+  if (file.startsWith('apps/worker/')) {
+    plan.worker = true;
+    plan.database = true;
+    plan.deployment = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
   if (file.startsWith('database/') || file === 'compose.test.yml') {
     plan.backend = true;
     plan.contracts = true;
@@ -271,6 +282,12 @@ function applyPath(plan, file) {
     return;
   }
 
+  if (file.startsWith('infra/ci/')) {
+    // Local CI parity infrastructure can affect every validation lane.
+    markFull(plan);
+    return;
+  }
+
   if (file.startsWith('infra/') || file.startsWith('database/')) {
     plan.backend = true;
     plan.database = true;
@@ -303,17 +320,16 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     }
   }
 
-  if (plan.frontend || plan.backend || plan.contracts) {
+  if (plan.frontend || plan.backend || plan.worker || plan.contracts) {
     plan.hygiene = true;
     plan.needsNpm = true;
   }
 
   // Coverage duplicates unit suites and currently enforces no repository-wide
-  // threshold. Keep Pull Request feedback fast, then generate coverage for
-  // affected application code after merge to main or on an explicit full run.
-  plan.coverage =
-    eventName === 'workflow_dispatch' ||
-    (eventName === 'push' && (plan.full || plan.frontend || plan.backend || plan.contracts));
+  // threshold. Pull Requests remain the authoritative automated quality gate,
+  // and main pushes are deployment-only after that gate. Generate coverage only
+  // for an explicit full workflow dispatch until a threshold makes it merge-affecting.
+  plan.coverage = eventName === 'workflow_dispatch';
 
   return plan;
 }

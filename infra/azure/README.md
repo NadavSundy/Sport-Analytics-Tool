@@ -8,7 +8,8 @@ Current deployment boundaries are:
 - backend API: Azure App Service;
 - PostgreSQL database: Supabase-hosted PostgreSQL;
 - managed authentication: Supabase Auth;
-- public documentation: Cloudflare Pages.
+- public documentation: Cloudflare Pages;
+- asynchronous ingestion worker: Azure Container Apps, with Service Bus Standard job delivery.
 
 This directory is for Azure-specific infrastructure and operational notes. It must not contain subscription credentials, publish profiles, database passwords, API tokens or other secrets.
 
@@ -17,6 +18,12 @@ The application deployment definitions are `.gitea/workflows/deploy-frontend.yml
 `apps/frontend/dist` and the generated `.deployment/backend` artifact respectively. Both workflows
 run retrying post-deployment checks; the backend also starts its generated artifact locally before
 deployment.
+
+The independently versioned worker target is `worker/main.bicep`, and the manual
+`.gitea/workflows/deploy-worker.yml` workflow provisions its Service Bus queue, Container Apps
+environment, managed identities, RBAC, Log Analytics and private registry before building and
+deploying the Node.js 22 worker image. It references the existing private Blob container and a Key
+Vault database secret; it does not embed credentials.
 
 Publish profiles remain Gitea Action secrets. Backend runtime secrets remain Azure App Service
 settings, while the public-safe frontend Vite configuration is supplied from Gitea secrets at build
@@ -27,4 +34,6 @@ these notes.
 ## AI Declaration
 
 The preceding document was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol] and
+Codex[GPT-5].
+The worker infrastructure and secure deployment boundary were documented with the assistance of
 Codex[GPT-5].

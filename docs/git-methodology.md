@@ -62,9 +62,14 @@ The following rules apply to `main`:
 - `main` must remain in a buildable and working state.
 - Force pushes to `main` are prohibited.
 - Required automated checks must pass before a Pull Request may be merged.
+- A Pull Request must be up to date with `main` before merge so the required status represents the
+  integration state that will enter `main`.
 - Milestone version tags may only be created from `main`.
 
 The `main` branch will be protected using Gitea’s branch-protection settings where these settings are available.
+The protection should require `Sport Analytics CI / quality (pull_request)` and block merging an
+out-of-date Pull Request. These protections are particularly important because post-merge CI performs
+deployment-specific work instead of repeating the complete Pull Request application suite.
 
 ## 4. Gitea Issues and Traceability
 

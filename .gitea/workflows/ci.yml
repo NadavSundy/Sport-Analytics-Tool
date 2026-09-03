@@ -17,6 +17,7 @@ jobs:
       docs: ${{ steps.plan.outputs.docs }}
       frontend: ${{ steps.plan.outputs.frontend }}
       backend: ${{ steps.plan.outputs.backend }}
+      worker: ${{ steps.plan.outputs.worker }}
       contracts: ${{ steps.plan.outputs.contracts }}
       database: ${{ steps.plan.outputs.database }}
       e2e: ${{ steps.plan.outputs.e2e }}
@@ -52,12 +53,37 @@ jobs:
           CI_HEAD_SHA: ${{ github.sha }}
         run: node scripts/ci-change-plan.mjs
 
+      - name: Check committed patch whitespace
+        env:
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          CI_HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$CI_EVENT_NAME" = "pull_request" ]; then
+            base="$CI_PR_BASE_SHA"
+          else
+            base="$CI_PUSH_BEFORE_SHA"
+          fi
+
+          if [ -z "$base" ] || printf '%s' "$base" | grep -Eq '^0+$'; then
+            base="$(git rev-parse "${CI_HEAD_SHA}^")"
+          fi
+
+          git diff --check "${base}...${CI_HEAD_SHA}"
+
+      - name: Validate frozen dependency lockfile
+        if: steps.plan.outputs.needsNpm == 'true'
+        run: npm ci --dry-run --ignore-scripts --no-audit --no-fund
+
       - name: Test CI change-routing rules
         run: node --test tests/ci/*.test.mjs
 
   validation:
     needs: plan
-    if: needs.plan.outputs.needsNpm == 'true'
+    if: >-
+      github.event_name != 'push' &&
+      needs.plan.outputs.needsNpm == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -103,12 +129,24 @@ jobs:
           npm run test:api
           npm run build --workspace=@sport-analytics/backend
 
+      - name: Verify asynchronous worker workspace
+        if: needs.plan.outputs.worker == 'true'
+        run: |
+          npm run lint --workspace=@sport-analytics/worker
+          npm run typecheck --workspace=@sport-analytics/worker
+          npm run test:worker
+          npm run build --workspace=@sport-analytics/worker
+
       - name: Verify frontend workspace
         if: needs.plan.outputs.frontend == 'true'
         run: |
           npm run lint --workspace=@sport-analytics/frontend
           npm run typecheck --workspace=@sport-analytics/frontend
           npm run test:frontend
+
+      - name: Run PostgreSQL database integration tests
+        if: needs.plan.outputs.database == 'true'
+        run: npm run test:database
 
       - name: Run deployment-helper tests
         if: needs.plan.outputs.deployment == 'true'
@@ -134,13 +172,15 @@ jobs:
         if: needs.plan.outputs.docs == 'true'
         run: python -m mkdocs build --strict
 
-      - name: Generate coverage on main or deliberate full validation
+      - name: Generate coverage on deliberate full validation
         if: needs.plan.outputs.coverage == 'true'
         run: npm run test:coverage
 
   browser:
     needs: plan
-    if: needs.plan.outputs.e2e == 'true'
+    if: >-
+      github.event_name != 'push' &&
+      needs.plan.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -171,74 +211,30 @@ jobs:
           NODE_ENV: production
         run: npm run build --workspace=@sport-analytics/frontend
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Restore Playwright Chromium cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-ubuntu24-chromium-1.62.1
+
+      - name: Ensure Playwright Chromium system dependencies
+        run: npx playwright install-deps chromium
+
+      - name: Install Playwright Chromium on cache miss
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
 
       - name: Run browser and accessibility tests
         env:
           NODE_ENV: production
         run: npm run test:e2e
 
-  database:
-    needs: plan
-    if: needs.plan.outputs.database == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: sport_analytics_test
-          PGPORT: 55432
-        options: >-
-          --health-cmd="pg_isready -U test_user -d sport_analytics_test -p 55432"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      NODE_ENV: test
-      DATABASE_URL_TEST: postgresql://test_user:test_password@localhost:55432/sport_analytics_test
-      SUPABASE_URL: https://example.invalid
-      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build shared contracts for database tests
-        run: npm run build --workspace=@sport-analytics/contracts
-
-      - name: Reset and migrate test database
-        run: |
-          npm run db:test:reset --workspace=@sport-analytics/backend
-          npm run db:test:migrate --workspace=@sport-analytics/backend
-
-      - name: Seed test database
-        run: npm run db:test:seed --workspace=@sport-analytics/backend
-
-      - name: Run database integration tests
-        run: npm run test:database
-
   quality:
     needs:
       - plan
       - validation
       - browser
-      - database
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -246,35 +242,33 @@ jobs:
     steps:
       - name: Enforce required validation results
         env:
+          EVENT_NAME: ${{ github.event_name }}
           PLAN_RESULT: ${{ needs.plan.result }}
           VALIDATION_REQUIRED: ${{ needs.plan.outputs.needsNpm }}
           VALIDATION_RESULT: ${{ needs.validation.result }}
           BROWSER_REQUIRED: ${{ needs.plan.outputs.e2e }}
           BROWSER_RESULT: ${{ needs.browser.result }}
-          DATABASE_REQUIRED: ${{ needs.plan.outputs.database }}
-          DATABASE_RESULT: ${{ needs.database.result }}
         run: |
           if [ "$PLAN_RESULT" != "success" ]; then
             echo "::error::Change planning did not complete successfully ($PLAN_RESULT)."
             exit 1
           fi
 
-          if [ "$VALIDATION_REQUIRED" = "true" ] && [ "$VALIDATION_RESULT" != "success" ]; then
-            echo "::error::Required validation did not complete successfully ($VALIDATION_RESULT)."
-            exit 1
-          fi
+          if [ "$EVENT_NAME" != "push" ]; then
+            if [ "$VALIDATION_REQUIRED" = "true" ] && [ "$VALIDATION_RESULT" != "success" ]; then
+              echo "::error::Required validation did not complete successfully ($VALIDATION_RESULT)."
+              exit 1
+            fi
 
-          if [ "$BROWSER_REQUIRED" = "true" ] && [ "$BROWSER_RESULT" != "success" ]; then
-            echo "::error::Required browser validation did not complete successfully ($BROWSER_RESULT)."
-            exit 1
-          fi
+            if [ "$BROWSER_REQUIRED" = "true" ] && [ "$BROWSER_RESULT" != "success" ]; then
+              echo "::error::Required browser validation did not complete successfully ($BROWSER_RESULT)."
+              exit 1
+            fi
 
-          if [ "$DATABASE_REQUIRED" = "true" ] && [ "$DATABASE_RESULT" != "success" ]; then
-            echo "::error::Required database validation did not complete successfully ($DATABASE_RESULT)."
-            exit 1
+            echo "Required change-aware Pull Request validation passed."
+          else
+            echo "Main push planning passed; full application quality was enforced before merge."
           fi
-
-          echo "Required change-aware validation passed."
 
   deploy_frontend:
     needs:

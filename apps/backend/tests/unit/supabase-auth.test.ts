@@ -96,4 +96,26 @@ describe('Supabase Auth administration', () => {
     await expect(readAuthUserEmail('auth-user-42')).resolves.toBe('contributor@example.com');
     expect(getUserByIdMock).toHaveBeenCalledWith('auth-user-42');
   });
+
+  it('categorises a missing provider identity without exposing the provider response', async () => {
+    getUserByIdMock.mockResolvedValue({
+      data: { user: null },
+      error: {
+        code: 'user_not_found',
+        message: 'The provider-specific user detail is not public.',
+      },
+    });
+    const readAuthUserEmail = createSupabaseAdminUserEmailReader({
+      SUPABASE_URL: 'https://test-project.supabase.co',
+      SUPABASE_SECRET_KEY: 'test-server-only-secret-key',
+    });
+
+    await expect(
+      readAuthUserEmail('deleted:123e4567-e89b-42d3-a456-426614174000'),
+    ).rejects.toMatchObject({
+      name: 'SupabaseAdminEmailLookupError',
+      failure: 'auth_user_not_found',
+      message: 'Supabase Auth administrative email lookup failed',
+    });
+  });
 });

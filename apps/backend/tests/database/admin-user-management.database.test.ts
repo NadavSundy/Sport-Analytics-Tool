@@ -234,6 +234,27 @@ describe.sequential('administrator user-management database integration', () => 
     await expect(loadPersistedAccess(contributorId)).resolves.toEqual(afterRerequest);
   });
 
+  test('excludes deleted accounts before any provider email lookup is attempted', async () => {
+    const result = await executeQuery<{ accountId: string }>(
+      databasePool(),
+      `
+        INSERT INTO app_user (
+          auth_provider, auth_subject, display_name, application_role, submitter_approval_state,
+          disabled_at, deletion_state, deletion_requested_at, auth_deleted_at, deleted_at,
+          deleted_auth_subject_hash
+        )
+        VALUES ('test', $1, NULL, 'viewer', 'not_requested', now(), 'deleted', now(), now(), now(), repeat('b', 64))
+        RETURNING app_user_id::text AS "accountId"
+      `,
+      [`${sourcePrefix}-deleted-account`],
+    );
+    const repository = createAdminRepository(databasePool());
+
+    const listed = await repository.listUserManagementData();
+
+    expect(listed.users.map((user) => user.id)).not.toContain(result.rows[0]!.accountId);
+  });
+
   test('rejects invalid approvals without changing persisted access', async () => {
     const accounts = await executeQuery<{ accountId: string; subject: string }>(
       databasePool(),

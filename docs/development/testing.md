@@ -71,22 +71,30 @@ tooling never falls back to the normal `DATABASE_URL`.
 
 ## Test command overview
 
-| Command                        | Purpose                                                                                         | PostgreSQL provisioning          | Docker required |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------- | --------------- |
-| `npm run hygiene`              | Knip, syncpack and dependency-cruiser monorepo-maintenance validation                           | None                             | No              |
-| `npm run hygiene:knip`         | Unused files, dependencies, exports and types across the monorepo                               | None                             | No              |
-| `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                             | No              |
-| `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                             | No              |
-| `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                             | No              |
-| `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection      | Yes             |
-| `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                             | No              |
-| `npm run test:database`        | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST` | No              |
-| `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection      | Yes             |
-| `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow   | No              |
-| `npm run test:coverage`        | Current configured coverage suites                                                              | None                             | No              |
-| `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                             | No              |
-| `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`  | No              |
+| Command                        | Purpose                                                                                         | PostgreSQL provisioning                         | Docker required |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------- |
+| `npm run ci:local`             | Optional change-aware native reproduction of the hosted validation plan                         | Disposable embedded PostgreSQL 16 when selected | No              |
+| `npm run ci:docker`            | Optional change-aware Ubuntu 24.04 / Node 22 Docker parity run                                  | Change-dependent                                | Yes             |
+| `npm run hygiene`              | Knip, syncpack and dependency-cruiser monorepo-maintenance validation                           | None                                            | No              |
+| `npm run hygiene:knip`         | Unused files, dependencies, exports and types across the monorepo                               | None                                            | No              |
+| `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                                            | No              |
+| `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                                            | No              |
+| `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                                            | No              |
+| `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST`                | No              |
+| `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection                     | Yes             |
+| `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                                            | No              |
+| `npm run test:database`        | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST`                | No              |
+| `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection                     | Yes             |
+| `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow                  | No              |
+| `npm run test:coverage`        | Current configured coverage suites                                                              | None                                            | No              |
+| `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                                            | No              |
+| `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`                 | No              |
+
+Local CI commands are optional developer feedback tools. `npm run ci:local` uses the current operating
+system and `npm run ci:docker` provides closer Linux parity in an Ubuntu 24.04 container. Both reuse
+the hosted change planner and run only the checks selected by the current branch diff. Hosted Gitea CI
+remains the final merge authority. Developers who want automatic native validation before their own
+pushes can opt in with `npm run hooks:install` and remove it with `npm run hooks:remove`.
 
 The backend workspace's ordinary command, `npm run test --workspace=@sport-analytics/backend`,
 builds the shared contracts and runs only its unit and API suites. PostgreSQL tests run only through
@@ -94,22 +102,32 @@ builds the shared contracts and runs only its unit and API suites. PostgreSQL te
 test cannot accidentally discover integration tests without a selected database workflow.
 
 When `DATABASE_URL_TEST` is supplied, it must pass the safety checks and be reachable; the command
-fails rather than falling back to another database. CI provisions its own PostgreSQL 16 service,
-supplies that connection directly, and runs `npm run test:database` as an explicit step. Set
-`DATABASE_TEST_VERBOSE=1` only when diagnostics from the default embedded server are needed.
+fails rather than falling back to another database. Hosted Pull Request validation now runs
+`npm run test:database` inside the normal validation job when database coverage is selected. With no
+external test URL supplied, that command provisions the repository's disposable embedded PostgreSQL 16
+instance, avoiding a separate hosted database job and its repeated checkout/Node/npm setup. Set
+`DATABASE_TEST_VERBOSE=1` only when diagnostics from the embedded server are needed.
 
 ## Change-aware hosted CI
 
-The required Gitea Pull Request status remains `Sport Analytics CI / quality`. CI first classifies
-the changed paths, then runs only the validation that can be affected by those changes. Normal
-workspace validation, browser validation and PostgreSQL validation are independent lanes after the
-planner. They may overlap when both university-hosted runners are available and safely queue when
-only one runner is available.
+The required Gitea Pull Request status remains `Sport Analytics CI / quality`. CI first classifies the
+changed paths and performs cheap plan-stage structure, whitespace, routing and frozen-lockfile checks.
+When npm-backed validation is required, the normal validation job and any required browser job then run
+in parallel when runner capacity is available.
 
-Lightweight evidence changes can skip the npm-based validation job entirely after the planner has
-checked the required repository structure. Unknown paths, root dependency changes and CI
-configuration changes deliberately fall back to full Pull Request application validation. A manual
-`workflow_dispatch` always selects full validation.
+Formatting, hygiene, workspace lint/typecheck/tests/builds and selected PostgreSQL integration are owned
+by the single validation lane. Database-selected changes use disposable PostgreSQL 16 in that same job,
+so they do not pay for a second checkout, Node setup or `npm ci`. Browser validation remains isolated
+because it needs a production build and Playwright environment.
+
+Lightweight evidence changes can skip npm-based validation entirely after the planner has checked the
+required repository structure. Unknown paths, root dependency changes and CI configuration changes
+deliberately fall back to full Pull Request application validation. A manual `workflow_dispatch` always
+selects full validation.
+
+After a protected, up-to-date Pull Request has passed the required quality status and is merged, the
+`main` push is deployment-only: it reruns change planning and affected deployment/smoke checks instead of
+repeating application, browser and database suites that already passed before merge.
 
 Frontend unit tests run with `NODE_ENV=test`; the dedicated browser lane builds and previews the
 frontend with `NODE_ENV=production`. This keeps React Testing Library on the React build that supports
@@ -118,13 +136,14 @@ frontend with `NODE_ENV=production`. This keeps React Testing Library on the Rea
 Hosted Playwright runs the complete suite in desktop Chromium and a representative `@mobile` subset
 in the Pixel 7 project. The mobile subset covers the journeys where viewport, keyboard, overflow or
 accessibility behaviour materially changes rather than replaying every desktop-only business-flow
-test at a second viewport. CI defaults to four Playwright workers and builds the production bundle once
-before previewing it; local `npm run test:e2e` still builds automatically when no reusable build is
+test at a second viewport. CI defaults to two Playwright workers and builds the production bundle once
+before previewing it. The hosted browser job caches the pinned Chromium payload where the selected
+runner has a warm cache; local `npm run test:e2e` still builds automatically when no reusable build is
 provided.
 
 Coverage does not currently enforce a repository-wide threshold and duplicates already-executed unit
-suites. It therefore runs for relevant pushes to `main` and manual full validation rather than
-duplicating work on every Pull Request.
+suites. It therefore runs only for deliberate manual full validation rather than duplicating work on
+every Pull Request or repeating the suite after merge.
 
 The detailed routing matrix, job graph, branch-protection contract, runner policy, failure semantics
 and local parity commands are documented in [CI/CD and quality gates](ci-cd.md).

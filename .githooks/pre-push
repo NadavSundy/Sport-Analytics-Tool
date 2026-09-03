@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "Running optional Sport Analytics local CI before push..."
+npm run ci:local
