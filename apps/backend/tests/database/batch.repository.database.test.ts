@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { executeQuery } from '../../src/database';
 import { createBatchRepository } from '../../src/modules/batches/batch.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { randomUUID } from 'node:crypto';
 
 interface TestRecords {
   accountId: string;
@@ -288,6 +289,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const created = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-valid`,
@@ -386,6 +388,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-extended-provenance`,
@@ -508,6 +511,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-invalid-${_name}`,
@@ -528,6 +532,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const input = {
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-duplicate-idempotency`,
@@ -567,6 +572,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-invalid-extended-values`,
@@ -593,6 +599,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-duplicate-${_name}`,
@@ -617,6 +624,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-published-invariant`,
@@ -642,6 +650,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-checkpoint-primary-key`,
@@ -686,6 +695,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-foreign-key-${name}`,
@@ -711,6 +721,7 @@ describe.sequential('batch repository database integration', () => {
         const current = testRecords();
         const repository = createBatchRepository(client);
         const batch = await repository.createBatch({
+          batchReference: randomUUID(),
           submitterId: current.accountId,
           competitionId: current.competitionId,
           idempotencyKey: `${sourcePrefix}-no-delete`,
@@ -769,6 +780,7 @@ describe.sequential('batch repository database integration', () => {
       const current = testRecords();
       const repository = createBatchRepository(client);
       const batch = await repository.createBatch({
+        batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-retain-parents`,
