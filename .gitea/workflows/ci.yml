@@ -52,11 +52,90 @@ jobs:
           CI_HEAD_SHA: ${{ github.sha }}
         run: node scripts/ci-change-plan.mjs
 
+      - name: Check committed patch whitespace
+        env:
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          CI_HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$CI_EVENT_NAME" = "pull_request" ]; then
+            base="$CI_PR_BASE_SHA"
+          else
+            base="$CI_PUSH_BEFORE_SHA"
+          fi
+
+          if [ -z "$base" ] || printf '%s' "$base" | grep -Eq '^0+$'; then
+            base="$(git rev-parse "${CI_HEAD_SHA}^")"
+          fi
+
+          git diff --check "${base}...${CI_HEAD_SHA}"
+
       - name: Test CI change-routing rules
         run: node --test tests/ci/*.test.mjs
 
-  validation:
+  preflight:
     needs: plan
+    if: needs.plan.outputs.needsNpm == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies and validate lockfile
+        run: npm ci
+
+      - name: Check repository formatting
+        run: npm run format:check
+
+      - name: Run monorepo architecture and hygiene checks
+        if: needs.plan.outputs.hygiene == 'true'
+        run: npm run hygiene
+
+      - name: Verify shared-contract static quality
+        if: needs.plan.outputs.contracts == 'true'
+        run: |
+          npm run lint --workspace=@sport-analytics/contracts
+          npm run typecheck --workspace=@sport-analytics/contracts
+          npm run build --workspace=@sport-analytics/contracts
+
+      - name: Verify backend static quality
+        if: needs.plan.outputs.backend == 'true'
+        run: |
+          npm run lint --workspace=@sport-analytics/backend
+          npm run typecheck --workspace=@sport-analytics/backend
+
+      - name: Verify frontend static quality
+        if: needs.plan.outputs.frontend == 'true'
+        run: |
+          npm run lint --workspace=@sport-analytics/frontend
+          npm run typecheck --workspace=@sport-analytics/frontend
+
+      - name: Run deployment-helper regression tests
+        if: needs.plan.outputs.deployment == 'true'
+        run: npm run test:deployment
+
+      - name: Lint OpenAPI description
+        if: needs.plan.outputs.openapi == 'true'
+        run: npm run openapi:lint
+
+  validation:
+    needs:
+      - plan
+      - preflight
     if: needs.plan.outputs.needsNpm == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -79,44 +158,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check repository formatting
-        run: npm run format:check
-
-      - name: Run monorepo architecture and hygiene checks
-        if: needs.plan.outputs.hygiene == 'true'
-        run: npm run hygiene
-
-      - name: Verify shared contracts
+      - name: Build shared contracts for runtime validation
         if: needs.plan.outputs.contracts == 'true'
-        run: |
-          npm run lint --workspace=@sport-analytics/contracts
-          npm run typecheck --workspace=@sport-analytics/contracts
-          npm run test:contracts
-          npm run build --workspace=@sport-analytics/contracts
+        run: npm run build --workspace=@sport-analytics/contracts
 
-      - name: Verify backend workspace
+      - name: Run shared-contract tests
+        if: needs.plan.outputs.contracts == 'true'
+        run: npm run test:contracts
+
+      - name: Run backend tests and build
         if: needs.plan.outputs.backend == 'true'
         run: |
-          npm run lint --workspace=@sport-analytics/backend
-          npm run typecheck --workspace=@sport-analytics/backend
           npm run test:unit
           npm run test:api
           npm run build --workspace=@sport-analytics/backend
 
-      - name: Verify frontend workspace
+      - name: Run frontend unit tests
         if: needs.plan.outputs.frontend == 'true'
-        run: |
-          npm run lint --workspace=@sport-analytics/frontend
-          npm run typecheck --workspace=@sport-analytics/frontend
-          npm run test:frontend
-
-      - name: Run deployment-helper tests
-        if: needs.plan.outputs.deployment == 'true'
-        run: npm run test:deployment
-
-      - name: Lint OpenAPI description
-        if: needs.plan.outputs.openapi == 'true'
-        run: npm run openapi:lint
+        run: npm run test:frontend
 
       - name: Set up Python
         if: needs.plan.outputs.docs == 'true'
@@ -139,7 +198,9 @@ jobs:
         run: npm run test:coverage
 
   browser:
-    needs: plan
+    needs:
+      - plan
+      - preflight
     if: needs.plan.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -180,7 +241,9 @@ jobs:
         run: npm run test:e2e
 
   database:
-    needs: plan
+    needs:
+      - plan
+      - preflight
     if: needs.plan.outputs.database == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -236,6 +299,7 @@ jobs:
   quality:
     needs:
       - plan
+      - preflight
       - validation
       - browser
       - database
@@ -247,6 +311,8 @@ jobs:
       - name: Enforce required validation results
         env:
           PLAN_RESULT: ${{ needs.plan.result }}
+          PREFLIGHT_REQUIRED: ${{ needs.plan.outputs.needsNpm }}
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           VALIDATION_REQUIRED: ${{ needs.plan.outputs.needsNpm }}
           VALIDATION_RESULT: ${{ needs.validation.result }}
           BROWSER_REQUIRED: ${{ needs.plan.outputs.e2e }}
@@ -256,6 +322,11 @@ jobs:
         run: |
           if [ "$PLAN_RESULT" != "success" ]; then
             echo "::error::Change planning did not complete successfully ($PLAN_RESULT)."
+            exit 1
+          fi
+
+          if [ "$PREFLIGHT_REQUIRED" = "true" ] && [ "$PREFLIGHT_RESULT" != "success" ]; then
+            echo "::error::Required preflight validation did not complete successfully ($PREFLIGHT_RESULT)."
             exit 1
           fi
 

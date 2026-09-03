@@ -47,20 +47,20 @@ ubuntu-24.04
 Node workflows use Node.js 22. Database integration uses PostgreSQL 16. The hosted runners use host
 networking, so CI PostgreSQL listens on `55432` instead of the normally occupied `5432` port.
 
-The CI graph separates browser validation from normal workspace validation. This lets frontend-heavy
-Pull Requests use both hosted runners when capacity is available while retaining the same required
-quality gate:
+The CI graph separates cheap prerequisite validation from expensive test lanes. Browser and database
+work does not begin until the hosted preflight succeeds, so formatting, hygiene, lockfile and static
+quality failures stop the pipeline before consuming those longer-running lanes:
 
 ```text
-                         +-> validation ----------------+
-                         +-> browser (if required) ------+-> quality
-plan --------------------+                               |
-                         +-> database (if required) -----+
+plan -> preflight ----------------+-> validation --------+
+                                  +-> browser (if required) ----+-> quality
+                                  +-> database (if required) ---+
 ```
 
-The validation, browser and database lanes all depend only on `plan`. They may therefore overlap when
-multiple runners are available, and they safely queue when only one runner is available. The final
-`quality` job waits for every lane that the change plan marked as required.
+After `preflight` succeeds, validation, browser and database work may overlap when multiple runners are
+available. They safely queue when capacity is constrained. The final `quality` job waits for every lane
+that the change plan marked as required and also treats a required preflight failure as a merge-blocking
+failure.
 
 ### Dedicated repository runner
 
@@ -119,6 +119,33 @@ select full application validation rather than guessing that a check can be skip
 
 Documentation-only changes still run a strict MkDocs build. OpenAPI-related documentation also runs
 Redocly linting.
+
+## Fail-fast hosted preflight
+
+Hosted CI keeps required repository policy checks server-side even though developers can optionally run
+local CI. The `preflight` job is the authoritative early owner for inexpensive failures that should be
+known before browser or PostgreSQL work starts.
+
+When selected by the change plan, preflight performs:
+
+- a clean `npm ci`, which also validates `package.json` / `package-lock.json` consistency;
+- repository formatting;
+- monorepo hygiene and architecture checks;
+- contracts, backend and frontend lint/typecheck as applicable;
+- the shared-contract build needed by dependent workspace static analysis;
+- deployment-helper regression tests when deployment tooling is affected; and
+- OpenAPI linting when the API description can be affected.
+
+The `plan` job also runs `git diff --check` against the committed Pull Request/push range before any
+npm-backed lane begins.
+
+Longer functional work remains outside preflight. The `validation` lane owns workspace tests, builds,
+strict documentation validation and post-merge/manual coverage. Browser and database lanes own only
+their specialised production-browser/accessibility and PostgreSQL integration responsibilities.
+
+Formatting and hygiene are therefore authoritative once in hosted CI. Browser/database jobs still run
+their own `npm ci` and prerequisite contract/application builds because Gitea jobs execute in isolated
+runner workspaces; these are execution prerequisites rather than duplicated quality gates.
 
 ## Browser and accessibility execution strategy
 
@@ -352,14 +379,22 @@ process; do not weaken the required quality gate to hide it.
 
 The job graph should be read as follows:
 
-- `plan` failure: changed paths could not be safely planned or planner regression tests failed;
-- `validation` skipped: expected only when the plan requires no npm-based validation, such as a
+- `plan` failure: changed paths could not be safely planned, committed patch whitespace failed, or
+  planner regression tests failed;
+- `preflight` skipped: expected only when the plan requires no npm-backed validation, such as a
   lightweight evidence-only change;
-- `validation` failure: one or more required formatting, hygiene, workspace, documentation or
-  coverage checks failed;
-- `browser` skipped: expected when the planner marks the change as unable to affect browser behaviour;
+- `preflight` failure: dependency installation/lockfile validation, formatting, hygiene, static
+  lint/typecheck, deployment-helper regression or OpenAPI validation failed; expensive required lanes
+  do not start;
+- `validation` skipped: expected when npm-backed validation is not required, or when required preflight
+  did not succeed;
+- `validation` failure: one or more required workspace tests/builds, documentation checks or coverage
+  checks failed;
+- `browser` skipped: expected when browser validation is not required, or when required preflight did
+  not succeed;
 - `browser` failure: the production browser build, Playwright journey or accessibility validation failed;
-- `database` skipped: expected when the change cannot affect the persisted backend data path;
+- `database` skipped: expected when database validation is not required, or when required preflight did
+  not succeed;
 - `database` failure: required PostgreSQL reset/migration/seed/integration validation failed;
 - `quality` failure: at least one required predecessor did not complete successfully.
 

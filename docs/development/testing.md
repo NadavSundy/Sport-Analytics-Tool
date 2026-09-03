@@ -109,10 +109,15 @@ supplies that connection directly, and runs `npm run test:database` as an explic
 ## Change-aware hosted CI
 
 The required Gitea Pull Request status remains `Sport Analytics CI / quality`. CI first classifies
-the changed paths, then runs only the validation that can be affected by those changes. Normal
-workspace validation, browser validation and PostgreSQL validation are independent lanes after the
-planner. They may overlap when both university-hosted runners are available and safely queue when
-only one runner is available.
+the changed paths, then runs only the validation that can be affected by those changes.
+
+For npm-backed changes, a fail-fast `preflight` job first validates the clean dependency install,
+formatting, hygiene and applicable static quality checks. Required workspace, browser and PostgreSQL
+validation only begins after preflight succeeds.
+
+After preflight, the validation, browser and database lanes may overlap when runner capacity is
+available and safely queue when capacity is constrained. This prevents long-running browser or
+database work from starting when an inexpensive prerequisite has already failed.
 
 Lightweight evidence changes can skip the npm-based validation job entirely after the planner has
 checked the required repository structure. Unknown paths, root dependency changes and CI

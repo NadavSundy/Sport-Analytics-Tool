@@ -14,7 +14,7 @@ test('browser validation is an independent required lane rather than the tail of
   const validation = workflow.slice(validationStart, browserStart);
   const browser = workflow.slice(browserStart, databaseStart);
 
-  assert.match(browser, /needs: plan/);
+  assert.match(browser, /needs:\n\s+- plan\n\s+- preflight/);
   assert.match(browser, /if: needs\.plan\.outputs\.e2e == 'true'/);
   assert.match(workflow, /quality:\n\s+needs:\n(?:.|\n)*?- browser\n/);
   assert.match(workflow, /BROWSER_REQUIRED: \$\{\{ needs\.plan\.outputs\.e2e \}\}/);
