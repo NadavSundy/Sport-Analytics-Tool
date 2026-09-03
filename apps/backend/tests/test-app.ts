@@ -11,6 +11,7 @@ import type { AccountDeletionService } from '../src/modules/account-deletion/acc
 import type { AdminService } from '../src/modules/admin/admin.service';
 import type { WeatherService } from '../src/modules/weather/weather.service';
 import type { FixtureWeatherService } from '../src/modules/weather/fixture-weather.service';
+import type { BatchService } from '../src/modules/batches/batch.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -89,6 +90,7 @@ export function createTestApp(
   adminService: AdminService = testAdminService,
   weatherService?: WeatherService,
   fixtureWeatherService?: FixtureWeatherService,
+  batchService?: BatchService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -102,6 +104,7 @@ export function createTestApp(
     adminService,
     ...(weatherService !== undefined ? { weatherService } : {}),
     ...(fixtureWeatherService !== undefined ? { fixtureWeatherService } : {}),
+    ...(batchService !== undefined ? { batchService } : {}),
   });
 }
 
