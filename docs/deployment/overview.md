@@ -73,10 +73,16 @@ university-hosted runners.
 
 The automatic validation and affected-target deployments run through `Sport Analytics CI`. The standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Deploy Backend` and `Sport Analytics - Deploy Docs` workflows use the same runner only for manual recovery/redeployment.
 
-The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. When
-PostgreSQL integration is required, database validation may run in parallel with the normal
-validation lane to reduce elapsed feedback time. See [CI/CD and quality gates](../development/ci-cd.md)
-for the authoritative workflow and branch-protection behaviour.
+The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. Cheap
+structure, whitespace, routing and lockfile checks run during planning; application validation and the
+required browser lane then remain parallel. Database integration is executed conditionally inside the
+normal validation job using disposable PostgreSQL 16, avoiding a separate database job's setup overhead.
+
+After an up-to-date protected Pull Request passes the required quality status and is merged, the `main`
+push does not repeat the full application suite. It plans the merged change and runs only affected
+deployment jobs plus their production build/artifact and live smoke checks. See
+[CI/CD and quality gates](../development/ci-cd.md) for the authoritative workflow and branch-protection
+behaviour.
 
 Hosted runner scheduling, Node setup, PostgreSQL host-network operation, repository validation and
 Playwright execution were established through Issue #10. New workflow changes must preserve that

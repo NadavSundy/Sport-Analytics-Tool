@@ -47,20 +47,22 @@ ubuntu-24.04
 Node workflows use Node.js 22. Database integration uses PostgreSQL 16. The hosted runners use host
 networking, so CI PostgreSQL listens on `55432` instead of the normally occupied `5432` port.
 
-The CI graph separates browser validation from normal workspace validation. This lets frontend-heavy
-Pull Requests use both hosted runners when capacity is available while retaining the same required
-quality gate:
+The Pull Request CI graph keeps the expensive browser lane parallel with repository validation rather
+than placing a multi-minute serial preflight in front of both lanes:
 
 ```text
-                         +-> validation ----------------+
-                         +-> browser (if required) ------+-> quality
-plan --------------------+                               |
-                         +-> database (if required) -----+
+plan --------------------+-> validation --------+
+                         +-> browser (if required) ----+-> quality
 ```
 
-The validation, browser and database lanes all depend only on `plan`. They may therefore overlap when
-multiple runners are available, and they safely queue when only one runner is available. The final
-`quality` job waits for every lane that the change plan marked as required.
+The `plan` job owns only genuinely cheap fail-fast checks: required-file structure, change routing,
+committed whitespace and a frozen `npm ci --dry-run` lockfile check. Formatting, hygiene, workspace
+static checks, functional tests and database integration remain authoritative once inside `validation`.
+Database integration is folded into validation with the repository's disposable PostgreSQL 16 runtime,
+avoiding a separate checkout/Node/npm setup for a test suite whose database-specific work is short.
+
+On a successful Pull Request, `validation` and `browser` can overlap whenever runner capacity is
+available. The final `quality` job remains the stable required merge status.
 
 ### Dedicated repository runner
 
@@ -119,6 +121,35 @@ select full application validation rather than guessing that a check can be skip
 
 Documentation-only changes still run a strict MkDocs build. OpenAPI-related documentation also runs
 Redocly linting.
+
+## Hosted fail-fast and lane ownership
+
+Hosted CI keeps required repository policy checks server-side even though developers can optionally run
+local CI. The optimisation deliberately avoids a large serial preflight because hosted benchmarking
+showed that moving roughly two minutes of static work in front of every long lane increased the green
+full-run elapsed time.
+
+The `plan` job therefore performs only checks that are cheap enough to justify blocking downstream work:
+
+- required repository structure;
+- change-aware routing regression tests;
+- `git diff --check` against the committed Pull Request/push range; and
+- `npm ci --dry-run --ignore-scripts --no-audit --no-fund` when npm-backed validation is required.
+
+The frozen npm dry-run catches `package.json` / `package-lock.json` drift before the browser lane starts
+without paying for a second clean install job.
+
+The `validation` lane is the single authoritative owner for formatting, hygiene, lint/typecheck,
+workspace tests/builds, deployment-helper regression tests, OpenAPI linting, strict documentation checks
+and database integration when selected by the planner. Database integration uses the repository's
+disposable embedded PostgreSQL 16 runner, so it reuses validation's checkout, Node setup, dependency
+installation and shared-contract build instead of launching a separate hosted job.
+
+The `browser` lane owns only production frontend build and browser/accessibility validation. It remains
+parallel with validation after planning. Browser dependencies still require an isolated job workspace,
+but the Playwright Chromium payload is cached by the pinned Playwright version so a warm runner can avoid
+re-downloading the browser binary. System dependencies are still verified on each browser job. Gitea
+runner caches are runner-local, so the first execution on a different runner can still be a cache miss.
 
 ## Browser and accessibility execution strategy
 
@@ -196,7 +227,8 @@ The policy is therefore:
 
 - Pull Requests: run the relevant functional/unit/browser/database checks, but do not duplicate them
   solely for coverage;
-- relevant pushes to `main`: generate coverage after merge;
+- pushes to `main`: do not repeat coverage or application test suites after the required Pull Request
+  quality gate has already passed;
 - `workflow_dispatch`: generate coverage as part of deliberate full validation.
 
 If a repository-wide coverage threshold is introduced later, this policy must be reviewed because
@@ -277,23 +309,32 @@ For command selection, optional pre-push setup and troubleshooting, see
 
 ## Deployment relationship
 
-Pull Request validation and deployment have separate responsibilities. Pull Request CI proves that a
-change satisfies the required quality gate. After merge, the same change-aware planner runs against the
-`main` push and automatic deployment is permitted only after that commit's `quality` job succeeds.
+Pull Request validation and deployment have separate responsibilities. Pull Request CI is the
+authoritative application quality gate. A push to `main` after merge does not repeat the same unit, API,
+browser, hygiene or database suites; it reruns the cheap change planner and then performs only the
+affected deployment work and deployment-specific verification.
+
+This optimisation depends on protected-branch policy: changes enter `main` only through an approved Pull
+Request, the required `Sport Analytics CI / quality (pull_request)` status must pass, and the Pull Request
+must be up to date with `main` before merge. If those protections are not available or are intentionally
+bypassed, the deployment-only main path must not be treated as equivalent to a fresh full validation.
 
 The validated-main flow is:
 
 ```text
-Pull Request quality -> review/merge -> main change-aware quality
-                                      -> affected deployment target(s)
-                                      -> target-specific live smoke checks
+up-to-date Pull Request -> required quality -> review/merge
+                                           -> main change plan
+                                           -> affected deployment target(s)
+                                           -> target-specific live smoke checks
 ```
 
 The planner records independent production-impact decisions for `deployFrontend`, `deployBackend` and
-`deployDocs`. A deployment job depends on both `plan` and `quality`, runs only for a push to `main`, and
-runs only when its own production target is affected.
+`deployDocs`. On `main`, the stable `quality` job validates successful planning but deliberately accepts
+the application lanes being skipped because their authoritative result belongs to the required Pull
+Request status. Deployment jobs still depend on both `plan` and `quality`, run only for a push to `main`,
+and run only when their own production target is affected.
 
-| Change                                          | Automatic deployment after main quality          |
+| Change                                          | Automatic deployment after merge                 |
 | ----------------------------------------------- | ------------------------------------------------ |
 | Frontend production implementation              | Frontend only                                    |
 | Frontend test-only                              | None                                             |
@@ -305,9 +346,9 @@ runs only when its own production target is affected.
 | CI/workflow-only                                | None merely because CI changed                   |
 | Root production dependency manifests            | Conservatively affected application/docs targets |
 
-Deployment jobs do not repeat authoritative unit/API/browser suites already used to make the quality
-decision. They retain deployment-specific work: reproducible installation, production builds/artifact
-preparation, secret validation, publication and live verification.
+Deployment jobs do not repeat authoritative unit/API/browser/database suites already used to make the
+Pull Request quality decision. They retain deployment-specific work: reproducible installation,
+production builds/artifact preparation, secret validation, publication and live verification.
 
 ### Frontend
 
@@ -352,19 +393,24 @@ process; do not weaken the required quality gate to hide it.
 
 The job graph should be read as follows:
 
-- `plan` failure: changed paths could not be safely planned or planner regression tests failed;
-- `validation` skipped: expected only when the plan requires no npm-based validation, such as a
-  lightweight evidence-only change;
-- `validation` failure: one or more required formatting, hygiene, workspace, documentation or
-  coverage checks failed;
-- `browser` skipped: expected when the planner marks the change as unable to affect browser behaviour;
+- `plan` failure: changed paths could not be safely planned, required structure/routing checks failed,
+  committed patch whitespace failed, or the frozen npm lockfile check failed;
+- `validation` skipped on a Pull Request: expected when npm-backed validation is not required;
+- `validation` skipped on `main`: expected because the application quality suite already passed in the
+  required up-to-date Pull Request;
+- `validation` failure: one or more required formatting, hygiene, lint/typecheck, workspace
+  tests/builds, PostgreSQL integration, documentation, deployment-helper, OpenAPI or manual coverage
+  checks failed;
+- `browser` skipped on a Pull Request: expected when browser validation is not required;
+- `browser` skipped on `main`: expected on the deployment-only post-merge path;
 - `browser` failure: the production browser build, Playwright journey or accessibility validation failed;
-- `database` skipped: expected when the change cannot affect the persisted backend data path;
-- `database` failure: required PostgreSQL reset/migration/seed/integration validation failed;
-- `quality` failure: at least one required predecessor did not complete successfully.
+- `quality` failure: planning failed or a required Pull Request validation lane did not complete
+  successfully;
+- deployment failure after merge: source quality has already passed, but the target environment,
+  deployment artifact or live smoke check needs investigation.
 
-A failed required check must be corrected in the branch. It must not be bypassed by changing branch
-protection or weakening the planner merely to obtain a green Pull Request.
+A failed required Pull Request check must be corrected in the branch. It must not be bypassed by
+changing branch protection or weakening the planner merely to obtain a green Pull Request.
 
 ## Evidence and change control
 

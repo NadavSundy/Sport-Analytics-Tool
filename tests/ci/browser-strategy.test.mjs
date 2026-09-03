@@ -6,23 +6,39 @@ function read(path) {
   return readFileSync(path, 'utf8');
 }
 
-test('browser validation is an independent required lane rather than the tail of validation', () => {
+test('browser validation runs in parallel with validation after planning', () => {
   const workflow = read('.gitea/workflows/ci.yml');
   const validationStart = workflow.indexOf('  validation:');
   const browserStart = workflow.indexOf('  browser:');
-  const databaseStart = workflow.indexOf('  database:', browserStart);
+  const qualityStart = workflow.indexOf('  quality:', browserStart);
   const validation = workflow.slice(validationStart, browserStart);
-  const browser = workflow.slice(browserStart, databaseStart);
+  const browser = workflow.slice(browserStart, qualityStart);
 
+  assert.match(validation, /needs: plan/);
   assert.match(browser, /needs: plan/);
-  assert.match(browser, /if: needs\.plan\.outputs\.e2e == 'true'/);
+  assert.doesNotMatch(workflow, /\n  preflight:/);
+  assert.match(browser, /github\.event_name != 'push'/);
+  assert.match(browser, /needs\.plan\.outputs\.e2e == 'true'/);
   assert.match(workflow, /quality:\n\s+needs:\n(?:.|\n)*?- browser\n/);
   assert.match(workflow, /BROWSER_REQUIRED: \$\{\{ needs\.plan\.outputs\.e2e \}\}/);
   assert.match(workflow, /BROWSER_RESULT: \$\{\{ needs\.browser\.result \}\}/);
   assert.doesNotMatch(validation, /playwright install|npm run test:e2e/);
 });
 
-test('hosted browser validation reuses one production build and uses a conservative two-worker hosted default', () => {
+test('database integration is folded into validation without a separate hosted job', () => {
+  const workflow = read('.gitea/workflows/ci.yml');
+  const validationStart = workflow.indexOf('  validation:');
+  const browserStart = workflow.indexOf('  browser:');
+  const validation = workflow.slice(validationStart, browserStart);
+
+  assert.match(validation, /Run PostgreSQL database integration tests/);
+  assert.match(validation, /if: needs\.plan\.outputs\.database == 'true'/);
+  assert.match(validation, /run: npm run test:database/);
+  assert.doesNotMatch(workflow, /\n  database:/);
+  assert.doesNotMatch(workflow, /DATABASE_RESULT|needs\.database/);
+});
+
+test('hosted browser validation reuses one production build and caches pinned Chromium', () => {
   const workflow = read('.gitea/workflows/ci.yml');
   const config = read('playwright.config.ts');
 
@@ -31,8 +47,8 @@ test('hosted browser validation reuses one production build and uses a conservat
   assert.match(workflow, /Build shared contracts for browser validation/);
   assert.match(workflow, /Build frontend production bundle once/);
   const browserStart = workflow.indexOf('  browser:');
-  const databaseStart = workflow.indexOf('  database:', browserStart);
-  const browser = workflow.slice(browserStart, databaseStart);
+  const qualityStart = workflow.indexOf('  quality:', browserStart);
+  const browser = workflow.slice(browserStart, qualityStart);
   assert.ok(
     browser.indexOf('run: npm ci') < browser.indexOf('NODE_ENV: production'),
     'npm ci must install dev dependencies before the browser lane switches to production mode',
@@ -42,11 +58,37 @@ test('hosted browser validation reuses one production build and uses a conservat
       browser.indexOf('npm run build --workspace=@sport-analytics/frontend'),
     'shared contracts must be built before the standalone browser lane builds the frontend',
   );
+  assert.match(browser, /uses: actions\/cache@v4/);
+  assert.match(browser, /path: ~\/.cache\/ms-playwright/);
+  assert.match(browser, /key: playwright-ubuntu24-chromium-1\.62\.1/);
+  assert.match(browser, /npx playwright install-deps chromium/);
+  assert.match(browser, /steps\.playwright-cache\.outputs\.cache-hit != 'true'/);
+  assert.match(browser, /npx playwright install chromium/);
   assert.match(config, /PLAYWRIGHT_REUSE_BUILD === '1'/);
   assert.match(config, /PLAYWRIGHT_WORKERS \?\? '2'/);
   assert.match(config, /retries: process\.env\.CI \? 1 : 0/);
   assert.match(config, /timeout: process\.env\.CI \? 45_000 : 30_000/);
   assert.match(config, /reuseProductionBuild\s*\?\s*previewCommand/);
+});
+
+test('plan owns cheap lockfile fail-fast while main push skips duplicate application suites', () => {
+  const workflow = read('.gitea/workflows/ci.yml');
+  const planStart = workflow.indexOf('  plan:');
+  const validationStart = workflow.indexOf('  validation:');
+  const browserStart = workflow.indexOf('  browser:');
+  const qualityStart = workflow.indexOf('  quality:');
+  const deployStart = workflow.indexOf('  deploy_frontend:');
+  const plan = workflow.slice(planStart, validationStart);
+  const validation = workflow.slice(validationStart, browserStart);
+  const browser = workflow.slice(browserStart, qualityStart);
+  const quality = workflow.slice(qualityStart, deployStart);
+
+  assert.match(plan, /npm ci --dry-run --ignore-scripts --no-audit --no-fund/);
+  assert.match(plan, /git diff --check/);
+  assert.match(validation, /github\.event_name != 'push'/);
+  assert.match(browser, /github\.event_name != 'push'/);
+  assert.match(quality, /if \[ "\$EVENT_NAME" != "push" \]/);
+  assert.match(quality, /full application quality was enforced before merge/);
 });
 
 test('mobile Chromium runs only the representative tagged journey subset', () => {
