@@ -16,15 +16,21 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 
 ## Backend application runtime
 
-| Variable                   | Required by current code                | Secret | Purpose                                                    |
-| -------------------------- | --------------------------------------- | ------ | ---------------------------------------------------------- |
-| `NODE_ENV`                 | No; defaults to `development`           | No     | Runtime mode: `development`, `test` or `production`.       |
-| `PORT`                     | No; defaults to `3000`                  | No     | Backend HTTP port. Hosting platforms may provide it.       |
-| `CORS_ORIGINS`             | No; defaults to `http://localhost:5173` | No     | Comma-separated list of allowed browser origins.           |
-| `SUPABASE_URL`             | Yes                                     | No     | Supabase Auth project URL used for token verification.     |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes                                     | No     | Publishable key used for backend `getUser()` verification. |
-| `SUPABASE_SECRET_KEY`      | No; required to enable account deletion | Yes    | Server-only key used by Supabase Auth Admin deletion.      |
-| `DATABASE_URL`             | Required when database access is used   | Yes    | Hosted PostgreSQL session-pooler connection string.        |
+| Variable                       | Required by current code                | Secret | Purpose                                                            |
+| ------------------------------ | --------------------------------------- | ------ | ------------------------------------------------------------------ |
+| `NODE_ENV`                     | No; defaults to `development`           | No     | Runtime mode: `development`, `test` or `production`.               |
+| `PORT`                         | No; defaults to `3000`                  | No     | Backend HTTP port. Hosting platforms may provide it.               |
+| `CORS_ORIGINS`                 | No; defaults to `http://localhost:5173` | No     | Comma-separated list of allowed browser origins.                   |
+| `SUPABASE_URL`                 | Yes                                     | No     | Supabase Auth project URL used for token verification.             |
+| `SUPABASE_PUBLISHABLE_KEY`     | Yes                                     | No     | Publishable key used for backend `getUser()` verification.         |
+| `SUPABASE_SECRET_KEY`          | No; required to enable account deletion | Yes    | Server-only key used by Supabase Auth Admin deletion.              |
+| `DATABASE_URL`                 | Required when database access is used   | Yes    | Hosted PostgreSQL session-pooler connection string.                |
+| `AZURE_STORAGE_ACCOUNT_NAME`   | Required when `NODE_ENV=production`     | No     | Azure account used to derive the HTTPS Blob endpoint.              |
+| `AZURE_STORAGE_CONTAINER_NAME` | Required when `NODE_ENV=production`     | No     | Private Blob container resolved by production storage composition. |
+
+Production Blob authentication uses `DefaultAzureCredential` with the Azure App Service managed
+identity. Azure Storage connection strings, account keys, SAS tokens, and shared-key credentials
+are not supported application configuration.
 
 ## Test and support-script variables
 
@@ -51,6 +57,7 @@ Never commit:
 - user bearer/access tokens;
 - Supabase secret keys or legacy `service_role` keys;
 - Azure publish profiles;
+- Azure Storage account keys, connection strings, and SAS tokens;
 - Cloudflare API tokens; or
 - external API credentials.
 
@@ -61,3 +68,5 @@ Repository-hosted deployment secrets must be stored using the relevant platform 
 The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The optional server-only account-deletion configuration was documented with the assistance of
 Codex[GPT-5].
+The non-secret Azure Blob identifiers and managed-identity requirement were documented with the
+assistance of Codex[GPT-5].
