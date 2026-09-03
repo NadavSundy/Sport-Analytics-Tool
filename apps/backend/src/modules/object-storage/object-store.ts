@@ -1,6 +1,6 @@
 import type { Readable } from 'node:stream';
 
-export interface StoredObjectVersion {
+interface StoredObjectVersion {
   versionId: string | null;
 }
 

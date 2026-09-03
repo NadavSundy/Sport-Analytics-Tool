@@ -12,12 +12,8 @@ import {
 import type { StoredObjectRecord, StoredObjectRepository } from './stored-object.repository';
 
 export const MAX_BATCH_PAYLOAD_BYTES = 50 * 1024 * 1024;
-export const BATCH_PAYLOAD_RETENTION_DAYS = 90;
-export const BATCH_PAYLOAD_MEDIA_TYPES = [
-  'application/json',
-  'text/csv',
-  'application/x-ndjson',
-] as const;
+const BATCH_PAYLOAD_RETENTION_DAYS = 90;
+const BATCH_PAYLOAD_MEDIA_TYPES = ['application/json', 'text/csv', 'application/x-ndjson'] as const;
 
 type BatchPayloadMediaType = (typeof BATCH_PAYLOAD_MEDIA_TYPES)[number];
 
