@@ -50,6 +50,7 @@ function emptyPlan() {
     docs: false,
     frontend: false,
     backend: false,
+    worker: false,
     contracts: false,
     database: false,
     e2e: false,
@@ -69,6 +70,7 @@ function markFull(plan) {
   plan.docs = true;
   plan.frontend = true;
   plan.backend = true;
+  plan.worker = true;
   plan.contracts = true;
   plan.database = true;
   plan.e2e = true;
@@ -209,6 +211,15 @@ function applyPath(plan, file) {
     return;
   }
 
+  if (file.startsWith('apps/worker/')) {
+    plan.worker = true;
+    plan.database = true;
+    plan.deployment = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
   if (file.startsWith('database/') || file === 'compose.test.yml') {
     plan.backend = true;
     plan.contracts = true;
@@ -309,7 +320,7 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     }
   }
 
-  if (plan.frontend || plan.backend || plan.contracts) {
+  if (plan.frontend || plan.backend || plan.worker || plan.contracts) {
     plan.hygiene = true;
     plan.needsNpm = true;
   }

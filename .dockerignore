@@ -1,0 +1,13 @@
+.git
+.deployment
+coverage
+data
+gitea-export
+node_modules
+playwright-report
+site
+test-results
+*.log
+.env
+.env.*
+!apps/worker/.env.example

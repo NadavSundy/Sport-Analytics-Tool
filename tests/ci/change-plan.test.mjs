@@ -76,12 +76,25 @@ test('backend source changes conservatively include database integration validat
   assert.equal(plan.deployDocs, false);
 });
 
+test('worker changes select worker, database and deployment validation without browser work', () => {
+  const plan = classifyChangedFiles(['apps/worker/src/index.ts']);
+
+  assert.equal(plan.worker, true);
+  assert.equal(plan.database, true);
+  assert.equal(plan.deployment, true);
+  assert.equal(plan.e2e, false);
+  assert.equal(plan.frontend, false);
+  assert.equal(plan.backend, false);
+  assert.equal(plan.hygiene, true);
+});
+
 test('shared contracts validate both applications and browser integration', () => {
   const plan = classifyChangedFiles(['packages/contracts/src/api.ts']);
 
   assert.equal(plan.contracts, true);
   assert.equal(plan.frontend, true);
   assert.equal(plan.backend, true);
+  assert.equal(plan.worker, false);
   assert.equal(plan.e2e, true);
   assert.equal(plan.database, false);
   assert.equal(plan.deployFrontend, true);
@@ -96,6 +109,7 @@ test('root dependency changes select full CI', () => {
   assert.equal(plan.docs, true);
   assert.equal(plan.frontend, true);
   assert.equal(plan.backend, true);
+  assert.equal(plan.worker, true);
   assert.equal(plan.database, true);
   assert.equal(plan.e2e, true);
   assert.equal(plan.hygiene, true);

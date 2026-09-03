@@ -17,6 +17,7 @@ jobs:
       docs: ${{ steps.plan.outputs.docs }}
       frontend: ${{ steps.plan.outputs.frontend }}
       backend: ${{ steps.plan.outputs.backend }}
+      worker: ${{ steps.plan.outputs.worker }}
       contracts: ${{ steps.plan.outputs.contracts }}
       database: ${{ steps.plan.outputs.database }}
       e2e: ${{ steps.plan.outputs.e2e }}
@@ -102,6 +103,14 @@ jobs:
           npm run test:unit
           npm run test:api
           npm run build --workspace=@sport-analytics/backend
+
+      - name: Verify asynchronous worker workspace
+        if: needs.plan.outputs.worker == 'true'
+        run: |
+          npm run lint --workspace=@sport-analytics/worker
+          npm run typecheck --workspace=@sport-analytics/worker
+          npm run test:worker
+          npm run build --workspace=@sport-analytics/worker
 
       - name: Verify frontend workspace
         if: needs.plan.outputs.frontend == 'true'

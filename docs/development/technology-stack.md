@@ -20,6 +20,8 @@ Express backend API
     +--> PostgreSQL for application data
     |
     +--> Private Azure Blob Storage through managed identity
+
+Azure Service Bus --> Node.js worker --> PostgreSQL and private Azure Blob Storage
 ```
 
 The frontend may communicate directly with Supabase Auth for managed sign-in and session handling. Application-domain data must pass through the handwritten Express API; generated Supabase Data API endpoints are not used as the application API.
@@ -62,6 +64,17 @@ The frontend may communicate directly with Supabase Auth for managed sign-in and
 | `@azure/identity`            | `4.13.1`         | Supplies `DefaultAzureCredential` for production Blob access.   | Uses the Azure App Service managed identity without Blob account keys, connection strings, SAS tokens, or another application-held storage secret. |
 | `@azure/storage-blob`        | `12.27.0`        | Streams retained object bytes to private Azure Blob Storage.    | Implements the accepted ADR-011 provider behind the backend-owned `ObjectStore` boundary.                                                          |
 | `@sport-analytics/contracts` | `0.1.0`          | Shared API schemas/types.                                       | Keeps backend responses and validation aligned with the shared contract boundary.                                                                  |
+
+## Asynchronous worker
+
+| Technology / dependency | Declared version     | Purpose                                                       | Motivation / notes                                                                                              |
+| ----------------------- | -------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Node.js / TypeScript    | Node.js 22 / `5.5.4` | Separate long-running ingestion process.                      | Preserves the repository language and an independent failure/deployment boundary.                               |
+| `@azure/service-bus`    | `7.9.5`              | Peek-lock job receipt, renewal and settlement.                | Implements accepted ADR-010 without connection strings; the managed identity receives from the dedicated queue. |
+| `@azure/identity`       | `4.13.1`             | Local Azure CLI and deployed managed-identity authentication. | Keeps queue and Blob credentials out of source and environment variables.                                       |
+| `@azure/storage-blob`   | `12.27.0`            | Private staged-container access and readiness checks.         | Uses the same approved Azure provider as the backend storage adapter.                                           |
+| `pg`                    | `8.22.0`             | Direct pooled access to authoritative PostgreSQL.             | Supports durable checkpoints and idempotent transactions added by worker-processing issues.                     |
+| Zod                     | `3.23.8`             | Startup configuration and deployment-probe validation.        | Fails invalid or insecure runtime configuration before consuming jobs.                                          |
 
 ## Shared contracts
 
@@ -187,3 +200,5 @@ The issue #314 Three.js and self-hosted font dependency records were updated wit
 Codex[GPT-5.6 Sol].
 The Azure Blob Storage and managed-identity dependency records were updated with the assistance of
 Codex[GPT-5].
+The asynchronous worker runtime and Service Bus dependency records were updated with the assistance
+of Codex[GPT-5].

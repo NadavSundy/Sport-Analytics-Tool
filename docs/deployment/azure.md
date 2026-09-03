@@ -10,6 +10,7 @@ The decision is recorded in `docs/adr/0003-azure-hosting.md`.
 | -------------------- | ------------------------- | ---------------------------------------------------- |
 | React frontend       | Azure App Service (Linux) | Node.js 22 LTS build environment; Vite static bundle |
 | Express backend API  | Azure App Service (Linux) | Node.js 22 LTS runtime                               |
+| Async batch worker   | Azure Container Apps      | Node.js 22 LTS non-root container                    |
 | Private object bytes | Azure Blob Storage        | Backend managed identity and private container       |
 
 The PostgreSQL database and managed authentication remain on Supabase. The public MkDocs documentation site is hosted separately on Cloudflare Pages.
@@ -35,6 +36,9 @@ Advantages:
 Reason not selected for the current foundation:
 
 - more operational complexity than required for Sprint 1.
+
+ADR-010 later selected Container Apps specifically for the independently scaling Intermediate
+worker. Issue #365 supplies that target without changing App Service hosting for the frontend or API.
 
 ### Azure Static Web Apps
 
@@ -70,4 +74,6 @@ The preceding document was reviewed and aligned with the accepted Azure ADR with
 ChatGPT-Web[GPT-5.6 Sol] and updated for the automated deployment checks with the assistance of
 Codex[GPT-5].
 The managed-identity Blob Storage deployment mapping was updated with the assistance of
+Codex[GPT-5].
+The separately scoped Container Apps worker mapping was updated with the assistance of
 Codex[GPT-5].
