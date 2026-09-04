@@ -3,7 +3,7 @@ import type {
   AdministratorManagedUser,
   AdministratorSubmitterAccessUpdate,
 } from '@sport-analytics/contracts';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
@@ -15,6 +15,7 @@ import {
   getAdministratorUserManagement,
   rejectAdministratorSubmitterAccessRequest,
   updateAdministratorSubmitterAccess,
+  updateAdministratorUserRole,
 } from './admin-api';
 
 interface ManagementData {
@@ -27,23 +28,22 @@ type PageState =
   | { kind: 'forbidden' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; data: ManagementData };
-
+type ActionKind = 'promote' | 'approve' | 'reject' | 'scope' | 'revoke';
+type PendingAction = { userId: string; kind: ActionKind } | undefined;
 type Feedback = { userId: string; kind: 'success' | 'error'; message: string } | undefined;
-
-type PendingAction =
-  { userId: string; kind: 'approve' | 'reject' | 'scope' | 'revoke' } | undefined;
+type RoleFilter = 'all' | AdministratorManagedUser['role'];
+type ApprovalFilter = 'all' | AdministratorManagedUser['approvalState'];
 
 const roleLabels: Record<AdministratorManagedUser['role'], string> = {
   viewer: 'Viewer',
   submitter: 'Submitter',
   admin: 'Administrator',
 };
-
 const approvalLabels: Record<AdministratorManagedUser['approvalState'], string> = {
   not_requested: 'Not requested',
-  pending: 'Pending approval',
+  pending: 'Pending',
   approved: 'Approved',
-  rejected: 'Not approved',
+  rejected: 'Rejected',
 };
 
 function usePageTitle() {
@@ -56,294 +56,382 @@ function errorMessage(error: unknown): string {
   if (error instanceof ApiResponseError && error.kind === 'unauthenticated') {
     return 'Your session is no longer valid. Sign in again to continue.';
   }
-
   if (error instanceof ApiResponseError || error instanceof AdminUserManagementContractError) {
     return error.message;
   }
-
   return 'User management could not be loaded. Please try again.';
 }
 
 function userLabel(user: AdministratorManagedUser): string {
-  return user.displayName ?? `Account ${user.id}`;
+  return user.displayName ?? user.email;
 }
 
-function accessAudit(user: AdministratorManagedUser): string | null {
-  if (!user.submitterAccessUpdatedAt) {
-    return null;
+function scopeLabel(user: AdministratorManagedUser): string {
+  if (user.role === 'admin') return 'All competitions';
+  if (user.competitionScopes.length > 0) {
+    return user.competitionScopes.map((scope) => scope.name).join(', ');
   }
-
-  const actor = user.submitterAccessUpdatedBy
-    ? (user.submitterAccessUpdatedBy.displayName ?? `Account ${user.submitterAccessUpdatedBy.id}`)
-    : 'a former administrator';
-
-  return `${new Date(user.submitterAccessUpdatedAt).toLocaleString()} by ${actor}`;
+  return user.requestedCompetition?.name ?? 'None assigned';
 }
 
-interface ManagedUserCardProps {
+function StatusBadge({ user }: { user: AdministratorManagedUser }) {
+  const relevant = user.role === 'submitter' || user.approvalState !== 'not_requested';
+  return relevant ? (
+    <span className={`admin-status-badge admin-status-badge--${user.approvalState}`}>
+      {approvalLabels[user.approvalState]}
+    </span>
+  ) : (
+    <span className="admin-status-badge admin-status-badge--neutral">Not requested</span>
+  );
+}
+
+interface ManageDialogProps {
   user: AdministratorManagedUser;
   availableScopes: AdministratorCompetitionScope[];
   pendingAction: PendingAction;
   feedback: Feedback;
-  onUpdate: (
+  onClose: () => void;
+  onUpdateAccess: (
     user: AdministratorManagedUser,
     update: AdministratorSubmitterAccessUpdate,
-    kind: NonNullable<PendingAction>['kind'],
+    kind: Exclude<ActionKind, 'promote'>,
   ) => Promise<void>;
+  onPromote: (user: AdministratorManagedUser) => Promise<void>;
 }
 
-function ManagedUserCard({
+function ManageDialog({
   user,
   availableScopes,
   pendingAction,
   feedback,
-  onUpdate,
-}: ManagedUserCardProps) {
-  const isSubmitter = user.role === 'submitter' && user.approvalState === 'approved';
-  const hasPendingRequest = user.role === 'viewer' && user.approvalState === 'pending';
+  onClose,
+  onUpdateAccess,
+  onPromote,
+}: ManageDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const confirmationTriggerRef = useRef<HTMLButtonElement | null>(null);
   const assignedIds = useMemo(
     () => user.competitionScopes.map((scope) => scope.competitionId),
     [user.competitionScopes],
   );
-  const initialScopeIds = useMemo(
-    () =>
+  const hasPendingRequest = user.role === 'viewer' && user.approvalState === 'pending';
+  const isSubmitter = user.role === 'submitter' && user.approvalState === 'approved';
+  const [selectedScopeIds, setSelectedScopeIds] = useState<string[]>(
+    hasPendingRequest && user.requestedCompetition
+      ? [user.requestedCompetition.competitionId]
+      : assignedIds,
+  );
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<ActionKind | null>(null);
+  const isBusy = pendingAction?.userId === user.id;
+  const auditActor = user.submitterAccessUpdatedBy
+    ? (user.submitterAccessUpdatedBy.displayName ?? `Account ${user.submitterAccessUpdatedBy.id}`)
+    : 'a former administrator';
+
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    setSelectedScopeIds(
       hasPendingRequest && user.requestedCompetition
         ? [user.requestedCompetition.competitionId]
         : assignedIds,
-    [assignedIds, hasPendingRequest, user.requestedCompetition],
-  );
-  const [selectedScopeIds, setSelectedScopeIds] = useState<string[]>(initialScopeIds);
-  const [selectionError, setSelectionError] = useState<string | null>(null);
-  const isBusy = pendingAction?.userId === user.id;
-  const isManageable = user.role !== 'admin' && !user.disabled;
-  const canManageAccess = isManageable && (isSubmitter || hasPendingRequest);
-  const audit = accessAudit(user);
-  const selectionChanged =
-    [...selectedScopeIds].sort().join(',') !== [...assignedIds].sort().join(',');
-  const pendingActionMessage =
-    pendingAction?.kind === 'approve'
-      ? 'Approving submitter access. Please wait.'
-      : pendingAction?.kind === 'reject'
-        ? 'Rejecting the submitter access request. Please wait.'
-        : pendingAction?.kind === 'scope'
-          ? 'Saving competition scope changes. Please wait.'
-          : pendingAction?.kind === 'revoke'
-            ? 'Revoking submitter access. Please wait.'
-            : null;
+    );
+    setSelectionError(null);
+    setConfirmation(null);
+  }, [assignedIds, hasPendingRequest, user.requestedCompetition]);
 
   useEffect(() => {
-    setSelectedScopeIds(initialScopeIds);
-    setSelectionError(null);
-  }, [initialScopeIds]);
+    if (confirmation) confirmRef.current?.focus();
+  }, [confirmation]);
 
-  function toggleScope(competitionId: string) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape' && !isBusy) {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled), select:not(:disabled)',
+    );
+    if (!controls?.length) return;
+    const first = controls[0]!;
+    const last = controls[controls.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function toggleScope(id: string) {
     setSelectionError(null);
     setSelectedScopeIds((current) =>
-      current.includes(competitionId)
-        ? current.filter((id) => id !== competitionId)
-        : [...current, competitionId],
+      current.includes(id) ? current.filter((candidate) => candidate !== id) : [...current, id],
     );
   }
 
-  async function saveAccess(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function requestConfirmation(kind: ActionKind, trigger: HTMLButtonElement) {
+    confirmationTriggerRef.current = trigger;
+    setConfirmation(kind);
+  }
 
+  function cancelConfirmation() {
+    setConfirmation(null);
+    requestAnimationFrame(() => confirmationTriggerRef.current?.focus());
+  }
+
+  function requestScopeSave(trigger: HTMLButtonElement) {
     if (selectedScopeIds.length === 0) {
       setSelectionError('Select at least one competition scope.');
       return;
     }
-
-    await onUpdate(
-      user,
-      { approved: true, competitionIds: selectedScopeIds },
-      isSubmitter ? 'scope' : 'approve',
-    );
+    requestConfirmation(isSubmitter ? 'scope' : 'approve', trigger);
   }
 
+  async function confirmAction() {
+    const action = confirmation;
+    setConfirmation(null);
+    if (!action) return;
+    if (action === 'promote') {
+      await onPromote(user);
+    } else if (action === 'reject') {
+      await onUpdateAccess(user, { approved: false, competitionIds: [] }, 'reject');
+    } else if (action === 'revoke') {
+      await onUpdateAccess(user, { approved: false, competitionIds: [] }, 'revoke');
+    } else {
+      await onUpdateAccess(user, { approved: true, competitionIds: selectedScopeIds }, action);
+    }
+    closeRef.current?.focus();
+  }
+
+  const confirmationText =
+    confirmation === 'promote'
+      ? `Promote ${user.email} to Administrator? This grants full administrative access and cannot be undone here.`
+      : confirmation === 'approve'
+        ? `Approve ${user.email} as a submitter for ${user.requestedCompetition?.name ?? 'the requested competition'}?`
+        : confirmation === 'reject'
+          ? `Reject the pending submitter request from ${user.email}?`
+          : confirmation === 'revoke'
+            ? `Revoke all submitter access and competition scopes from ${user.email}?`
+            : confirmation === 'scope'
+              ? `Replace ${user.email}'s competition permissions with the selected scopes?`
+              : null;
+
   return (
-    <article className="admin-user-card" aria-labelledby={`admin-user-${user.id}`}>
-      <header className="admin-user-card__header">
-        <div>
-          <p className="admin-user-card__id">Account {user.id}</p>
-          <h2 id={`admin-user-${user.id}`}>{userLabel(user)}</h2>
-        </div>
-        <span className={`admin-role-badge admin-role-badge--${user.role}`}>
-          {roleLabels[user.role]}
-        </span>
-      </header>
-
-      <dl className="admin-user-facts">
-        <div>
-          <dt>Role</dt>
-          <dd>{roleLabels[user.role]}</dd>
-        </div>
-        <div>
-          <dt>Approval</dt>
-          <dd>{approvalLabels[user.approvalState]}</dd>
-        </div>
-        <div>
-          <dt>Competition scope</dt>
-          <dd>
-            {user.competitionScopes.length > 0
-              ? user.competitionScopes.map((scope) => scope.name).join(', ')
-              : 'None assigned'}
-          </dd>
-        </div>
-        <div>
-          <dt>Requested competition</dt>
-          <dd>{user.requestedCompetition?.name ?? 'None requested'}</dd>
-        </div>
-        {user.previouslyRevoked ? (
-          <div className="admin-user-facts__warning">
-            <dt>Access history</dt>
-            <dd>Previously revoked</dd>
+    <div
+      className="admin-dialog-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !isBusy) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="admin-manage-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-dialog-title"
+        onKeyDown={handleKeyDown}
+      >
+        <header className="admin-manage-dialog__header">
+          <div>
+            <p className="eyebrow">Manage account</p>
+            <h2 id="admin-dialog-title">{userLabel(user)}</h2>
+            <p>{user.email}</p>
           </div>
-        ) : null}
-        <div>
-          <dt>Account state</dt>
-          <dd>{user.disabled ? 'Disabled' : 'Active'}</dd>
-        </div>
-        {audit ? (
-          <div className="admin-user-facts__audit">
-            <dt>Last access change</dt>
-            <dd>{audit}</dd>
-          </div>
-        ) : null}
-      </dl>
+          <button
+            ref={closeRef}
+            className="button button--secondary"
+            type="button"
+            disabled={isBusy}
+            onClick={onClose}
+            aria-label={`Close management view for ${user.email}`}
+          >
+            Close
+          </button>
+        </header>
 
-      {hasPendingRequest && isManageable ? (
-        <p className="admin-user-card__request-state" role="status">
-          <strong>Submitter access requested.</strong> This request is awaiting administrator
-          review. {user.previouslyRevoked ? 'This user was previously revoked. ' : ''}Approval
-          grants the requested competition; rejection does not assign any scope.
-        </p>
-      ) : null}
-
-      {canManageAccess ? (
-        <form className="admin-access-form" onSubmit={(event) => void saveAccess(event)}>
-          <fieldset disabled={isBusy} aria-describedby={`scope-help-${user.id}`}>
-            <legend>
-              {isSubmitter ? 'Update competition scope' : 'Approve requested competition'}
-            </legend>
-            <p id={`scope-help-${user.id}`} className="field-help">
-              {isSubmitter
-                ? 'Submission permission takes effect only for the selected competitions.'
-                : 'Approval grants exactly the competition selected by the requester.'}
-            </p>
-            {isSubmitter && availableScopes.length > 0 ? (
-              <div className="admin-scope-options">
-                {availableScopes.map((scope) => (
-                  <label key={scope.competitionId}>
-                    <input
-                      type="checkbox"
-                      checked={selectedScopeIds.includes(scope.competitionId)}
-                      onChange={() => toggleScope(scope.competitionId)}
-                    />
-                    <span>{scope.name}</span>
-                  </label>
-                ))}
+        <section className="admin-dialog-section" aria-labelledby="account-details-title">
+          <h3 id="account-details-title">Account</h3>
+          <dl className="admin-user-facts">
+            <div>
+              <dt>Email</dt>
+              <dd>{user.email}</dd>
+            </div>
+            <div>
+              <dt>User ID</dt>
+              <dd>{user.id}</dd>
+            </div>
+            <div>
+              <dt>Account state</dt>
+              <dd>{user.disabled ? 'Disabled' : 'Active'}</dd>
+            </div>
+            <div>
+              <dt>Current role</dt>
+              <dd>{roleLabels[user.role]}</dd>
+            </div>
+            <div>
+              <dt>Submitter status</dt>
+              <dd>{approvalLabels[user.approvalState]}</dd>
+            </div>
+            <div>
+              <dt>Competition permissions</dt>
+              <dd>{scopeLabel(user)}</dd>
+            </div>
+            {user.submitterAccessUpdatedAt ? (
+              <div className="admin-user-facts__audit">
+                <dt>Last access change</dt>
+                <dd>
+                  {new Date(user.submitterAccessUpdatedAt).toLocaleString()} by {auditActor}
+                </dd>
               </div>
-            ) : isSubmitter ? (
-              <p className="admin-access-form__empty" role="status">
-                No competition scopes are available. This submitter cannot be re-scoped yet.
-              </p>
-            ) : user.requestedCompetition ? (
-              <p className="admin-access-form__requested-scope">
-                <strong>{user.requestedCompetition.name}</strong>
-              </p>
-            ) : (
-              <p className="admin-access-form__empty" role="status">
-                This legacy pending request has no competition. Reject it so the user can submit a
-                corrected competition-scoped request.
-              </p>
-            )}
-          </fieldset>
-
-          {selectionError ? (
-            <p className="admin-access-form__error" role="alert">
-              {selectionError}
-            </p>
-          ) : null}
-
-          <div className="admin-access-form__actions">
-            <button
-              className="button button--primary"
-              type="submit"
-              disabled={
-                isBusy ||
-                (isSubmitter
-                  ? availableScopes.length === 0 || !selectionChanged
-                  : !user.requestedCompetition)
-              }
-            >
-              {isBusy && pendingAction?.kind === 'approve'
-                ? 'Approving submitter...'
-                : isBusy && pendingAction?.kind === 'scope'
-                  ? 'Saving scope...'
-                  : isSubmitter
-                    ? 'Save scope changes'
-                    : 'Approve submitter'}
-            </button>
-            {isSubmitter ? (
-              <button
-                className="button button--danger"
-                type="button"
-                disabled={isBusy}
-                onClick={() =>
-                  void onUpdate(user, { approved: false, competitionIds: [] }, 'revoke')
-                }
-              >
-                {isBusy && pendingAction.kind === 'revoke'
-                  ? 'Revoking access...'
-                  : 'Revoke submitter access'}
-              </button>
-            ) : hasPendingRequest ? (
-              <button
-                className="button button--danger"
-                type="button"
-                disabled={isBusy}
-                onClick={() =>
-                  void onUpdate(user, { approved: false, competitionIds: [] }, 'reject')
-                }
-              >
-                {isBusy && pendingAction.kind === 'reject'
-                  ? 'Rejecting request...'
-                  : 'Reject request'}
-              </button>
             ) : null}
-          </div>
+          </dl>
+        </section>
 
-          {isBusy && pendingActionMessage ? (
-            <p className="admin-access-form__progress" role="status" aria-live="polite">
-              {pendingActionMessage}
+        <section className="admin-dialog-section" aria-labelledby="admin-actions-title">
+          <h3 id="admin-actions-title">Administrative actions</h3>
+          {user.disabled ? (
+            <p className="admin-user-card__protected">
+              Disabled accounts cannot receive access changes.
             </p>
-          ) : null}
-        </form>
-      ) : (
-        <p className="admin-user-card__protected" role="status">
-          {user.role === 'admin'
-            ? 'Administrator accounts are protected from submitter access changes.'
-            : user.disabled
-              ? 'Disabled accounts cannot receive submitter access changes.'
-              : user.approvalState === 'not_requested'
-                ? 'No submitter access request is currently awaiting review.'
-                : user.approvalState === 'rejected'
-                  ? 'No submitter access request is currently awaiting review. The previous request was rejected; the user must make a new request before approval.'
-                  : user.approvalState === 'approved'
-                    ? "No submitter access request is currently awaiting review. This account's previously approved submitter access has been revoked."
-                    : 'This account has no actionable pending submitter request.'}
-        </p>
-      )}
+          ) : user.role === 'admin' ? (
+            <p className="admin-user-card__protected">
+              Administrator accounts are protected from role and submitter access changes.
+            </p>
+          ) : (
+            <>
+              {(isSubmitter || hasPendingRequest) && (
+                <fieldset className="admin-scope-fieldset" disabled={isBusy}>
+                  <legend>{isSubmitter ? 'Competition scopes' : 'Requested competition'}</legend>
+                  <p className="field-help">
+                    {isSubmitter
+                      ? 'Select every competition this user may submit data for.'
+                      : 'Approval grants the competition selected in the user request.'}
+                  </p>
+                  {isSubmitter ? (
+                    availableScopes.length > 0 ? (
+                      <div className="admin-scope-options">
+                        {availableScopes.map((scope) => (
+                          <label key={scope.competitionId}>
+                            <input
+                              type="checkbox"
+                              checked={selectedScopeIds.includes(scope.competitionId)}
+                              onChange={() => toggleScope(scope.competitionId)}
+                            />
+                            <span>{scope.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No competition scopes are available.</p>
+                    )
+                  ) : (
+                    <p>
+                      <strong>
+                        {user.requestedCompetition?.name ?? 'No competition supplied'}
+                      </strong>
+                    </p>
+                  )}
+                  {selectionError ? (
+                    <p className="admin-access-form__error" role="alert">
+                      {selectionError}
+                    </p>
+                  ) : null}
+                  <div className="admin-access-form__actions">
+                    <button
+                      className="button button--primary"
+                      type="button"
+                      disabled={isBusy || (!isSubmitter && !user.requestedCompetition)}
+                      onClick={(event) => requestScopeSave(event.currentTarget)}
+                    >
+                      {isSubmitter ? 'Save scope changes' : 'Approve submitter'}
+                    </button>
+                    <button
+                      className="button button--danger"
+                      type="button"
+                      disabled={isBusy}
+                      onClick={(event) =>
+                        requestConfirmation(isSubmitter ? 'revoke' : 'reject', event.currentTarget)
+                      }
+                    >
+                      {isSubmitter ? 'Revoke submitter access' : 'Reject request'}
+                    </button>
+                  </div>
+                </fieldset>
+              )}
+              {!isSubmitter && !hasPendingRequest ? (
+                <p className="admin-user-card__protected">
+                  No submitter request is currently available to manage.
+                </p>
+              ) : null}
+              <div className="admin-role-action">
+                <h4>Administrator role</h4>
+                <p>
+                  Promotion grants full user-management access. Viewer and Submitter changes use the
+                  approval workflow above.
+                </p>
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={isBusy}
+                  onClick={(event) => requestConfirmation('promote', event.currentTarget)}
+                >
+                  Promote to Administrator
+                </button>
+              </div>
+            </>
+          )}
+        </section>
 
-      {feedback?.userId === user.id ? (
-        <p
-          className={`admin-access-feedback admin-access-feedback--${feedback.kind}`}
-          role={feedback.kind === 'error' ? 'alert' : 'status'}
-        >
-          {feedback.message}
-        </p>
-      ) : null}
-    </article>
+        {confirmationText ? (
+          <div
+            className="admin-confirmation"
+            role="alertdialog"
+            aria-labelledby="admin-confirmation-title"
+          >
+            <h3 id="admin-confirmation-title">Confirm access change</h3>
+            <p>{confirmationText}</p>
+            <div className="admin-access-form__actions">
+              <button
+                ref={confirmRef}
+                className="button button--danger"
+                type="button"
+                onClick={() => void confirmAction()}
+              >
+                Confirm change
+              </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={cancelConfirmation}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {isBusy ? (
+          <p role="status" aria-live="polite">
+            Saving access change. Please wait.
+          </p>
+        ) : null}
+        {feedback?.userId === user.id ? (
+          <p
+            className={`admin-access-feedback admin-access-feedback--${feedback.kind}`}
+            role={feedback.kind === 'error' ? 'alert' : 'status'}
+          >
+            {feedback.message}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -351,81 +439,75 @@ export function AdminUsersPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const client = useAuthenticatedApiClient();
   const [pageState, setPageState] = useState<PageState>({ kind: 'loading' });
-  const [filter, setFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [approvalFilter, setApprovalFilter] = useState<ApprovalFilter>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>();
   const [feedback, setFeedback] = useState<Feedback>();
-
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   usePageTitle();
 
   const loadUsers = useCallback(
     async (signal?: AbortSignal) => {
       setPageState({ kind: 'loading' });
       setFeedback(undefined);
-
       try {
         const profile = await getCurrentUserProfile(client, signal);
-
         if (profile.role !== 'admin') {
           setPageState({ kind: 'forbidden' });
           return;
         }
-
-        const data = await getAdministratorUserManagement(client, signal);
-        setPageState({ kind: 'ready', data });
+        setPageState({ kind: 'ready', data: await getAdministratorUserManagement(client, signal) });
       } catch (error) {
-        if (signal?.aborted) {
-          return;
-        }
-
+        if (signal?.aborted) return;
         if (error instanceof ApiResponseError && error.kind === 'forbidden') {
           setPageState({ kind: 'forbidden' });
-          return;
+        } else {
+          setPageState({ kind: 'error', message: errorMessage(error) });
         }
-
-        setPageState({ kind: 'error', message: errorMessage(error) });
       }
     },
     [client],
   );
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated) {
-      return;
-    }
-
+    if (isLoading || !isAuthenticated) return;
     const controller = new AbortController();
     void loadUsers(controller.signal);
-
     return () => controller.abort();
   }, [isAuthenticated, isLoading, loadUsers]);
+
+  function replaceUser(updatedUser: AdministratorManagedUser) {
+    setPageState((current) =>
+      current.kind === 'ready'
+        ? {
+            kind: 'ready',
+            data: {
+              ...current.data,
+              users: current.data.users.map((user) =>
+                user.id === updatedUser.id ? updatedUser : user,
+              ),
+            },
+          }
+        : current,
+    );
+  }
 
   async function updateAccess(
     user: AdministratorManagedUser,
     update: AdministratorSubmitterAccessUpdate,
-    kind: NonNullable<PendingAction>['kind'],
+    kind: Exclude<ActionKind, 'promote'>,
   ) {
     setPendingAction({ userId: user.id, kind });
     setFeedback(undefined);
-
     try {
-      const updatedUser =
+      const updated =
         kind === 'reject'
           ? await rejectAdministratorSubmitterAccessRequest(client, user.id)
           : await updateAdministratorSubmitterAccess(client, user.id, update);
-
-      setPageState((current) =>
-        current.kind === 'ready'
-          ? {
-              kind: 'ready',
-              data: {
-                ...current.data,
-                users: current.data.users.map((candidate) =>
-                  candidate.id === updatedUser.id ? updatedUser : candidate,
-                ),
-              },
-            }
-          : current,
-      );
+      replaceUser(updated);
       setFeedback({
         userId: user.id,
         kind: 'success',
@@ -439,59 +521,76 @@ export function AdminUsersPage() {
                 : `${userLabel(user)} is now an approved submitter.`,
       });
     } catch (error) {
-      setFeedback({
-        userId: user.id,
-        kind: 'error',
-        message:
-          error instanceof ApiResponseError || error instanceof AdminUserManagementContractError
-            ? error.message
-            : 'The submitter access change could not be saved. Please try again.',
-      });
+      setFeedback({ userId: user.id, kind: 'error', message: errorMessage(error) });
     } finally {
       setPendingAction(undefined);
     }
   }
 
-  if (!isLoading && !isAuthenticated) {
-    return <Navigate to="/sign-in" replace />;
+  async function promote(user: AdministratorManagedUser) {
+    setPendingAction({ userId: user.id, kind: 'promote' });
+    setFeedback(undefined);
+    try {
+      replaceUser(await updateAdministratorUserRole(client, user.id, { role: 'admin' }));
+      setFeedback({
+        userId: user.id,
+        kind: 'success',
+        message: `${userLabel(user)} is now an Administrator.`,
+      });
+    } catch (error) {
+      setFeedback({ userId: user.id, kind: 'error', message: errorMessage(error) });
+    } finally {
+      setPendingAction(undefined);
+    }
   }
 
-  const normalizedFilter = filter.trim().toLocaleLowerCase();
-  const visibleUsers =
-    pageState.kind === 'ready'
-      ? pageState.data.users.filter((user) => {
-          if (!normalizedFilter) {
-            return true;
-          }
+  function openManagement(userId: string, trigger: HTMLElement) {
+    returnFocusRef.current = trigger;
+    setFeedback(undefined);
+    setSelectedUserId(userId);
+  }
 
-          return [
-            user.displayName,
-            user.id,
-            roleLabels[user.role],
-            approvalLabels[user.approvalState],
-            user.requestedCompetition?.name,
-            ...user.competitionScopes.map((scope) => scope.name),
-          ]
-            .filter(Boolean)
-            .some((value) => value!.toLocaleLowerCase().includes(normalizedFilter));
-        })
-      : [];
+  function closeManagement() {
+    setSelectedUserId(null);
+    setFeedback(undefined);
+    requestAnimationFrame(() => {
+      if (returnFocusRef.current?.isConnected) {
+        returnFocusRef.current.focus();
+      } else {
+        searchRef.current?.focus();
+      }
+    });
+  }
+
+  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
+
+  const users = pageState.kind === 'ready' ? pageState.data.users : [];
+  const query = search.trim().toLocaleLowerCase();
+  const visibleUsers = users.filter(
+    (user) =>
+      (!query ||
+        user.email.toLocaleLowerCase().includes(query) ||
+        user.id.toLocaleLowerCase().includes(query)) &&
+      (roleFilter === 'all' || user.role === roleFilter) &&
+      (approvalFilter === 'all' || user.approvalState === approvalFilter),
+  );
+  const selectedUser = users.find((user) => user.id === selectedUserId);
 
   return (
     <section className="admin-users-page content-boundary" aria-labelledby="admin-users-title">
       <header className="page-heading admin-users-page__heading">
         <p className="eyebrow">Administrator workspace</p>
-        <h1 id="admin-users-title">User Access Management</h1>
+        <h1 id="admin-users-title">Manage users</h1>
         <p>
-          Approve or reject pending submitter requests, manage existing submitter scopes, and revoke
-          existing access as a separate action.
+          Find accounts, understand access at a glance, and manage roles, requests, and competition
+          permissions.
         </p>
       </header>
 
       {isLoading || pageState.kind === 'loading' ? (
         <div className="state-message" role="status">
           <h2>Loading registered users</h2>
-          <p>Checking administrator permission and current access assignments...</p>
+          <p>Checking administrator permission and retrieving user access...</p>
         </div>
       ) : pageState.kind === 'forbidden' ? (
         <div className="state-message state-message--error" role="alert">
@@ -510,46 +609,145 @@ export function AdminUsersPage() {
             Retry loading users
           </button>
         </div>
+      ) : users.length === 0 ? (
+        <div className="state-message" role="status">
+          <h2>No registered users</h2>
+          <p>No user accounts are currently available to manage.</p>
+        </div>
       ) : (
         <>
-          <div className="admin-user-toolbar">
-            <div>
-              <label htmlFor="admin-user-filter">Find a registered user</label>
+          <div className="admin-user-toolbar" aria-label="User list controls">
+            <div className="admin-user-toolbar__search">
+              <label htmlFor="admin-user-search">Search users</label>
               <input
-                id="admin-user-filter"
+                ref={searchRef}
+                id="admin-user-search"
                 type="search"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-                placeholder="Name, account, role, or competition"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by email or user ID"
               />
             </div>
+            <div>
+              <label htmlFor="admin-role-filter">Role</label>
+              <select
+                id="admin-role-filter"
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
+              >
+                <option value="all">All roles</option>
+                <option value="viewer">Viewer</option>
+                <option value="submitter">Submitter</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="admin-approval-filter">Submitter status</label>
+              <select
+                id="admin-approval-filter"
+                value={approvalFilter}
+                onChange={(event) => setApprovalFilter(event.target.value as ApprovalFilter)}
+              >
+                <option value="all">All statuses</option>
+                <option value="not_requested">Not requested</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
             <p role="status">
-              Showing {visibleUsers.length} of {pageState.data.users.length}{' '}
-              {pageState.data.users.length === 1 ? 'user' : 'users'}
+              Showing {visibleUsers.length} of {users.length} users
             </p>
           </div>
-
-          {visibleUsers.length > 0 ? (
-            <div className="admin-user-list">
-              {visibleUsers.map((user) => (
-                <ManagedUserCard
-                  key={user.id}
-                  user={user}
-                  availableScopes={pageState.data.availableScopes}
-                  pendingAction={pendingAction}
-                  feedback={feedback}
-                  onUpdate={updateAccess}
-                />
-              ))}
+          {visibleUsers.length === 0 ? (
+            <div className="state-message" role="status">
+              <h2>No users match the current search or filters.</h2>
+              <p>Change or clear the search and filters to see other accounts.</p>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setRoleFilter('all');
+                  setApprovalFilter('all');
+                }}
+              >
+                Clear filters
+              </button>
             </div>
           ) : (
-            <div className="state-message" role="status">
-              <h2>No matching users</h2>
-              <p>Change the filter to see other registered accounts.</p>
+            <div className="admin-users-table-wrap">
+              <table className="admin-users-table">
+                <caption className="visually-hidden">
+                  Registered application users and their current access
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Submitter status</th>
+                    <th scope="col">Competition scope</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleUsers.map((user) => (
+                    <tr
+                      key={user.id}
+                      className={
+                        user.approvalState === 'pending'
+                          ? 'admin-users-table__attention'
+                          : undefined
+                      }
+                    >
+                      <td data-label="User">
+                        <strong>{user.email}</strong>
+                        <span>
+                          {user.displayName ?? 'No display name'} · ID {user.id}
+                        </span>
+                      </td>
+                      <td data-label="Role">
+                        <span className={`admin-role-badge admin-role-badge--${user.role}`}>
+                          {roleLabels[user.role]}
+                        </span>
+                      </td>
+                      <td data-label="Submitter status">
+                        <StatusBadge user={user} />
+                        {user.previouslyRevoked ? (
+                          <span className="admin-attention-label">Previously revoked</span>
+                        ) : null}
+                      </td>
+                      <td data-label="Competition scope">{scopeLabel(user)}</td>
+                      <td data-label="Actions">
+                        <button
+                          className="button button--secondary"
+                          type="button"
+                          aria-label={`Manage ${user.email}`}
+                          onClick={(event) => openManagement(user.id, event.currentTarget)}
+                        >
+                          {user.approvalState === 'pending' ? 'Review' : 'Manage'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </>
       )}
+
+      {selectedUser && pageState.kind === 'ready' ? (
+        <ManageDialog
+          user={selectedUser}
+          availableScopes={pageState.data.availableScopes}
+          pendingAction={pendingAction}
+          feedback={feedback}
+          onClose={closeManagement}
+          onUpdateAccess={updateAccess}
+          onPromote={promote}
+        />
+      ) : null}
     </section>
   );
 }
