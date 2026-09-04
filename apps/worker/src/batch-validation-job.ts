@@ -1,0 +1,887 @@
+import { createHash } from 'node:crypto';
+import type { Readable } from 'node:stream';
+
+import { resolvePackageReferences } from '@sport-analytics/batch-processing';
+import { submissionEventSchema, type SeasonUploadEvent } from '@sport-analytics/contracts';
+import type { Pool, PoolClient } from 'pg';
+import { z } from 'zod';
+
+import {
+  buildReferenceChunk,
+  normalisedBatchCandidates,
+  scanBatchReferences,
+  type NormalisedCandidate,
+  type OpenBatchSource,
+  type SourceFault,
+} from './batch-package';
+import { PermanentJobError, type ReceivedJob } from './delivery-pump';
+import type { Logger } from './logger';
+
+const batchValidationJobSchema = z.object({
+  type: z.literal('batch.validate'),
+  version: z.literal(1),
+  commandId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  batchId: z.string().regex(/^[1-9]\d*$/),
+  batchReference: z.string().uuid(),
+  traceId: z.string().trim().min(1).max(128).optional(),
+});
+
+interface StoredSource {
+  storageKey: string;
+  mediaType: string;
+}
+
+interface BatchObjectReader {
+  read(storageKey: string): Promise<Readable>;
+}
+
+interface BatchValidationMetrics {
+  acceptedItems: number;
+  batchesFailed: number;
+  batchesRejected: number;
+  batchesSucceeded: number;
+  chunksCommitted: number;
+  rejectedItems: number;
+}
+
+interface HandlerOptions {
+  workerId: string;
+  chunkSize: number;
+  leaseMs: number;
+}
+
+interface ClaimResult {
+  terminal: boolean;
+  batchId: string;
+  batchReference: string;
+  jobId: string;
+  lastOrdinal: number;
+  attemptCount: number;
+  maxAttempts: number;
+  sourceUri: string;
+}
+
+interface PreparedItem {
+  ordinal: number;
+  inningsId: string | null;
+  overNumber: number;
+  positionInOver: number;
+  payload: SeasonUploadEvent;
+  sourceIdentity: string;
+  sourceLocation: Record<string, string | number | null>;
+  referenceResolutionState: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
+  resolvedReferences: Record<string, unknown>;
+  state: 'accepted' | 'rejected';
+  rejectionCode: string | null;
+  rejectionMessage: string | null;
+  rejectionDetail: Record<string, unknown> | null;
+}
+
+class LeaseBusyError extends Error {
+  constructor() {
+    super('Another worker currently owns the batch validation lease.');
+    this.name = 'LeaseBusyError';
+  }
+}
+
+class PermanentBatchFailure extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PermanentBatchFailure';
+  }
+}
+
+function deterministicEventUuid(sourceIdentity: string): string {
+  const bytes = createHash('sha256')
+    .update('sport-analytics:batch-event:v1\0')
+    .update(sourceIdentity)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+async function transaction<T>(
+  pool: Pool,
+  operation: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await operation(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Preserve the original processing error; pool health checks expose DB loss.
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function sourceObjectId(sourceUri: string): string {
+  const match = /^stored-object:([0-9a-f-]{36})$/i.exec(sourceUri);
+  if (!match)
+    throw new PermanentBatchFailure(
+      'INVALID_SOURCE_REFERENCE',
+      'Batch source reference is invalid.',
+    );
+  return match[1]!;
+}
+
+function canonicalParticipantId(
+  references: Record<string, unknown>,
+  role: 'striker' | 'nonStriker' | 'bowler',
+): string | null {
+  const participants = references.participants;
+  if (!participants || typeof participants !== 'object') return null;
+  const value = (participants as Record<string, unknown>)[role];
+  if (!value || typeof value !== 'object') return null;
+  const canonicalId = (value as Record<string, unknown>).canonicalId;
+  return typeof canonicalId === 'string' ? canonicalId : null;
+}
+
+function deriveCoordinates(
+  candidate: NormalisedCandidate,
+  counters: Map<string, number>,
+): { overNumber: number; positionInOver: number } | null {
+  const explicitOver = candidate.event.overNumber;
+  const labelMatch = candidate.event.ballLabel
+    ? /^(\d{1,5})\./.exec(candidate.event.ballLabel)
+    : null;
+  const overNumber = explicitOver ?? (labelMatch ? Number(labelMatch[1]) : undefined);
+  if (
+    overNumber === undefined ||
+    !Number.isInteger(overNumber) ||
+    overNumber < 0 ||
+    overNumber > 32_767
+  ) {
+    return null;
+  }
+
+  const key = `${candidate.inningsKey}|${String(overNumber)}`;
+  const next = counters.get(key) ?? 0;
+  const positionInOver = candidate.event.positionInOver ?? next;
+  counters.set(key, Math.max(next, positionInOver + 1));
+  if (!Number.isInteger(positionInOver) || positionInOver < 0 || positionInOver > 32_767)
+    return null;
+  return { overNumber, positionInOver };
+}
+
+function prepareItem(
+  candidate: NormalisedCandidate,
+  resolution: {
+    inningsId: string | null;
+    state: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
+    resolvedReferences: Record<string, unknown>;
+  },
+  coordinates: { overNumber: number; positionInOver: number } | null,
+): PreparedItem | null {
+  if (!coordinates) return null;
+  const common = {
+    ordinal: candidate.ordinal,
+    inningsId: resolution.inningsId,
+    overNumber: coordinates.overNumber,
+    positionInOver: coordinates.positionInOver,
+    payload: candidate.event,
+    sourceIdentity: candidate.event.eventId,
+    sourceLocation: {
+      filePath: candidate.filePath,
+      rowNumber: candidate.rowNumber,
+      ordinal: candidate.ordinal,
+    },
+    referenceResolutionState: resolution.state,
+    resolvedReferences: resolution.resolvedReferences,
+  } as const;
+
+  if (resolution.state !== 'resolved' || !resolution.inningsId) {
+    return {
+      ...common,
+      state: 'rejected',
+      rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+      rejectionMessage: `One or more event references are ${resolution.state}.`,
+      rejectionDetail: { resolutionState: resolution.state },
+    };
+  }
+
+  const strikerId = canonicalParticipantId(resolution.resolvedReferences, 'striker');
+  const nonStrikerId = canonicalParticipantId(resolution.resolvedReferences, 'nonStriker');
+  const bowlerId = canonicalParticipantId(resolution.resolvedReferences, 'bowler');
+  const parsed = submissionEventSchema.safeParse({
+    eventId: deterministicEventUuid(candidate.event.eventId),
+    inningsId: resolution.inningsId,
+    sequenceNumber: candidate.event.occurrenceSequence,
+    overNumber: coordinates.overNumber,
+    positionInOver: coordinates.positionInOver,
+    ballNumber: candidate.event.ballLabel,
+    strikerId,
+    nonStrikerId,
+    bowlerId,
+    runs: candidate.event.runs,
+    extras: candidate.event.extras,
+    wickets: [],
+  });
+
+  if (!parsed.success) {
+    return {
+      ...common,
+      state: 'rejected',
+      rejectionCode: 'EVENT_SCHEMA_INVALID',
+      rejectionMessage: parsed.error.issues[0]?.message ?? 'Event failed authoritative validation.',
+      rejectionDetail: {
+        issues: parsed.error.issues.map((issue) => ({
+          fieldPath: issue.path.join('.'),
+          message: issue.message,
+        })),
+      },
+    };
+  }
+
+  return {
+    ...common,
+    state: 'accepted',
+    rejectionCode: null,
+    rejectionMessage: null,
+    rejectionDetail: null,
+  };
+}
+
+async function insertValidationResults(
+  client: PoolClient,
+  batchId: string,
+  rows: Array<{
+    batchItemId?: string | null;
+    sourceOrdinal: number;
+    ruleCode: string;
+    filePath?: string | null;
+    rowNumber?: number | null;
+    fieldPath?: string | null;
+    message: string;
+  }>,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const values: unknown[] = [];
+  const tuples = rows.map((row) => {
+    const first = values.length + 1;
+    values.push(
+      batchId,
+      row.batchItemId ?? null,
+      row.sourceOrdinal,
+      row.ruleCode,
+      row.filePath ?? null,
+      row.rowNumber ?? null,
+      row.fieldPath ?? null,
+      row.message,
+    );
+    return `($${first}::bigint,$${first + 1}::bigint,$${first + 2}::integer,$${first + 3},'1.0','error'::batch_validation_severity,$${first + 4},$${first + 5}::integer,$${first + 6},$${first + 7})`;
+  });
+  await client.query(
+    `
+      INSERT INTO batch_validation_result (
+        batch_id, batch_item_id, source_ordinal, rule_code, rule_version,
+        severity, file_path, row_number, field_path, message
+      )
+      VALUES ${tuples.join(',')}
+      ON CONFLICT DO NOTHING
+    `,
+    values,
+  );
+}
+
+export function createBatchValidationJobHandler(
+  database: Pool,
+  objectStorage: BatchObjectReader,
+  logger: Logger,
+  options: HandlerOptions,
+) {
+  const metrics: BatchValidationMetrics = {
+    acceptedItems: 0,
+    batchesFailed: 0,
+    batchesRejected: 0,
+    batchesSucceeded: 0,
+    chunksCommitted: 0,
+    rejectedItems: 0,
+  };
+
+  async function claim(jobId: string, batchId: string): Promise<ClaimResult> {
+    return transaction(database, async (client) => {
+      const jobResult = await client.query<{
+        jobId: string;
+        jobState: string;
+        attemptCount: number;
+        maxAttempts: number;
+        batchId: string;
+        batchReference: string;
+        batchState: string;
+        sourceUri: string | null;
+      }>(
+        `
+          SELECT j.job_id::text AS "jobId", j.state::text AS "jobState",
+                 j.attempt_count AS "attemptCount", j.max_attempts AS "maxAttempts",
+                 b.batch_id::text AS "batchId", b.batch_reference::text AS "batchReference",
+                 b.state::text AS "batchState", b.source_uri AS "sourceUri"
+          FROM background_job j
+          JOIN batch b ON b.batch_id = j.batch_id
+          WHERE j.job_id = $1::uuid AND j.batch_id = $2::bigint
+            AND j.job_type = 'batch.validate' AND j.contract_version = 1
+          FOR UPDATE OF j, b
+        `,
+        [jobId, batchId],
+      );
+      const row = jobResult.rows[0];
+      if (!row)
+        throw new PermanentBatchFailure('JOB_NOT_FOUND', 'Batch validation job does not exist.');
+      if (!row.sourceUri)
+        throw new PermanentBatchFailure('SOURCE_NOT_STORED', 'Batch has no stored source.');
+
+      if (
+        row.jobState === 'succeeded' ||
+        row.batchState === 'awaiting_review' ||
+        row.batchState === 'rejected'
+      ) {
+        if (row.jobState !== 'succeeded') {
+          await client.query(
+            `UPDATE background_job SET state='succeeded', completed_at=COALESCE(completed_at,now()) WHERE job_id=$1::uuid`,
+            [jobId],
+          );
+        }
+        return {
+          terminal: true,
+          batchId: row.batchId,
+          batchReference: row.batchReference,
+          jobId: row.jobId,
+          lastOrdinal: -1,
+          attemptCount: row.attemptCount,
+          maxAttempts: row.maxAttempts,
+          sourceUri: row.sourceUri,
+        };
+      }
+      if (!['queued', 'running', 'failed'].includes(row.jobState)) {
+        throw new PermanentBatchFailure(
+          'JOB_NOT_RUNNABLE',
+          'Batch validation job is not runnable.',
+        );
+      }
+      if (!['stored', 'validating', 'failed'].includes(row.batchState)) {
+        throw new PermanentBatchFailure(
+          'BATCH_NOT_RUNNABLE',
+          'Batch is not in a validation state.',
+        );
+      }
+      if (row.attemptCount >= row.maxAttempts) {
+        throw new PermanentBatchFailure(
+          'ATTEMPT_BUDGET_EXHAUSTED',
+          'Batch validation retry budget is exhausted.',
+        );
+      }
+
+      const checkpointResult = await client.query<{
+        lastOrdinal: number;
+        leaseOwner: string | null;
+        leaseExpiresAt: Date | null;
+      }>(
+        `
+          SELECT last_ordinal AS "lastOrdinal", lease_owner AS "leaseOwner", lease_expires_at AS "leaseExpiresAt"
+          FROM batch_checkpoint
+          WHERE batch_id=$1::bigint AND phase='validating'
+          FOR UPDATE
+        `,
+        [batchId],
+      );
+      const checkpoint = checkpointResult.rows[0];
+      if (
+        checkpoint?.leaseOwner &&
+        checkpoint.leaseOwner !== options.workerId &&
+        checkpoint.leaseExpiresAt &&
+        checkpoint.leaseExpiresAt.getTime() > Date.now()
+      ) {
+        throw new LeaseBusyError();
+      }
+      const lastOrdinal = checkpoint?.lastOrdinal ?? -1;
+      const attemptCount = row.attemptCount + 1;
+      await client.query(
+        `
+          INSERT INTO batch_checkpoint (batch_id,phase,last_ordinal,lease_owner,lease_expires_at,attempt_count)
+          VALUES ($1::bigint,'validating',$2::integer,$3,now()+($4::integer*interval '1 millisecond'),$5::integer)
+          ON CONFLICT (batch_id,phase) DO UPDATE SET
+            lease_owner=EXCLUDED.lease_owner,
+            lease_expires_at=EXCLUDED.lease_expires_at,
+            attempt_count=EXCLUDED.attempt_count
+        `,
+        [batchId, lastOrdinal, options.workerId, options.leaseMs, attemptCount],
+      );
+      if (row.batchState !== 'validating') {
+        await client.query(`UPDATE batch SET state='validating' WHERE batch_id=$1::bigint`, [
+          batchId,
+        ]);
+        await client.query(
+          `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
+           VALUES ($1::bigint,$2::batch_state,'validating','worker',$3,$4)`,
+          [batchId, row.batchState, options.workerId, 'Worker claimed asynchronous validation.'],
+        );
+      }
+      await client.query(
+        `
+          UPDATE background_job
+          SET state='running', attempt_count=$2::integer,
+              started_at=COALESCE(started_at,now()), completed_at=NULL,
+              last_error_code=NULL, last_error_message=NULL
+          WHERE job_id=$1::uuid
+        `,
+        [jobId, attemptCount],
+      );
+      return {
+        terminal: false,
+        batchId: row.batchId,
+        batchReference: row.batchReference,
+        jobId: row.jobId,
+        lastOrdinal,
+        attemptCount,
+        maxAttempts: row.maxAttempts,
+        sourceUri: row.sourceUri,
+      };
+    });
+  }
+
+  async function storedSource(sourceUri: string): Promise<StoredSource> {
+    const objectId = sourceObjectId(sourceUri);
+    const result = await database.query<{
+      storageKey: string;
+      mediaType: string;
+      retentionState: string;
+    }>(
+      `SELECT storage_key AS "storageKey", media_type AS "mediaType", retention_state::text AS "retentionState"
+       FROM stored_object WHERE object_id=$1::uuid`,
+      [objectId],
+    );
+    const row = result.rows[0];
+    if (!row || row.retentionState !== 'retained') {
+      throw new PermanentBatchFailure('SOURCE_UNAVAILABLE', 'Stored batch source is unavailable.');
+    }
+    return { storageKey: row.storageKey, mediaType: row.mediaType };
+  }
+
+  async function recordSourceFaults(
+    claimResult: ClaimResult,
+    faults: SourceFault[],
+    eventCount: number,
+  ): Promise<void> {
+    // Keep validation-result writes bounded as well: PostgreSQL has a finite
+    // bind-parameter budget and a malformed large package may contain tens of
+    // thousands of recoverable row faults.
+    const faultChunkSize = Math.max(1, Math.min(options.chunkSize, 1_000));
+    for (let offset = 0; offset < faults.length; offset += faultChunkSize) {
+      const faultChunk = faults.slice(offset, offset + faultChunkSize);
+      await transaction(database, async (client) => {
+        const lease = await client.query(
+          `SELECT 1 FROM batch_checkpoint WHERE batch_id=$1::bigint AND phase='validating'
+             AND lease_owner=$2 AND lease_expires_at>now() FOR UPDATE`,
+          [claimResult.batchId, options.workerId],
+        );
+        if (lease.rowCount !== 1) throw new LeaseBusyError();
+        await insertValidationResults(
+          client,
+          claimResult.batchId,
+          faultChunk.map((fault) => ({ ...fault })),
+        );
+        await client.query(
+          `UPDATE batch_checkpoint
+           SET lease_expires_at=now()+($3::integer*interval '1 millisecond')
+           WHERE batch_id=$1::bigint AND phase='validating' AND lease_owner=$2`,
+          [claimResult.batchId, options.workerId, options.leaseMs],
+        );
+      });
+    }
+
+    await transaction(database, async (client) => {
+      const lease = await client.query(
+        `SELECT 1 FROM batch_checkpoint WHERE batch_id=$1::bigint AND phase='validating'
+           AND lease_owner=$2 AND lease_expires_at>now() FOR UPDATE`,
+        [claimResult.batchId, options.workerId],
+      );
+      if (lease.rowCount !== 1) throw new LeaseBusyError();
+      await client.query(`UPDATE batch SET item_count=$2::integer WHERE batch_id=$1::bigint`, [
+        claimResult.batchId,
+        eventCount,
+      ]);
+      await client.query(
+        `UPDATE background_job SET progress_total=$2::integer WHERE job_id=$1::uuid`,
+        [claimResult.jobId, eventCount],
+      );
+    });
+  }
+
+  async function writeChunk(
+    claimResult: ClaimResult,
+    items: PreparedItem[],
+    lastOrdinal: number,
+    eventCount: number,
+  ): Promise<void> {
+    await transaction(database, async (client) => {
+      const lease = await client.query(
+        `SELECT 1 FROM batch_checkpoint WHERE batch_id=$1::bigint AND phase='validating'
+           AND lease_owner=$2 AND lease_expires_at>now() FOR UPDATE`,
+        [claimResult.batchId, options.workerId],
+      );
+      if (lease.rowCount !== 1) throw new LeaseBusyError();
+
+      const values: unknown[] = [];
+      const tuples = items.map((item) => {
+        const first = values.length + 1;
+        values.push(
+          claimResult.batchId,
+          item.ordinal,
+          item.inningsId,
+          item.overNumber,
+          item.positionInOver,
+          JSON.stringify(item.payload),
+          item.sourceIdentity,
+          JSON.stringify(item.sourceLocation),
+          item.referenceResolutionState,
+          JSON.stringify(item.resolvedReferences),
+          item.state,
+          item.rejectionCode,
+          item.rejectionDetail ? JSON.stringify(item.rejectionDetail) : null,
+        );
+        return `($${first}::bigint,$${first + 1}::integer,$${first + 2}::bigint,$${first + 3}::smallint,$${first + 4}::smallint,$${first + 5}::jsonb,$${first + 6},$${first + 7}::jsonb,$${first + 8}::batch_reference_resolution_state,$${first + 9}::jsonb,$${first + 10}::batch_item_state,$${first + 11},$${first + 12}::jsonb)`;
+      });
+      const inserted =
+        items.length === 0
+          ? { rows: [] as Array<{ batchItemId: string; ordinal: number }> }
+          : await client.query<{ batchItemId: string; ordinal: number }>(
+              `
+              INSERT INTO batch_item (
+                batch_id,ordinal,innings_id,over_number,position_in_over,payload,
+                source_identity,source_location,reference_resolution_state,
+                resolved_references,state,rejection_code,rejection_detail
+              ) VALUES ${tuples.join(',')}
+              ON CONFLICT DO NOTHING
+              RETURNING batch_item_id::text AS "batchItemId", ordinal
+            `,
+              values,
+            );
+      const idByOrdinal = new Map(inserted.rows.map((row) => [row.ordinal, row.batchItemId]));
+      const validationRows: Array<{
+        batchItemId?: string | null;
+        sourceOrdinal: number;
+        ruleCode: string;
+        filePath?: string | null;
+        rowNumber?: number | null;
+        fieldPath?: string | null;
+        message: string;
+      }> = [];
+      for (const item of items) {
+        const batchItemId = idByOrdinal.get(item.ordinal);
+        if (!batchItemId) {
+          validationRows.push({
+            sourceOrdinal: item.ordinal,
+            ruleCode: 'DUPLICATE_BATCH_ITEM',
+            filePath: String(item.sourceLocation.filePath),
+            rowNumber:
+              typeof item.sourceLocation.rowNumber === 'number'
+                ? item.sourceLocation.rowNumber
+                : null,
+            message:
+              'The event duplicates a source identity or delivery position already staged in this batch.',
+          });
+        } else if (item.state === 'rejected') {
+          validationRows.push({
+            batchItemId,
+            sourceOrdinal: item.ordinal,
+            ruleCode: item.rejectionCode ?? 'EVENT_REJECTED',
+            filePath: String(item.sourceLocation.filePath),
+            rowNumber:
+              typeof item.sourceLocation.rowNumber === 'number'
+                ? item.sourceLocation.rowNumber
+                : null,
+            message: item.rejectionMessage ?? 'Event was rejected.',
+          });
+        }
+      }
+      await insertValidationResults(client, claimResult.batchId, validationRows);
+      await client.query(
+        `
+          UPDATE batch_checkpoint
+          SET last_ordinal=$3::integer,
+              lease_expires_at=now()+($4::integer*interval '1 millisecond')
+          WHERE batch_id=$1::bigint AND phase='validating' AND lease_owner=$2
+        `,
+        [claimResult.batchId, options.workerId, lastOrdinal, options.leaseMs],
+      );
+      await client.query(
+        `UPDATE background_job SET progress_current=LEAST($2::integer,COALESCE(progress_total,$2::integer)) WHERE job_id=$1::uuid`,
+        [claimResult.jobId, Math.min(eventCount, lastOrdinal + 1)],
+      );
+      metrics.chunksCommitted += 1;
+      metrics.acceptedItems += items.filter(
+        (item) => item.state === 'accepted' && idByOrdinal.has(item.ordinal),
+      ).length;
+      metrics.rejectedItems +=
+        items.filter((item) => item.state === 'rejected' && idByOrdinal.has(item.ordinal)).length +
+        items.filter((item) => !idByOrdinal.has(item.ordinal)).length;
+    });
+  }
+
+  async function finalise(
+    claimResult: ClaimResult,
+    eventCount: number,
+  ): Promise<'awaiting_review' | 'rejected'> {
+    return transaction(database, async (client) => {
+      const lease = await client.query(
+        `SELECT 1 FROM batch_checkpoint WHERE batch_id=$1::bigint AND phase='validating'
+           AND lease_owner=$2 AND lease_expires_at>now() FOR UPDATE`,
+        [claimResult.batchId, options.workerId],
+      );
+      if (lease.rowCount !== 1) throw new LeaseBusyError();
+      const countResult = await client.query<{ accepted: string }>(
+        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM batch_item WHERE batch_id=$1::bigint`,
+        [claimResult.batchId],
+      );
+      const accepted = Number(countResult.rows[0]?.accepted ?? 0);
+      const target = accepted > 0 ? 'awaiting_review' : 'rejected';
+      await client.query(
+        `UPDATE batch SET state=$2::batch_state,item_count=$3::integer WHERE batch_id=$1::bigint`,
+        [claimResult.batchId, target, eventCount],
+      );
+      await client.query(
+        `UPDATE batch_checkpoint SET last_ordinal=$3::integer,lease_owner=NULL,lease_expires_at=NULL
+         WHERE batch_id=$1::bigint AND phase='validating' AND lease_owner=$2`,
+        [claimResult.batchId, options.workerId, Math.max(-1, eventCount - 1)],
+      );
+      await client.query(
+        `UPDATE background_job SET state='succeeded',progress_current=$2::integer,progress_total=$2::integer,
+           completed_at=now(),last_error_code=NULL,last_error_message=NULL WHERE job_id=$1::uuid`,
+        [claimResult.jobId, eventCount],
+      );
+      await client.query(
+        `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
+         VALUES ($1::bigint,'validating',$2::batch_state,'worker',$3,$4)`,
+        [claimResult.batchId, target, options.workerId, 'Asynchronous validation completed.'],
+      );
+      if (target === 'rejected') metrics.batchesRejected += 1;
+      else metrics.batchesSucceeded += 1;
+      return target;
+    });
+  }
+
+  async function fail(
+    claimResult: ClaimResult,
+    error: unknown,
+    permanent: boolean,
+  ): Promise<boolean> {
+    return transaction(database, async (client) => {
+      const job = await client.query<{ attemptCount: number; maxAttempts: number; state: string }>(
+        `SELECT attempt_count AS "attemptCount",max_attempts AS "maxAttempts",state::text AS state
+         FROM background_job WHERE job_id=$1::uuid FOR UPDATE`,
+        [claimResult.jobId],
+      );
+      const row = job.rows[0];
+      if (!row || row.state === 'succeeded') return true;
+      const exhausted = permanent || row.attemptCount >= row.maxAttempts;
+      const batch = await client.query<{ state: string }>(
+        `SELECT state::text AS state FROM batch WHERE batch_id=$1::bigint FOR UPDATE`,
+        [claimResult.batchId],
+      );
+      const currentState = batch.rows[0]?.state;
+      await client.query(
+        `UPDATE background_job SET state=$2::background_job_state,last_error_code=$3,last_error_message=$4,
+           completed_at=CASE WHEN $2='failed' THEN now() ELSE NULL END WHERE job_id=$1::uuid`,
+        [
+          claimResult.jobId,
+          exhausted ? 'failed' : 'queued',
+          error instanceof PermanentBatchFailure ? error.code : 'TRANSIENT_PROCESSING_FAILURE',
+          exhausted ? 'Batch validation could not complete.' : 'Batch validation will be retried.',
+        ],
+      );
+      if (currentState === 'validating') {
+        await client.query(`UPDATE batch SET state='failed' WHERE batch_id=$1::bigint`, [
+          claimResult.batchId,
+        ]);
+        await client.query(
+          `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
+           VALUES ($1::bigint,'validating','failed','worker',$2,$3)`,
+          [
+            claimResult.batchId,
+            options.workerId,
+            exhausted
+              ? 'Validation retry budget exhausted.'
+              : 'Transient validation infrastructure failure.',
+          ],
+        );
+      }
+      await client.query(
+        `UPDATE batch_checkpoint SET lease_owner=NULL,lease_expires_at=NULL
+         WHERE batch_id=$1::bigint AND phase='validating' AND lease_owner=$2`,
+        [claimResult.batchId, options.workerId],
+      );
+      if (exhausted) metrics.batchesFailed += 1;
+      return exhausted;
+    });
+  }
+
+  const handler = async (message: ReceivedJob, signal: AbortSignal): Promise<void> => {
+    const parsed = batchValidationJobSchema.safeParse(message.body);
+    if (!parsed.success) {
+      throw new PermanentJobError(
+        'UnsupportedBatchValidationContract',
+        'Invalid batch.validate version 1 command envelope.',
+      );
+    }
+    if (signal.aborted) throw new Error('Worker shutdown interrupted batch validation.');
+
+    let claimResult: ClaimResult;
+    try {
+      claimResult = await claim(parsed.data.jobId, parsed.data.batchId);
+    } catch (error) {
+      if (error instanceof LeaseBusyError) throw error;
+      if (error instanceof PermanentBatchFailure) {
+        throw new PermanentJobError(error.code, error.message);
+      }
+      throw error;
+    }
+    if (claimResult.terminal) {
+      logger.info('Duplicate batch validation delivery observed after completion.', {
+        batchReference: claimResult.batchReference,
+        jobId: claimResult.jobId,
+      });
+      return;
+    }
+
+    const startedAt = Date.now();
+    try {
+      const source = await storedSource(claimResult.sourceUri);
+      const openSource: OpenBatchSource = () => objectStorage.read(source.storageKey);
+      const scan = await scanBatchReferences(openSource, source.mediaType);
+      await recordSourceFaults(claimResult, scan.sourceFaults, scan.eventCount);
+      if (signal.aborted) throw new Error('Worker shutdown interrupted batch validation.');
+
+      const counters = new Map<string, number>();
+      let candidateChunk: NormalisedCandidate[] = [];
+      let chunkLastOrdinal = claimResult.lastOrdinal;
+      let persistedOrdinal = claimResult.lastOrdinal;
+      const coordinateFaults: SourceFault[] = [];
+
+      const processCandidateChunk = async (): Promise<void> => {
+        if (candidateChunk.length === 0) return;
+        const referenceChunk = buildReferenceChunk(candidateChunk);
+        const resolution = referenceChunk.referencePackage
+          ? await resolvePackageReferences(database, referenceChunk.referencePackage)
+          : { outcomes: [], items: [] };
+        const resolutionByPath = new Map(
+          resolution.items.map((item) => [item.referencePath, item]),
+        );
+        const prepared: PreparedItem[] = [];
+
+        for (const candidate of candidateChunk) {
+          const coordinates = deriveCoordinates(candidate, counters);
+          const path = referenceChunk.referencePathByOrdinal.get(candidate.ordinal);
+          const resolved = path ? resolutionByPath.get(path) : undefined;
+          if (!coordinates) {
+            coordinateFaults.push({
+              sourceOrdinal: candidate.ordinal,
+              ruleCode: 'EVENT_POSITION_UNAVAILABLE',
+              filePath: candidate.filePath,
+              rowNumber: candidate.rowNumber,
+              fieldPath: 'overNumber',
+              message: 'Event needs an over number and deterministic position within the over.',
+            });
+            continue;
+          }
+          if (!resolved) {
+            coordinateFaults.push({
+              sourceOrdinal: candidate.ordinal,
+              ruleCode: 'REFERENCE_RESOLUTION_MISSING',
+              filePath: candidate.filePath,
+              rowNumber: candidate.rowNumber,
+              fieldPath: null,
+              message: 'Reference resolution produced no item outcome.',
+            });
+            continue;
+          }
+          const item = prepareItem(candidate, resolved, coordinates);
+          if (item) prepared.push(item);
+        }
+
+        const lastCandidateOrdinal = candidateChunk[candidateChunk.length - 1]!.ordinal;
+        await writeChunk(claimResult, prepared, lastCandidateOrdinal, scan.eventCount);
+        persistedOrdinal = lastCandidateOrdinal;
+        candidateChunk = [];
+      };
+
+      if (!scan.fatal) {
+        for await (const candidate of normalisedBatchCandidates(openSource, source.mediaType)) {
+          // Rebuild deterministic in-over counters across the already completed
+          // prefix before skipping it. This makes resume produce the same
+          // coordinates as an uninterrupted run.
+          if (candidate.ordinal <= claimResult.lastOrdinal) {
+            if (!scan.rejectedOrdinals.has(candidate.ordinal)) {
+              deriveCoordinates(candidate, counters);
+            }
+            continue;
+          }
+          if (scan.rejectedOrdinals.has(candidate.ordinal)) {
+            chunkLastOrdinal = candidate.ordinal;
+            continue;
+          }
+
+          candidateChunk.push(candidate);
+          chunkLastOrdinal = candidate.ordinal;
+          if (candidateChunk.length >= options.chunkSize) {
+            await processCandidateChunk();
+            if (signal.aborted) throw new Error('Worker shutdown interrupted batch validation.');
+          }
+        }
+      }
+      if (candidateChunk.length > 0) await processCandidateChunk();
+      if (coordinateFaults.length > 0) {
+        await recordSourceFaults(claimResult, coordinateFaults, scan.eventCount);
+      }
+      // If the tail contained only source-invalid records, advance the durable
+      // checkpoint over that deterministic ordinal range before finalisation.
+      if (chunkLastOrdinal > persistedOrdinal) {
+        await writeChunk(claimResult, [], chunkLastOrdinal, scan.eventCount);
+      }
+      const target = await finalise(claimResult, scan.eventCount);
+      logger.info('Batch validation completed.', {
+        batchReference: claimResult.batchReference,
+        jobId: claimResult.jobId,
+        attempt: claimResult.attemptCount,
+        itemCount: scan.eventCount,
+        sourceFaultCount: scan.sourceFaults.length + coordinateFaults.length,
+        finalState: target,
+        durationMs: Date.now() - startedAt,
+      });
+    } catch (error) {
+      if (error instanceof LeaseBusyError) throw error;
+      const permanent = error instanceof PermanentBatchFailure;
+      const exhausted = await fail(claimResult, error, permanent);
+      logger.warn('Batch validation processing failed.', {
+        batchReference: claimResult.batchReference,
+        jobId: claimResult.jobId,
+        attempt: claimResult.attemptCount,
+        exhausted,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        durationMs: Date.now() - startedAt,
+      });
+      if (exhausted) {
+        throw new PermanentJobError(
+          permanent ? error.code : 'BatchValidationRetryBudgetExhausted',
+          'Batch validation failed and requires operator attention.',
+        );
+      }
+      throw error;
+    }
+  };
+
+  return { handler, metrics };
+}

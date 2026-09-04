@@ -25,6 +25,11 @@ const workerEnvironmentSchema = z
       .max(1_800_000)
       .default(240_000),
     WORKER_PROBE_DELAY_MS: z.coerce.number().int().min(0).max(600_000).default(0),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
+    OUTBOX_CLAIM_TTL_MS: z.coerce.number().int().min(1_000).max(300_000).default(30_000),
+    OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),
+    BATCH_CHUNK_SIZE: z.coerce.number().int().min(10).max(2_000).default(500),
+    BATCH_LEASE_MS: z.coerce.number().int().min(10_000).max(600_000).default(120_000),
     DATABASE_URL: z.string().trim().min(1, 'Database URL is required'),
     DATABASE_SSL_MODE: z.enum(['disable', 'verify-full']).default('verify-full'),
     DATABASE_CA_CERT_PATH: optionalNonEmptyString,

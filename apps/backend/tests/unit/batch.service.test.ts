@@ -20,7 +20,8 @@ const metadata = {
 
 function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
   return {
-    createBatch: vi.fn().mockResolvedValue({
+    createBatch: vi.fn(),
+    createBatchAndQueueValidation: vi.fn().mockResolvedValue({
       batchReference: '123e4567-e89b-42d3-a456-426614174000',
       state: 'stored',
       createdAt: '2026-09-03T10:00:00.000Z',
@@ -29,6 +30,9 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     findBatchByReference: vi.fn(),
     findBatchByIdempotencyKey: vi.fn().mockResolvedValue(null),
     countNonTerminalBatches: vi.fn().mockResolvedValue(0),
+    getBatchProgress: vi
+      .fn()
+      .mockResolvedValue({ total: 0, processed: 0, accepted: 0, rejected: 0 }),
     insertBatchItems: vi.fn(),
     listBatchItems: vi.fn(),
     findCheckpoint: vi.fn(),
@@ -72,7 +76,7 @@ describe('batch receipt service', () => {
       status: 'stored',
       statusUrl: '/api/v1/batches/123e4567-e89b-42d3-a456-426614174000',
     });
-    expect(batches.createBatch).toHaveBeenCalledWith(
+    expect(batches.createBatchAndQueueValidation).toHaveBeenCalledWith(
       expect.objectContaining({
         state: 'stored',
         source: {

@@ -171,6 +171,17 @@ function applyPath(plan, file) {
     return;
   }
 
+  if (file.startsWith('packages/batch-processing/')) {
+    plan.backend = true;
+    plan.worker = true;
+    plan.database = true;
+    plan.deployment = true;
+    plan.deployBackend = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
   if (file.startsWith('apps/frontend/')) {
     plan.frontend = true;
     plan.contracts = true;

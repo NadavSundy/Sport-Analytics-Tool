@@ -1,4 +1,6 @@
-import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
+import { randomUUID } from 'node:crypto';
+
+import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
 
 type BatchState =
   | 'received'
@@ -86,6 +88,13 @@ interface BatchItemRecord {
   publishedEventId: string | null;
 }
 
+interface BatchProgressRecord {
+  total: number;
+  processed: number;
+  accepted: number;
+  rejected: number;
+}
+
 interface BatchItemPageOptions {
   afterOrdinal?: number;
   limit: number;
@@ -145,6 +154,7 @@ interface ReferenceResolutionUpdate {
 
 export interface BatchRepository {
   createBatch(input: CreateBatchInput): Promise<BatchRecord>;
+  createBatchAndQueueValidation(input: CreateBatchInput): Promise<BatchRecord>;
   findBatchById(batchId: string): Promise<BatchRecord | null>;
   findBatchByIdempotencyKey(
     submitterId: string,
@@ -152,6 +162,7 @@ export interface BatchRepository {
   ): Promise<BatchRecord | null>;
   findBatchByReference(batchReference: string): Promise<BatchRecord | null>;
   countNonTerminalBatches(submitterId: string): Promise<number>;
+  getBatchProgress(batchId: string): Promise<BatchProgressRecord>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
   listBatchItems(batchId: string, options: BatchItemPageOptions): Promise<BatchItemRecord[]>;
   findCheckpoint(
@@ -281,6 +292,102 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
     return executor ?? getDatabasePool();
   }
 
+  async function insertBatch(target: QueryExecutor, input: CreateBatchInput): Promise<BatchRecord> {
+    const result = await executeQuery<BatchRow>(
+      target,
+      `
+        INSERT INTO batch (
+          batch_reference,
+          submitter_id,
+          competition_id,
+          idempotency_key,
+          package_version,
+          source_checksum,
+          source_uri,
+          source_size_bytes,
+          state
+        )
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING ${batchSelection}
+      `,
+      [
+        input.batchReference,
+        input.submitterId,
+        input.competitionId,
+        input.idempotencyKey,
+        input.packageVersion ?? '1.0',
+        input.source?.checksum ?? null,
+        input.source?.uri ?? null,
+        input.source?.sizeBytes ?? null,
+        input.state ?? 'received',
+      ],
+    );
+
+    return mapBatch(requireRow(result.rows[0], 'Batch insertion'));
+  }
+
+  async function insertBatchAndValidationJob(
+    target: QueryExecutor,
+    input: CreateBatchInput,
+  ): Promise<BatchRecord> {
+    const batch = await insertBatch(target, input);
+    const jobId = randomUUID();
+    const outboxMessageId = randomUUID();
+
+    await executeQuery(
+      target,
+      `
+        INSERT INTO background_job (
+          job_id, job_type, contract_version, idempotency_key, owner_id, batch_id
+        )
+        VALUES ($1::uuid, 'batch.validate', 1, $2, $3::bigint, $4::bigint)
+      `,
+      [jobId, `batch.validate:${batch.batchId}`, batch.submitterId, batch.batchId],
+    );
+
+    await executeQuery(
+      target,
+      `
+        INSERT INTO outbox_message (
+          outbox_message_id, job_id, message_type, contract_version, body
+        )
+        VALUES (
+          $1::uuid,
+          $2::uuid,
+          'batch.validate',
+          1,
+          jsonb_build_object(
+            'type', 'batch.validate',
+            'version', 1,
+            'commandId', $2::text,
+            'jobId', $2::text,
+            'batchId', $3::text,
+            'batchReference', $4::text
+          )
+        )
+      `,
+      [outboxMessageId, jobId, batch.batchId, batch.batchReference],
+    );
+
+    await executeQuery(
+      target,
+      `
+        INSERT INTO batch_state_transition (
+          batch_id, from_state, to_state, actor_kind, actor_identifier, reason
+        )
+        VALUES ($1::bigint, NULL, $2::batch_state, 'api', $3, $4)
+      `,
+      [
+        batch.batchId,
+        batch.state,
+        batch.submitterId,
+        'Payload stored and asynchronous validation queued.',
+      ],
+    );
+
+    return batch;
+  }
+
   async function findBatch(where: string, values: unknown[]): Promise<BatchRecord | null> {
     const result = await executeQuery<BatchRow>(
       database(),
@@ -292,38 +399,19 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
   }
 
   return {
-    async createBatch(input) {
-      const result = await executeQuery<BatchRow>(
-        database(),
-        `
-          INSERT INTO batch (
-            batch_reference,
-            submitter_id,
-            competition_id,
-            idempotency_key,
-            package_version,
-            source_checksum,
-            source_uri,
-            source_size_bytes,
-            state
-          )
-          VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)
-          RETURNING ${batchSelection}
-        `,
-        [
-          input.batchReference,
-          input.submitterId,
-          input.competitionId,
-          input.idempotencyKey,
-          input.packageVersion ?? '1.0',
-          input.source?.checksum ?? null,
-          input.source?.uri ?? null,
-          input.source?.sizeBytes ?? null,
-          input.state ?? 'received',
-        ],
-      );
+    createBatch(input) {
+      return insertBatch(database(), input);
+    },
 
-      return mapBatch(requireRow(result.rows[0], 'Batch insertion'));
+    createBatchAndQueueValidation(input) {
+      if (executor) {
+        // A caller-owned executor is already inside the caller's transaction.
+        return insertBatchAndValidationJob(executor, input);
+      }
+
+      return withTransaction(getDatabasePool(), (client) =>
+        insertBatchAndValidationJob(client, input),
+      );
     },
 
     findBatchById(batchId) {
@@ -350,6 +438,41 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         [submitterId],
       );
       return Number(result.rows[0]?.count ?? 0);
+    },
+
+    async getBatchProgress(batchId) {
+      const result = await executeQuery<{
+        total: number;
+        processed: number;
+        accepted: string;
+        rejected: string;
+      }>(
+        database(),
+        `
+          SELECT
+            b.item_count AS total,
+            LEAST(
+              b.item_count,
+              GREATEST(0, COALESCE(c.last_ordinal, -1) + 1)
+            ) AS processed,
+            count(i.batch_item_id) FILTER (WHERE i.state = 'accepted')::text AS accepted,
+            count(i.batch_item_id) FILTER (WHERE i.state = 'rejected')::text AS rejected
+          FROM batch b
+          LEFT JOIN batch_checkpoint c
+            ON c.batch_id = b.batch_id AND c.phase = 'validating'
+          LEFT JOIN batch_item i ON i.batch_id = b.batch_id
+          WHERE b.batch_id = $1::bigint
+          GROUP BY b.batch_id, b.item_count, c.last_ordinal
+        `,
+        [batchId],
+      );
+      const row = result.rows[0];
+      return {
+        total: row?.total ?? 0,
+        processed: row?.processed ?? 0,
+        accepted: Number(row?.accepted ?? 0),
+        rejected: Number(row?.rejected ?? 0),
+      };
     },
 
     async insertBatchItems(batchId, items) {

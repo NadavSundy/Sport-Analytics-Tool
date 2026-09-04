@@ -21,6 +21,35 @@ The approved limits are:
 
 Changing these limits requires representative measurement and a recorded follow-up decision.
 
+## NDJSON record contract
+
+NDJSON is line-oriented and every non-empty line is an independently valid JSON object. Records must
+appear in dependency order so the worker never needs the whole package in memory:
+
+1. one `manifest` record containing `contractVersion`, `packageId`, `competition` and `season`;
+2. `fixture` records containing a caller-local `fixtureKey` plus the fixture `sourceId` and/or `context`;
+3. `innings` records containing a caller-local `inningsKey`, their `fixtureKey`, and innings
+   `sourceId` and/or `context`;
+4. optional `participant` records containing a caller-local `participantKey` and the normal participant
+   reference object in `reference`; and
+5. `event` records containing an `inningsKey` and the season-upload event. Event participant roles may
+   contain the normal participant reference directly or the corresponding `participantKey` string.
+
+Example:
+
+```json
+{"recordType":"manifest","contractVersion":"1.0","packageId":"cricsheet:package:ipl-2026","competition":{"sourceId":"cricsheet:competition:ipl"},"season":{"sourceId":"cricsheet:season:2026"}}
+{"recordType":"fixture","fixtureKey":"m1","sourceId":"cricsheet:fixture:1412526"}
+{"recordType":"innings","inningsKey":"m1-i1","fixtureKey":"m1","context":{"ordinal":1,"battingTeam":{"context":{"name":"Example XI"}}}}
+{"recordType":"participant","participantKey":"striker-1","reference":{"context":{"name":"Example Batter"}}}
+{"recordType":"event","fixtureKey":"m1","inningsKey":"m1-i1","event":{"eventId":"cricsheet:delivery:1412526-1-0.1","occurrenceSequence":1,"overNumber":0,"positionInOver":0,"ballLabel":"0.1","striker":"striker-1","nonStriker":{"context":{"name":"Example Non-striker"}},"bowler":{"context":{"name":"Example Bowler"}},"runs":{"offBat":0,"extras":0,"total":0},"extras":{}}}
+```
+
+The manifest is required before dependent records. A fixture or innings key is unique within the file.
+Malformed individual event/unknown lines are assigned a deterministic source ordinal, recorded, and processing
+continues where later lines remain independently interpretable. Invalid UTF-8 and structural faults
+that make the remaining dependency graph unsafe are batch-level source faults instead.
+
 ## User-facing references
 
 A submitter is never required to discover or enter a PostgreSQL primary key. Packages identify
@@ -95,5 +124,5 @@ resolves that reference to Azure storage coordinates.
 
 ## AI Declaration
 
-The issue #356 package, identity and resolution decisions were documented with the assistance of
-Codex[GPT-5].
+The issue #356 package, identity and resolution decisions were documented or edited with the
+assistance of Codex[GPT-5] and ChatGPT-Web[GPT-5.6 Sol].
