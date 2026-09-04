@@ -14,8 +14,6 @@ import type { BatchPayloadStorageService } from '../object-storage/batch-payload
 import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/object-store';
 import { createBatchRepository, type BatchRepository } from './batch.repository';
 
-const MAX_CONCURRENT_BATCHES = 3;
-
 export class BatchForbiddenError extends Error {}
 export class BatchConflictError extends Error {}
 export class BatchUnavailableError extends Error {}
@@ -55,20 +53,6 @@ export function createBatchService(
         throw new BatchForbiddenError();
       }
 
-      const existing = await repository.findBatchByIdempotencyKey(
-        account.accountId,
-        metadata.idempotencyKey,
-      );
-      if (existing) {
-        source.destroy();
-        return receipt(existing);
-      }
-
-      if ((await repository.countNonTerminalBatches(account.accountId)) >= MAX_CONCURRENT_BATCHES) {
-        source.destroy();
-        throw new BatchConflictError('The submitter already has three active batches.');
-      }
-
       let object;
       try {
         object = await storage.upload({
@@ -77,7 +61,7 @@ export function createBatchService(
           mediaType: metadata.mediaType,
           source,
         });
-        const batch = await repository.createBatchAndQueueValidation({
+        const outcome = await repository.createOrFindBatchAndQueueValidation({
           batchReference: randomUUID(),
           submitterId: account.accountId,
           competitionId: metadata.competitionId,
@@ -90,7 +74,16 @@ export function createBatchService(
           },
           state: 'stored',
         });
-        return receipt(batch);
+        if (outcome.activeLimitReached) {
+          throw new BatchConflictError('The submitter already has three active batches.');
+        }
+        if (!outcome.batch) throw new Error('Batch receipt returned no result.');
+        if (!outcome.created && outcome.batch.source?.checksum !== object.sha256) {
+          throw new BatchConflictError(
+            'The Idempotency-Key is already associated with different batch content.',
+          );
+        }
+        return receipt(outcome.batch);
       } catch (error) {
         // A storage record is retained for reconciliable provenance, but no batch row is created
         // unless its source was completely stored and recorded.
