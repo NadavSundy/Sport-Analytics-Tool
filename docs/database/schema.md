@@ -115,6 +115,18 @@ A correction inherits the within-innings sequence of the revision it supersedes.
 Without this rule a corrected delivery would receive a new sequence, and the order
 of the innings would shift beneath any consumer paging through it.
 
+`delivery.supersedes_delivery_id` links each replacement back to its immediate predecessor while
+`delivery.superseded_by` links the predecessor forward. Database triggers require later revisions to
+increase by exactly one and preserve the stable source event, original submission and event ordinal,
+optional source batch item, and innings sequence. Published delivery content and provenance cannot be
+updated in place; only the controlled live-to-superseded transition and initial batch-item link are allowed.
+
+Every accepted correction appends one `delivery_correction_history` row containing the requester and
+database timestamp, required reason, complete previous and resulting event snapshots, explicit delivery
+links, and original submission/batch-item provenance. Optional reviewer, decision, review timestamp and
+review reason fields are all-or-none where review applies. Update and delete triggers make the audit record
+append-only. Authorised history reads use this table; public reads and statistics use `delivery_current`.
+
 This is what makes the project's central claim demonstrable: correcting one
 delivery changes exactly those statistics that depend on it, because every
 statistic is an aggregation over the live rows, and the prior state remains
@@ -358,3 +370,4 @@ The issue #356 downstream reference and object-storage boundaries were documente
 assistance of Codex[GPT-5].
 The issue #359 batch-persistence extension was documented with the assistance of Codex[GPT-5].
 The issue #358 stored-object schema was documented with the assistance of Codex[GPT-5].
+The issue #284 immutable correction audit schema was documented with the assistance of Codex[GPT-5].

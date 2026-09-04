@@ -1,6 +1,7 @@
 import type {
   CorrectionRequest,
   CorrectionResponse,
+  CorrectionHistoryResponse,
   SubmissionRequest,
   SubmissionResponse,
   SubmissionSourceFile,
@@ -22,6 +23,10 @@ export interface SubmissionService {
     eventId: string,
     correction: CorrectionRequest,
   ): Promise<CorrectionResponse>;
+  getCorrectionHistory(
+    account: ApplicationAccount,
+    eventId: string,
+  ): Promise<CorrectionHistoryResponse>;
 }
 
 export function createSubmissionService(
@@ -116,6 +121,25 @@ export function createSubmissionService(
       return {
         data: await repository.storeAcceptedCorrection(eventId, correction, account.accountId),
       };
+    },
+
+    async getCorrectionHistory(account, eventId) {
+      const target = await repository.findCorrectionTarget(eventId);
+      if (!target) {
+        throw new SubmissionValidationError('The correction history is unavailable.', [
+          {
+            code: 'EVENT_NOT_FOUND',
+            message: 'The source event is not an accepted event.',
+            field: 'eventId',
+          },
+        ]);
+      }
+
+      if (!target.competitionId || !canSubmitToCompetition(account, target.competitionId)) {
+        throw new SubmissionForbiddenError();
+      }
+
+      return { data: await repository.listCorrectionHistory(eventId) };
     },
   };
 }

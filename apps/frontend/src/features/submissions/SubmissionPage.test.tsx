@@ -448,6 +448,7 @@ describe('role-gated event submission page', () => {
         expect(init?.method).toBe('PUT');
         expect(JSON.parse(String(init?.body))).toMatchObject({
           fixtureId: '7',
+          reason: 'Correct scorer transcription.',
           event: {
             runs: { offBat: 6, extras: 0, total: 6 },
           },
@@ -471,6 +472,9 @@ describe('role-gated event submission page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
 
     fireEvent.change(await screen.findByLabelText(/Runs off the bat/), { target: { value: '6' } });
+    fireEvent.change(screen.getByLabelText('Reason for correction'), {
+      target: { value: 'Correct scorer transcription.' },
+    });
     expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
     fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
 
@@ -564,6 +568,9 @@ describe('role-gated event submission page', () => {
       });
       fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
       const relevantInput = await screen.findByLabelText(inputLabel);
+      fireEvent.change(screen.getByLabelText('Reason for correction'), {
+        target: { value: 'Correct scorer transcription.' },
+      });
       fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
 
       expect(await screen.findByRole('heading', { name: 'Correction rejected' })).toHaveFocus();
@@ -619,6 +626,9 @@ describe('role-gated event submission page', () => {
       target: { value: JSON.stringify(validEvents) },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+    fireEvent.change(await screen.findByLabelText('Reason for correction'), {
+      target: { value: 'Correct scorer transcription.' },
+    });
     fireEvent.click(await screen.findByRole('button', { name: 'Save correction' }));
 
     expect(await screen.findByRole('heading', { name: 'Correction access denied' })).toHaveFocus();

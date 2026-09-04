@@ -100,8 +100,9 @@ filename, canonical media type, and byte length on the accepted submission.
 ## Correct an accepted event
 
 `PUT /api/v1/submissions/events/{eventId}` corrects an accepted direct-submission event. The path
-event ID is the original client UUID; the request supplies the fixture, contract version, and corrected
-delivery content. The occurrence sequence is inherited from the live source event and is not client-editable.
+event ID is the original client UUID; the request supplies the fixture, contract version, corrected
+delivery content, and a required non-blank reason. The occurrence sequence is inherited from the live
+source event and is not client-editable.
 
 Only an authenticated `submitter` or `admin` may correct it. An ordinary submitter needs the
 fixture's server-owned competition scope; an administrator may correct any eligible fixture without a
@@ -109,8 +110,11 @@ scope assignment. The replacement is validated against the same cricket contract
 innings, and dismissal-kind rules as a new submission. Invalid, unknown, unauthorised, or out-of-scope
 corrections leave the live event unchanged.
 
-The database transaction inserts a new immutable delivery revision and marks the previous live row
-superseded; it never accepts statistic totals. Fixture, participant, and public-event reads use live
+The database transaction inserts a new immutable delivery revision, links it explicitly to its predecessor,
+marks the previous live row superseded, and appends an immutable audit record with the requester, timestamp,
+reason, before/after states, and original submission/batch-item provenance. Revision numbers increase by one
+under a per-event transaction lock, including for concurrent requests. It never accepts statistic totals.
+Fixture, participant, and public-event reads use live
 deliveries, so the affected derived statistics change automatically while unrelated delivery statistics
 remain unchanged.
 
@@ -118,6 +122,7 @@ remain unchanged.
 {
   "fixtureId": "42",
   "schemaVersion": "1.0",
+  "reason": "Correct scorer transcription from the signed scorebook.",
   "event": {
     "inningsId": "81",
     "overNumber": 0,
@@ -130,6 +135,14 @@ remain unchanged.
   }
 }
 ```
+
+`GET /api/v1/submissions/events/{eventId}/history` exposes ordered audit history to an in-scope
+submitter or an administrator. Each entry includes explicit previous and replacement delivery identifiers
+and revision numbers, requester identity, correction time and reason, complete previous/resulting event
+states, original submission position, and optional batch-item identity. Reviewer, decision, review time and
+review reason are returned together where review applies; the immediate accepted-correction flow returns
+`review: null`. Public event endpoints continue to return only the current accepted revision and omit audit
+metadata.
 
 ## Rejection format
 
@@ -199,3 +212,4 @@ The direct submission API documentation was generated with the assistance of Cod
 The correction workflow and file-upload submission support were added with the assistance of
 Codex[GPT-5].
 The Issue #311 administrator submission rule was documented with the assistance of Codex[GPT-5].
+The Issue #284 correction audit contract was documented with the assistance of Codex[GPT-5].

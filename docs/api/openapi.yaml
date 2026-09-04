@@ -1244,6 +1244,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
 
+  /api/v1/submissions/events/{eventId}/history:
+    get:
+      tags:
+        - Submissions
+      summary: Retrieve immutable correction history for an accepted event
+      description: Returns ordered before/after revisions, requester and reason, source provenance, explicit predecessor/replacement links, and review provenance where review applies. Submitters require the fixture competition scope; administrators may inspect any eligible fixture.
+      operationId: getSubmissionEventCorrectionHistory
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ordered immutable correction history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectionHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: The event identifier is invalid or does not identify an accepted event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
   /api/v1/submissions/uploads:
     post:
       tags:
@@ -3330,13 +3365,17 @@ components:
     CorrectionRequest:
       type: object
       additionalProperties: false
-      required: [fixtureId, schemaVersion, event]
+      required: [fixtureId, schemaVersion, reason, event]
       properties:
         fixtureId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         schemaVersion:
           type: string
           const: '1.0'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
         event:
           $ref: '#/components/schemas/CorrectionEvent'
 
@@ -3361,3 +3400,83 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Correction'
+
+    CorrectionHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          correctionId,
+          previousDeliveryId,
+          replacementDeliveryId,
+          previousRevision,
+          resultingRevision,
+          requester,
+          correctedAt,
+          reason,
+          source,
+          previousState,
+          resultingState,
+          review,
+        ]
+      properties:
+        correctionId: { $ref: '#/components/schemas/ApiIdentifier' }
+        previousDeliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        replacementDeliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        previousRevision: { type: integer, minimum: 1 }
+        resultingRevision: { type: integer, minimum: 1 }
+        requester:
+          type: object
+          additionalProperties: false
+          required: [accountId, displayName]
+          properties:
+            accountId: { $ref: '#/components/schemas/ApiIdentifier' }
+            displayName: { type: [string, 'null'] }
+        correctedAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1 }
+        source:
+          type: object
+          additionalProperties: false
+          required: [submissionId, submissionEventOrdinal, batchItemId]
+          properties:
+            submissionId: { $ref: '#/components/schemas/ApiIdentifier' }
+            submissionEventOrdinal: { type: [integer, 'null'], minimum: 0 }
+            batchItemId:
+              oneOf:
+                - { $ref: '#/components/schemas/ApiIdentifier' }
+                - { type: 'null' }
+        previousState: { $ref: '#/components/schemas/SubmissionEvent' }
+        resultingState: { $ref: '#/components/schemas/SubmissionEvent' }
+        review:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [reviewer, decision, reviewedAt, reason]
+              properties:
+                reviewer:
+                  type: object
+                  additionalProperties: false
+                  required: [accountId, displayName]
+                  properties:
+                    accountId: { $ref: '#/components/schemas/ApiIdentifier' }
+                    displayName: { type: [string, 'null'] }
+                decision: { type: string, enum: [approved, rejected] }
+                reviewedAt: { type: string, format: date-time }
+                reason: { type: string, minLength: 1 }
+            - { type: 'null' }
+
+    CorrectionHistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [eventId, fixtureId, corrections]
+          properties:
+            eventId: { type: string, format: uuid }
+            fixtureId: { $ref: '#/components/schemas/ApiIdentifier' }
+            corrections:
+              type: array
+              items: { $ref: '#/components/schemas/CorrectionHistoryEntry' }

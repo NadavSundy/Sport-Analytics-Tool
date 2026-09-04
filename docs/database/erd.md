@@ -18,6 +18,9 @@ erDiagram
     competition ||--o{ submitter_competition_scope : grants
     submission ||--o{ fixture : "first seen in"
     submission ||--o{ delivery : supplies
+    delivery ||--o| delivery : supersedes
+    delivery ||--o{ delivery_correction_history : "previous or replacement"
+    app_user ||--o{ delivery_correction_history : requests
     batch ||--o| batch : supersedes
     batch ||--o{ batch_item : expands
     batch ||--o| batch_checkpoint : checkpoints
@@ -101,10 +104,10 @@ erDiagram
     person ||--o{ delivery_replacement : "replaces or replaced"
 ```
 
-The delivery is the event. A correction inserts a new row and marks the prior one
-superseded through `superseded_by`, so the relationship from delivery to delivery
-is the correction history. All derivation reads `delivery_current`, the view of
-rows not yet superseded.
+The delivery is the event. A correction inserts a new row with an explicit predecessor, marks the prior
+row superseded, and appends an immutable `delivery_correction_history` record containing actor, time,
+reason, before/after states, and source provenance. All derivation reads `delivery_current`, the view of rows
+not yet superseded. Reviewer identity, decision, time and reason are retained together where review applies.
 
 ## AI Declaration
 
@@ -113,3 +116,4 @@ application-account scope relationships and source-file cleanup were updated wit
 Codex[GPT-5.6 Sol]. The issue #276 batch relationships were added with the assistance of Codex[GPT-5].
 The issue #356 reference-resolution boundary was documented with the assistance of Codex[GPT-5].
 The issue #358 stored-object provenance relationship was added with the assistance of Codex[GPT-5].
+The issue #284 correction lineage and audit relationships were added with the assistance of Codex[GPT-5].
