@@ -17,8 +17,8 @@ function createDatabasePool(options: DatabasePoolOptions): Pool {
   const pool = new Pool({
     connectionString: options.connectionString,
     ssl: options.ssl,
-    max: options.max ?? 10,
-    connectionTimeoutMillis: 10_000,
+    min: 1,
+
     idleTimeoutMillis: 30_000,
   });
 
