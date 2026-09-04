@@ -101,6 +101,7 @@ export function startHealthServer(
   monitor: HealthMonitor,
   metrics: DeliveryMetrics,
   workerId: string,
+  operations: Record<string, unknown> = {},
 ): Promise<Server> {
   const server = createServer((request, response) => {
     const common = {
@@ -125,6 +126,7 @@ export function startHealthServer(
           status: monitor.ready ? 'ready' : 'not_ready',
           dependencies: monitor.dependencies,
           deliveries: metrics,
+          operations,
         }),
       );
       return;

@@ -5,6 +5,7 @@ import {
   API_BASE_PATH,
   type BatchMetadata,
   type BatchReceiptResponse,
+  type BatchStatusResponse,
 } from '@sport-analytics/contracts';
 
 import { canSubmitToCompetition } from '../../middleware/require-authorization';
@@ -25,7 +26,7 @@ export interface BatchService {
     metadata: BatchMetadata,
     source: Readable,
   ): Promise<BatchReceiptResponse>;
-  getStatus(account: ApplicationAccount, reference: string): Promise<BatchReceiptResponse>;
+  getStatus(account: ApplicationAccount, reference: string): Promise<BatchStatusResponse>;
 }
 
 function receipt(batch: {
@@ -76,7 +77,7 @@ export function createBatchService(
           mediaType: metadata.mediaType,
           source,
         });
-        const batch = await repository.createBatch({
+        const batch = await repository.createBatchAndQueueValidation({
           batchReference: randomUUID(),
           submitterId: account.accountId,
           competitionId: metadata.competitionId,
@@ -105,7 +106,17 @@ export function createBatchService(
       if (!batch || (account.role !== 'admin' && batch.submitterId !== account.accountId)) {
         throw new BatchForbiddenError();
       }
-      return receipt(batch);
+      const progress = await repository.getBatchProgress(batch.batchId);
+      return {
+        data: {
+          batchReference: batch.batchReference,
+          status: batch.state,
+          statusUrl: `${API_BASE_PATH}/batches/${batch.batchReference}`,
+          receivedAt: batch.createdAt,
+          updatedAt: batch.updatedAt,
+          progress,
+        },
+      };
     },
   };
 }

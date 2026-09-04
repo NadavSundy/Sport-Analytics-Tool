@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { Readable } from 'node:stream';
 
 import { DefaultAzureCredential } from '@azure/identity';
 import {
@@ -11,6 +12,7 @@ import { Pool } from 'pg';
 
 import type { WorkerEnvironment } from './config';
 import type { DeliveryReceiver, DeliverySubscription, ReceivedJob } from './delivery-pump';
+import type { OutboxSender } from './outbox-relay';
 
 interface AzureReceivedJob extends ReceivedJob {
   raw: ServiceBusReceivedMessage;
@@ -77,6 +79,10 @@ export interface RuntimeDependencies {
   close(): Promise<void>;
   database: Pool;
   deliveryReceiver: DeliveryReceiver;
+  outboxSender: OutboxSender;
+  objectStorage: {
+    read(storageKey: string): Promise<Readable>;
+  };
 }
 
 export function createRuntimeDependencies(environment: WorkerEnvironment): RuntimeDependencies {
@@ -105,6 +111,7 @@ export function createRuntimeDependencies(environment: WorkerEnvironment): Runti
     environment.SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE,
     credential,
   );
+  const queueSender = serviceBusClient.createSender(environment.SERVICE_BUS_QUEUE_NAME);
   const queueReceiver = serviceBusClient.createReceiver(environment.SERVICE_BUS_QUEUE_NAME, {
     receiveMode: 'peekLock',
     maxAutoLockRenewalDurationInMs: environment.SERVICE_BUS_LOCK_RENEWAL_MS,
@@ -138,8 +145,34 @@ export function createRuntimeDependencies(environment: WorkerEnvironment): Runti
       queueReceiver,
       environment.WORKER_CONCURRENCY,
     ),
+    objectStorage: {
+      async read(storageKey) {
+        const response = await container.getBlockBlobClient(storageKey).download();
+        if (!response.readableStreamBody) {
+          throw new Error('Object storage returned no readable batch body.');
+        }
+        return response.readableStreamBody as Readable;
+      },
+    },
+    outboxSender: {
+      async send(messages) {
+        if (messages.length === 0) return;
+        await queueSender.sendMessages(
+          messages.map((message) => ({
+            messageId: message.messageId,
+            body: message.body,
+            contentType: 'application/json',
+          })),
+        );
+      },
+    },
     async close() {
-      await Promise.allSettled([healthReceiver.close(), serviceBusClient.close(), database.end()]);
+      await Promise.allSettled([
+        queueSender.close(),
+        healthReceiver.close(),
+        serviceBusClient.close(),
+        database.end(),
+      ]);
     },
   };
 }

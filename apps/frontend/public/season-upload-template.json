@@ -30,6 +30,8 @@
             {
               "eventId": "replace-with-provider:delivery:stable-delivery-id",
               "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
               "ballLabel": "0.1",
               "striker": {
                 "context": { "name": "Striker", "team": { "context": { "name": "Home team" } } }

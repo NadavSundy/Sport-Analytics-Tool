@@ -20,13 +20,24 @@ const receipt = {
   },
 };
 
+const status = {
+  data: {
+    batchReference: reference,
+    status: 'stored' as const,
+    statusUrl: `/api/v1/batches/${reference}`,
+    receivedAt: '2026-09-03T10:00:00.000Z',
+    updatedAt: '2026-09-03T10:00:00.000Z',
+    progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
+  },
+};
+
 function synchronize(account: ReturnType<typeof createTestAccount>): SynchronizeAccount {
   return async () => account;
 }
 function service(): BatchService {
   return {
     receive: vi.fn<BatchService['receive']>().mockResolvedValue(receipt),
-    getStatus: vi.fn<BatchService['getStatus']>().mockResolvedValue(receipt),
+    getStatus: vi.fn<BatchService['getStatus']>().mockResolvedValue(status),
   };
 }
 function post(app: ReturnType<typeof createTestApp>) {
@@ -67,6 +78,31 @@ describe('batch receipt API', () => {
       expect.objectContaining({ competitionId: '5', mediaType: 'application/x-ndjson' }),
       expect.anything(),
     );
+  });
+
+  test('returns asynchronous validation progress for the owned batch', async () => {
+    const batchService = service();
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .get(`/api/v1/batches/${reference}`)
+      .set('Authorization', 'Bearer batch-token')
+      .expect(200);
+
+    expect(response.body).toEqual(status);
+    expect(batchService.getStatus).toHaveBeenCalledWith(expect.anything(), reference);
   });
 
   test('rejects malformed metadata before receipt processing', async () => {

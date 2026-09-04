@@ -284,6 +284,55 @@ describe.sequential('batch repository database integration', () => {
     }
   });
 
+  test('creates a batch, validation job and outbox command atomically', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const created = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-queued-validation`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 2048,
+        },
+        state: 'stored',
+      });
+
+      const job = await client.query<{
+        state: string;
+        jobType: string;
+        batchId: string;
+      }>(
+        `SELECT state::text AS state, job_type AS "jobType", batch_id::text AS "batchId"
+         FROM background_job WHERE batch_id=$1::bigint`,
+        [created.batchId],
+      );
+      const outbox = await client.query<{
+        messageType: string;
+        body: { type: string; version: number; batchId: string };
+        publishedAt: Date | null;
+      }>(
+        `SELECT message_type AS "messageType", body, published_at AS "publishedAt"
+         FROM outbox_message WHERE job_id=(SELECT job_id FROM background_job WHERE batch_id=$1::bigint)`,
+        [created.batchId],
+      );
+
+      expect(job.rows[0]).toMatchObject({
+        state: 'queued',
+        jobType: 'batch.validate',
+        batchId: created.batchId,
+      });
+      expect(outbox.rows[0]).toMatchObject({
+        messageType: 'batch.validate',
+        publishedAt: null,
+        body: { type: 'batch.validate', version: 1, batchId: created.batchId },
+      });
+    });
+  });
+
   test('creates and reads a batch, ordered items and a durable checkpoint', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();

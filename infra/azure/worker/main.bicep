@@ -48,6 +48,7 @@ var suffix = '${namePrefix}-${environmentName}'
 var containerAppName = '${suffix}-batch-worker'
 var queueName = 'batch-ingestion'
 var serviceBusReceiverRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0')
+var serviceBusSenderRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39')
 var blobContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 var keyVaultSecretsUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
@@ -146,6 +147,16 @@ resource serviceBusReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04
   }
 }
 
+resource serviceBusSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(queue.id, runtimeIdentity.id, serviceBusSenderRoleId)
+  scope: queue
+  properties: {
+    principalId: runtimeIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusSenderRoleId
+  }
+}
+
 resource blobContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(existingStorage.id, runtimeIdentity.id, blobContributorRoleId)
   scope: existingStorage
@@ -222,6 +233,11 @@ resource worker 'Microsoft.App/containerApps@2025-02-02-preview' = if (deployWor
             { name: 'WORKER_SHUTDOWN_TIMEOUT_MS', value: '25000' }
             { name: 'SERVICE_BUS_LOCK_RENEWAL_MS', value: '240000' }
             { name: 'WORKER_PROBE_DELAY_MS', value: '0' }
+            { name: 'OUTBOX_POLL_INTERVAL_MS', value: '1000' }
+            { name: 'OUTBOX_CLAIM_TTL_MS', value: '30000' }
+            { name: 'OUTBOX_BATCH_SIZE', value: '20' }
+            { name: 'BATCH_CHUNK_SIZE', value: '500' }
+            { name: 'BATCH_LEASE_MS', value: '120000' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'DATABASE_SSL_MODE', value: 'verify-full' }
             { name: 'AZURE_CLIENT_ID', value: runtimeIdentity.properties.clientId }
@@ -284,6 +300,7 @@ resource worker 'Microsoft.App/containerApps@2025-02-02-preview' = if (deployWor
   }
   dependsOn: [
     serviceBusReceiverRole
+    serviceBusSenderRole
     blobContributorRole
     keyVaultSecretRole
     registryPullRole

@@ -3,8 +3,9 @@
 Issue #365 provisions the deployment target selected by accepted ADR-010. The target is a Node.js 22
 Azure Container App, separate from the Express App Service, consuming Azure Service Bus Standard in
 peek-lock mode. Supabase PostgreSQL remains authoritative and staged bytes remain in a private Azure
-Blob container. Issue #278 owns package expansion, reference resolution and validation; until that
-handler is merged, the worker processes only a read-only `worker.probe` version 1 command.
+Blob container. Issue #278 adds the transactional outbox relay and the `batch.validate` version 1
+handler for package expansion, reference resolution, bounded validation chunks and durable resume.
+The existing read-only `worker.probe` version 1 command remains available for deployment checks.
 
 ## Provisioned boundary
 
@@ -15,7 +16,7 @@ handler is merged, the worker processes only a read-only `worker.probe` version 
 - one-minute peek locks, duplicate detection, five deliveries and a dead-letter queue;
 - a Basic private Azure Container Registry;
 - separate runtime and image-pull managed identities;
-- least-privilege queue receiver, Blob contributor, Key Vault secret-reader and ACR pull roles;
+- least-privilege queue receiver and sender, Blob contributor, Key Vault secret-reader and ACR pull roles;
 - startup, liveness and dependency-aware readiness probes;
 - one to three replicas with a managed-identity Service Bus KEDA rule; and
 - a 30-day Log Analytics workspace for JSON console logs.
@@ -42,6 +43,11 @@ managed identity. Ingress is internal because worker health is an operator surfa
 | `SERVICE_BUS_LOCK_RENEWAL_MS`           | No     | Automatic peek-lock renewal window; deployed value is four minutes.               |
 | `WORKER_SHUTDOWN_TIMEOUT_MS`            | No     | Drain deadline; deployed value is 25 seconds within the 30-second platform grace. |
 | `WORKER_PROBE_DELAY_MS`                 | No     | Recovery-test-only delay; keep `0` normally.                                      |
+| `OUTBOX_POLL_INTERVAL_MS`               | No     | Empty-poll delay for the transactional outbox relay; default `1000`.              |
+| `OUTBOX_CLAIM_TTL_MS`                   | No     | PostgreSQL claim lease for an outbox publish attempt; default `30000`.            |
+| `OUTBOX_BATCH_SIZE`                     | No     | Maximum outbox rows claimed in one set-based poll; default `20`.                  |
+| `BATCH_CHUNK_SIZE`                      | No     | Maximum staged items persisted per validation transaction; default `500`.         |
+| `BATCH_LEASE_MS`                        | No     | Durable validation lease before another worker may reclaim the batch; `120000`.   |
 | `LOG_LEVEL`                             | No     | `debug`, `info`, `warn` or `error`.                                               |
 
 Do not create Service Bus connection strings, storage keys or SAS tokens for the worker. Do not use
@@ -103,6 +109,11 @@ group and an isolated local database.
    AZURE_STORAGE_CONTAINER_NAME=staged-ingestion
    WORKER_CONCURRENCY=1
    WORKER_PROBE_DELAY_MS=0
+   OUTBOX_POLL_INTERVAL_MS=1000
+   OUTBOX_CLAIM_TTL_MS=30000
+   OUTBOX_BATCH_SIZE=20
+   BATCH_CHUNK_SIZE=500
+   BATCH_LEASE_MS=120000
    ```
 
    Expected: no real secret is committed. `git status --short` must not list the ignored `.env`.
@@ -157,8 +168,10 @@ group and an isolated local database.
    expires, the restarted worker receives the same `messageId` with `deliveryCount` at least 2 and
    completes it. Only the successful attempt emits `Deployment probe job verified worker
 dependencies.`; the probe has no write side effect, so redelivery cannot duplicate domain data.
-   The future #278 handler must additionally commit its checkpoint/idempotency result before message
-   completion, using the same delivery boundary.
+
+   For a real `batch.validate` command, the durable `batch_checkpoint` is the resume boundary. A chunk
+   and its new `last_ordinal` commit atomically, so a restarted worker skips committed ordinals and
+   resumes from the next item after reclaiming an expired validation lease.
 
 10. Clean up local test data:
 
@@ -212,8 +225,15 @@ is required; there is deliberately no public ingress.
   disabled.
 - **`objectStorage: down`:** verify the account/container names, private container, runtime identity
   Blob role and storage firewall rules. Public Blob access intentionally fails readiness.
-- **Messages dead-letter immediately:** inspect the safe reason. Before #278, only
-  `worker.probe` version 1 is supported; payloads and secrets are never logged.
+- **Messages dead-letter immediately:** inspect the safe reason. The worker supports only
+  `worker.probe` version 1 and `batch.validate` version 1; unknown command versions and permanent
+  validation-job faults are dead-lettered without logging source payloads or secrets.
+- **A batch is `failed` after a transient outage:** inspect the safe background-job error and broker
+  delivery count. Retriable infrastructure failures are bounded; a later delivery can reclaim an expired
+  lease, while item/schema validation faults do not consume the infrastructure retry budget.
+- **Outbox rows remain unpublished:** verify the worker identity has Service Bus Data Sender as well as
+  Receiver, then inspect outbox counters on `/health/status`. Expired PostgreSQL outbox claims are
+  reclaimable and published rows are never selected again.
 - **Message stays locked after a crash:** wait at least the one-minute lock duration. The SDK renews
   locks only while the original process is alive.
 - **Revision is unhealthy:** inspect startup logs for invalid environment fields or Key Vault/RBAC
@@ -223,7 +243,8 @@ is required; there is deliberately no public ingress.
 
 ## AI Declaration
 
-This deployment guide and its infrastructure mapping were generated with the assistance of
-Codex[GPT-5]. Automated repository checks were run by the AI assistant; a human Azure operator must
-still compile/review the Bicep, execute the first deployment, verify live RBAC/networking/KEDA/log
-behavior, and perform the graceful and forced restart exercises in the development environment.
+This deployment guide and its infrastructure mapping were generated or edited with the assistance
+of Codex[GPT-5] and ChatGPT-Web[GPT-5.6 Sol]. Automated repository checks do not replace operator
+verification; a human Azure operator must still compile/review the Bicep, execute the deployment,
+verify live RBAC/networking/KEDA/log behavior, and perform the graceful and forced restart exercises
+in the development environment.
