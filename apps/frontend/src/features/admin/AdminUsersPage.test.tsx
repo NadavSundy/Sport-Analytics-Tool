@@ -1,4 +1,5 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import type { AdministratorManagedUser } from '@sport-analytics/contracts';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -8,6 +9,11 @@ import { AuthProvider } from '../auth/AuthProvider';
 import { AdminUsersPage } from './AdminUsersPage';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
+const accessTime = '2026-08-16T12:00:00.000Z';
+const availableScopes = [
+  { competitionId: '7', name: 'Premier T20' },
+  { competitionId: '8', name: 'University League' },
+];
 
 function session(): Session {
   const user = {
@@ -18,12 +24,11 @@ function session(): Session {
     app_metadata: {},
     user_metadata: {},
     identities: [],
-    created_at: '2026-08-16T00:00:00.000Z',
+    created_at: accessTime,
   } satisfies User;
-
   return {
     access_token: 'admin-access-token',
-    refresh_token: 'managed-by-supabase',
+    refresh_token: 'refresh',
     expires_in: 3600,
     token_type: 'bearer',
     user,
@@ -35,13 +40,7 @@ function authClient(currentSession: Session | null): AuthClient {
     getSession: vi.fn().mockResolvedValue({ data: { session: currentSession } }),
     onAuthStateChange: vi.fn(
       (_listener: (event: AuthChangeEvent, session: Session | null) => void) => ({
-        data: {
-          subscription: {
-            id: 'admin-test-subscription',
-            callback: _listener,
-            unsubscribe: vi.fn(),
-          },
-        },
+        data: { subscription: { id: 'test', callback: _listener, unsubscribe: vi.fn() } },
       }),
     ),
     signInWithOAuth: vi.fn(),
@@ -49,7 +48,7 @@ function authClient(currentSession: Session | null): AuthClient {
   } as unknown as AuthClient;
 }
 
-function jsonResponse(status: number, body: unknown): Response {
+function response(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -58,11 +57,11 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function currentUser(role: 'viewer' | 'admin' = 'admin') {
-  return jsonResponse(200, {
+  return response(200, {
     user: {
-      id: role === 'admin' ? '1' : '42',
-      subject: role === 'admin' ? 'admin-subject' : 'viewer-subject',
-      displayName: role === 'admin' ? 'Administrator' : 'Viewer',
+      id: '1',
+      subject: 'admin-subject',
+      displayName: 'Administrator',
       role,
       approvalState: 'not_requested',
       requestedCompetition: null,
@@ -71,25 +70,14 @@ function currentUser(role: 'viewer' | 'admin' = 'admin') {
   });
 }
 
-const accessTime = '2026-08-16T12:00:00.000Z';
-
-function managedUser(
-  overrides: Partial<{
-    role: 'viewer' | 'submitter' | 'admin';
-    approvalState: 'not_requested' | 'pending' | 'approved' | 'rejected';
-    requestedCompetition: { competitionId: string; name: string } | null;
-    competitionScopes: { competitionId: string; name: string }[];
-    disabled: boolean;
-    previouslyRevoked: boolean;
-  }> = {},
-) {
+function managedUser(overrides: Partial<AdministratorManagedUser> = {}): AdministratorManagedUser {
   return {
     id: '42',
     email: 'pending.contributor@example.com',
     displayName: 'Pending Contributor',
     role: 'viewer' as const,
     approvalState: 'pending' as const,
-    requestedCompetition: { competitionId: '7', name: 'Premier T20' },
+    requestedCompetition: availableScopes[0]!,
     competitionScopes: [],
     disabled: false,
     previouslyRevoked: false,
@@ -100,22 +88,30 @@ function managedUser(
   };
 }
 
-const availableScopes = [
-  { competitionId: '7', name: 'Premier T20' },
-  { competitionId: '8', name: 'University League' },
-];
+const administrator = managedUser({
+  id: '1',
+  email: 'admin@example.com',
+  displayName: 'Administrator',
+  role: 'admin',
+  approvalState: 'not_requested',
+  requestedCompetition: null,
+});
+const submitter = managedUser({
+  id: '7',
+  email: 'analyst@example.com',
+  displayName: 'Analyst',
+  role: 'submitter',
+  approvalState: 'approved',
+  requestedCompetition: null,
+  competitionScopes: [availableScopes[1]!],
+});
 
-function managementResponse(user = managedUser()) {
-  return jsonResponse(200, {
-    data: {
-      users: [user],
-      availableScopes,
-    },
-  });
+function managementResponse(users = [administrator, managedUser(), submitter]) {
+  return response(200, { data: { users, availableScopes } });
 }
 
-function updateResponse(user: ReturnType<typeof managedUser>) {
-  return jsonResponse(200, {
+function updatedResponse(user: ReturnType<typeof managedUser>) {
+  return response(200, {
     data: {
       ...user,
       submitterAccessUpdatedAt: accessTime,
@@ -137,15 +133,11 @@ function renderPage(currentSession: Session | null = session()) {
   );
 }
 
-async function userCard(): Promise<HTMLElement> {
-  const heading = await screen.findByRole('heading', { name: 'Pending Contributor' });
-  const card = heading.closest('article');
-
-  if (!card) {
-    throw new Error('Expected the managed user heading to be inside an article.');
-  }
-
-  return card;
+async function openPendingUser() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Manage pending.contributor@example.com' }),
+  );
+  return within(screen.getByRole('dialog', { name: 'Pending Contributor' }));
 }
 
 describe('administrator user management page', () => {
@@ -154,211 +146,136 @@ describe('administrator user management page', () => {
     vi.unstubAllGlobals();
   });
 
-  it('redirects signed-out visitors to sign in', async () => {
-    const fetchMock = vi.fn();
+  it('redirects signed-out visitors and rejects non-administrators before listing users', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(currentUser('viewer'));
     vi.stubGlobal('fetch', fetchMock);
-
     renderPage(null);
-
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('does not request the user list for a non-administrator', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(currentUser('viewer'));
-    vi.stubGlobal('fetch', fetchMock);
-
-    renderPage();
-
-    expect(
-      await screen.findByRole('heading', { name: 'Administrator access required' }),
-    ).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0]?.[0]).toContain('/auth/me');
-  });
-
-  it('shows each user role, approval state, and current competition scope', async () => {
-    const submitter = managedUser({
-      role: 'submitter',
-      approvalState: 'approved',
-      competitionScopes: [availableScopes[0]!],
+  it('renders loading and then scan-friendly account data returned by the backend API', async () => {
+    let resolveUsers!: (value: Response) => void;
+    const usersPromise = new Promise<Response>((resolve) => {
+      resolveUsers = resolve;
     });
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(managementResponse(submitter)),
+      vi.fn().mockResolvedValueOnce(currentUser()).mockReturnValueOnce(usersPromise),
     );
-
     renderPage();
-
-    const card = within(await screen.findByRole('article'));
-    expect(card.getAllByText('Submitter').length).toBeGreaterThan(0);
-    expect(card.getByText('Approved')).toBeInTheDocument();
-    expect(card.getAllByText('Premier T20').length).toBeGreaterThan(0);
-    expect(card.getByRole('button', { name: 'Revoke submitter access' })).toBeEnabled();
-    expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Loading registered users' }),
+    ).toBeInTheDocument();
+    resolveUsers(managementResponse());
+    const table = within(await screen.findByRole('table'));
+    expect(table.getByText('pending.contributor@example.com')).toBeInTheDocument();
+    expect(table.getByText('Administrator')).toBeInTheDocument();
+    expect(table.getByText('Pending')).toBeInTheDocument();
+    expect(table.getByText('University League')).toBeInTheDocument();
   });
 
-  it('identifies a pending request and offers distinct approval and rejection actions', async () => {
+  it('searches email and filters independently by role and submitter state', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValueOnce(currentUser()).mockResolvedValueOnce(managementResponse()),
     );
-
     renderPage();
-
-    const card = within(await userCard());
-    expect(card.getByText('Submitter access requested.')).toBeInTheDocument();
-    expect(card.getByText(/awaiting administrator review/i)).toBeInTheDocument();
-    expect(card.getByText(/approval grants the requested competition/i)).toBeInTheDocument();
-    expect(card.getAllByText('Premier T20').length).toBeGreaterThan(0);
-    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
-    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeEnabled();
-    expect(card.getByRole('button', { name: 'Reject request' })).toBeEnabled();
+    await screen.findByRole('table');
+    fireEvent.change(screen.getByLabelText('Search users'), { target: { value: 'analyst@' } });
+    expect(screen.getByText('analyst@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('pending.contributor@example.com')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Search users'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'viewer' } });
+    expect(screen.getByText('pending.contributor@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('analyst@example.com')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'all' } });
+    fireEvent.change(screen.getByLabelText('Submitter status'), { target: { value: 'approved' } });
+    expect(screen.getByText('analyst@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('pending.contributor@example.com')).not.toBeInTheDocument();
   });
 
-  it('visibly flags a pending request from a previously revoked user', async () => {
+  it('distinguishes an empty account list from empty filtered results', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(managementResponse(managedUser({ previouslyRevoked: true }))),
+      vi.fn().mockResolvedValueOnce(currentUser()).mockResolvedValueOnce(managementResponse([])),
     );
-
     renderPage();
-
-    const card = within(await userCard());
-    expect(card.getByText('Previously revoked')).toBeInTheDocument();
-    expect(card.getByText(/this user was previously revoked/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'No registered users' })).toBeInTheDocument();
   });
 
-  it('does not offer approval or scope controls before a submitter request is made', async () => {
+  it('shows no-results guidance and clears active filters', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(managementResponse(managedUser({ approvalState: 'not_requested' }))),
+      vi.fn().mockResolvedValueOnce(currentUser()).mockResolvedValueOnce(managementResponse()),
     );
-
     renderPage();
-
-    const card = within(await userCard());
+    fireEvent.change(await screen.findByLabelText('Search users'), {
+      target: { value: 'missing@example.com' },
+    });
     expect(
-      card.getByText('No submitter access request is currently awaiting review.'),
+      screen.getByRole('heading', { name: 'No users match the current search or filters.' }),
     ).toBeInTheDocument();
-    expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
-    expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
-    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await screen.findByText('pending.contributor@example.com')).toBeInTheDocument();
   });
 
-  it('fails closed for a legacy pending request without a competition', async () => {
+  it('surfaces API failure and retries through the handwritten backend endpoint', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(
+        response(500, { error: { code: 'FAILED', message: 'User service unavailable.' } }),
+      )
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(managementResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('User service unavailable.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading users' }));
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(fetchMock.mock.calls[3]?.[0]).toContain('/admin/users');
+  });
+
+  it('opens a keyboard-accessible management dialog and restores trigger focus', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(managementResponse(managedUser({ requestedCompetition: null }))),
+      vi.fn().mockResolvedValueOnce(currentUser()).mockResolvedValueOnce(managementResponse()),
     );
-
     renderPage();
-
-    const card = within(await userCard());
-    expect(card.getByText(/legacy pending request has no competition/i)).toBeInTheDocument();
-    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeDisabled();
-    expect(card.getByRole('button', { name: 'Reject request' })).toBeEnabled();
+    const trigger = await screen.findByRole('button', {
+      name: 'Manage pending.contributor@example.com',
+    });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Pending Contributor' });
+    expect(within(dialog).getAllByText('pending.contributor@example.com')).toHaveLength(2);
+    expect(within(dialog).getAllByText('Premier T20')).toHaveLength(2);
+    expect(within(dialog).getByRole('button', { name: /close management view/i })).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it('does not treat a rejected request as pending approval', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(managementResponse(managedUser({ approvalState: 'rejected' }))),
-    );
-
-    renderPage();
-
-    const card = within(await userCard());
-    expect(
-      card.getByText(/no submitter access request is currently awaiting review/i),
-    ).toBeInTheDocument();
-    expect(card.getByText(/the previous request was rejected/i)).toBeInTheDocument();
-    expect(card.queryByRole('button', { name: 'Approve submitter' })).not.toBeInTheDocument();
-    expect(card.queryByRole('button', { name: 'Reject request' })).not.toBeInTheDocument();
-    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
-  });
-
-  it('does not offer submitter request-management controls for an administrator account', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(
-          managementResponse(managedUser({ role: 'admin', approvalState: 'approved' })),
-        ),
-    );
-
-    renderPage();
-
-    const card = within(await userCard());
-    expect(
-      card.getByText('Administrator accounts are protected from submitter access changes.'),
-    ).toBeInTheDocument();
-    expect(card.queryByRole('button')).not.toBeInTheDocument();
-    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
-  });
-
-  it('does not offer actionable submitter controls for a disabled account', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(currentUser())
-        .mockResolvedValueOnce(managementResponse(managedUser({ disabled: true }))),
-    );
-
-    renderPage();
-
-    const card = within(await userCard());
-    expect(
-      card.getByText('Disabled accounts cannot receive submitter access changes.'),
-    ).toBeInTheDocument();
-    expect(card.queryByRole('button')).not.toBeInTheDocument();
-    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
-  });
-
-  it('approves a pending user for the requested competition and updates the card immediately', async () => {
+  it('confirms and approves a pending submitter through the backend API', async () => {
     const approved = managedUser({
       role: 'submitter',
       approvalState: 'approved',
       competitionScopes: [availableScopes[0]!],
+      requestedCompetition: null,
     });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser())
       .mockResolvedValueOnce(managementResponse())
-      .mockResolvedValueOnce(updateResponse(approved));
+      .mockResolvedValueOnce(updatedResponse(approved));
     vi.stubGlobal('fetch', fetchMock);
-
     renderPage();
-
-    const card = within(await userCard());
-    expect(card.queryByRole('checkbox')).not.toBeInTheDocument();
-    fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
-
-    expect(
-      await screen.findByText('Pending Contributor is now an approved submitter.'),
-    ).toHaveAttribute('role', 'status');
-    expect(
-      within(await userCard()).getByRole('button', { name: 'Revoke submitter access' }),
-    ).toBeEnabled();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const dialog = await openPendingUser();
+    fireEvent.click(dialog.getByRole('button', { name: 'Approve submitter' }));
+    expect(dialog.getByRole('alertdialog')).toHaveTextContent(
+      'Approve pending.contributor@example.com',
+    );
+    fireEvent.click(dialog.getByRole('button', { name: 'Confirm change' }));
+    expect(await dialog.findByText(/now an approved submitter/i)).toBeInTheDocument();
     expect(fetchMock.mock.calls[2]?.[0]).toContain('/admin/users/42/submitter-access');
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
       method: 'PATCH',
@@ -366,190 +283,75 @@ describe('administrator user management page', () => {
     });
   });
 
-  it('allows an administrator to reject a pending request', async () => {
-    const rejected = managedUser({ approvalState: 'rejected' });
+  it('confirms rejection and surfaces non-success responses without closing the dialog', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser())
       .mockResolvedValueOnce(managementResponse())
-      .mockResolvedValueOnce(updateResponse(rejected));
+      .mockResolvedValueOnce(
+        response(403, {
+          error: { code: 'FORBIDDEN', message: 'You are not authorised to reject this request.' },
+        }),
+      );
     vi.stubGlobal('fetch', fetchMock);
-
     renderPage();
-
-    fireEvent.click(within(await userCard()).getByRole('button', { name: 'Reject request' }));
-
-    expect(
-      await screen.findByText('Submitter request was rejected for Pending Contributor.'),
-    ).toHaveAttribute('role', 'status');
-    expect(within(await userCard()).getByText('Not approved')).toBeInTheDocument();
-    expect(
-      within(await userCard()).getByText(
-        /no submitter access request is currently awaiting review/i,
-      ),
-    ).toBeInTheDocument();
-    expect(within(await userCard()).queryByRole('button')).not.toBeInTheDocument();
+    const dialog = await openPendingUser();
+    fireEvent.click(dialog.getByRole('button', { name: 'Reject request' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Confirm change' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent('not authorised');
     expect(fetchMock.mock.calls[2]?.[0]).toContain('/admin/users/42/submitter-access/rejection');
-    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
-      method: 'POST',
-    });
-    expect(fetchMock.mock.calls[2]?.[1]?.body).toBeUndefined();
   });
 
-  it('announces rejection progress and keeps approval distinct while the request is pending', async () => {
-    const rejected = managedUser({ approvalState: 'rejected' });
-    let resolveRejection!: (response: Response) => void;
-    const rejectionResponse = new Promise<Response>((resolve) => {
-      resolveRejection = resolve;
+  it('updates competition scopes and revokes access only after confirmation', async () => {
+    const rescoped = managedUser({ ...submitter, competitionScopes: [availableScopes[0]!] });
+    const revoked = managedUser({
+      ...submitter,
+      role: 'viewer',
+      approvalState: 'rejected',
+      competitionScopes: [],
     });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser())
       .mockResolvedValueOnce(managementResponse())
-      .mockReturnValueOnce(rejectionResponse);
+      .mockResolvedValueOnce(updatedResponse(rescoped))
+      .mockResolvedValueOnce(updatedResponse(revoked));
     vi.stubGlobal('fetch', fetchMock);
-
     renderPage();
-
-    const card = within(await userCard());
-    fireEvent.click(card.getByRole('button', { name: 'Reject request' }));
-
-    expect(card.getByRole('button', { name: 'Rejecting request...' })).toBeDisabled();
-    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeDisabled();
-    expect(card.queryByRole('button', { name: 'Approving submitter...' })).not.toBeInTheDocument();
-    expect(card.getByText('Rejecting the submitter access request. Please wait.')).toHaveAttribute(
-      'role',
-      'status',
-    );
-
-    resolveRejection(updateResponse(rejected));
-
-    expect(
-      await screen.findByText('Submitter request was rejected for Pending Contributor.'),
-    ).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage analyst@example.com' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Analyst' }));
+    fireEvent.click(dialog.getByRole('checkbox', { name: 'Premier T20' }));
+    fireEvent.click(dialog.getByRole('checkbox', { name: 'University League' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Save scope changes' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Confirm change' }));
+    await dialog.findByText(/competition scope was updated/i);
+    fireEvent.click(dialog.getByRole('button', { name: 'Revoke submitter access' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Confirm change' }));
+    expect(await dialog.findByText(/submitter access was revoked/i)).toBeInTheDocument();
   });
 
-  it.each([
-    [401, 'Your session is no longer valid. Sign in again to continue.'],
-    [403, 'You are not authorised to reject this submitter request.'],
-    [409, 'This submitter request is no longer pending.'],
-    [422, 'The submitter access rejection is invalid.'],
-  ])('shows an accessible rejection error for an HTTP %i response', async (status, message) => {
+  it('promotes a viewer only after explaining and confirming the security-sensitive change', async () => {
+    const promoted = managedUser({
+      role: 'admin',
+      approvalState: 'not_requested',
+      requestedCompetition: null,
+    });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(currentUser())
       .mockResolvedValueOnce(managementResponse())
-      .mockResolvedValueOnce(
-        jsonResponse(status, {
-          error: {
-            code: 'SUBMITTER_ACCESS_REJECTION_FAILED',
-            message,
-          },
-        }),
-      );
+      .mockResolvedValueOnce(updatedResponse(promoted));
     vi.stubGlobal('fetch', fetchMock);
-
     renderPage();
-
-    fireEvent.click(within(await userCard()).getByRole('button', { name: 'Reject request' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(within(await userCard()).getByRole('button', { name: 'Reject request' })).toBeEnabled();
-    expect(
-      within(await userCard()).getByRole('button', { name: 'Approve submitter' }),
-    ).toBeEnabled();
-  });
-
-  it('updates an approved submitter to a different scope', async () => {
-    const existing = managedUser({
-      role: 'submitter',
-      approvalState: 'approved',
-      competitionScopes: [availableScopes[0]!],
-    });
-    const updated = managedUser({
-      role: 'submitter',
-      approvalState: 'approved',
-      competitionScopes: [availableScopes[1]!],
-    });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(currentUser())
-      .mockResolvedValueOnce(managementResponse(existing))
-      .mockResolvedValueOnce(updateResponse(updated));
-    vi.stubGlobal('fetch', fetchMock);
-
-    renderPage();
-
-    const card = within(await userCard());
-    fireEvent.click(card.getByRole('checkbox', { name: 'Premier T20' }));
-    fireEvent.click(card.getByRole('checkbox', { name: 'University League' }));
-    fireEvent.click(card.getByRole('button', { name: 'Save scope changes' }));
-
-    expect(
-      await screen.findByText('Competition scope was updated for Pending Contributor.'),
-    ).toBeInTheDocument();
+    const dialog = await openPendingUser();
+    fireEvent.click(dialog.getByRole('button', { name: 'Promote to Administrator' }));
+    expect(dialog.getByRole('alertdialog')).toHaveTextContent('full administrative access');
+    fireEvent.click(dialog.getByRole('button', { name: 'Confirm change' }));
+    expect(await dialog.findByText(/now an Administrator/i)).toBeInTheDocument();
+    expect(fetchMock.mock.calls[2]?.[0]).toContain('/admin/users/42/role');
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
-      body: JSON.stringify({ approved: true, competitionIds: ['8'] }),
+      method: 'PATCH',
+      body: JSON.stringify({ role: 'admin' }),
     });
-  });
-
-  it('revokes a submitter and removes the effective scope immediately', async () => {
-    const existing = managedUser({
-      role: 'submitter',
-      approvalState: 'approved',
-      competitionScopes: [availableScopes[0]!],
-    });
-    const revoked = managedUser({ approvalState: 'approved', competitionScopes: [] });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(currentUser())
-      .mockResolvedValueOnce(managementResponse(existing))
-      .mockResolvedValueOnce(updateResponse(revoked));
-    vi.stubGlobal('fetch', fetchMock);
-
-    renderPage();
-
-    fireEvent.click(
-      within(await userCard()).getByRole('button', { name: 'Revoke submitter access' }),
-    );
-
-    expect(
-      await screen.findByText('Submitter access was revoked for Pending Contributor.'),
-    ).toBeInTheDocument();
-    expect(
-      within(await userCard()).getByText(
-        /this account's previously approved submitter access has been revoked/i,
-      ),
-    ).toBeInTheDocument();
-    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
-      body: JSON.stringify({ approved: false, competitionIds: [] }),
-    });
-  });
-
-  it('keeps the requested-scope approval usable after an API validation error', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(currentUser())
-      .mockResolvedValueOnce(managementResponse())
-      .mockResolvedValueOnce(
-        jsonResponse(422, {
-          error: {
-            code: 'INVALID_COMPETITION_SCOPE',
-            message: 'Competition scope 7 does not exist.',
-          },
-        }),
-      );
-    vi.stubGlobal('fetch', fetchMock);
-
-    renderPage();
-
-    const card = within(await userCard());
-    fireEvent.click(card.getByRole('button', { name: 'Approve submitter' }));
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Competition scope 7 does not exist.'),
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(card.getByRole('button', { name: 'Approve submitter' })).toBeEnabled();
   });
 });

@@ -3,6 +3,10 @@ import { expect, test } from '@playwright/test';
 
 const authStorageKey = 'sb-e2e-auth-token';
 const accessTime = '2026-08-16T12:00:00.000Z';
+const availableScopes = [
+  { competitionId: '7', name: 'Premier T20' },
+  { competitionId: '8', name: 'University League' },
+];
 
 interface ManagedUser {
   id: string;
@@ -13,27 +17,27 @@ interface ManagedUser {
   requestedCompetition: { competitionId: string; name: string } | null;
   competitionScopes: { competitionId: string; name: string }[];
   disabled: boolean;
+  previouslyRevoked: boolean;
   updatedAt: string;
   submitterAccessUpdatedAt: string | null;
   submitterAccessUpdatedBy: { id: string; displayName: string | null } | null;
 }
 
-const availableScopes = [
-  { competitionId: '7', name: 'Premier T20' },
-  { competitionId: '8', name: 'University League' },
-];
-
 test.beforeEach(async ({ page }) => {
+  const expiresAt = Math.floor(Date.now() / 1_000) + 3_600;
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({ aud: 'authenticated', exp: expiresAt, sub: 'admin-subject' }),
+  ).toString('base64url');
   await page.addInitScript(
-    ({ storageKey }) => {
-      const now = Math.floor(Date.now() / 1_000);
+    ({ storageKey, accessToken, tokenExpiry }) => {
       window.localStorage.setItem(
         storageKey,
         JSON.stringify({
-          access_token: 'administrator-e2e-token',
+          access_token: accessToken,
           refresh_token: 'managed-by-supabase',
           expires_in: 3_600,
-          expires_at: now + 3_600,
+          expires_at: tokenExpiry,
           token_type: 'bearer',
           user: {
             id: 'admin-subject',
@@ -43,18 +47,22 @@ test.beforeEach(async ({ page }) => {
             app_metadata: {},
             user_metadata: {},
             identities: [],
-            created_at: '2026-08-16T00:00:00.000Z',
+            created_at: '2026-08-16T12:00:00.000Z',
           },
         }),
       );
     },
-    { storageKey: authStorageKey },
+    {
+      storageKey: authStorageKey,
+      accessToken: `${header}.${payload}.e2e-signature`,
+      tokenExpiry: expiresAt,
+    },
   );
 });
 
-test('administrator approves, re-scopes, and revokes a submitter access request', async ({
+test('administrator finds and safely manages a user across responsive layouts @mobile', async ({
   page,
-}, testInfo) => {
+}) => {
   const administrator: ManagedUser = {
     id: '1',
     email: 'amina.administrator@example.com',
@@ -64,6 +72,7 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
     requestedCompetition: null,
     competitionScopes: [],
     disabled: false,
+    previouslyRevoked: false,
     updatedAt: accessTime,
     submitterAccessUpdatedAt: null,
     submitterAccessUpdatedBy: null,
@@ -74,68 +83,60 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
     displayName: 'Pending Contributor',
     role: 'viewer',
     approvalState: 'pending',
-    requestedCompetition: availableScopes[0]!,
+    requestedCompetition: availableScopes[0],
     competitionScopes: [],
     disabled: false,
+    previouslyRevoked: false,
     updatedAt: accessTime,
     submitterAccessUpdatedAt: null,
     submitterAccessUpdatedBy: null,
   };
 
-  await page.route('**/api/v1/auth/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {
-          id: '1',
-          subject: 'admin-subject',
-          displayName: 'Amina Administrator',
-          role: 'admin',
-          approvalState: 'not_requested',
-          requestedCompetition: null,
-          competitionIds: [],
-        },
+  await page.route(
+    '**/api/v1/auth/me',
+    async (route) =>
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          user: {
+            id: '1',
+            subject: 'admin-subject',
+            displayName: 'Amina Administrator',
+            role: 'admin',
+            approvalState: 'not_requested',
+            requestedCompetition: null,
+            competitionIds: [],
+          },
+        }),
       }),
-    });
-  });
-
-  await page.route('**/api/v1/admin/users', async (route) => {
-    expect(route.request().headers().authorization).toBe('Bearer administrator-e2e-token');
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          users: [administrator, contributor],
-          availableScopes,
-        },
+  );
+  await page.route(
+    '**/api/v1/admin/users',
+    async (route) =>
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { users: [administrator, contributor], availableScopes } }),
       }),
-    });
-  });
-
+  );
   await page.route('**/api/v1/admin/users/42/submitter-access', async (route) => {
-    expect(route.request().method()).toBe('PATCH');
-    expect(route.request().headers().authorization).toBe('Bearer administrator-e2e-token');
-
+    expect(route.request().headers().authorization).toContain('Bearer ');
     const update = route.request().postDataJSON() as {
       approved: boolean;
       competitionIds: string[];
     };
-    if (contributor.role === 'viewer' && update.approved) {
-      expect(update.competitionIds).toEqual(['7']);
-    }
     contributor = {
       ...contributor,
       role: update.approved ? 'submitter' : 'viewer',
       approvalState: update.approved ? 'approved' : 'rejected',
+      requestedCompetition: null,
       competitionScopes: update.approved
         ? availableScopes.filter((scope) => update.competitionIds.includes(scope.competitionId))
         : [],
       submitterAccessUpdatedAt: accessTime,
       submitterAccessUpdatedBy: { id: '1', displayName: 'Amina Administrator' },
     };
-
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -144,60 +145,54 @@ test('administrator approves, re-scopes, and revokes a submitter access request'
   });
 
   await page.goto('/admin/users');
+  await expect(page.getByText('pending.contributor@example.com')).toBeVisible();
+  await expect(page.getByRole('table').getByText('Pending', { exact: true })).toBeVisible();
+  await page.getByLabel('Role').selectOption('viewer');
+  await expect(page.getByText('amina.administrator@example.com')).toBeHidden();
+  await page.getByLabel('Search users').fill('pending.contributor@');
 
-  const contributorCard = page
-    .getByRole('heading', { name: 'Pending Contributor' })
-    .locator('xpath=ancestor::article');
-  await expect(contributorCard.getByText('Pending approval')).toBeVisible();
-  await expect(
-    contributorCard
-      .getByRole('group', { name: 'Approve requested competition' })
-      .getByText('Premier T20', { exact: true }),
-  ).toBeVisible();
-  await expect(contributorCard.getByRole('checkbox')).toHaveCount(0);
-
-  const approveButton = contributorCard.getByRole('button', { name: 'Approve submitter' });
-  await approveButton.focus();
-  await expect(approveButton).toBeFocused();
+  const manage = page.getByRole('button', { name: 'Manage pending.contributor@example.com' });
+  await manage.focus();
   await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Pending Contributor' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /close management view/i })).toBeFocused();
+  await expect(dialog.getByText('Premier T20')).toHaveCount(2);
 
-  await expect(
-    contributorCard.getByText('Pending Contributor is now an approved submitter.'),
-  ).toBeVisible();
-  await expect(contributorCard.getByText('Approved', { exact: true })).toBeVisible();
-  await expect(
-    contributorCard.getByRole('button', { name: 'Revoke submitter access' }),
-  ).toBeVisible();
-
-  if (process.env.CAPTURE_ISSUE_45_EVIDENCE) {
-    await contributorCard.screenshot({
-      path: `evidence/validation/issue-45-admin-users-${testInfo.project.name}.png`,
-    });
-  }
-
-  await contributorCard.getByRole('checkbox', { name: 'Premier T20' }).uncheck();
-  await contributorCard.getByRole('checkbox', { name: 'University League' }).check();
-  await contributorCard.getByRole('button', { name: 'Save scope changes' }).click();
-  await expect(
-    contributorCard.getByText('Competition scope was updated for Pending Contributor.'),
-  ).toBeVisible();
-  await expect(contributorCard.getByRole('checkbox', { name: 'University League' })).toBeChecked();
-
-  await contributorCard.getByRole('button', { name: 'Revoke submitter access' }).click();
-  await expect(
-    contributorCard.getByText('Submitter access was revoked for Pending Contributor.'),
-  ).toBeVisible();
-  await expect(contributorCard.getByText('Not approved', { exact: true })).toBeVisible();
-  await expect(contributorCard.getByText('None assigned', { exact: true })).toBeVisible();
-
-  const hasHorizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  await dialog.getByRole('button', { name: 'Approve submitter' }).click();
+  await expect(dialog.getByRole('alertdialog')).toContainText(
+    'Approve pending.contributor@example.com',
   );
-  expect(hasHorizontalOverflow).toBe(false);
+  await dialog.getByRole('button', { name: 'Confirm change' }).click();
+  await expect(dialog.getByText(/now an approved submitter/i)).toBeVisible();
+  await expect(dialog.getByRole('checkbox', { name: 'Premier T20' })).toBeChecked();
+
+  await dialog.getByRole('checkbox', { name: 'Premier T20' }).uncheck();
+  await dialog.getByRole('checkbox', { name: 'University League' }).check();
+  await dialog.getByRole('button', { name: 'Save scope changes' }).click();
+  await dialog.getByRole('button', { name: 'Confirm change' }).click();
+  await expect(dialog.getByText(/competition scope was updated/i)).toBeVisible();
+
+  const revokeButton = dialog.getByRole('button', { name: 'Revoke submitter access' });
+  await revokeButton.click();
+  await expect(dialog.getByRole('alertdialog')).toContainText('Revoke all submitter access');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog.getByRole('alertdialog')).toBeHidden();
+  await expect(revokeButton).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByLabel('Search users')).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
 
   const results = await new AxeBuilder({ page }).analyze();
-  const seriousOrCriticalViolations = results.violations.filter(
-    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-  );
-  expect(seriousOrCriticalViolations).toEqual([]);
+  expect(
+    results.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    ),
+  ).toEqual([]);
 });

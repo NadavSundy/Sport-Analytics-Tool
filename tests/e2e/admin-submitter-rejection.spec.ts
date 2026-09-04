@@ -109,28 +109,47 @@ test(
 
     await page.goto('/admin/users');
 
-    await expect(page.getByText(/this request is awaiting administrator review/i)).toBeVisible();
-    const rejectButton = page.getByRole('button', { name: 'Reject request' });
+    const reviewButton = page.getByRole('button', {
+      name: 'Manage pending.contributor@example.com',
+    });
+    await reviewButton.focus();
+    await expect(reviewButton).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    const dialog = page.getByRole('dialog', { name: 'Pending Contributor' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Premier T20')).toHaveCount(2);
+
+    const rejectButton = dialog.getByRole('button', { name: 'Reject request' });
     await rejectButton.focus();
     await expect(rejectButton).toBeFocused();
     await page.keyboard.press('Enter');
 
-    await expect(page.getByRole('button', { name: 'Rejecting request...' })).toBeDisabled();
-    await expect(
-      page.getByText('Rejecting the submitter access request. Please wait.'),
-    ).toHaveAttribute('role', 'status');
+    const confirmation = dialog.getByRole('alertdialog');
+    await expect(confirmation).toContainText(
+      'Reject the pending submitter request from pending.contributor@example.com?',
+    );
+    const confirmButton = confirmation.getByRole('button', { name: 'Confirm change' });
+    await expect(confirmButton).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(dialog.getByText('Saving access change. Please wait.')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    await expect(dialog.getByRole('button', { name: 'Reject request' })).toBeDisabled();
 
     releaseRejection();
 
     await expect(
-      page.getByText('Submitter request was rejected for Pending Contributor.'),
+      dialog.getByText('Submitter request was rejected for Pending Contributor.'),
     ).toHaveAttribute('role', 'status');
-    await expect(page.getByText('Not approved')).toBeVisible();
+    await expect(dialog.getByText('Rejected', { exact: true })).toBeVisible();
     await expect(
-      page.getByText(/no submitter access request is currently awaiting review/i),
+      dialog.getByText(/no submitter request is currently available to manage/i),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject request' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Approve submitter' })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Reject request' })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Approve submitter' })).toHaveCount(0);
 
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
