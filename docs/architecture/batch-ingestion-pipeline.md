@@ -35,7 +35,7 @@ foundation; the remaining issues listed in section 13 carry the application and 
 
 **Direct event submission** (#27, #49, #50) accepts a JSON request from an authenticated submitter and validates it against `submissionRequestSchema`. It does not create fixtures or innings.
 
-**File upload submission** (#265) accepts a single `.json` or `.csv` file at `POST /submissions/uploads`, parses it into the same submission shape, and processes it synchronously within the request. It uses `multer.memoryStorage()` with a 1 MB file limit.
+**File upload submission** (#265) accepts a single `.json` or `.csv` file at `POST /submissions/uploads`, parses it into the same submission shape, and processes it synchronously within the request. It uses `multer.memoryStorage()` with the `MAX_SUBMISSION_UPLOAD_BYTES` file limit from `@sport-analytics/contracts` (1 MB).
 
 ### 2.2 The constraint that requires batch ingestion
 
@@ -47,7 +47,7 @@ events: z.array(submissionEventSchema).min(1).max(1_000);
 
 At a mean of approximately 229 deliveries per fixture, one submission carries about four fixtures. A seventy-match competition season is of the order of 16,000 deliveries and therefore requires at least seventeen submissions, each independently authorised, validated and recorded.
 
-This is the reason batch ingestion exists. The 1 MB file limit is not the binding constraint and is never reached: 1,000 events is reached first.
+This is the reason batch ingestion exists. The `MAX_SUBMISSION_UPLOAD_BYTES` file limit is not the binding constraint and is never reached: 1,000 events is reached first.
 
 ### 2.3 The problem this design must solve
 
@@ -218,7 +218,7 @@ _Satisfies acceptance criterion 2._
 
 ### 5.1 Why heap storage cannot be extended to batch
 
-`multer.memoryStorage()` holds the entire payload in application heap. At the current 1 MB limit this is acceptable. At any limit permitting a season upload it is not: three concurrent submitters at 50 MB would place 150 MB of submitter-controlled data in the backend's heap, on an instance that also serves every read endpoint.
+`multer.memoryStorage()` holds the entire payload in application heap. At the current `MAX_SUBMISSION_UPLOAD_BYTES` (1 MB) limit this is acceptable. At any limit permitting a season upload it is not: three concurrent submitters at 50 MB would place 150 MB of submitter-controlled data in the backend's heap, on an instance that also serves every read endpoint.
 
 The payload must therefore be streamed to object storage and never held in application memory in its entirety.
 

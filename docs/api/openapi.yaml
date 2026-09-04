@@ -1177,8 +1177,8 @@ paths:
   /api/v1/batches/{batchReference}:
     get:
       tags: [Batches]
-      summary: Retrieve an owned batch receipt status
-      operationId: getBatchReceipt
+      summary: Retrieve asynchronous batch validation status and progress
+      operationId: getBatchStatus
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
       parameters:
@@ -1186,10 +1186,10 @@ paths:
       responses:
         '200':
           {
-            description: Batch receipt status.,
+            description: Current durable batch lifecycle state and validation progress.,
             content:
               {
-                application/json: { schema: { $ref: '#/components/schemas/BatchReceiptResponse' } },
+                application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } },
               },
           }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -3063,6 +3063,49 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/BatchReceipt' }
+
+    BatchProgress:
+      type: object
+      additionalProperties: false
+      required: [total, processed, accepted, rejected]
+      properties:
+        total: { type: integer, minimum: 0 }
+        processed: { type: integer, minimum: 0 }
+        accepted: { type: integer, minimum: 0 }
+        rejected: { type: integer, minimum: 0 }
+
+    BatchStatus:
+      type: object
+      additionalProperties: false
+      required: [batchReference, status, statusUrl, receivedAt, updatedAt, progress]
+      properties:
+        batchReference: { type: string, format: uuid }
+        status:
+          type: string
+          enum:
+            [
+              received,
+              stored,
+              validating,
+              rejected,
+              awaiting_review,
+              publishing,
+              published,
+              partially_published,
+              failed,
+              superseded,
+            ]
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        progress: { $ref: '#/components/schemas/BatchProgress' }
+
+    BatchStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchStatus' }
 
     SubmissionFielder:
       type: object

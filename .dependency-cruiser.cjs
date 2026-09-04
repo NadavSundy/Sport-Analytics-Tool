@@ -37,6 +37,18 @@ module.exports = {
       },
     },
     {
+      name: 'batch-processing-must-not-import-applications',
+      comment:
+        'Shared batch processing may be reused by the API and worker, but must not depend on application source code.',
+      severity: 'error',
+      from: {
+        path: '^packages/batch-processing/',
+      },
+      to: {
+        path: '^apps/',
+      },
+    },
+    {
       name: 'contracts-must-not-import-applications',
       comment:
         'Shared contracts contain schemas and types and may be consumed by applications, but must not depend on them.',

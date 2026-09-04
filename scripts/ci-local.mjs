@@ -245,14 +245,11 @@ async function runValidation(plan) {
       throw new Error('requirements-docs.txt is required for strict documentation validation.');
     }
 
-    // Docker mode is self-contained, so install the pinned docs dependencies
-    // into the image's virtual environment. Native mode assumes the documented
-    // local docs environment has already been prepared.
-    if (insideDocker) {
-      await runPython(['-m', 'pip', 'install', '-r', 'requirements-docs.txt'], {
-        label: 'Documentation dependencies',
-      });
-    }
+    // Install the same pinned documentation dependencies in both native and
+    // Docker runs so strict documentation validation is reproducible locally.
+    await runPython(['-m', 'pip', 'install', '-r', 'requirements-docs.txt'], {
+      label: 'Documentation dependencies',
+    });
 
     await runPython(['-m', 'mkdocs', 'build', '--strict'], {
       label: 'Strict MkDocs build',

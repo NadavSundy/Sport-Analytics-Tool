@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prepare:contracts": "npm run build --workspace=@sport-analytics/contracts && node ../../scripts/check-contracts-public-api.mjs",
+    "prepare:contracts": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && node ../../scripts/check-contracts-public-api.mjs",
     "predev": "npm run prepare:contracts",
     "dev": "tsx watch src/index.ts",
     "prebuild": "npm run prepare:contracts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "eslint src tests --ext .ts",
+    "pretypecheck": "npm run prepare:contracts",
     "typecheck": "tsc --noEmit",
     "test": "npm run build --workspace=@sport-analytics/contracts && npm run test:unit && npm run test:api",
     "test:unit": "vitest run tests/unit",
@@ -35,6 +36,7 @@
   "dependencies": {
     "@azure/identity": "4.13.1",
     "@azure/storage-blob": "12.27.0",
+    "@sport-analytics/batch-processing": "0.1.0",
     "@sport-analytics/contracts": "0.1.0",
     "@supabase/supabase-js": "^2.112.1",
     "cors": "^2.8.5",

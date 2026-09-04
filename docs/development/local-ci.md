@@ -70,7 +70,8 @@ Native local CI:
 3. validates required repository structure;
 4. runs CI-routing regression tests;
 5. validates that `package.json` and `package-lock.json` are compatible;
-6. runs only the checks selected by the change plan.
+6. installs `requirements-docs.txt` before a selected strict MkDocs build; and
+7. runs only the checks selected by the change plan.
 
 Native dependency validation uses:
 
@@ -298,3 +299,6 @@ AI assistance was used to help structure the local CI workflow guidance,
 Docker/native parity explanation, optional pre-push usage and troubleshooting
 steps. The documented commands and behaviour were reviewed and verified against
 the repository implementation by the student.
+
+The automatic MkDocs dependency-installation behaviour was updated with the
+assistance of Codex[GPT-5].

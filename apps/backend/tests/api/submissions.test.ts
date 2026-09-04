@@ -1,3 +1,4 @@
+import { MAX_SUBMISSION_UPLOAD_BYTES } from '@sport-analytics/contracts';
 import request from 'supertest';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -413,10 +414,21 @@ describe('direct event submission API', () => {
       })
       .expect(422);
 
+    const atLimit = await request(app)
+      .post('/api/v1/submissions/uploads')
+      .set('Authorization', 'Bearer approved-token')
+      .attach('file', Buffer.alloc(MAX_SUBMISSION_UPLOAD_BYTES), {
+        filename: 'events.json',
+        contentType: 'application/json',
+      })
+      .expect(422);
+
+    expect(atLimit.body.error.code).toBe('VALIDATION_FAILED');
+
     const oversized = await request(app)
       .post('/api/v1/submissions/uploads')
       .set('Authorization', 'Bearer approved-token')
-      .attach('file', Buffer.alloc(1_000_001), {
+      .attach('file', Buffer.alloc(MAX_SUBMISSION_UPLOAD_BYTES + 1), {
         filename: 'events.json',
         contentType: 'application/json',
       })

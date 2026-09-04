@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiDateTimeSchema, apiIdentifierSchema } from './api';
 
 export const DIRECT_SUBMISSION_SCHEMA_VERSION = '1.0' as const;
+export const MAX_SUBMISSION_UPLOAD_BYTES = 1_000_000;
 
 const databaseIdentifierSchema = apiIdentifierSchema
   .regex(/^[1-9]\d*$/, 'Expected a positive database identifier.')
@@ -268,7 +269,7 @@ export const submissionSchema = z.object({
     .object({
       fileName: z.string().min(1).max(255),
       mediaType: z.enum(['application/json', 'text/csv']),
-      sizeBytes: z.number().int().positive().max(1_000_000),
+      sizeBytes: z.number().int().positive().max(MAX_SUBMISSION_UPLOAD_BYTES),
     })
     .strict()
     .optional(),

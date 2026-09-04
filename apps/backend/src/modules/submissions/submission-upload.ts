@@ -1,12 +1,17 @@
+import { MAX_SUBMISSION_UPLOAD_BYTES } from '@sport-analytics/contracts';
 import type { ApiErrorDetail, SubmissionSourceFile } from '@sport-analytics/contracts';
 import type { Express, RequestHandler } from 'express';
 import multer from 'multer';
 import { basename } from 'node:path';
-
 import { SubmissionValidationError } from './submission.errors';
 
-const MAX_SUBMISSION_UPLOAD_BYTES = 1_000_000;
 const SUBMISSION_UPLOAD_FIELD = 'file';
+const CSV_MEDIA_TYPES = new Set([
+  'text/csv',
+  'application/csv',
+  'application/vnd.ms-excel',
+  'text/plain',
+]);
 
 const csvHeaders = [
   'fixtureId',
@@ -48,17 +53,21 @@ function invalidFile(message: string, field = SUBMISSION_UPLOAD_FIELD): Submissi
 
 function normaliseMediaType(file: Express.Multer.File): SubmissionSourceFile['mediaType'] {
   const name = file.originalname.toLocaleLowerCase();
-  const mediaType = file.mimetype.toLocaleLowerCase();
+  const mediaType = file.mimetype.split(';', 1)[0]!.trim().toLocaleLowerCase();
 
   if (name.endsWith('.json') && (mediaType === 'application/json' || mediaType === 'text/json')) {
     return 'application/json';
   }
 
-  if (name.endsWith('.csv') && (mediaType === 'text/csv' || mediaType === 'application/csv')) {
+  if (name.endsWith('.csv') && CSV_MEDIA_TYPES.has(mediaType)) {
     return 'text/csv';
   }
 
-  throw invalidFile('Upload a .json application/json file or a .csv text/csv file.');
+  throw invalidFile('Upload a supported .json or .csv file.');
+}
+
+function stripUtf8Bom(content: string): string {
+  return content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
 }
 
 function parseCsv(content: string): string[][] {
@@ -310,13 +319,16 @@ export function parseSubmissionUpload(file: Express.Multer.File): ParsedSubmissi
     }
   }
 
-  return { submission: normaliseCsv(content, fileName), sourceFile };
+  return { submission: normaliseCsv(stripUtf8Bom(content), fileName), sourceFile };
 }
 
 export function createSubmissionUploadMiddleware(): RequestHandler {
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { files: 1, fileSize: MAX_SUBMISSION_UPLOAD_BYTES },
+    limits: {
+      files: 1,
+      fileSize: MAX_SUBMISSION_UPLOAD_BYTES,
+    },
   }).single(SUBMISSION_UPLOAD_FIELD);
 
   return (request, response, next) => {
@@ -325,7 +337,9 @@ export function createSubmissionUploadMiddleware(): RequestHandler {
         response.status(413).json({
           error: {
             code: 'PAYLOAD_TOO_LARGE',
-            message: 'The uploaded file exceeds the 1 MB size limit.',
+            message: `The uploaded file exceeds the ${
+              MAX_SUBMISSION_UPLOAD_BYTES / (1024 * 1024)
+            } MB size limit.`,
           },
         });
         return;
@@ -336,7 +350,13 @@ export function createSubmissionUploadMiddleware(): RequestHandler {
           error: {
             code: 'VALIDATION_FAILED',
             message: 'The uploaded submission file is invalid.',
-            details: [{ code: 'INVALID_FILE', field: 'file', message: error.message }],
+            details: [
+              {
+                code: 'INVALID_FILE',
+                field: 'file',
+                message: error.message,
+              },
+            ],
           },
         });
         return;
