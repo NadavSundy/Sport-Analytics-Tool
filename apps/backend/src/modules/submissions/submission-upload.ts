@@ -1,11 +1,10 @@
+import { MAX_SUBMISSION_UPLOAD_BYTES } from '@sport-analytics/contracts';
 import type { ApiErrorDetail, SubmissionSourceFile } from '@sport-analytics/contracts';
 import type { Express, RequestHandler } from 'express';
 import multer from 'multer';
-import { basename } from 'node:path';
 
 import { SubmissionValidationError } from './submission.errors';
 
-const MAX_SUBMISSION_UPLOAD_BYTES = 1_000_000;
 const SUBMISSION_UPLOAD_FIELD = 'file';
 
 const csvHeaders = [
@@ -316,7 +315,10 @@ export function parseSubmissionUpload(file: Express.Multer.File): ParsedSubmissi
 export function createSubmissionUploadMiddleware(): RequestHandler {
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { files: 1, fileSize: MAX_SUBMISSION_UPLOAD_BYTES },
+    limits: {
+      files: 1,
+      fileSize: MAX_SUBMISSION_UPLOAD_BYTES,
+    },
   }).single(SUBMISSION_UPLOAD_FIELD);
 
   return (request, response, next) => {
@@ -325,7 +327,9 @@ export function createSubmissionUploadMiddleware(): RequestHandler {
         response.status(413).json({
           error: {
             code: 'PAYLOAD_TOO_LARGE',
-            message: 'The uploaded file exceeds the 1 MB size limit.',
+            message: `The uploaded file exceeds the ${
+              MAX_SUBMISSION_UPLOAD_BYTES / (1024 * 1024)
+            } MB size limit.`,
           },
         });
         return;
@@ -336,7 +340,13 @@ export function createSubmissionUploadMiddleware(): RequestHandler {
           error: {
             code: 'VALIDATION_FAILED',
             message: 'The uploaded submission file is invalid.',
-            details: [{ code: 'INVALID_FILE', field: 'file', message: error.message }],
+            details: [
+              {
+                code: 'INVALID_FILE',
+                field: 'file',
+                message: error.message,
+              },
+            ],
           },
         });
         return;

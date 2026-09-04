@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   DIRECT_SUBMISSION_SCHEMA_VERSION,
+  MAX_SUBMISSION_UPLOAD_BYTES,
   submissionRequestSchema,
   submissionResponseSchema,
 } from '../submissions';
@@ -36,7 +37,11 @@ describe('direct submission contract', () => {
         receivedAt: '2026-08-28T12:00:00.000Z',
         schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
         eventCount: 1,
-        sourceFile: { fileName: 'events.csv', mediaType: 'text/csv', sizeBytes: 512 },
+        sourceFile: {
+          fileName: 'events.csv',
+          mediaType: 'text/csv',
+          sizeBytes: MAX_SUBMISSION_UPLOAD_BYTES,
+        },
       },
     };
 
@@ -46,7 +51,10 @@ describe('direct submission contract', () => {
         ...response,
         data: {
           ...response.data,
-          sourceFile: { ...response.data.sourceFile, sizeBytes: 1_000_001 },
+          sourceFile: {
+            ...response.data.sourceFile,
+            sizeBytes: MAX_SUBMISSION_UPLOAD_BYTES + 1,
+          },
         },
       }).success,
     ).toBe(false);
