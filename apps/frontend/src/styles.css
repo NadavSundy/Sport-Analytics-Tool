@@ -928,7 +928,7 @@ main {
 
 .admin-users-table th {
   background: var(--colour-surface-raised);
-  color: var(--colour-text-muted);
+  color: var(--colour-text-secondary);
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1002,7 +1002,7 @@ main {
 
 .admin-status-badge--rejected {
   border-color: var(--colour-error);
-  color: var(--colour-error);
+  color: var(--colour-text);
 }
 
 .admin-attention-label {
