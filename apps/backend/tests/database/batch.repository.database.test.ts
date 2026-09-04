@@ -594,6 +594,102 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('atomically returns the original receipt for a concurrent equivalent key', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const input = {
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-atomic-equivalent-key`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'stored' as const,
+      };
+
+      const first = await repository.createOrFindBatchAndQueueValidation(input);
+      const replay = await repository.createOrFindBatchAndQueueValidation({
+        ...input,
+        batchReference: randomUUID(),
+      });
+
+      expect(first).toMatchObject({ created: true, activeLimitReached: false });
+      expect(replay).toMatchObject({ created: false, activeLimitReached: false });
+      expect(replay.batch).toEqual(first.batch);
+      const jobs = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM background_job WHERE batch_id = $1::bigint',
+        [first.batch?.batchId],
+      );
+      expect(jobs.rows[0]).toEqual({ count: '1' });
+    });
+  });
+
+  test('publishes an accepted item once and makes a replay a deterministic no-op', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `SELECT striker_id::text AS "strikerId", non_striker_id::text AS "nonStrikerId",
+                bowler_id::text AS "bowlerId" FROM delivery WHERE delivery_id=$1::bigint`,
+        [current.deliveryId],
+      );
+      const players = source.rows[0]!;
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-publication-replay`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 0,
+          positionInOver: 1,
+          sourceIdentity: 'test:delivery:publication-replay',
+          state: 'accepted',
+          payload: {
+            sequenceNumber: 2,
+            ballNumber: '0.2',
+            strikerId: players.strikerId,
+            nonStrikerId: players.nonStrikerId,
+            bowlerId: players.bowlerId,
+            runs: { offBat: 1, extras: 0, total: 1, nonBoundary: false },
+            extras: {},
+          },
+        },
+      ]);
+
+      await expect(repository.publishAcceptedItems(batch.batchId, 'worker-a')).resolves.toEqual({
+        published: 1,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+      await expect(repository.publishAcceptedItems(batch.batchId, 'worker-b')).resolves.toEqual({
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+      const published = await client.query<{ count: string; state: string }>(
+        `SELECT count(*)::text AS count, (SELECT state::text FROM batch WHERE batch_id=$1)::text AS state
+         FROM delivery WHERE innings_id=$2::bigint AND over_number=0 AND position_in_over=1
+         GROUP BY (SELECT state FROM batch WHERE batch_id=$1)`,
+        [batch.batchId, current.inningsId],
+      );
+      expect(published.rows).toEqual([{ count: '1', state: 'published' }]);
+    });
+  });
+
   test('requires source checksum, URI and size to be recorded together', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
