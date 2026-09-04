@@ -1,4 +1,4 @@
-import type { SubmissionSourceFile } from '@sport-analytics/contracts';
+import type { ApiErrorDetail, SubmissionSourceFile } from '@sport-analytics/contracts';
 import type { Express, RequestHandler } from 'express';
 import multer from 'multer';
 import { basename } from 'node:path';
@@ -109,7 +109,17 @@ function parseCsv(content: string): string[][] {
   return rows;
 }
 
-function csvRows(content: string): CsvRow[] {
+type CsvRowResult =
+  | { ok: true; eventIndex: number; row: CsvRow }
+  | { ok: false; eventIndex: number; error: ApiErrorDetail };
+
+/**
+ * Parses every data row independently. A malformed row (wrong column count)
+ * is recorded as a structured fault rather than aborting the parse, so that
+ * every malformed row in the file is discovered in a single pass and valid
+ * rows can still be read.
+ */
+function csvRowResults(content: string, fileName: string): CsvRowResult[] {
   const rows = parseCsv(content);
   const [header, ...dataRows] = rows;
 
@@ -126,20 +136,30 @@ function csvRows(content: string): CsvRow[] {
   }
 
   return dataRows.map((row, eventIndex) => {
+    // CSV row numbers are 1-indexed and include the header row, so the
+    // first data row (eventIndex 0) is line 2 of the file.
+    const lineNumber = eventIndex + 2;
+
     if (row.length !== csvHeaders.length) {
-      throw new SubmissionValidationError('The uploaded submission file is invalid.', [
-        {
+      return {
+        ok: false,
+        eventIndex,
+        error: {
           code: 'INVALID_FILE_ROW',
-          message: `CSV row ${eventIndex + 2} has ${row.length} columns; ${csvHeaders.length} are required.`,
+          message: `"${fileName}" row ${lineNumber} has ${row.length} columns; ${csvHeaders.length} are required.`,
           field: 'file',
           eventIndex,
         },
-      ]);
+      };
     }
 
-    return Object.fromEntries(
-      csvHeaders.map((headerName, index) => [headerName, row[index]!]),
-    ) as CsvRow;
+    return {
+      ok: true,
+      eventIndex,
+      row: Object.fromEntries(
+        csvHeaders.map((headerName, index) => [headerName, row[index]!]),
+      ) as CsvRow,
+    };
   });
 }
 
@@ -187,44 +207,60 @@ function parseWickets(value: string): unknown {
   }
 }
 
-function normaliseCsv(content: string): unknown {
-  const rows = csvRows(content);
-  const first = rows[0]!;
+function normaliseCsv(content: string, fileName: string): unknown {
+  const results = csvRowResults(content, fileName);
 
-  const inconsistentRows = rows.flatMap((row, eventIndex) => [
-    ...(row.fixtureId === first.fixtureId
-      ? []
-      : [
-          {
-            code: 'INVALID_FILE_ROW',
-            message: 'Every CSV row must use the same fixtureId.',
-            field: 'fixtureId',
-            eventIndex,
-          },
-        ]),
-    ...(row.schemaVersion === first.schemaVersion
-      ? []
-      : [
-          {
-            code: 'INVALID_FILE_ROW',
-            message: 'Every CSV row must use the same schemaVersion.',
-            field: 'schemaVersion',
-            eventIndex,
-          },
-        ]),
-  ]);
+  const malformedRowFaults = results
+    .filter((result): result is Extract<CsvRowResult, { ok: false }> => !result.ok)
+    .map((result) => result.error);
 
-  if (inconsistentRows.length > 0) {
-    throw new SubmissionValidationError(
-      'The uploaded submission file is invalid.',
-      inconsistentRows,
-    );
+  const validRows = results.filter(
+    (result): result is Extract<CsvRowResult, { ok: true }> => result.ok,
+  );
+
+  // The first structurally valid row establishes the fixtureId/schemaVersion
+  // that every other structurally valid row is compared against. Malformed
+  // rows are skipped here (they're already reported above) so they can't
+  // mask, or be masked by, an independent consistency fault elsewhere.
+  const first = validRows[0]?.row;
+
+  const inconsistentRowFaults: ApiErrorDetail[] = first
+    ? validRows.flatMap(({ row, eventIndex }) => [
+        ...(row.fixtureId === first.fixtureId
+          ? []
+          : [
+              {
+                code: 'INVALID_FILE_ROW',
+                message: `"${fileName}" row ${eventIndex + 2} must use the same fixtureId as the file's other rows.`,
+                field: 'fixtureId',
+                eventIndex,
+              },
+            ]),
+        ...(row.schemaVersion === first.schemaVersion
+          ? []
+          : [
+              {
+                code: 'INVALID_FILE_ROW',
+                message: `"${fileName}" row ${eventIndex + 2} must use the same schemaVersion as the file's other rows.`,
+                field: 'schemaVersion',
+                eventIndex,
+              },
+            ]),
+      ])
+    : [];
+
+  const faults = [...malformedRowFaults, ...inconsistentRowFaults].sort(
+    (a, b) => (a.eventIndex ?? 0) - (b.eventIndex ?? 0),
+  );
+
+  if (faults.length > 0) {
+    throw new SubmissionValidationError('The uploaded submission file is invalid.', faults);
   }
 
   return {
-    fixtureId: first.fixtureId,
-    schemaVersion: first.schemaVersion,
-    events: rows.map((row) => ({
+    fixtureId: first!.fixtureId,
+    schemaVersion: first!.schemaVersion,
+    events: validRows.map(({ row }) => ({
       eventId: row.eventId,
       inningsId: row.inningsId,
       sequenceNumber: numberValue(row.sequenceNumber),
@@ -274,7 +310,7 @@ export function parseSubmissionUpload(file: Express.Multer.File): ParsedSubmissi
     }
   }
 
-  return { submission: normaliseCsv(content), sourceFile };
+  return { submission: normaliseCsv(content, fileName), sourceFile };
 }
 
 export function createSubmissionUploadMiddleware(): RequestHandler {
