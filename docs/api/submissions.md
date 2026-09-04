@@ -80,7 +80,7 @@ Validation details include a field path and `eventIndex` where applicable.
 authenticated `submitter` or `admin`. A submitter must be in scope, while an administrator may upload
 for any eligible competition without a scope assignment. It accepts only a `.json` file with
 `application/json` media type or a `.csv` file with `text/csv` media type, and limits the file to
-1 MB. Both formats are normalised into the same `fixtureId`, `schemaVersion`, and ordered `events`
+1 MB (the `MAX_SUBMISSION_UPLOAD_BYTES` limit exported by `@sport-analytics/contracts`). Both formats are normalised into the same `fixtureId`, `schemaVersion`, and ordered `events`
 contract shown above before the existing scope, cricket-rule, reference, replay, and transaction
 checks run.
 
