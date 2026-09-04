@@ -95,6 +95,12 @@ interface BatchProgressRecord {
   rejected: number;
 }
 
+interface BatchPublicationResult {
+  published: number;
+  duplicateSkipped: number;
+  conflicts: number;
+}
+
 interface BatchItemPageOptions {
   afterOrdinal?: number;
   limit: number;
@@ -155,6 +161,9 @@ interface ReferenceResolutionUpdate {
 export interface BatchRepository {
   createBatch(input: CreateBatchInput): Promise<BatchRecord>;
   createBatchAndQueueValidation(input: CreateBatchInput): Promise<BatchRecord>;
+  createOrFindBatchAndQueueValidation(
+    input: CreateBatchInput,
+  ): Promise<{ batch: BatchRecord | null; created: boolean; activeLimitReached: boolean }>;
   findBatchById(batchId: string): Promise<BatchRecord | null>;
   findBatchByIdempotencyKey(
     submitterId: string,
@@ -174,6 +183,7 @@ export interface BatchRepository {
   recordReviewDecision(input: ReviewDecisionInput): Promise<void>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
+  publishAcceptedItems(batchId: string, workerId: string): Promise<BatchPublicationResult>;
 }
 
 interface BatchRow {
@@ -237,6 +247,26 @@ const batchItemSelection = `
   published_event_id::text AS "publishedEventId"
 `;
 
+function batchItemSelectionFor(table: string): string {
+  return `
+  ${table}.batch_item_id::text AS "batchItemId",
+  ${table}.batch_id::text AS "batchId",
+  ${table}.ordinal AS ordinal,
+  ${table}.innings_id::text AS "inningsId",
+  ${table}.over_number AS "overNumber",
+  ${table}.position_in_over AS "positionInOver",
+  ${table}.payload,
+  ${table}.source_identity AS "sourceIdentity",
+  ${table}.source_location AS "sourceLocation",
+  ${table}.reference_resolution_state::text AS "referenceResolutionState",
+  ${table}.resolved_references AS "resolvedReferences",
+  ${table}.state::text AS state,
+  ${table}.rejection_code AS "rejectionCode",
+  ${table}.rejection_detail AS "rejectionDetail",
+  ${table}.published_event_id::text AS "publishedEventId"
+`;
+}
+
 const checkpointSelection = `
   batch_id::text AS "batchId",
   phase::text AS phase,
@@ -285,6 +315,27 @@ function requireRow<Row>(row: Row | undefined, operation: string): Row {
   }
 
   return row;
+}
+
+function payloadRecord(value: JsonValue): { [key: string]: JsonValue } {
+  if (!value || Array.isArray(value) || typeof value !== 'object') {
+    throw new Error('Accepted batch item payload is not an object.');
+  }
+  return value;
+}
+
+function payloadNumber(payload: { [key: string]: JsonValue }, key: string): number {
+  const value = payload[key];
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    throw new Error(`Accepted batch item payload has no integer ${key}.`);
+  }
+  return value;
+}
+
+function payloadString(payload: { [key: string]: JsonValue }, key: string): string {
+  const value = payload[key];
+  if (typeof value !== 'string') throw new Error(`Accepted batch item payload has no ${key}.`);
+  return value;
 }
 
 export function createBatchRepository(executor?: QueryExecutor): BatchRepository {
@@ -411,6 +462,42 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
 
       return withTransaction(getDatabasePool(), (client) =>
         insertBatchAndValidationJob(client, input),
+      );
+    },
+
+    async createOrFindBatchAndQueueValidation(input) {
+      if (executor) {
+        // Receipt races are scoped to a submitter. Locking its durable account
+        // row serialises the key lookup, active-batch limit and insertion.
+        await executeQuery(
+          executor,
+          'SELECT 1 FROM app_user WHERE app_user_id = $1::bigint FOR UPDATE',
+          [input.submitterId],
+        );
+        const existing = await findBatch('submitter_id = $1::bigint AND idempotency_key = $2', [
+          input.submitterId,
+          input.idempotencyKey,
+        ]);
+        if (existing) return { batch: existing, created: false, activeLimitReached: false };
+        const active = await executeQuery<{ count: string }>(
+          executor,
+          `SELECT count(*)::text AS count FROM batch
+           WHERE submitter_id = $1::bigint
+             AND state NOT IN ('rejected', 'published', 'partially_published', 'superseded')`,
+          [input.submitterId],
+        );
+        if (Number(active.rows[0]?.count ?? 0) >= 3) {
+          return { batch: null, created: false, activeLimitReached: true };
+        }
+        return {
+          batch: await insertBatchAndValidationJob(executor, input),
+          created: true,
+          activeLimitReached: false,
+        };
+      }
+
+      return withTransaction(getDatabasePool(), (client) =>
+        createBatchRepository(client).createOrFindBatchAndQueueValidation(input),
       );
     },
 
@@ -722,6 +809,211 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         `,
         [batchItemId, deliveryId],
       );
+    },
+
+    async publishAcceptedItems(batchId, workerId) {
+      const publish = async (target: QueryExecutor): Promise<BatchPublicationResult> => {
+        const batch = await executeQuery<{
+          state: BatchState;
+          submitterId: string;
+          checksum: string;
+        }>(
+          target,
+          `SELECT state::text AS state, submitter_id::text AS "submitterId", source_checksum AS checksum
+           FROM batch WHERE batch_id = $1::bigint FOR UPDATE`,
+          [batchId],
+        );
+        const current = requireRow(batch.rows[0], 'Batch publication lookup');
+        if (current.state === 'published')
+          return { published: 0, duplicateSkipped: 0, conflicts: 0 };
+        if (current.state !== 'awaiting_review' && current.state !== 'publishing') {
+          throw new Error('Only an approved batch awaiting publication may be published.');
+        }
+
+        if (current.state === 'awaiting_review') {
+          await executeQuery(
+            target,
+            `UPDATE batch SET state='publishing' WHERE batch_id=$1::bigint`,
+            [batchId],
+          );
+          await executeQuery(
+            target,
+            `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
+             VALUES ($1::bigint,'awaiting_review','publishing','worker',$2,'Publication worker claimed approved batch.')`,
+            [batchId, workerId],
+          );
+        }
+        await executeQuery(
+          target,
+          `INSERT INTO batch_checkpoint (batch_id,phase,last_ordinal,lease_owner,lease_expires_at,attempt_count)
+           VALUES ($1::bigint,'publishing',-1,$2,now()+interval '5 minutes',1)
+           ON CONFLICT (batch_id,phase) DO UPDATE SET
+             lease_owner=EXCLUDED.lease_owner, lease_expires_at=EXCLUDED.lease_expires_at,
+             attempt_count=batch_checkpoint.attempt_count+1`,
+          [batchId, workerId],
+        );
+
+        const items = await executeQuery<BatchItemRecord & { fixtureId: string }>(
+          target,
+          `SELECT ${batchItemSelectionFor('batch_item')}, innings.fixture_id::text AS "fixtureId"
+           FROM batch_item JOIN innings ON innings.innings_id = batch_item.innings_id
+           WHERE batch_item.batch_id=$1::bigint AND batch_item.state='accepted'
+           ORDER BY batch_item.ordinal FOR UPDATE OF batch_item`,
+          [batchId],
+        );
+        const result: BatchPublicationResult = { published: 0, duplicateSkipped: 0, conflicts: 0 };
+
+        for (const item of items.rows) {
+          const payload = payloadRecord(item.payload);
+          const sameSource = await executeQuery<{ deliveryId: string }>(
+            target,
+            `SELECT delivery.delivery_id::text AS "deliveryId"
+             FROM delivery
+             JOIN batch_item source_item ON source_item.batch_item_id = delivery.source_batch_item_id
+             WHERE source_item.source_identity = $1 AND delivery.superseded_at IS NULL
+             LIMIT 1`,
+            [item.sourceIdentity],
+          );
+          const existing = await executeQuery<{
+            deliveryId: string;
+            sequenceNumber: number;
+            ballNumber: string;
+            strikerId: string;
+            nonStrikerId: string;
+            bowlerId: string;
+            offBat: number;
+            extras: number;
+            total: number;
+          }>(
+            target,
+            `SELECT delivery_id::text AS "deliveryId", innings_sequence AS "sequenceNumber",
+                    ball_number AS "ballNumber", striker_id::text AS "strikerId",
+                    non_striker_id::text AS "nonStrikerId", bowler_id::text AS "bowlerId",
+                    runs_off_bat AS "offBat", runs_extras AS extras, runs_total AS total
+             FROM delivery WHERE innings_id=$1::bigint AND over_number=$2::smallint
+               AND position_in_over=$3::smallint AND superseded_at IS NULL`,
+            [item.inningsId, item.overNumber, item.positionInOver],
+          );
+          const live = existing.rows[0];
+          const runs = payloadRecord(payload.runs ?? null);
+          const sameContent =
+            live &&
+            live.sequenceNumber === payloadNumber(payload, 'sequenceNumber') &&
+            live.ballNumber === payloadString(payload, 'ballNumber') &&
+            live.strikerId === payloadString(payload, 'strikerId') &&
+            live.nonStrikerId === payloadString(payload, 'nonStrikerId') &&
+            live.bowlerId === payloadString(payload, 'bowlerId') &&
+            live.offBat === payloadNumber(runs, 'offBat') &&
+            live.extras === payloadNumber(runs, 'extras') &&
+            live.total === payloadNumber(runs, 'total');
+
+          if (sameSource.rows[0] || sameContent) {
+            const deliveryId = sameSource.rows[0]?.deliveryId ?? live!.deliveryId;
+            await executeQuery(
+              target,
+              `UPDATE batch_item SET state='duplicate_skipped', published_event_id=$2::bigint
+               WHERE batch_item_id=$1::bigint`,
+              [item.batchItemId, deliveryId],
+            );
+            result.duplicateSkipped += 1;
+            continue;
+          }
+          if (live) {
+            await executeQuery(
+              target,
+              `UPDATE batch_item SET state='rejected', rejection_code='PUBLISHED_NATURAL_KEY_CONFLICT',
+                 rejection_detail=jsonb_build_object('existingDeliveryId',$2::text)
+               WHERE batch_item_id=$1::bigint`,
+              [item.batchItemId, live.deliveryId],
+            );
+            await executeQuery(
+              target,
+              `INSERT INTO batch_validation_result (batch_id,batch_item_id,rule_code,rule_version,severity,message)
+               VALUES ($1::bigint,$2::bigint,'PUBLISHED_NATURAL_KEY_CONFLICT','1.0','error',
+                 'A live delivery exists at this natural position with different content.') ON CONFLICT DO NOTHING`,
+              [batchId, item.batchItemId],
+            );
+            result.conflicts += 1;
+            continue;
+          }
+
+          const submission = await executeQuery<{ submissionId: string }>(
+            target,
+            `INSERT INTO submission (submitted_by,fixture_id,schema_version,event_count,source_sha256,status)
+             VALUES ($1::bigint,$2::bigint,'1.0',1,$3,'accepted')
+             RETURNING submission_id::text AS "submissionId"`,
+            [current.submitterId, item.fixtureId, current.checksum],
+          );
+          const submissionId = requireRow(
+            submission.rows[0],
+            'Batch publication submission',
+          ).submissionId;
+          const extras = payloadRecord(payload.extras ?? {});
+          const inserted = await executeQuery<{ deliveryId: string }>(
+            target,
+            `INSERT INTO delivery (
+               innings_id,over_number,position_in_over,innings_sequence,ball_number,striker_id,non_striker_id,bowler_id,
+               runs_off_bat,runs_extras,runs_total,non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,
+               extra_penalty,submission_id,source_batch_item_id
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+             ON CONFLICT DO NOTHING RETURNING delivery_id::text AS "deliveryId"`,
+            [
+              item.inningsId,
+              item.overNumber,
+              item.positionInOver,
+              payloadNumber(payload, 'sequenceNumber'),
+              payloadString(payload, 'ballNumber'),
+              payloadString(payload, 'strikerId'),
+              payloadString(payload, 'nonStrikerId'),
+              payloadString(payload, 'bowlerId'),
+              payloadNumber(runs, 'offBat'),
+              payloadNumber(runs, 'extras'),
+              payloadNumber(runs, 'total'),
+              payload.runs && typeof payload.runs === 'object' && !Array.isArray(payload.runs)
+                ? Boolean((payload.runs as { nonBoundary?: JsonValue }).nonBoundary)
+                : false,
+              extras.wides ?? null,
+              extras.noBalls ?? null,
+              extras.byes ?? null,
+              extras.legByes ?? null,
+              extras.penalty ?? null,
+              submissionId,
+              item.batchItemId,
+            ],
+          );
+          const delivery = inserted.rows[0];
+          if (!delivery) throw new Error('Concurrent delivery publication requires a retry.');
+          await executeQuery(
+            target,
+            `UPDATE batch_item SET state='published', published_event_id=$2::bigint
+             WHERE batch_item_id=$1::bigint`,
+            [item.batchItemId, delivery.deliveryId],
+          );
+          result.published += 1;
+        }
+        const finalState = result.conflicts > 0 ? 'partially_published' : 'published';
+        await executeQuery(
+          target,
+          `UPDATE batch SET state=$2::batch_state WHERE batch_id=$1::bigint`,
+          [batchId, finalState],
+        );
+        await executeQuery(
+          target,
+          `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
+           VALUES ($1::bigint,'publishing',$2::batch_state,'worker',$3,'Publication completed idempotently.')`,
+          [batchId, finalState, workerId],
+        );
+        await executeQuery(
+          target,
+          `UPDATE batch_checkpoint SET last_ordinal=COALESCE(
+             (SELECT max(ordinal) FROM batch_item WHERE batch_id=$1::bigint), -1
+           ), lease_owner=NULL, lease_expires_at=NULL
+           WHERE batch_id=$1::bigint AND phase='publishing' AND lease_owner=$2`,
+          [batchId, workerId],
+        );
+        return result;
+      };
+      return executor ? publish(executor) : withTransaction(getDatabasePool(), publish);
     },
   };
 }

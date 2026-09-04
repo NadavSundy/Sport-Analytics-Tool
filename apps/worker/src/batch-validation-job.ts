@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import { resolvePackageReferences } from '@sport-analytics/batch-processing';
-import { submissionEventSchema, type SeasonUploadEvent } from '@sport-analytics/contracts';
+import { submissionEventSchema } from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -67,7 +67,9 @@ interface PreparedItem {
   inningsId: string | null;
   overNumber: number;
   positionInOver: number;
-  payload: SeasonUploadEvent;
+  // Store the authoritative, resolved delivery shape. The source identity and
+  // original references remain in their dedicated provenance columns.
+  payload: Record<string, unknown>;
   sourceIdentity: string;
   sourceLocation: Record<string, string | number | null>;
   referenceResolutionState: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
@@ -249,6 +251,7 @@ function prepareItem(
 
   return {
     ...common,
+    payload: parsed.data,
     state: 'accepted',
     rejectionCode: null,
     rejectionMessage: null,
