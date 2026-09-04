@@ -2,7 +2,7 @@ import { MAX_SUBMISSION_UPLOAD_BYTES } from '@sport-analytics/contracts';
 import type { ApiErrorDetail, SubmissionSourceFile } from '@sport-analytics/contracts';
 import type { Express, RequestHandler } from 'express';
 import multer from 'multer';
-
+import { basename } from 'node:path';
 import { SubmissionValidationError } from './submission.errors';
 
 const SUBMISSION_UPLOAD_FIELD = 'file';
