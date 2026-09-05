@@ -690,6 +690,79 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('refuses a live publication lease and safely reclaims an expired lease', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `SELECT striker_id::text AS "strikerId", non_striker_id::text AS "nonStrikerId",
+                bowler_id::text AS "bowlerId" FROM delivery WHERE delivery_id=$1::bigint`,
+        [current.deliveryId],
+      );
+      const players = source.rows[0]!;
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-publication-lease-reclaim`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 0,
+          positionInOver: 2,
+          sourceIdentity: 'test:delivery:publication-lease-reclaim',
+          state: 'accepted',
+          payload: {
+            sequenceNumber: 3,
+            ballNumber: '0.3',
+            strikerId: players.strikerId,
+            nonStrikerId: players.nonStrikerId,
+            bowlerId: players.bowlerId,
+            runs: { offBat: 1, extras: 0, total: 1, nonBoundary: false },
+            extras: {},
+          },
+        },
+      ]);
+      await repository.upsertCheckpoint({
+        batchId: batch.batchId,
+        phase: 'publishing',
+        lastOrdinal: -1,
+        leaseOwner: 'worker-a',
+        leaseExpiresAt: '2999-01-01T00:00:00.000Z',
+        attemptCount: 1,
+      });
+
+      await expect(repository.publishAcceptedItems(batch.batchId, 'worker-b')).rejects.toThrow(
+        'Another worker currently owns the publication lease.',
+      );
+
+      await client.query(
+        `UPDATE batch_checkpoint SET lease_expires_at=now()-interval '1 second'
+         WHERE batch_id=$1::bigint AND phase='publishing'`,
+        [batch.batchId],
+      );
+      await expect(repository.publishAcceptedItems(batch.batchId, 'worker-b')).resolves.toEqual({
+        published: 1,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+      await expect(repository.findCheckpoint(batch.batchId, 'publishing')).resolves.toMatchObject({
+        lastOrdinal: 0,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        attemptCount: 2,
+      });
+    });
+  });
+
   test('requires source checksum, URI and size to be recorded together', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();

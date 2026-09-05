@@ -101,6 +101,15 @@ interface BatchPublicationResult {
   conflicts: number;
 }
 
+const publicationChunkSize = 100;
+
+class BatchLeaseBusyError extends Error {
+  constructor() {
+    super('Another worker currently owns the publication lease.');
+    this.name = 'BatchLeaseBusyError';
+  }
+}
+
 interface BatchItemPageOptions {
   afterOrdinal?: number;
   limit: number;
@@ -812,7 +821,9 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
     },
 
     async publishAcceptedItems(batchId, workerId) {
-      const publish = async (target: QueryExecutor): Promise<BatchPublicationResult> => {
+      const publish = async (
+        target: QueryExecutor,
+      ): Promise<BatchPublicationResult & { complete: boolean }> => {
         const batch = await executeQuery<{
           state: BatchState;
           submitterId: string;
@@ -825,10 +836,34 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
         const current = requireRow(batch.rows[0], 'Batch publication lookup');
         if (current.state === 'published')
-          return { published: 0, duplicateSkipped: 0, conflicts: 0 };
+          return { published: 0, duplicateSkipped: 0, conflicts: 0, complete: true };
         if (current.state !== 'awaiting_review' && current.state !== 'publishing') {
           throw new Error('Only an approved batch awaiting publication may be published.');
         }
+
+        const existingCheckpoint = await executeQuery<{
+          lastOrdinal: number;
+          leaseOwner: string | null;
+          leaseExpiresAt: Date | null;
+        }>(
+          target,
+          `SELECT last_ordinal AS "lastOrdinal", lease_owner AS "leaseOwner",
+                  lease_expires_at AS "leaseExpiresAt"
+           FROM batch_checkpoint
+           WHERE batch_id=$1::bigint AND phase='publishing'
+           FOR UPDATE`,
+          [batchId],
+        );
+        const checkpoint = existingCheckpoint.rows[0];
+        if (
+          checkpoint?.leaseOwner &&
+          checkpoint.leaseOwner !== workerId &&
+          checkpoint.leaseExpiresAt &&
+          checkpoint.leaseExpiresAt.getTime() > Date.now()
+        ) {
+          throw new BatchLeaseBusyError();
+        }
+        const lastOrdinal = checkpoint?.lastOrdinal ?? -1;
 
         if (current.state === 'awaiting_review') {
           await executeQuery(
@@ -848,8 +883,14 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           `INSERT INTO batch_checkpoint (batch_id,phase,last_ordinal,lease_owner,lease_expires_at,attempt_count)
            VALUES ($1::bigint,'publishing',-1,$2,now()+interval '5 minutes',1)
            ON CONFLICT (batch_id,phase) DO UPDATE SET
-             lease_owner=EXCLUDED.lease_owner, lease_expires_at=EXCLUDED.lease_expires_at,
-             attempt_count=batch_checkpoint.attempt_count+1`,
+             lease_owner=EXCLUDED.lease_owner,
+             lease_expires_at=EXCLUDED.lease_expires_at,
+             attempt_count=CASE
+               WHEN batch_checkpoint.lease_owner=EXCLUDED.lease_owner
+                    AND batch_checkpoint.lease_expires_at>now()
+                 THEN batch_checkpoint.attempt_count
+               ELSE batch_checkpoint.attempt_count+1
+             END`,
           [batchId, workerId],
         );
 
@@ -858,8 +899,11 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           `SELECT ${batchItemSelectionFor('batch_item')}, innings.fixture_id::text AS "fixtureId"
            FROM batch_item JOIN innings ON innings.innings_id = batch_item.innings_id
            WHERE batch_item.batch_id=$1::bigint AND batch_item.state='accepted'
-           ORDER BY batch_item.ordinal FOR UPDATE OF batch_item`,
-          [batchId],
+             AND batch_item.ordinal>$2::integer
+           ORDER BY batch_item.ordinal
+           LIMIT $3::integer
+           FOR UPDATE OF batch_item`,
+          [batchId, lastOrdinal, publicationChunkSize],
         );
         const result: BatchPublicationResult = { published: 0, duplicateSkipped: 0, conflicts: 0 };
 
@@ -991,7 +1035,47 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           );
           result.published += 1;
         }
-        const finalState = result.conflicts > 0 ? 'partially_published' : 'published';
+        const remaining = await executeQuery<{ exists: boolean }>(
+          target,
+          `SELECT EXISTS(
+             SELECT 1 FROM batch_item
+             WHERE batch_id=$1::bigint AND state='accepted' AND ordinal>$2::integer
+           ) AS exists`,
+          [batchId, items.rows.at(-1)?.ordinal ?? lastOrdinal],
+        );
+        const newLastOrdinal = items.rows.at(-1)?.ordinal ?? lastOrdinal;
+        if (remaining.rows[0]?.exists) {
+          const advanced = await executeQuery<{ lastOrdinal: number }>(
+            target,
+            `UPDATE batch_checkpoint
+             SET last_ordinal=$3::integer,
+                 lease_expires_at=now()+interval '5 minutes'
+             WHERE batch_id=$1::bigint AND phase='publishing'
+               AND lease_owner=$2 AND lease_expires_at>now()`,
+            [batchId, workerId, newLastOrdinal],
+          );
+          if (advanced.rowCount !== 1) throw new BatchLeaseBusyError();
+          return { ...result, complete: false };
+        }
+        const conflictCount = await executeQuery<{ count: string }>(
+          target,
+          `SELECT count(*)::text AS count FROM batch_item
+           WHERE batch_id=$1::bigint AND rejection_code='PUBLISHED_NATURAL_KEY_CONFLICT'`,
+          [batchId],
+        );
+        const finalState =
+          Number(conflictCount.rows[0]?.count ?? 0) > 0 ? 'partially_published' : 'published';
+        const released = await executeQuery<{ lastOrdinal: number }>(
+          target,
+          `UPDATE batch_checkpoint SET last_ordinal=COALESCE(
+             (SELECT max(ordinal) FROM batch_item WHERE batch_id=$1::bigint), -1
+           ), lease_owner=NULL, lease_expires_at=NULL
+           WHERE batch_id=$1::bigint AND phase='publishing' AND lease_owner=$2
+             AND lease_expires_at>now()
+           RETURNING last_ordinal AS "lastOrdinal"`,
+          [batchId, workerId],
+        );
+        if (released.rowCount !== 1) throw new BatchLeaseBusyError();
         await executeQuery(
           target,
           `UPDATE batch SET state=$2::batch_state WHERE batch_id=$1::bigint`,
@@ -1003,17 +1087,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
            VALUES ($1::bigint,'publishing',$2::batch_state,'worker',$3,'Publication completed idempotently.')`,
           [batchId, finalState, workerId],
         );
-        await executeQuery(
-          target,
-          `UPDATE batch_checkpoint SET last_ordinal=COALESCE(
-             (SELECT max(ordinal) FROM batch_item WHERE batch_id=$1::bigint), -1
-           ), lease_owner=NULL, lease_expires_at=NULL
-           WHERE batch_id=$1::bigint AND phase='publishing' AND lease_owner=$2`,
-          [batchId, workerId],
-        );
-        return result;
+        return { ...result, complete: true };
       };
-      return executor ? publish(executor) : withTransaction(getDatabasePool(), publish);
+      const totals: BatchPublicationResult = { published: 0, duplicateSkipped: 0, conflicts: 0 };
+      for (;;) {
+        const result = executor
+          ? await publish(executor)
+          : await withTransaction(getDatabasePool(), publish);
+        totals.published += result.published;
+        totals.duplicateSkipped += result.duplicateSkipped;
+        totals.conflicts += result.conflicts;
+        if (result.complete) return totals;
+      }
     },
   };
 }
