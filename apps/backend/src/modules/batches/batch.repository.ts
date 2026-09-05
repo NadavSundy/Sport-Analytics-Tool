@@ -896,7 +896,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
 
         const items = await executeQuery<BatchItemRecord & { fixtureId: string }>(
           target,
-           `SELECT ${batchItemSelectionFor('batch_item')}, innings.fixture_id::text AS "fixtureId"
+          `SELECT ${batchItemSelectionFor('batch_item')}, innings.fixture_id::text AS "fixtureId"
            FROM batch_item JOIN innings ON innings.innings_id = batch_item.innings_id
            WHERE batch_item.batch_id=$1::bigint AND batch_item.state='accepted'
              AND batch_item.ordinal>$2::integer
@@ -1090,7 +1090,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         return { ...result, complete: true };
       };
       const totals: BatchPublicationResult = { published: 0, duplicateSkipped: 0, conflicts: 0 };
-      while (true) {
+      for (;;) {
         const result = executor
           ? await publish(executor)
           : await withTransaction(getDatabasePool(), publish);
