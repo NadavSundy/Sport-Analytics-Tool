@@ -6,6 +6,7 @@ import { requireSubmitter } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import {
   createCorrectionController,
+  createCorrectionHistoryController,
   createSubmissionController,
   createSubmissionUploadController,
 } from './submission.controller';
@@ -43,6 +44,13 @@ export function createSubmissionRouter(
     requireSubmitter(),
     createSubmissionRateLimit(),
     createCorrectionController(service),
+  );
+
+  router.get(
+    '/submissions/events/:eventId/history',
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireSubmitter(),
+    createCorrectionHistoryController(service),
   );
 
   return router;

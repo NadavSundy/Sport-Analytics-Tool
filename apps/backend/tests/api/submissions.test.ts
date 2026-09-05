@@ -37,6 +37,7 @@ const validPayload = {
 const validCorrection = {
   fixtureId: '7',
   schemaVersion: '1.0' as const,
+  reason: 'Correct the scorer transcription.',
   event: {
     inningsId: '10',
     overNumber: 0,
@@ -106,6 +107,13 @@ function mockSubmissionService(): SubmissionService {
         revision: 2,
       },
     }),
+    getCorrectionHistory: vi.fn<SubmissionService['getCorrectionHistory']>().mockResolvedValue({
+      data: {
+        eventId: '123e4567-e89b-42d3-a456-426614174000',
+        fixtureId: '7',
+        corrections: [],
+      },
+    }),
   };
 }
 
@@ -132,6 +140,70 @@ describe('direct event submission API', () => {
       }),
     );
     expect(response.body.data).toMatchObject({ fixtureId: '7', revision: 2 });
+  });
+
+  test('requires a correction reason before service processing', async () => {
+    const service = mockSubmissionService();
+
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        service,
+      ),
+    )
+      .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000')
+      .set('Authorization', 'Bearer approved-token')
+      .send({ ...validCorrection, reason: '   ' })
+      .expect(422);
+
+    expect(response.body.error.details).toEqual([expect.objectContaining({ field: 'reason' })]);
+    expect(service.correct).not.toHaveBeenCalled();
+  });
+
+  test('returns correction history to an authenticated authorised submitter', async () => {
+    const service = mockSubmissionService();
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+
+    const response = await request(
+      createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
+    )
+      .get('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000/history')
+      .set('Authorization', 'Bearer approved-token')
+      .expect(200);
+
+    expect(service.getCorrectionHistory).toHaveBeenCalledWith(
+      account,
+      '123e4567-e89b-42d3-a456-426614174000',
+    );
+    expect(response.body.data.corrections).toEqual([]);
+  });
+
+  test('rejects anonymous and viewer correction-history requests', async () => {
+    const anonymousService = mockSubmissionService();
+    await request(
+      createTestApp(vi.fn<VerifyAccessToken>(), undefined, undefined, undefined, anonymousService),
+    )
+      .get('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000/history')
+      .expect(401);
+    expect(anonymousService.getCorrectionHistory).not.toHaveBeenCalled();
+
+    const viewerService = mockSubmissionService();
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'viewer' })),
+        undefined,
+        viewerService,
+      ),
+    )
+      .get('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174000/history')
+      .set('Authorization', 'Bearer viewer-token')
+      .expect(403);
+    expect(viewerService.getCorrectionHistory).not.toHaveBeenCalled();
   });
 
   test('rejects an invalid correction before it reaches storage', async () => {

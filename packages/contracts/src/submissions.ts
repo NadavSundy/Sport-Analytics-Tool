@@ -252,6 +252,7 @@ export const correctionRequestSchema = z
   .object({
     fixtureId: databaseIdentifierSchema,
     schemaVersion: z.literal(DIRECT_SUBMISSION_SCHEMA_VERSION),
+    reason: z.string().trim().min(1).max(1_000),
     event: correctionEventSchema,
   })
   .strict();
@@ -288,9 +289,61 @@ export const correctionResponseSchema = z.object({
   data: correctionSchema,
 });
 
+export const correctionHistoryEntrySchema = z
+  .object({
+    correctionId: apiIdentifierSchema,
+    previousDeliveryId: apiIdentifierSchema,
+    replacementDeliveryId: apiIdentifierSchema,
+    previousRevision: z.number().int().positive(),
+    resultingRevision: z.number().int().positive(),
+    requester: z
+      .object({
+        accountId: apiIdentifierSchema,
+        displayName: z.string().nullable(),
+      })
+      .strict(),
+    correctedAt: apiDateTimeSchema,
+    reason: z.string().min(1),
+    source: z
+      .object({
+        submissionId: apiIdentifierSchema,
+        submissionEventOrdinal: z.number().int().nonnegative().nullable(),
+        batchItemId: apiIdentifierSchema.nullable(),
+      })
+      .strict(),
+    previousState: submissionEventSchema,
+    resultingState: submissionEventSchema,
+    review: z
+      .object({
+        reviewer: z
+          .object({
+            accountId: apiIdentifierSchema,
+            displayName: z.string().nullable(),
+          })
+          .strict(),
+        decision: z.enum(['approved', 'rejected']),
+        reviewedAt: apiDateTimeSchema,
+        reason: z.string().min(1),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export const correctionHistorySchema = z
+  .object({
+    eventId: submissionEventIdSchema,
+    fixtureId: apiIdentifierSchema,
+    corrections: z.array(correctionHistoryEntrySchema),
+  })
+  .strict();
+
+export const correctionHistoryResponseSchema = z.object({ data: correctionHistorySchema }).strict();
+
 export type SubmissionRequest = z.infer<typeof submissionRequestSchema>;
 export type SubmissionEvent = z.infer<typeof submissionEventSchema>;
 export type SubmissionResponse = z.infer<typeof submissionResponseSchema>;
 export type SubmissionSourceFile = NonNullable<z.infer<typeof submissionSchema>['sourceFile']>;
 export type CorrectionRequest = z.infer<typeof correctionRequestSchema>;
 export type CorrectionResponse = z.infer<typeof correctionResponseSchema>;
+export type CorrectionHistoryResponse = z.infer<typeof correctionHistoryResponseSchema>;

@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  correctionHistoryResponseSchema,
+  correctionRequestSchema,
   DIRECT_SUBMISSION_SCHEMA_VERSION,
   MAX_SUBMISSION_UPLOAD_BYTES,
   submissionRequestSchema,
@@ -408,5 +410,59 @@ describe('direct submission contract', () => {
       ],
     });
     expect(withoutFielder.success).toBe(true);
+  });
+});
+
+describe('event correction contract', () => {
+  test('requires a non-blank reason and excludes occurrence sequence from corrected content', () => {
+    const event = validEvent();
+    const { eventId: _eventId, sequenceNumber: _sequenceNumber, ...correctedEvent } = event;
+    void _eventId;
+    void _sequenceNumber;
+
+    expect(
+      correctionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        reason: 'Correct scorer transcription.',
+        event: correctedEvent,
+      }).success,
+    ).toBe(true);
+    expect(
+      correctionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        reason: '   ',
+        event: correctedEvent,
+      }).success,
+    ).toBe(false);
+  });
+
+  test('validates traceable correction-history entries', () => {
+    const state = validEvent();
+    expect(
+      correctionHistoryResponseSchema.safeParse({
+        data: {
+          eventId: state.eventId,
+          fixtureId: '7',
+          corrections: [
+            {
+              correctionId: '40',
+              previousDeliveryId: '30',
+              replacementDeliveryId: '31',
+              previousRevision: 1,
+              resultingRevision: 2,
+              requester: { accountId: '2', displayName: 'Scorer' },
+              correctedAt: '2026-09-04T10:00:00.000Z',
+              reason: 'Correct scorer transcription.',
+              source: { submissionId: '20', submissionEventOrdinal: 0, batchItemId: null },
+              previousState: state,
+              resultingState: { ...state, runs: { ...state.runs, offBat: 2, total: 2 } },
+              review: null,
+            },
+          ],
+        },
+      }).success,
+    ).toBe(true);
   });
 });

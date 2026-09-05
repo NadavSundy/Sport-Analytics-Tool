@@ -3,6 +3,7 @@ import type {
   SubmissionEvent,
   SubmissionRequest,
   CorrectionRequest,
+  CorrectionHistoryResponse,
   SubmissionSourceFile,
 } from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
@@ -47,6 +48,8 @@ interface AcceptedCorrection {
   revision: number;
 }
 
+type CorrectionHistory = CorrectionHistoryResponse['data'];
+
 export interface SubmissionRepository {
   findFixtureScope(fixtureId: string): Promise<FixtureSubmissionScope | null>;
   findDismissalKinds(): Promise<Set<string>>;
@@ -61,6 +64,7 @@ export interface SubmissionRepository {
     correction: CorrectionRequest,
     submitterId: string,
   ): Promise<AcceptedCorrection>;
+  listCorrectionHistory(eventId: string): Promise<CorrectionHistory>;
 }
 
 interface FixtureScopeRow {
@@ -88,6 +92,29 @@ interface CorrectionTargetRow extends CorrectionTarget {
   submissionId: string;
   eventOrdinal: number;
   revision: number;
+  sourceBatchItemId: string | null;
+}
+
+interface CorrectionHistoryRow {
+  correctionId: string;
+  previousDeliveryId: string;
+  replacementDeliveryId: string;
+  previousRevision: number;
+  resultingRevision: number;
+  requesterId: string;
+  requesterDisplayName: string | null;
+  correctedAt: Date;
+  reason: string;
+  submissionId: string;
+  submissionEventOrdinal: number | null;
+  batchItemId: string | null;
+  previousState: SubmissionEvent;
+  resultingState: SubmissionEvent;
+  reviewerId: string | null;
+  reviewerDisplayName: string | null;
+  reviewDecision: 'approved' | 'rejected' | null;
+  reviewedAt: Date | null;
+  reviewReason: string | null;
 }
 
 async function assertSubmissionAuthorized(
@@ -281,7 +308,8 @@ async function findLiveCorrectionTarget(
         d.delivery_id::text AS "deliveryId",
         d.submission_id::text AS "submissionId",
         d.submission_event_ordinal AS "eventOrdinal",
-        d.revision
+        d.revision,
+        d.source_batch_item_id::text AS "sourceBatchItemId"
       FROM delivery d
       JOIN innings i ON i.innings_id = d.innings_id
       JOIN fixture f ON f.fixture_id = i.fixture_id
@@ -302,6 +330,8 @@ async function insertDelivery(
   event: SubmissionEvent,
   ordinal: number,
   revision = 1,
+  supersedesDeliveryId: string | null = null,
+  sourceBatchItemId: string | null = null,
 ): Promise<string> {
   const result = await executeQuery<DeliveryRow>(
     client,
@@ -327,11 +357,13 @@ async function insertDelivery(
         submission_id,
         source_event_id,
         submission_event_ordinal,
-        revision
+        revision,
+        supersedes_delivery_id,
+        source_batch_item_id
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
       )
       RETURNING delivery_id::text AS "deliveryId"
     `,
@@ -357,6 +389,8 @@ async function insertDelivery(
       event.eventId,
       ordinal,
       revision,
+      supersedesDeliveryId,
+      sourceBatchItemId,
     ],
   );
 
@@ -366,6 +400,71 @@ async function insertDelivery(
   }
 
   return row.deliveryId;
+}
+
+async function loadEventSnapshot(
+  client: QueryExecutor,
+  deliveryId: string,
+): Promise<SubmissionEvent> {
+  const result = await executeQuery<{ state: SubmissionEvent }>(
+    client,
+    `
+      SELECT jsonb_build_object(
+        'eventId', d.source_event_id::text,
+        'inningsId', d.innings_id::text,
+        'sequenceNumber', d.innings_sequence,
+        'overNumber', d.over_number,
+        'positionInOver', d.position_in_over,
+        'ballNumber', d.ball_number,
+        'strikerId', d.striker_id::text,
+        'nonStrikerId', d.non_striker_id::text,
+        'bowlerId', d.bowler_id::text,
+        'runs', jsonb_build_object(
+          'offBat', d.runs_off_bat,
+          'extras', d.runs_extras,
+          'total', d.runs_total,
+          'nonBoundary', d.non_boundary
+        ),
+        'extras', jsonb_strip_nulls(jsonb_build_object(
+          'wides', d.extra_wides,
+          'noBalls', d.extra_noballs,
+          'byes', d.extra_byes,
+          'legByes', d.extra_legbyes,
+          'penalty', d.extra_penalty
+        )),
+        'wickets', COALESCE((
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'kind', wicket.kind,
+              'playerOutId', wicket.player_out_id::text,
+              'fielders', COALESCE((
+                SELECT jsonb_agg(
+                  jsonb_strip_nulls(jsonb_build_object(
+                    'participantId', fielder.person_id::text,
+                    'substitute', fielder.is_substitute
+                  )) ORDER BY fielder.ordinal
+                )
+                FROM delivery_wicket_fielder fielder
+                WHERE fielder.wicket_id = wicket.wicket_id
+              ), '[]'::jsonb)
+            ) ORDER BY wicket.ordinal
+          )
+          FROM delivery_wicket wicket
+          WHERE wicket.delivery_id = d.delivery_id
+        ), '[]'::jsonb)
+      ) AS state
+      FROM delivery d
+      WHERE d.delivery_id = $1
+    `,
+    [deliveryId],
+  );
+
+  const state = result.rows[0]?.state;
+  if (!state) {
+    throw new Error('Delivery snapshot query returned no event');
+  }
+
+  return state;
 }
 
 async function insertWickets(
@@ -536,6 +635,11 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
     async storeAcceptedCorrection(eventId, correction, submitterId) {
       const databasePool = pool ?? getDatabasePool();
       return withTransaction(databasePool, async (client) => {
+        // Serialize corrections by stable source identity. A request waiting on
+        // another correction sees the newly current revision and increments it.
+        await executeQuery(client, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+          eventId,
+        ]);
         const target = await findLiveCorrectionTarget(client, eventId, true);
         if (!target || target.fixtureId !== correction.fixtureId) {
           throw new SubmissionValidationError('The correction references an unavailable event.', [
@@ -554,6 +658,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           sequenceNumber: target.sequenceNumber,
         };
         await validateReferences(client, target.fixtureId, [event], false);
+        const previousState = await loadEventSnapshot(client, target.deliveryId);
 
         // The base schema requires a superseded row to name a successor. Mark it
         // temporarily self-superseded inside this transaction, freeing the live
@@ -562,9 +667,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           client,
           `
             UPDATE delivery
-            SET source_event_id = NULL,
-                submission_event_ordinal = NULL,
-                superseded_at = now(),
+            SET superseded_at = now(),
                 superseded_by = delivery_id
             WHERE delivery_id = $1
           `,
@@ -577,6 +680,8 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           event,
           target.eventOrdinal,
           target.revision + 1,
+          target.deliveryId,
+          target.sourceBatchItemId,
         );
         await insertWickets(client, replacement, event);
         await executeQuery(
@@ -588,6 +693,37 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           `,
           [target.deliveryId, replacement],
         );
+        const resultingState = await loadEventSnapshot(client, replacement);
+        await executeQuery(
+          client,
+          `
+            INSERT INTO delivery_correction_history (
+              source_event_id,
+              previous_delivery_id,
+              replacement_delivery_id,
+              requester_id,
+              reason,
+              previous_state,
+              resulting_state,
+              original_submission_id,
+              original_submission_ordinal,
+              original_batch_item_id
+            )
+            VALUES ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10)
+          `,
+          [
+            eventId,
+            target.deliveryId,
+            replacement,
+            submitterId,
+            correction.reason,
+            JSON.stringify(previousState),
+            JSON.stringify(resultingState),
+            target.submissionId,
+            target.eventOrdinal,
+            target.sourceBatchItemId,
+          ],
+        );
 
         return {
           eventId,
@@ -595,6 +731,91 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           revision: target.revision + 1,
         };
       });
+    },
+
+    async listCorrectionHistory(eventId) {
+      const databasePool = pool ?? getDatabasePool();
+      const target = await findLiveCorrectionTarget(databasePool, eventId);
+      if (!target) {
+        throw new SubmissionValidationError('The correction history is unavailable.', [
+          {
+            code: 'EVENT_NOT_FOUND',
+            message: 'The source event is not an accepted event.',
+            field: 'eventId',
+          },
+        ]);
+      }
+
+      const result = await executeQuery<CorrectionHistoryRow>(
+        databasePool,
+        `
+          SELECT
+            history.delivery_correction_history_id::text AS "correctionId",
+            history.previous_delivery_id::text AS "previousDeliveryId",
+            history.replacement_delivery_id::text AS "replacementDeliveryId",
+            previous.revision AS "previousRevision",
+            replacement.revision AS "resultingRevision",
+            requester.app_user_id::text AS "requesterId",
+            requester.display_name AS "requesterDisplayName",
+            history.requested_at AS "correctedAt",
+            history.reason,
+            history.original_submission_id::text AS "submissionId",
+            history.original_submission_ordinal AS "submissionEventOrdinal",
+            history.original_batch_item_id::text AS "batchItemId",
+            history.previous_state AS "previousState",
+            history.resulting_state AS "resultingState",
+            reviewer.app_user_id::text AS "reviewerId",
+            reviewer.display_name AS "reviewerDisplayName",
+            history.review_decision AS "reviewDecision",
+            history.reviewed_at AS "reviewedAt",
+            history.review_reason AS "reviewReason"
+          FROM delivery_correction_history history
+          JOIN delivery previous ON previous.delivery_id = history.previous_delivery_id
+          JOIN delivery replacement ON replacement.delivery_id = history.replacement_delivery_id
+          JOIN app_user requester ON requester.app_user_id = history.requester_id
+          LEFT JOIN app_user reviewer ON reviewer.app_user_id = history.reviewer_id
+          WHERE history.source_event_id = $1::uuid
+          ORDER BY replacement.revision, history.delivery_correction_history_id
+        `,
+        [eventId],
+      );
+
+      return {
+        eventId,
+        fixtureId: target.fixtureId,
+        corrections: result.rows.map((row) => ({
+          correctionId: row.correctionId,
+          previousDeliveryId: row.previousDeliveryId,
+          replacementDeliveryId: row.replacementDeliveryId,
+          previousRevision: row.previousRevision,
+          resultingRevision: row.resultingRevision,
+          requester: {
+            accountId: row.requesterId,
+            displayName: row.requesterDisplayName,
+          },
+          correctedAt: row.correctedAt.toISOString(),
+          reason: row.reason,
+          source: {
+            submissionId: row.submissionId,
+            submissionEventOrdinal: row.submissionEventOrdinal,
+            batchItemId: row.batchItemId,
+          },
+          previousState: row.previousState,
+          resultingState: row.resultingState,
+          review:
+            row.reviewerId && row.reviewDecision && row.reviewedAt && row.reviewReason
+              ? {
+                  reviewer: {
+                    accountId: row.reviewerId,
+                    displayName: row.reviewerDisplayName,
+                  },
+                  decision: row.reviewDecision,
+                  reviewedAt: row.reviewedAt.toISOString(),
+                  reason: row.reviewReason,
+                }
+              : null,
+        })),
+      };
     },
   };
 }
