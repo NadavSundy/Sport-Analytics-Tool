@@ -184,6 +184,32 @@ dependencies.`; the probe has no write side effect, so redelivery cannot duplica
     local worker configuration is deleted. Successfully handled probe messages are already settled;
     the probe creates no database or Blob data to delete.
 
+## Batch recovery procedure
+
+Do not reset a `batch_checkpoint`, delete staged rows, or replay source bytes manually. The
+checkpoint is the authoritative recovery boundary for its phase. Validation and publication have
+separate rows, so completing validation never advances publication and a publication retry never
+revalidates accepted or rejected items.
+
+1. Inspect the batch, its `background_job`, and both `batch_checkpoint` rows. Record the phase,
+   `last_ordinal`, `attempt_count`, lease owner, expiry, and safe job error code before taking
+   action.
+2. If the recorded lease has not expired, let its worker finish or wait for the expiry. A second
+   worker must not process that phase while a different live owner is recorded.
+3. After a crash, allow the queue lock to expire and redeliver the command. The reclaiming worker
+   verifies that the recorded lease has expired, retains the checkpoint ordinal, and starts at the
+   following ordinal. It does not restart the package.
+4. A chunk writes its item outcomes or deliveries and advances `last_ordinal` in the same database
+   transaction. A fault before commit leaves both absent; a fault after commit leaves both durable.
+   Replaying either case cannot publish or count an earlier item twice.
+5. If the retry budget is exhausted, keep the terminal job error and batch state as evidence. An
+   authorised operator may arrange a retry only after resolving the infrastructure cause; the retry
+   keeps the source, submitter, batch, phase checkpoint, and item outcomes intact.
+
+The worker logs batch reference, job identifier, attempt, final state, and duration, but not source
+payloads or credentials. Record the recovery action and its observed checkpoint values in the
+relevant operational evidence.
+
 ## Deployment
 
 The manual `Sport Analytics - Provision and Deploy Batch Worker` Gitea workflow validates the worker,
