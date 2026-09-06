@@ -106,19 +106,12 @@ export async function loadFixtureStatisticsSource(
     executor,
     `
     WITH accepted_delivery AS (
-      SELECT DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)
-        d.*
+      SELECT d.*
       FROM delivery_current d
       JOIN submission source_submission
         ON source_submission.submission_id = d.submission_id
        AND source_submission.status = 'accepted'
       WHERE d.innings_id = ANY($1::bigint[])
-      ORDER BY
-        d.innings_id ASC,
-        d.over_number ASC,
-        d.position_in_over ASC,
-        d.revision DESC,
-        d.delivery_id DESC
     )
     SELECT
       d.delivery_id::text AS "deliveryId",

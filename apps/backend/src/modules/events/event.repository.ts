@@ -123,8 +123,7 @@ async function queryAcceptedFixtureEvents(
     executor,
     `
       WITH accepted_delivery AS (
-        SELECT DISTINCT ON (delivery.innings_id, delivery.over_number, delivery.position_in_over)
-          delivery.*
+        SELECT delivery.*
         FROM delivery_current delivery
         INNER JOIN innings source_innings
           ON source_innings.innings_id = delivery.innings_id
@@ -132,12 +131,6 @@ async function queryAcceptedFixtureEvents(
           ON source_submission.submission_id = delivery.submission_id
          AND source_submission.status = 'accepted'
         WHERE source_innings.fixture_id = $1::bigint
-        ORDER BY
-          delivery.innings_id ASC,
-          delivery.over_number ASC,
-          delivery.position_in_over ASC,
-          delivery.revision DESC,
-          delivery.delivery_id DESC
       )
       SELECT
         d.delivery_id::text AS "eventId",
