@@ -107,6 +107,7 @@ nav:
       - CI/CD and Quality Gates: development/ci-cd.md
       - Local CI Validation: development/local-ci.md
       - Automated & End-to-End Testing: development/testing.md
+      - Representative-scale Performance Baseline: development/performance-baseline.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
       - Bug Tracking: testing/bug-tracking.md

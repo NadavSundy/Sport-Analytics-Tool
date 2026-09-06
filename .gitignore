@@ -161,6 +161,7 @@ data/cricsheet/downloads/
 data/cricsheet/matches/
 data/cricsheet/manifest.json
 data/cricsheet/summary.json
+data/performance/
 
 # Python-generated files
 __pycache__/
