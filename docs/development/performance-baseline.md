@@ -109,6 +109,28 @@ therefore a stronger scale check than the local synthetic workload. It records
 results before performance optimisation and distinguishes initial connection
 behaviour from warm API timings.
 
+## Query-plan regression check
+
+Issue #290 adds an opt-in PostgreSQL regression check for the representative
+corpus. Run it after generating the corpus with:
+
+```powershell
+$env:RUN_PERFORMANCE_DATABASE_TESTS = '1'
+npm run test:database
+```
+
+The check imports the 300-fixture corpus into the disposable test database,
+then compares the old and current participant-history delivery selection using
+`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`. It proves that both forms return the
+same live delivery IDs. The current query relies on the `delivery_current`
+invariant: its partial unique natural-key index already admits one live delivery
+per innings, over and position. It therefore must not add a second `DISTINCT ON`
+and sort over those same keys.
+
+The API timing command above remains the authoritative response-time target
+measurement. The query-plan check is complementary database evidence and does
+not substitute for a networked API measurement.
+
 ## AI Declaration
 
 This performance-baseline procedure, generator-command documentation and target

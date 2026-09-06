@@ -227,8 +227,7 @@ export async function listParticipantFixtures(
         LIMIT $${limitParameter}
       ),
       accepted_delivery AS (
-        SELECT DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)
-          d.*,
+        SELECT d.*,
           i.fixture_id
         FROM delivery_current d
         JOIN innings i
@@ -238,12 +237,6 @@ export async function listParticipantFixtures(
           ON source_submission.submission_id = d.submission_id
          AND source_submission.status = 'accepted'
         WHERE i.fixture_id IN (SELECT fixture_id FROM selected_fixture)
-        ORDER BY
-          d.innings_id ASC,
-          d.over_number ASC,
-          d.position_in_over ASC,
-          d.revision DESC,
-          d.delivery_id DESC
       ),
       batting AS (
         SELECT

@@ -16,6 +16,7 @@
     "test:unit": "vitest run tests/unit",
     "test:api": "vitest run tests/api tests/auth.test.ts tests/authorization.test.ts tests/health.test.ts",
     "test:database": "tsx scripts/run-database-tests.ts",
+    "measure:performance": "tsx scripts/run-performance-benchmark.ts",
     "test:database:run": "cross-env NODE_ENV=test vitest run tests/database",
     "test:coverage": "vitest run --coverage tests/unit tests/api tests/auth.test.ts tests/authorization.test.ts tests/health.test.ts",
     "db:check": "tsx --env-file=.env scripts/check-connection.ts",

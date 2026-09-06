@@ -67,9 +67,8 @@ describe('public event repository', () => {
 
     const sql = String(query.mock.calls[0]?.[0]);
     expect(sql).toContain("source_submission.status = 'accepted'");
-    expect(sql).toContain(
-      'DISTINCT ON (delivery.innings_id, delivery.over_number, delivery.position_in_over)',
-    );
+    expect(sql).toContain('FROM delivery_current delivery');
+    expect(sql).not.toContain('DISTINCT ON');
     expect(sql).toContain('i.batting_team_id = $3::bigint');
     expect(sql).toContain('participant_wicket.player_out_id = $4::bigint');
     expect(sql).toContain('d.over_number = $5::smallint');

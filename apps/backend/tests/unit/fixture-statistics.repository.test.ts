@@ -64,9 +64,8 @@ describe('fixture statistics repository', () => {
     expect(query.mock.calls[1]?.[1]).toEqual([['11']]);
     expect(query.mock.calls[0]?.[0]).toContain("publication.status = 'accepted'");
     expect(query.mock.calls[1]?.[0]).toContain("source_submission.status = 'accepted'");
-    expect(query.mock.calls[1]?.[0]).toContain(
-      'DISTINCT ON (d.innings_id, d.over_number, d.position_in_over)',
-    );
+    expect(query.mock.calls[1]?.[0]).toContain('FROM delivery_current d');
+    expect(query.mock.calls[1]?.[0]).not.toContain('DISTINCT ON');
     expect(query.mock.calls[1]?.[0]).toContain(
       'ORDER BY i.ordinal ASC, d.innings_sequence ASC, d.delivery_id ASC',
     );

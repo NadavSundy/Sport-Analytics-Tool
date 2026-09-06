@@ -17,6 +17,7 @@
     "dev:worker": "npm run dev --workspace=@sport-analytics/worker",
     "data:performance:generate": "node scripts/generate-representative-corpus.mjs",
     "measure:api-response-times": "node scripts/measure-api-response-times.mjs",
+    "measure:performance:local": "npm run measure:performance --workspace=@sport-analytics/backend --",
     "build": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/backend && npm run build --workspace=@sport-analytics/frontend && npm run build --workspace=@sport-analytics/worker",
     "check:contracts-public-api": "node scripts/check-contracts-public-api.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
