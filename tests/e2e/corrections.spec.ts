@@ -186,7 +186,16 @@ test('authorised submitter corrects an event by keyboard and sees refreshed stat
       });
       expect(body.event).not.toHaveProperty('sequenceNumber');
       expect(JSON.stringify(body)).not.toMatch(/statistics|finalScore/i);
-      await fulfill(route, 200, { data: { eventId, fixtureId: '7', revision: 2 } });
+      await fulfill(route, 200, {
+        data: {
+          eventId,
+          fixtureId: '7',
+          revision: 2,
+          refreshedScopes: [
+            { scope: 'fixture', participantId: null, competitionId: '5', season: '2026' },
+          ],
+        },
+      });
       return;
     }
 
