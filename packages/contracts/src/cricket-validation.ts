@@ -13,7 +13,7 @@ export const CRICKET_VALIDATION_RULE_CODES = [
 
 export type CricketValidationRuleCode = (typeof CRICKET_VALIDATION_RULE_CODES)[number];
 
-export type CricketValidationSeverity = 'error';
+export type CricketValidationSeverity = 'error' | 'warning';
 
 export interface CricketValidationResult {
   code: CricketValidationRuleCode;
@@ -174,10 +174,11 @@ export function validateCricketBusinessRules(
         continue;
       }
 
-      const previous = terminalWicketByPlayer.get(wicket.playerOutId);
+      const wicketKey = `${event.inningsId}:${wicket.playerOutId}`;
+      const previous = terminalWicketByPlayer.get(wicketKey);
 
       if (previous === undefined) {
-        terminalWicketByPlayer.set(wicket.playerOutId, {
+        terminalWicketByPlayer.set(wicketKey, {
           kind: wicket.kind,
           eventIndex,
         });

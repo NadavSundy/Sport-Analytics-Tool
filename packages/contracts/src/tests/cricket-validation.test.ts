@@ -149,6 +149,31 @@ describe('versioned cricket business-rule validation', () => {
     expect(results.map((item) => item.code)).toContain('CONTRADICTORY_WICKET');
   });
 
+  test('does not treat dismissals in separate innings as duplicate wickets', () => {
+    const multiInningsContext: CricketValidationContext = {
+      ...context,
+      inningsById: {
+        ...context.inningsById,
+        '11': { battingTeamId: '100', bowlingTeamId: '200' },
+      },
+    };
+
+    const results = validateCricketBusinessRules(
+      [
+        validEvent({
+          wickets: [{ kind: 'bowled', playerOutId: '20' }],
+        }),
+        validEvent({
+          inningsId: '11',
+          wickets: [{ kind: 'caught', playerOutId: '20' }],
+        }),
+      ],
+      multiInningsContext,
+    );
+
+    expect(results).toEqual([]);
+  });
+
   test('allows a batter to resume after retired hurt', () => {
     const results = validateCricketBusinessRules(
       [

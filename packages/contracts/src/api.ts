@@ -49,6 +49,11 @@ export const apiErrorDetailSchema = z.object({
   // Used when a validation failure belongs to a specific
   // submitted event.
   eventIndex: z.number().int().nonnegative().optional(),
+
+  // Present for stable, versioned business-rule validation results. Generic
+  // transport/schema failures are not required to carry rule metadata.
+  ruleVersion: z.string().min(1).optional(),
+  severity: z.enum(['error', 'warning']).optional(),
 });
 
 export const apiErrorResponseSchema = z.object({
