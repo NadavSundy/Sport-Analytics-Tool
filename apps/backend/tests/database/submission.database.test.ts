@@ -569,6 +569,29 @@ describe.sequential('direct submission database integration', () => {
     const beforeSource = await loadFixtureStatisticsSource(testRecords().fixtureId, databasePool());
     expect(beforeSource).not.toBeNull();
     const beforeStatistics = deriveFixtureStatistics(beforeSource!, { includeContributors: false });
+    await executeQuery(
+      databasePool(),
+      `
+        INSERT INTO fixture_statistics_cache_version (fixture_id, data_version)
+        VALUES ($1, 41)
+        ON CONFLICT (fixture_id) DO UPDATE SET data_version = EXCLUDED.data_version
+      `,
+      [testRecords().fixtureId],
+    );
+    await executeQuery(
+      databasePool(),
+      `
+        INSERT INTO fixture_statistics_cache (
+          cache_key, fixture_id, data_version, payload, expires_at
+        )
+        VALUES ($1, $2, 41, $3::jsonb, now() + interval '1 minute')
+      `,
+      [
+        `test-fixture-statistics-${testRecords().fixtureId}`,
+        testRecords().fixtureId,
+        JSON.stringify(beforeStatistics),
+      ],
+    );
 
     const original = payload([{ eventId: correctedEventId, sequenceNumber: 1, positionInOver: 0 }])
       .events[0];
@@ -753,6 +776,20 @@ describe.sequential('direct submission database integration', () => {
       [testRecords().inningsId],
     );
     expect(currentPublicRevisions.rows).toEqual([{ count: 1, runsTotal: 4 }]);
+    const cacheState = await executeQuery<{ dataVersion: number; entries: number }>(
+      databasePool(),
+      `
+        SELECT
+          version.data_version::int AS "dataVersion",
+          count(cache.cache_key)::int AS entries
+        FROM fixture_statistics_cache_version version
+        LEFT JOIN fixture_statistics_cache cache ON cache.fixture_id = version.fixture_id
+        WHERE version.fixture_id = $1
+        GROUP BY version.data_version
+      `,
+      [testRecords().fixtureId],
+    );
+    expect(cacheState.rows).toEqual([{ dataVersion: 42, entries: 0 }]);
   });
 
   test('serializes concurrent corrections into monotonic immutable revisions', async () => {

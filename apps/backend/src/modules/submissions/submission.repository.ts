@@ -27,6 +27,7 @@ import {
   deriveCorrectionStatisticsDependencies,
   type StatisticsRefreshDependency,
 } from '../statistics/recomputation-dependencies';
+import { advanceFixtureStatisticsCacheVersions } from '../statistics/fixture-statistics.cache';
 
 interface FixtureSubmissionScope {
   fixtureId: string;
@@ -771,6 +772,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
             );
             await insertWickets(client, deliveryId, event);
           }
+          await advanceFixtureStatisticsCacheVersions(client, [submission.fixtureId]);
 
           return {
             submissionId: storedSubmission.submissionId,
@@ -902,6 +904,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           target.revision + 1,
           dependencies,
         );
+        await advanceFixtureStatisticsCacheVersions(client, [target.fixtureId]);
 
         return {
           eventId,

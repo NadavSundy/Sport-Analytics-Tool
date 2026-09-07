@@ -7,6 +7,7 @@ import {
 } from '@sport-analytics/contracts';
 
 import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
+import { advanceFixtureStatisticsCacheVersions } from '../statistics/fixture-statistics.cache';
 
 type BatchState =
   | 'received'
@@ -1674,6 +1675,10 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           if (publishedCount !== newPublications.length) {
             throw new Error('Concurrent delivery publication requires a retry.');
           }
+          await advanceFixtureStatisticsCacheVersions(
+            target,
+            newPublications.map(({ item }) => item.fixtureId),
+          );
 
           const wickets = newPublications.flatMap(({ item, delivery }) =>
             delivery.wickets.map((wicket, ordinal) => ({

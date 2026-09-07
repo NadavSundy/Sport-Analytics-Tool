@@ -4,6 +4,31 @@ Fixture statistics are deterministic projections of accepted cricket events. The
 when requested; there is no manually editable statistic total and no persisted cache in the Basic
 implementation.
 
+## Repeated-read cache
+
+Issue #293 adds a bounded cache-aside projection for the public
+`GET /api/v1/fixtures/{fixtureId}/statistics` response without contributors. This is the repeated,
+expensive statistic path measured in the representative workload. Contributor traces are deliberately
+excluded: they are explicit audit requests, can be much larger, and are not a repeated browse path.
+
+The cache key is `sat:v1:fixture-statistics:fixture:{fixtureId}:v{dataVersion}`. The API contract,
+fixture scope, and authoritative data version are therefore all part of the key; this public-only
+cache has no bearer token, account, or consumer identity in either keys or values. Entries contain
+only the same public response returned by the API and expire after 60 seconds.
+
+`fixture_statistics_cache_version` is advanced in the same database transaction as an accepted
+direct submission, correction, or batch publication. An entry for a prior version becomes unreachable
+immediately, and the transaction also removes it. Cache expiry is a recovery bound: if an unexpected
+writer misses version advancement, a later read derives the current PostgreSQL value within 60 seconds.
+PostgreSQL delivery rows remain authoritative; cache rows are disposable and are never edited as
+statistics.
+
+For two identical public reads, the uncached path derives the fixture twice. The cache-aside path
+derives once, writes one versioned response, and serves the second request from its one-row cache
+lookup. `apps/backend/tests/unit/fixture-statistics.service.test.ts` asserts that source derivation is
+called once; the database correction test asserts that an existing version-41 entry is removed and
+the authoritative version advances to 42.
+
 ## Correction refresh dependencies
 
 Issue #286 makes correction refresh behaviour explicit without changing that authoritative
@@ -145,4 +170,5 @@ result, while the repository test verifies accepted-revision filtering and occur
 The preceding calculation, API and public-interface documentation was generated, reviewed and edited
 with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
 The live-revision correction rule and selective refresh dependencies were updated with the assistance
-of Codex[GPT-5].
+of Codex[GPT-5]. The versioned public fixture-statistics cache was documented with the assistance of
+Codex[GPT-5].

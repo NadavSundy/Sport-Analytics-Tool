@@ -85,7 +85,10 @@ missed. It consumes each response body so the timing includes export transfer to
 the local client. Commit an output only when its environment and IDs are safe to
 publish.
 
-There is no application-level response cache in the measured public-read path.
+Issue #293 adds a versioned, 60-second PostgreSQL cache-aside layer for the repeated public fixture
+statistics operation only. The benchmark should compare the first miss with subsequent same-version
+hits; an accepted event, correction, or publication makes an earlier version unreachable before the
+next read. Other listed paths remain uncached.
 “Warm” means the backend is running and its retained PostgreSQL pool connection
 has been established; PostgreSQL's own buffer state is not forcibly reset.
 “Cold” is measured separately: restart the local backend, make no prior
@@ -134,4 +137,5 @@ not substitute for a networked API measurement.
 ## AI Declaration
 
 This performance-baseline procedure, generator-command documentation and target
-table were created with the assistance of Codex[GPT-5].
+table were created with the assistance of Codex[GPT-5]. The repeated fixture-statistics cache
+measurement procedure was updated with the assistance of Codex[GPT-5].
