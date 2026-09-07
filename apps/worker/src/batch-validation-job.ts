@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+﻿import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import { resolvePackageReferences } from '@sport-analytics/batch-processing';
@@ -266,6 +266,8 @@ async function insertValidationResults(
     batchItemId?: string | null;
     sourceOrdinal: number;
     ruleCode: string;
+    ruleVersion?: string;
+    severity?: 'error' | 'warning';
     filePath?: string | null;
     rowNumber?: number | null;
     fieldPath?: string | null;
@@ -281,12 +283,14 @@ async function insertValidationResults(
       row.batchItemId ?? null,
       row.sourceOrdinal,
       row.ruleCode,
+      row.ruleVersion ?? '1.0',
+      row.severity ?? 'error',
       row.filePath ?? null,
       row.rowNumber ?? null,
       row.fieldPath ?? null,
       row.message,
     );
-    return `($${first}::bigint,$${first + 1}::bigint,$${first + 2}::integer,$${first + 3},'1.0','error'::batch_validation_severity,$${first + 4},$${first + 5}::integer,$${first + 6},$${first + 7})`;
+    return `($${first}::bigint,$${first + 1}::bigint,$${first + 2}::integer,$${first + 3},$${first + 4},$${first + 5}::batch_validation_severity,$${first + 6},$${first + 7}::integer,$${first + 8},$${first + 9})`;
   });
   await client.query(
     `
