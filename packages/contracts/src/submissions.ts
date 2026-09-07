@@ -283,6 +283,16 @@ export const correctionSchema = z.object({
   eventId: submissionEventIdSchema,
   fixtureId: apiIdentifierSchema,
   revision: z.number().int().positive(),
+  refreshedScopes: z.array(
+    z
+      .object({
+        scope: z.enum(['fixture', 'season', 'competition', 'career']),
+        participantId: apiIdentifierSchema.nullable(),
+        competitionId: apiIdentifierSchema.nullable(),
+        season: z.string().min(1).nullable(),
+      })
+      .strict(),
+  ),
 });
 
 export const correctionResponseSchema = z.object({

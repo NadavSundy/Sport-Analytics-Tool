@@ -587,7 +587,62 @@ describe.sequential('direct submission database integration', () => {
       })
       .expect(200);
 
-    expect(response.body.data).toMatchObject({ eventId: correctedEventId, revision: 2 });
+    expect(response.body.data).toMatchObject({
+      eventId: correctedEventId,
+      revision: 2,
+      refreshedScopes: expect.arrayContaining([
+        {
+          scope: 'fixture',
+          participantId: null,
+          competitionId: testRecords().competitionId,
+          season: '2026',
+        },
+        {
+          scope: 'season',
+          participantId: testRecords().strikerId,
+          competitionId: testRecords().competitionId,
+          season: '2026',
+        },
+        {
+          scope: 'competition',
+          participantId: testRecords().bowlerId,
+          competitionId: testRecords().competitionId,
+          season: null,
+        },
+        {
+          scope: 'career',
+          participantId: testRecords().strikerId,
+          competitionId: null,
+          season: null,
+        },
+      ]),
+    });
+    expect(response.body.data.refreshedScopes).toHaveLength(7);
+
+    const refreshDependencies = await executeQuery<{
+      scope: string;
+      participantId: string | null;
+      competitionId: string | null;
+      season: string | null;
+    }>(
+      databasePool(),
+      `
+        SELECT
+          scope,
+          participant_id::text AS "participantId",
+          competition_id::text AS "competitionId",
+          season
+        FROM statistics_refresh_dependency
+        WHERE source_event_id = $1::uuid
+          AND delivery_revision = 2
+        ORDER BY scope, participant_id
+      `,
+      [correctedEventId],
+    );
+    expect(refreshDependencies.rows).toHaveLength(7);
+    expect(refreshDependencies.rows).not.toContainEqual(
+      expect.objectContaining({ participantId: testRecords().nonStrikerId }),
+    );
     const revisions = await executeQuery<{
       deliveryId: string;
       sourceEventId: string | null;

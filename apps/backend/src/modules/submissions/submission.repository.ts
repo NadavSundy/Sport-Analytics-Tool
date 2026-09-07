@@ -23,6 +23,10 @@ import {
   SubmissionForbiddenError,
   SubmissionValidationError,
 } from './submission.errors';
+import {
+  deriveCorrectionStatisticsDependencies,
+  type StatisticsRefreshDependency,
+} from '../statistics/recomputation-dependencies';
 
 interface FixtureSubmissionScope {
   fixtureId: string;
@@ -42,6 +46,7 @@ interface AcceptedSubmission {
 interface CorrectionTarget {
   fixtureId: string;
   competitionId: string | null;
+  season: string | null;
   sequenceNumber: number;
 }
 
@@ -49,6 +54,12 @@ interface AcceptedCorrection {
   eventId: string;
   fixtureId: string;
   revision: number;
+  refreshedScopes: Array<{
+    scope: StatisticsRefreshDependency['scope'];
+    participantId: string | null;
+    competitionId: string | null;
+    season: string | null;
+  }>;
 }
 
 type CorrectionHistory = CorrectionHistoryResponse['data'];
@@ -432,6 +443,7 @@ async function findLiveCorrectionTarget(
       SELECT
         i.fixture_id::text AS "fixtureId",
         f.competition_id::text AS "competitionId",
+        f.season,
         d.innings_sequence AS "sequenceNumber",
         d.delivery_id::text AS "deliveryId",
         d.submission_id::text AS "submissionId",
@@ -450,6 +462,40 @@ async function findLiveCorrectionTarget(
   );
 
   return result.rows[0] ?? null;
+}
+
+async function recordStatisticsRefreshDependencies(
+  client: QueryExecutor,
+  sourceEventId: string,
+  revision: number,
+  dependencies: StatisticsRefreshDependency[],
+): Promise<void> {
+  for (const dependency of dependencies) {
+    await executeQuery(
+      client,
+      `
+        INSERT INTO statistics_refresh_dependency (
+          source_event_id,
+          delivery_revision,
+          fixture_id,
+          scope,
+          participant_id,
+          competition_id,
+          season
+        )
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        sourceEventId,
+        revision,
+        dependency.fixtureId,
+        dependency.scope,
+        dependency.participantId,
+        dependency.competitionId,
+        dependency.season,
+      ],
+    );
+  }
 }
 
 async function insertDelivery(
@@ -666,6 +712,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
         target && {
           fixtureId: target.fixtureId,
           competitionId: target.competitionId,
+          season: target.season,
           sequenceNumber: target.sequenceNumber,
         }
       );
@@ -842,10 +889,30 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           ],
         );
 
+        const dependencies = deriveCorrectionStatisticsDependencies({
+          fixtureId: target.fixtureId,
+          competitionId: target.competitionId,
+          season: target.season,
+          previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
+          resultingParticipantIds: [event.strikerId, event.bowlerId],
+        });
+        await recordStatisticsRefreshDependencies(
+          client,
+          eventId,
+          target.revision + 1,
+          dependencies,
+        );
+
         return {
           eventId,
           fixtureId: target.fixtureId,
           revision: target.revision + 1,
+          refreshedScopes: dependencies.map(({ scope, participantId, competitionId, season }) => ({
+            scope,
+            participantId,
+            competitionId,
+            season,
+          })),
         };
       });
     },

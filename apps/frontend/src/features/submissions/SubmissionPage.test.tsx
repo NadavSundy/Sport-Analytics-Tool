@@ -456,7 +456,14 @@ describe('role-gated event submission page', () => {
         expect(String(init?.body)).not.toMatch(/statistics|sequenceNumber|finalScore/i);
         return Promise.resolve(
           response(200, {
-            data: { eventId: validEvents[0]!.eventId, fixtureId: '7', revision: 2 },
+            data: {
+              eventId: validEvents[0]!.eventId,
+              fixtureId: '7',
+              revision: 2,
+              refreshedScopes: [
+                { scope: 'fixture', participantId: null, competitionId: '5', season: '2026' },
+              ],
+            },
           }),
         );
       }

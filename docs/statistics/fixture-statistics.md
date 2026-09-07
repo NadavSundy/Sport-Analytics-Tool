@@ -4,6 +4,22 @@ Fixture statistics are deterministic projections of accepted cricket events. The
 when requested; there is no manually editable statistic total and no persisted cache in the Basic
 implementation.
 
+## Correction refresh dependencies
+
+Issue #286 makes correction refresh behaviour explicit without changing that authoritative
+live-derivation model. A correction transaction records one `fixture` dependency and only the
+participant aggregate dependencies whose inputs changed. The participant set is the union of the
+previous and replacement striker and bowler, so a role correction refreshes both people while a
+non-striker-only correction does not cause an unrelated aggregate refresh. For each affected
+participant, the journal records the fixture's season, competition, and career scopes; it never
+records another fixture, season, competition, or participant.
+
+The immutable `statistics_refresh_dependency` rows are committed with the replacement delivery and
+are returned as `refreshedScopes` by the correction API. They are operational evidence of the
+selective behaviour and the precise invalidation/recalculation input for a future materialized
+projection or cache. The current public endpoints still calculate from `delivery_current`, so their
+values are immediately the same values a full recomputation would produce.
+
 ## Publication input
 
 The derivation repository applies these rules before calculation:
@@ -128,4 +144,5 @@ result, while the repository test verifies accepted-revision filtering and occur
 
 The preceding calculation, API and public-interface documentation was generated, reviewed and edited
 with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
-The live-revision correction rule was updated with the assistance of Codex[GPT-5].
+The live-revision correction rule and selective refresh dependencies were updated with the assistance
+of Codex[GPT-5].
