@@ -7,7 +7,7 @@
  * either identifier. This is intentionally a dependency map, not a cache: the
  * current API derives authoritative values from `delivery_current`.
  */
-export type StatisticsRefreshScope = 'fixture' | 'season' | 'competition' | 'career';
+type StatisticsRefreshScope = 'fixture' | 'season' | 'competition' | 'career';
 
 export interface StatisticsRefreshDependency {
   scope: StatisticsRefreshScope;
