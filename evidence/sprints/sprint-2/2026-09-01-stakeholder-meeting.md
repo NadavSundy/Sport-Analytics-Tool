@@ -1,8 +1,8 @@
 # Sprint 2 Stakeholder Meeting — 1 September 2026
 
-**Date:** 1 September 2026  
-**Stakeholder:** Terence Nkoua Mackyta  
-**Team:** Git Push Pray  
+**Date:** 1 September 2026
+**Stakeholder:** Terence Nkoua Mackyta
+**Team:** Git Push Pray
 **Sprint:** Sprint 2
 
 ## Purpose
