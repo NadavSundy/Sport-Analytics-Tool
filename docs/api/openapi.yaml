@@ -2041,6 +2041,14 @@ components:
         eventIndex:
           type: integer
           minimum: 0
+        ruleVersion:
+          type: string
+          minLength: 1
+          description: Stable business-rule version when this detail comes from versioned validation.
+        severity:
+          type: string
+          enum: [error, warning]
+          description: Business-rule severity when this detail comes from versioned validation.
 
     ApiErrorResponse:
       type: object

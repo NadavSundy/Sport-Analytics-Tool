@@ -690,6 +690,354 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('distinguishes exact published duplicates from conflicting published content', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `
+          SELECT
+            striker_id::text AS "strikerId",
+            non_striker_id::text AS "nonStrikerId",
+            bowler_id::text AS "bowlerId"
+          FROM delivery
+          WHERE delivery_id=$1::bigint
+        `,
+        [current.deliveryId],
+      );
+
+      const players = source.rows[0]!;
+
+      const basePayload = {
+        sequenceNumber: 900001,
+        ballNumber: '123.1',
+        strikerId: players.strikerId,
+        nonStrikerId: players.nonStrikerId,
+        bowlerId: players.bowlerId,
+        runs: {
+          offBat: 1,
+          extras: 0,
+          total: 1,
+          nonBoundary: false,
+        },
+        extras: {},
+        wickets: [],
+      };
+
+      const first = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-first`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(first.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 123,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:source',
+          state: 'accepted',
+          payload: basePayload,
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(first.batchId, 'worker-first'),
+      ).resolves.toMatchObject({
+        published: 1,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+
+      const exact = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-exact`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'awaiting_review',
+      });
+
+      await repository.insertBatchItems(exact.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 123,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:retry',
+          state: 'accepted',
+          payload: basePayload,
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(exact.batchId, 'worker-exact'),
+      ).resolves.toMatchObject({
+        published: 0,
+        duplicateSkipped: 1,
+        conflicts: 0,
+      });
+
+      const exactResult = await client.query<{
+        code: string;
+        severity: string;
+      }>(
+        `
+          SELECT
+            rule_code AS code,
+            severity::text AS severity
+          FROM batch_validation_result
+          WHERE batch_id=$1::bigint
+        `,
+        [exact.batchId],
+      );
+
+      expect(exactResult.rows).toEqual([
+        {
+          code: 'EXACT_PUBLISHED_DUPLICATE',
+          severity: 'warning',
+        },
+      ]);
+
+      const conflict = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-conflict`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'awaiting_review',
+      });
+
+      await repository.insertBatchItems(conflict.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 123,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:conflict',
+          state: 'accepted',
+          payload: {
+            ...basePayload,
+            runs: {
+              ...basePayload.runs,
+              nonBoundary: true,
+            },
+          },
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(conflict.batchId, 'worker-conflict'),
+      ).resolves.toMatchObject({
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 1,
+      });
+
+      const conflictResult = await client.query<{
+        state: string;
+        rejectionCode: string | null;
+        ruleCode: string;
+        severity: string;
+      }>(
+        `
+            SELECT
+              bi.state::text AS state,
+              bi.rejection_code AS "rejectionCode",
+              vr.rule_code AS "ruleCode",
+              vr.severity::text AS severity
+            FROM batch_item bi
+            JOIN batch_validation_result vr
+              ON vr.batch_item_id =
+                 bi.batch_item_id
+            WHERE bi.batch_id=$1::bigint
+          `,
+        [conflict.batchId],
+      );
+
+      expect(conflictResult.rows).toEqual([
+        {
+          state: 'rejected',
+          rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          severity: 'error',
+        },
+      ]);
+
+      const reusedSource = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-source-conflict`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'awaiting_review',
+      });
+
+      await repository.insertBatchItems(reusedSource.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 124,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:source',
+          state: 'accepted',
+          payload: {
+            ...basePayload,
+            sequenceNumber: 900002,
+            ballNumber: '124.1',
+          },
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(reusedSource.batchId, 'worker-source-conflict'),
+      ).resolves.toMatchObject({
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 1,
+      });
+    });
+  });
+
+  test('publishes canonical batch wickets and fielders with their delivery', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `
+          SELECT
+            striker_id::text AS "strikerId",
+            non_striker_id::text AS "nonStrikerId",
+            bowler_id::text AS "bowlerId"
+          FROM delivery
+          WHERE delivery_id=$1::bigint
+        `,
+        [current.deliveryId],
+      );
+
+      const players = source.rows[0]!;
+
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-wicket-publication`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'awaiting_review',
+      });
+
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 125,
+          positionInOver: 0,
+          sourceIdentity: 'test:wicket-publication',
+          state: 'accepted',
+          payload: {
+            sequenceNumber: 900003,
+            ballNumber: '125.1',
+            strikerId: players.strikerId,
+            nonStrikerId: players.nonStrikerId,
+            bowlerId: players.bowlerId,
+            runs: {
+              offBat: 0,
+              extras: 0,
+              total: 0,
+              nonBoundary: false,
+            },
+            extras: {},
+            wickets: [
+              {
+                kind: 'run out',
+                playerOutId: players.strikerId,
+                fielders: [
+                  {
+                    participantId: players.bowlerId,
+                    substitute: false,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(batch.batchId, 'worker-wicket'),
+      ).resolves.toMatchObject({
+        published: 1,
+        conflicts: 0,
+      });
+
+      const wicket = await client.query<{
+        kind: string;
+        playerOutId: string;
+        fielderId: string | null;
+        substitute: boolean;
+      }>(
+        `
+          SELECT
+            dw.kind,
+            dw.player_out_id::text AS "playerOutId",
+            dwf.person_id::text AS "fielderId",
+            dwf.is_substitute AS substitute
+          FROM batch_item bi
+          JOIN delivery_wicket dw
+            ON dw.delivery_id =
+               bi.published_event_id
+          JOIN delivery_wicket_fielder dwf
+            ON dwf.wicket_id =
+               dw.wicket_id
+          WHERE bi.batch_id=$1::bigint
+        `,
+        [batch.batchId],
+      );
+
+      expect(wicket.rows).toEqual([
+        {
+          kind: 'run out',
+          playerOutId: players.strikerId,
+          fielderId: players.bowlerId,
+          substitute: false,
+        },
+      ]);
+    });
+  });
+
   test('refuses a live publication lease and safely reclaims an expired lease', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();

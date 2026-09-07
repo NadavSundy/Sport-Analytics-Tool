@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
+import { SubmissionValidationError } from '../../src/modules/submissions/submission.errors';
 import type { SubmissionRepository } from '../../src/modules/submissions/submission.repository';
 import {
   createSubmissionService,
@@ -444,9 +445,6 @@ describe('direct event submission API', () => {
       async findFixtureScope() {
         return { fixtureId: '7', competitionId: '5' };
       },
-      async findDismissalKinds() {
-        return new Set();
-      },
       storeAcceptedSubmission,
     });
 
@@ -581,9 +579,6 @@ describe('direct event submission API', () => {
       async findCorrectionTarget() {
         return { fixtureId: '7', competitionId: '5', sequenceNumber: 1 };
       },
-      async findDismissalKinds() {
-        return new Set();
-      },
       storeAcceptedSubmission: vi.fn<SubmissionRepository['storeAcceptedSubmission']>(),
       storeAcceptedCorrection,
     };
@@ -617,9 +612,6 @@ describe('direct event submission API', () => {
     const repository: SubmissionRepository = {
       async findCorrectionTarget() {
         return { fixtureId: '7', competitionId: '5', sequenceNumber: 1 };
-      },
-      async findDismissalKinds() {
-        return new Set();
       },
       storeAcceptedSubmission: vi.fn<SubmissionRepository['storeAcceptedSubmission']>(),
       storeAcceptedCorrection,
@@ -734,24 +726,44 @@ describe('direct event submission API', () => {
       .expect(413);
     expect(oversized.body.error.code).toBe('PAYLOAD_TOO_LARGE');
   });
-  test('rejects an unrecognised dismissal kind with the field and value that caused it', async () => {
-    const storeAcceptedSubmission = vi.fn<SubmissionRepository['storeAcceptedSubmission']>();
+  test('returns versioned cricket-rule details from authoritative repository validation', async () => {
+    const storeAcceptedSubmission = vi
+      .fn<SubmissionRepository['storeAcceptedSubmission']>()
+      .mockRejectedValue(
+        new SubmissionValidationError('The submission contains invalid cricket event data.', [
+          {
+            code: 'UNKNOWN_DISMISSAL_KIND',
+            message: 'The dismissal kind is not recognised by the configured cricket vocabulary.',
+            field: 'wickets.0.kind',
+            eventIndex: 0,
+            ruleVersion: '1.0',
+            severity: 'error',
+          },
+        ]),
+      );
+
     const repository: SubmissionRepository = {
       async findFixtureScope() {
-        return { fixtureId: '7', competitionId: '5' };
-      },
-      async findDismissalKinds() {
-        return new Set(['caught', 'bowled', 'run out']);
+        return {
+          fixtureId: '7',
+          competitionId: '5',
+        };
       },
       storeAcceptedSubmission,
     };
+
     const service = createSubmissionService(repository);
 
     const response = await request(
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        synchronizeWith(
+          createTestAccount({
+            role: 'submitter',
+            competitionIds: ['5'],
+          }),
+        ),
         undefined,
         service,
       ),
@@ -774,26 +786,23 @@ describe('direct event submission API', () => {
       })
       .expect(422);
 
-    expect(response.body.error.details).toHaveLength(1);
-    expect(response.body.error.details[0]).toMatchObject({
-      code: 'UNKNOWN_DISMISSAL_KIND',
-      field: 'wickets.kind',
-      eventIndex: 0,
-    });
-    expect(response.body.error.details[0].message).toContain('dismissed by vibes');
-    expect(storeAcceptedSubmission).not.toHaveBeenCalled();
+    expect(response.body.error.details).toEqual([
+      expect.objectContaining({
+        code: 'UNKNOWN_DISMISSAL_KIND',
+        field: 'wickets.0.kind',
+        eventIndex: 0,
+        ruleVersion: '1.0',
+        severity: 'error',
+      }),
+    ]);
+
+    expect(storeAcceptedSubmission).toHaveBeenCalledOnce();
   });
 
   test('accepts a dismissal kind held in the lookup table without a contract change', async () => {
     const repository: SubmissionRepository = {
       async findFixtureScope() {
         return { fixtureId: '7', competitionId: '5' };
-      },
-      // A kind absent from any enumeration in the contract. The vocabulary is
-      // held in dismissal_kind precisely so that adding one needs a row, not a
-      // code change.
-      async findDismissalKinds() {
-        return new Set(['caught', 'bowled', 'retired not out']);
       },
       async storeAcceptedSubmission() {
         return {

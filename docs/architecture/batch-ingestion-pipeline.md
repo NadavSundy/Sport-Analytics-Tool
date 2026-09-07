@@ -159,6 +159,53 @@ platform has not seen yet, and the resolver reports it as such.
    templates emit an innings carrying both a `sourceId` and readable context. Rejecting the field
    would make a template-derived package unresolvable.
 
+## 3.8 Versioned cricket business-rule validation
+
+Issue #282 adds authoritative cricket validation shared by direct submissions
+and asynchronous batch processing. Business-rule results use rule version
+`1.0`, carry an `error` or `warning` severity, identify the affected
+event and field, and accumulate all discoverable failures rather than stopping
+at the first rule violation.
+
+| Rule code                         | Severity | Meaning                                                                                                                    |
+| --------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `STRIKER_TEAM_INVALID`            | error    | The striker is not a member of the innings batting team.                                                                   |
+| `NON_STRIKER_TEAM_INVALID`        | error    | The non-striker is not a member of the innings batting team.                                                               |
+| `BOWLER_TEAM_INVALID`             | error    | The bowler is not a member of the innings bowling team.                                                                    |
+| `DISMISSED_PLAYER_INVALID`        | error    | A dismissed player is not valid for the innings batting side.                                                              |
+| `UNKNOWN_DISMISSAL_KIND`          | error    | The submitted dismissal kind is not in the authoritative dismissal vocabulary.                                             |
+| `DUPLICATE_WICKET`                | error    | The same batter is terminally dismissed more than once in one innings with the same dismissal kind.                        |
+| `CONTRADICTORY_WICKET`            | error    | The same batter is terminally dismissed more than once in one innings using contradictory dismissal kinds.                 |
+| `BALL_NUMBER_OVER_MISMATCH`       | error    | The printed ball label names a different over from the canonical over coordinate.                                          |
+| `SEQUENCE_NOT_INCREASING`         | error    | Occurrence sequence fails to increase within an innings.                                                                   |
+| `BALL_NUMBER_PROGRESSION_INVALID` | error    | The printed ball label does not progress consistently with the previous delivery's legal/illegal status.                   |
+| `EXACT_PUBLISHED_DUPLICATE`       | warning  | Canonical cricket content exactly matches an already-published delivery and publication is a deterministic no-op.          |
+| `PUBLISHED_DELIVERY_CONFLICT`     | error    | A published delivery at the same natural position or source identity carries different canonical cricket content.          |
+| `FIXTURE_METADATA_CONFLICT`       | error    | A fixture source identifier resolves, but supplied date, season, team or venue metadata contradicts the canonical fixture. |
+
+### Boundary behaviour
+
+- Printed ball numbers are display data, not unique identifiers.
+- A wide or no-ball makes a delivery illegal for printed-ball progression, so
+  the next delivery may legitimately repeat the same printed ball number.
+- A legal delivery advances the printed ball number when progression can be
+  determined.
+- Validation does **not** assume six legal balls per over. Five- and seven-ball
+  overs in the reference corpus remain valid.
+- The first observed delivery in a partial input is not required to be
+  `.1`; validation only applies progression where prior context exists.
+- Validation state is retained across worker chunks and rebuilt from durable
+  staged items after a restart, so sequence, delivery-progression and wicket
+  rules operate across the whole batch.
+- Retired-hurt/non-terminal retirement does not permanently dismiss a batter.
+- Run totals remain structurally constrained so `runs.total = offBat + extras`
+  and `runs.extras` equals the supplied extras breakdown.
+- Exact published duplicates are warnings and deterministic skips; differing
+  published cricket content is an error.
+- Resolving an existing fixture by source identifier never mutates its
+  canonical metadata. Contradictory supplied metadata is staged as
+  `FIXTURE_METADATA_CONFLICT`.
+
 ---
 
 ## 4. Batch Lifecycle States

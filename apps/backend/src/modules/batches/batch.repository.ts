@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
+import {
+  classifyPublishedCricketDelivery,
+  type ComparableCricketDelivery,
+  type PublishedCricketDelivery,
+} from '@sport-analytics/contracts';
+
 import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
 
 type BatchState =
@@ -393,6 +399,242 @@ function payloadString(payload: { [key: string]: JsonValue }, key: string): stri
   const value = payload[key];
   if (typeof value !== 'string') throw new Error(`Accepted batch item payload has no ${key}.`);
   return value;
+}
+
+interface PublishedBatchDeliveryRow {
+  deliveryId: string;
+  inningsId: string;
+  sequenceNumber: number;
+  overNumber: number;
+  positionInOver: number;
+  ballNumber: string;
+  strikerId: string;
+  nonStrikerId: string;
+  bowlerId: string;
+  offBat: number;
+  runsExtras: number;
+  total: number;
+  nonBoundary: boolean;
+  wides: number | null;
+  noBalls: number | null;
+  byes: number | null;
+  legByes: number | null;
+  penalty: number | null;
+  wickets: PublishedCricketDelivery['wickets'];
+}
+
+function optionalPayloadNumber(
+  payload: { [key: string]: JsonValue },
+  key: string,
+): number | undefined {
+  const value = payload[key];
+
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    throw new Error(`Accepted batch item payload has invalid integer ${key}.`);
+  }
+
+  return value;
+}
+
+function comparableWickets(payload: {
+  [key: string]: JsonValue;
+}): ComparableCricketDelivery['wickets'] {
+  const rawWickets = payload.wickets;
+
+  if (rawWickets === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(rawWickets)) {
+    throw new Error('Accepted batch item wickets are not an array.');
+  }
+
+  return rawWickets.map((rawWicket) => {
+    const wicket = payloadRecord(rawWicket);
+    const rawFielders = wicket.fielders ?? [];
+
+    if (!Array.isArray(rawFielders)) {
+      throw new Error('Accepted batch item wicket fielders are not an array.');
+    }
+
+    return {
+      kind: payloadString(wicket, 'kind'),
+      playerOutId: payloadString(wicket, 'playerOutId'),
+      fielders: rawFielders.map((rawFielder) => {
+        const fielder = payloadRecord(rawFielder);
+        const participantId = fielder.participantId;
+
+        if (
+          participantId !== undefined &&
+          participantId !== null &&
+          typeof participantId !== 'string'
+        ) {
+          throw new Error('Accepted batch item fielder has an invalid participantId.');
+        }
+
+        return {
+          ...(typeof participantId === 'string' ? { participantId } : {}),
+          substitute: typeof fielder.substitute === 'boolean' ? fielder.substitute : false,
+        };
+      }),
+    };
+  });
+}
+
+function comparableDeliveryForItem(
+  item: BatchItemRecord,
+  payload: { [key: string]: JsonValue },
+): ComparableCricketDelivery {
+  if (!item.inningsId) {
+    throw new Error('Accepted batch item has no canonical innings.');
+  }
+
+  const runs = payloadRecord(payload.runs ?? null);
+  const extras = payloadRecord(payload.extras ?? {});
+
+  return {
+    inningsId: item.inningsId,
+    sequenceNumber: payloadNumber(payload, 'sequenceNumber'),
+    overNumber: item.overNumber,
+    positionInOver: item.positionInOver,
+    ballNumber: payloadString(payload, 'ballNumber'),
+    strikerId: payloadString(payload, 'strikerId'),
+    nonStrikerId: payloadString(payload, 'nonStrikerId'),
+    bowlerId: payloadString(payload, 'bowlerId'),
+    runs: {
+      offBat: payloadNumber(runs, 'offBat'),
+      extras: payloadNumber(runs, 'extras'),
+      total: payloadNumber(runs, 'total'),
+      nonBoundary: typeof runs.nonBoundary === 'boolean' ? runs.nonBoundary : false,
+    },
+    extras: {
+      wides: optionalPayloadNumber(extras, 'wides'),
+      noBalls: optionalPayloadNumber(extras, 'noBalls'),
+      byes: optionalPayloadNumber(extras, 'byes'),
+      legByes: optionalPayloadNumber(extras, 'legByes'),
+      penalty: optionalPayloadNumber(extras, 'penalty'),
+    },
+    wickets: comparableWickets(payload),
+  };
+}
+
+function mapPublishedBatchDelivery(row: PublishedBatchDeliveryRow): PublishedCricketDelivery {
+  return {
+    inningsId: row.inningsId,
+    sequenceNumber: row.sequenceNumber,
+    overNumber: row.overNumber,
+    positionInOver: row.positionInOver,
+    ballNumber: row.ballNumber,
+    strikerId: row.strikerId,
+    nonStrikerId: row.nonStrikerId,
+    bowlerId: row.bowlerId,
+    runs: {
+      offBat: row.offBat,
+      extras: row.runsExtras,
+      total: row.total,
+      nonBoundary: row.nonBoundary,
+    },
+    extras: {
+      wides: row.wides,
+      noBalls: row.noBalls,
+      byes: row.byes,
+      legByes: row.legByes,
+      penalty: row.penalty,
+    },
+    wickets: row.wickets,
+  };
+}
+
+async function publishedDeliveryMatchesForItem(
+  target: QueryExecutor,
+  item: BatchItemRecord,
+): Promise<
+  Array<{
+    deliveryId: string;
+    delivery: PublishedCricketDelivery;
+  }>
+> {
+  if (!item.inningsId) {
+    return [];
+  }
+
+  const result = await executeQuery<PublishedBatchDeliveryRow>(
+    target,
+    `
+        SELECT
+          d.delivery_id::text AS "deliveryId",
+          d.innings_id::text AS "inningsId",
+          d.innings_sequence AS "sequenceNumber",
+          d.over_number AS "overNumber",
+          d.position_in_over AS "positionInOver",
+          d.ball_number AS "ballNumber",
+          d.striker_id::text AS "strikerId",
+          d.non_striker_id::text AS "nonStrikerId",
+          d.bowler_id::text AS "bowlerId",
+          d.runs_off_bat AS "offBat",
+          d.runs_extras AS "runsExtras",
+          d.runs_total AS "total",
+          d.non_boundary AS "nonBoundary",
+          d.extra_wides AS wides,
+          d.extra_noballs AS "noBalls",
+          d.extra_byes AS byes,
+          d.extra_legbyes AS "legByes",
+          d.extra_penalty AS penalty,
+          COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'kind', wicket.kind,
+                'playerOutId',
+                  wicket.player_out_id::text,
+                'fielders', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'participantId',
+                        fielder.person_id::text,
+                      'substitute',
+                        fielder.is_substitute
+                    )
+                    ORDER BY fielder.ordinal
+                  )
+                  FROM delivery_wicket_fielder fielder
+                  WHERE fielder.wicket_id =
+                        wicket.wicket_id
+                ), '[]'::jsonb)
+              )
+              ORDER BY wicket.ordinal
+            )
+            FROM delivery_wicket wicket
+            WHERE wicket.delivery_id =
+                  d.delivery_id
+          ), '[]'::jsonb) AS wickets
+        FROM delivery_current d
+        LEFT JOIN delivery lineage
+          ON lineage.delivery_id = d.delivery_id
+        LEFT JOIN batch_item source_item
+          ON source_item.batch_item_id =
+             lineage.source_batch_item_id
+        WHERE (
+          d.innings_id = $1::bigint
+          AND d.over_number = $2::smallint
+          AND d.position_in_over = $3::smallint
+        )
+        OR (
+          $4::text IS NOT NULL
+          AND source_item.source_identity = $4
+        )
+        ORDER BY d.delivery_id
+      `,
+    [item.inningsId, item.overNumber, item.positionInOver, item.sourceIdentity],
+  );
+
+  return result.rows.map((row) => ({
+    deliveryId: row.deliveryId,
+    delivery: mapPublishedBatchDelivery(row),
+  }));
 }
 
 export function createBatchRepository(executor?: QueryExecutor): BatchRepository {
@@ -1110,132 +1352,264 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
 
         for (const item of items.rows) {
           const payload = payloadRecord(item.payload);
-          const sameSource = await executeQuery<{ deliveryId: string }>(
-            target,
-            `SELECT delivery.delivery_id::text AS "deliveryId"
-             FROM delivery
-             JOIN batch_item source_item ON source_item.batch_item_id = delivery.source_batch_item_id
-             WHERE source_item.source_identity = $1 AND delivery.superseded_at IS NULL
-             LIMIT 1`,
-            [item.sourceIdentity],
-          );
-          const existing = await executeQuery<{
-            deliveryId: string;
-            sequenceNumber: number;
-            ballNumber: string;
-            strikerId: string;
-            nonStrikerId: string;
-            bowlerId: string;
-            offBat: number;
-            extras: number;
-            total: number;
-          }>(
-            target,
-            `SELECT delivery_id::text AS "deliveryId", innings_sequence AS "sequenceNumber",
-                    ball_number AS "ballNumber", striker_id::text AS "strikerId",
-                    non_striker_id::text AS "nonStrikerId", bowler_id::text AS "bowlerId",
-                    runs_off_bat AS "offBat", runs_extras AS extras, runs_total AS total
-             FROM delivery WHERE innings_id=$1::bigint AND over_number=$2::smallint
-               AND position_in_over=$3::smallint AND superseded_at IS NULL`,
-            [item.inningsId, item.overNumber, item.positionInOver],
-          );
-          const live = existing.rows[0];
-          const runs = payloadRecord(payload.runs ?? null);
-          const sameContent =
-            live &&
-            live.sequenceNumber === payloadNumber(payload, 'sequenceNumber') &&
-            live.ballNumber === payloadString(payload, 'ballNumber') &&
-            live.strikerId === payloadString(payload, 'strikerId') &&
-            live.nonStrikerId === payloadString(payload, 'nonStrikerId') &&
-            live.bowlerId === payloadString(payload, 'bowlerId') &&
-            live.offBat === payloadNumber(runs, 'offBat') &&
-            live.extras === payloadNumber(runs, 'extras') &&
-            live.total === payloadNumber(runs, 'total');
+          const submitted = comparableDeliveryForItem(item, payload);
 
-          if (sameSource.rows[0] || sameContent) {
-            const deliveryId = sameSource.rows[0]?.deliveryId ?? live!.deliveryId;
+          const publishedMatches = await publishedDeliveryMatchesForItem(target, item);
+
+          const classified = publishedMatches.map((match) => ({
+            ...match,
+            classification: classifyPublishedCricketDelivery(submitted, match.delivery),
+          }));
+
+          const conflict = classified.find((match) => match.classification === 'conflict');
+
+          if (conflict) {
             await executeQuery(
               target,
-              `UPDATE batch_item SET state='duplicate_skipped', published_event_id=$2::bigint
-               WHERE batch_item_id=$1::bigint`,
-              [item.batchItemId, deliveryId],
+              `
+                UPDATE batch_item
+                SET state='rejected',
+                    rejection_code=
+                      'PUBLISHED_DELIVERY_CONFLICT',
+                    rejection_detail=
+                      jsonb_build_object(
+                        'existingDeliveryId',
+                        $2::text
+                      )
+                WHERE batch_item_id=$1::bigint
+              `,
+              [item.batchItemId, conflict.deliveryId],
             );
-            result.duplicateSkipped += 1;
-            continue;
-          }
-          if (live) {
+
             await executeQuery(
               target,
-              `UPDATE batch_item SET state='rejected', rejection_code='PUBLISHED_NATURAL_KEY_CONFLICT',
-                 rejection_detail=jsonb_build_object('existingDeliveryId',$2::text)
-               WHERE batch_item_id=$1::bigint`,
-              [item.batchItemId, live.deliveryId],
+              `
+                INSERT INTO batch_validation_result (
+                  batch_id,
+                  batch_item_id,
+                  source_ordinal,
+                  rule_code,
+                  rule_version,
+                  severity,
+                  field_path,
+                  message
+                )
+                VALUES (
+                  $1::bigint,
+                  $2::bigint,
+                  $3::integer,
+                  'PUBLISHED_DELIVERY_CONFLICT',
+                  '1.0',
+                  'error',
+                  'delivery',
+                  'A published delivery or published source identity exists with different cricket content.'
+                )
+                ON CONFLICT DO NOTHING
+              `,
+              [batchId, item.batchItemId, item.ordinal],
             );
-            await executeQuery(
-              target,
-              `INSERT INTO batch_validation_result (batch_id,batch_item_id,rule_code,rule_version,severity,message)
-               VALUES ($1::bigint,$2::bigint,'PUBLISHED_NATURAL_KEY_CONFLICT','1.0','error',
-                 'A live delivery exists at this natural position with different content.') ON CONFLICT DO NOTHING`,
-              [batchId, item.batchItemId],
-            );
+
             result.conflicts += 1;
             continue;
           }
 
-          const submission = await executeQuery<{ submissionId: string }>(
+          const duplicate = classified.find((match) => match.classification === 'exact-duplicate');
+
+          if (duplicate) {
+            await executeQuery(
+              target,
+              `
+                UPDATE batch_item
+                SET state='duplicate_skipped',
+                    published_event_id=$2::bigint
+                WHERE batch_item_id=$1::bigint
+              `,
+              [item.batchItemId, duplicate.deliveryId],
+            );
+
+            await executeQuery(
+              target,
+              `
+                INSERT INTO batch_validation_result (
+                  batch_id,
+                  batch_item_id,
+                  source_ordinal,
+                  rule_code,
+                  rule_version,
+                  severity,
+                  field_path,
+                  message
+                )
+                VALUES (
+                  $1::bigint,
+                  $2::bigint,
+                  $3::integer,
+                  'EXACT_PUBLISHED_DUPLICATE',
+                  '1.0',
+                  'warning',
+                  'delivery',
+                  'The staged event exactly matches an already-published delivery.'
+                )
+                ON CONFLICT DO NOTHING
+              `,
+              [batchId, item.batchItemId, item.ordinal],
+            );
+
+            result.duplicateSkipped += 1;
+            continue;
+          }
+
+          const submission = await executeQuery<{
+            submissionId: string;
+          }>(
             target,
-            `INSERT INTO submission (submitted_by,fixture_id,schema_version,event_count,source_sha256,status)
-             VALUES ($1::bigint,$2::bigint,'1.0',1,$3,'accepted')
-             RETURNING submission_id::text AS "submissionId"`,
+            `
+                INSERT INTO submission (
+                  submitted_by,
+                  fixture_id,
+                  schema_version,
+                  event_count,
+                  source_sha256,
+                  status
+                )
+                VALUES (
+                  $1::bigint,
+                  $2::bigint,
+                  '1.0',
+                  1,
+                  $3,
+                  'accepted'
+                )
+                RETURNING
+                  submission_id::text AS "submissionId"
+              `,
             [current.submitterId, item.fixtureId, current.checksum],
           );
+
           const submissionId = requireRow(
             submission.rows[0],
             'Batch publication submission',
           ).submissionId;
-          const extras = payloadRecord(payload.extras ?? {});
-          const inserted = await executeQuery<{ deliveryId: string }>(
+
+          const inserted = await executeQuery<{
+            deliveryId: string;
+          }>(
             target,
-            `INSERT INTO delivery (
-               innings_id,over_number,position_in_over,innings_sequence,ball_number,striker_id,non_striker_id,bowler_id,
-               runs_off_bat,runs_extras,runs_total,non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,
-               extra_penalty,submission_id,source_batch_item_id
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-             ON CONFLICT DO NOTHING RETURNING delivery_id::text AS "deliveryId"`,
+            `
+                INSERT INTO delivery (
+                  innings_id,
+                  over_number,
+                  position_in_over,
+                  innings_sequence,
+                  ball_number,
+                  striker_id,
+                  non_striker_id,
+                  bowler_id,
+                  runs_off_bat,
+                  runs_extras,
+                  runs_total,
+                  non_boundary,
+                  extra_wides,
+                  extra_noballs,
+                  extra_byes,
+                  extra_legbyes,
+                  extra_penalty,
+                  submission_id,
+                  source_batch_item_id
+                )
+                VALUES (
+                  $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+                  $11,$12,$13,$14,$15,$16,$17,$18,$19
+                )
+                ON CONFLICT DO NOTHING
+                RETURNING
+                  delivery_id::text AS "deliveryId"
+              `,
             [
               item.inningsId,
               item.overNumber,
               item.positionInOver,
-              payloadNumber(payload, 'sequenceNumber'),
-              payloadString(payload, 'ballNumber'),
-              payloadString(payload, 'strikerId'),
-              payloadString(payload, 'nonStrikerId'),
-              payloadString(payload, 'bowlerId'),
-              payloadNumber(runs, 'offBat'),
-              payloadNumber(runs, 'extras'),
-              payloadNumber(runs, 'total'),
-              payload.runs && typeof payload.runs === 'object' && !Array.isArray(payload.runs)
-                ? Boolean((payload.runs as { nonBoundary?: JsonValue }).nonBoundary)
-                : false,
-              extras.wides ?? null,
-              extras.noBalls ?? null,
-              extras.byes ?? null,
-              extras.legByes ?? null,
-              extras.penalty ?? null,
+              submitted.sequenceNumber,
+              submitted.ballNumber,
+              submitted.strikerId,
+              submitted.nonStrikerId,
+              submitted.bowlerId,
+              submitted.runs.offBat,
+              submitted.runs.extras,
+              submitted.runs.total,
+              submitted.runs.nonBoundary,
+              submitted.extras.wides ?? null,
+              submitted.extras.noBalls ?? null,
+              submitted.extras.byes ?? null,
+              submitted.extras.legByes ?? null,
+              submitted.extras.penalty ?? null,
               submissionId,
               item.batchItemId,
             ],
           );
+
           const delivery = inserted.rows[0];
-          if (!delivery) throw new Error('Concurrent delivery publication requires a retry.');
+
+          if (!delivery) {
+            throw new Error('Concurrent delivery publication requires a retry.');
+          }
+
+          for (const [wicketOrdinal, wicket] of submitted.wickets.entries()) {
+            const insertedWicket = await executeQuery<{
+              wicketId: string;
+            }>(
+              target,
+              `
+                  INSERT INTO delivery_wicket (
+                    delivery_id,
+                    ordinal,
+                    kind,
+                    source_kind,
+                    player_out_id
+                  )
+                  VALUES ($1,$2,$3,$3,$4)
+                  RETURNING
+                    wicket_id::text AS "wicketId"
+                `,
+              [delivery.deliveryId, wicketOrdinal, wicket.kind, wicket.playerOutId],
+            );
+
+            const wicketId = requireRow(
+              insertedWicket.rows[0],
+              'Batch wicket publication',
+            ).wicketId;
+
+            for (const [fielderOrdinal, fielder] of wicket.fielders.entries()) {
+              await executeQuery(
+                target,
+                `
+                  INSERT INTO delivery_wicket_fielder (
+                    wicket_id,
+                    ordinal,
+                    person_id,
+                    is_substitute
+                  )
+                  VALUES ($1,$2,$3,$4)
+                `,
+                [wicketId, fielderOrdinal, fielder.participantId ?? null, fielder.substitute],
+              );
+            }
+          }
+
           await executeQuery(
             target,
-            `UPDATE batch_item SET state='published', published_event_id=$2::bigint
-             WHERE batch_item_id=$1::bigint`,
+            `
+              UPDATE batch_item
+              SET state='published',
+                  published_event_id=$2::bigint
+              WHERE batch_item_id=$1::bigint
+            `,
             [item.batchItemId, delivery.deliveryId],
           );
+
           result.published += 1;
         }
+
         const remaining = await executeQuery<{ exists: boolean }>(
           target,
           `SELECT EXISTS(
@@ -1261,7 +1635,11 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         const conflictCount = await executeQuery<{ count: string }>(
           target,
           `SELECT count(*)::text AS count FROM batch_item
-           WHERE batch_id=$1::bigint AND rejection_code='PUBLISHED_NATURAL_KEY_CONFLICT'`,
+           WHERE batch_id=$1::bigint
+             AND rejection_code IN (
+               'PUBLISHED_NATURAL_KEY_CONFLICT',
+               'PUBLISHED_DELIVERY_CONFLICT'
+             )`,
           [batchId],
         );
         const finalState =
