@@ -5,6 +5,10 @@ import type {
 } from '@sport-analytics/contracts';
 
 import { deriveFixtureStatistics } from './fixture-statistics.derivation';
+import {
+  createFixtureStatisticsCache,
+  type FixtureStatisticsCache,
+} from './fixture-statistics.cache';
 import type { FixtureStatisticsSource } from './fixture-statistics.model';
 import { loadFixtureStatisticsSource } from './fixture-statistics.repository';
 
@@ -28,7 +32,17 @@ const databaseIdPattern = /^\d+$/;
 
 export function createFixtureStatisticsService(
   loadSource: LoadFixtureStatisticsSource = loadFixtureStatisticsSource,
+  cache?: FixtureStatisticsCache | null,
 ): FixtureStatisticsService {
+  let resolvedCache = cache;
+
+  function publicStatisticsCache(): FixtureStatisticsCache | null {
+    if (resolvedCache === undefined && loadSource === loadFixtureStatisticsSource) {
+      resolvedCache = createFixtureStatisticsCache();
+    }
+    return resolvedCache ?? null;
+  }
+
   async function derive(
     fixtureId: string,
     query: FixtureStatisticsQuery,
@@ -37,14 +51,24 @@ export function createFixtureStatisticsService(
       return null;
     }
 
+    // Contributor traces are explicit audit/reproduction requests and are not cached.
+    const cacheRead = query.includeContributors
+      ? null
+      : await publicStatisticsCache()?.read(fixtureId);
+    if (cacheRead?.value) return cacheRead.value;
+
     const source = await loadSource(fixtureId);
     if (!source) {
       return null;
     }
 
-    return deriveFixtureStatistics(source, {
+    const statistics = deriveFixtureStatistics(source, {
       includeContributors: query.includeContributors,
     });
+    if (cacheRead && !query.includeContributors) {
+      await publicStatisticsCache()?.write(fixtureId, cacheRead.dataVersion, statistics);
+    }
+    return statistics;
   }
 
   return {
