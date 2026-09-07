@@ -11,6 +11,8 @@ import {
   type BatchReportItem,
   type BatchReportQuery,
   type BatchReportResponse,
+  type BatchReviewRequest,
+  type BatchReviewResponse,
   type BatchStatus,
   type BatchStatusResponse,
 } from '@sport-analytics/contracts';
@@ -20,7 +22,13 @@ import { canSubmitToCompetition } from '../../middleware/require-authorization';
 import type { ApplicationAccount } from '../accounts/account';
 import type { BatchPayloadStorageService } from '../object-storage/batch-payload-storage.service';
 import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/object-store';
-import { createBatchRepository, type BatchRepository } from './batch.repository';
+import {
+  BatchLeaseBusyError,
+  BatchReviewConflictError,
+  BatchReviewResolutionError,
+  createBatchRepository,
+  type BatchRepository,
+} from './batch.repository';
 import type { BatchRecord, BatchReportItemRecord } from './batch.repository';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
 
@@ -55,6 +63,11 @@ export interface BatchService {
     account: ApplicationAccount,
     reference: string,
   ): Promise<BatchReportDownloadResponse>;
+  review(
+    account: ApplicationAccount,
+    reference: string,
+    request: BatchReviewRequest,
+  ): Promise<BatchReviewResponse>;
 }
 
 function receipt(batch: {
@@ -166,25 +179,42 @@ export function createBatchService(
 ): BatchService {
   async function findAuthorizedBatch(account: ApplicationAccount, reference: string) {
     const batch = await repository.findBatchByReference(reference);
-    if (!batch || (account.role !== 'admin' && batch.submitterId !== account.accountId)) {
+    const canInspect =
+      batch &&
+      (batch.submitterId === account.accountId ||
+        (account.role === 'admin' && account.competitionIds.includes(batch.competitionId)));
+    if (!batch || !canInspect) {
       throw new BatchForbiddenError();
     }
     return batch;
   }
 
   async function status(batch: BatchRecord): Promise<BatchStatus> {
-    const [progress, counts] = await Promise.all([
+    const [progress, counts, review] = await Promise.all([
       repository.getBatchProgress(batch.batchId),
       repository.getBatchCounts(batch.batchId),
+      repository.getLatestReviewDecision(batch.batchId),
     ]);
     return {
       batchReference: batch.batchReference,
+      competitionId: batch.competitionId,
       status: batch.state,
       statusUrl: `${API_BASE_PATH}/batches/${batch.batchReference}`,
       receivedAt: batch.createdAt,
       updatedAt: batch.updatedAt,
       progress,
       counts,
+      review: review
+        ? {
+            decision: review.decision,
+            actor: {
+              accountId: review.actorId,
+              displayName: review.actorDisplayName,
+            },
+            decidedAt: review.decidedAt,
+            reason: review.reason,
+          }
+        : null,
     };
   }
 
@@ -243,7 +273,9 @@ export function createBatchService(
     async list(account, query) {
       const cursor = decodeCursor(query.cursor, batchListCursorSchema);
       const records = await repository.listBatches({
-        ...(account.role === 'admin' ? {} : { submitterId: account.accountId }),
+        ...(account.role === 'admin'
+          ? { competitionIds: account.competitionIds }
+          : { submitterId: account.accountId }),
         ...(cursor ? { beforeCreatedAt: cursor.createdAt, beforeBatchId: cursor.batchId } : {}),
         limit: query.limit + 1,
       });
@@ -311,6 +343,40 @@ export function createBatchService(
         repository.listBatchRuleGroups(batch.batchId),
       ]);
       return { data: { batch: batchStatus, errorGroups, items } };
+    },
+
+    async review(account, reference, request) {
+      const batch = await repository.findBatchByReference(reference);
+      if (
+        !batch ||
+        account.role !== 'admin' ||
+        !account.competitionIds.includes(batch.competitionId)
+      ) {
+        throw new BatchForbiddenError();
+      }
+      try {
+        const decision = await repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: account.accountId,
+          decision: request.decision,
+          reason: request.reason,
+        });
+        if (decision.resumePublication) {
+          await repository.publishAcceptedItems(batch.batchId, `reviewer:${account.accountId}`);
+        }
+      } catch (error) {
+        if (
+          error instanceof BatchReviewConflictError ||
+          error instanceof BatchReviewResolutionError ||
+          error instanceof BatchLeaseBusyError
+        ) {
+          throw new BatchConflictError(error.message);
+        }
+        throw error;
+      }
+      const current = await repository.findBatchById(batch.batchId);
+      if (!current) throw new Error('Reviewed batch could not be reloaded.');
+      return { data: await status(current) };
     },
   };
 }

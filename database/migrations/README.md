@@ -43,9 +43,14 @@ The Issue #277 batch receipt migration adds an opaque UUID reference to `batch`.
 batch identifier exposed in receipt and status responses; internal bigint primary keys remain
 server-only.
 
+The Issue #283 review workflow migration adds the explicit `correction_requested` batch state,
+the `returned_for_correction` decision, and a unique per-batch decision guard. The guard serialises
+approve/reject races while same-decision approval retries resume the existing publication safely.
+
 ## AI Declaration
 
 The issue #255 competition-scoped request migration, issue #256 history migration, and issue #265
 file provenance migration were documented with the assistance of Codex[GPT-5].
 The issue #276 batch-ingestion migration was documented with the assistance of Codex[GPT-5].
 The Issue #277 batch receipt migration was documented with the assistance of Codex[GPT-5].
+The Issue #283 review workflow migration was documented with the assistance of Codex[GPT-5].

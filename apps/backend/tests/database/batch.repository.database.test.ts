@@ -4,7 +4,11 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
-import { createBatchRepository } from '../../src/modules/batches/batch.repository';
+import {
+  BatchReviewConflictError,
+  BatchReviewResolutionError,
+  createBatchRepository,
+} from '../../src/modules/batches/batch.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { randomUUID } from 'node:crypto';
 
@@ -44,6 +48,10 @@ function batchMigrationSections(): Promise<{ down: string; up: string }> {
 
 function extendedBatchMigrationSections(): Promise<{ down: string; up: string }> {
   return migrationSections('20260902120000000_extend-batch-persistence.sql');
+}
+
+function reviewWorkflowMigrationSections(): Promise<{ down: string; up: string }> {
+  return migrationSections('20260907100000000_batch-review-workflow.sql');
 }
 
 describe.sequential('batch repository database integration', () => {
@@ -253,6 +261,7 @@ describe.sequential('batch repository database integration', () => {
     const quotedSchemaName = `"${schemaName}"`;
     const batchMigration = await batchMigrationSections();
     const extensionMigration = await extendedBatchMigrationSections();
+    const reviewMigration = await reviewWorkflowMigrationSections();
 
     try {
       await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
@@ -265,12 +274,14 @@ describe.sequential('batch repository database integration', () => {
       `);
       await client.query(batchMigration.up);
       await client.query(extensionMigration.up);
+      await client.query(reviewMigration.up);
 
       const created = await client.query<{ relationName: string | null }>(
         `SELECT to_regclass('batch_checkpoint')::text AS "relationName"`,
       );
       expect(created.rows[0].relationName).toBe('batch_checkpoint');
 
+      await client.query(reviewMigration.down);
       await client.query(extensionMigration.down);
       await client.query(batchMigration.down);
       const removed = await client.query<{ relationName: string | null }>(
@@ -657,6 +668,7 @@ describe.sequential('batch repository database integration', () => {
           overNumber: 0,
           positionInOver: 1,
           sourceIdentity: 'test:delivery:publication-replay',
+          referenceResolutionState: 'resolved',
           state: 'accepted',
           payload: {
             sequenceNumber: 2,
@@ -669,6 +681,32 @@ describe.sequential('batch repository database integration', () => {
           },
         },
       ]);
+
+      const staged = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM delivery
+         WHERE innings_id=$1::bigint AND over_number=0 AND position_in_over=1`,
+        [current.inningsId],
+      );
+      expect(staged.rows[0]).toEqual({ count: '0' });
+      await expect(
+        repository.publishAcceptedItems(batch.batchId, 'worker-before-review'),
+      ).rejects.toThrow('Only an approved batch awaiting publication may be published.');
+
+      await expect(
+        repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          decision: 'approved',
+          reason: 'Validated source and resolved references.',
+        }),
+      ).resolves.toMatchObject({
+        resumePublication: true,
+        review: {
+          decision: 'approved',
+          actorId: current.accountId,
+          reason: 'Validated source and resolved references.',
+        },
+      });
 
       await expect(repository.publishAcceptedItems(batch.batchId, 'worker-a')).resolves.toEqual({
         published: 1,
@@ -687,6 +725,119 @@ describe.sequential('batch repository database integration', () => {
         [batch.batchId, current.inningsId],
       );
       expect(published.rows).toEqual([{ count: '1', state: 'published' }]);
+      const item = await repository.listBatchItems(batch.batchId, { limit: 10 });
+      expect(item[0]).toMatchObject({ state: 'published', publishedEventId: expect.any(String) });
+    });
+  });
+
+  test('blocks approval for unresolved items without persisting a decision', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-unresolved-review`,
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 1,
+          payload: {},
+          referenceResolutionState: 'ambiguous',
+          state: 'rejected',
+        },
+      ]);
+
+      await expect(
+        repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          decision: 'approved',
+          reason: 'Unsafe approval attempt.',
+        }),
+      ).rejects.toBeInstanceOf(BatchReviewResolutionError);
+      await expect(repository.findBatchById(batch.batchId)).resolves.toMatchObject({
+        state: 'awaiting_review',
+      });
+      await expect(repository.getLatestReviewDecision(batch.batchId)).resolves.toBeNull();
+    });
+  });
+
+  test.each([
+    ['rejected', 'rejected'],
+    ['returned_for_correction', 'correction_requested'],
+  ] as const)(
+    'persists %s decisions without publishing canonical data',
+    async (decision, state) => {
+      await withRolledBackTransaction(async (client) => {
+        const current = testRecords();
+        const repository = createBatchRepository(client);
+        const batch = await repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-${decision}`,
+          state: 'awaiting_review',
+        });
+        const before = await client.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM delivery WHERE source_batch_item_id IS NOT NULL',
+        );
+        await repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          decision,
+          reason: 'Reviewer disposition.',
+        });
+        await expect(repository.findBatchById(batch.batchId)).resolves.toMatchObject({ state });
+        await expect(repository.getLatestReviewDecision(batch.batchId)).resolves.toMatchObject({
+          decision,
+          actorId: current.accountId,
+          reason: 'Reviewer disposition.',
+          decidedAt: expect.any(String),
+        });
+        const after = await client.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM delivery WHERE source_batch_item_id IS NOT NULL',
+        );
+        expect(after.rows[0]).toEqual(before.rows[0]);
+      });
+    },
+  );
+
+  test('makes same-decision retries idempotent and rejects a competing decision', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-review-race`,
+        state: 'awaiting_review',
+      });
+      const input = {
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decision: 'approved' as const,
+        reason: 'Approve once.',
+      };
+      await expect(repository.applyReviewDecision(input)).resolves.toMatchObject({
+        resumePublication: true,
+      });
+      await expect(repository.applyReviewDecision(input)).resolves.toMatchObject({
+        resumePublication: true,
+      });
+      await expect(
+        repository.applyReviewDecision({ ...input, decision: 'rejected' }),
+      ).rejects.toBeInstanceOf(BatchReviewConflictError);
+      const decisions = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM batch_review_decision WHERE batch_id=$1::bigint',
+        [batch.batchId],
+      );
+      expect(decisions.rows[0]).toEqual({ count: '1' });
     });
   });
 
@@ -739,7 +890,7 @@ describe.sequential('batch repository database integration', () => {
           uri: `stored-object:${randomUUID()}`,
           sizeBytes: 64,
         },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
       await repository.insertBatchItems(first.batchId, [
         {
@@ -771,7 +922,7 @@ describe.sequential('batch repository database integration', () => {
           uri: `stored-object:${randomUUID()}`,
           sizeBytes: 64,
         },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
 
       await repository.insertBatchItems(exact.batchId, [
@@ -825,7 +976,7 @@ describe.sequential('batch repository database integration', () => {
           uri: `stored-object:${randomUUID()}`,
           sizeBytes: 64,
         },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
 
       await repository.insertBatchItems(conflict.batchId, [
@@ -894,7 +1045,7 @@ describe.sequential('batch repository database integration', () => {
           uri: `stored-object:${randomUUID()}`,
           sizeBytes: 64,
         },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
 
       await repository.insertBatchItems(reusedSource.batchId, [
@@ -956,7 +1107,7 @@ describe.sequential('batch repository database integration', () => {
           uri: `stored-object:${randomUUID()}`,
           sizeBytes: 64,
         },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
 
       await repository.insertBatchItems(batch.batchId, [
@@ -1058,7 +1209,7 @@ describe.sequential('batch repository database integration', () => {
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-publication-lease-reclaim`,
         source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
       await repository.insertBatchItems(batch.batchId, [
         {

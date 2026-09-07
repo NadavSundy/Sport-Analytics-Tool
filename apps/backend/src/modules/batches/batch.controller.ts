@@ -3,6 +3,7 @@ import {
   batchMetadataSchema,
   batchReferenceSchema,
   batchReportQuerySchema,
+  batchReviewRequestSchema,
 } from '@sport-analytics/contracts';
 import type { RequestHandler, Response } from 'express';
 
@@ -202,4 +203,52 @@ export function createBatchReportController(service: BatchService): RequestHandl
 
 export function createBatchReportDownloadController(service: BatchService): RequestHandler {
   return reportRequest(service, true);
+}
+
+export function createBatchReviewController(service: BatchService): RequestHandler {
+  return (request, response, next) => {
+    const reference = batchReferenceSchema.safeParse(request.params.batchReference);
+    const body = batchReviewRequestSchema.safeParse(request.body);
+    if (!reference.success) {
+      response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Batch not found.' } });
+      return;
+    }
+    if (!body.success) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The batch review decision is invalid.',
+          details: body.error.issues.map((issue) => ({
+            code: 'INVALID_FIELD',
+            message: issue.message,
+            field: issue.path.join('.'),
+          })),
+        },
+      });
+      return;
+    }
+    let authenticated: ApplicationAccount;
+    try {
+      authenticated = account(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+    void service
+      .review(authenticated, reference.data, body.data)
+      .then((result) => response.json(result))
+      .catch((error: unknown) => {
+        if (error instanceof BatchForbiddenError) {
+          rejectAuthorization(response);
+          return;
+        }
+        if (error instanceof BatchConflictError) {
+          response.status(409).json({
+            error: { code: 'BATCH_REVIEW_CONFLICT', message: error.message },
+          });
+          return;
+        }
+        next(error);
+      });
+  };
 }
