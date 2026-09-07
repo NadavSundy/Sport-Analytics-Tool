@@ -1,0 +1,98 @@
+name: Sport Analytics - Provision and Deploy Batch Worker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify worker
+        run: |
+          npm run lint --workspace=@sport-analytics/worker
+          npm run typecheck --workspace=@sport-analytics/worker
+          npm run test --workspace=@sport-analytics/worker
+          npm run build --workspace=@sport-analytics/worker
+
+      - name: Validate deployment secrets
+        env:
+          AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+          AZURE_WORKER_RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          AZURE_WORKER_KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          AZURE_WORKER_DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: |
+          missing=0
+          for name in AZURE_WORKER_CREDENTIALS AZURE_WORKER_RESOURCE_GROUP AZURE_WORKER_KEY_VAULT_NAME AZURE_WORKER_DATABASE_SECRET_URI; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+
+      - name: Provision worker infrastructure
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: >-
+          az deployment group create
+          --name worker-${{ github.sha }}-infra
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/worker/main.bicep
+          --parameters deployWorker=false
+          keyVaultName="$KEY_VAULT_NAME"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          storageAccountName=statsthegameblobdev
+
+      - name: Build immutable worker image in Azure Container Registry
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+        run: |
+          ACR_NAME=$(az deployment group show --name worker-${{ github.sha }}-infra --resource-group "$RESOURCE_GROUP" --query properties.outputs.containerRegistryName.value -o tsv)
+          az acr build --registry "$ACR_NAME" --image "sport-analytics-worker:${{ github.sha }}" --file apps/worker/Dockerfile .
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+
+      - name: Deploy worker revision
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: >-
+          az deployment group create
+          --name worker-${{ github.sha }}
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/worker/main.bicep
+          --parameters deployWorker=true
+          containerImage="$ACR_NAME.azurecr.io/sport-analytics-worker:${{ github.sha }}"
+          keyVaultName="$KEY_VAULT_NAME"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          storageAccountName=statsthegameblobdev
+
+      - name: Verify active revision and health
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+        run: |
+          az containerapp revision list --name statsthegame-dev-batch-worker --resource-group "$RESOURCE_GROUP" --query "[?properties.active].{name:name,healthy:properties.healthState,replicas:properties.replicas}" -o table
+          HEALTH=$(az containerapp revision list --name statsthegame-dev-batch-worker --resource-group "$RESOURCE_GROUP" --query "[?properties.active][0].properties.healthState" -o tsv)
+          test "$HEALTH" = "Healthy"

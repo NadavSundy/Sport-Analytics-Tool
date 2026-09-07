@@ -2,6 +2,7 @@ import {
   administratorSubmitterAccessResponseSchema,
   administratorUserManagementResponseSchema,
   type AdministratorManagedUser,
+  type AdministratorRoleUpdate,
   type AdministratorSubmitterAccessUpdate,
   type AdministratorUserManagementResponse,
 } from '@sport-analytics/contracts';
@@ -13,6 +14,28 @@ export class AdminUserManagementContractError extends Error {
     super('The API returned an unexpected administrator response. Please try again.');
     this.name = 'AdminUserManagementContractError';
   }
+}
+
+export async function updateAdministratorUserRole(
+  client: AuthenticatedApiClient,
+  userId: string,
+  update: AdministratorRoleUpdate,
+): Promise<AdministratorManagedUser> {
+  const response = await client.request<unknown>(
+    `/admin/users/${encodeURIComponent(userId)}/role`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update),
+    },
+  );
+  const parsed = administratorSubmitterAccessResponseSchema.safeParse(response);
+
+  if (!parsed.success) {
+    throw new AdminUserManagementContractError();
+  }
+
+  return parsed.data.data;
 }
 
 export async function getAdministratorUserManagement(

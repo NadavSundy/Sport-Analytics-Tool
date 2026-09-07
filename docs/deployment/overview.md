@@ -6,20 +6,23 @@ The selected deployment architecture is:
 | ---------------------- | -------------------------- | ----------------------------------------------- |
 | React frontend         | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
 | Express backend API    | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
+| Asynchronous worker    | Azure Container Apps       | Bicep / ACR Tasks / Gitea Actions               |
 | PostgreSQL database    | Supabase-hosted PostgreSQL | Database migrations through the backend tooling |
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
 | Public documentation   | Cloudflare Pages           | Wrangler CLI                                    |
 
-The following approved Intermediate targets are not yet provisioned or deployed:
+The Intermediate deployment boundaries are:
 
-| Component              | Approved target                                                | Deployment responsibility                                                                |
-| ---------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Private object storage | Azure Storage account with private Blob containers             | Infrastructure provisioning, managed identity/RBAC, lifecycle and recovery configuration |
-| Durable job delivery   | PostgreSQL transactional outbox and Azure Service Bus Standard | Database migration, relay deployment, broker configuration and monitoring                |
-| Batch worker           | Separate Node.js Azure Container App                           | Worker artifact, managed identity and bounded Service Bus KEDA scaling                   |
+| Component              | Approved target                                                | Deployment responsibility                                                             |
+| ---------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Private object storage | Existing Azure Storage account with private Blob containers    | Managed identity/RBAC, lifecycle and recovery configuration                           |
+| Durable job delivery   | PostgreSQL transactional outbox and Azure Service Bus Standard | Issue #365 provisions the broker; #278 implements job creation and relay behavior     |
+| Batch worker           | Separate Node.js Azure Container App                           | Issue #365 provides the host, IaC and deployment workflow; #278 adds batch processing |
 
-ADR-010 and ADR-011 select these targets for Intermediate implementation. Their accepted status does
-not mean the resources currently exist.
+ADR-010 and ADR-011 select these targets for Intermediate implementation. The versioned Bicep target
+and manual deployment workflow are defined under `infra/azure/worker/` and
+`.gitea/workflows/deploy-worker.yml`; repository definitions are not evidence that a live Azure
+deployment has succeeded.
 
 Azure App Service was accepted in ADR 0003 for the frontend and backend. The documentation site is deliberately hosted separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
 
@@ -37,12 +40,15 @@ Azure App Service was accepted in ADR 0003 for the frontend and backend. The doc
 - Keep frontend and backend configuration environment-specific.
 - Keep Supabase generated data endpoints outside the application API boundary.
 - Verify HTTPS, CORS, logs, authentication callbacks and health endpoints after deployment changes.
-- Deploy frontend, backend and documentation independently by production impact, but only after the shared validated-main quality gate.
+- Deploy frontend, backend and documentation independently by production impact, but only after the shared post-merge quality and deployment gate.
+- Deploy the worker manually from a reviewed commit; verify its active revision, dependencies,
+  recovery and scaling before recording it as operational.
 
 See:
 
 - `docs/adr/0003-azure-hosting.md`
 - `docs/deployment/azure-backend.md`
+- `docs/deployment/azure-worker.md`
 - `docs/deployment/azure-fronted.md`
 - `docs/deployment/cloudflare_pages.md`
 - `docs/development/technology-stack.md`
@@ -67,10 +73,16 @@ university-hosted runners.
 
 The automatic validation and affected-target deployments run through `Sport Analytics CI`. The standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Deploy Backend` and `Sport Analytics - Deploy Docs` workflows use the same runner only for manual recovery/redeployment.
 
-The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. When
-PostgreSQL integration is required, database validation may run in parallel with the normal
-validation lane to reduce elapsed feedback time. See [CI/CD and quality gates](../development/ci-cd.md)
-for the authoritative workflow and branch-protection behaviour.
+The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. Cheap
+structure, whitespace, routing and lockfile checks run during planning; application validation and the
+required browser lane then remain parallel. Database integration is executed conditionally inside the
+normal validation job using disposable PostgreSQL 16, avoiding a separate database job's setup overhead.
+
+After an up-to-date protected Pull Request passes the required quality status and is merged, the `main`
+push does not repeat the full application suite. It plans the merged change and runs only affected
+deployment jobs plus their production build/artifact and live smoke checks. See
+[CI/CD and quality gates](../development/ci-cd.md) for the authoritative workflow and branch-protection
+behaviour.
 
 Hosted runner scheduling, Node setup, PostgreSQL host-network operation, repository validation and
 Playwright execution were established through Issue #10. New workflow changes must preserve that
@@ -92,3 +104,5 @@ The established hosted baseline confirms:
 The preceding document was reviewed and aligned with the current repository architecture with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #356 approved Intermediate deployment targets were documented with the assistance of
 Codex[GPT-5].
+The issue #365 versioned worker target and deployment control were documented with the assistance
+of Codex[GPT-5].

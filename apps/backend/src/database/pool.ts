@@ -17,8 +17,8 @@ function createDatabasePool(options: DatabasePoolOptions): Pool {
   const pool = new Pool({
     connectionString: options.connectionString,
     ssl: options.ssl,
-    max: options.max ?? 10,
-    connectionTimeoutMillis: 10_000,
+    min: 1,
+
     idleTimeoutMillis: 30_000,
   });
 
@@ -41,7 +41,12 @@ function loadApplicationDatabaseUrl(): string {
   return connectionString;
 }
 
-function loadApplicationTlsConfiguration(): PoolConfig['ssl'] {
+function loadApplicationTlsConfiguration(connectionString: string): PoolConfig['ssl'] {
+  const hostname = new URL(connectionString).hostname;
+  if (hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1') {
+    return undefined;
+  }
+
   const certificatePath = resolve(__dirname, '../../certs/supabase-ca.crt');
 
   return {
@@ -52,9 +57,10 @@ function loadApplicationTlsConfiguration(): PoolConfig['ssl'] {
 
 export function getDatabasePool(): Pool {
   if (!applicationPool) {
+    const connectionString = loadApplicationDatabaseUrl();
     applicationPool = createDatabasePool({
-      connectionString: loadApplicationDatabaseUrl(),
-      ssl: loadApplicationTlsConfiguration(),
+      connectionString,
+      ssl: loadApplicationTlsConfiguration(connectionString),
     });
   }
 

@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import type { AdminRepository } from '../../src/modules/admin/admin.repository';
 import { createAdminService } from '../../src/modules/admin/admin.service';
+import { SupabaseAdminEmailLookupError } from '../../src/auth/supabase-auth';
 import { createTestAccount } from '../test-app';
 
 function repository(): AdminRepository {
@@ -98,6 +99,38 @@ describe('administrator user-management service', () => {
       },
     });
     expect(readAuthUserEmail).toHaveBeenCalledWith('contributor-auth-subject');
+  });
+
+  test('retains only a safe provider failure category when email lookup fails', async () => {
+    const adminRepository = repository();
+    vi.mocked(adminRepository.listUserManagementData).mockResolvedValue({
+      users: [
+        {
+          id: '42',
+          authSubject: 'deleted:123e4567-e89b-42d3-a456-426614174000',
+          displayName: null,
+          role: 'viewer',
+          approvalState: 'not_requested',
+          requestedCompetition: null,
+          competitionScopes: [],
+          disabled: true,
+          updatedAt: '2026-08-16T12:00:00.000Z',
+          submitterAccessUpdatedAt: null,
+          submitterAccessUpdatedBy: null,
+          previouslyRevoked: false,
+        },
+      ],
+      availableScopes: [],
+    });
+    const service = createAdminService(
+      adminRepository,
+      vi.fn().mockRejectedValue(new SupabaseAdminEmailLookupError('auth_user_not_found')),
+    );
+
+    await expect(service.listUsers()).rejects.toMatchObject({
+      name: 'AdminEmailLookupUnavailableError',
+      failure: 'auth_user_not_found',
+    });
   });
 
   test('passes the administrator identity and requested scopes to the repository', async () => {

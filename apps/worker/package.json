@@ -1,0 +1,36 @@
+{
+  "name": "@sport-analytics/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prepare:shared": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing",
+    "predev": "npm run prepare:shared",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "prebuild": "npm run prepare:shared",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "eslint src tests scripts --ext .ts",
+    "pretypecheck": "npm run prepare:shared",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run prepare:shared",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "probe:enqueue": "tsx --env-file=.env scripts/enqueue-probe.ts"
+  },
+  "dependencies": {
+    "@sport-analytics/batch-processing": "0.1.0",
+    "@sport-analytics/contracts": "0.1.0",
+    "@azure/identity": "4.13.1",
+    "@azure/service-bus": "7.9.5",
+    "@azure/storage-blob": "12.27.0",
+    "pg": "^8.22.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/pg": "^8.20.4",
+    "tsx": "^4.19.2",
+    "typescript": "5.5.4",
+    "vitest": "^2.1.4"
+  }
+}

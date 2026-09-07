@@ -48,7 +48,7 @@ function isDatabaseIdentifier(value: string): boolean {
 }
 
 export function createAdminListUsersController(service: AdminService): RequestHandler {
-  return (_request, response, next) => {
+  return (request, response, next) => {
     void service
       .listUsers()
       .then((result) => {
@@ -56,6 +56,10 @@ export function createAdminListUsersController(service: AdminService): RequestHa
       })
       .catch((error: unknown) => {
         if (error instanceof AdminEmailLookupUnavailableError) {
+          request.log.warn(
+            { event: 'admin_email_lookup_failed', failure: error.failure },
+            'Administrator email lookup failed',
+          );
           response.status(503).json({
             error: {
               code: 'ADMIN_EMAIL_LOOKUP_UNAVAILABLE',

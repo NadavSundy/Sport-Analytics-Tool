@@ -35,7 +35,7 @@ foundation; the remaining issues listed in section 13 carry the application and 
 
 **Direct event submission** (#27, #49, #50) accepts a JSON request from an authenticated submitter and validates it against `submissionRequestSchema`. It does not create fixtures or innings.
 
-**File upload submission** (#265) accepts a single `.json` or `.csv` file at `POST /submissions/uploads`, parses it into the same submission shape, and processes it synchronously within the request. It uses `multer.memoryStorage()` with a 1 MB file limit.
+**File upload submission** (#265) accepts a single `.json` or `.csv` file at `POST /submissions/uploads`, parses it into the same submission shape, and processes it synchronously within the request. It uses `multer.memoryStorage()` with the `MAX_SUBMISSION_UPLOAD_BYTES` file limit from `@sport-analytics/contracts` (1 MB).
 
 ### 2.2 The constraint that requires batch ingestion
 
@@ -47,7 +47,7 @@ events: z.array(submissionEventSchema).min(1).max(1_000);
 
 At a mean of approximately 229 deliveries per fixture, one submission carries about four fixtures. A seventy-match competition season is of the order of 16,000 deliveries and therefore requires at least seventeen submissions, each independently authorised, validated and recorded.
 
-This is the reason batch ingestion exists. The 1 MB file limit is not the binding constraint and is never reached: 1,000 events is reached first.
+This is the reason batch ingestion exists. The `MAX_SUBMISSION_UPLOAD_BYTES` file limit is not the binding constraint and is never reached: 1,000 events is reached first.
 
 ### 2.3 The problem this design must solve
 
@@ -139,6 +139,26 @@ review can select an existing record or approve a proposed canonical record, ret
 reference and the resolution decision for provenance. See
 [`docs/data/batch-submission-packages.md`](../data/batch-submission-packages.md).
 
+### 3.7 Source identifiers unsupported for competition, team and innings
+
+Three entity types hold no source-reference column: `competition`, `team` and `innings`. Only
+`fixture.source_ref` and `person.source_ref` exist, and #360 adds no further columns. A source
+identifier for one of those three therefore has nothing to be compared against and can never
+resolve, on the first attempt or any later one. That is a different situation from a reference the
+platform has not seen yet, and the resolver reports it as such.
+
+1. Where the reference also carries a usable name, or an ordinal in the case of an innings, that
+   value is the supported key and resolution proceeds on it. The submitted identifier is recorded as
+   having had no effect, so a submitter learns the field was ignored rather than assuming it
+   resolved.
+2. Where the reference carries only the identifier, the reference is staged with a reason stating
+   that source identifiers are not supported for that entity type and naming the key that is. A bare
+   "not found" would invite the submitter to resubmit the same package unchanged.
+3. The package schemas remain permissive and continue to accept `sourceId` for all three. The policy
+   is enforced in the resolver, not by forbidding the field, because the shipped season-upload
+   templates emit an innings carrying both a `sourceId` and readable context. Rejecting the field
+   would make a template-derived package unresolvable.
+
 ---
 
 ## 4. Batch Lifecycle States
@@ -198,7 +218,7 @@ _Satisfies acceptance criterion 2._
 
 ### 5.1 Why heap storage cannot be extended to batch
 
-`multer.memoryStorage()` holds the entire payload in application heap. At the current 1 MB limit this is acceptable. At any limit permitting a season upload it is not: three concurrent submitters at 50 MB would place 150 MB of submitter-controlled data in the backend's heap, on an instance that also serves every read endpoint.
+`multer.memoryStorage()` holds the entire payload in application heap. At the current `MAX_SUBMISSION_UPLOAD_BYTES` (1 MB) limit this is acceptable. At any limit permitting a season upload it is not: three concurrent submitters at 50 MB would place 150 MB of submitter-controlled data in the backend's heap, on an instance that also serves every read endpoint.
 
 The payload must therefore be streamed to object storage and never held in application memory in its entirety.
 

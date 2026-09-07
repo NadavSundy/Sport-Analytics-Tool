@@ -14,9 +14,9 @@ reject an unsupported version rather than attempting a best-effort parse.
 
 The deployed frontend publishes these downloadable starter files:
 
-- [Canonical JSON template](/season-upload-template.json)
-- [Spreadsheet CSV template](/season-upload-template.csv)
-- [Multi-file manifest template](/season-upload-manifest-template.json)
+- [Canonical JSON template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-template.json)
+- [Spreadsheet CSV template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-template.csv)
+- [Multi-file manifest template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-manifest-template.json)
 
 The CSV is a spreadsheet-oriented flat view of the same values. Repeating
 fixture and innings context in each row is intentional: spreadsheet users do
@@ -42,7 +42,7 @@ delivery identity or ordering value.
       "innings": [
         {
           "sourceId": "cricsheet:innings:1412526-1",
-          "context": { "ordinal": 1, "battingTeam": { "context": { "name": "Wits" } } },
+          "context": { "ordinal": 0, "battingTeam": { "context": { "name": "Wits" } } },
           "events": [
             {
               "eventId": "cricsheet:delivery:1412526-1-1",
@@ -67,6 +67,10 @@ always `namespace:entityType:value`; it is compared only within its namespace
 and entity type. A reference may instead use readable context, or include both
 for a useful resolution audit. Names are scoped by the enclosing competition,
 season, fixture and, where supplied, team; they are never globally unique.
+
+An innings `ordinal` is zero-based, so the first innings of a fixture is `0`. It
+is the same number the platform stores and the same number the public read API
+returns, so no conversion applies in either direction.
 
 `eventId` is the stable delivery identity for retry and duplicate detection.
 `occurrenceSequence` gives the delivery's order within its innings. Neither the

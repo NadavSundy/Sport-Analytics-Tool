@@ -251,3 +251,54 @@ export function createCorrectionController(service: SubmissionService): RequestH
       });
   };
 }
+
+export function createCorrectionHistoryController(service: SubmissionService): RequestHandler {
+  return (request, response, next) => {
+    const eventId = submissionEventIdSchema.safeParse(request.params.eventId);
+    if (!eventId.success) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The correction history request is invalid.',
+          details: eventId.error.issues.map((issue) => ({
+            code: 'INVALID_FIELD',
+            message: issue.message,
+            field: 'eventId',
+          })),
+        },
+      });
+      return;
+    }
+
+    let account: ApplicationAccount;
+    try {
+      account = getAuthenticatedAccount(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+
+    void service
+      .getCorrectionHistory(account, eventId.data)
+      .then((history) => response.status(200).json(history))
+      .catch((error: unknown) => {
+        if (error instanceof SubmissionForbiddenError) {
+          rejectAuthorization(response);
+          return;
+        }
+
+        if (error instanceof SubmissionValidationError) {
+          response.status(422).json({
+            error: {
+              code: 'VALIDATION_FAILED',
+              message: error.message,
+              details: error.details,
+            },
+          });
+          return;
+        }
+
+        next(error);
+      });
+  };
+}

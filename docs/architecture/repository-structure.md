@@ -2,7 +2,8 @@
 
 ## Design decision
 
-Use an npm-workspace monorepo with separate deployable frontend and backend applications and a small shared contracts package.
+Use an npm-workspace monorepo with separately deployable frontend, backend and asynchronous worker
+applications and a small shared contracts package.
 
 ```text
 Sport-Analytics-Tool/
@@ -59,10 +60,12 @@ Sport-Analytics-Tool/
 1. `apps/frontend` may communicate with `apps/backend` only through the documented HTTP API.
 2. `apps/frontend` must not query application tables through Supabase-generated endpoints.
 3. `apps/backend` owns validation, authorisation, business rules, external integrations, and database access.
-4. `packages/contracts` contains schemas and types only; it is not a third application or service.
-5. Database migrations are team-controlled and versioned under `database/migrations`.
-6. Cross-application end-to-end, performance, and accessibility tests live under `tests/`; unit and integration tests stay close to the application they test.
-7. Evidence files are records, not marketing claims. Store only genuine meetings, results, decisions, and contributions.
+4. `apps/worker` is a separate Node.js process boundary for durable asynchronous work. It has no
+   browser or HTTP-backend dependency.
+5. `packages/contracts` contains schemas and types only; it is not an application or service.
+6. Database migrations are team-controlled and versioned under `database/migrations`.
+7. Cross-application end-to-end, performance, and accessibility tests live under `tests/`; unit and integration tests stay close to the application they test.
+8. Evidence files are records, not marketing claims. Store only genuine meetings, results, decisions, and contributions.
 
 ## Original files preserved
 
@@ -81,3 +84,4 @@ The monorepo reduces setup overhead and supports coordinated changes. dependency
 
 The validation-evidence directory was added to the documented repository tree with the assistance
 of Codex[GPT-5.6 Sol].
+The independently deployable worker boundary was added with the assistance of Codex[GPT-5].

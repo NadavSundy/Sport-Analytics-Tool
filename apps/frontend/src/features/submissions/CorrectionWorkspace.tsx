@@ -124,7 +124,7 @@ interface CorrectionFormProps {
   fieldErrors: FieldErrors;
   fixture: Fixture;
   onChange: (event: SubmissionEvent) => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>, wicketsJson: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>, wicketsJson: string, reason: string) => void;
   participants: Participant[];
   result: CorrectionResult;
 }
@@ -140,10 +140,12 @@ function CorrectionForm({
 }: CorrectionFormProps) {
   const disabled = result.kind === 'submitting';
   const [wicketsJson, setWicketsJson] = useState(() => JSON.stringify(event.wickets, null, 2));
+  const [reason, setReason] = useState('');
   const extras = extraTotal(event);
 
   useEffect(() => {
     setWicketsJson(JSON.stringify(event.wickets, null, 2));
+    setReason('');
   }, [event.eventId, event.wickets]);
 
   function update<Key extends keyof SubmissionEvent>(key: Key, value: SubmissionEvent[Key]) {
@@ -163,7 +165,7 @@ function CorrectionForm({
   return (
     <form
       className="correction-form"
-      onSubmit={(submitEvent) => onSubmit(submitEvent, wicketsJson)}
+      onSubmit={(submitEvent) => onSubmit(submitEvent, wicketsJson, reason)}
     >
       <header className="correction-form__heading">
         <div>
@@ -374,6 +376,34 @@ function CorrectionForm({
         ) : null}
       </div>
 
+      <div className="submission-field">
+        <label htmlFor="correction-reason">Reason for correction</label>
+        <p className="field-help" id="correction-reason-help">
+          Explain why this accepted event must change. This note becomes part of its audit history.
+        </p>
+        <textarea
+          aria-describedby={[
+            'correction-reason-help',
+            fieldErrors.reason ? 'correction-reason-error' : null,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-invalid={fieldErrors.reason ? true : undefined}
+          disabled={disabled}
+          id="correction-reason"
+          maxLength={1000}
+          onChange={(changeEvent) => setReason(changeEvent.target.value)}
+          required
+          rows={3}
+          value={reason}
+        />
+        {fieldErrors.reason ? (
+          <p className="ui-field__error" id="correction-reason-error">
+            {fieldErrors.reason}
+          </p>
+        ) : null}
+      </div>
+
       <button className="button button--primary" disabled={disabled} type="submit">
         {disabled ? 'Saving correction...' : 'Save correction'}
       </button>
@@ -431,6 +461,7 @@ export function CorrectionWorkspace({
   async function handleCorrection(
     submitEvent: React.FormEvent<HTMLFormElement>,
     wicketsJson: string,
+    reason: string,
   ) {
     submitEvent.preventDefault();
     if (!draft) {
@@ -463,7 +494,7 @@ export function CorrectionWorkspace({
     setFieldErrors({});
 
     try {
-      const response = await correctEvent(client, fixture.fixtureId, correctedDraft);
+      const response = await correctEvent(client, fixture.fixtureId, correctedDraft, reason);
       setEvents((currentEvents) =>
         currentEvents.map((event) =>
           event.eventId === correctedDraft.eventId ? correctedDraft : event,

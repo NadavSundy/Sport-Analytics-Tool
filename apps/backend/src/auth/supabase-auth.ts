@@ -19,6 +19,16 @@ export type DeleteAuthUser = (authSubject: string) => Promise<DeleteAuthUserResu
 /** Reads only the provider field that the administrator management API is allowed to expose. */
 export type ReadAuthUserEmail = (authSubject: string) => Promise<string>;
 
+export type AdminEmailLookupFailure = 'auth_user_not_found' | 'email_missing' | 'provider_error';
+
+/** A safe diagnostic category for server logs; it deliberately excludes provider messages and data. */
+export class SupabaseAdminEmailLookupError extends Error {
+  constructor(public readonly failure: AdminEmailLookupFailure) {
+    super('Supabase Auth administrative email lookup failed');
+    this.name = 'SupabaseAdminEmailLookupError';
+  }
+}
+
 export function createSupabaseTokenVerifier(environment: SupabaseEnvironment): VerifyAccessToken {
   const supabase = createClient(environment.SUPABASE_URL, environment.SUPABASE_PUBLISHABLE_KEY, {
     auth: {
@@ -96,8 +106,15 @@ export function createSupabaseAdminUserEmailReader(
       error,
     } = await supabaseAdmin.auth.admin.getUserById(authSubject);
 
-    if (error || !user?.email) {
-      throw new Error('Supabase Auth administrative email lookup failed');
+    if (error) {
+      throw new SupabaseAdminEmailLookupError(
+        'code' in error && error.code === 'user_not_found'
+          ? 'auth_user_not_found'
+          : 'provider_error',
+      );
+    }
+    if (!user?.email) {
+      throw new SupabaseAdminEmailLookupError('email_missing');
     }
 
     return user.email;

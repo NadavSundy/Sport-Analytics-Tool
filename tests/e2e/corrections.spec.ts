@@ -181,6 +181,7 @@ test('authorised submitter corrects an event by keyboard and sees refreshed stat
       expect(body).toMatchObject({
         fixtureId: '7',
         schemaVersion: '1.0',
+        reason: 'Correct scorer transcription.',
         event: { runs: { offBat: 6, extras: 0, total: 6 } },
       });
       expect(body.event).not.toHaveProperty('sequenceNumber');
@@ -199,6 +200,7 @@ test('authorised submitter corrects an event by keyboard and sees refreshed stat
   const offBat = page.getByLabel(/Runs off the bat/);
   await offBat.focus();
   await offBat.fill('6');
+  await page.getByLabel('Reason for correction').fill('Correct scorer transcription.');
   const save = page.getByRole('button', { name: 'Save correction' });
   await save.focus();
   await page.keyboard.press('Enter');
@@ -278,6 +280,7 @@ test('correction validation remains associated with the relevant input', async (
   await openAcceptedSubmission(page);
   const ballNumber = page.getByLabel(/Printed ball number/);
   await ballNumber.fill('invalid');
+  await page.getByLabel('Reason for correction').fill('Correct scorer transcription.');
   await page.getByRole('button', { name: 'Save correction' }).click();
 
   await expect(page.getByRole('heading', { name: 'Correction rejected' })).toBeFocused();

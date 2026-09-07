@@ -76,7 +76,7 @@ const fixtureContextSchema = z
 
 const inningsContextSchema = z
   .object({
-    ordinal: z.number().int().positive().max(8),
+    ordinal: z.number().int().nonnegative().max(7),
     battingTeam: teamReferenceSchema,
   })
   .strict();
@@ -116,6 +116,11 @@ export const seasonUploadEventSchema = z
     // ball number and remains unchanged when a correction is submitted.
     eventId: sourceIdentifierFor('delivery'),
     occurrenceSequence: z.number().int().positive().max(2_147_483_647),
+    // Canonical delivery coordinates are optional for compatibility with the
+    // initial templates. The batch expander prefers them when supplied and can
+    // deterministically derive them from ordered source rows where possible.
+    overNumber: z.number().int().min(0).max(32_767).optional(),
+    positionInOver: z.number().int().min(0).max(32_767).optional(),
     ballLabel: z.string().max(32).optional(),
     operation: z.enum(['upsert', 'correction']).default('upsert'),
     correctsEventId: sourceIdentifierFor('delivery').optional(),

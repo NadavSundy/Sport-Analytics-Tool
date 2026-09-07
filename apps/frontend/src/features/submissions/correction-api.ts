@@ -17,6 +17,7 @@ export async function correctEvent(
   client: AuthenticatedApiClient,
   fixtureId: string,
   event: SubmissionEvent,
+  reason: string,
 ): Promise<CorrectionResponse> {
   const { eventId, sequenceNumber: _sequenceNumber, ...correctedEvent } = event;
   void _sequenceNumber;
@@ -29,6 +30,7 @@ export async function correctEvent(
       body: JSON.stringify({
         fixtureId,
         schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        reason,
         event: correctedEvent,
       }),
     },

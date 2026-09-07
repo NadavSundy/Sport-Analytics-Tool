@@ -1234,8 +1234,8 @@ paths:
   /api/v1/batches/{batchReference}:
     get:
       tags: [Batches]
-      summary: Retrieve an owned batch receipt status
-      operationId: getBatchReceipt
+      summary: Retrieve asynchronous batch validation status and progress
+      operationId: getBatchStatus
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
       parameters:
@@ -1243,10 +1243,10 @@ paths:
       responses:
         '200':
           {
-            description: Batch receipt status.,
+            description: Current durable batch lifecycle state and validation progress.,
             content:
               {
-                application/json: { schema: { $ref: '#/components/schemas/BatchReceiptResponse' } },
+                application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } },
               },
           }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -1296,6 +1296,41 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '422':
           description: The correction failed contract, reference, or source-event validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/v1/submissions/events/{eventId}/history:
+    get:
+      tags:
+        - Submissions
+      summary: Retrieve immutable correction history for an accepted event
+      description: Returns ordered before/after revisions, requester and reason, source provenance, explicit predecessor/replacement links, and review provenance where review applies. Submitters require the fixture competition scope; administrators may inspect any eligible fixture.
+      operationId: getSubmissionEventCorrectionHistory
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ordered immutable correction history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectionHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: The event identifier is invalid or does not identify an accepted event.
           content:
             application/json:
               schema:
@@ -3413,6 +3448,49 @@ components:
       properties:
         data: { $ref: '#/components/schemas/BatchReceipt' }
 
+    BatchProgress:
+      type: object
+      additionalProperties: false
+      required: [total, processed, accepted, rejected]
+      properties:
+        total: { type: integer, minimum: 0 }
+        processed: { type: integer, minimum: 0 }
+        accepted: { type: integer, minimum: 0 }
+        rejected: { type: integer, minimum: 0 }
+
+    BatchStatus:
+      type: object
+      additionalProperties: false
+      required: [batchReference, status, statusUrl, receivedAt, updatedAt, progress]
+      properties:
+        batchReference: { type: string, format: uuid }
+        status:
+          type: string
+          enum:
+            [
+              received,
+              stored,
+              validating,
+              rejected,
+              awaiting_review,
+              publishing,
+              published,
+              partially_published,
+              failed,
+              superseded,
+            ]
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        progress: { $ref: '#/components/schemas/BatchProgress' }
+
+    BatchStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchStatus' }
+
     SubmissionFielder:
       type: object
       additionalProperties: false
@@ -3714,13 +3792,17 @@ components:
     CorrectionRequest:
       type: object
       additionalProperties: false
-      required: [fixtureId, schemaVersion, event]
+      required: [fixtureId, schemaVersion, reason, event]
       properties:
         fixtureId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         schemaVersion:
           type: string
           const: '1.0'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
         event:
           $ref: '#/components/schemas/CorrectionEvent'
 
@@ -3745,3 +3827,83 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Correction'
+
+    CorrectionHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          correctionId,
+          previousDeliveryId,
+          replacementDeliveryId,
+          previousRevision,
+          resultingRevision,
+          requester,
+          correctedAt,
+          reason,
+          source,
+          previousState,
+          resultingState,
+          review,
+        ]
+      properties:
+        correctionId: { $ref: '#/components/schemas/ApiIdentifier' }
+        previousDeliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        replacementDeliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        previousRevision: { type: integer, minimum: 1 }
+        resultingRevision: { type: integer, minimum: 1 }
+        requester:
+          type: object
+          additionalProperties: false
+          required: [accountId, displayName]
+          properties:
+            accountId: { $ref: '#/components/schemas/ApiIdentifier' }
+            displayName: { type: [string, 'null'] }
+        correctedAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1 }
+        source:
+          type: object
+          additionalProperties: false
+          required: [submissionId, submissionEventOrdinal, batchItemId]
+          properties:
+            submissionId: { $ref: '#/components/schemas/ApiIdentifier' }
+            submissionEventOrdinal: { type: [integer, 'null'], minimum: 0 }
+            batchItemId:
+              oneOf:
+                - { $ref: '#/components/schemas/ApiIdentifier' }
+                - { type: 'null' }
+        previousState: { $ref: '#/components/schemas/SubmissionEvent' }
+        resultingState: { $ref: '#/components/schemas/SubmissionEvent' }
+        review:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [reviewer, decision, reviewedAt, reason]
+              properties:
+                reviewer:
+                  type: object
+                  additionalProperties: false
+                  required: [accountId, displayName]
+                  properties:
+                    accountId: { $ref: '#/components/schemas/ApiIdentifier' }
+                    displayName: { type: [string, 'null'] }
+                decision: { type: string, enum: [approved, rejected] }
+                reviewedAt: { type: string, format: date-time }
+                reason: { type: string, minLength: 1 }
+            - { type: 'null' }
+
+    CorrectionHistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [eventId, fixtureId, corrections]
+          properties:
+            eventId: { type: string, format: uuid }
+            fixtureId: { $ref: '#/components/schemas/ApiIdentifier' }
+            corrections:
+              type: array
+              items: { $ref: '#/components/schemas/CorrectionHistoryEntry' }

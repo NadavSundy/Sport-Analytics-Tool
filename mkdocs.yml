@@ -93,6 +93,7 @@ nav:
       - Azure Application Hosting: deployment/azure.md
       - Azure Hosting Decision Record: adr/0003-azure-hosting.md
       - Azure Backend: deployment/azure-backend.md
+      - Azure Batch Worker: deployment/azure-worker.md
       - Private Object Storage Operations: deployment/object-storage-operations.md
       - Azure Frontend: deployment/azure-fronted.md
       - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
@@ -105,7 +106,9 @@ nav:
       - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
   - Testing:
       - CI/CD and Quality Gates: development/ci-cd.md
+      - Local CI Validation: development/local-ci.md
       - Automated & End-to-End Testing: development/testing.md
+      - Representative-scale Performance Baseline: development/performance-baseline.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
       - Bug Tracking: testing/bug-tracking.md

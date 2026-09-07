@@ -32,6 +32,21 @@ Production Blob authentication uses `DefaultAzureCredential` with the Azure App 
 identity. Azure Storage connection strings, account keys, SAS tokens, and shared-key credentials
 are not supported application configuration.
 
+## Asynchronous worker runtime
+
+The independently deployed worker reads its complete validated configuration from
+`apps/worker/.env.example`. Its required server-side settings are `DATABASE_URL`,
+`SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE`, `SERVICE_BUS_QUEUE_NAME`,
+`AZURE_STORAGE_ACCOUNT_NAME` and `AZURE_STORAGE_CONTAINER_NAME`. Production also sets
+`DATABASE_SSL_MODE=verify-full` and `AZURE_CLIENT_ID` for its user-assigned managed identity.
+Concurrency, health intervals, lock renewal and shutdown drain time are bounded by the worker
+schema. `WORKER_PROBE_DELAY_MS` exists only for deliberate recovery testing and remains zero in the
+deployment template.
+
+The Container App obtains `DATABASE_URL` through a Key Vault reference. Service Bus and Blob access
+use managed identity, so connection strings, account keys and SAS tokens are unsupported. See
+[Azure asynchronous batch worker](deployment/azure-worker.md) for the exact table and procedures.
+
 ## Test and support-script variables
 
 | Variable            | Required                            | Secret | Purpose                                                                                                                                                                                    |
@@ -58,6 +73,7 @@ Never commit:
 - Supabase secret keys or legacy `service_role` keys;
 - Azure publish profiles;
 - Azure Storage account keys, connection strings, and SAS tokens;
+- Azure Service Bus connection strings or shared-access keys;
 - Cloudflare API tokens; or
 - external API credentials.
 
@@ -70,3 +86,5 @@ The optional server-only account-deletion configuration was documented with the 
 Codex[GPT-5].
 The non-secret Azure Blob identifiers and managed-identity requirement were documented with the
 assistance of Codex[GPT-5].
+The asynchronous worker configuration and secret boundary were documented with the assistance of
+Codex[GPT-5].

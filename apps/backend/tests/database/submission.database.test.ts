@@ -177,22 +177,9 @@ describe.sequential('direct submission database integration', () => {
   });
 
   afterAll(async () => {
-    if (!pool || !records) {
+    if (!pool) {
       return;
     }
-
-    await executeQuery(pool, 'UPDATE fixture SET first_seen_in = NULL WHERE fixture_id = $1', [
-      records.fixtureId,
-    ]);
-    await executeQuery(pool, 'DELETE FROM delivery WHERE innings_id = $1', [records.inningsId]);
-    await executeQuery(pool, 'DELETE FROM submission WHERE fixture_id = $1', [records.fixtureId]);
-    await executeQuery(pool, 'DELETE FROM fixture WHERE fixture_id = $1', [records.fixtureId]);
-    await executeQuery(pool, 'DELETE FROM app_user WHERE app_user_id = $1', [records.accountId]);
-    await executeQuery(pool, 'DELETE FROM competition WHERE competition_id = $1', [
-      records.competitionId,
-    ]);
-    await executeQuery(pool, 'DELETE FROM team WHERE name LIKE $1', [`${sourcePrefix}-%`]);
-    await executeQuery(pool, 'DELETE FROM person WHERE source_ref LIKE $1', [`${sourcePrefix}-%`]);
     await pool.end();
   });
 
@@ -498,7 +485,12 @@ describe.sequential('direct submission database integration', () => {
     await request(app())
       .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174010')
       .set('Authorization', 'Bearer database-test-token')
-      .send({ fixtureId: testRecords().fixtureId, schemaVersion: '1.0', event })
+      .send({
+        fixtureId: testRecords().fixtureId,
+        schemaVersion: '1.0',
+        reason: 'Invalid correction must roll back.',
+        event,
+      })
       .expect(422);
 
     const after = await executeQuery<{ count: number; runsTotal: number }>(
@@ -511,6 +503,42 @@ describe.sequential('direct submission database integration', () => {
       ['123e4567-e89b-42d3-a456-426614174010'],
     );
     expect(after.rows).toEqual(before.rows);
+
+    await executeQuery(
+      databasePool(),
+      "UPDATE app_user SET application_role = 'viewer' WHERE app_user_id = $1",
+      [testRecords().accountId],
+    );
+    try {
+      event.runs = { offBat: 2, extras: 0, total: 2 };
+      await request(app())
+        .put('/api/v1/submissions/events/123e4567-e89b-42d3-a456-426614174010')
+        .set('Authorization', 'Bearer database-test-token')
+        .send({
+          fixtureId: testRecords().fixtureId,
+          schemaVersion: '1.0',
+          reason: 'This requester must not be able to change the event.',
+          event,
+        })
+        .expect(403);
+    } finally {
+      await executeQuery(
+        databasePool(),
+        "UPDATE app_user SET application_role = 'submitter' WHERE app_user_id = $1",
+        [testRecords().accountId],
+      );
+    }
+
+    const afterUnauthorized = await executeQuery<{ count: number; runsTotal: number }>(
+      databasePool(),
+      `
+        SELECT count(*)::int AS count, sum(runs_total)::int AS "runsTotal"
+        FROM delivery
+        WHERE source_event_id = $1 AND superseded_at IS NULL
+      `,
+      ['123e4567-e89b-42d3-a456-426614174010'],
+    );
+    expect(afterUnauthorized.rows).toEqual(before.rows);
   });
 
   test('atomically supersedes a corrected event and refreshes only its derived statistics', async () => {
@@ -551,22 +579,37 @@ describe.sequential('direct submission database integration', () => {
     const response = await request(app())
       .put(`/api/v1/submissions/events/${correctedEventId}`)
       .set('Authorization', 'Bearer database-test-token')
-      .send({ fixtureId: testRecords().fixtureId, schemaVersion: '1.0', event })
+      .send({
+        fixtureId: testRecords().fixtureId,
+        schemaVersion: '1.0',
+        reason: 'Correct scorer transcription.',
+        event,
+      })
       .expect(200);
 
     expect(response.body.data).toMatchObject({ eventId: correctedEventId, revision: 2 });
     const revisions = await executeQuery<{
+      deliveryId: string;
       sourceEventId: string | null;
       revision: number;
+      supersedesDeliveryId: string | null;
       supersededBy: string | null;
+      sequenceNumber: number;
+      submissionId: string;
+      eventOrdinal: number;
       runsTotal: number;
     }>(
       databasePool(),
       `
         SELECT
+          delivery_id::text AS "deliveryId",
           source_event_id::text AS "sourceEventId",
           revision,
+          supersedes_delivery_id::text AS "supersedesDeliveryId",
           superseded_by::text AS "supersededBy",
+          innings_sequence AS "sequenceNumber",
+          submission_id::text AS "submissionId",
+          submission_event_ordinal AS "eventOrdinal",
           runs_total AS "runsTotal"
         FROM delivery
         WHERE innings_id = $1 AND position_in_over = 0
@@ -574,10 +617,28 @@ describe.sequential('direct submission database integration', () => {
       `,
       [testRecords().inningsId],
     );
-    expect(revisions.rows).toEqual([
-      { sourceEventId: null, revision: 1, supersededBy: expect.any(String), runsTotal: 1 },
-      { sourceEventId: correctedEventId, revision: 2, supersededBy: null, runsTotal: 4 },
-    ]);
+    const originalRevision = revisions.rows[0]!;
+    const correctedRevision = revisions.rows[1]!;
+    expect(revisions.rows).toHaveLength(2);
+    expect(originalRevision).toMatchObject({
+      sourceEventId: correctedEventId,
+      revision: 1,
+      supersedesDeliveryId: null,
+      supersededBy: correctedRevision.deliveryId,
+      sequenceNumber: 1,
+      eventOrdinal: 0,
+      runsTotal: 1,
+    });
+    expect(correctedRevision).toMatchObject({
+      sourceEventId: correctedEventId,
+      revision: 2,
+      supersedesDeliveryId: originalRevision.deliveryId,
+      supersededBy: null,
+      sequenceNumber: 1,
+      submissionId: originalRevision.submissionId,
+      eventOrdinal: 0,
+      runsTotal: 4,
+    });
 
     const afterSource = await loadFixtureStatisticsSource(testRecords().fixtureId, databasePool());
     expect(afterSource?.events).toHaveLength(2);
@@ -591,6 +652,173 @@ describe.sequential('direct submission database integration', () => {
     );
     expect(beforeInnings?.metrics.totalRuns).toBe(3);
     expect(afterInnings?.metrics.totalRuns).toBe(6);
+
+    const history = await request(app())
+      .get(`/api/v1/submissions/events/${correctedEventId}/history`)
+      .set('Authorization', 'Bearer database-test-token')
+      .expect(200);
+    expect(history.body.data.corrections).toEqual([
+      expect.objectContaining({
+        previousDeliveryId: originalRevision.deliveryId,
+        replacementDeliveryId: correctedRevision.deliveryId,
+        previousRevision: 1,
+        resultingRevision: 2,
+        requester: {
+          accountId: testRecords().accountId,
+          displayName: 'Submission Database Test',
+        },
+        reason: 'Correct scorer transcription.',
+        source: {
+          submissionId: originalRevision.submissionId,
+          submissionEventOrdinal: 0,
+          batchItemId: null,
+        },
+        previousState: expect.objectContaining({
+          eventId: correctedEventId,
+          sequenceNumber: 1,
+          runs: expect.objectContaining({ total: 1 }),
+        }),
+        resultingState: expect.objectContaining({
+          eventId: correctedEventId,
+          sequenceNumber: 1,
+          runs: expect.objectContaining({ total: 4 }),
+        }),
+        review: null,
+      }),
+    ]);
+
+    const currentPublicRevisions = await executeQuery<{ count: number; runsTotal: number }>(
+      databasePool(),
+      `
+        SELECT count(*)::int AS count, sum(runs_total)::int AS "runsTotal"
+        FROM delivery_current
+        WHERE innings_id = $1
+          AND innings_sequence = 1
+      `,
+      [testRecords().inningsId],
+    );
+    expect(currentPublicRevisions.rows).toEqual([{ count: 1, runsTotal: 4 }]);
+  });
+
+  test('serializes concurrent corrections into monotonic immutable revisions', async () => {
+    const eventId = '123e4567-e89b-42d3-a456-426614174015';
+    const submitted = payload([{ eventId, sequenceNumber: 3, positionInOver: 2 }]);
+    await request(app())
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer database-test-token')
+      .send(submitted)
+      .expect(201);
+
+    const { eventId: _eventId, sequenceNumber: _sequenceNumber, ...event } = submitted.events[0]!;
+    void _eventId;
+    void _sequenceNumber;
+    const corrections = [
+      { total: 2, reason: 'First concurrent scorer correction.' },
+      { total: 3, reason: 'Second concurrent scorer correction.' },
+    ];
+
+    const responses = await Promise.all(
+      corrections.map(({ total, reason }) =>
+        request(app())
+          .put(`/api/v1/submissions/events/${eventId}`)
+          .set('Authorization', 'Bearer database-test-token')
+          .send({
+            fixtureId: testRecords().fixtureId,
+            schemaVersion: '1.0',
+            reason,
+            event: { ...event, runs: { offBat: total, extras: 0, total } },
+          }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    expect(responses.map((response) => response.body.data.revision).sort()).toEqual([2, 3]);
+
+    const sequentialReason = 'Sequential follow-up correction.';
+    const sequentialResponse = await request(app())
+      .put(`/api/v1/submissions/events/${eventId}`)
+      .set('Authorization', 'Bearer database-test-token')
+      .send({
+        fixtureId: testRecords().fixtureId,
+        schemaVersion: '1.0',
+        reason: sequentialReason,
+        event: { ...event, runs: { offBat: 4, extras: 0, total: 4 } },
+      })
+      .expect(200);
+    expect(sequentialResponse.body.data.revision).toBe(4);
+
+    const revisions = await executeQuery<{
+      deliveryId: string;
+      revision: number;
+      sequenceNumber: number;
+      sourceEventId: string;
+      submissionId: string;
+      eventOrdinal: number;
+      supersedesDeliveryId: string | null;
+      supersededBy: string | null;
+    }>(
+      databasePool(),
+      `
+        SELECT
+          delivery_id::text AS "deliveryId",
+          revision,
+          innings_sequence AS "sequenceNumber",
+          source_event_id::text AS "sourceEventId",
+          submission_id::text AS "submissionId",
+          submission_event_ordinal AS "eventOrdinal",
+          supersedes_delivery_id::text AS "supersedesDeliveryId",
+          superseded_by::text AS "supersededBy"
+        FROM delivery
+        WHERE source_event_id = $1::uuid
+        ORDER BY revision
+      `,
+      [eventId],
+    );
+    expect(revisions.rows.map((revision) => revision.revision)).toEqual([1, 2, 3, 4]);
+    expect(new Set(revisions.rows.map((revision) => revision.sequenceNumber))).toEqual(
+      new Set([3]),
+    );
+    expect(new Set(revisions.rows.map((revision) => revision.sourceEventId))).toEqual(
+      new Set([eventId]),
+    );
+    expect(new Set(revisions.rows.map((revision) => revision.submissionId)).size).toBe(1);
+    expect(new Set(revisions.rows.map((revision) => revision.eventOrdinal)).size).toBe(1);
+    expect(revisions.rows[1]!.supersedesDeliveryId).toBe(revisions.rows[0]!.deliveryId);
+    expect(revisions.rows[0]!.supersededBy).toBe(revisions.rows[1]!.deliveryId);
+    expect(revisions.rows[2]!.supersedesDeliveryId).toBe(revisions.rows[1]!.deliveryId);
+    expect(revisions.rows[1]!.supersededBy).toBe(revisions.rows[2]!.deliveryId);
+    expect(revisions.rows[3]!.supersedesDeliveryId).toBe(revisions.rows[2]!.deliveryId);
+    expect(revisions.rows[2]!.supersededBy).toBe(revisions.rows[3]!.deliveryId);
+    expect(revisions.rows[3]!.supersededBy).toBeNull();
+
+    const history = await request(app())
+      .get(`/api/v1/submissions/events/${eventId}/history`)
+      .set('Authorization', 'Bearer database-test-token')
+      .expect(200);
+    expect(
+      history.body.data.corrections.map(
+        (entry: { resultingRevision: number }) => entry.resultingRevision,
+      ),
+    ).toEqual([2, 3, 4]);
+    expect(
+      new Set(history.body.data.corrections.map((entry: { reason: string }) => entry.reason)),
+    ).toEqual(new Set([...corrections.map((correction) => correction.reason), sequentialReason]));
+
+    const correctionId = history.body.data.corrections[0].correctionId as string;
+    await expect(
+      executeQuery(
+        databasePool(),
+        'UPDATE delivery_correction_history SET reason = $2 WHERE delivery_correction_history_id = $1',
+        [correctionId, 'silently overwritten'],
+      ),
+    ).rejects.toMatchObject({ code: 'DATABASE_CONSTRAINT_ERROR' });
+    await expect(
+      executeQuery(
+        databasePool(),
+        'DELETE FROM delivery_correction_history WHERE delivery_correction_history_id = $1',
+        [correctionId],
+      ),
+    ).rejects.toMatchObject({ code: 'DATABASE_CONSTRAINT_ERROR' });
   });
 
   test('stores uploaded JSON source-file provenance with the accepted submission', async () => {

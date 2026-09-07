@@ -15,6 +15,8 @@ const artifactFiles = [
   'apps/backend/dist',
   'packages/contracts/package.json',
   'packages/contracts/dist',
+  'packages/batch-processing/package.json',
+  'packages/batch-processing/dist',
 ];
 
 async function requireBuildOutput(relativePath) {
@@ -54,6 +56,7 @@ async function replaceWorkspaceLinkWithDirectory(workspaceName, sourceRelativePa
 
 await requireBuildOutput('apps/backend/dist/index.js');
 await requireBuildOutput('packages/contracts/dist/index.js');
+await requireBuildOutput('packages/batch-processing/dist/index.js');
 
 await rm(artifactRoot, { recursive: true, force: true });
 await mkdir(artifactRoot, { recursive: true });
@@ -68,6 +71,7 @@ const installArguments = [
   '--ignore-scripts',
   '--workspace=@sport-analytics/backend',
   '--workspace=@sport-analytics/contracts',
+  '--workspace=@sport-analytics/batch-processing',
 ];
 const npmCommand = process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : 'npm';
 const npmArguments =
@@ -89,6 +93,7 @@ if (install.status !== 0) {
 }
 
 await replaceWorkspaceLinkWithDirectory('contracts', 'packages/contracts');
+await replaceWorkspaceLinkWithDirectory('batch-processing', 'packages/batch-processing');
 await replaceWorkspaceLinkWithDirectory('backend');
 
 const installedContracts = path.join(artifactRoot, 'node_modules', '@sport-analytics', 'contracts');
@@ -99,6 +104,20 @@ if (!installedContractsStats.isDirectory() || installedContractsStats.isSymbolic
 }
 
 await access(path.join(installedContracts, 'dist', 'index.js'));
+const installedBatchProcessing = path.join(
+  artifactRoot,
+  'node_modules',
+  '@sport-analytics',
+  'batch-processing',
+);
+const installedBatchProcessingStats = await lstat(installedBatchProcessing);
+if (
+  !installedBatchProcessingStats.isDirectory() ||
+  installedBatchProcessingStats.isSymbolicLink()
+) {
+  throw new Error('The deployment artifact does not contain a physical batch-processing package.');
+}
+await access(path.join(installedBatchProcessing, 'dist', 'index.js'));
 await access(path.join(artifactRoot, 'apps', 'backend', 'certs', 'supabase-ca.crt'));
 console.log(
   `Backend deployment artifact prepared at ${path.relative(repositoryRoot, artifactRoot)}.`,

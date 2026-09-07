@@ -9,6 +9,7 @@ The `infra/` directory is the repository entry point for infrastructure-specific
 - PostgreSQL database: Supabase-hosted PostgreSQL
 - Authentication: Supabase Auth
 - Public documentation: Cloudflare Pages
+- Asynchronous ingestion worker: Azure Container Apps with Azure Service Bus Standard
 - CI/CD and deployment workflows: `.gitea/workflows/`
 
 ## Azure guidance
@@ -20,6 +21,7 @@ Detailed deployment documentation is maintained under:
 - [Deployment overview](../docs/deployment/overview.md)
 - [Azure deployment guide](../docs/deployment/azure.md)
 - [Azure backend deployment](../docs/deployment/azure-backend.md)
+- [Azure asynchronous worker](../docs/deployment/azure-worker.md)
 - [Azure frontend deployment](../docs/deployment/azure-fronted.md)
 - [Azure App Service recovery guide](../docs/deployment/azure-app-service-recovery.md)
 - [Cloudflare Pages deployment](../docs/deployment/cloudflare_pages.md)
@@ -35,3 +37,4 @@ Detailed deployment documentation is maintained under:
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The asynchronous worker boundary was documented with the assistance of Codex[GPT-5].
