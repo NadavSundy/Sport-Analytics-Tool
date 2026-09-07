@@ -55,7 +55,151 @@ tags:
   - name: Administration
     description: Administrator-only application-account and submitter-scope operations.
 
+  - name: Consumer API
+    description: API-key authenticated external consumer reads with per-consumer protections.
+
 paths:
+  /api/v1/admin/api-consumers:
+    get:
+      tags: [Administration]
+      summary: List administrator-owned API consumers
+      operationId: listApiConsumers
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Safe consumer and key metadata; raw keys are never returned.
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ApiConsumerListResponse' } },
+            }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Administration]
+      summary: Issue an external consumer API key
+      description: The raw API key is returned exactly once in this response and is not stored by the service.
+      operationId: issueApiConsumer
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ApiConsumerIssue' } } }
+      responses:
+        '201':
+          description: Consumer metadata and the one-time raw API key.
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ApiConsumerIssueResponse' } },
+            }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: The issue request is invalid.
+          content:
+            { application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } }
+
+  /api/v1/admin/api-consumers/{consumerId}/keys/rotate:
+    post:
+      tags: [Administration]
+      summary: Rotate an API consumer key
+      description: Revokes active keys before issuing the replacement. The raw replacement is returned once.
+      operationId: rotateApiConsumerKey
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: consumerId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+      responses:
+        '200':
+          {
+            description: Replacement key and safe metadata.,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: '#/components/schemas/ApiConsumerRotateResponse' } },
+              },
+          }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}:
+    delete:
+      tags: [Administration]
+      summary: Revoke an API consumer key
+      operationId: revokeApiConsumerKey
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - {
+            name: consumerId,
+            in: path,
+            required: true,
+            schema: { $ref: '#/components/schemas/DatabaseIdentifier' },
+          }
+        - {
+            name: keyId,
+            in: path,
+            required: true,
+            schema: { $ref: '#/components/schemas/DatabaseIdentifier' },
+          }
+      responses:
+        '204': { description: Key revoked. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/competitions:
+    get:
+      tags: [Consumer API]
+      summary: List competitions with a consumer API key
+      operationId: listConsumerCompetitions
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          {
+            description: Competition page.,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: '#/components/schemas/CompetitionCollectionResponse' } },
+              },
+          }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+
+  /api/v1/consumer/fixtures:
+    get:
+      tags: [Consumer API]
+      summary: List fixtures with a consumer API key
+      operationId: listConsumerFixtures
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          {
+            description: Fixture page.,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: '#/components/schemas/FixtureCollectionResponse' } },
+              },
+          }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+
   /api/v1/health:
     get:
       tags:
@@ -1595,6 +1739,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Supabase access token
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
 
   parameters:
     Limit:
@@ -1776,7 +1924,82 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
 
+    ApiKeyUnauthorized:
+      description: A missing, invalid or revoked API key was supplied.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: ApiKey }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
+    ConsumerLimitExceeded:
+      description: The consumer rate limit or daily quota was exhausted.
+      headers:
+        RateLimit-Limit: { schema: { type: integer } }
+        RateLimit-Remaining: { schema: { type: integer } }
+        RateLimit-Reset: { schema: { type: integer } }
+        X-Quota-Limit: { schema: { type: integer } }
+        X-Quota-Remaining: { schema: { type: integer } }
+        X-Quota-Reset: { schema: { type: integer } }
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
   schemas:
+    ApiConsumerIssue:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        rateLimitPerMinute: { type: integer, minimum: 1, maximum: 10000, default: 60 }
+        dailyQuota: { type: integer, minimum: 1, maximum: 10000, default: 10000 }
+    ApiConsumerKey:
+      type: object
+      additionalProperties: false
+      required: [id, prefix, createdAt, revokedAt]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        prefix: { type: string }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    ApiConsumer:
+      type: object
+      additionalProperties: false
+      required: [id, name, rateLimitPerMinute, dailyQuota, createdAt, keys]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        name: { type: string }
+        rateLimitPerMinute: { type: integer }
+        dailyQuota: { type: integer }
+        createdAt: { type: string, format: date-time }
+        keys: { type: array, items: { $ref: '#/components/schemas/ApiConsumerKey' } }
+    ApiConsumerIssueResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/ApiConsumer'
+            - type: object
+              required: [apiKey]
+              properties: { apiKey: { type: string, writeOnly: true } }
+    ApiConsumerRotateResponse:
+      $ref: '#/components/schemas/ApiConsumerIssueResponse'
+    ApiConsumerListResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [consumers]
+          properties:
+            consumers: { type: array, items: { $ref: '#/components/schemas/ApiConsumer' } }
     ApiIdentifier:
       type: string
       minLength: 1
