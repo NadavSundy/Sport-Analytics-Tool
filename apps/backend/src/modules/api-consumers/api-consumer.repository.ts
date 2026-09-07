@@ -35,7 +35,7 @@ export interface ApiConsumerRepository {
   consumeDailyQuota(consumerId: string, quota: number): Promise<{ allowed: boolean; used: number }>;
 }
 
-export interface GeneratedKey {
+interface GeneratedKey {
   raw: string;
   prefix: string;
   hash: string;
