@@ -6,3 +6,4 @@ export * from './cricket-validation';
 export * from './public-read';
 export * from './submissions';
 export * from './season-upload';
+export * from './cricket-delivery-comparison';
