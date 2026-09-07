@@ -2,8 +2,11 @@ import {
   batchListResponseSchema,
   batchReportDownloadResponseSchema,
   batchReportResponseSchema,
+  batchReviewResponseSchema,
   type BatchListResponse,
   type BatchReportResponse,
+  type BatchReviewRequest,
+  type BatchReviewResponse,
 } from '@sport-analytics/contracts';
 
 import type { AuthenticatedApiClient } from '../../api/client';
@@ -55,4 +58,19 @@ export async function downloadBatchReport(
   link.download = `batch-${batchReference}-report.json`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+export async function reviewBatch(
+  client: AuthenticatedApiClient,
+  batchReference: string,
+  review: BatchReviewRequest,
+): Promise<BatchReviewResponse> {
+  return parse(
+    await client.request<unknown>(`/batches/${encodeURIComponent(batchReference)}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(review),
+    }),
+    batchReviewResponseSchema,
+  );
 }

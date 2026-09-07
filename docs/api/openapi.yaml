@@ -1316,6 +1316,37 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /api/v1/batches/{batchReference}/review:
+    post:
+      tags: [Batches]
+      summary: Decide and, on approval, publish a validated staged batch
+      description: Competition-scoped administrators may approve, reject, or return a batch for correction. Approval records the decision and moves the batch to the resumable publishing state before accepted events are published; unresolved or ambiguous references prevent approval. Rejection and return do not alter public event data.
+      operationId: reviewBatch
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchReviewRequest' }
+      responses:
+        '200':
+          description: Persisted decision and current publication lifecycle state.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Approval is unsafe, another decision won the race, or publication is leased.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The decision or required reason is invalid.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
   /api/v1/submissions/events/{eventId}:
     put:
       tags:
@@ -3544,9 +3575,21 @@ components:
     BatchStatus:
       type: object
       additionalProperties: false
-      required: [batchReference, status, statusUrl, receivedAt, updatedAt, progress, counts]
+      required:
+        [
+          batchReference,
+          competitionId,
+          status,
+          statusUrl,
+          receivedAt,
+          updatedAt,
+          progress,
+          counts,
+          review,
+        ]
       properties:
         batchReference: { type: string, format: uuid }
+        competitionId: { $ref: '#/components/schemas/DatabaseIdentifier' }
         status:
           type: string
           enum:
@@ -3556,6 +3599,7 @@ components:
               validating,
               rejected,
               awaiting_review,
+              correction_requested,
               publishing,
               published,
               partially_published,
@@ -3567,6 +3611,34 @@ components:
         updatedAt: { type: string, format: date-time }
         progress: { $ref: '#/components/schemas/BatchProgress' }
         counts: { $ref: '#/components/schemas/BatchCounts' }
+        review:
+          oneOf:
+            - { $ref: '#/components/schemas/BatchReviewDecision' }
+            - { type: 'null' }
+
+    BatchReviewDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, actor, decidedAt, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected, returned_for_correction] }
+        actor:
+          type: object
+          additionalProperties: false
+          required: [accountId, displayName]
+          properties:
+            accountId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+            displayName: { type: [string, 'null'] }
+        decidedAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
+
+    BatchReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected, returned_for_correction] }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
 
     BatchStatusResponse:
       type: object

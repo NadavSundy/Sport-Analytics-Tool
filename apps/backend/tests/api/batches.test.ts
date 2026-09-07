@@ -4,7 +4,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
 import type { BatchService } from '../../src/modules/batches/batch.service';
-import { BatchForbiddenError } from '../../src/modules/batches/batch.service';
+import { BatchConflictError, BatchForbiddenError } from '../../src/modules/batches/batch.service';
 import { createTestAccount, createTestApp } from '../test-app';
 
 const acceptToken: VerifyAccessToken = async () => ({
@@ -24,12 +24,14 @@ const receipt = {
 const status = {
   data: {
     batchReference: reference,
+    competitionId: '5',
     status: 'stored' as const,
     statusUrl: `/api/v1/batches/${reference}`,
     receivedAt: '2026-09-03T10:00:00.000Z',
     updatedAt: '2026-09-03T10:00:00.000Z',
     progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
     counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+    review: null,
   },
 };
 
@@ -56,6 +58,7 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
     downloadReport: vi.fn<BatchService['downloadReport']>().mockResolvedValue({
       data: { batch: status.data, errorGroups: [], items: [] },
     }),
+    review: vi.fn<BatchService['review']>().mockResolvedValue(status),
     ...overrides,
   };
 }
@@ -312,5 +315,104 @@ describe('batch receipt API', () => {
       ),
     ).expect(403);
     expect(batchService.receive).not.toHaveBeenCalled();
+  });
+
+  test.each(['approved', 'rejected', 'returned_for_correction'] as const)(
+    'accepts an authorised %s review decision with a reason',
+    async (decision) => {
+      const review = vi.fn<BatchService['review']>().mockResolvedValue(status);
+      const batchService = service({ review });
+      await request(
+        createTestApp(
+          acceptToken,
+          undefined,
+          synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          batchService,
+        ),
+      )
+        .post(`/api/v1/batches/${reference}/review`)
+        .set('Authorization', 'Bearer batch-token')
+        .send({ decision, reason: 'Reviewed against the validation report.' })
+        .expect(200);
+      expect(review).toHaveBeenCalledWith(expect.anything(), reference, {
+        decision,
+        reason: 'Reviewed against the validation report.',
+      });
+    },
+  );
+
+  test('requires an administrator and a non-blank review reason', async () => {
+    const batchService = service();
+    const submitterApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      batchService,
+    );
+    await request(submitterApp)
+      .post(`/api/v1/batches/${reference}/review`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ decision: 'approved', reason: 'Approve.' })
+      .expect(403);
+
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      batchService,
+    );
+    await request(adminApp)
+      .post(`/api/v1/batches/${reference}/review`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ decision: 'approved', reason: '   ' })
+      .expect(422);
+    expect(batchService.review).not.toHaveBeenCalled();
+  });
+
+  test('returns a conflict for a competing or unsafe review decision', async () => {
+    const batchService = service({
+      review: vi.fn().mockRejectedValue(new BatchConflictError('A decision already exists.')),
+    });
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .post(`/api/v1/batches/${reference}/review`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ decision: 'rejected', reason: 'Conflicting retry.' })
+      .expect(409);
+    expect(response.body.error.code).toBe('BATCH_REVIEW_CONFLICT');
   });
 });

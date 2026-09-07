@@ -1,7 +1,10 @@
 import { Readable } from 'node:stream';
 import { describe, expect, test, vi } from 'vitest';
 
-import type { BatchRepository } from '../../src/modules/batches/batch.repository';
+import {
+  BatchReviewResolutionError,
+  type BatchRepository,
+} from '../../src/modules/batches/batch.repository';
 import {
   BatchConflictError,
   BatchForbiddenError,
@@ -48,6 +51,8 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
       .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
     listBatchReportItems: vi.fn().mockResolvedValue([]),
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
+    getLatestReviewDecision: vi.fn().mockResolvedValue(null),
+    applyReviewDecision: vi.fn(),
     insertBatchItems: vi.fn(),
     listBatchItems: vi.fn(),
     findCheckpoint: vi.fn(),
@@ -55,6 +60,7 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     recordValidationResult: vi.fn(),
     recordReviewDecision: vi.fn(),
     linkPublishedDelivery: vi.fn(),
+    publishAcceptedItems: vi.fn(),
     ...overrides,
   } as unknown as BatchRepository;
 }
@@ -327,13 +333,13 @@ describe('batch result reporting service', () => {
     ).rejects.toBeInstanceOf(BatchForbiddenError);
     await expect(
       service.getStatus(
-        createTestAccount({ accountId: '1', role: 'admin' }),
+        createTestAccount({ accountId: '1', role: 'admin', competitionIds: ['5'] }),
         persistedBatch.batchReference,
       ),
     ).resolves.toMatchObject({ data: { batchReference: persistedBatch.batchReference } });
   });
 
-  test('scopes batch lists to submitters and permits reviewer-wide listing', async () => {
+  test('scopes batch lists to submitters and reviewer competition grants', async () => {
     const listBatches = vi.fn().mockResolvedValue([]);
     const service = createBatchService(
       {} as BatchPayloadStorageService,
@@ -341,9 +347,129 @@ describe('batch result reporting service', () => {
     );
     await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
     expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
-    await service.list(createTestAccount({ accountId: '7', role: 'admin' }), { limit: 50 });
-    expect(listBatches).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({ submitterId: expect.anything() }),
+    await service.list(
+      createTestAccount({ accountId: '7', role: 'admin', competitionIds: ['5', '6'] }),
+      { limit: 50 },
     );
+    expect(listBatches).toHaveBeenLastCalledWith(
+      expect.objectContaining({ competitionIds: ['5', '6'] }),
+    );
+  });
+});
+
+describe('batch review service', () => {
+  const awaitingReview = { ...persistedBatch, state: 'awaiting_review' as const };
+  const published = { ...persistedBatch, state: 'published' as const };
+  const decision = {
+    decision: 'approved' as const,
+    actorId: '1',
+    actorDisplayName: 'Test User',
+    decidedAt: '2026-09-07T11:00:00.000Z',
+    reason: 'Validation report is acceptable.',
+  };
+
+  test('persists an in-scope approval and resumes publication before responding', async () => {
+    const applyReviewDecision = vi.fn().mockResolvedValue({
+      batch: { ...awaitingReview, state: 'publishing' },
+      review: decision,
+      resumePublication: true,
+    });
+    const publishAcceptedItems = vi.fn().mockResolvedValue({
+      published: 3,
+      duplicateSkipped: 0,
+      conflicts: 0,
+    });
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
+      findBatchById: vi.fn().mockResolvedValue(published),
+      applyReviewDecision,
+      publishAcceptedItems,
+      getLatestReviewDecision: vi.fn().mockResolvedValue(decision),
+    });
+
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).review(
+      createTestAccount({ role: 'admin', competitionIds: ['5'] }),
+      awaitingReview.batchReference,
+      { decision: 'approved', reason: decision.reason },
+    );
+
+    expect(applyReviewDecision).toHaveBeenCalledWith({
+      batchId: awaitingReview.batchId,
+      actorId: '1',
+      decision: 'approved',
+      reason: decision.reason,
+    });
+    expect(publishAcceptedItems).toHaveBeenCalledWith(awaitingReview.batchId, 'reviewer:1');
+    expect(response.data).toMatchObject({ status: 'published', review: { decision: 'approved' } });
+  });
+
+  test.each(['rejected', 'returned_for_correction'] as const)(
+    'persists %s without publishing staged data',
+    async (reviewDecision) => {
+      const applyReviewDecision = vi.fn().mockResolvedValue({
+        batch: awaitingReview,
+        review: { ...decision, decision: reviewDecision },
+        resumePublication: false,
+      });
+      const publishAcceptedItems = vi.fn();
+      const batches = repository({
+        findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
+        findBatchById: vi.fn().mockResolvedValue({
+          ...awaitingReview,
+          state: reviewDecision === 'rejected' ? 'rejected' : 'correction_requested',
+        }),
+        applyReviewDecision,
+        publishAcceptedItems,
+        getLatestReviewDecision: vi
+          .fn()
+          .mockResolvedValue({ ...decision, decision: reviewDecision }),
+      });
+      await createBatchService({} as BatchPayloadStorageService, batches).review(
+        createTestAccount({ role: 'admin', competitionIds: ['5'] }),
+        awaitingReview.batchReference,
+        { decision: reviewDecision, reason: 'Needs reviewer action.' },
+      );
+      expect(publishAcceptedItems).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each([
+    createTestAccount({ role: 'submitter', competitionIds: ['5'] }),
+    createTestAccount({ role: 'admin', competitionIds: ['6'] }),
+  ])('prevents an unauthorized account from deciding a batch', async (account) => {
+    const applyReviewDecision = vi.fn();
+    const service = createBatchService(
+      {} as BatchPayloadStorageService,
+      repository({
+        findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
+        applyReviewDecision,
+      }),
+    );
+    await expect(
+      service.review(account, awaitingReview.batchReference, {
+        decision: 'approved',
+        reason: 'Attempted approval.',
+      }),
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
+    expect(applyReviewDecision).not.toHaveBeenCalled();
+  });
+
+  test('reports unresolved-reference approval and retry races as conflicts', async () => {
+    const service = createBatchService(
+      {} as BatchPayloadStorageService,
+      repository({
+        findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
+        applyReviewDecision: vi
+          .fn()
+          .mockRejectedValue(new BatchReviewResolutionError('Unresolved references remain.')),
+      }),
+    );
+    await expect(
+      service.review(
+        createTestAccount({ role: 'admin', competitionIds: ['5'] }),
+        awaitingReview.batchReference,
+        { decision: 'approved', reason: 'Approve.' },
+      ),
+    ).rejects.toThrow('Unresolved references remain.');
   });
 });

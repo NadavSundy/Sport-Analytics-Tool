@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { json, Router } from 'express';
 
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
-import { requireSubmitter } from '../../middleware/require-authorization';
+import { requireAdministrator, requireSubmitter } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import { createSubmissionRateLimit } from '../submissions/submission-rate-limit';
 import {
@@ -10,6 +10,7 @@ import {
   createBatchReceiptController,
   createBatchReportController,
   createBatchReportDownloadController,
+  createBatchReviewController,
   createBatchStatusController,
 } from './batch.controller';
 import type { BatchService } from './batch.service';
@@ -32,6 +33,13 @@ export function createBatchRouter(
     requireAuthentication(verifyAccessToken, synchronizeAccount),
     requireSubmitter(),
     createBatchListController(service),
+  );
+  router.post(
+    '/batches/:batchReference/review',
+    json({ limit: '16kb' }),
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireAdministrator(),
+    createBatchReviewController(service),
   );
   router.get(
     '/batches/:batchReference/report/download',

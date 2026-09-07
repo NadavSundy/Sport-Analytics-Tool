@@ -1,4 +1,10 @@
-import type { BatchReportItem, BatchReportResponse, BatchStatus } from '@sport-analytics/contracts';
+import type {
+  BatchReportItem,
+  BatchReportResponse,
+  BatchReviewRequest,
+  BatchStatus,
+  CurrentUserProfile,
+} from '@sport-analytics/contracts';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
@@ -6,7 +12,7 @@ import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import { downloadBatchReport, getBatchReport, listBatches } from './batch-api';
+import { downloadBatchReport, getBatchReport, listBatches, reviewBatch } from './batch-api';
 
 type ListState =
   | { kind: 'loading' }
@@ -24,6 +30,7 @@ const stateLabels: Record<BatchStatus['status'], string> = {
   validating: 'Validating',
   rejected: 'Rejected',
   awaiting_review: 'Awaiting review',
+  correction_requested: 'Correction requested',
   publishing: 'Publishing',
   published: 'Published',
   partially_published: 'Partially published',
@@ -76,6 +83,13 @@ function Summary({ batch }: { batch: BatchStatus }) {
         Processed {batch.progress.processed} of {batch.progress.total}. Last updated{' '}
         {new Date(batch.updatedAt).toLocaleString()}.
       </p>
+      {batch.review ? (
+        <p>
+          Review: {batch.review.decision.replaceAll('_', ' ')} by{' '}
+          {batch.review.actor.displayName ?? `account ${batch.review.actor.accountId}`} on{' '}
+          {new Date(batch.review.decidedAt).toLocaleString()}. Reason: {batch.review.reason}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -208,10 +222,18 @@ function BatchReport({ batchReference }: { batchReference: string }) {
   const client = useAuthenticatedApiClient();
   const [state, setState] = useState<ReportState>({ kind: 'loading' });
   const [downloading, setDownloading] = useState(false);
+  const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
+  const [reason, setReason] = useState('');
+  const [decisionState, setDecisionState] = useState<
+    { kind: 'idle' } | { kind: 'saving' } | { kind: 'error'; message: string }
+  >({ kind: 'idle' });
 
   useEffect(() => {
-    void getBatchReport(client, batchReference)
-      .then((response) => setState({ kind: 'ready', report: response.data }))
+    void Promise.all([getBatchReport(client, batchReference), getCurrentUserProfile(client)])
+      .then(([response, currentProfile]) => {
+        setProfile(currentProfile);
+        setState({ kind: 'ready', report: response.data });
+      })
       .catch(() => setState({ kind: 'error', message: 'This batch report could not be loaded.' }));
   }, [batchReference, client]);
 
@@ -236,6 +258,29 @@ function BatchReport({ batchReference }: { batchReference: string }) {
     }
   }
 
+  async function decide(decision: BatchReviewRequest['decision']) {
+    if (!reason.trim()) {
+      setDecisionState({ kind: 'error', message: 'Enter a reason for the review decision.' });
+      return;
+    }
+    setDecisionState({ kind: 'saving' });
+    try {
+      await reviewBatch(client, batchReference, { decision, reason: reason.trim() });
+      const response = await getBatchReport(client, batchReference);
+      setState({ kind: 'ready', report: response.data });
+      setReason('');
+      setDecisionState({ kind: 'idle' });
+    } catch (error) {
+      setDecisionState({
+        kind: 'error',
+        message:
+          error instanceof ApiResponseError && error.status === 409
+            ? error.message
+            : 'The review decision could not be saved.',
+      });
+    }
+  }
+
   if (state.kind === 'loading')
     return (
       <div className="state-message" role="status">
@@ -249,9 +294,60 @@ function BatchReport({ batchReference }: { batchReference: string }) {
         <p>{state.message}</p>
       </div>
     );
+  const canReview =
+    profile?.role === 'admin' && profile.competitionIds.includes(state.report.batch.competitionId);
   return (
     <>
       <Summary batch={state.report.batch} />
+      {state.report.batch.status === 'awaiting_review' && profile?.role === 'admin' ? (
+        canReview ? (
+          <section className="batch-review" aria-labelledby="batch-review-title">
+            <h2 id="batch-review-title">Review decision</h2>
+            <label htmlFor="batch-review-reason">Reason</label>
+            <textarea
+              id="batch-review-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              maxLength={2000}
+              disabled={decisionState.kind === 'saving'}
+            />
+            <div className="batch-review__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => void decide('approved')}
+                disabled={decisionState.kind === 'saving'}
+              >
+                Approve and publish
+              </button>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => void decide('returned_for_correction')}
+                disabled={decisionState.kind === 'saving'}
+              >
+                Return for correction
+              </button>
+              <button
+                type="button"
+                className="button button--danger"
+                onClick={() => void decide('rejected')}
+                disabled={decisionState.kind === 'saving'}
+              >
+                Reject batch
+              </button>
+            </div>
+            {decisionState.kind === 'error' ? <p role="alert">{decisionState.message}</p> : null}
+            {decisionState.kind === 'saving' ? (
+              <p role="status">Saving review decisionâ€¦</p>
+            ) : null}
+          </section>
+        ) : (
+          <p role="status">
+            You cannot review this batch because its competition is outside your authorised scope.
+          </p>
+        )
+      ) : null}
       {state.report.errorGroups.length > 0 ? (
         <p>
           Validation rules:{' '}

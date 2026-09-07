@@ -16,6 +16,7 @@ export const BATCH_STATES = [
   'validating',
   'rejected',
   'awaiting_review',
+  'correction_requested',
   'publishing',
   'published',
   'partially_published',
@@ -45,9 +46,33 @@ export const batchReceiptSchema = z
 
 export const batchReceiptResponseSchema = createResourceResponseSchema(batchReceiptSchema);
 
+export const BATCH_REVIEW_DECISIONS = ['approved', 'rejected', 'returned_for_correction'] as const;
+
+export const batchReviewDecisionSchema = z
+  .object({
+    decision: z.enum(BATCH_REVIEW_DECISIONS),
+    actor: z
+      .object({
+        accountId: apiIdentifierSchema,
+        displayName: z.string().nullable(),
+      })
+      .strict(),
+    decidedAt: apiDateTimeSchema,
+    reason: z.string().min(1),
+  })
+  .strict();
+
+export const batchReviewRequestSchema = z
+  .object({
+    decision: z.enum(BATCH_REVIEW_DECISIONS),
+    reason: z.string().trim().min(1).max(2000),
+  })
+  .strict();
+
 export const batchStatusSchema = z
   .object({
     batchReference: batchReferenceSchema,
+    competitionId: apiIdentifierSchema,
     status: z.enum(BATCH_STATES),
     statusUrl: z.string().startsWith('/api/v1/batches/'),
     receivedAt: apiDateTimeSchema,
@@ -69,10 +94,12 @@ export const batchStatusSchema = z
         conflicting: z.number().int().nonnegative(),
       })
       .strict(),
+    review: batchReviewDecisionSchema.nullable(),
   })
   .strict();
 
 export const batchStatusResponseSchema = createResourceResponseSchema(batchStatusSchema);
+export const batchReviewResponseSchema = createResourceResponseSchema(batchStatusSchema);
 
 export const batchListQuerySchema = paginationQuerySchema;
 export const batchListResponseSchema = createCollectionResponseSchema(batchStatusSchema);
@@ -149,6 +176,9 @@ export const batchReportDownloadResponseSchema =
 export type BatchMetadata = z.infer<typeof batchMetadataSchema>;
 export type BatchReceiptResponse = z.infer<typeof batchReceiptResponseSchema>;
 export type BatchStatusResponse = z.infer<typeof batchStatusResponseSchema>;
+export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
+export type BatchReviewRequest = z.infer<typeof batchReviewRequestSchema>;
+export type BatchReviewResponse = z.infer<typeof batchReviewResponseSchema>;
 export type BatchStatus = z.infer<typeof batchStatusSchema>;
 export type BatchListQuery = z.infer<typeof batchListQuerySchema>;
 export type BatchListResponse = z.infer<typeof batchListResponseSchema>;

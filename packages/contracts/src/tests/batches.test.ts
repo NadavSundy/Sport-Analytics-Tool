@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   BATCH_STATES,
   batchListResponseSchema,
   batchReportResponseSchema,
+  batchReviewRequestSchema,
   batchStatusResponseSchema,
 } from '../batches';
 
@@ -12,18 +15,29 @@ const reference = '123e4567-e89b-42d3-a456-426614174000';
 function status(state: (typeof BATCH_STATES)[number]) {
   return {
     batchReference: reference,
+    competitionId: '5',
     status: state,
     statusUrl: `/api/v1/batches/${reference}`,
     receivedAt: '2026-09-03T10:00:00.000Z',
     updatedAt: '2026-09-03T10:05:00.000Z',
     progress: { total: 3, processed: 3, accepted: 2, rejected: 1 },
     counts: { accepted: 2, rejected: 1, unresolved: 1, duplicate: 0, conflicting: 0 },
+    review: null,
   };
 }
 
 describe('batch reporting contracts', () => {
   test.each(BATCH_STATES)('accepts the %s lifecycle state', (state) => {
     expect(batchStatusResponseSchema.safeParse({ data: status(state) }).success).toBe(true);
+  });
+
+  test('keeps every contract lifecycle state in the OpenAPI batch status enum', () => {
+    const openapi = readFileSync(resolve(process.cwd(), '../../docs/api/openapi.yaml'), 'utf8');
+    const batchStatus = openapi.slice(
+      openapi.indexOf('    BatchStatus:'),
+      openapi.indexOf('    BatchStatusResponse:'),
+    );
+    for (const state of BATCH_STATES) expect(batchStatus).toMatch(new RegExp(`\\b${state}\\b`));
   });
 
   test('accepts paginated batch lists', () => {
@@ -33,6 +47,22 @@ describe('batch reporting contracts', () => {
         pagination: { nextCursor: 'opaque' },
       }).success,
     ).toBe(true);
+  });
+
+  test.each(['approved', 'rejected', 'returned_for_correction'])(
+    'accepts a reasoned %s review decision',
+    (decision) => {
+      expect(
+        batchReviewRequestSchema.safeParse({ decision, reason: 'Reviewed against source data.' })
+          .success,
+      ).toBe(true);
+    },
+  );
+
+  test('rejects a review decision without a reason', () => {
+    expect(
+      batchReviewRequestSchema.safeParse({ decision: 'approved', reason: '   ' }).success,
+    ).toBe(false);
   });
 
   test('requires stable rules, complete locations, cricket context and traceability', () => {
