@@ -110,6 +110,28 @@ const extrasSchema = z
   .strict()
   .default({});
 
+export const seasonUploadFielderSchema = z
+  .object({
+    participant: participantReferenceSchema.optional(),
+    substitute: z.boolean().default(false),
+  })
+  .strict()
+  .refine((fielder) => fielder.participant !== undefined || fielder.substitute, {
+    message: 'A fielder must identify a participant or be marked as a substitute.',
+  });
+
+export const seasonUploadWicketSchema = z
+  .object({
+    kind: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z][a-z ]*$/, 'A dismissal kind is lower-case words separated by spaces.'),
+    playerOut: participantReferenceSchema,
+    fielders: z.array(seasonUploadFielderSchema).max(11).default([]),
+  })
+  .strict();
+
 export const seasonUploadEventSchema = z
   .object({
     // This value is the retry/deduplication identity. It is not a displayed
@@ -129,9 +151,23 @@ export const seasonUploadEventSchema = z
     bowler: participantReferenceSchema,
     runs: runsSchema,
     extras: extrasSchema,
+    wickets: z.array(seasonUploadWicketSchema).max(2).default([]),
   })
   .strict()
   .superRefine((event, context) => {
+    const extrasTotal = Object.values(event.extras).reduce<number>(
+      (total, value) => total + (value ?? 0),
+      0,
+    );
+
+    if (event.runs.extras !== extrasTotal) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['runs', 'extras'],
+        message: 'Run extras must equal the supplied extras breakdown.',
+      });
+    }
+
     if (event.striker.sourceId && event.striker.sourceId === event.nonStriker.sourceId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

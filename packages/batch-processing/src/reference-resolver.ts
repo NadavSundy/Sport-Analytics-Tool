@@ -984,13 +984,29 @@ export async function resolvePackageReferences(
       for (const [eventIndex, event] of innings.events.entries()) {
         const eventPath = `${inningsPath}.events.${String(eventIndex)}`;
 
-        const participantOutcomes = (
-          [
-            ['striker', event.striker],
-            ['nonStriker', event.nonStriker],
-            ['bowler', event.bowler],
-          ] as const
-        ).map(([role, reference]) => {
+        const participantReferences: Array<[string, typeof event.striker]> = [
+          ['striker', event.striker],
+          ['nonStriker', event.nonStriker],
+          ['bowler', event.bowler],
+        ];
+
+        for (const [wicketIndex, wicket] of event.wickets.entries()) {
+          participantReferences.push([
+            `wickets.${String(wicketIndex)}.playerOut`,
+            wicket.playerOut,
+          ]);
+
+          for (const [fielderIndex, fielder] of wicket.fielders.entries()) {
+            if (fielder.participant) {
+              participantReferences.push([
+                `wickets.${String(wicketIndex)}.fielders.${String(fielderIndex)}.participant`,
+                fielder.participant,
+              ]);
+            }
+          }
+        }
+
+        const participantOutcomes = participantReferences.map(([role, reference]) => {
           const participantOutcome = resolveParticipant(
             `${eventPath}.${role}`,
             reference,

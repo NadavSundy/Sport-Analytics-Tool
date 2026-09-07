@@ -429,6 +429,75 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(resolution.items[0]?.sourceIdentity).toBe(`cricsheet:delivery:${prefix}-e1`);
   });
 
+  test('resolves dismissed-player and fielder references through the same squad scope', async () => {
+    const seed = records();
+
+    const uploadPackage = buildPackage(`${prefix}-competition`, [
+      {
+        sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+        innings: [
+          {
+            context: {
+              ordinal: 0,
+              battingTeam: {
+                context: {
+                  name: `${prefix}-alpha`,
+                },
+              },
+            },
+            events: [
+              {
+                ...event(
+                  1,
+                  participantByName(CURRENT_NAME),
+                  participantByName(`${prefix} Alias Holder A`),
+                  participantByName(BOWLER_NAME),
+                ),
+                wickets: [
+                  {
+                    kind: 'caught',
+                    playerOut: participantByName(CURRENT_NAME),
+                    fielders: [
+                      {
+                        participant: participantByName(BOWLER_NAME),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const resolution = await resolvePackageReferences(databaseClient(), uploadPackage);
+
+    const playerOut = outcomeAt(resolution, 'fixtures.0.innings.0.events.0.wickets.0.playerOut');
+
+    expect(playerOut.state).toBe('resolved');
+    expect(playerOut.canonicalId).toBe(seed.renamedPersonId);
+
+    const fielder = outcomeAt(
+      resolution,
+      'fixtures.0.innings.0.events.0.wickets.0.fielders.0.participant',
+    );
+
+    expect(fielder.state).toBe('resolved');
+    expect(fielder.canonicalId).toBe(seed.bowlerPersonId);
+
+    expect(resolution.items[0]?.state).toBe('resolved');
+
+    const participants = resolution.items[0]?.resolvedReferences.participants as
+      Record<string, { canonicalId?: string | null }> | undefined;
+
+    expect(participants?.['wickets.0.playerOut']?.canonicalId).toBe(seed.renamedPersonId);
+
+    expect(participants?.['wickets.0.fielders.0.participant']?.canonicalId).toBe(
+      seed.bowlerPersonId,
+    );
+  });
+
   test('resolves the second innings by its own ordinal', async () => {
     const seed = records();
     const resolution = await resolvePackageReferences(
