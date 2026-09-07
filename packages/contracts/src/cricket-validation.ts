@@ -9,6 +9,8 @@ export const CRICKET_VALIDATION_RULE_CODES = [
   'DUPLICATE_WICKET',
   'CONTRADICTORY_WICKET',
   'BALL_NUMBER_OVER_MISMATCH',
+  'SEQUENCE_NOT_INCREASING',
+  'BALL_NUMBER_PROGRESSION_INVALID',
 ] as const;
 
 export type CricketValidationRuleCode = (typeof CRICKET_VALIDATION_RULE_CODES)[number];
@@ -29,13 +31,23 @@ export interface CricketValidationWicket {
   playerOutId: string;
 }
 
+export interface CricketValidationExtras {
+  wides?: number | undefined;
+  noBalls?: number | undefined;
+  byes?: number | undefined;
+  legbyes?: number | undefined;
+  penalty?: number | undefined;
+}
+
 export interface CricketValidationEvent {
   inningsId: string;
+  sequenceNumber: number;
   overNumber: number;
   ballNumber: string;
   strikerId: string;
   nonStrikerId: string;
   bowlerId: string;
+  extras: CricketValidationExtras;
   wickets: readonly CricketValidationWicket[];
 }
 
@@ -50,7 +62,42 @@ export interface CricketValidationContext {
   dismissalKinds?: readonly string[];
 }
 
+interface SequenceState {
+  sequenceNumber: number;
+  eventIndex: number;
+}
+
+interface BallState {
+  printedBall: number;
+  legal: boolean;
+  eventIndex: number;
+}
+
+interface TerminalWicketState {
+  kind: string;
+  eventIndex: number;
+}
+
+export interface CricketValidationState {
+  lastSequenceByInnings: Map<string, SequenceState>;
+  previousBallByInningsOver: Map<string, BallState>;
+  terminalWicketByInningsPlayer: Map<string, TerminalWicketState>;
+}
+
+export interface CricketValidationOptions {
+  state?: CricketValidationState;
+  eventIndexOffset?: number;
+}
+
 const NON_TERMINAL_WICKET_KINDS = new Set(['retired hurt', 'retired not out']);
+
+export function createCricketValidationState(): CricketValidationState {
+  return {
+    lastSequenceByInnings: new Map(),
+    previousBallByInningsOver: new Map(),
+    terminalWicketByInningsPlayer: new Map(),
+  };
+}
 
 function makeResult(
   code: CricketValidationRuleCode,
@@ -75,19 +122,48 @@ function participantTeam(
   return context.participantTeamById[participantId];
 }
 
+function isLegalDelivery(event: CricketValidationEvent): boolean {
+  return (event.extras.wides ?? 0) === 0 && (event.extras.noBalls ?? 0) === 0;
+}
+
 export function validateCricketBusinessRules(
   events: readonly CricketValidationEvent[],
   context: CricketValidationContext,
+  options: CricketValidationOptions = {},
 ): CricketValidationResult[] {
   const results: CricketValidationResult[] = [];
+  const state = options.state ?? createCricketValidationState();
+  const eventIndexOffset = options.eventIndexOffset ?? 0;
 
   const allowedDismissalKinds =
     context.dismissalKinds === undefined ? undefined : new Set(context.dismissalKinds);
 
-  const terminalWicketByPlayer = new Map<string, { kind: string; eventIndex: number }>();
-
-  for (const [eventIndex, event] of events.entries()) {
+  for (const [localEventIndex, event] of events.entries()) {
+    const eventIndex = eventIndexOffset + localEventIndex;
     const innings = context.inningsById[event.inningsId];
+
+    const previousSequence = state.lastSequenceByInnings.get(event.inningsId);
+
+    const sequenceProgresses =
+      previousSequence === undefined || event.sequenceNumber > previousSequence.sequenceNumber;
+
+    if (!sequenceProgresses && previousSequence !== undefined) {
+      results.push(
+        makeResult(
+          'SEQUENCE_NOT_INCREASING',
+          eventIndex,
+          'sequenceNumber',
+          `Sequence number ${String(event.sequenceNumber)} must be greater than the previous sequence number ${String(previousSequence.sequenceNumber)} from event ${String(previousSequence.eventIndex)}.`,
+        ),
+      );
+    }
+
+    if (sequenceProgresses) {
+      state.lastSequenceByInnings.set(event.inningsId, {
+        sequenceNumber: event.sequenceNumber,
+        eventIndex,
+      });
+    }
 
     if (innings !== undefined) {
       const strikerTeam = participantTeam(context, event.strikerId);
@@ -130,17 +206,47 @@ export function validateCricketBusinessRules(
       }
     }
 
-    const printedOver = Number.parseInt(event.ballNumber.split('.')[0] ?? '', 10);
+    const ballMatch = /^(\d{1,3})\.(\d{1,2})$/.exec(event.ballNumber);
 
-    if (Number.isInteger(printedOver) && printedOver !== event.overNumber) {
-      results.push(
-        makeResult(
-          'BALL_NUMBER_OVER_MISMATCH',
+    if (ballMatch !== null) {
+      const printedOver = Number(ballMatch[1]);
+      const printedBall = Number(ballMatch[2]);
+
+      if (printedOver !== event.overNumber) {
+        results.push(
+          makeResult(
+            'BALL_NUMBER_OVER_MISMATCH',
+            eventIndex,
+            'ballNumber',
+            'The printed ball number must use the same over number as overNumber.',
+          ),
+        );
+      } else if (sequenceProgresses) {
+        const ballKey = `${event.inningsId}:${String(event.overNumber)}`;
+
+        const previousBall = state.previousBallByInningsOver.get(ballKey);
+
+        if (previousBall !== undefined) {
+          const expectedPrintedBall = previousBall.printedBall + (previousBall.legal ? 1 : 0);
+
+          if (printedBall !== expectedPrintedBall) {
+            results.push(
+              makeResult(
+                'BALL_NUMBER_PROGRESSION_INVALID',
+                eventIndex,
+                'ballNumber',
+                `Printed ball ${event.ballNumber} does not follow the previous delivery: expected ball ${String(event.overNumber)}.${String(expectedPrintedBall)} after event ${String(previousBall.eventIndex)}.`,
+              ),
+            );
+          }
+        }
+
+        state.previousBallByInningsOver.set(ballKey, {
+          printedBall,
+          legal: isLegalDelivery(event),
           eventIndex,
-          'ballNumber',
-          'The printed ball number must use the same over number as overNumber.',
-        ),
-      );
+        });
+      }
     }
 
     for (const [wicketIndex, wicket] of event.wickets.entries()) {
@@ -175,10 +281,11 @@ export function validateCricketBusinessRules(
       }
 
       const wicketKey = `${event.inningsId}:${wicket.playerOutId}`;
-      const previous = terminalWicketByPlayer.get(wicketKey);
+
+      const previous = state.terminalWicketByInningsPlayer.get(wicketKey);
 
       if (previous === undefined) {
-        terminalWicketByPlayer.set(wicketKey, {
+        state.terminalWicketByInningsPlayer.set(wicketKey, {
           kind: wicket.kind,
           eventIndex,
         });
@@ -191,7 +298,7 @@ export function validateCricketBusinessRules(
             'DUPLICATE_WICKET',
             eventIndex,
             `wickets.${wicketIndex}`,
-            `Player ${wicket.playerOutId} already has the same terminal dismissal in event ${previous.eventIndex}.`,
+            `Player ${wicket.playerOutId} already has the same terminal dismissal in event ${String(previous.eventIndex)}.`,
           ),
         );
       } else {
@@ -200,7 +307,7 @@ export function validateCricketBusinessRules(
             'CONTRADICTORY_WICKET',
             eventIndex,
             `wickets.${wicketIndex}`,
-            `Player ${wicket.playerOutId} already has terminal dismissal "${previous.kind}" in event ${previous.eventIndex}.`,
+            `Player ${wicket.playerOutId} already has terminal dismissal "${previous.kind}" in event ${String(previous.eventIndex)}.`,
           ),
         );
       }
