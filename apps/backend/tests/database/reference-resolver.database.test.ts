@@ -429,6 +429,196 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(resolution.items[0]?.sourceIdentity).toBe(`cricsheet:delivery:${prefix}-e1`);
   });
 
+  test('resolves dismissed-player and fielder references through the same squad scope', async () => {
+    const seed = records();
+
+    const uploadPackage = buildPackage(`${prefix}-competition`, [
+      {
+        sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+        innings: [
+          {
+            context: {
+              ordinal: 0,
+              battingTeam: {
+                context: {
+                  name: `${prefix}-alpha`,
+                },
+              },
+            },
+            events: [
+              {
+                ...event(
+                  1,
+                  participantByName(CURRENT_NAME),
+                  participantByName(`${prefix} Alias Holder A`),
+                  participantByName(BOWLER_NAME),
+                ),
+                wickets: [
+                  {
+                    kind: 'caught',
+                    playerOut: participantByName(CURRENT_NAME),
+                    fielders: [
+                      {
+                        participant: participantByName(BOWLER_NAME),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const resolution = await resolvePackageReferences(databaseClient(), uploadPackage);
+
+    const playerOut = outcomeAt(resolution, 'fixtures.0.innings.0.events.0.wickets.0.playerOut');
+
+    expect(playerOut.state).toBe('resolved');
+    expect(playerOut.canonicalId).toBe(seed.renamedPersonId);
+
+    const fielder = outcomeAt(
+      resolution,
+      'fixtures.0.innings.0.events.0.wickets.0.fielders.0.participant',
+    );
+
+    expect(fielder.state).toBe('resolved');
+    expect(fielder.canonicalId).toBe(seed.bowlerPersonId);
+
+    expect(resolution.items[0]?.state).toBe('resolved');
+
+    const participants = resolution.items[0]?.resolvedReferences.participants as
+      Record<string, { canonicalId?: string | null }> | undefined;
+
+    expect(participants?.['wickets.0.playerOut']?.canonicalId).toBe(seed.renamedPersonId);
+
+    expect(participants?.['wickets.0.fielders.0.participant']?.canonicalId).toBe(
+      seed.bowlerPersonId,
+    );
+  });
+
+  test('accepts matching fixture metadata alongside a source identifier', async () => {
+    const seed = records();
+
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+
+    expect(fixture.state).toBe('resolved');
+    expect(fixture.canonicalId).toBe(seed.singleFixtureId);
+    expect(fixture.matchedBy).toBe('source-identifier');
+    expect(resolution.items[0]?.state).toBe('resolved');
+  });
+
+  test('rejects conflicting fixture date metadata without changing the canonical fixture', async () => {
+    const seed = records();
+
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-02',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+
+    expect(fixture.state).toBe('invalid');
+    expect(fixture.reason).toContain('FIXTURE_METADATA_CONFLICT');
+    expect(fixture.reason).toContain('date');
+    expect(resolution.items[0]?.state).toBe('invalid');
+
+    const persisted = await databaseClient().query<{
+      startDate: string;
+      season: string;
+    }>(
+      `SELECT
+         to_char(start_date, 'YYYY-MM-DD') AS "startDate",
+         season
+       FROM fixture
+       WHERE fixture_id=$1::bigint`,
+      [seed.singleFixtureId],
+    );
+
+    expect(persisted.rows[0]).toEqual({
+      startDate: '2026-01-01',
+      season: SEASON_NAME,
+    });
+  });
+
+  test('rejects a conflicting fixture team pair without changing canonical teams', async () => {
+    const seed = records();
+
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-gamma` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+
+    expect(fixture.state).toBe('invalid');
+    expect(fixture.reason).toContain('FIXTURE_METADATA_CONFLICT');
+    expect(fixture.reason).toContain('team pair');
+    expect(resolution.items[0]?.state).toBe('invalid');
+
+    const persisted = await databaseClient().query<{
+      teamId: string;
+    }>(
+      `SELECT team_id::text AS "teamId"
+       FROM fixture_team
+       WHERE fixture_id=$1::bigint
+       ORDER BY team_id`,
+      [seed.singleFixtureId],
+    );
+
+    expect(persisted.rows.map((row) => row.teamId).sort()).toEqual(
+      [seed.alphaTeamId, seed.betaTeamId].sort(),
+    );
+  });
+
   test('resolves the second innings by its own ordinal', async () => {
     const seed = records();
     const resolution = await resolvePackageReferences(

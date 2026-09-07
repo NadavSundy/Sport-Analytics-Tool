@@ -149,6 +149,91 @@ describe('versioned season-upload contract', () => {
     ).toBe(false);
   });
 
+  test('accepts wicket and fielder references without database identifiers', () => {
+    const result = seasonUploadPackageSchema.safeParse(
+      seasonPackage({
+        fixtures: [
+          fixture({
+            innings: [
+              {
+                context: {
+                  ordinal: 1,
+                  battingTeam: homeTeam,
+                },
+                events: [
+                  event({
+                    wickets: [
+                      {
+                        kind: 'caught',
+                        playerOut: {
+                          context: {
+                            name: 'A. Batter',
+                            team: homeTeam,
+                          },
+                        },
+                        fielders: [
+                          {
+                            participant: {
+                              context: {
+                                name: 'B. Bowler',
+                                team: awayTeam,
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  }),
+                ],
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(result.success).toBe(true);
+
+    if (!result.success) {
+      throw new Error('Expected wicket package to parse.');
+    }
+
+    expect(result.data.fixtures[0]?.innings[0]?.events[0]?.wickets[0]?.kind).toBe('caught');
+  });
+
+  test('rejects an extras breakdown that disagrees with runs.extras', () => {
+    const result = seasonUploadPackageSchema.safeParse(
+      seasonPackage({
+        fixtures: [
+          fixture({
+            innings: [
+              {
+                context: {
+                  ordinal: 1,
+                  battingTeam: homeTeam,
+                },
+                events: [
+                  event({
+                    runs: {
+                      offBat: 0,
+                      extras: 2,
+                      total: 2,
+                    },
+                    extras: {
+                      wides: 1,
+                    },
+                  }),
+                ],
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(result.success).toBe(false);
+  });
+
   test('rejects invalid reference entity types and non-namespaced identifiers', () => {
     expect(
       seasonUploadPackageSchema.safeParse({

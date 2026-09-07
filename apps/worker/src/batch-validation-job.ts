@@ -2,7 +2,19 @@ import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import { resolvePackageReferences } from '@sport-analytics/batch-processing';
-import { submissionEventSchema } from '@sport-analytics/contracts';
+import {
+  createCricketValidationState,
+  submissionEventSchema,
+  validateCricketBusinessRules,
+  type CricketValidationContext,
+  type CricketValidationResult,
+  type CricketValidationState,
+  type SubmissionEvent,
+} from '@sport-analytics/contracts';
+import {
+  classifyPublishedCricketDelivery,
+  type PublishedCricketDelivery,
+} from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -80,6 +92,12 @@ interface PreparedItem {
   rejectionDetail: Record<string, unknown> | null;
 }
 
+interface LoadedBatchCricketContext {
+  inningsById: Record<string, { battingTeamId: string; bowlingTeamId: string }>;
+  participantTeamByInningsId: Record<string, Record<string, string>>;
+  dismissalKinds: string[];
+}
+
 class LeaseBusyError extends Error {
   constructor() {
     super('Another worker currently owns the batch validation lease.');
@@ -143,14 +161,34 @@ function sourceObjectId(sourceUri: string): string {
 
 function canonicalParticipantId(
   references: Record<string, unknown>,
-  role: 'striker' | 'nonStriker' | 'bowler',
+  referencePath: string,
 ): string | null {
   const participants = references.participants;
   if (!participants || typeof participants !== 'object') return null;
-  const value = (participants as Record<string, unknown>)[role];
+
+  const value = (participants as Record<string, unknown>)[referencePath];
   if (!value || typeof value !== 'object') return null;
+
   const canonicalId = (value as Record<string, unknown>).canonicalId;
   return typeof canonicalId === 'string' ? canonicalId : null;
+}
+
+function canonicalWickets(candidate: NormalisedCandidate, references: Record<string, unknown>) {
+  return candidate.event.wickets.map((wicket, wicketIndex) => ({
+    kind: wicket.kind,
+    playerOutId: canonicalParticipantId(references, `wickets.${String(wicketIndex)}.playerOut`),
+    fielders: wicket.fielders.map((fielder, fielderIndex) => ({
+      ...(fielder.participant
+        ? {
+            participantId: canonicalParticipantId(
+              references,
+              `wickets.${String(wicketIndex)}.fielders.${String(fielderIndex)}.participant`,
+            ),
+          }
+        : {}),
+      substitute: fielder.substitute,
+    })),
+  }));
 }
 
 function deriveCoordinates(
@@ -178,6 +216,20 @@ function deriveCoordinates(
   if (!Number.isInteger(positionInOver) || positionInOver < 0 || positionInOver > 32_767)
     return null;
   return { overNumber, positionInOver };
+}
+
+function referenceResolutionFailureCode(resolvedReferences: Record<string, unknown>): string {
+  const fixture = resolvedReferences.fixture;
+
+  if (fixture && typeof fixture === 'object' && !Array.isArray(fixture)) {
+    const reason = (fixture as Record<string, unknown>).reason;
+
+    if (typeof reason === 'string' && reason.startsWith('FIXTURE_METADATA_CONFLICT:')) {
+      return 'FIXTURE_METADATA_CONFLICT';
+    }
+  }
+
+  return 'REFERENCE_RESOLUTION_FAILED';
 }
 
 function prepareItem(
@@ -210,7 +262,7 @@ function prepareItem(
     return {
       ...common,
       state: 'rejected',
-      rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+      rejectionCode: referenceResolutionFailureCode(resolution.resolvedReferences),
       rejectionMessage: `One or more event references are ${resolution.state}.`,
       rejectionDetail: { resolutionState: resolution.state },
     };
@@ -231,7 +283,7 @@ function prepareItem(
     bowlerId,
     runs: candidate.event.runs,
     extras: candidate.event.extras,
-    wickets: [],
+    wickets: canonicalWickets(candidate, resolution.resolvedReferences),
   });
 
   if (!parsed.success) {
@@ -259,6 +311,261 @@ function prepareItem(
   };
 }
 
+interface PublishedDeliveryMatchRow {
+  ordinal: number;
+  deliveryId: string;
+  inningsId: string;
+  sequenceNumber: number;
+  overNumber: number;
+  positionInOver: number;
+  ballNumber: string;
+  strikerId: string;
+  nonStrikerId: string;
+  bowlerId: string;
+  offBat: number;
+  runsExtras: number;
+  total: number;
+  nonBoundary: boolean;
+  wides: number | null;
+  noBalls: number | null;
+  byes: number | null;
+  legByes: number | null;
+  penalty: number | null;
+  wickets: PublishedCricketDelivery['wickets'];
+}
+
+const publishedDeliveryProjection = String.raw`
+  d.delivery_id::text AS "deliveryId",
+  d.innings_id::text AS "inningsId",
+  d.innings_sequence AS "sequenceNumber",
+  d.over_number AS "overNumber",
+  d.position_in_over AS "positionInOver",
+  d.ball_number AS "ballNumber",
+  d.striker_id::text AS "strikerId",
+  d.non_striker_id::text AS "nonStrikerId",
+  d.bowler_id::text AS "bowlerId",
+  d.runs_off_bat AS "offBat",
+  d.runs_extras AS "runsExtras",
+  d.runs_total AS "total",
+  d.non_boundary AS "nonBoundary",
+  d.extra_wides AS wides,
+  d.extra_noballs AS "noBalls",
+  d.extra_byes AS byes,
+  d.extra_legbyes AS "legByes",
+  d.extra_penalty AS penalty,
+  COALESCE((
+    SELECT jsonb_agg(
+      jsonb_build_object(
+        'kind', wicket.kind,
+        'playerOutId', wicket.player_out_id::text,
+        'fielders', COALESCE((
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'participantId', fielder.person_id::text,
+              'substitute', fielder.is_substitute
+            )
+            ORDER BY fielder.ordinal
+          )
+          FROM delivery_wicket_fielder fielder
+          WHERE fielder.wicket_id = wicket.wicket_id
+        ), '[]'::jsonb)
+      )
+      ORDER BY wicket.ordinal
+    )
+    FROM delivery_wicket wicket
+    WHERE wicket.delivery_id = d.delivery_id
+  ), '[]'::jsonb) AS wickets
+`;
+
+function mapPublishedDelivery(row: PublishedDeliveryMatchRow): PublishedCricketDelivery {
+  return {
+    inningsId: row.inningsId,
+    sequenceNumber: row.sequenceNumber,
+    overNumber: row.overNumber,
+    positionInOver: row.positionInOver,
+    ballNumber: row.ballNumber,
+    strikerId: row.strikerId,
+    nonStrikerId: row.nonStrikerId,
+    bowlerId: row.bowlerId,
+    runs: {
+      offBat: row.offBat,
+      extras: row.runsExtras,
+      total: row.total,
+      nonBoundary: row.nonBoundary,
+    },
+    extras: {
+      wides: row.wides,
+      noBalls: row.noBalls,
+      byes: row.byes,
+      legByes: row.legByes,
+      penalty: row.penalty,
+    },
+    wickets: row.wickets,
+  };
+}
+
+async function loadPublishedDeliveryMatches(
+  client: PoolClient,
+  items: readonly PreparedItem[],
+): Promise<Map<number, Map<string, PublishedCricketDelivery>>> {
+  const candidates = items.filter((item) => item.state === 'accepted' && item.inningsId !== null);
+
+  const matches = new Map<number, Map<string, PublishedCricketDelivery>>();
+
+  function addRows(rows: readonly PublishedDeliveryMatchRow[]): void {
+    for (const row of rows) {
+      let byDelivery = matches.get(row.ordinal);
+
+      if (!byDelivery) {
+        byDelivery = new Map();
+        matches.set(row.ordinal, byDelivery);
+      }
+
+      byDelivery.set(row.deliveryId, mapPublishedDelivery(row));
+    }
+  }
+
+  if (candidates.length === 0) {
+    return matches;
+  }
+
+  const naturalValues: unknown[] = [];
+
+  const naturalTuples = candidates.map((item) => {
+    const first = naturalValues.length + 1;
+
+    naturalValues.push(item.ordinal, item.inningsId, item.overNumber, item.positionInOver);
+
+    return `($${first}::integer,$${first + 1}::bigint,$${first + 2}::smallint,$${first + 3}::smallint)`;
+  });
+
+  const natural = await client.query<PublishedDeliveryMatchRow>(
+    `
+      WITH requested (
+        ordinal,
+        innings_id,
+        over_number,
+        position_in_over
+      ) AS (
+        VALUES ${naturalTuples.join(',')}
+      )
+      SELECT
+        requested.ordinal,
+        ${publishedDeliveryProjection}
+      FROM requested
+      JOIN delivery_current d
+        ON d.innings_id = requested.innings_id
+       AND d.over_number = requested.over_number
+       AND d.position_in_over = requested.position_in_over
+    `,
+    naturalValues,
+  );
+
+  addRows(natural.rows);
+
+  const sourceValues: unknown[] = [];
+
+  const sourceTuples = candidates.map((item) => {
+    const first = sourceValues.length + 1;
+
+    sourceValues.push(item.ordinal, item.sourceIdentity);
+
+    return `($${first}::integer,$${first + 1}::text)`;
+  });
+
+  const bySource = await client.query<PublishedDeliveryMatchRow>(
+    `
+      WITH requested (
+        ordinal,
+        source_identity
+      ) AS (
+        VALUES ${sourceTuples.join(',')}
+      )
+      SELECT
+        requested.ordinal,
+        ${publishedDeliveryProjection}
+      FROM requested
+      JOIN batch_item source_item
+        ON source_item.source_identity =
+           requested.source_identity
+      JOIN delivery d
+        ON d.source_batch_item_id =
+           source_item.batch_item_id
+       AND d.superseded_at IS NULL
+    `,
+    sourceValues,
+  );
+
+  addRows(bySource.rows);
+
+  return matches;
+}
+
+async function publishedValidationResults(
+  client: PoolClient,
+  items: PreparedItem[],
+): Promise<Map<number, CricketValidationResult[]>> {
+  const matches = await loadPublishedDeliveryMatches(client, items);
+
+  const results = new Map<number, CricketValidationResult[]>();
+
+  for (const item of items) {
+    if (item.state !== 'accepted') {
+      continue;
+    }
+
+    const published = matches.get(item.ordinal);
+
+    if (!published || published.size === 0) {
+      continue;
+    }
+
+    const submitted = submissionEventSchema.parse(item.payload);
+
+    const classifications = [...published.values()].map((delivery) =>
+      classifyPublishedCricketDelivery(submitted, delivery),
+    );
+
+    const conflict = classifications.includes('conflict');
+
+    if (conflict) {
+      item.state = 'rejected';
+      item.rejectionCode = 'PUBLISHED_DELIVERY_CONFLICT';
+      item.rejectionMessage = 'Published delivery data conflicts with this staged event.';
+      item.rejectionDetail = {
+        existingDeliveryIds: [...published.keys()],
+      };
+
+      results.set(item.ordinal, [
+        {
+          code: 'PUBLISHED_DELIVERY_CONFLICT',
+          ruleVersion: '1.0',
+          severity: 'error',
+          eventIndex: item.ordinal,
+          fieldPath: 'delivery',
+          message:
+            'A published delivery or published source identity exists with different cricket content.',
+        },
+      ]);
+
+      continue;
+    }
+
+    results.set(item.ordinal, [
+      {
+        code: 'EXACT_PUBLISHED_DUPLICATE',
+        ruleVersion: '1.0',
+        severity: 'warning',
+        eventIndex: item.ordinal,
+        fieldPath: 'delivery',
+        message: 'The staged event exactly matches an already-published delivery.',
+      },
+    ]);
+  }
+
+  return results;
+}
+
 async function insertValidationResults(
   client: PoolClient,
   batchId: string,
@@ -266,6 +573,8 @@ async function insertValidationResults(
     batchItemId?: string | null;
     sourceOrdinal: number;
     ruleCode: string;
+    ruleVersion?: string;
+    severity?: 'error' | 'warning';
     filePath?: string | null;
     rowNumber?: number | null;
     fieldPath?: string | null;
@@ -281,12 +590,14 @@ async function insertValidationResults(
       row.batchItemId ?? null,
       row.sourceOrdinal,
       row.ruleCode,
+      row.ruleVersion ?? '1.0',
+      row.severity ?? 'error',
       row.filePath ?? null,
       row.rowNumber ?? null,
       row.fieldPath ?? null,
       row.message,
     );
-    return `($${first}::bigint,$${first + 1}::bigint,$${first + 2}::integer,$${first + 3},'1.0','error'::batch_validation_severity,$${first + 4},$${first + 5}::integer,$${first + 6},$${first + 7})`;
+    return `($${first}::bigint,$${first + 1}::bigint,$${first + 2}::integer,$${first + 3},$${first + 4},$${first + 5}::batch_validation_severity,$${first + 6},$${first + 7}::integer,$${first + 8},$${first + 9})`;
   });
   await client.query(
     `
@@ -315,6 +626,159 @@ export function createBatchValidationJobHandler(
     chunksCommitted: 0,
     rejectedItems: 0,
   };
+
+  async function loadDismissalKinds(): Promise<string[]> {
+    const result = await database.query<{ code: string }>(
+      `SELECT code FROM dismissal_kind ORDER BY code`,
+    );
+    return result.rows.map((row) => row.code);
+  }
+
+  async function loadBatchCricketContext(
+    events: readonly SubmissionEvent[],
+    dismissalKinds: string[],
+  ): Promise<LoadedBatchCricketContext> {
+    const inningsIds = [...new Set(events.map((event) => event.inningsId))];
+    const participantIds = [
+      ...new Set(
+        events.flatMap((event) => [
+          event.strikerId,
+          event.nonStrikerId,
+          event.bowlerId,
+          ...event.wickets.map((wicket) => wicket.playerOutId),
+        ]),
+      ),
+    ];
+
+    const [inningsResult, participantResult] = await Promise.all([
+      database.query<{
+        inningsId: string;
+        battingTeamId: string;
+        bowlingTeamId: string | null;
+      }>(
+        `
+          SELECT
+            i.innings_id::text AS "inningsId",
+            i.batting_team_id::text AS "battingTeamId",
+            (
+              SELECT ft.team_id::text
+              FROM fixture_team ft
+              WHERE ft.fixture_id = i.fixture_id
+                AND ft.team_id <> i.batting_team_id
+              ORDER BY ft.ordinal ASC
+              LIMIT 1
+            ) AS "bowlingTeamId"
+          FROM innings i
+          WHERE i.innings_id = ANY($1::bigint[])
+        `,
+        [inningsIds],
+      ),
+      database.query<{
+        inningsId: string;
+        participantId: string;
+        teamId: string;
+      }>(
+        `
+          SELECT DISTINCT
+            i.innings_id::text AS "inningsId",
+            fs.person_id::text AS "participantId",
+            fs.team_id::text AS "teamId"
+          FROM innings i
+          JOIN fixture_squad fs ON fs.fixture_id = i.fixture_id
+          WHERE i.innings_id = ANY($1::bigint[])
+            AND fs.person_id = ANY($2::bigint[])
+        `,
+        [inningsIds, participantIds],
+      ),
+    ]);
+
+    const inningsById: LoadedBatchCricketContext['inningsById'] = {};
+    for (const row of inningsResult.rows) {
+      if (row.bowlingTeamId !== null) {
+        inningsById[row.inningsId] = {
+          battingTeamId: row.battingTeamId,
+          bowlingTeamId: row.bowlingTeamId,
+        };
+      }
+    }
+
+    const participantTeamByInningsId: LoadedBatchCricketContext['participantTeamByInningsId'] = {};
+    for (const row of participantResult.rows) {
+      const membership = participantTeamByInningsId[row.inningsId] ?? {};
+      membership[row.participantId] = row.teamId;
+      participantTeamByInningsId[row.inningsId] = membership;
+    }
+
+    return { inningsById, participantTeamByInningsId, dismissalKinds };
+  }
+
+  function cricketContextForEvent(
+    loaded: LoadedBatchCricketContext,
+    event: SubmissionEvent,
+  ): CricketValidationContext {
+    const innings = loaded.inningsById[event.inningsId];
+    return {
+      inningsById: innings ? { [event.inningsId]: innings } : {},
+      participantTeamById: loaded.participantTeamByInningsId[event.inningsId] ?? {},
+      dismissalKinds: loaded.dismissalKinds,
+    };
+  }
+
+  async function rehydrateCricketValidationState(
+    batchId: string,
+    lastOrdinal: number,
+    state: CricketValidationState,
+    dismissalKinds: string[],
+  ): Promise<void> {
+    if (lastOrdinal < 0) return;
+
+    const pageSize = Math.max(1, Math.min(options.chunkSize, 1_000));
+    let afterOrdinal = -1;
+
+    while (afterOrdinal < lastOrdinal) {
+      const result = await database.query<{ ordinal: number; payload: unknown }>(
+        `
+          SELECT ordinal, payload
+          FROM batch_item
+          WHERE batch_id = $1::bigint
+            AND ordinal > $2::integer
+            AND ordinal <= $3::integer
+            AND (state = 'accepted' OR rejection_code = 'CRICKET_BUSINESS_RULE_FAILED')
+          ORDER BY ordinal ASC
+          LIMIT $4::integer
+        `,
+        [batchId, afterOrdinal, lastOrdinal, pageSize],
+      );
+
+      if (result.rows.length === 0) return;
+
+      const events = result.rows.map((row) => {
+        const parsed = submissionEventSchema.safeParse(row.payload);
+        if (!parsed.success) {
+          throw new PermanentBatchFailure(
+            'STAGED_EVENT_INVALID',
+            'A previously staged canonical event can no longer be parsed.',
+          );
+        }
+        return { ordinal: row.ordinal, event: parsed.data };
+      });
+
+      const loaded = await loadBatchCricketContext(
+        events.map((entry) => entry.event),
+        dismissalKinds,
+      );
+
+      for (const entry of events) {
+        validateCricketBusinessRules([entry.event], cricketContextForEvent(loaded, entry.event), {
+          state,
+          eventIndexOffset: entry.ordinal,
+        });
+      }
+
+      afterOrdinal = result.rows[result.rows.length - 1]!.ordinal;
+      if (result.rows.length < pageSize) return;
+    }
+  }
 
   async function claim(jobId: string, batchId: string): Promise<ClaimResult> {
     return transaction(database, async (client) => {
@@ -529,6 +993,7 @@ export function createBatchValidationJobHandler(
     items: PreparedItem[],
     lastOrdinal: number,
     eventCount: number,
+    businessResultsByOrdinal: ReadonlyMap<number, readonly CricketValidationResult[]> = new Map(),
   ): Promise<void> {
     await transaction(database, async (client) => {
       const lease = await client.query(
@@ -537,6 +1002,8 @@ export function createBatchValidationJobHandler(
         [claimResult.batchId, options.workerId],
       );
       if (lease.rowCount !== 1) throw new LeaseBusyError();
+
+      const publishedResultsByOrdinal = await publishedValidationResults(client, items);
 
       const values: unknown[] = [];
       const tuples = items.map((item) => {
@@ -578,6 +1045,8 @@ export function createBatchValidationJobHandler(
         batchItemId?: string | null;
         sourceOrdinal: number;
         ruleCode: string;
+        ruleVersion?: string;
+        severity?: 'error' | 'warning';
         filePath?: string | null;
         rowNumber?: number | null;
         fieldPath?: string | null;
@@ -585,6 +1054,10 @@ export function createBatchValidationJobHandler(
       }> = [];
       for (const item of items) {
         const batchItemId = idByOrdinal.get(item.ordinal);
+        const businessResults = [
+          ...(businessResultsByOrdinal.get(item.ordinal) ?? []),
+          ...(publishedResultsByOrdinal.get(item.ordinal) ?? []),
+        ];
         if (!batchItemId) {
           validationRows.push({
             sourceOrdinal: item.ordinal,
@@ -597,6 +1070,23 @@ export function createBatchValidationJobHandler(
             message:
               'The event duplicates a source identity or delivery position already staged in this batch.',
           });
+        } else if (businessResults.length > 0) {
+          for (const result of businessResults) {
+            validationRows.push({
+              batchItemId,
+              sourceOrdinal: item.ordinal,
+              ruleCode: result.code,
+              ruleVersion: result.ruleVersion,
+              severity: result.severity,
+              filePath: String(item.sourceLocation.filePath),
+              rowNumber:
+                typeof item.sourceLocation.rowNumber === 'number'
+                  ? item.sourceLocation.rowNumber
+                  : null,
+              fieldPath: result.fieldPath,
+              message: result.message,
+            });
+          }
         } else if (item.state === 'rejected') {
           validationRows.push({
             batchItemId,
@@ -769,6 +1259,14 @@ export function createBatchValidationJobHandler(
       if (signal.aborted) throw new Error('Worker shutdown interrupted batch validation.');
 
       const counters = new Map<string, number>();
+      const cricketValidationState = createCricketValidationState();
+      const dismissalKinds = await loadDismissalKinds();
+      await rehydrateCricketValidationState(
+        claimResult.batchId,
+        claimResult.lastOrdinal,
+        cricketValidationState,
+        dismissalKinds,
+      );
       let candidateChunk: NormalisedCandidate[] = [];
       let chunkLastOrdinal = claimResult.lastOrdinal;
       let persistedOrdinal = claimResult.lastOrdinal;
@@ -815,8 +1313,62 @@ export function createBatchValidationJobHandler(
           if (item) prepared.push(item);
         }
 
+        const businessResultsByOrdinal = new Map<number, CricketValidationResult[]>();
+        const canonicalItems = prepared
+          .filter((item) => item.state === 'accepted')
+          .map((item) => {
+            const parsed = submissionEventSchema.safeParse(item.payload);
+            if (!parsed.success) {
+              throw new PermanentBatchFailure(
+                'STAGED_EVENT_INVALID',
+                'A canonical event failed to parse before business-rule validation.',
+              );
+            }
+            return { item, event: parsed.data };
+          });
+
+        if (canonicalItems.length > 0) {
+          const loaded = await loadBatchCricketContext(
+            canonicalItems.map((entry) => entry.event),
+            dismissalKinds,
+          );
+
+          for (const { item, event } of canonicalItems) {
+            const results = validateCricketBusinessRules(
+              [event],
+              cricketContextForEvent(loaded, event),
+              { state: cricketValidationState, eventIndexOffset: item.ordinal },
+            );
+            if (results.length > 0) {
+              businessResultsByOrdinal.set(item.ordinal, results);
+            }
+
+            const errors = results.filter((result) => result.severity === 'error');
+            if (errors.length > 0) {
+              item.state = 'rejected';
+              item.rejectionCode = 'CRICKET_BUSINESS_RULE_FAILED';
+              item.rejectionMessage = 'Event failed one or more versioned cricket business rules.';
+              item.rejectionDetail = {
+                issues: errors.map((result) => ({
+                  code: result.code,
+                  ruleVersion: result.ruleVersion,
+                  severity: result.severity,
+                  fieldPath: result.fieldPath,
+                  message: result.message,
+                })),
+              };
+            }
+          }
+        }
+
         const lastCandidateOrdinal = candidateChunk[candidateChunk.length - 1]!.ordinal;
-        await writeChunk(claimResult, prepared, lastCandidateOrdinal, scan.eventCount);
+        await writeChunk(
+          claimResult,
+          prepared,
+          lastCandidateOrdinal,
+          scan.eventCount,
+          businessResultsByOrdinal,
+        );
         persistedOrdinal = lastCandidateOrdinal;
         candidateChunk = [];
       };
