@@ -106,6 +106,9 @@ function mockSubmissionService(): SubmissionService {
         eventId: '123e4567-e89b-42d3-a456-426614174000',
         fixtureId: '7',
         revision: 2,
+        refreshedScopes: [
+          { scope: 'fixture', participantId: null, competitionId: '5', season: '2026' },
+        ],
       },
     }),
     getCorrectionHistory: vi.fn<SubmissionService['getCorrectionHistory']>().mockResolvedValue({
@@ -140,7 +143,11 @@ describe('direct event submission API', () => {
         event: expect.objectContaining({ runs: expect.objectContaining({ total: 6 }) }),
       }),
     );
-    expect(response.body.data).toMatchObject({ fixtureId: '7', revision: 2 });
+    expect(response.body.data).toMatchObject({
+      fixtureId: '7',
+      revision: 2,
+      refreshedScopes: [{ scope: 'fixture', participantId: null }],
+    });
   });
 
   test('requires a correction reason before service processing', async () => {
@@ -577,7 +584,7 @@ describe('direct event submission API', () => {
         return { fixtureId: '7', competitionId: '5' };
       },
       async findCorrectionTarget() {
-        return { fixtureId: '7', competitionId: '5', sequenceNumber: 1 };
+        return { fixtureId: '7', competitionId: '5', season: '2026', sequenceNumber: 1 };
       },
       storeAcceptedSubmission: vi.fn<SubmissionRepository['storeAcceptedSubmission']>(),
       storeAcceptedCorrection,
@@ -607,11 +614,12 @@ describe('direct event submission API', () => {
         eventId: '123e4567-e89b-42d3-a456-426614174000',
         fixtureId: '7',
         revision: 2,
+        refreshedScopes: [],
       }),
     );
     const repository: SubmissionRepository = {
       async findCorrectionTarget() {
-        return { fixtureId: '7', competitionId: '5', sequenceNumber: 1 };
+        return { fixtureId: '7', competitionId: '5', season: '2026', sequenceNumber: 1 };
       },
       storeAcceptedSubmission: vi.fn<SubmissionRepository['storeAcceptedSubmission']>(),
       storeAcceptedCorrection,

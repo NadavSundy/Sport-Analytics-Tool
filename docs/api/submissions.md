@@ -116,7 +116,10 @@ reason, before/after states, and original submission/batch-item provenance. Revi
 under a per-event transaction lock, including for concurrent requests. It never accepts statistic totals.
 Fixture, participant, and public-event reads use live
 deliveries, so the affected derived statistics change automatically while unrelated delivery statistics
-remain unchanged.
+remain unchanged. The successful correction response also contains `refreshedScopes`: the durable,
+deduplicated refresh targets for the fixture and for the affected players' season, competition, and
+career aggregates. This is an observable dependency journal rather than a second source of statistic
+values; public statistics continue to derive from the current accepted revisions.
 
 ```json
 {
@@ -213,3 +216,5 @@ The correction workflow and file-upload submission support were added with the a
 Codex[GPT-5].
 The Issue #311 administrator submission rule was documented with the assistance of Codex[GPT-5].
 The Issue #284 correction audit contract was documented with the assistance of Codex[GPT-5].
+The Issue #286 selective refresh dependency contract was documented with the assistance of
+Codex[GPT-5].

@@ -424,6 +424,13 @@ npm run test:e2e -- tests/e2e/corrections.spec.ts --workers=1
 
 ## Fixture statistics coverage
 
+Issue #293 adds cache-aside coverage for the repeated public fixture-statistics response. The unit
+suite proves a miss derives once and the following same-version hit avoids a second source load;
+contributor traces bypass the cache. The database correction test seeds a cache entry, verifies that
+the correction advances its fixture version and removes the entry, and therefore proves stale public
+statistics cannot survive an accepted correction. See
+`evidence/validation/issue-293-cache-performance.md` for the repeat-work comparison.
+
 The Basic fixture-statistics suite includes a manually verified golden fixture, deterministic replay,
 accepted-revision repository checks, anonymous API access, stable statistic detail lookup, opt-in
 event traces, incomplete-data behaviour and shared contract validation.

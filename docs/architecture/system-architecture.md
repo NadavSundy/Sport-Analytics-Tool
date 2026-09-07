@@ -522,6 +522,8 @@ Planned outcomes include:
 - implement JSON and CSV file submissions through the shared validation pipeline;
 - implement authorised event corrections while retaining correction history;
 - automatically refresh statistics affected by accepted corrections;
+- record correction dependencies at fixture and affected-player season, competition, and career scope,
+  so recalculation or invalidation never scans unrelated history;
 - provide clear statistic provenance and “how calculated” information;
 - stage and validate whole-season and back-catalogue batches before publication;
 - report accepted and rejected batch records;
@@ -800,3 +802,5 @@ the current architecture with the assistance of Codex[GPT-5].
 The issue #356 Intermediate adoption decisions and #276 reconciliation were documented with the
 assistance of Codex[GPT-5].
 The issue #365 worker deployment status was documented with the assistance of Codex[GPT-5].
+The issue #286 selective statistics refresh architecture was documented with the assistance of
+Codex[GPT-5].

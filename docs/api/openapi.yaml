@@ -4387,7 +4387,7 @@ components:
     Correction:
       type: object
       additionalProperties: false
-      required: [eventId, fixtureId, revision]
+      required: [eventId, fixtureId, revision, refreshedScopes]
       properties:
         eventId:
           type: string
@@ -4397,6 +4397,30 @@ components:
         revision:
           type: integer
           minimum: 1
+        refreshedScopes:
+          type: array
+          description: Exact derived-statistic scopes whose live inputs changed with this correction.
+          items:
+            type: object
+            additionalProperties: false
+            required: [scope, participantId, competitionId, season]
+            properties:
+              scope:
+                type: string
+                enum: [fixture, season, competition, career]
+              participantId:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiIdentifier'
+                  - type: 'null'
+              competitionId:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiIdentifier'
+                  - type: 'null'
+              season:
+                oneOf:
+                  - type: string
+                    minLength: 1
+                  - type: 'null'
 
     CorrectionResponse:
       type: object

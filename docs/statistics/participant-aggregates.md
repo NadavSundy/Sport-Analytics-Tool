@@ -4,6 +4,12 @@ Season, competition-wide and career aggregates are deterministic projections of 
 events, calculated when requested. As with fixture statistics there is no manually editable total
 and no persisted cache; the difference is only the set of fixtures a projection spans.
 
+When a correction changes a delivery, Issue #286 records refresh dependencies only for the delivery's
+previous and resulting striker and bowler. Each of those participants receives at most one refresh
+target at each applicable season, competition, and career level. The correction response and the
+durable `statistics_refresh_dependency` journal make this selective boundary observable; unrelated
+participants and competition/season groups have no dependency record and no recalculation target.
+
 The statistic catalogue in `docs/requirements/sport-domain-definition.md` §7 names the base figures
 and the two aggregate levels these endpoints publish. Competition-wide is required by issue #285 but
 is **not** named as a level in §7; it is implemented here as the same rollup grouped by competition
@@ -143,4 +149,5 @@ zero runs from zero fixtures is an absence rather than a figure. An unknown part
 
 The preceding calculation, performance and API documentation was generated with the assistance of
 Claude Code[Claude Opus 5]. The corpus measurements were taken against the imported corpus and are
-reproduced in the issue #285 validation record.
+reproduced in the issue #285 validation record. The selective correction-refresh dependency model
+was documented with the assistance of Codex[GPT-5].
