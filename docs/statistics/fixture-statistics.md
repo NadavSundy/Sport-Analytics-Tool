@@ -33,13 +33,15 @@ both types, but it must be explicitly named and requested; it must never become 
 default.
 
 Fixture outcome information may still identify an eliminator winner even when the
-super-over deliveries are excluded from batting and bowling aggregates. Future
-season, competition and career aggregates must consume the same standard-innings
-boundary.
+super-over deliveries are excluded from batting and bowling aggregates. The season,
+competition and career aggregates added under Issue #285 consume the same
+standard-innings boundary, taken from
+`apps/backend/src/modules/statistics/super-over-scope.ts`, which is the single place
+the exclusion is decided. See `docs/statistics/participant-aggregates.md`.
 
 This is the team's current implementation default for Issue #104. Client confirmation
-of the convention for future season, competition and career aggregates remains
-pending.
+of the convention remains pending, which is why the boundary is named in one module
+rather than repeated at each call site.
 
 ## Basic calculations
 

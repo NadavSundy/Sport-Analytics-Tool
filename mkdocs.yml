@@ -66,6 +66,7 @@ nav:
           - Batch Ingestion Receipt API: api/batches.md
           - Season-upload contract: api/season-upload-contract.md
           - Fixture Statistic Calculations: statistics/fixture-statistics.md
+          - Participant Aggregate Calculations: statistics/participant-aggregates.md
           - OpenAPI Specification: api/openapi.md
           - Versioning and Deprecation: api/versioning.md
       - Submission field mapping: api/submission-field-mapping.md

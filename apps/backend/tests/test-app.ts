@@ -5,6 +5,7 @@ import type { ApplicationAccount } from '../src/modules/accounts/account';
 import type { SynchronizeAccount } from '../src/modules/accounts/account.service';
 import type { PublicReadService } from '../src/modules/public-read/public-read.service';
 import type { FixtureStatisticsService } from '../src/modules/statistics/fixture-statistics.service';
+import type { ParticipantAggregatesService } from '../src/modules/statistics/participant-aggregates.service';
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
 import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
@@ -91,6 +92,7 @@ export function createTestApp(
   weatherService?: WeatherService,
   fixtureWeatherService?: FixtureWeatherService,
   batchService?: BatchService,
+  participantAggregatesService?: ParticipantAggregatesService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -105,6 +107,7 @@ export function createTestApp(
     ...(weatherService !== undefined ? { weatherService } : {}),
     ...(fixtureWeatherService !== undefined ? { fixtureWeatherService } : {}),
     ...(batchService !== undefined ? { batchService } : {}),
+    ...(participantAggregatesService !== undefined ? { participantAggregatesService } : {}),
   });
 }
 

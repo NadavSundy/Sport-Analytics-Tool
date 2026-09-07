@@ -1,4 +1,5 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
+import { standardInningsPredicate } from '../statistics/super-over-scope';
 
 export interface ParticipantRecord {
   participantId: string;
@@ -233,7 +234,7 @@ export async function listParticipantFixtures(
         FROM delivery_current d
         JOIN innings i
           ON i.innings_id = d.innings_id
-         AND i.is_super_over = false
+         AND ${standardInningsPredicate('i')}
         JOIN submission source_submission
           ON source_submission.submission_id = d.submission_id
          AND source_submission.status = 'accepted'
@@ -301,7 +302,7 @@ export async function listParticipantFixtures(
         FROM selected_fixture sf
         LEFT JOIN innings i
           ON i.fixture_id = sf.fixture_id
-         AND i.is_super_over = false
+         AND ${standardInningsPredicate('i')}
         GROUP BY sf.fixture_id
       )
       SELECT
