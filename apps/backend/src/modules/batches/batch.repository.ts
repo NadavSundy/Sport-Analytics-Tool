@@ -35,7 +35,7 @@ interface BatchSource {
   sizeBytes: number;
 }
 
-interface BatchRecord {
+export interface BatchRecord {
   batchId: string;
   batchReference: string;
   submitterId: string;
@@ -99,6 +99,42 @@ interface BatchProgressRecord {
   processed: number;
   accepted: number;
   rejected: number;
+}
+
+interface BatchCountsRecord {
+  accepted: number;
+  rejected: number;
+  unresolved: number;
+  duplicate: number;
+  conflicting: number;
+}
+
+interface BatchReportErrorRecord {
+  ruleCode: string;
+  message: string;
+  filePath: string | null;
+  rowNumber: number | null;
+  fieldPath: string | null;
+}
+
+export interface BatchReportItemRecord {
+  batchItemId: string | null;
+  ordinal: number;
+  inningsId: string | null;
+  overNumber: number | null;
+  positionInOver: number | null;
+  sourceIdentity: string | null;
+  sourceLocation: JsonValue | null;
+  referenceResolutionState: BatchReferenceResolutionState | null;
+  state: BatchItemState | null;
+  rejectionCode: string | null;
+  publishedEventId: string | null;
+  errors: BatchReportErrorRecord[];
+}
+
+interface BatchRuleGroupRecord {
+  ruleCode: string;
+  count: number;
 }
 
 interface BatchPublicationResult {
@@ -185,8 +221,20 @@ export interface BatchRepository {
     idempotencyKey: string,
   ): Promise<BatchRecord | null>;
   findBatchByReference(batchReference: string): Promise<BatchRecord | null>;
+  listBatches(options: {
+    submitterId?: string;
+    beforeCreatedAt?: string;
+    beforeBatchId?: string;
+    limit: number;
+  }): Promise<BatchRecord[]>;
   countNonTerminalBatches(submitterId: string): Promise<number>;
   getBatchProgress(batchId: string): Promise<BatchProgressRecord>;
+  getBatchCounts(batchId: string): Promise<BatchCountsRecord>;
+  listBatchReportItems(
+    batchId: string,
+    options: BatchItemPageOptions,
+  ): Promise<BatchReportItemRecord[]>;
+  listBatchRuleGroups(batchId: string): Promise<BatchRuleGroupRecord[]>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
   listBatchItems(batchId: string, options: BatchItemPageOptions): Promise<BatchItemRecord[]>;
   findCheckpoint(
@@ -767,6 +815,31 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       return findBatch('batch_reference = $1::uuid', [batchReference]);
     },
 
+    async listBatches(options) {
+      const values: unknown[] = [];
+      const filters: string[] = [];
+      if (options.submitterId) {
+        values.push(options.submitterId);
+        filters.push(`submitter_id = $${values.length}::bigint`);
+      }
+      if (options.beforeCreatedAt && options.beforeBatchId) {
+        values.push(options.beforeCreatedAt, options.beforeBatchId);
+        filters.push(
+          `(created_at, batch_id) < ($${values.length - 1}::timestamptz, $${values.length}::bigint)`,
+        );
+      }
+      values.push(options.limit);
+      const result = await executeQuery<BatchRow>(
+        database(),
+        `SELECT ${batchSelection} FROM batch
+         ${filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : ''}
+         ORDER BY created_at DESC, batch_id DESC
+         LIMIT $${values.length}::integer`,
+        values,
+      );
+      return result.rows.map(mapBatch);
+    },
+
     async countNonTerminalBatches(submitterId) {
       const result = await executeQuery<{ count: string }>(
         database(),
@@ -793,8 +866,16 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
               b.item_count,
               GREATEST(0, COALESCE(c.last_ordinal, -1) + 1)
             ) AS processed,
-            count(i.batch_item_id) FILTER (WHERE i.state = 'accepted')::text AS accepted,
-            count(i.batch_item_id) FILTER (WHERE i.state = 'rejected')::text AS rejected
+            count(i.batch_item_id) FILTER (
+              WHERE i.state IN ('accepted', 'published', 'duplicate_skipped')
+            )::text AS accepted,
+            (
+              count(i.batch_item_id) FILTER (WHERE i.state = 'rejected') +
+              (SELECT count(DISTINCT v.source_ordinal)
+               FROM batch_validation_result v
+               WHERE v.batch_id = b.batch_id AND v.severity = 'error'
+                 AND v.batch_item_id IS NULL)
+            )::text AS rejected
           FROM batch b
           LEFT JOIN batch_checkpoint c
             ON c.batch_id = b.batch_id AND c.phase = 'validating'
@@ -811,6 +892,126 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         accepted: Number(row?.accepted ?? 0),
         rejected: Number(row?.rejected ?? 0),
       };
+    },
+
+    async getBatchCounts(batchId) {
+      const result = await executeQuery<{
+        accepted: string;
+        rejected: string;
+        unresolved: string;
+        duplicate: string;
+        conflicting: string;
+      }>(
+        database(),
+        `
+          WITH rejected_subjects AS (
+            SELECT ordinal FROM batch_item
+            WHERE batch_id = $1::bigint AND state = 'rejected'
+            UNION
+            SELECT source_ordinal FROM batch_validation_result
+            WHERE batch_id = $1::bigint AND severity = 'error'
+              AND batch_item_id IS NULL AND source_ordinal IS NOT NULL
+          )
+          SELECT
+            (SELECT count(*) FROM batch_item WHERE batch_id = $1::bigint
+              AND state IN ('accepted', 'published', 'duplicate_skipped'))::text AS accepted,
+            (SELECT count(*) FROM rejected_subjects)::text AS rejected,
+            (SELECT count(*) FROM batch_item WHERE batch_id = $1::bigint
+              AND reference_resolution_state <> 'resolved')::text AS unresolved,
+            (SELECT count(DISTINCT ordinal) FROM (
+              SELECT ordinal FROM batch_item WHERE batch_id = $1::bigint
+                AND state = 'duplicate_skipped'
+              UNION
+              SELECT source_ordinal FROM batch_validation_result
+              WHERE batch_id = $1::bigint AND rule_code = 'DUPLICATE_BATCH_ITEM'
+                AND source_ordinal IS NOT NULL
+            ) duplicates)::text AS duplicate,
+            (SELECT count(DISTINCT ordinal) FROM (
+              SELECT ordinal FROM batch_item WHERE batch_id = $1::bigint
+                AND rejection_code LIKE '%CONFLICT%'
+              UNION
+              SELECT source_ordinal FROM batch_validation_result
+              WHERE batch_id = $1::bigint AND rule_code LIKE '%CONFLICT%'
+                AND source_ordinal IS NOT NULL
+            ) conflicts)::text AS conflicting
+        `,
+        [batchId],
+      );
+      const row = requireRow(result.rows[0], 'Batch count lookup');
+      return {
+        accepted: Number(row.accepted),
+        rejected: Number(row.rejected),
+        unresolved: Number(row.unresolved),
+        duplicate: Number(row.duplicate),
+        conflicting: Number(row.conflicting),
+      };
+    },
+
+    async listBatchReportItems(batchId, options) {
+      const result = await executeQuery<BatchReportItemRecord>(
+        database(),
+        `
+          WITH subjects AS (
+            SELECT ordinal FROM batch_item WHERE batch_id = $1::bigint
+            UNION
+            SELECT COALESCE(v.source_ordinal, i.ordinal)
+            FROM batch_validation_result v
+            LEFT JOIN batch_item i ON i.batch_item_id = v.batch_item_id
+            WHERE v.batch_id = $1::bigint
+              AND COALESCE(v.source_ordinal, i.ordinal) IS NOT NULL
+          )
+          SELECT
+            i.batch_item_id::text AS "batchItemId",
+            subjects.ordinal,
+            i.innings_id::text AS "inningsId",
+            i.over_number AS "overNumber",
+            i.position_in_over AS "positionInOver",
+            i.source_identity AS "sourceIdentity",
+            i.source_location AS "sourceLocation",
+            i.reference_resolution_state::text AS "referenceResolutionState",
+            i.state::text AS state,
+            i.rejection_code AS "rejectionCode",
+            i.published_event_id::text AS "publishedEventId",
+            COALESCE(errors.rows, '[]'::jsonb) AS errors
+          FROM subjects
+          LEFT JOIN batch_item i
+            ON i.batch_id = $1::bigint AND i.ordinal = subjects.ordinal
+          LEFT JOIN LATERAL (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'ruleCode', v.rule_code,
+                'message', v.message,
+                'filePath', v.file_path,
+                'rowNumber', v.row_number,
+                'fieldPath', v.field_path
+              ) ORDER BY v.batch_validation_result_id
+            ) AS rows
+            FROM batch_validation_result v
+            WHERE v.batch_id = $1::bigint
+              AND COALESCE(v.source_ordinal, subjects.ordinal) = subjects.ordinal
+              AND (v.batch_item_id IS NULL OR v.batch_item_id = i.batch_item_id)
+              AND v.severity = 'error'
+          ) errors ON true
+          WHERE subjects.ordinal > $2::integer
+          ORDER BY subjects.ordinal
+          LIMIT $3::integer
+        `,
+        [batchId, options.afterOrdinal ?? -1, options.limit],
+      );
+      return result.rows;
+    },
+
+    async listBatchRuleGroups(batchId) {
+      const result = await executeQuery<{ ruleCode: string; count: string }>(
+        database(),
+        `SELECT rule_code AS "ruleCode", count(*)::text AS count
+         FROM batch_validation_result
+         WHERE batch_id = $1::bigint AND severity = 'error'
+         GROUP BY rule_code
+         ORDER BY rule_code`,
+        [batchId],
+      );
+      return result.rows.map((row) => ({ ruleCode: row.ruleCode, count: Number(row.count) }));
     },
 
     async insertBatchItems(batchId, items) {

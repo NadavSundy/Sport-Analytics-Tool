@@ -549,6 +549,7 @@ export function SubmissionPage() {
           Select an authorised fixture and send ordered delivery events for backend validation and
           storage.
         </p>
+        <Link to="/submissions/batches">View batch reports</Link>
       </header>
 
       {isLoading || accessState.kind === 'loading' ? (

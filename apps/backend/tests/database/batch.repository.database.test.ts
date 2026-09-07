@@ -1400,6 +1400,86 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('queries summary counts, grouped faults and paginated report traceability', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-report`,
+        state: 'partially_published',
+      });
+      const items = await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 1,
+          positionInOver: 1,
+          payload: {},
+          sourceIdentity: `${sourcePrefix}-accepted`,
+          sourceLocation: { filePath: 'events.csv', rowNumber: 2 },
+          state: 'published',
+          publishedEventId: current.deliveryId,
+        },
+        {
+          ordinal: 1,
+          inningsId: null,
+          overNumber: 1,
+          positionInOver: 2,
+          payload: {},
+          sourceIdentity: `${sourcePrefix}-rejected`,
+          sourceLocation: { filePath: 'events.csv', rowNumber: 3 },
+          referenceResolutionState: 'unresolved',
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await repository.recordValidationResult({
+        batchId: batch.batchId,
+        batchItemId: items[1]!.batchItemId,
+        sourceOrdinal: 1,
+        ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+        ruleVersion: '1.0',
+        severity: 'error',
+        filePath: 'events.csv',
+        rowNumber: 3,
+        fieldPath: 'striker',
+        message: 'The striker reference is unknown.',
+      });
+
+      await expect(repository.getBatchCounts(batch.batchId)).resolves.toEqual({
+        accepted: 1,
+        rejected: 1,
+        unresolved: 1,
+        duplicate: 0,
+        conflicting: 0,
+      });
+      await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
+        { ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 },
+      ]);
+      const firstPage = await repository.listBatchReportItems(batch.batchId, {
+        limit: 1,
+      });
+      expect(firstPage).toHaveLength(1);
+      expect(firstPage[0]).toMatchObject({ ordinal: 0, publishedEventId: current.deliveryId });
+      await expect(
+        repository.listBatchReportItems(batch.batchId, { afterOrdinal: 0, limit: 1 }),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          ordinal: 1,
+          errors: [
+            expect.objectContaining({
+              ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+              fieldPath: 'striker',
+            }),
+          ],
+        }),
+      ]);
+    });
+  });
+
   test('retains the existing live-delivery natural-key constraint', async () => {
     const indexes = await executeQuery<{ definition: string; indexName: string }>(
       databasePool(),

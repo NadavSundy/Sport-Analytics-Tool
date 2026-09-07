@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
 import type { BatchService } from '../../src/modules/batches/batch.service';
+import { BatchForbiddenError } from '../../src/modules/batches/batch.service';
 import { createTestAccount, createTestApp } from '../test-app';
 
 const acceptToken: VerifyAccessToken = async () => ({
@@ -28,16 +29,34 @@ const status = {
     receivedAt: '2026-09-03T10:00:00.000Z',
     updatedAt: '2026-09-03T10:00:00.000Z',
     progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
+    counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
   },
 };
 
 function synchronize(account: ReturnType<typeof createTestAccount>): SynchronizeAccount {
   return async () => account;
 }
-function service(): BatchService {
+function service(overrides: Partial<BatchService> = {}): BatchService {
   return {
     receive: vi.fn<BatchService['receive']>().mockResolvedValue(receipt),
     getStatus: vi.fn<BatchService['getStatus']>().mockResolvedValue(status),
+    list: vi.fn<BatchService['list']>().mockResolvedValue({
+      data: [status.data],
+      pagination: { nextCursor: null },
+    }),
+    getReport: vi.fn<BatchService['getReport']>().mockResolvedValue({
+      data: {
+        batch: status.data,
+        errorGroups: [],
+        items: [],
+        pagination: { nextCursor: null },
+        downloadUrl: `/api/v1/batches/${reference}/report/download`,
+      },
+    }),
+    downloadReport: vi.fn<BatchService['downloadReport']>().mockResolvedValue({
+      data: { batch: status.data, errorGroups: [], items: [] },
+    }),
+    ...overrides,
   };
 }
 function post(app: ReturnType<typeof createTestApp>) {
@@ -105,6 +124,108 @@ describe('batch receipt API', () => {
     expect(batchService.getStatus).toHaveBeenCalledWith(expect.anything(), reference);
   });
 
+  test('lists the authenticated submitter batches with pagination', async () => {
+    const batchService = service();
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .get('/api/v1/batches?limit=25')
+      .set('Authorization', 'Bearer batch-token')
+      .expect(200);
+    expect(response.body.data).toEqual([status.data]);
+    expect(batchService.list).toHaveBeenCalledWith(expect.anything(), { limit: 25 });
+  });
+
+  test('returns a paginated report and machine-readable download', async () => {
+    const batchService = service();
+    const app = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      batchService,
+    );
+    await request(app)
+      .get(`/api/v1/batches/${reference}/report?limit=10`)
+      .set('Authorization', 'Bearer batch-token')
+      .expect(200);
+    const download = await request(app)
+      .get(`/api/v1/batches/${reference}/report/download`)
+      .set('Authorization', 'Bearer batch-token')
+      .expect(200)
+      .expect('Content-Type', /json/);
+    expect(download.headers['content-disposition']).toContain(`${reference}-report.json`);
+    expect(batchService.getReport).toHaveBeenCalledWith(expect.anything(), reference, {
+      limit: 10,
+    });
+    expect(batchService.downloadReport).toHaveBeenCalledWith(expect.anything(), reference);
+  });
+
+  test.each([
+    ['all accepted', 3, 0, 'published'],
+    ['partially rejected', 2, 1, 'partially_published'],
+    ['fully rejected', 0, 3, 'rejected'],
+  ] as const)(
+    'exposes %s batch outcomes through the report API',
+    async (_case, accepted, rejected, lifecycle) => {
+      const report = {
+        data: {
+          batch: {
+            ...status.data,
+            status: lifecycle,
+            progress: { total: 3, processed: 3, accepted, rejected },
+            counts: { accepted, rejected, unresolved: rejected, duplicate: 0, conflicting: 0 },
+          },
+          errorGroups: rejected ? [{ ruleCode: 'EVENT_SCHEMA_INVALID', count: rejected }] : [],
+          items: [],
+          pagination: { nextCursor: null },
+          downloadUrl: `/api/v1/batches/${reference}/report/download`,
+        },
+      };
+      const batchService = service({ getReport: vi.fn().mockResolvedValue(report) });
+      const response = await request(
+        createTestApp(
+          acceptToken,
+          undefined,
+          synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          batchService,
+        ),
+      )
+        .get(`/api/v1/batches/${reference}/report`)
+        .set('Authorization', 'Bearer batch-token')
+        .expect(200);
+      expect(response.body.data.batch).toMatchObject({
+        status: lifecycle,
+        counts: { accepted, rejected },
+      });
+    },
+  );
+
   test('rejects malformed metadata before receipt processing', async () => {
     const batchService = service();
     const app = createTestApp(
@@ -127,6 +248,50 @@ describe('batch receipt API', () => {
       .send('x')
       .expect(422);
     expect(batchService.receive).not.toHaveBeenCalled();
+  });
+
+  test('does not expose another submitter batch and permits an administrator reviewer', async () => {
+    const deniedService = service({
+      getReport: vi.fn().mockRejectedValue(new BatchForbiddenError()),
+    });
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        deniedService,
+      ),
+    )
+      .get(`/api/v1/batches/${reference}/report`)
+      .set('Authorization', 'Bearer batch-token')
+      .expect(403);
+
+    const reviewerService = service();
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'admin' })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        reviewerService,
+      ),
+    )
+      .get(`/api/v1/batches/${reference}/report`)
+      .set('Authorization', 'Bearer batch-token')
+      .expect(200);
   });
 
   test('requires submitter authorisation before reading the payload', async () => {

@@ -37,11 +37,17 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     }),
     findBatchById: vi.fn(),
     findBatchByReference: vi.fn(),
+    listBatches: vi.fn(),
     findBatchByIdempotencyKey: vi.fn().mockResolvedValue(null),
     countNonTerminalBatches: vi.fn().mockResolvedValue(0),
     getBatchProgress: vi
       .fn()
       .mockResolvedValue({ total: 0, processed: 0, accepted: 0, rejected: 0 }),
+    getBatchCounts: vi
+      .fn()
+      .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
+    listBatchReportItems: vi.fn().mockResolvedValue([]),
+    listBatchRuleGroups: vi.fn().mockResolvedValue([]),
     insertBatchItems: vi.fn(),
     listBatchItems: vi.fn(),
     findCheckpoint: vi.fn(),
@@ -182,5 +188,162 @@ describe('batch receipt service', () => {
         Readable.from('changed'),
       ),
     ).rejects.toBeInstanceOf(BatchConflictError);
+  });
+});
+
+const persistedBatch = {
+  batchId: '20',
+  batchReference: '123e4567-e89b-42d3-a456-426614174000',
+  submitterId: '1',
+  competitionId: '5',
+  idempotencyKey: 'season-2026',
+  packageVersion: '1.0',
+  source: null,
+  state: 'partially_published' as const,
+  itemCount: 3,
+  supersededBy: null,
+  createdAt: '2026-09-03T10:00:00.000Z',
+  updatedAt: '2026-09-03T10:05:00.000Z',
+};
+
+describe('batch result reporting service', () => {
+  test.each([
+    ['all accepted', { accepted: 3, rejected: 0 }],
+    ['partially rejected', { accepted: 2, rejected: 1 }],
+    ['fully rejected', { accepted: 0, rejected: 3 }],
+  ])('reports summary counts for %s batches', async (_name, result) => {
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
+      getBatchProgress: vi.fn().mockResolvedValue({ total: 3, processed: 3, ...result }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        ...result,
+        unresolved: result.rejected,
+        duplicate: 0,
+        conflicting: 0,
+      }),
+    });
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getStatus(
+      createTestAccount({ role: 'submitter' }),
+      persistedBatch.batchReference,
+    );
+    expect(response.data.progress).toMatchObject(result);
+    expect(response.data.counts).toMatchObject(result);
+  });
+
+  test('returns every item fault with source location, cricket context and record traceability', async () => {
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
+      getBatchProgress: vi
+        .fn()
+        .mockResolvedValue({ total: 2, processed: 2, accepted: 1, rejected: 1 }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        accepted: 1,
+        rejected: 1,
+        unresolved: 1,
+        duplicate: 0,
+        conflicting: 0,
+      }),
+      listBatchRuleGroups: vi
+        .fn()
+        .mockResolvedValue([{ ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 2 }]),
+      listBatchReportItems: vi.fn().mockResolvedValue([
+        {
+          batchItemId: '41',
+          ordinal: 0,
+          inningsId: '8',
+          overNumber: 4,
+          positionInOver: 2,
+          sourceIdentity: 'event-1',
+          sourceLocation: { filePath: 'events.json', rowNumber: 12, jsonPath: '$.events[0]' },
+          referenceResolutionState: 'resolved',
+          state: 'published',
+          rejectionCode: null,
+          publishedEventId: '91',
+          errors: [],
+        },
+        {
+          batchItemId: '42',
+          ordinal: 1,
+          inningsId: null,
+          overNumber: 4,
+          positionInOver: 3,
+          sourceIdentity: 'event-2',
+          sourceLocation: { filePath: 'events.json', rowNumber: 13, jsonPath: '$.events[1]' },
+          referenceResolutionState: 'unresolved',
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+          publishedEventId: null,
+          errors: [
+            {
+              ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+              message: 'Unknown batting team.',
+              filePath: 'events.json',
+              rowNumber: 13,
+              fieldPath: 'team',
+            },
+            {
+              ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+              message: 'Unknown striker.',
+              filePath: 'events.json',
+              rowNumber: 13,
+              fieldPath: 'striker',
+            },
+          ],
+        },
+      ]),
+    });
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getReport(
+      createTestAccount({ role: 'submitter' }),
+      persistedBatch.batchReference,
+      { limit: 50 },
+    );
+    expect(response.data.items[0]).toMatchObject({
+      outcome: 'accepted',
+      stagedRecordId: '41',
+      acceptedRecordId: '91',
+    });
+    expect(response.data.items[1]).toMatchObject({
+      outcome: 'unresolved',
+      location: { filePath: 'events.json', rowNumber: 13, jsonPath: '$.events[1]' },
+    });
+    expect(response.data.items[1]!.errors).toHaveLength(2);
+    expect(response.data.items[1]!.errors[0]).toMatchObject({
+      ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+      location: { jsonPath: 'team' },
+      context: { overNumber: 4, positionInOver: 3 },
+    });
+  });
+
+  test('keeps another submitter batch private while allowing an administrator reviewer', async () => {
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, submitterId: '9' }),
+    });
+    const service = createBatchService({} as BatchPayloadStorageService, batches);
+    await expect(
+      service.getStatus(
+        createTestAccount({ accountId: '1', role: 'submitter' }),
+        persistedBatch.batchReference,
+      ),
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
+    await expect(
+      service.getStatus(
+        createTestAccount({ accountId: '1', role: 'admin' }),
+        persistedBatch.batchReference,
+      ),
+    ).resolves.toMatchObject({ data: { batchReference: persistedBatch.batchReference } });
+  });
+
+  test('scopes batch lists to submitters and permits reviewer-wide listing', async () => {
+    const listBatches = vi.fn().mockResolvedValue([]);
+    const service = createBatchService(
+      {} as BatchPayloadStorageService,
+      repository({ listBatches }),
+    );
+    await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
+    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
+    await service.list(createTestAccount({ accountId: '7', role: 'admin' }), { limit: 50 });
+    expect(listBatches).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ submitterId: expect.anything() }),
+    );
   });
 });
