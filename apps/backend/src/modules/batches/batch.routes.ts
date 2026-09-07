@@ -8,6 +8,7 @@ import { createSubmissionRateLimit } from '../submissions/submission-rate-limit'
 import {
   createBatchListController,
   createBatchReceiptController,
+  createBatchReferenceMappingController,
   createBatchReportController,
   createBatchReportDownloadController,
   createBatchReviewController,
@@ -33,6 +34,13 @@ export function createBatchRouter(
     requireAuthentication(verifyAccessToken, synchronizeAccount),
     requireSubmitter(),
     createBatchListController(service),
+  );
+  router.post(
+    '/batches/:batchReference/reference-mappings',
+    json({ limit: '16kb' }),
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireSubmitter(),
+    createBatchReferenceMappingController(service),
   );
   router.post(
     '/batches/:batchReference/review',

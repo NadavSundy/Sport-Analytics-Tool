@@ -858,6 +858,36 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(resolution.items[0]?.state).toBe('ambiguous');
   });
 
+  test('applies a current authorised candidate override and resolves the affected item', async () => {
+    const seed = records();
+    const referencePath = 'fixtures.0.innings.0.events.0.striker';
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        { sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}` },
+        participantByName(DUPLICATE_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(CURRENT_NAME),
+      ),
+      new Map([
+        [
+          referencePath,
+          { entityType: 'participant', canonicalId: seed.duplicateNamePersonIds[0]! },
+        ],
+      ]),
+    );
+
+    expect(outcomeAt(resolution, referencePath)).toMatchObject({
+      state: 'resolved',
+      canonicalId: seed.duplicateNamePersonIds[0],
+      matchedBy: 'manual',
+    });
+    expect(resolution.items[0]).toMatchObject({
+      state: 'resolved',
+      inningsId: seed.firstInningsId,
+    });
+  });
+
   test('resolves a renamed participant through a unique exact alias and records the alias match', async () => {
     const seed = records();
     const resolution = await resolvePackageReferences(

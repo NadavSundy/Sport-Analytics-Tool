@@ -7,6 +7,7 @@ import { executeQuery } from '../../src/database';
 import {
   BatchReviewConflictError,
   BatchReviewResolutionError,
+  BatchReferenceMappingConflictError,
   createBatchRepository,
 } from '../../src/modules/batches/batch.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
@@ -52,6 +53,10 @@ function extendedBatchMigrationSections(): Promise<{ down: string; up: string }>
 
 function reviewWorkflowMigrationSections(): Promise<{ down: string; up: string }> {
   return migrationSections('20260907100000000_batch-review-workflow.sql');
+}
+
+function referenceMappingMigrationSections(): Promise<{ down: string; up: string }> {
+  return migrationSections('20260907130000000_batch-reference-mapping.sql');
 }
 
 describe.sequential('batch repository database integration', () => {
@@ -262,6 +267,7 @@ describe.sequential('batch repository database integration', () => {
     const batchMigration = await batchMigrationSections();
     const extensionMigration = await extendedBatchMigrationSections();
     const reviewMigration = await reviewWorkflowMigrationSections();
+    const mappingMigration = await referenceMappingMigrationSections();
 
     try {
       await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
@@ -275,12 +281,14 @@ describe.sequential('batch repository database integration', () => {
       await client.query(batchMigration.up);
       await client.query(extensionMigration.up);
       await client.query(reviewMigration.up);
+      await client.query(mappingMigration.up);
 
       const created = await client.query<{ relationName: string | null }>(
         `SELECT to_regclass('batch_checkpoint')::text AS "relationName"`,
       );
       expect(created.rows[0].relationName).toBe('batch_checkpoint');
 
+      await client.query(mappingMigration.down);
       await client.query(reviewMigration.down);
       await client.query(extensionMigration.down);
       await client.query(batchMigration.down);
@@ -341,6 +349,93 @@ describe.sequential('batch repository database integration', () => {
         publishedAt: null,
         body: { type: 'batch.validate', version: 1, batchId: created.batchId },
       });
+    });
+  });
+
+  test('queues an idempotent mapping decision and retains superseded validation evidence', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-mapping`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 100 },
+        state: 'stored',
+      });
+      const [item] = await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 0,
+          payload: { source: 'ambiguous' },
+          sourceIdentity: `${sourcePrefix}:delivery:ambiguous`,
+          referenceResolutionState: 'ambiguous',
+          resolvedReferences: {},
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await repository.recordValidationResult({
+        batchId: batch.batchId,
+        batchItemId: item.batchItemId,
+        sourceOrdinal: 0,
+        ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+        ruleVersion: '1.0',
+        severity: 'error',
+        message: 'Choose one candidate.',
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1::bigint`, [
+        batch.batchId,
+      ]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded',completed_at=now()
+         WHERE batch_id=$1::bigint`,
+        [batch.batchId],
+      );
+
+      const input = {
+        decisionReference: randomUUID(),
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0.innings.0.events.0.striker',
+        entityType: 'participant',
+        candidateId: current.accountId,
+        candidateLabel: 'Readable candidate',
+        decisionKey: `${sourcePrefix}-mapping-decision`,
+      };
+      const decision = await repository.queueReferenceMapping(input);
+      const repeated = await repository.queueReferenceMapping(input);
+      expect(repeated).toEqual(decision);
+
+      const state = await client.query<{
+        batchState: string;
+        itemState: string;
+        active: boolean;
+        jobState: string;
+        outboxCount: string;
+      }>(
+        `SELECT
+           (SELECT state::text FROM batch WHERE batch_id=$1::bigint) AS "batchState",
+           (SELECT state::text FROM batch_item WHERE batch_id=$1::bigint) AS "itemState",
+           (SELECT active FROM batch_validation_result WHERE batch_id=$1::bigint) AS active,
+           (SELECT state::text FROM background_job WHERE batch_id=$1::bigint) AS "jobState",
+           (SELECT count(*)::text FROM outbox_message o JOIN background_job j USING (job_id)
+             WHERE j.batch_id=$1::bigint) AS "outboxCount"`,
+        [batch.batchId],
+      );
+      expect(state.rows[0]).toEqual({
+        batchState: 'stored',
+        itemState: 'pending',
+        active: false,
+        jobState: 'queued',
+        outboxCount: '2',
+      });
+      await expect(
+        repository.queueReferenceMapping({ ...input, candidateId: current.competitionId }),
+      ).rejects.toBeInstanceOf(BatchReferenceMappingConflictError);
     });
   });
 

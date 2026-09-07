@@ -1347,6 +1347,43 @@ paths:
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
+  /api/v1/batches/{batchReference}/reference-mappings:
+    post:
+      tags: [Batches]
+      summary: Map an ambiguous staged reference to a labeled candidate
+      description: The owning submitter or a competition-scoped administrator may select an opaque candidate returned by the batch report. The decision is retained and asynchronous validation restarts from the original private source; canonical database identifiers are never accepted from the client.
+      operationId: mapBatchReference
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchReferenceMappingRequest' }
+      responses:
+        '200':
+          description: An identical previously applied decision was returned idempotently.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '202':
+          description: The durable decision was accepted and asynchronous revalidation was queued.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: The candidate is stale, unavailable, or conflicts with a prior decision.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The mapping request is invalid.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
   /api/v1/submissions/events/{eventId}:
     put:
       tags:
@@ -3688,10 +3725,43 @@ components:
         location: { $ref: '#/components/schemas/BatchReportLocation' }
         context: { $ref: '#/components/schemas/BatchReportContext' }
 
+    BatchReferenceCandidate:
+      type: object
+      additionalProperties: false
+      required: [candidateReference, label]
+      properties:
+        candidateReference:
+          { type: string, format: uuid, description: Opaque candidate token; never a database ID. }
+        label: { type: string, minLength: 1 }
+
+    BatchReferenceResolution:
+      type: object
+      additionalProperties: false
+      required:
+        [referencePath, entityType, state, submittedReference, reason, requiredAction, candidates]
+      properties:
+        referencePath: { type: string, minLength: 1 }
+        entityType: { type: string, enum: [competition, team, fixture, innings, participant] }
+        state: { type: string, enum: [ambiguous, unresolved, invalid] }
+        submittedReference: {}
+        reason: { type: [string, 'null'], minLength: 1 }
+        requiredAction: { type: string, enum: [select_candidate, contact_reviewer] }
+        candidates: { type: array, items: { $ref: '#/components/schemas/BatchReferenceCandidate' } }
+
     BatchReportItem:
       type: object
       additionalProperties: false
-      required: [ordinal, outcome, location, context, stagedRecordId, acceptedRecordId, errors]
+      required:
+        [
+          ordinal,
+          outcome,
+          location,
+          context,
+          stagedRecordId,
+          acceptedRecordId,
+          referenceResolutions,
+          errors,
+        ]
       properties:
         ordinal: { type: integer, minimum: 0 }
         outcome:
@@ -3702,6 +3772,8 @@ components:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
         acceptedRecordId:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        referenceResolutions:
+          { type: array, items: { $ref: '#/components/schemas/BatchReferenceResolution' } }
         errors: { type: array, items: { $ref: '#/components/schemas/BatchReportError' } }
 
     BatchReportRuleGroup:
@@ -3745,6 +3817,34 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/BatchReportDownload' }
+
+    BatchReferenceMappingRequest:
+      type: object
+      additionalProperties: false
+      required: [itemOrdinal, referencePath, candidateReference, decisionKey]
+      properties:
+        itemOrdinal: { type: integer, minimum: 0 }
+        referencePath: { type: string, minLength: 1, maxLength: 1000 }
+        candidateReference: { type: string, format: uuid }
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
+    BatchReferenceMappingReceipt:
+      type: object
+      additionalProperties: false
+      required: [batchReference, decisionReference, status, statusUrl, submittedAt]
+      properties:
+        batchReference: { type: string, format: uuid }
+        decisionReference: { type: string, format: uuid }
+        status: { type: string, enum: [queued, applied] }
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        submittedAt: { type: string, format: date-time }
+
+    BatchReferenceMappingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchReferenceMappingReceipt' }
 
     SubmissionFielder:
       type: object

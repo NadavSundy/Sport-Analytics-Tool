@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import {
@@ -6,6 +6,9 @@ import {
   type BatchListQuery,
   type BatchListResponse,
   type BatchMetadata,
+  type BatchReferenceMappingRequest,
+  type BatchReferenceMappingResponse,
+  type BatchReferenceEntityType,
   type BatchReceiptResponse,
   type BatchReportDownloadResponse,
   type BatchReportItem,
@@ -24,6 +27,7 @@ import type { BatchPayloadStorageService } from '../object-storage/batch-payload
 import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/object-store';
 import {
   BatchLeaseBusyError,
+  BatchReferenceMappingConflictError,
   BatchReviewConflictError,
   BatchReviewResolutionError,
   createBatchRepository,
@@ -68,6 +72,123 @@ export interface BatchService {
     reference: string,
     request: BatchReviewRequest,
   ): Promise<BatchReviewResponse>;
+  mapReference(
+    account: ApplicationAccount,
+    reference: string,
+    request: BatchReferenceMappingRequest,
+  ): Promise<BatchReferenceMappingResponse>;
+}
+
+interface StoredReferenceCandidate {
+  canonicalId: string;
+  label: string;
+  outOfScope?: boolean;
+}
+
+interface StoredReferenceOutcome {
+  referencePath: string;
+  entityType: BatchReferenceEntityType;
+  state: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
+  submittedReference: unknown;
+  candidates: StoredReferenceCandidate[];
+  reason: string | null;
+}
+
+function candidateReference(
+  batchReference: string,
+  itemOrdinal: number,
+  referencePath: string,
+  canonicalId: string,
+) {
+  const bytes = createHash('sha256')
+    .update(`${batchReference}\0${String(itemOrdinal)}\0${referencePath}\0${canonicalId}`)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const value = bytes.toString('hex');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
+function storedOutcomes(value: unknown): StoredReferenceOutcome[] {
+  const results: StoredReferenceOutcome[] = [];
+  function visit(candidate: unknown) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return;
+    const record = candidate as Record<string, unknown>;
+    if (
+      typeof record.referencePath === 'string' &&
+      ['competition', 'team', 'fixture', 'innings', 'participant'].includes(
+        String(record.entityType),
+      ) &&
+      ['resolved', 'ambiguous', 'unresolved', 'invalid'].includes(String(record.state)) &&
+      Array.isArray(record.candidates)
+    ) {
+      const candidates = record.candidates.flatMap((entry): StoredReferenceCandidate[] => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+        const item = entry as Record<string, unknown>;
+        return typeof item.canonicalId === 'string' && typeof item.label === 'string'
+          ? [
+              {
+                canonicalId: item.canonicalId,
+                label: item.label,
+                ...(item.outOfScope === true ? { outOfScope: true } : {}),
+              },
+            ]
+          : [];
+      });
+      results.push({
+        referencePath: record.referencePath,
+        entityType: record.entityType as BatchReferenceEntityType,
+        state: record.state as StoredReferenceOutcome['state'],
+        submittedReference: record.submittedReference,
+        candidates,
+        reason: typeof record.reason === 'string' ? record.reason : null,
+      });
+      return;
+    }
+    for (const nested of Object.values(record)) visit(nested);
+  }
+  visit(value);
+  return results;
+}
+
+function reportReferenceResolutions(
+  record: BatchReportItemRecord,
+  batchReference: string,
+  competitionId: string,
+) {
+  const paths = new Set<string>();
+  return storedOutcomes(record.resolvedReferences).flatMap((outcome) => {
+    if (outcome.state === 'resolved' || paths.has(outcome.referencePath)) return [];
+    paths.add(outcome.referencePath);
+    const candidates = outcome.candidates
+      .filter(
+        (candidate) =>
+          !candidate.outOfScope &&
+          (outcome.entityType !== 'competition' || candidate.canonicalId === competitionId),
+      )
+      .map((candidate) => ({
+        candidateReference: candidateReference(
+          batchReference,
+          record.ordinal,
+          outcome.referencePath,
+          candidate.canonicalId,
+        ),
+        label: candidate.label,
+      }));
+    return [
+      {
+        referencePath: outcome.referencePath,
+        entityType: outcome.entityType,
+        state: outcome.state,
+        submittedReference: outcome.submittedReference,
+        reason: outcome.reason,
+        requiredAction:
+          candidates.length > 0 ? ('select_candidate' as const) : ('contact_reviewer' as const),
+        candidates,
+      },
+    ];
+  });
 }
 
 function receipt(batch: {
@@ -145,7 +266,11 @@ function reportOutcome(record: BatchReportItemRecord): BatchReportItem['outcome'
   return 'accepted';
 }
 
-function mapReportItem(record: BatchReportItemRecord): BatchReportItem {
+function mapReportItem(
+  record: BatchReportItemRecord,
+  batchReference: string,
+  competitionId: string,
+): BatchReportItem {
   const context = reportContext(record);
   return {
     ordinal: record.ordinal,
@@ -154,6 +279,7 @@ function mapReportItem(record: BatchReportItemRecord): BatchReportItem {
     context,
     stagedRecordId: record.batchItemId,
     acceptedRecordId: record.publishedEventId,
+    referenceResolutions: reportReferenceResolutions(record, batchReference, competitionId),
     errors: record.errors.map((error) => ({
       ruleCode: error.ruleCode,
       message: error.message,
@@ -313,7 +439,7 @@ export function createBatchService(
         data: {
           batch: batchStatus,
           errorGroups,
-          items: page.map(mapReportItem),
+          items: page.map((record) => mapReportItem(record, reference, batch.competitionId)),
           pagination: {
             nextCursor:
               records.length > query.limit && page.length > 0
@@ -334,7 +460,7 @@ export function createBatchService(
           ...(afterOrdinal === undefined ? {} : { afterOrdinal }),
           limit: 1000,
         });
-        items.push(...page.map(mapReportItem));
+        items.push(...page.map((record) => mapReportItem(record, reference, batch.competitionId)));
         if (page.length < 1000) break;
         afterOrdinal = page.at(-1)!.ordinal;
       }
@@ -377,6 +503,85 @@ export function createBatchService(
       const current = await repository.findBatchById(batch.batchId);
       if (!current) throw new Error('Reviewed batch could not be reloaded.');
       return { data: await status(current) };
+    },
+
+    async mapReference(account, reference, request) {
+      const batch = await findAuthorizedBatch(account, reference);
+      let afterOrdinal: number | undefined;
+      let selection:
+        { entityType: BatchReferenceEntityType; canonicalId: string; label: string } | undefined;
+
+      for (;;) {
+        const items = await repository.listBatchItems(batch.batchId, {
+          ...(afterOrdinal === undefined ? {} : { afterOrdinal }),
+          limit: 1000,
+        });
+        for (const item of items) {
+          if (item.ordinal !== request.itemOrdinal) continue;
+          for (const outcome of storedOutcomes(item.resolvedReferences)) {
+            if (outcome.referencePath !== request.referencePath) {
+              continue;
+            }
+            const candidate = outcome.candidates.find(
+              (value) =>
+                !value.outOfScope &&
+                (outcome.entityType !== 'competition' ||
+                  value.canonicalId === batch.competitionId) &&
+                candidateReference(
+                  reference,
+                  item.ordinal,
+                  outcome.referencePath,
+                  value.canonicalId,
+                ) === request.candidateReference,
+            );
+            if (candidate) {
+              selection = {
+                entityType: outcome.entityType,
+                canonicalId: candidate.canonicalId,
+                label: candidate.label,
+              };
+              break;
+            }
+          }
+          if (selection) break;
+        }
+        if (selection || items.length < 1000) break;
+        afterOrdinal = items.at(-1)!.ordinal;
+      }
+
+      if (!selection) {
+        throw new BatchConflictError(
+          'The selected candidate is stale or is not available for this reference.',
+        );
+      }
+
+      try {
+        const decision = await repository.queueReferenceMapping({
+          decisionReference: randomUUID(),
+          batchId: batch.batchId,
+          actorId: account.accountId,
+          itemOrdinal: request.itemOrdinal,
+          referencePath: request.referencePath,
+          entityType: selection.entityType,
+          candidateId: selection.canonicalId,
+          candidateLabel: selection.label,
+          decisionKey: request.decisionKey,
+        });
+        return {
+          data: {
+            batchReference: reference,
+            decisionReference: decision.decisionReference,
+            status: decision.state === 'applied' ? 'applied' : 'queued',
+            statusUrl: `${API_BASE_PATH}/batches/${reference}`,
+            submittedAt: decision.decidedAt,
+          },
+        };
+      } catch (error) {
+        if (error instanceof BatchReferenceMappingConflictError) {
+          throw new BatchConflictError(error.message);
+        }
+        throw error;
+      }
     },
   };
 }

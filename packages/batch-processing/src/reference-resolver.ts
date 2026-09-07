@@ -57,14 +57,19 @@ const CANONICAL_SOURCE_NAMESPACE = 'cricsheet';
  * issue #360 does not name it. A submitted season narrows the fixture lookup and
  * resolves to nothing of its own.
  */
-type ReferenceEntityType = 'competition' | 'team' | 'fixture' | 'innings' | 'participant';
+export type ReferenceEntityType = 'competition' | 'team' | 'fixture' | 'innings' | 'participant';
 
 /** Mirrors the `batch_reference_resolution_state` enum. */
 type ReferenceResolutionState = 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
 
 /** How a resolved reference was matched. Recorded for provenance. */
 type ReferenceMatchMethod =
-  'source-identifier' | 'exact-name' | 'exact-alias' | 'natural-key' | 'ordinal';
+  'source-identifier' | 'exact-name' | 'exact-alias' | 'natural-key' | 'ordinal' | 'manual';
+
+export interface ReferenceResolutionOverride {
+  entityType: ReferenceEntityType;
+  canonicalId: string;
+}
 
 interface ReferenceCandidate {
   canonicalId: string;
@@ -231,6 +236,27 @@ function outcome(
     candidates: detail.candidates ?? [],
     reason: detail.reason ?? null,
   };
+}
+
+function applyOverride(
+  value: ReferenceOutcome,
+  overrides: ReadonlyMap<string, ReferenceResolutionOverride>,
+): ReferenceOutcome {
+  const override = overrides.get(value.referencePath);
+  if (!override || value.state === 'resolved' || override.entityType !== value.entityType)
+    return value;
+  const selected = value.candidates.find(
+    (candidate) => candidate.canonicalId === override.canonicalId && !candidate.outOfScope,
+  );
+  return selected
+    ? {
+        ...value,
+        state: 'resolved',
+        canonicalId: selected.canonicalId,
+        matchedBy: 'manual',
+        reason: `Mapped to ${selected.label} by an authorised user.`,
+      }
+    : value;
 }
 
 /** Reduce an outcome to the provenance recorded against a staged item. */
@@ -765,6 +791,7 @@ function resolveParticipant(
 export async function resolvePackageReferences(
   client: QueryExecutor,
   uploadPackage: SeasonUploadPackage,
+  overrides: ReadonlyMap<string, ReferenceResolutionOverride> = new Map(),
 ): Promise<PackageResolution> {
   const outcomes: ReferenceOutcome[] = [];
   const items: ResolvedPackageItem[] = [];
@@ -830,13 +857,16 @@ export async function resolvePackageReferences(
   const competitionsByName = groupBy(competitionRows, (row) => row.name);
   const teamsByName = groupBy(teamRows, (row) => row.name);
 
-  const competitionOutcome = resolveNamedReference(
-    'competition',
-    'competition',
-    uploadPackage.competition,
-    competitionName,
-    competitionsByName,
-    'the competition name',
+  const competitionOutcome = applyOverride(
+    resolveNamedReference(
+      'competition',
+      'competition',
+      uploadPackage.competition,
+      competitionName,
+      competitionsByName,
+      'the competition name',
+    ),
+    overrides,
   );
   outcomes.push(competitionOutcome);
 
@@ -848,13 +878,16 @@ export async function resolvePackageReferences(
       continue;
     }
 
-    const resolved = resolveNamedReference(
-      path,
-      'team',
-      reference,
-      readableName(reference),
-      teamsByName,
-      'the team name',
+    const resolved = applyOverride(
+      resolveNamedReference(
+        path,
+        'team',
+        reference,
+        readableName(reference),
+        teamsByName,
+        'the team name',
+      ),
+      overrides,
     );
     teamOutcomeByPath.set(path, resolved);
     outcomes.push(resolved);
@@ -974,6 +1007,7 @@ export async function resolvePackageReferences(
       });
     }
 
+    resolvedFixture = applyOverride(resolvedFixture, overrides);
     outcomes.push(resolvedFixture);
     fixtureResolutions.push(resolvedFixture);
   }
@@ -1057,14 +1091,17 @@ export async function resolvePackageReferences(
       const battingTeamOutcome =
         teamOutcomeByPath.get(`${inningsPath}.context.battingTeam`) ?? null;
 
-      const inningsOutcome = resolveInnings(
-        inningsPath,
-        submittedInnings,
-        innings.sourceId,
-        innings.context ?? null,
-        fixtureOutcome,
-        fixtureId ? (inningsByFixture.get(fixtureId) ?? []) : [],
-        battingTeamOutcome,
+      const inningsOutcome = applyOverride(
+        resolveInnings(
+          inningsPath,
+          submittedInnings,
+          innings.sourceId,
+          innings.context ?? null,
+          fixtureOutcome,
+          fixtureId ? (inningsByFixture.get(fixtureId) ?? []) : [],
+          battingTeamOutcome,
+        ),
+        overrides,
       );
       outcomes.push(inningsOutcome);
 
@@ -1094,13 +1131,16 @@ export async function resolvePackageReferences(
         }
 
         const participantOutcomes = participantReferences.map(([role, reference]) => {
-          const participantOutcome = resolveParticipant(
-            `${eventPath}.${role}`,
-            reference,
-            fixtureOutcome,
-            squadBySourceRef,
-            squadByDisplayName,
-            squadByAlias,
+          const participantOutcome = applyOverride(
+            resolveParticipant(
+              `${eventPath}.${role}`,
+              reference,
+              fixtureOutcome,
+              squadBySourceRef,
+              squadByDisplayName,
+              squadByAlias,
+            ),
+            overrides,
           );
           outcomes.push(participantOutcome);
           return [role, participantOutcome] as const;

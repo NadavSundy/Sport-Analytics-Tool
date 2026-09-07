@@ -32,6 +32,13 @@ Reference-resolution values are `unresolved`, `resolved`, `ambiguous`, and `inva
 or invalid reference remains evidence in the batch item and its validation result; later workflow
 code must require a review decision rather than inventing a match.
 
+Issue #425 adds `batch_reference_mapping_decision` as append-only provenance for a selected existing
+candidate, including an opaque public decision reference, source reference path, internal candidate,
+readable label, actor, idempotency key, state, and timestamps. The migration also marks validation
+results as current or superseded. Revalidation never deletes earlier evidence: it supersedes the
+previous active view, updates the retained staged item, and reuses the durable validation job and
+outbox command.
+
 ## Verification
 
 The PostgreSQL integration suite applies all migrations to an isolated database. The batch-repository
@@ -51,3 +58,4 @@ On Windows PowerShell where script execution blocks `npm.ps1`, use `npm.cmd run 
 
 The Issue #359 gap analysis, persistence documentation, and migration verification description were
 produced with the assistance of Codex[GPT-5].
+The Issue #425 mapping-decision persistence section was produced with the assistance of Codex[GPT-5].

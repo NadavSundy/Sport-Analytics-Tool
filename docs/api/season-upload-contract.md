@@ -125,6 +125,13 @@ decision are retained for provenance. Invalid source formats, a source ID for
 the wrong entity type, missing reference context, and duplicate event
 identities are contract validation errors.
 
+Reports expose existing candidates as readable labels with opaque candidate references. The batch
+owner or an administrator in the batch's competition scope can submit one of those references to
+the [batch reference-mapping endpoint](batches.md#reference-mapping). The server rechecks that the
+choice is still a valid candidate and asynchronously reruns canonical event and cricket validation.
+References without a safe existing candidate require reviewer contact; this workflow does not
+silently create records.
+
 ## Multi-file packages
 
 Use a manifest when a package contains more than one file. The manifest lists
@@ -165,4 +172,5 @@ errors by stable code. The complete report is available as JSON from
 
 This Issue #357 contract and documentation were generated with the assistance
 of Codex[GPT-5]. The batch status and result-report section was generated with
+the assistance of Codex[GPT-5]. The reference-mapping section was generated with
 the assistance of Codex[GPT-5].
