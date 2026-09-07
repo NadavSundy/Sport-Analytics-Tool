@@ -498,6 +498,127 @@ describe.sequential('batch reference resolution database integration', () => {
     );
   });
 
+  test('accepts matching fixture metadata alongside a source identifier', async () => {
+    const seed = records();
+
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+
+    expect(fixture.state).toBe('resolved');
+    expect(fixture.canonicalId).toBe(seed.singleFixtureId);
+    expect(fixture.matchedBy).toBe('source-identifier');
+    expect(resolution.items[0]?.state).toBe('resolved');
+  });
+
+  test('rejects conflicting fixture date metadata without changing the canonical fixture', async () => {
+    const seed = records();
+
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-02',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+
+    expect(fixture.state).toBe('invalid');
+    expect(fixture.reason).toContain('FIXTURE_METADATA_CONFLICT');
+    expect(fixture.reason).toContain('date');
+    expect(resolution.items[0]?.state).toBe('invalid');
+
+    const persisted = await databaseClient().query<{
+      startDate: string;
+      season: string;
+    }>(
+      `SELECT
+         to_char(start_date, 'YYYY-MM-DD') AS "startDate",
+         season
+       FROM fixture
+       WHERE fixture_id=$1::bigint`,
+      [seed.singleFixtureId],
+    );
+
+    expect(persisted.rows[0]).toEqual({
+      startDate: '2026-01-01',
+      season: SEASON_NAME,
+    });
+  });
+
+  test('rejects a conflicting fixture team pair without changing canonical teams', async () => {
+    const seed = records();
+
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-gamma` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+
+    expect(fixture.state).toBe('invalid');
+    expect(fixture.reason).toContain('FIXTURE_METADATA_CONFLICT');
+    expect(fixture.reason).toContain('team pair');
+    expect(resolution.items[0]?.state).toBe('invalid');
+
+    const persisted = await databaseClient().query<{
+      teamId: string;
+    }>(
+      `SELECT team_id::text AS "teamId"
+       FROM fixture_team
+       WHERE fixture_id=$1::bigint
+       ORDER BY team_id`,
+      [seed.singleFixtureId],
+    );
+
+    expect(persisted.rows.map((row) => row.teamId).sort()).toEqual(
+      [seed.alphaTeamId, seed.betaTeamId].sort(),
+    );
+  });
+
   test('resolves the second innings by its own ordinal', async () => {
     const seed = records();
     const resolution = await resolvePackageReferences(

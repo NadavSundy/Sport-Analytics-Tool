@@ -218,6 +218,20 @@ function deriveCoordinates(
   return { overNumber, positionInOver };
 }
 
+function referenceResolutionFailureCode(resolvedReferences: Record<string, unknown>): string {
+  const fixture = resolvedReferences.fixture;
+
+  if (fixture && typeof fixture === 'object' && !Array.isArray(fixture)) {
+    const reason = (fixture as Record<string, unknown>).reason;
+
+    if (typeof reason === 'string' && reason.startsWith('FIXTURE_METADATA_CONFLICT:')) {
+      return 'FIXTURE_METADATA_CONFLICT';
+    }
+  }
+
+  return 'REFERENCE_RESOLUTION_FAILED';
+}
+
 function prepareItem(
   candidate: NormalisedCandidate,
   resolution: {
@@ -248,7 +262,7 @@ function prepareItem(
     return {
       ...common,
       state: 'rejected',
-      rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+      rejectionCode: referenceResolutionFailureCode(resolution.resolvedReferences),
       rejectionMessage: `One or more event references are ${resolution.state}.`,
       rejectionDetail: { resolutionState: resolution.state },
     };
