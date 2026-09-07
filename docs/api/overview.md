@@ -257,6 +257,12 @@ application errors.
 See [Weather API](weather.md) for the request parameters, response format, provider behaviour,
 and current limitations.
 
+### Consumer API keys
+
+Administrators can issue, rotate and revoke external-consumer API keys. The keyed consumer surface
+currently provides competition and fixture reads and applies consumer-wide request-rate and UTC daily
+quota controls. See [Consumer API keys, rate limits and quotas](consumer-keys.md).
+
 ## Required future API areas
 
 - submission review, correction, and correction-history workflows;
@@ -265,7 +271,6 @@ and current limitations.
 - staged and resumable batch ingestion;
 - statistic definitions and versions for the advanced tier;
 - asynchronous jobs for large requests;
-- API consumers, keys, quotas, rate limits, and usage; and
 - change feeds and release differences for the advanced tier.
 
 The OpenAPI specification is maintained alongside the implementation, with shared request and

@@ -165,6 +165,50 @@ export const administratorRoleUpdateSchema = z
   })
   .strict();
 
+const consumerLimitSchema = z.number().int().min(1).max(10_000);
+
+export const apiConsumerIssueSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    rateLimitPerMinute: consumerLimitSchema.default(60),
+    dailyQuota: consumerLimitSchema.default(10_000),
+  })
+  .strict();
+
+export const apiConsumerKeySchema = z
+  .object({
+    id: apiIdentifierSchema,
+    prefix: z.string().min(1),
+    createdAt: apiDateTimeSchema,
+    revokedAt: apiDateTimeSchema.nullable(),
+  })
+  .strict();
+
+export const apiConsumerSchema = z
+  .object({
+    id: apiIdentifierSchema,
+    name: z.string().min(1),
+    rateLimitPerMinute: consumerLimitSchema,
+    dailyQuota: consumerLimitSchema,
+    createdAt: apiDateTimeSchema,
+    keys: z.array(apiConsumerKeySchema),
+  })
+  .strict();
+
+export const apiConsumerIssueResponseSchema = z
+  .object({
+    data: apiConsumerSchema.extend({ apiKey: z.string().min(1) }),
+  })
+  .strict();
+
+export const apiConsumerListResponseSchema = z
+  .object({ data: z.object({ consumers: z.array(apiConsumerSchema) }).strict() })
+  .strict();
+
+export const apiConsumerRotateResponseSchema = z
+  .object({ data: apiConsumerSchema.extend({ apiKey: z.string().min(1) }) })
+  .strict();
+
 export type ApplicationRole = z.infer<typeof applicationRoleSchema>;
 /** @deprecated Request-workflow state only. Use ApplicationRole for authorization. */
 export type SubmitterApprovalState = z.infer<typeof submitterApprovalStateSchema>;
@@ -187,3 +231,8 @@ export type AdministratorSubmitterAccessResponse = z.infer<
   typeof administratorSubmitterAccessResponseSchema
 >;
 export type AdministratorRoleUpdate = z.infer<typeof administratorRoleUpdateSchema>;
+export type ApiConsumerIssue = z.infer<typeof apiConsumerIssueSchema>;
+export type ApiConsumer = z.infer<typeof apiConsumerSchema>;
+export type ApiConsumerIssueResponse = z.infer<typeof apiConsumerIssueResponseSchema>;
+export type ApiConsumerListResponse = z.infer<typeof apiConsumerListResponseSchema>;
+export type ApiConsumerRotateResponse = z.infer<typeof apiConsumerRotateResponseSchema>;

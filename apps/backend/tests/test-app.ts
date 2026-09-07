@@ -13,6 +13,8 @@ import type { AdminService } from '../src/modules/admin/admin.service';
 import type { WeatherService } from '../src/modules/weather/weather.service';
 import type { FixtureWeatherService } from '../src/modules/weather/fixture-weather.service';
 import type { BatchService } from '../src/modules/batches/batch.service';
+import type { ApiConsumerService } from '../src/modules/api-consumers/api-consumer.service';
+import type { ApiConsumerRepository } from '../src/modules/api-consumers/api-consumer.repository';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -93,6 +95,8 @@ export function createTestApp(
   fixtureWeatherService?: FixtureWeatherService,
   batchService?: BatchService,
   participantAggregatesService?: ParticipantAggregatesService,
+  apiConsumerService?: ApiConsumerService,
+  apiConsumerRepository?: ApiConsumerRepository,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -108,6 +112,8 @@ export function createTestApp(
     ...(fixtureWeatherService !== undefined ? { fixtureWeatherService } : {}),
     ...(batchService !== undefined ? { batchService } : {}),
     ...(participantAggregatesService !== undefined ? { participantAggregatesService } : {}),
+    ...(apiConsumerService !== undefined ? { apiConsumerService } : {}),
+    ...(apiConsumerRepository !== undefined ? { apiConsumerRepository } : {}),
   });
 }
 
