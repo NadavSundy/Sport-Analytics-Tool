@@ -1158,6 +1158,26 @@ paths:
           $ref: '#/components/responses/NotFound'
 
   /api/v1/batches:
+    get:
+      tags: [Batches]
+      summary: List batches visible to the authenticated submitter or reviewer
+      operationId: listBatches
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string, minLength: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: Submitters receive only their own batches; administrator reviewers receive their authorised repository scope.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchListResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Batches]
       summary: Stream a whole-season package into durable private staging
@@ -1249,6 +1269,50 @@ paths:
                 application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } },
               },
           }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/batches/{batchReference}/report:
+    get:
+      tags: [Batches]
+      summary: Retrieve a paginated item-level batch result report
+      operationId: getBatchReport
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cursor, in: query, schema: { type: string, minLength: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: Summary, grouped rules, source traceability and all faults for this report page.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchReportResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/batches/{batchReference}/report/download:
+    get:
+      tags: [Batches]
+      summary: Download the complete machine-readable batch report
+      operationId: downloadBatchReport
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Complete JSON report returned as a downloadable attachment.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReportDownloadResponse' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
@@ -3458,10 +3522,21 @@ components:
         accepted: { type: integer, minimum: 0 }
         rejected: { type: integer, minimum: 0 }
 
+    BatchCounts:
+      type: object
+      additionalProperties: false
+      required: [accepted, rejected, unresolved, duplicate, conflicting]
+      properties:
+        accepted: { type: integer, minimum: 0 }
+        rejected: { type: integer, minimum: 0 }
+        unresolved: { type: integer, minimum: 0 }
+        duplicate: { type: integer, minimum: 0 }
+        conflicting: { type: integer, minimum: 0 }
+
     BatchStatus:
       type: object
       additionalProperties: false
-      required: [batchReference, status, statusUrl, receivedAt, updatedAt, progress]
+      required: [batchReference, status, statusUrl, receivedAt, updatedAt, progress, counts]
       properties:
         batchReference: { type: string, format: uuid }
         status:
@@ -3483,6 +3558,7 @@ components:
         receivedAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         progress: { $ref: '#/components/schemas/BatchProgress' }
+        counts: { $ref: '#/components/schemas/BatchCounts' }
 
     BatchStatusResponse:
       type: object
@@ -3490,6 +3566,105 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/BatchStatus' }
+
+    BatchListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/BatchStatus' } }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
+
+    BatchReportLocation:
+      type: object
+      additionalProperties: false
+      required: [filePath, sheetName, rowNumber, jsonPath, ordinal]
+      properties:
+        filePath: { type: [string, 'null'] }
+        sheetName: { type: [string, 'null'] }
+        rowNumber: { type: [integer, 'null'], minimum: 1 }
+        jsonPath: { type: [string, 'null'] }
+        ordinal: { type: integer, minimum: 0 }
+
+    BatchReportContext:
+      type: object
+      additionalProperties: false
+      required: [eventReference, inningsId, overNumber, positionInOver, description]
+      properties:
+        eventReference: { type: [string, 'null'] }
+        inningsId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        overNumber: { type: [integer, 'null'], minimum: 0 }
+        positionInOver: { type: [integer, 'null'], minimum: 1 }
+        description: { type: string, minLength: 1 }
+
+    BatchReportError:
+      type: object
+      additionalProperties: false
+      required: [ruleCode, message, location, context]
+      properties:
+        ruleCode: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        message: { type: string, minLength: 1 }
+        location: { $ref: '#/components/schemas/BatchReportLocation' }
+        context: { $ref: '#/components/schemas/BatchReportContext' }
+
+    BatchReportItem:
+      type: object
+      additionalProperties: false
+      required: [ordinal, outcome, location, context, stagedRecordId, acceptedRecordId, errors]
+      properties:
+        ordinal: { type: integer, minimum: 0 }
+        outcome:
+          { type: string, enum: [pending, accepted, rejected, unresolved, duplicate, conflicting] }
+        location: { $ref: '#/components/schemas/BatchReportLocation' }
+        context: { $ref: '#/components/schemas/BatchReportContext' }
+        stagedRecordId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        acceptedRecordId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        errors: { type: array, items: { $ref: '#/components/schemas/BatchReportError' } }
+
+    BatchReportRuleGroup:
+      type: object
+      additionalProperties: false
+      required: [ruleCode, count]
+      properties:
+        ruleCode: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        count: { type: integer, minimum: 1 }
+
+    BatchReport:
+      type: object
+      additionalProperties: false
+      required: [batch, errorGroups, items, pagination, downloadUrl]
+      properties:
+        batch: { $ref: '#/components/schemas/BatchStatus' }
+        errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
+        items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
+        downloadUrl: { type: string, pattern: '^/api/v1/batches/' }
+
+    BatchReportResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchReport' }
+
+    BatchReportDownload:
+      type: object
+      additionalProperties: false
+      required: [batch, errorGroups, items]
+      properties:
+        batch: { $ref: '#/components/schemas/BatchStatus' }
+        errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
+        items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
+
+    BatchReportDownloadResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchReportDownload' }
 
     SubmissionFielder:
       type: object
