@@ -380,6 +380,121 @@ export const participantFixtureListQuerySchema = paginationQuerySchema;
 export const participantFixtureCollectionResponseSchema =
   createCollectionResponseSchema(participantFixtureSchema);
 
+// ---------------------------------------------------------------------------
+// Participant aggregates (season, competition and career)
+//
+// Issue #285. The catalogue in docs/requirements/sport-domain-definition.md §7
+// names season aggregates (grouped by competition and season) and career
+// aggregates (grouped across all seasons). Competition-wide is required by the
+// issue but is not named as a level in §7; it is the same rollup grouped by
+// competition alone, and §7 needs extending to record it.
+//
+// Every level excludes super-over innings, per §7 and issue #104, and groups by
+// person identifier rather than display name: §10 records that names are not
+// identity.
+// ---------------------------------------------------------------------------
+
+export const participantAggregateBattingSchema = z.object({
+  runsScored: z.number().int().nonnegative(),
+  ballsFaced: z.number().int().nonnegative(),
+  fours: z.number().int().nonnegative(),
+  sixes: z.number().int().nonnegative(),
+  strikeRate: z.number().nonnegative().nullable(),
+});
+
+export const participantAggregateBowlingSchema = z.object({
+  runsConceded: z.number().int().nonnegative(),
+  legalBallsBowled: z.number().int().nonnegative(),
+  wicketsTaken: z.number().int().nonnegative(),
+  // Legal balls are counted from delivery rows. Overs and economy rate need a
+  // balls-per-over divisor, which is a fixture-level fact: §10 forbids assuming
+  // six. Where a group spans fixtures with different values there is no single
+  // correct divisor, so both are null and MIXED_BALLS_PER_OVER is warned.
+  ballsPerOver: z.number().int().positive().nullable(),
+  oversBowled: z
+    .string()
+    .regex(/^\d+\.\d+$/)
+    .nullable(),
+  economyRate: z.number().nonnegative().nullable(),
+});
+
+const participantAggregateCommonSchema = z.object({
+  statisticId: apiIdentifierSchema,
+  participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
+  // Fixtures the participant actually appeared in as striker or bowler. This is
+  // deliberately narrower than the fixture history at
+  // /participants/{id}/fixtures, where participation is squad selection and a
+  // player selected but not called upon still played.
+  fixtureCount: z.number().int().nonnegative(),
+  sourceEventCount: z.number().int().nonnegative(),
+  // Null where the participant appears in no accepted delivery in this group as
+  // a striker, or as a bowler, respectively. A zero is a real figure and is not
+  // used to stand in for an absent one.
+  batting: participantAggregateBattingSchema.nullable(),
+  bowling: participantAggregateBowlingSchema.nullable(),
+});
+
+export const participantSeasonAggregateSchema = participantAggregateCommonSchema.extend({
+  scope: z.literal('season'),
+  statisticCode: z.literal('participant_season'),
+  // Null for a fixture recorded without a competition. Season is stored as text
+  // on the fixture and takes forms such as 2016/17, so it is never an integer.
+  competitionId: apiIdentifierSchema.nullable(),
+  competitionName: z.string().min(1).nullable(),
+  seasonId: apiIdentifierSchema.nullable(),
+  season: z.string().min(1),
+});
+
+export const participantCompetitionAggregateSchema = participantAggregateCommonSchema.extend({
+  scope: z.literal('competition'),
+  statisticCode: z.literal('participant_competition'),
+  competitionId: apiIdentifierSchema.nullable(),
+  competitionName: z.string().min(1).nullable(),
+});
+
+export const participantCareerAggregateSchema = participantAggregateCommonSchema.extend({
+  scope: z.literal('career'),
+  statisticCode: z.literal('participant_career'),
+});
+
+export const participantAggregateSchema = z.discriminatedUnion('scope', [
+  participantSeasonAggregateSchema,
+  participantCompetitionAggregateSchema,
+  participantCareerAggregateSchema,
+]);
+
+export const participantAggregatesWarningSchema = z.object({
+  code: z.enum(['NO_ACCEPTED_EVENTS', 'COMPETITION_UNKNOWN', 'MIXED_BALLS_PER_OVER']),
+  message: z.string().min(1),
+  competitionId: apiIdentifierSchema.optional(),
+  season: z.string().min(1).optional(),
+});
+
+export const participantAggregatesSchema = z.object({
+  participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
+  status: z.enum(['complete', 'partial']),
+  scope: z.object({
+    superOversIncluded: z.literal(false),
+  }),
+  warnings: z.array(participantAggregatesWarningSchema),
+  statistics: z.array(participantAggregateSchema),
+});
+
+export const participantAggregateScopeSchema = z.enum(['season', 'competition', 'career']);
+
+export const participantAggregatesQuerySchema = z.object({
+  scope: participantAggregateScopeSchema.optional(),
+});
+
+export const participantAggregatesResponseSchema = createResourceResponseSchema(
+  participantAggregatesSchema,
+);
+
+export const participantAggregateResponseSchema = createResourceResponseSchema(
+  participantAggregateSchema,
+);
 export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
@@ -423,3 +538,14 @@ export type ParticipantFixtureListQuery = z.infer<typeof participantFixtureListQ
 export type ParticipantFixtureCollectionResponse = z.infer<
   typeof participantFixtureCollectionResponseSchema
 >;
+
+export type ParticipantAggregateBatting = z.infer<typeof participantAggregateBattingSchema>;
+export type ParticipantAggregateBowling = z.infer<typeof participantAggregateBowlingSchema>;
+export type ParticipantSeasonAggregate = z.infer<typeof participantSeasonAggregateSchema>;
+export type ParticipantCompetitionAggregate = z.infer<typeof participantCompetitionAggregateSchema>;
+export type ParticipantCareerAggregate = z.infer<typeof participantCareerAggregateSchema>;
+export type ParticipantAggregate = z.infer<typeof participantAggregateSchema>;
+export type ParticipantAggregatesWarning = z.infer<typeof participantAggregatesWarningSchema>;
+export type ParticipantAggregates = z.infer<typeof participantAggregatesSchema>;
+export type ParticipantAggregateScope = z.infer<typeof participantAggregateScopeSchema>;
+export type ParticipantAggregatesQuery = z.infer<typeof participantAggregatesQuerySchema>;

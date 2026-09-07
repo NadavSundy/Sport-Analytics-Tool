@@ -1100,6 +1100,63 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/participants/{participantId}/statistics:
+    get:
+      tags:
+        - Public Read
+      summary: Get a participant's season, competition and career aggregates
+      description: |
+        Derives a participant's batting and bowling figures rolled up to three
+        levels from the latest accepted revision of each delivery event: by
+        competition and season, by competition alone, and across their whole
+        career. Grouping is by participant identifier, never by display name.
+        Super-over innings are excluded from every level, so a career figure
+        equals the sum of the participant's published fixture figures. Rates are
+        recomputed over each group rather than averaged across fixtures, and are
+        null where their denominator is zero or where the fixtures in a group do
+        not share one balls-per-over divisor.
+      operationId: getParticipantAggregates
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/ParticipantAggregateScope'
+      responses:
+        '200':
+          description: Derived participant aggregates and completeness state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregatesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/participants/{participantId}/statistics/{statisticId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get one derived participant aggregate resource
+      description: |
+        Resolves a stable statistic identifier returned by the participant
+        aggregates endpoint, at whichever level produced it.
+      operationId: getParticipantAggregate
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: One derived participant aggregate resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/batches:
     post:
       tags: [Batches]
@@ -1511,6 +1568,17 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/ApiIdentifier'
+
+    ParticipantAggregateScope:
+      name: scope
+      in: query
+      description: Restrict the response to one aggregate level. All three are returned by default.
+      schema:
+        type: string
+        enum:
+          - season
+          - competition
+          - career
 
   responses:
     BadRequest:
@@ -2877,6 +2945,322 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/FixtureStatistic'
+
+    ParticipantAggregateBatting:
+      type: object
+      additionalProperties: false
+      required:
+        - runsScored
+        - ballsFaced
+        - fours
+        - sixes
+        - strikeRate
+      properties:
+        runsScored:
+          type: integer
+          minimum: 0
+        ballsFaced:
+          type: integer
+          minimum: 0
+        fours:
+          type: integer
+          minimum: 0
+        sixes:
+          type: integer
+          minimum: 0
+        strikeRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantAggregateBowling:
+      type: object
+      additionalProperties: false
+      required:
+        - runsConceded
+        - legalBallsBowled
+        - wicketsTaken
+        - ballsPerOver
+        - oversBowled
+        - economyRate
+      properties:
+        runsConceded:
+          type: integer
+          minimum: 0
+        legalBallsBowled:
+          type: integer
+          minimum: 0
+        wicketsTaken:
+          type: integer
+          minimum: 0
+        ballsPerOver:
+          description: |
+            The balls-per-over shared by the fixtures in this group, or null
+            where they do not agree. Legal balls are always counted from the
+            delivery rows and are never assumed to be six an over.
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+        oversBowled:
+          oneOf:
+            - type: string
+              pattern: '^\d+\.\d+$'
+            - type: 'null'
+        economyRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantSeasonAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - statisticId
+        - participantId
+        - participantName
+        - scope
+        - statisticCode
+        - competitionId
+        - competitionName
+        - seasonId
+        - season
+        - fixtureCount
+        - sourceEventCount
+        - batting
+        - bowling
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          const: season
+        statisticCode:
+          type: string
+          const: participant_season
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        seasonId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        season:
+          type: string
+          minLength: 1
+        fixtureCount:
+          type: integer
+          minimum: 0
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBowling'
+            - type: 'null'
+
+    ParticipantCompetitionAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - statisticId
+        - participantId
+        - participantName
+        - scope
+        - statisticCode
+        - competitionId
+        - competitionName
+        - fixtureCount
+        - sourceEventCount
+        - batting
+        - bowling
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          const: competition
+        statisticCode:
+          type: string
+          const: participant_competition
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        fixtureCount:
+          type: integer
+          minimum: 0
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBowling'
+            - type: 'null'
+
+    ParticipantCareerAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - statisticId
+        - participantId
+        - participantName
+        - scope
+        - statisticCode
+        - fixtureCount
+        - sourceEventCount
+        - batting
+        - bowling
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          const: career
+        statisticCode:
+          type: string
+          const: participant_career
+        fixtureCount:
+          type: integer
+          minimum: 0
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBowling'
+            - type: 'null'
+
+    ParticipantAggregate:
+      oneOf:
+        - $ref: '#/components/schemas/ParticipantSeasonAggregate'
+        - $ref: '#/components/schemas/ParticipantCompetitionAggregate'
+        - $ref: '#/components/schemas/ParticipantCareerAggregate'
+      discriminator:
+        propertyName: scope
+        mapping:
+          season: '#/components/schemas/ParticipantSeasonAggregate'
+          competition: '#/components/schemas/ParticipantCompetitionAggregate'
+          career: '#/components/schemas/ParticipantCareerAggregate'
+
+    ParticipantAggregatesWarning:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - NO_ACCEPTED_EVENTS
+            - COMPETITION_UNKNOWN
+            - MIXED_BALLS_PER_OVER
+        message:
+          type: string
+          minLength: 1
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        season:
+          type: string
+          minLength: 1
+
+    ParticipantAggregates:
+      type: object
+      additionalProperties: false
+      required:
+        - participantId
+        - participantName
+        - status
+        - scope
+        - warnings
+        - statistics
+      properties:
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - complete
+            - partial
+        scope:
+          type: object
+          additionalProperties: false
+          required:
+            - superOversIncluded
+          properties:
+            superOversIncluded:
+              type: boolean
+              const: false
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantAggregatesWarning'
+        statistics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantAggregate'
+
+    ParticipantAggregatesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ParticipantAggregates'
+
+    ParticipantAggregateResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ParticipantAggregate'
 
     CompetitionResponse:
       type: object

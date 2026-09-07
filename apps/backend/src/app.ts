@@ -29,6 +29,11 @@ import {
   createPublicReadService,
   type PublicReadService,
 } from './modules/public-read/public-read.service';
+import { createParticipantAggregatesRouter } from './modules/statistics/participant-aggregates.routes';
+import {
+  createParticipantAggregatesService,
+  type ParticipantAggregatesService,
+} from './modules/statistics/participant-aggregates.service';
 import { createFixtureStatisticsRouter } from './modules/statistics/fixture-statistics.routes';
 import {
   createFixtureStatisticsService,
@@ -63,6 +68,7 @@ export interface AppDependencies {
   synchronizeAccount?: SynchronizeAccount;
   publicReadService?: PublicReadService;
   fixtureStatisticsService?: FixtureStatisticsService;
+  participantAggregatesService?: ParticipantAggregatesService;
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
@@ -81,6 +87,8 @@ export function createApp(dependencies: AppDependencies = {}) {
   const publicReadService = dependencies.publicReadService ?? createPublicReadService();
   const fixtureStatisticsService =
     dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
+  const participantAggregatesService =
+    dependencies.participantAggregatesService ?? createParticipantAggregatesService();
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
@@ -162,6 +170,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(`${API_BASE_PATH}/health`, healthRouter);
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));
   app.use(API_BASE_PATH, createFixtureStatisticsRouter(fixtureStatisticsService));
+  app.use(API_BASE_PATH, createParticipantAggregatesRouter(participantAggregatesService));
   app.use(
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),

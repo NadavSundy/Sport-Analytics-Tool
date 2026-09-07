@@ -4,6 +4,7 @@ import type {
   FixtureStatisticsInningsSource,
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
+import { standardInningsPredicate } from './super-over-scope';
 
 interface FixtureInningsRow {
   fixtureId: string;
@@ -64,7 +65,7 @@ export async function loadFixtureStatisticsSource(
       ON eliminator_team.team_id = f.eliminator_id
     LEFT JOIN innings i
       ON i.fixture_id = f.fixture_id
-     AND i.is_super_over = false
+     AND ${standardInningsPredicate('i')}
     LEFT JOIN team batting_team
       ON batting_team.team_id = i.batting_team_id
     WHERE f.fixture_id = $1::bigint

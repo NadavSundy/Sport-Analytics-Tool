@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type {
   FixtureOutcome,
   FixtureStatistic,
@@ -13,6 +12,8 @@ import type {
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
 import { calculateRate, formatOvers } from './fixture-statistics.metrics';
+import { createStatisticId } from './statistic-id';
+import { SUPER_OVERS_INCLUDED_IN_STANDARD_STATISTICS } from './super-over-scope';
 
 interface BattingAccumulator {
   runsScored: number;
@@ -51,11 +52,7 @@ function compareDatabaseIds(left: string, right: string): number {
 }
 
 function statisticId(fixtureId: string, scope: string, scopeId: string): string {
-  const digest = createHash('sha256')
-    .update(`${fixtureId}\u0000${scope}\u0000${scopeId}`)
-    .digest('base64url');
-
-  return `stat_${digest}`;
+  return createStatisticId([fixtureId, scope, scopeId]);
 }
 
 function mapContributingEvent(
@@ -336,7 +333,7 @@ export function deriveFixtureStatistics(
     fixtureId: source.fixtureId,
     status: warnings.length === 0 ? 'complete' : 'partial',
     scope: {
-      superOversIncluded: false,
+      superOversIncluded: SUPER_OVERS_INCLUDED_IN_STANDARD_STATISTICS,
     },
     outcome: mapOutcome(source),
     warnings,

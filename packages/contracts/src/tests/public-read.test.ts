@@ -7,6 +7,8 @@ import {
   fixtureStatisticsQuerySchema,
   fixtureStatisticsResponseSchema,
   fixtureWeatherResponseSchema,
+  participantAggregatesQuerySchema,
+  participantAggregatesResponseSchema,
   participantFixtureCollectionResponseSchema,
   participantFixtureListQuerySchema,
   participantListQuerySchema,
@@ -291,6 +293,122 @@ describe('public read contracts', () => {
     ).toEqual({
       includeContributors: true,
     });
+  });
+
+  test('parses the participant aggregate scope filter', () => {
+    expect(participantAggregatesQuerySchema.parse({})).toEqual({});
+    expect(participantAggregatesQuerySchema.parse({ scope: 'career' })).toEqual({
+      scope: 'career',
+    });
+    expect(participantAggregatesQuerySchema.safeParse({ scope: 'super-over' }).success).toBe(false);
+  });
+
+  test('validates season, competition and career aggregates for one participant', () => {
+    const result = participantAggregatesResponseSchema.safeParse({
+      data: {
+        participantId: '50',
+        participantName: 'BB McCullum',
+        status: 'complete',
+        scope: { superOversIncluded: false },
+        warnings: [],
+        statistics: [
+          {
+            statisticId: 'stat-season',
+            participantId: '50',
+            participantName: 'BB McCullum',
+            scope: 'season',
+            statisticCode: 'participant_season',
+            competitionId: '10',
+            competitionName: 'Australia in New Zealand T20I Series',
+            seasonId: 'season_opaque',
+            season: '2009/10',
+            fixtureCount: 1,
+            sourceEventCount: 60,
+            batting: {
+              runsScored: 116,
+              ballsFaced: 56,
+              fours: 12,
+              sixes: 8,
+              strikeRate: 207.14,
+            },
+            bowling: null,
+          },
+          {
+            statisticId: 'stat-competition',
+            participantId: '50',
+            participantName: 'BB McCullum',
+            scope: 'competition',
+            statisticCode: 'participant_competition',
+            competitionId: '10',
+            competitionName: 'Australia in New Zealand T20I Series',
+            fixtureCount: 1,
+            sourceEventCount: 60,
+            batting: null,
+            bowling: {
+              runsConceded: 44,
+              legalBallsBowled: 24,
+              wicketsTaken: 0,
+              ballsPerOver: 6,
+              oversBowled: '4.0',
+              economyRate: 11,
+            },
+          },
+          {
+            statisticId: 'stat-career',
+            participantId: '50',
+            participantName: 'BB McCullum',
+            scope: 'career',
+            statisticCode: 'participant_career',
+            fixtureCount: 1,
+            sourceEventCount: 60,
+            batting: null,
+            // A career spanning fixtures with different balls-per-over has no
+            // single divisor, so neither rate is invented.
+            bowling: {
+              runsConceded: 44,
+              legalBallsBowled: 24,
+              wicketsTaken: 0,
+              ballsPerOver: null,
+              oversBowled: null,
+              economyRate: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('rejects a season aggregate carrying a competition-scoped shape', () => {
+    const result = participantAggregatesResponseSchema.safeParse({
+      data: {
+        participantId: '50',
+        participantName: 'BB McCullum',
+        status: 'complete',
+        scope: { superOversIncluded: false },
+        warnings: [],
+        statistics: [
+          {
+            statisticId: 'stat-season',
+            participantId: '50',
+            participantName: 'BB McCullum',
+            scope: 'season',
+            statisticCode: 'participant_season',
+            competitionId: '10',
+            competitionName: 'Test League',
+            seasonId: 'season_opaque',
+            // The season label is what distinguishes this level and is required.
+            fixtureCount: 1,
+            sourceEventCount: 60,
+            batting: null,
+            bowling: null,
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(false);
   });
 
   test('validates fixture statistics with readable team and player relationships', () => {
