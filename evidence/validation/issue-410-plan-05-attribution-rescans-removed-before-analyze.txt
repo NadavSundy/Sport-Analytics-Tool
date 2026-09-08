@@ -1,0 +1,193 @@
+-- fixture_state correlated re-scans removed (attribution only), before ANALYZE
+Sort  (cost=3855.19..3855.20 rows=2 width=476) (actual time=123.828..123.860 rows=51 loops=1)
+  Output: ((sf.fixture_id)::text), ((sf.competition_id)::text), c.name, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, (to_char((sf.start_date)::timestamp with time zone, 'YYYY-MM-DD'::text)), (to_char((sf.end_date)::timestamp with time zone, 'YYYY-MM-DD'::text)), ((sf.team_id)::text), t.name, sf.role, sf.missing_fields, ((count(i.innings_id))::integer), (0), ('{}'::text[]), ((sum(d.runs_off_bat))::integer), ((count(*) FILTER (WHERE (d.extra_wides IS NULL)))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 4) AND (NOT d.non_boundary))))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 6) AND (NOT d.non_boundary))))::integer), ((sum(((d_1.runs_off_bat + COALESCE((d_1.extra_wides)::integer, 0)) + COALESCE((d_1.extra_noballs)::integer, 0))))::integer), ((count(*) FILTER (WHERE ((d_1.extra_wides IS NULL) AND (d_1.extra_noballs IS NULL))))::integer), ((COALESCE(sum((SubPlan 3)), '0'::numeric))::integer), sf.start_date, sf.fixture_id
+  Sort Key: sf.start_date DESC, sf.fixture_id DESC
+  Sort Method: quicksort  Memory: 35kB
+  Buffers: shared hit=1625
+  CTE selected_fixture
+    ->  Limit  (cost=2.17..84.94 rows=51 width=103) (actual time=0.331..0.545 rows=51 loops=1)
+          Output: f.fixture_id, f.competition_id, f.balls_per_over, f.scheduled_overs, f.missing_fields, f.season, f.match_type, f.team_type, f.gender, f.start_date, f.end_date, fs.team_id, fs.role
+          Buffers: shared hit=263
+          ->  Incremental Sort  (cost=2.17..489.07 rows=300 width=103) (actual time=0.330..0.537 rows=51 loops=1)
+                Output: f.fixture_id, f.competition_id, f.balls_per_over, f.scheduled_overs, f.missing_fields, f.season, f.match_type, f.team_type, f.gender, f.start_date, f.end_date, fs.team_id, fs.role
+                Sort Key: f.start_date DESC, f.fixture_id DESC
+                Presorted Key: f.start_date
+                Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 29kB  Peak Memory: 29kB
+                Buffers: shared hit=263
+                ->  Nested Loop  (cost=0.58..475.57 rows=300 width=103) (actual time=0.089..0.470 rows=52 loops=1)
+                      Output: f.fixture_id, f.competition_id, f.balls_per_over, f.scheduled_overs, f.missing_fields, f.season, f.match_type, f.team_type, f.gender, f.start_date, f.end_date, fs.team_id, fs.role
+                      Inner Unique: true
+                      Buffers: shared hit=263
+                      ->  Nested Loop  (cost=0.43..393.45 rows=300 width=111) (actual time=0.068..0.313 rows=52 loops=1)
+                            Output: fs.team_id, fs.role, f.fixture_id, f.competition_id, f.balls_per_over, f.scheduled_overs, f.missing_fields, f.season, f.match_type, f.team_type, f.gender, f.start_date, f.end_date, f.first_seen_in
+                            Inner Unique: true
+                            Buffers: shared hit=159
+                            ->  Index Scan Backward using fixture_start_date_idx on public.fixture f  (cost=0.15..23.65 rows=300 width=71) (actual time=0.037..0.060 rows=52 loops=1)
+                                  Output: f.fixture_id, f.source_ref, f.competition_id, f.event_match_number, f.event_group, f.event_stage, f.season, f.match_type, f.team_type, f.gender, f.balls_per_over, f.scheduled_overs, f.venue_id, f.start_date, f.end_date, f.toss_winner_id, f.toss_decision, f.toss_uncontested, f.outcome, f.winner_id, f.eliminator_id, f.outcome_by_runs, f.outcome_by_wickets, f.outcome_method, f.decided_by_bowl_out, f.missing_fields, f.source_version, f.source_revision, f.first_seen_in
+                                  Buffers: shared hit=3
+                            ->  Index Scan using fixture_squad_pkey on public.fixture_squad fs  (cost=0.28..1.24 rows=1 width=48) (actual time=0.003..0.003 rows=1 loops=52)
+                                  Output: fs.fixture_id, fs.person_id, fs.team_id, fs.role
+                                  Index Cond: ((fs.fixture_id = f.fixture_id) AND (fs.person_id = '1'::bigint))
+                                  Buffers: shared hit=156
+                      ->  Index Scan using submission_pkey on public.submission publication  (cost=0.15..0.27 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=52)
+                            Output: publication.submission_id, publication.submitted_by, publication.received_at, publication.source_filename, publication.source_sha256, publication.status, publication.rejection_detail, publication.fixture_id, publication.schema_version, publication.event_count, publication.source_file_name, publication.source_file_media_type, publication.source_file_size_bytes
+                            Index Cond: (publication.submission_id = f.first_seen_in)
+                            Filter: (publication.status = 'accepted'::submission_status)
+                            Buffers: shared hit=104
+  CTE accepted_delivery
+    ->  Hash Join  (cost=15.45..1246.21 rows=12240 width=113) (actual time=3.889..61.159 rows=12240 loops=1)
+          Output: delivery.delivery_id, delivery.innings_id, delivery.over_number, delivery.position_in_over, delivery.innings_sequence, delivery.ball_number, delivery.striker_id, delivery.non_striker_id, delivery.bowler_id, delivery.runs_off_bat, delivery.runs_extras, delivery.runs_total, delivery.non_boundary, delivery.extra_wides, delivery.extra_noballs, delivery.extra_byes, delivery.extra_legbyes, delivery.extra_penalty, delivery.revision, delivery.submission_id, delivery.recorded_at, delivery.superseded_at, delivery.superseded_by, i_1.fixture_id
+          Inner Unique: true
+          Hash Cond: (delivery.submission_id = source_submission.submission_id)
+          Buffers: shared hit=537
+          ->  Nested Loop  (cost=1.95..1200.12 rows=12240 width=113) (actual time=3.645..38.892 rows=12240 loops=1)
+                Output: delivery.delivery_id, delivery.innings_id, delivery.over_number, delivery.position_in_over, delivery.innings_sequence, delivery.ball_number, delivery.striker_id, delivery.non_striker_id, delivery.bowler_id, delivery.runs_off_bat, delivery.runs_extras, delivery.runs_total, delivery.non_boundary, delivery.extra_wides, delivery.extra_noballs, delivery.extra_byes, delivery.extra_legbyes, delivery.extra_penalty, delivery.revision, delivery.submission_id, delivery.recorded_at, delivery.superseded_at, delivery.superseded_by, i_1.fixture_id
+                Buffers: shared hit=531
+                ->  Hash Semi Join  (cost=1.66..16.37 rows=102 width=16) (actual time=3.390..3.724 rows=102 loops=1)
+                      Output: i_1.fixture_id, i_1.innings_id
+                      Hash Cond: (i_1.fixture_id = selected_fixture.fixture_id)
+                      Buffers: shared hit=6
+                      ->  Seq Scan on public.innings i_1  (cost=0.00..12.00 rows=600 width=16) (actual time=0.031..3.442 rows=600 loops=1)
+                            Output: i_1.innings_id, i_1.fixture_id, i_1.ordinal, i_1.batting_team_id, i_1.is_super_over, i_1.declared, i_1.forfeited, i_1.target_runs, i_1.target_overs, i_1.penalty_pre, i_1.penalty_post
+                            Filter: (NOT i_1.is_super_over)
+                            Buffers: shared hit=6
+                      ->  Hash  (cost=1.02..1.02 rows=51 width=8) (actual time=0.042..0.043 rows=51 loops=1)
+                            Output: selected_fixture.fixture_id
+                            Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                            ->  CTE Scan on selected_fixture  (cost=0.00..1.02 rows=51 width=8) (actual time=0.001..0.010 rows=51 loops=1)
+                                  Output: selected_fixture.fixture_id
+                ->  Index Scan using delivery_sequence_live on public.delivery  (cost=0.29..10.41 rows=120 width=105) (actual time=0.014..0.179 rows=120 loops=102)
+                      Output: delivery.delivery_id, delivery.innings_id, delivery.over_number, delivery.position_in_over, delivery.innings_sequence, delivery.ball_number, delivery.striker_id, delivery.non_striker_id, delivery.bowler_id, delivery.runs_off_bat, delivery.runs_extras, delivery.runs_total, delivery.non_boundary, delivery.extra_wides, delivery.extra_noballs, delivery.extra_byes, delivery.extra_legbyes, delivery.extra_penalty, delivery.revision, delivery.submission_id, delivery.recorded_at, delivery.superseded_at, delivery.superseded_by, delivery.source_event_id, delivery.submission_event_ordinal, delivery.source_batch_item_id, delivery.supersedes_delivery_id
+                      Index Cond: (delivery.innings_id = i_1.innings_id)
+                      Buffers: shared hit=525
+          ->  Hash  (cost=9.75..9.75 rows=300 width=8) (actual time=0.224..0.225 rows=300 loops=1)
+                Output: source_submission.submission_id
+                Buckets: 1024  Batches: 1  Memory Usage: 20kB
+                Buffers: shared hit=6
+                ->  Seq Scan on public.submission source_submission  (cost=0.00..9.75 rows=300 width=8) (actual time=0.049..0.133 rows=300 loops=1)
+                      Output: source_submission.submission_id
+                      Filter: (source_submission.status = 'accepted'::submission_status)
+                      Buffers: shared hit=6
+  ->  Nested Loop Left Join  (cost=578.58..2524.03 rows=2 width=476) (actual time=107.104..123.650 rows=51 loops=1)
+        Output: (sf.fixture_id)::text, (sf.competition_id)::text, c.name, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, to_char((sf.start_date)::timestamp with time zone, 'YYYY-MM-DD'::text), to_char((sf.end_date)::timestamp with time zone, 'YYYY-MM-DD'::text), (sf.team_id)::text, t.name, sf.role, sf.missing_fields, ((count(i.innings_id))::integer), (0), ('{}'::text[]), ((sum(d.runs_off_bat))::integer), ((count(*) FILTER (WHERE (d.extra_wides IS NULL)))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 4) AND (NOT d.non_boundary))))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 6) AND (NOT d.non_boundary))))::integer), ((sum(((d_1.runs_off_bat + COALESCE((d_1.extra_wides)::integer, 0)) + COALESCE((d_1.extra_noballs)::integer, 0))))::integer), ((count(*) FILTER (WHERE ((d_1.extra_wides IS NULL) AND (d_1.extra_noballs IS NULL))))::integer), ((COALESCE(sum((SubPlan 3)), '0'::numeric))::integer), sf.start_date, sf.fixture_id
+        Inner Unique: true
+        Buffers: shared hit=1625
+        ->  Merge Left Join  (cost=578.44..2523.18 rows=2 width=305) (actual time=107.027..123.167 rows=51 loops=1)
+              Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name, ((sum(d.runs_off_bat))::integer), ((count(*) FILTER (WHERE (d.extra_wides IS NULL)))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 4) AND (NOT d.non_boundary))))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 6) AND (NOT d.non_boundary))))::integer), ((sum(((d_1.runs_off_bat + COALESCE((d_1.extra_wides)::integer, 0)) + COALESCE((d_1.extra_noballs)::integer, 0))))::integer), ((count(*) FILTER (WHERE ((d_1.extra_wides IS NULL) AND (d_1.extra_noballs IS NULL))))::integer), ((COALESCE(sum((SubPlan 3)), '0'::numeric))::integer), ((count(i.innings_id))::integer), (0), ('{}'::text[])
+              Inner Unique: true
+              Merge Cond: (sf.fixture_id = d_1.fixture_id)
+              Buffers: shared hit=1623
+              ->  Sort  (cost=301.23..301.24 rows=2 width=293) (actual time=100.328..100.351 rows=51 loops=1)
+                    Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name, ((sum(d.runs_off_bat))::integer), ((count(*) FILTER (WHERE (d.extra_wides IS NULL)))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 4) AND (NOT d.non_boundary))))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 6) AND (NOT d.non_boundary))))::integer), ((count(i.innings_id))::integer), (0), ('{}'::text[])
+                    Sort Key: sf.fixture_id
+                    Sort Method: quicksort  Memory: 32kB
+                    Buffers: shared hit=807
+                    ->  Merge Left Join  (cost=298.25..301.22 rows=2 width=293) (actual time=99.931..100.265 rows=51 loops=1)
+                          Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name, ((sum(d.runs_off_bat))::integer), ((count(*) FILTER (WHERE (d.extra_wides IS NULL)))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 4) AND (NOT d.non_boundary))))::integer), ((count(*) FILTER (WHERE ((d.runs_off_bat = 6) AND (NOT d.non_boundary))))::integer), ((count(i.innings_id))::integer), (0), ('{}'::text[])
+                          Inner Unique: true
+                          Merge Cond: (sf.fixture_id = d.fixture_id)
+                          Buffers: shared hit=807
+                          ->  Sort  (cost=21.04..21.05 rows=2 width=277) (actual time=1.266..1.285 rows=51 loops=1)
+                                Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name, ((count(i.innings_id))::integer), (0), ('{}'::text[])
+                                Sort Key: sf.fixture_id
+                                Sort Method: quicksort  Memory: 32kB
+                                Buffers: shared hit=270
+                                ->  Hash Join  (cost=19.67..21.03 rows=2 width=277) (actual time=1.156..1.207 rows=51 loops=1)
+                                      Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name, ((count(i.innings_id))::integer), (0), ('{}'::text[])
+                                      Hash Cond: (sf_1.fixture_id = sf.fixture_id)
+                                      Buffers: shared hit=270
+                                      ->  HashAggregate  (cost=17.44..18.07 rows=51 width=48) (actual time=0.448..0.464 rows=51 loops=1)
+                                            Output: sf_1.fixture_id, (count(i.innings_id))::integer, 0, '{}'::text[]
+                                            Group Key: sf_1.fixture_id
+                                            Batches: 1  Memory Usage: 24kB
+                                            Buffers: shared hit=6
+                                            ->  Hash Right Join  (cost=1.66..16.93 rows=102 width=16) (actual time=0.335..0.404 rows=102 loops=1)
+                                                  Output: sf_1.fixture_id, i.innings_id
+                                                  Hash Cond: (i.fixture_id = sf_1.fixture_id)
+                                                  Buffers: shared hit=6
+                                                  ->  Seq Scan on public.innings i  (cost=0.00..12.00 rows=600 width=16) (actual time=0.058..0.190 rows=600 loops=1)
+                                                        Output: i.innings_id, i.fixture_id, i.ordinal, i.batting_team_id, i.is_super_over, i.declared, i.forfeited, i.target_runs, i.target_overs, i.penalty_pre, i.penalty_post
+                                                        Filter: (NOT i.is_super_over)
+                                                        Buffers: shared hit=6
+                                                  ->  Hash  (cost=1.02..1.02 rows=51 width=8) (actual time=0.088..0.089 rows=51 loops=1)
+                                                        Output: sf_1.fixture_id
+                                                        Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                                        ->  CTE Scan on selected_fixture sf_1  (cost=0.00..1.02 rows=51 width=8) (actual time=0.002..0.054 rows=51 loops=1)
+                                                              Output: sf_1.fixture_id
+                                      ->  Hash  (cost=2.21..2.21 rows=2 width=237) (actual time=0.697..0.699 rows=51 loops=1)
+                                            Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name
+                                            Buckets: 1024  Batches: 1  Memory Usage: 15kB
+                                            Buffers: shared hit=264
+                                            ->  Hash Join  (cost=1.04..2.21 rows=2 width=237) (actual time=0.400..0.654 rows=51 loops=1)
+                                                  Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role, sf.missing_fields, t.name
+                                                  Inner Unique: true
+                                                  Hash Cond: (sf.team_id = t.team_id)
+                                                  Buffers: shared hit=264
+                                                  ->  CTE Scan on selected_fixture sf  (cost=0.00..1.02 rows=51 width=228) (actual time=0.334..0.557 rows=51 loops=1)
+                                                        Output: sf.fixture_id, sf.competition_id, sf.balls_per_over, sf.scheduled_overs, sf.missing_fields, sf.season, sf.match_type, sf.team_type, sf.gender, sf.start_date, sf.end_date, sf.team_id, sf.role
+                                                        Buffers: shared hit=263
+                                                  ->  Hash  (cost=1.02..1.02 rows=2 width=17) (actual time=0.051..0.052 rows=2 loops=1)
+                                                        Output: t.name, t.team_id
+                                                        Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                        Buffers: shared hit=1
+                                                        ->  Seq Scan on public.team t  (cost=0.00..1.02 rows=2 width=17) (actual time=0.030..0.032 rows=2 loops=1)
+                                                              Output: t.name, t.team_id
+                                                              Buffers: shared hit=1
+                          ->  GroupAggregate  (cost=277.21..279.49 rows=53 width=24) (actual time=98.654..98.925 rows=51 loops=1)
+                                Output: d.fixture_id, (sum(d.runs_off_bat))::integer, (count(*) FILTER (WHERE (d.extra_wides IS NULL)))::integer, (count(*) FILTER (WHERE ((d.runs_off_bat = 4) AND (NOT d.non_boundary))))::integer, (count(*) FILTER (WHERE ((d.runs_off_bat = 6) AND (NOT d.non_boundary))))::integer
+                                Group Key: d.fixture_id
+                                Buffers: shared hit=537
+                                ->  Sort  (cost=277.21..277.36 rows=61 width=13) (actual time=98.630..98.681 rows=561 loops=1)
+                                      Output: d.fixture_id, d.runs_off_bat, d.extra_wides, d.non_boundary
+                                      Sort Key: d.fixture_id
+                                      Sort Method: quicksort  Memory: 46kB
+                                      Buffers: shared hit=537
+                                      ->  CTE Scan on accepted_delivery d  (cost=0.00..275.40 rows=61 width=13) (actual time=3.898..98.262 rows=561 loops=1)
+                                            Output: d.fixture_id, d.runs_off_bat, d.extra_wides, d.non_boundary
+                                            Filter: (d.striker_id = '1'::bigint)
+                                            Rows Removed by Filter: 11679
+                                            Buffers: shared hit=537
+              ->  GroupAggregate  (cost=277.21..2221.26 rows=53 width=20) (actual time=6.686..22.681 rows=51 loops=1)
+                    Output: d_1.fixture_id, (sum(((d_1.runs_off_bat + COALESCE((d_1.extra_wides)::integer, 0)) + COALESCE((d_1.extra_noballs)::integer, 0))))::integer, (count(*) FILTER (WHERE ((d_1.extra_wides IS NULL) AND (d_1.extra_noballs IS NULL))))::integer, (COALESCE(sum((SubPlan 3)), '0'::numeric))::integer
+                    Group Key: d_1.fixture_id
+                    Buffers: shared hit=816
+                    ->  Sort  (cost=277.21..277.36 rows=61 width=22) (actual time=6.453..6.532 rows=408 loops=1)
+                          Output: d_1.fixture_id, d_1.runs_off_bat, d_1.extra_wides, d_1.extra_noballs, d_1.delivery_id
+                          Sort Key: d_1.fixture_id
+                          Sort Method: quicksort  Memory: 44kB
+                          ->  CTE Scan on accepted_delivery d_1  (cost=0.00..275.40 rows=61 width=22) (actual time=0.034..6.206 rows=408 loops=1)
+                                Output: d_1.fixture_id, d_1.runs_off_bat, d_1.extra_wides, d_1.extra_noballs, d_1.delivery_id
+                                Filter: (d_1.bowler_id = '1'::bigint)
+                                Rows Removed by Filter: 11832
+                    SubPlan 3
+                      ->  Aggregate  (cost=31.82..31.83 rows=1 width=8) (actual time=0.027..0.027 rows=1 loops=408)
+                            Output: count(*)
+                            Buffers: shared hit=816
+                            ->  Nested Loop  (cost=4.32..31.81 rows=2 width=0) (actual time=0.027..0.027 rows=0 loops=408)
+                                  Inner Unique: true
+                                  Buffers: shared hit=816
+                                  ->  Bitmap Heap Scan on public.delivery_wicket dw  (cost=4.17..11.28 rows=3 width=32) (actual time=0.003..0.003 rows=0 loops=408)
+                                        Output: dw.wicket_id, dw.delivery_id, dw.ordinal, dw.kind, dw.source_kind, dw.player_out_id
+                                        Recheck Cond: (dw.delivery_id = d_1.delivery_id)
+                                        Buffers: shared hit=816
+                                        ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.002..0.002 rows=0 loops=408)
+                                              Index Cond: (dw.delivery_id = d_1.delivery_id)
+                                              Buffers: shared hit=816
+                                  ->  Index Scan using dismissal_kind_pkey on public.dismissal_kind dk  (cost=0.15..6.83 rows=1 width=32) (never executed)
+                                        Output: dk.code, dk.display_name, dk.credits_bowler, dk.is_retirement
+                                        Index Cond: (dk.code = dw.kind)
+                                        Filter: dk.credits_bowler
+        ->  Memoize  (cost=0.14..0.39 rows=1 width=39) (actual time=0.002..0.002 rows=1 loops=51)
+              Output: c.name, c.competition_id
+              Cache Key: sf.competition_id
+              Cache Mode: logical
+              Hits: 50  Misses: 1  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+              Buffers: shared hit=2
+              ->  Index Scan using competition_pkey on public.competition c  (cost=0.12..0.38 rows=1 width=39) (actual time=0.041..0.041 rows=1 loops=1)
+                    Output: c.name, c.competition_id
+                    Index Cond: (c.competition_id = sf.competition_id)
+                    Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=45
+Planning Time: 11.662 ms
+Execution Time: 128.903 ms
