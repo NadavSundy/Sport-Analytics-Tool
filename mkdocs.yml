@@ -112,6 +112,7 @@ nav:
       - Representative-scale Performance Baseline: development/performance-baseline.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
+      - Generated User-Testing Evidence: user-testing/evidence/index.md
       - Bug Tracking: testing/bug-tracking.md
   - AI Use: ai/usage.md
   - Project Process & Evidence:

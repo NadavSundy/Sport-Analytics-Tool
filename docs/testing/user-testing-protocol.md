@@ -323,6 +323,10 @@ The overall Sprint 2 summary is:
 
 Evidence should link to relevant Gitea issues and pull requests where applicable.
 
+Where anonymised Power Automate responses are used, the generated MkDocs presentation is stored under
+`docs/user-testing/evidence/generated/`. It is a sanitised publication layer, not a replacement for
+the retained session evidence, facilitator privacy review, follow-up decisions, or retest record.
+
 ---
 
 ## Sprint Summary

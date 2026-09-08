@@ -16,26 +16,16 @@ const emptyStore = JSON.parse(
 
 function responseFixture(overrides = {}) {
   return {
-    participantId: 'P01',
-    role: 'public',
-    sessionDate: '2026-09-08',
-    importSource: 'microsoft_forms_csv',
-    tasks: [
-      {
-        taskId: 'PUB-01',
-        outcome: 'success',
-        observations: ['Fixture-only sanitised observation.'],
-        findings: [],
-      },
-    ],
+    participant: 'P01',
+    workflow: 'Fixture-only public data discovery.',
+    tasksAttempted: 'Find a fixture and inspect available statistics.',
+    completionStatus: 'Partial',
+    observations: 'Fixture-only observation.',
+    positiveFindings: 'Fixture-only positive finding.',
+    problems: 'Fixture-only usability problem.',
+    severity: 'S2',
+    suggestions: 'Fixture-only suggested improvement.',
     ...overrides,
-  };
-}
-
-function storeFixture(responseOverrides = {}) {
-  return {
-    schemaVersion: '1.0',
-    responses: [responseFixture(responseOverrides)],
   };
 }
 
@@ -46,60 +36,42 @@ test('the committed response store is valid and contains no fabricated responses
   assert.deepEqual(emptyStore.responses, []);
 });
 
-test('accepts a sanitised Microsoft Forms response fixture', () => {
-  const result = validateUserFeedbackStore(storeFixture(), schema);
+test('accepts the required Power Automate feedback shape', () => {
+  const result = validateUserFeedbackStore(
+    { schemaVersion: '1.0', responses: [responseFixture()] },
+    schema,
+  );
 
   assert.deepEqual(result, { valid: true, errors: [] });
 });
 
-test('rejects unapproved PII-shaped fields', () => {
+test('rejects malformed responses and PII-shaped fields', () => {
   const result = validateUserFeedbackStore(
-    storeFixture({
-      email: 'participant@example.test',
-    }),
-    schema,
-  );
-
-  assert.equal(result.valid, false);
-  assert.match(result.errors.join('\n'), /email: is not permitted/);
-});
-
-test('rejects non-anonymous participant identifiers and malformed dates', () => {
-  const result = validateUserFeedbackStore(
-    storeFixture({
-      participantId: 'Taylor Example',
-      sessionDate: '2026-02-30',
-    }),
-    schema,
-  );
-
-  assert.equal(result.valid, false);
-  assert.match(result.errors.join('\n'), /participantId: has an invalid format/);
-  assert.match(result.errors.join('\n'), /sessionDate: must be a real ISO-8601 calendar date/);
-});
-
-test('rejects findings that omit their formal protocol decision data', () => {
-  const result = validateUserFeedbackStore(
-    storeFixture({
-      tasks: [
-        {
-          taskId: 'PUB-01',
-          outcome: 'partial',
-          observations: ['Fixture-only observation.'],
-          findings: [
-            {
-              findingId: 'F01',
-              summary: 'Fixture-only finding.',
-              severity: 'S2',
-            },
-          ],
-        },
+    {
+      schemaVersion: '1.0',
+      responses: [
+        responseFixture({
+          participant: 'Taylor Example',
+          email: 'fixture@example.test',
+          severity: 'high',
+        }),
       ],
-    }),
+    },
     schema,
   );
 
   assert.equal(result.valid, false);
-  assert.match(result.errors.join('\n'), /decision: is required/);
-  assert.match(result.errors.join('\n'), /retestRequired: is required/);
+  assert.match(result.errors.join('\n'), /participant: has an invalid format/);
+  assert.match(result.errors.join('\n'), /email: is not permitted/);
+  assert.match(result.errors.join('\n'), /severity: must be one of: S1, S2, S3, S4/);
+});
+
+test('requires every Power Automate feedback field', () => {
+  const response = responseFixture();
+  delete response.suggestions;
+
+  const result = validateUserFeedbackStore({ schemaVersion: '1.0', responses: [response] }, schema);
+
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join('\n'), /suggestions: is required/);
 });

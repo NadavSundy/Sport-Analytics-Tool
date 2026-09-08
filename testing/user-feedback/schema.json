@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/testing/user-feedback/schema.json",
-  "title": "Sprint 2 user-testing feedback store",
-  "description": "An anonymised, normalised store of formal user-testing responses.",
+  "title": "Sprint 2 Power Automate user-testing feedback",
+  "description": "An anonymised, normalised store of Power Automate user-testing responses.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "responses"],
@@ -21,130 +21,68 @@
     "response": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["participantId", "role", "sessionDate", "importSource", "tasks"],
+      "required": [
+        "participant",
+        "workflow",
+        "tasksAttempted",
+        "completionStatus",
+        "observations",
+        "positiveFindings",
+        "problems",
+        "severity",
+        "suggestions"
+      ],
       "properties": {
-        "participantId": {
+        "participant": {
           "type": "string",
           "pattern": "^P(?:0[1-9]|[1-9][0-9]*)$",
           "description": "Anonymous participant identifier only; for example P01."
         },
-        "role": {
-          "type": "string",
-          "enum": ["public", "submitter", "administrator"]
+        "workflow": {
+          "$ref": "#/$defs/freeText"
         },
-        "sessionDate": {
-          "type": "string",
-          "format": "date"
+        "tasksAttempted": {
+          "$ref": "#/$defs/freeText"
         },
-        "importSource": {
-          "type": "string",
-          "enum": ["manual", "microsoft_forms_csv"]
-        },
-        "tasks": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/task"
-          }
-        },
-        "postTestResponses": {
-          "$ref": "#/$defs/postTestResponses"
-        }
-      }
-    },
-    "task": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["taskId", "outcome", "observations", "findings"],
-      "properties": {
-        "taskId": {
-          "type": "string",
-          "pattern": "^(?:PUB|SUB|ADM)-[0-9]{2}$"
-        },
-        "outcome": {
-          "type": "string",
-          "enum": ["success", "partial", "failure"]
+        "completionStatus": {
+          "$ref": "#/$defs/freeText"
         },
         "observations": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000
-          }
+          "$ref": "#/$defs/freeText"
         },
-        "findings": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/finding"
-          }
-        }
-      }
-    },
-    "finding": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["findingId", "summary", "severity", "decision", "retestRequired"],
-      "properties": {
-        "findingId": {
-          "type": "string",
-          "pattern": "^F[0-9]{2,}$"
+        "positiveFindings": {
+          "$ref": "#/$defs/freeText"
         },
-        "summary": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 2000
+        "problems": {
+          "$ref": "#/$defs/freeText"
         },
         "severity": {
           "type": "string",
           "enum": ["S1", "S2", "S3", "S4"]
         },
-        "decision": {
-          "type": "string",
-          "enum": [
-            "bug_issue_created",
-            "ux_improvement_issue_created",
-            "feature_request_created",
-            "existing_issue_linked",
-            "accepted_and_fixed_immediately",
-            "no_change"
-          ]
+        "suggestions": {
+          "$ref": "#/$defs/freeText"
         },
-        "relatedIssue": {
-          "type": "string",
-          "pattern": "^#[0-9]+$"
-        },
-        "decisionReason": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 2000
-        },
-        "retestRequired": {
-          "type": "boolean"
+        "traceability": {
+          "$ref": "#/$defs/traceability"
         }
       }
     },
-    "postTestResponses": {
+    "traceability": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "mostConfusing": {
-          "$ref": "#/$defs/freeText"
+        "giteaIssue": {
+          "type": "string",
+          "pattern": "^#[0-9]+$"
         },
-        "couldNotFind": {
-          "$ref": "#/$defs/freeText"
+        "implementationCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
         },
-        "unclearTerminology": {
-          "$ref": "#/$defs/freeText"
-        },
-        "mostIntuitive": {
-          "$ref": "#/$defs/freeText"
-        },
-        "oneChange": {
-          "$ref": "#/$defs/freeText"
-        },
-        "comfortableRepeatingTasks": {
-          "type": "boolean"
+        "retestingEvidence": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$"
         }
       }
     },
@@ -154,13 +92,9 @@
       "maxLength": 2000
     }
   },
-  "x-microsoft-forms-csv": {
-    "normalisedStore": "One response object per participant session; task columns are grouped into the tasks array.",
-    "requiredColumns": {
-      "Participant ID": "participantId",
-      "Role": "role",
-      "Session date": "sessionDate"
-    },
-    "excludedColumns": ["Name", "Email", "Start time", "Completion time"]
+  "x-power-automate": {
+    "source": "OneDrive/Sport Analytics/User Testing/responses/*.json",
+    "acceptedDocumentShapes": ["one response object", "response-store object"],
+    "excludedFields": ["Name", "Email", "Phone", "Start time", "Completion time"]
   }
 }
