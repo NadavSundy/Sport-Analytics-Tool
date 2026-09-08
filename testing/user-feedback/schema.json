@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/testing/user-feedback/schema.json",
+  "title": "Sprint 2 Power Automate user-testing feedback",
+  "description": "An anonymised, normalised store of Power Automate user-testing responses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "responses"],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "responses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/response"
+      }
+    }
+  },
+  "$defs": {
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "participant",
+        "workflow",
+        "tasksAttempted",
+        "completionStatus",
+        "observations",
+        "positiveFindings",
+        "problems",
+        "severity",
+        "suggestions"
+      ],
+      "properties": {
+        "participant": {
+          "type": "string",
+          "pattern": "^P(?:0[1-9]|[1-9][0-9]*)$",
+          "description": "Anonymous participant identifier only; for example P01."
+        },
+        "workflow": {
+          "$ref": "#/$defs/freeText"
+        },
+        "tasksAttempted": {
+          "$ref": "#/$defs/freeText"
+        },
+        "completionStatus": {
+          "$ref": "#/$defs/freeText"
+        },
+        "observations": {
+          "$ref": "#/$defs/freeText"
+        },
+        "positiveFindings": {
+          "$ref": "#/$defs/freeText"
+        },
+        "problems": {
+          "$ref": "#/$defs/freeText"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["S1", "S2", "S3", "S4"]
+        },
+        "suggestions": {
+          "$ref": "#/$defs/freeText"
+        },
+        "traceability": {
+          "$ref": "#/$defs/traceability"
+        }
+      }
+    },
+    "traceability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "giteaIssue": {
+          "type": "string",
+          "pattern": "^#[0-9]+$"
+        },
+        "implementationCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "retestingEvidence": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$"
+        }
+      }
+    },
+    "freeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "x-power-automate": {
+    "source": "OneDrive/Sport Analytics/User Testing/responses/*.json",
+    "acceptedDocumentShapes": ["one response object", "response-store object"],
+    "excludedFields": ["Name", "Email", "Phone", "Start time", "Completion time"]
+  }
+}

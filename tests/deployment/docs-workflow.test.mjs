@@ -21,10 +21,22 @@ test('automatic documentation deployment waits for validated main quality and pu
   assert.match(job, /needs\.plan\.outputs\.deployDocs == 'true'/);
 });
 
-test('automatic documentation deployment rebuilds the deployable site strictly and smoke checks Cloudflare', () => {
+test('automatic documentation deployment retrieves evidence before a strict build and smoke check', () => {
   const job = automaticDocsJob();
 
+  assert.match(job, /RCLONE_CONFIG/);
+  assert.match(job, /RCLONE_REMOTE/);
+  assert.match(job, /RCLONE_SOURCE/);
+  assert.match(job, /npm run retrieve:user-testing-feedback/);
+  assert.match(job, /generate:user-testing-evidence -- testing\/user-feedback\/input/);
   assert.match(job, /python -m mkdocs build --strict/);
+  assert.ok(
+    job.indexOf('npm run retrieve:user-testing-feedback') <
+      job.indexOf('generate:user-testing-evidence -- testing/user-feedback/input') &&
+      job.indexOf('generate:user-testing-evidence -- testing/user-feedback/input') <
+        job.indexOf('python -m mkdocs build --strict'),
+    'user-testing feedback must be retrieved and generated before the MkDocs build',
+  );
   assert.match(job, /wrangler pages deploy site --project-name=\$CLOUDFLARE_PROJECT_NAME/);
   assert.match(job, /smoke-check-deployment\.mjs/);
   assert.doesNotMatch(job, /npm run test:frontend/);
@@ -36,5 +48,20 @@ test('standalone documentation deployment workflow is manual recovery only', () 
   assert.match(manualDocsWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(manualDocsWorkflow, /\n\s*push:/);
   assert.match(manualDocsWorkflow, /python -m mkdocs build --strict/);
+  assert.match(
+    manualDocsWorkflow,
+    /generate:user-testing-evidence -- testing\/user-feedback\/input/,
+  );
+  assert.match(manualDocsWorkflow, /RCLONE_CONFIG/);
+  assert.match(manualDocsWorkflow, /RCLONE_REMOTE/);
+  assert.match(manualDocsWorkflow, /RCLONE_SOURCE/);
+  assert.match(manualDocsWorkflow, /npm run retrieve:user-testing-feedback/);
   assert.match(manualDocsWorkflow, /wrangler pages deploy site/);
+  assert.ok(
+    manualDocsWorkflow.indexOf('npm run retrieve:user-testing-feedback') <
+      manualDocsWorkflow.indexOf('generate:user-testing-evidence -- testing/user-feedback/input') &&
+      manualDocsWorkflow.indexOf('generate:user-testing-evidence -- testing/user-feedback/input') <
+        manualDocsWorkflow.indexOf('python -m mkdocs build --strict'),
+    'manual recovery must retrieve and generate user-testing evidence before the MkDocs build',
+  );
 });
