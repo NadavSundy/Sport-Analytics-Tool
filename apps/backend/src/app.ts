@@ -133,9 +133,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     (environment.NODE_ENV === 'production'
       ? createAzureObjectStorageComposition(environment).batchPayloadStorageService
       : undefined);
-  const batchService =
-    dependencies.batchService ??
-    (batchPayloadStorageService ? createBatchService(batchPayloadStorageService) : undefined);
+  const batchService = dependencies.batchService ?? createBatchService(batchPayloadStorageService);
   const apiConsumerRepository =
     dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
   const apiConsumerService =
@@ -191,9 +189,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
   );
-  if (batchService) {
-    app.use(API_BASE_PATH, createBatchRouter(verifyAccessToken, synchronizeAccount, batchService));
-  }
+  app.use(API_BASE_PATH, createBatchRouter(verifyAccessToken, synchronizeAccount, batchService));
   app.use(
     API_BASE_PATH,
     createSubmitterAccessRouter(verifyAccessToken, synchronizeAccount, submitterAccessService),

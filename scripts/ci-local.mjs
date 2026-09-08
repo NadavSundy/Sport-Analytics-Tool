@@ -170,6 +170,7 @@ async function runValidation(plan) {
   const testEnvironment = {
     ...process.env,
     NODE_ENV: 'test',
+    KNIP_DISABLE_RAW_TRANSFER: '1',
     SUPABASE_URL: 'https://example.invalid',
     SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
   };

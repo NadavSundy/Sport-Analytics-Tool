@@ -1,0 +1,249 @@
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ComponentProps } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+
+import { PublicApp } from '../../App';
+import { AuthProvider } from '../auth/AuthProvider';
+
+type AuthClient = ComponentProps<typeof AuthProvider>['client'];
+type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
+
+const batchReference = '123e4567-e89b-42d3-a456-426614174000';
+
+function session(): Session {
+  const user = {
+    id: 'submitter-user',
+    aud: 'authenticated',
+    role: 'authenticated',
+    email: 'submitter@example.com',
+    app_metadata: {},
+    user_metadata: {},
+    identities: [],
+    created_at: '2026-09-08T00:00:00.000Z',
+  } satisfies User;
+  return {
+    access_token: 'batch-access-token',
+    refresh_token: 'managed',
+    expires_in: 3600,
+    token_type: 'bearer',
+    user,
+  };
+}
+
+function authClient(activeSession: Session | null = session()) {
+  return {
+    getSession: vi.fn().mockResolvedValue({ data: { session: activeSession } }),
+    onAuthStateChange: vi.fn((listener: AuthStateListener) => ({
+      data: {
+        subscription: { id: 'batch-upload-test', callback: listener, unsubscribe: vi.fn() },
+      },
+    })),
+    signInWithOAuth: vi.fn(),
+    signOut: vi.fn(),
+  } as unknown as AuthClient;
+}
+
+function response(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(body),
+  } as unknown as Response;
+}
+
+function renderUpload(activeSession: Session | null = session()) {
+  return render(
+    <AuthProvider client={authClient(activeSession)}>
+      <MemoryRouter initialEntries={['/submissions/batches/new']}>
+        <PublicApp />
+      </MemoryRouter>
+    </AuthProvider>,
+  );
+}
+
+describe('guided batch upload', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  test('redirects signed-out visitors without loading upload data', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderUpload(null);
+    expect(await screen.findByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('explains the contract and creates a durable batch receipt from readable choices', async () => {
+    let finishUpload!: (value: Response) => void;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(
+          response(200, {
+            user: {
+              id: '17',
+              subject: 'submitter-user',
+              displayName: 'Submitter User',
+              role: 'submitter',
+              approvalState: 'approved',
+              requestedCompetition: null,
+              competitionIds: ['5'],
+            },
+          }),
+        );
+      }
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+        );
+      }
+      if (url.includes('/seasons?')) {
+        return Promise.resolve(
+          response(200, {
+            data: [
+              {
+                seasonId: '15',
+                competitionId: '5',
+                competitionName: 'Premier T20',
+                label: '2026/27',
+              },
+            ],
+            pagination: { nextCursor: null },
+          }),
+        );
+      }
+      if (url.endsWith('/batches') && init?.method === 'POST') {
+        return new Promise<Response>((resolve) => {
+          finishUpload = resolve;
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderUpload();
+
+    expect(await screen.findByText(/JSON, CSV spreadsheet, or NDJSON/)).toBeInTheDocument();
+    expect(screen.getByText(/50,000 delivery events/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Download JSON template' })).toHaveAttribute(
+      'download',
+    );
+    expect(screen.getByRole('link', { name: 'Download spreadsheet template' })).toHaveAttribute(
+      'download',
+    );
+    expect(await screen.findByLabelText('Competition')).toHaveDisplayValue('Premier T20');
+    const season = await screen.findByLabelText('Season context');
+    await waitFor(() =>
+      expect(
+        within(season).getByRole('option', { name: '2026/27 — Premier T20' }),
+      ).toBeInTheDocument(),
+    );
+
+    const file = new File(['{"contractVersion":"1.0"}'], 'season.json', {
+      type: 'application/json',
+    });
+    fireEvent.change(screen.getByLabelText('Batch package'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload batch package' }));
+    expect(screen.getByRole('progressbar', { name: 'Upload progress' })).toBeInTheDocument();
+
+    await act(async () => {
+      finishUpload(
+        response(202, {
+          data: {
+            batchReference,
+            status: 'stored',
+            statusUrl: `/api/v1/batches/${batchReference}`,
+            receivedAt: '2026-09-08T09:30:00.000Z',
+          },
+        }),
+      );
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Batch received safely' })).toHaveFocus();
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
+    expect(screen.getByText(/Processing continues after you leave/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Track this batch' })).toHaveAttribute(
+      'href',
+      `/submissions/batches/${batchReference}`,
+    );
+
+    const uploadCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/batches'))!;
+    const headers = new Headers((uploadCall[1] as RequestInit).headers);
+    expect(headers.get('Authorization')).toBe('Bearer batch-access-token');
+    expect(headers.get('X-Competition-Id')).toBe('5');
+    expect(headers.get('X-Batch-Package-Version')).toBe('1.0');
+    expect(headers.get('X-File-Name')).toBe('season.json');
+    expect((uploadCall[1] as RequestInit).body).toBe(file);
+  });
+
+  test('covers an empty scope without exposing ID inputs', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      response(200, {
+        user: {
+          id: '17',
+          subject: 'submitter-user',
+          displayName: null,
+          role: 'submitter',
+          approvalState: 'approved',
+          requestedCompetition: null,
+          competitionIds: [],
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    renderUpload();
+    expect(
+      await screen.findByRole('heading', { name: 'No authorised competitions' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/ID/i)).not.toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  });
+
+  test('keeps upload available when optional known-season choices are unavailable', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(
+          response(200, {
+            user: {
+              id: '17',
+              subject: 'submitter-user',
+              displayName: null,
+              role: 'submitter',
+              approvalState: 'approved',
+              requestedCompetition: null,
+              competitionIds: ['5'],
+            },
+          }),
+        );
+      }
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+        );
+      }
+      if (url.includes('/seasons?')) return Promise.reject(new Error('season service unavailable'));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderUpload();
+    expect(
+      await screen.findByText(/Known seasons are unavailable.*readable season name/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Batch package')).toBeEnabled();
+  });
+
+  test('distinguishes an access-loading failure from an empty scope', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    renderUpload();
+    expect(
+      await screen.findByRole('heading', { name: 'Upload choices unavailable' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'No authorised competitions' }),
+    ).not.toBeInTheDocument();
+  });
+});
