@@ -84,6 +84,14 @@ function post(app: ReturnType<typeof createTestApp>) {
 }
 
 describe('batch receipt API', () => {
+  test('keeps batch report routes available when payload storage is not configured', async () => {
+    const response = await request(createTestApp())
+      .get(`/api/v1/batches/${reference}/report`)
+      .expect(401);
+
+    expect(response.body.error.code).toBe('UNAUTHORIZED');
+  });
+
   test('returns an opaque staged receipt for an authorised submitter', async () => {
     const batchService = service();
     const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });

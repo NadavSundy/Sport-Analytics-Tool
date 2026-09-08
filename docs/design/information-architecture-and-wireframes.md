@@ -266,6 +266,21 @@ scope guidance; the direct JSON editor remains an advanced alternative.
 ![Submission – desktop](assets/wireframes/submission-desktop.svg)
 ![Submission – mobile](assets/wireframes/submission-mobile.svg)
 
+The linked `/submissions/batches/new` workflow handles whole seasons and back catalogues. It places
+supported JSON, CSV and NDJSON formats, the 50 MB and 50,000-event limits, required readable context,
+and JSON/spreadsheet templates before the file control. Competition and optional season context use
+names returned by the public API; canonical database identifiers are never typed by the submitter.
+
+An indeterminate upload indicator covers transfer time, then an accessible durable-receipt panel
+links to submission history. History and detail views use plain-language lifecycle descriptions,
+source row/field links, downloadable complete reports and labeled reference-mapping controls. Empty,
+partial, unavailable and error states retain the standard state patterns in §4. Background processing
+does not depend on the page remaining open.
+
+The implemented workflow and its desktop/mobile accessibility journey are ready to be exercised by
+the formal submitter-testing activity tracked under #417. Issue #361 does not record a separate
+participant session.
+
 ### 5.6 Manage users (administrator)
 
 One card per account; scope selection and role-transition actions gated by current lifecycle
@@ -298,3 +313,4 @@ reviewed by the team, per the acceptance criteria on #56.
 The issue #266 guided file-submission interface was documented with the assistance of Codex[GPT-5].
 The issue #314 homepage narrative, illustrative-trajectory constraint and progressive fallback were
 documented with the assistance of Codex[GPT-5.6 Sol].
+The issue #361 guided batch-upload workflow was documented with the assistance of Codex[GPT-5].
