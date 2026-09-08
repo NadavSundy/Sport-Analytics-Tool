@@ -1,0 +1,72 @@
+-- accepted_delivery selection only (#290 fragment), after ANALYZE
+Aggregate  (cost=1333.00..1333.01 rows=1 width=8) (actual time=46.254..46.269 rows=1 loops=1)
+  Output: count(*)
+  Buffers: shared hit=756
+  ->  Hash Join  (cost=71.64..1302.40 rows=12240 width=0) (actual time=5.267..44.797 rows=12240 loops=1)
+        Inner Unique: true
+        Hash Cond: (delivery.submission_id = source_submission.submission_id)
+        Buffers: shared hit=756
+        ->  Nested Loop  (cost=58.14..1256.31 rows=12240 width=8) (actual time=4.975..34.637 rows=12240 loops=1)
+              Output: delivery.submission_id
+              Buffers: shared hit=750
+              ->  Hash Semi Join  (cost=57.85..72.56 rows=102 width=8) (actual time=4.901..7.945 rows=102 loops=1)
+                    Output: i.innings_id
+                    Hash Cond: (i.fixture_id = selected_fixture.fixture_id)
+                    Buffers: shared hit=225
+                    ->  Seq Scan on public.innings i  (cost=0.00..12.00 rows=600 width=16) (actual time=0.032..0.264 rows=600 loops=1)
+                          Output: i.innings_id, i.fixture_id, i.ordinal, i.batting_team_id, i.is_super_over, i.declared, i.forfeited, i.target_runs, i.target_overs, i.penalty_pre, i.penalty_post
+                          Filter: (NOT i.is_super_over)
+                          Buffers: shared hit=6
+                    ->  Hash  (cost=57.21..57.21 rows=51 width=8) (actual time=0.606..0.615 rows=51 loops=1)
+                          Output: selected_fixture.fixture_id
+                          Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                          Buffers: shared hit=219
+                          ->  Subquery Scan on selected_fixture  (cost=1.63..57.21 rows=51 width=8) (actual time=0.395..0.587 rows=51 loops=1)
+                                Output: selected_fixture.fixture_id
+                                Buffers: shared hit=219
+                                ->  Limit  (cost=1.63..56.70 rows=51 width=228) (actual time=0.394..0.575 rows=51 loops=1)
+                                      Output: f.fixture_id, NULL::bigint, NULL::smallint, NULL::smallint, NULL::text[], NULL::text, NULL::text, NULL::text, NULL::text, f.start_date, NULL::date, NULL::bigint, NULL::text
+                                      Buffers: shared hit=219
+                                      ->  Incremental Sort  (cost=1.63..325.62 rows=300 width=228) (actual time=0.392..0.565 rows=51 loops=1)
+                                            Output: f.fixture_id, NULL::bigint, NULL::smallint, NULL::smallint, NULL::text[], NULL::text, NULL::text, NULL::text, NULL::text, f.start_date, NULL::date, NULL::bigint, NULL::text
+                                            Sort Key: f.start_date DESC, f.fixture_id DESC
+                                            Presorted Key: f.start_date
+                                            Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB
+                                            Buffers: shared hit=219
+                                            ->  Nested Loop  (cost=0.58..312.12 rows=300 width=228) (actual time=0.083..0.481 rows=52 loops=1)
+                                                  Output: f.fixture_id, NULL::bigint, NULL::smallint, NULL::smallint, NULL::text[], NULL::text, NULL::text, NULL::text, NULL::text, f.start_date, NULL::date, NULL::bigint, NULL::text
+                                                  Inner Unique: true
+                                                  Buffers: shared hit=219
+                                                  ->  Nested Loop  (cost=0.43..229.99 rows=300 width=20) (actual time=0.056..0.300 rows=52 loops=1)
+                                                        Output: f.fixture_id, f.start_date, f.first_seen_in
+                                                        Inner Unique: true
+                                                        Buffers: shared hit=115
+                                                        ->  Index Scan Backward using fixture_start_date_idx on public.fixture f  (cost=0.15..23.65 rows=300 width=20) (actual time=0.021..0.044 rows=52 loops=1)
+                                                              Output: f.fixture_id, f.source_ref, f.competition_id, f.event_match_number, f.event_group, f.event_stage, f.season, f.match_type, f.team_type, f.gender, f.balls_per_over, f.scheduled_overs, f.venue_id, f.start_date, f.end_date, f.toss_winner_id, f.toss_decision, f.toss_uncontested, f.outcome, f.winner_id, f.eliminator_id, f.outcome_by_runs, f.outcome_by_wickets, f.outcome_method, f.decided_by_bowl_out, f.missing_fields, f.source_version, f.source_revision, f.first_seen_in
+                                                              Buffers: shared hit=3
+                                                        ->  Index Only Scan using fixture_squad_pkey on public.fixture_squad fs  (cost=0.28..0.69 rows=1 width=8) (actual time=0.003..0.003 rows=1 loops=52)
+                                                              Output: fs.fixture_id, fs.person_id
+                                                              Index Cond: ((fs.fixture_id = f.fixture_id) AND (fs.person_id = '1'::bigint))
+                                                              Heap Fetches: 7
+                                                              Buffers: shared hit=112
+                                                  ->  Index Scan using submission_pkey on public.submission publication  (cost=0.15..0.27 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=52)
+                                                        Output: publication.submission_id, publication.submitted_by, publication.received_at, publication.source_filename, publication.source_sha256, publication.status, publication.rejection_detail, publication.fixture_id, publication.schema_version, publication.event_count, publication.source_file_name, publication.source_file_media_type, publication.source_file_size_bytes
+                                                        Index Cond: (publication.submission_id = f.first_seen_in)
+                                                        Filter: (publication.status = 'accepted'::submission_status)
+                                                        Buffers: shared hit=104
+              ->  Index Scan using delivery_sequence_live on public.delivery  (cost=0.29..10.41 rows=120 width=16) (actual time=0.009..0.095 rows=120 loops=102)
+                    Output: delivery.delivery_id, delivery.innings_id, delivery.over_number, delivery.position_in_over, delivery.innings_sequence, delivery.ball_number, delivery.striker_id, delivery.non_striker_id, delivery.bowler_id, delivery.runs_off_bat, delivery.runs_extras, delivery.runs_total, delivery.non_boundary, delivery.extra_wides, delivery.extra_noballs, delivery.extra_byes, delivery.extra_legbyes, delivery.extra_penalty, delivery.revision, delivery.submission_id, delivery.recorded_at, delivery.superseded_at, delivery.superseded_by, delivery.source_event_id, delivery.submission_event_ordinal, delivery.source_batch_item_id, delivery.supersedes_delivery_id
+                    Index Cond: (delivery.innings_id = i.innings_id)
+                    Buffers: shared hit=525
+        ->  Hash  (cost=9.75..9.75 rows=300 width=8) (actual time=0.274..0.275 rows=300 loops=1)
+              Output: source_submission.submission_id
+              Buckets: 1024  Batches: 1  Memory Usage: 20kB
+              Buffers: shared hit=6
+              ->  Seq Scan on public.submission source_submission  (cost=0.00..9.75 rows=300 width=8) (actual time=0.089..0.180 rows=300 loops=1)
+                    Output: source_submission.submission_id
+                    Filter: (source_submission.status = 'accepted'::submission_status)
+                    Buffers: shared hit=6
+Planning:
+  Buffers: shared hit=47
+Planning Time: 6.248 ms
+Execution Time: 46.521 ms

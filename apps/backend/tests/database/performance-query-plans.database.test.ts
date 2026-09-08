@@ -1,10 +1,12 @@
 import { readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { Pool, type PoolClient } from 'pg';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import type { QueryExecutor } from '../../src/database';
+import { listParticipantFixtures } from '../../src/modules/participants/participant.repository';
 
 const corpusPath = resolve(__dirname, '../../../../data/performance/representative-t20');
 const performanceDescribe =
@@ -19,11 +21,34 @@ interface ExplainRow {
 
 interface QueryPlan {
   'Node Type': string;
+  'Parent Relationship'?: string;
+  'CTE Name'?: string;
+  'Relation Name'?: string;
+  Alias?: string;
+  'Actual Loops'?: number;
   Plans?: QueryPlan[];
 }
 
 function nodeTypes(plan: QueryPlan): string[] {
   return [plan['Node Type'], ...(plan.Plans ?? []).flatMap(nodeTypes)];
+}
+
+function flatten(plan: QueryPlan): QueryPlan[] {
+  return [plan, ...(plan.Plans ?? []).flatMap(flatten)];
+}
+
+/**
+ * Every node reached through a SubPlan branch, including nodes nested below one.
+ *
+ * A SubPlan is re-evaluated once per row of its parent, so a scan underneath one
+ * is a repeated scan. `Parent Relationship` names the branch on the child rather
+ * than on the node that owns it, which is why this walks downwards from the
+ * branch root rather than reading a property of the parent.
+ */
+function subPlanNodes(plan: QueryPlan): QueryPlan[] {
+  return flatten(plan).flatMap((node) =>
+    node['Parent Relationship'] === 'SubPlan' ? flatten(node) : [],
+  );
 }
 
 performanceDescribe('representative query-plan regression', () => {
@@ -140,4 +165,79 @@ performanceDescribe('representative query-plan regression', () => {
       );
     }
   });
+
+  /**
+   * Issue #410. The check above measures a hand-written fragment of the
+   * participant-history read, and the endpoint's own statement was never
+   * planned here: a 34.4% improvement on a 32 ms fragment left a 3,454 ms
+   * endpoint untouched. This plans the statement the endpoint actually issues,
+   * by capturing it from `listParticipantFixtures` rather than restating it.
+   *
+   * The assertion is structural, not a duration. `accepted_delivery` is
+   * referenced more than once, so it is materialised into a tuplestore, and a
+   * tuplestore has no index: any SubPlan that scans it re-reads the whole set
+   * once per row of its parent. Issue #410 measured that at 51 and 102 loops,
+   * 845.5 ms of an 889.5 ms plan. A loop count is stable across machines in a
+   * way an elapsed time is not, so the invariant is what is pinned.
+   */
+  test('plans the endpoint statement with no repeated scan of the materialised delivery set', async () => {
+    expect(client).toBeDefined();
+    expect(participantId).toBeDefined();
+    const executor = client!;
+
+    // Capture the statement the repository issues, so the plan under test cannot
+    // drift away from the shipped one.
+    const captured: Array<{ text: string; values: unknown[] }> = [];
+    const recordingExecutor: QueryExecutor = {
+      query: async <Row extends QueryResultRow>(text: string, values?: unknown[]) => {
+        captured.push({ text, values: values ?? [] });
+        return await executor.query<Row>(text, values);
+      },
+    };
+
+    const page = await listParticipantFixtures(
+      { participantId: participantId!, limit: 50 },
+      recordingExecutor,
+    );
+    expect(page.records).toHaveLength(50);
+    expect(captured).toHaveLength(1);
+
+    const statement = captured[0]!;
+    const plan = await executor.query<ExplainRow>(
+      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${statement.text}`,
+      statement.values,
+    );
+    const result = plan.rows[0]?.['QUERY PLAN'][0];
+    expect(result).toBeDefined();
+
+    const repeatedDeliveryScans = subPlanNodes(result!.Plan).filter(
+      (node) => node['Node Type'] === 'CTE Scan' && node['CTE Name'] === 'accepted_delivery',
+    );
+
+    expect(
+      repeatedDeliveryScans.map((node) => ({
+        alias: node.Alias,
+        loops: node['Actual Loops'],
+      })),
+    ).toEqual([]);
+
+    // The set is still built exactly once, which is what makes one grouped pass
+    // over it cheap.
+    const deliveryScans = flatten(result!.Plan).filter(
+      (node) => node['Node Type'] === 'CTE Scan' && node['CTE Name'] === 'accepted_delivery',
+    );
+    expect(deliveryScans.length).toBeGreaterThan(0);
+    for (const scan of deliveryScans) {
+      expect(scan['Actual Loops']).toBe(1);
+    }
+
+    console.info(
+      JSON.stringify({
+        endpointStatementExecutionMs: result!['Execution Time'],
+        acceptedDeliveryScans: deliveryScans.length,
+      }),
+    );
+    // Generous, so that a reintroduced re-scan fails on the loop-count assertion
+    // rather than on the clock. A duration is not what this test asserts.
+  }, 120_000);
 });

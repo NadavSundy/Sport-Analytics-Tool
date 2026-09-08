@@ -1,0 +1,150 @@
+-- proposed innings_event_count grouped pass, full participant-history query, limit 51, after ANALYZE
+Sort  (cost=2304.76..2304.76 rows=2 width=476) (actual time=38.035..38.056 rows=51 loops=1)
+  Sort Key: sf.start_date DESC, sf.fixture_id DESC
+  Sort Method: quicksort  Memory: 35kB
+  Buffers: shared hit=809
+  CTE selected_fixture
+    ->  Limit  (cost=2.17..84.94 rows=51 width=103) (actual time=0.202..0.297 rows=51 loops=1)
+          Buffers: shared hit=263
+          ->  Incremental Sort  (cost=2.17..489.07 rows=300 width=103) (actual time=0.200..0.291 rows=51 loops=1)
+                Sort Key: f.start_date DESC, f.fixture_id DESC
+                Presorted Key: f.start_date
+                Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 29kB  Peak Memory: 29kB
+                Buffers: shared hit=263
+                ->  Nested Loop  (cost=0.58..475.57 rows=300 width=103) (actual time=0.053..0.251 rows=52 loops=1)
+                      Buffers: shared hit=263
+                      ->  Nested Loop  (cost=0.43..393.45 rows=300 width=111) (actual time=0.043..0.172 rows=52 loops=1)
+                            Buffers: shared hit=159
+                            ->  Index Scan Backward using fixture_start_date_idx on fixture f  (cost=0.15..23.65 rows=300 width=71) (actual time=0.024..0.034 rows=52 loops=1)
+                                  Buffers: shared hit=3
+                            ->  Index Scan using fixture_squad_pkey on fixture_squad fs  (cost=0.28..1.24 rows=1 width=48) (actual time=0.002..0.002 rows=1 loops=52)
+                                  Index Cond: ((fixture_id = f.fixture_id) AND (person_id = '1'::bigint))
+                                  Buffers: shared hit=156
+                      ->  Index Scan using submission_pkey on submission publication  (cost=0.15..0.27 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=52)
+                            Index Cond: (submission_id = f.first_seen_in)
+                            Filter: (status = 'accepted'::submission_status)
+                            Buffers: shared hit=104
+  CTE accepted_delivery
+    ->  Hash Join  (cost=15.45..1246.21 rows=12240 width=113) (actual time=0.232..15.026 rows=12240 loops=1)
+          Hash Cond: (delivery.submission_id = source_submission.submission_id)
+          Buffers: shared hit=537
+          ->  Nested Loop  (cost=1.95..1200.12 rows=12240 width=113) (actual time=0.129..11.037 rows=12240 loops=1)
+                Buffers: shared hit=531
+                ->  Hash Semi Join  (cost=1.66..16.37 rows=102 width=16) (actual time=0.115..0.285 rows=102 loops=1)
+                      Hash Cond: (i_1.fixture_id = selected_fixture.fixture_id)
+                      Buffers: shared hit=6
+                      ->  Seq Scan on innings i_1  (cost=0.00..12.00 rows=600 width=16) (actual time=0.010..0.162 rows=600 loops=1)
+                            Filter: (NOT is_super_over)
+                            Buffers: shared hit=6
+                      ->  Hash  (cost=1.02..1.02 rows=51 width=8) (actual time=0.013..0.013 rows=51 loops=1)
+                            Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                            ->  CTE Scan on selected_fixture  (cost=0.00..1.02 rows=51 width=8) (actual time=0.000..0.006 rows=51 loops=1)
+                ->  Index Scan using delivery_sequence_live on delivery  (cost=0.29..10.41 rows=120 width=105) (actual time=0.011..0.043 rows=120 loops=102)
+                      Index Cond: (innings_id = i_1.innings_id)
+                      Buffers: shared hit=525
+          ->  Hash  (cost=9.75..9.75 rows=300 width=8) (actual time=0.097..0.097 rows=300 loops=1)
+                Buckets: 1024  Batches: 1  Memory Usage: 20kB
+                Buffers: shared hit=6
+                ->  Seq Scan on submission source_submission  (cost=0.00..9.75 rows=300 width=8) (actual time=0.010..0.060 rows=300 loops=1)
+                      Filter: (status = 'accepted'::submission_status)
+                      Buffers: shared hit=6
+  ->  Nested Loop Left Join  (cost=896.71..973.60 rows=2 width=476) (actual time=34.811..37.968 rows=51 loops=1)
+        Buffers: shared hit=809
+        ->  Merge Left Join  (cost=896.57..972.75 rows=2 width=305) (actual time=34.748..37.737 rows=51 loops=1)
+              Merge Cond: (sf.fixture_id = d_2.fixture_id)
+              Buffers: shared hit=807
+              ->  Sort  (cost=619.36..619.37 rows=2 width=293) (actual time=32.580..32.595 rows=51 loops=1)
+                    Sort Key: sf.fixture_id
+                    Sort Method: quicksort  Memory: 32kB
+                    Buffers: shared hit=807
+                    ->  Merge Join  (cost=616.01..619.35 rows=2 width=293) (actual time=32.330..32.559 rows=51 loops=1)
+                          Merge Cond: (sf.fixture_id = sf_1.fixture_id)
+                          Buffers: shared hit=807
+                          ->  Sort  (cost=282.41..282.42 rows=2 width=253) (actual time=26.864..26.873 rows=51 loops=1)
+                                Sort Key: sf.fixture_id
+                                Sort Method: quicksort  Memory: 31kB
+                                Buffers: shared hit=801
+                                ->  Merge Left Join  (cost=279.43..282.40 rows=2 width=253) (actual time=26.538..26.784 rows=51 loops=1)
+                                      Merge Cond: (sf.fixture_id = d.fixture_id)
+                                      Buffers: shared hit=801
+                                      ->  Sort  (cost=2.22..2.22 rows=2 width=237) (actual time=0.384..0.411 rows=51 loops=1)
+                                            Sort Key: sf.fixture_id
+                                            Sort Method: quicksort  Memory: 30kB
+                                            Buffers: shared hit=264
+                                            ->  Hash Join  (cost=1.04..2.21 rows=2 width=237) (actual time=0.243..0.362 rows=51 loops=1)
+                                                  Hash Cond: (sf.team_id = t.team_id)
+                                                  Buffers: shared hit=264
+                                                  ->  CTE Scan on selected_fixture sf  (cost=0.00..1.02 rows=51 width=228) (actual time=0.205..0.306 rows=51 loops=1)
+                                                        Buffers: shared hit=263
+                                                  ->  Hash  (cost=1.02..1.02 rows=2 width=17) (actual time=0.029..0.030 rows=2 loops=1)
+                                                        Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                        Buffers: shared hit=1
+                                                        ->  Seq Scan on team t  (cost=0.00..1.02 rows=2 width=17) (actual time=0.023..0.024 rows=2 loops=1)
+                                                              Buffers: shared hit=1
+                                      ->  GroupAggregate  (cost=277.21..279.49 rows=53 width=24) (actual time=26.148..26.338 rows=51 loops=1)
+                                            Group Key: d.fixture_id
+                                            Buffers: shared hit=537
+                                            ->  Sort  (cost=277.21..277.36 rows=61 width=13) (actual time=26.132..26.169 rows=561 loops=1)
+                                                  Sort Key: d.fixture_id
+                                                  Sort Method: quicksort  Memory: 46kB
+                                                  Buffers: shared hit=537
+                                                  ->  CTE Scan on accepted_delivery d  (cost=0.00..275.40 rows=61 width=13) (actual time=0.236..25.956 rows=561 loops=1)
+                                                        Filter: (striker_id = '1'::bigint)
+                                                        Rows Removed by Filter: 11679
+                                                        Buffers: shared hit=537
+                          ->  GroupAggregate  (cost=333.60..336.28 rows=51 width=48) (actual time=5.459..5.649 rows=51 loops=1)
+                                Group Key: sf_1.fixture_id
+                                Buffers: shared hit=6
+                                ->  Sort  (cost=333.60..333.85 rows=102 width=30) (actual time=5.432..5.441 rows=102 loops=1)
+                                      Sort Key: sf_1.fixture_id
+                                      Sort Method: quicksort  Memory: 30kB
+                                      Buffers: shared hit=6
+                                      ->  Hash Left Join  (cost=314.66..330.20 rows=102 width=30) (actual time=5.296..5.390 rows=102 loops=1)
+                                            Hash Cond: (i.innings_id = iec.innings_id)
+                                            Buffers: shared hit=6
+                                            ->  Hash Right Join  (cost=1.66..16.93 rows=102 width=18) (actual time=0.290..0.361 rows=102 loops=1)
+                                                  Hash Cond: (i.fixture_id = sf_1.fixture_id)
+                                                  Buffers: shared hit=6
+                                                  ->  Seq Scan on innings i  (cost=0.00..12.00 rows=600 width=18) (actual time=0.067..0.185 rows=600 loops=1)
+                                                        Filter: (NOT is_super_over)
+                                                        Buffers: shared hit=6
+                                                  ->  Hash  (cost=1.02..1.02 rows=51 width=8) (actual time=0.068..0.068 rows=51 loops=1)
+                                                        Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                                        ->  CTE Scan on selected_fixture sf_1  (cost=0.00..1.02 rows=51 width=8) (actual time=0.003..0.051 rows=51 loops=1)
+                                            ->  Hash  (cost=310.50..310.50 rows=200 width=12) (actual time=4.984..4.985 rows=102 loops=1)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                                  ->  Subquery Scan on iec  (cost=306.00..310.50 rows=200 width=12) (actual time=4.913..4.944 rows=102 loops=1)
+                                                        ->  HashAggregate  (cost=306.00..308.50 rows=200 width=12) (actual time=4.910..4.929 rows=102 loops=1)
+                                                              Group Key: d_1.innings_id
+                                                              Batches: 1  Memory Usage: 40kB
+                                                              ->  CTE Scan on accepted_delivery d_1  (cost=0.00..244.80 rows=12240 width=8) (actual time=0.002..1.504 rows=12240 loops=1)
+              ->  GroupAggregate  (cost=277.21..352.69 rows=53 width=20) (actual time=2.161..5.088 rows=51 loops=1)
+                    Group Key: d_2.fixture_id
+                    ->  Sort  (cost=277.21..277.36 rows=61 width=22) (actual time=1.992..2.037 rows=408 loops=1)
+                          Sort Key: d_2.fixture_id
+                          Sort Method: quicksort  Memory: 44kB
+                          ->  CTE Scan on accepted_delivery d_2  (cost=0.00..275.40 rows=61 width=22) (actual time=0.015..1.879 rows=408 loops=1)
+                                Filter: (bowler_id = '1'::bigint)
+                                Rows Removed by Filter: 11832
+                    SubPlan 3
+                      ->  Aggregate  (cost=1.19..1.20 rows=1 width=8) (actual time=0.006..0.006 rows=1 loops=408)
+                            ->  Hash Join  (cost=0.01..1.19 rows=1 width=0) (actual time=0.005..0.005 rows=0 loops=408)
+                                  Hash Cond: (dk.code = dw.kind)
+                                  ->  Seq Scan on dismissal_kind dk  (cost=0.00..1.14 rows=6 width=12) (never executed)
+                                        Filter: credits_bowler
+                                  ->  Hash  (cost=0.00..0.00 rows=1 width=32) (actual time=0.004..0.004 rows=0 loops=408)
+                                        Buckets: 1024  Batches: 1  Memory Usage: 8kB
+                                        ->  Seq Scan on delivery_wicket dw  (cost=0.00..0.00 rows=1 width=32) (actual time=0.000..0.000 rows=0 loops=408)
+                                              Filter: (delivery_id = d_2.delivery_id)
+        ->  Memoize  (cost=0.14..0.39 rows=1 width=39) (actual time=0.001..0.001 rows=1 loops=51)
+              Cache Key: sf.competition_id
+              Cache Mode: logical
+              Hits: 50  Misses: 1  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+              Buffers: shared hit=2
+              ->  Index Scan using competition_pkey on competition c  (cost=0.12..0.38 rows=1 width=39) (actual time=0.038..0.038 rows=1 loops=1)
+                    Index Cond: (competition_id = sf.competition_id)
+                    Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=45
+Planning Time: 2.427 ms
+Execution Time: 38.880 ms

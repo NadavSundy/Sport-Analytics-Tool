@@ -177,6 +177,16 @@ export interface ParticipantFixturePage {
  *
  * A fixture the participant was selected for but did not bat or bowl in returns
  * null figures rather than being omitted.
+ *
+ * Nothing may re-read `accepted_delivery`. It is referenced more than once, so
+ * PostgreSQL materialises it into a tuplestore, and a tuplestore carries no
+ * index: a correlated subquery against it scans the whole set once per row.
+ * Issue #410 measured the fixture-level completeness fields costing 845.5 ms of
+ * an 889.5 ms plan that way — 51 scans for the event count and 102 for the
+ * empty-innings test, about 1.24 million tuple scans to produce 51 integers and
+ * 51 arrays. Both are now one grouped pass over the same set, which is why
+ * `innings_event_count` exists rather than the two subqueries it replaces. The
+ * plan captures are in `evidence/validation/issue-410-*`.
  */
 export async function listParticipantFixtures(
   options: ParticipantFixtureListOptions,
@@ -271,23 +281,22 @@ export async function listParticipantFixtures(
         WHERE d.bowler_id = $1::bigint
         GROUP BY d.fixture_id
       ),
+      innings_event_count AS (
+        SELECT
+          d.innings_id,
+          COUNT(*)::int AS accepted_event_count
+        FROM accepted_delivery d
+        GROUP BY d.innings_id
+      ),
       fixture_state AS (
         SELECT
           sf.fixture_id,
           COUNT(i.innings_id)::int AS standard_innings_count,
-          (
-            SELECT COUNT(*)::int
-            FROM accepted_delivery d
-            WHERE d.fixture_id = sf.fixture_id
-          ) AS accepted_event_count,
+          COALESCE(SUM(iec.accepted_event_count), 0)::int AS accepted_event_count,
           COALESCE(
             ARRAY_AGG(i.innings_id::text ORDER BY i.ordinal) FILTER (
               WHERE i.innings_id IS NOT NULL
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM accepted_delivery d
-                  WHERE d.innings_id = i.innings_id
-                )
+                AND iec.innings_id IS NULL
             ),
             ARRAY[]::text[]
           ) AS empty_standard_innings_ids
@@ -295,6 +304,8 @@ export async function listParticipantFixtures(
         LEFT JOIN innings i
           ON i.fixture_id = sf.fixture_id
          AND i.is_super_over = false
+        LEFT JOIN innings_event_count iec
+          ON iec.innings_id = i.innings_id
         GROUP BY sf.fixture_id
       )
       SELECT
