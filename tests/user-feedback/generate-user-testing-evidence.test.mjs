@@ -59,7 +59,7 @@ test('ingests a Power Automate feedback object and redacts supported PII pattern
   });
 });
 
-test('generates the required MkDocs evidence headings and traceability', async () => {
+test('renders traceability when the response contains it', async () => {
   await withTemporaryDirectories(async ({ inputDirectory, outputDirectory }) => {
     await writeFile(
       join(inputDirectory, 'response-store.json'),
@@ -86,13 +86,28 @@ test('generates the required MkDocs evidence headings and traceability', async (
       assert.match(markdown, new RegExp(heading));
     }
 
-    assert.match(markdown, /Gitea issue:\*\* `#428`/);
-    assert.match(markdown, /Implementation commit:\*\* `c5a4346c`/);
-    assert.match(
-      markdown,
-      /Retesting evidence:\*\* `evidence\/user-testing\/sprint-2\/retest\.md`/,
-    );
+    assert.match(markdown, /- Gitea issue: #428/);
+    assert.match(markdown, /- Implementation commit: c5a4346c/);
+    assert.match(markdown, /- Retesting evidence: evidence\/user-testing\/sprint-2\/retest\.md/);
     assert.doesNotMatch(markdown, /fixture@example\.test|fixture-secret/);
+  });
+});
+
+test('omits traceability when the response contains no traceability data', async () => {
+  await withTemporaryDirectories(async ({ inputDirectory, outputDirectory }) => {
+    const response = responseFixture();
+    delete response.traceability;
+    await writeFile(
+      join(inputDirectory, 'response.json'),
+      `${JSON.stringify(response, null, 2)}\n`,
+      'utf8',
+    );
+
+    const [generated] = await generateUserTestingEvidence(inputDirectory, outputDirectory);
+    const markdown = await readFile(generated, 'utf8');
+
+    assert.doesNotMatch(markdown, /## Traceability/);
+    assert.doesNotMatch(markdown, /Not recorded/);
   });
 });
 

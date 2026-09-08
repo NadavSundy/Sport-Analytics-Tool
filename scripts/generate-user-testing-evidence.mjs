@@ -11,8 +11,20 @@ function markdownText(value) {
   return String(value).replaceAll('\r\n', '\n').replaceAll('\n', '<br>');
 }
 
-function traceabilityValue(value) {
-  return value ? `\`${value}\`` : 'Not recorded';
+function traceabilitySection(traceability) {
+  const entries = [
+    ['Gitea issue', traceability.giteaIssue],
+    ['Implementation commit', traceability.implementationCommit],
+    ['Retesting evidence', traceability.retestingEvidence],
+  ].filter(([, value]) => value);
+
+  if (entries.length === 0) return '';
+
+  return `
+## Traceability
+
+${entries.map(([label, value]) => `- ${label}: ${value}`).join('\n')}
+`;
 }
 
 export function renderUserTestingEvidence(response) {
@@ -53,13 +65,7 @@ ${response.severity}
 
 ## Suggested Improvements
 
-${markdownText(response.suggestions)}
-
-## Traceability
-
-- **Gitea issue:** ${traceabilityValue(response.traceability.giteaIssue)}
-- **Implementation commit:** ${traceabilityValue(response.traceability.implementationCommit)}
-- **Retesting evidence:** ${traceabilityValue(response.traceability.retestingEvidence)}
+${markdownText(response.suggestions)}${traceabilitySection(response.traceability)}
 `;
 }
 
