@@ -133,8 +133,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     (environment.NODE_ENV === 'production'
       ? createAzureObjectStorageComposition(environment).batchPayloadStorageService
       : undefined);
-  const batchService =
-    dependencies.batchService ?? createBatchService(batchPayloadStorageService);
+  const batchService = dependencies.batchService ?? createBatchService(batchPayloadStorageService);
   const apiConsumerRepository =
     dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
   const apiConsumerService =
