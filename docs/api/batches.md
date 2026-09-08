@@ -10,9 +10,30 @@ The server authenticates and checks the persisted submitter role and competition
 
 Package expansion, event validation, review, and publication remain asynchronous follow-on work. A stored batch is non-public and no staged item is included in public event or statistics reads.
 
+## Reference mapping
+
+An item report exposes every ambiguous or unresolved reference in `referenceResolutions`. Candidate
+choices contain readable labels and opaque UUID references; internal canonical identifiers are not
+returned. A reference with no safe existing candidate reports `contact_reviewer` and cannot be
+silently created or fuzzy-matched.
+
+The owning submitter or an administrator with the batch competition in their persisted scope may
+send the report item `itemOrdinal`, `referencePath`, `candidateReference`, and a caller-stable `decisionKey` to
+`POST /api/v1/batches/{batchReference}/reference-mappings`. The API verifies the candidate against
+the current stored resolution evidence, retains the actor and selection, and returns `202` after it
+durably queues revalidation from the original private source. The status URL remains available after
+the caller leaves. Identical decisions are idempotent; stale candidates, reused keys with different
+content, competing choices, and decisions made while validation is active return
+`409 BATCH_REFERENCE_MAPPING_CONFLICT`.
+
+Revalidation uses the normal package resolver, event schema, cricket rules, and durable worker
+checkpoint. Previous validation results remain retained as superseded evidence while status, counts,
+reports, and approval checks use only the current validation attempt.
+
 See [Batch submission packages](../data/batch-submission-packages.md) and the [Batch ingestion pipeline](../architecture/batch-ingestion-pipeline.md) for the package and lifecycle contracts.
 
 ## AI Declaration
 
 The Issue #277 receipt API documentation was produced with the assistance of Codex[GPT-5].
 The Issue #280 idempotency behaviour was documented with the assistance of Codex[GPT-5].
+The Issue #425 reference-mapping API was documented with the assistance of Codex[GPT-5].

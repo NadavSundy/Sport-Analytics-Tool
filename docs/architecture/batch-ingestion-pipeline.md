@@ -15,15 +15,15 @@ This document defines the implementation design for batch ingestion: the staging
 
 ### 1.2 Scope
 
-This document defines the approved design intent. Issue #276 has implemented the database staging
-foundation; the remaining issues listed in section 13 carry the application and infrastructure work.
+This document defines the approved design intent. Issues #276 and #283 have implemented the database
+staging foundation and review-before-publication boundary; the remaining issues listed in section 13
+carry the other application and infrastructure work.
 
 ### 1.3 Out of scope
 
-1. The submission review user interface, defined by issue #283.
-2. Dataset release and snapshot construction, defined by issue #294.
-3. Selective recomputation of derived statistics after publication, defined by issue #286.
-4. The corpus importer, described in section 2.1 as context only and not modified by this design.
+1. Dataset release and snapshot construction, defined by issue #294.
+2. Selective recomputation of derived statistics after publication, defined by issue #286.
+3. The corpus importer, described in section 2.1 as context only and not modified by this design.
 
 ---
 
@@ -159,6 +159,53 @@ platform has not seen yet, and the resolver reports it as such.
    templates emit an innings carrying both a `sourceId` and readable context. Rejecting the field
    would make a template-derived package unresolvable.
 
+## 3.8 Versioned cricket business-rule validation
+
+Issue #282 adds authoritative cricket validation shared by direct submissions
+and asynchronous batch processing. Business-rule results use rule version
+`1.0`, carry an `error` or `warning` severity, identify the affected
+event and field, and accumulate all discoverable failures rather than stopping
+at the first rule violation.
+
+| Rule code                         | Severity | Meaning                                                                                                                    |
+| --------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `STRIKER_TEAM_INVALID`            | error    | The striker is not a member of the innings batting team.                                                                   |
+| `NON_STRIKER_TEAM_INVALID`        | error    | The non-striker is not a member of the innings batting team.                                                               |
+| `BOWLER_TEAM_INVALID`             | error    | The bowler is not a member of the innings bowling team.                                                                    |
+| `DISMISSED_PLAYER_INVALID`        | error    | A dismissed player is not valid for the innings batting side.                                                              |
+| `UNKNOWN_DISMISSAL_KIND`          | error    | The submitted dismissal kind is not in the authoritative dismissal vocabulary.                                             |
+| `DUPLICATE_WICKET`                | error    | The same batter is terminally dismissed more than once in one innings with the same dismissal kind.                        |
+| `CONTRADICTORY_WICKET`            | error    | The same batter is terminally dismissed more than once in one innings using contradictory dismissal kinds.                 |
+| `BALL_NUMBER_OVER_MISMATCH`       | error    | The printed ball label names a different over from the canonical over coordinate.                                          |
+| `SEQUENCE_NOT_INCREASING`         | error    | Occurrence sequence fails to increase within an innings.                                                                   |
+| `BALL_NUMBER_PROGRESSION_INVALID` | error    | The printed ball label does not progress consistently with the previous delivery's legal/illegal status.                   |
+| `EXACT_PUBLISHED_DUPLICATE`       | warning  | Canonical cricket content exactly matches an already-published delivery and publication is a deterministic no-op.          |
+| `PUBLISHED_DELIVERY_CONFLICT`     | error    | A published delivery at the same natural position or source identity carries different canonical cricket content.          |
+| `FIXTURE_METADATA_CONFLICT`       | error    | A fixture source identifier resolves, but supplied date, season, team or venue metadata contradicts the canonical fixture. |
+
+### Boundary behaviour
+
+- Printed ball numbers are display data, not unique identifiers.
+- A wide or no-ball makes a delivery illegal for printed-ball progression, so
+  the next delivery may legitimately repeat the same printed ball number.
+- A legal delivery advances the printed ball number when progression can be
+  determined.
+- Validation does **not** assume six legal balls per over. Five- and seven-ball
+  overs in the reference corpus remain valid.
+- The first observed delivery in a partial input is not required to be
+  `.1`; validation only applies progression where prior context exists.
+- Validation state is retained across worker chunks and rebuilt from durable
+  staged items after a restart, so sequence, delivery-progression and wicket
+  rules operate across the whole batch.
+- Retired-hurt/non-terminal retirement does not permanently dismiss a batter.
+- Run totals remain structurally constrained so `runs.total = offBat + extras`
+  and `runs.extras` equals the supplied extras breakdown.
+- Exact published duplicates are warnings and deterministic skips; differing
+  published cricket content is an error.
+- Resolving an existing fixture by source identifier never mutates its
+  canonical metadata. Contradictory supplied metadata is staged as
+  `FIXTURE_METADATA_CONFLICT`.
+
 ---
 
 ## 4. Batch Lifecycle States
@@ -167,18 +214,19 @@ _Satisfies acceptance criterion 1._
 
 ### 4.1 Batch states
 
-| State                 | Meaning                                                                                            | Terminal |
-| --------------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `received`            | Request accepted, batch record created. No payload stored.                                         | No       |
-| `stored`              | Payload written to object storage, checksum recorded.                                              | No       |
-| `validating`          | A worker holds a lease and is expanding and validating items.                                      | No       |
-| `rejected`            | Validation completed; no item is publishable.                                                      | Yes      |
-| `awaiting_review`     | Validation completed; at least one item accepted. Reviewer decision required.                      | No       |
-| `publishing`          | Reviewer approved; accepted items are being written to the event tables.                           | No       |
-| `published`           | All accepted items written.                                                                        | Yes      |
-| `partially_published` | Publication completed with at least one accepted item failing to write. Operator action required.  | Yes      |
-| `failed`              | Processing stopped through infrastructure failure after the retry budget was exhausted. Resumable. | No       |
-| `superseded`          | Replaced by a later batch carrying the same idempotency key.                                       | Yes      |
+| State                  | Meaning                                                                                            | Terminal |
+| ---------------------- | -------------------------------------------------------------------------------------------------- | -------- |
+| `received`             | Request accepted, batch record created. No payload stored.                                         | No       |
+| `stored`               | Payload written to object storage, checksum recorded.                                              | No       |
+| `validating`           | A worker holds a lease and is expanding and validating items.                                      | No       |
+| `rejected`             | Validation completed; no item is publishable.                                                      | Yes      |
+| `awaiting_review`      | Validation completed; at least one item accepted. Reviewer decision required.                      | No       |
+| `correction_requested` | A reviewer returned the immutable source for correction; a corrected upload uses a new batch.      | Yes      |
+| `publishing`           | Reviewer approved; accepted items are being written to the event tables.                           | No       |
+| `published`            | All accepted items written.                                                                        | Yes      |
+| `partially_published`  | Publication completed with at least one accepted item failing to write. Operator action required.  | Yes      |
+| `failed`               | Processing stopped through infrastructure failure after the retry budget was exhausted. Resumable. | No       |
+| `superseded`           | Replaced by a later batch carrying the same idempotency key.                                       | Yes      |
 
 ### 4.2 Item states
 
@@ -194,7 +242,9 @@ _Satisfies acceptance criterion 1._
 
 ```text
 received ──▶ stored ──▶ validating ──┬──▶ rejected
-                                     └──▶ awaiting_review ──▶ publishing ──┬──▶ published
+                                     └──▶ awaiting_review ──┬──▶ publishing ──┬──▶ published
+                                                           ├──▶ rejected
+                                                           └──▶ correction_requested
                                                                            └──▶ partially_published
 
 validating  ──▶ failed ──▶ validating      (resume)
@@ -518,9 +568,17 @@ The reviewer requires, at minimum:
 
 The full accepted set may not be rendered. A batch may contain fifty thousand items.
 
-### 10.3 Dependency
+### 10.3 Implemented decision and publication boundary (#283)
 
-The review interface is #283, which is not implemented. This design defines the states and the data that interface requires; it does not wait on it. #276 and #277 may proceed against the states in section 4, and the dependency is recorded rather than treated as blocking.
+The authenticated batch report supplies the reviewer view and exposes controls only to an
+administrator whose explicit competition grants include the batch competition. The backend repeats
+that scope check before it writes a decision. Approval, its actor/reason/time audit record, and the
+`awaiting_review` to `publishing` transition commit in one transaction. Publication then proceeds in
+bounded transactions from the durable `publishing` state and checkpoint; an interrupted request can
+be retried with the same decision to resume it. A competing decision is rejected. Rejection and return
+for correction commit only their audit record and terminal state, so canonical delivery data remains
+unchanged. Publication accepts only `publishing` batches and only items still marked `accepted`;
+unresolved or ambiguous references prevent the approval transition.
 
 ---
 
@@ -684,3 +742,5 @@ The preceding document was planned, generated, reviewed and edited with the assi
 The issue #356 decision outcomes and #276 reconciliation were updated with the assistance of
 Codex[GPT-5].
 The issue #276 implementation record was added with the assistance of Codex[GPT-5].
+The issue #283 review and publication implementation record was added with the assistance of
+Codex[GPT-5].

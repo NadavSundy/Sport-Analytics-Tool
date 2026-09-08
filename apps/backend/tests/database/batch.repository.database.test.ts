@@ -4,7 +4,12 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
-import { createBatchRepository } from '../../src/modules/batches/batch.repository';
+import {
+  BatchReviewConflictError,
+  BatchReviewResolutionError,
+  BatchReferenceMappingConflictError,
+  createBatchRepository,
+} from '../../src/modules/batches/batch.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { randomUUID } from 'node:crypto';
 
@@ -44,6 +49,14 @@ function batchMigrationSections(): Promise<{ down: string; up: string }> {
 
 function extendedBatchMigrationSections(): Promise<{ down: string; up: string }> {
   return migrationSections('20260902120000000_extend-batch-persistence.sql');
+}
+
+function reviewWorkflowMigrationSections(): Promise<{ down: string; up: string }> {
+  return migrationSections('20260907100000000_batch-review-workflow.sql');
+}
+
+function referenceMappingMigrationSections(): Promise<{ down: string; up: string }> {
+  return migrationSections('20260907130000000_batch-reference-mapping.sql');
 }
 
 describe.sequential('batch repository database integration', () => {
@@ -253,6 +266,8 @@ describe.sequential('batch repository database integration', () => {
     const quotedSchemaName = `"${schemaName}"`;
     const batchMigration = await batchMigrationSections();
     const extensionMigration = await extendedBatchMigrationSections();
+    const reviewMigration = await reviewWorkflowMigrationSections();
+    const mappingMigration = await referenceMappingMigrationSections();
 
     try {
       await client.query(`CREATE SCHEMA ${quotedSchemaName}`);
@@ -265,12 +280,16 @@ describe.sequential('batch repository database integration', () => {
       `);
       await client.query(batchMigration.up);
       await client.query(extensionMigration.up);
+      await client.query(reviewMigration.up);
+      await client.query(mappingMigration.up);
 
       const created = await client.query<{ relationName: string | null }>(
         `SELECT to_regclass('batch_checkpoint')::text AS "relationName"`,
       );
       expect(created.rows[0].relationName).toBe('batch_checkpoint');
 
+      await client.query(mappingMigration.down);
+      await client.query(reviewMigration.down);
       await client.query(extensionMigration.down);
       await client.query(batchMigration.down);
       const removed = await client.query<{ relationName: string | null }>(
@@ -330,6 +349,93 @@ describe.sequential('batch repository database integration', () => {
         publishedAt: null,
         body: { type: 'batch.validate', version: 1, batchId: created.batchId },
       });
+    });
+  });
+
+  test('queues an idempotent mapping decision and retains superseded validation evidence', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-mapping`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 100 },
+        state: 'stored',
+      });
+      const [item] = await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 0,
+          payload: { source: 'ambiguous' },
+          sourceIdentity: `${sourcePrefix}:delivery:ambiguous`,
+          referenceResolutionState: 'ambiguous',
+          resolvedReferences: {},
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await repository.recordValidationResult({
+        batchId: batch.batchId,
+        batchItemId: item.batchItemId,
+        sourceOrdinal: 0,
+        ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+        ruleVersion: '1.0',
+        severity: 'error',
+        message: 'Choose one candidate.',
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1::bigint`, [
+        batch.batchId,
+      ]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded',completed_at=now()
+         WHERE batch_id=$1::bigint`,
+        [batch.batchId],
+      );
+
+      const input = {
+        decisionReference: randomUUID(),
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0.innings.0.events.0.striker',
+        entityType: 'participant',
+        candidateId: current.accountId,
+        candidateLabel: 'Readable candidate',
+        decisionKey: `${sourcePrefix}-mapping-decision`,
+      };
+      const decision = await repository.queueReferenceMapping(input);
+      const repeated = await repository.queueReferenceMapping(input);
+      expect(repeated).toEqual(decision);
+
+      const state = await client.query<{
+        batchState: string;
+        itemState: string;
+        active: boolean;
+        jobState: string;
+        outboxCount: string;
+      }>(
+        `SELECT
+           (SELECT state::text FROM batch WHERE batch_id=$1::bigint) AS "batchState",
+           (SELECT state::text FROM batch_item WHERE batch_id=$1::bigint) AS "itemState",
+           (SELECT active FROM batch_validation_result WHERE batch_id=$1::bigint) AS active,
+           (SELECT state::text FROM background_job WHERE batch_id=$1::bigint) AS "jobState",
+           (SELECT count(*)::text FROM outbox_message o JOIN background_job j USING (job_id)
+             WHERE j.batch_id=$1::bigint) AS "outboxCount"`,
+        [batch.batchId],
+      );
+      expect(state.rows[0]).toEqual({
+        batchState: 'stored',
+        itemState: 'pending',
+        active: false,
+        jobState: 'queued',
+        outboxCount: '2',
+      });
+      await expect(
+        repository.queueReferenceMapping({ ...input, candidateId: current.competitionId }),
+      ).rejects.toBeInstanceOf(BatchReferenceMappingConflictError);
     });
   });
 
@@ -657,6 +763,7 @@ describe.sequential('batch repository database integration', () => {
           overNumber: 0,
           positionInOver: 1,
           sourceIdentity: 'test:delivery:publication-replay',
+          referenceResolutionState: 'resolved',
           state: 'accepted',
           payload: {
             sequenceNumber: 2,
@@ -669,6 +776,32 @@ describe.sequential('batch repository database integration', () => {
           },
         },
       ]);
+
+      const staged = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM delivery
+         WHERE innings_id=$1::bigint AND over_number=0 AND position_in_over=1`,
+        [current.inningsId],
+      );
+      expect(staged.rows[0]).toEqual({ count: '0' });
+      await expect(
+        repository.publishAcceptedItems(batch.batchId, 'worker-before-review'),
+      ).rejects.toThrow('Only an approved batch awaiting publication may be published.');
+
+      await expect(
+        repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          decision: 'approved',
+          reason: 'Validated source and resolved references.',
+        }),
+      ).resolves.toMatchObject({
+        resumePublication: true,
+        review: {
+          decision: 'approved',
+          actorId: current.accountId,
+          reason: 'Validated source and resolved references.',
+        },
+      });
 
       await expect(repository.publishAcceptedItems(batch.batchId, 'worker-a')).resolves.toEqual({
         published: 1,
@@ -687,6 +820,467 @@ describe.sequential('batch repository database integration', () => {
         [batch.batchId, current.inningsId],
       );
       expect(published.rows).toEqual([{ count: '1', state: 'published' }]);
+      const item = await repository.listBatchItems(batch.batchId, { limit: 10 });
+      expect(item[0]).toMatchObject({ state: 'published', publishedEventId: expect.any(String) });
+    });
+  });
+
+  test('blocks approval for unresolved items without persisting a decision', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-unresolved-review`,
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 1,
+          payload: {},
+          referenceResolutionState: 'ambiguous',
+          state: 'rejected',
+        },
+      ]);
+
+      await expect(
+        repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          decision: 'approved',
+          reason: 'Unsafe approval attempt.',
+        }),
+      ).rejects.toBeInstanceOf(BatchReviewResolutionError);
+      await expect(repository.findBatchById(batch.batchId)).resolves.toMatchObject({
+        state: 'awaiting_review',
+      });
+      await expect(repository.getLatestReviewDecision(batch.batchId)).resolves.toBeNull();
+    });
+  });
+
+  test.each([
+    ['rejected', 'rejected'],
+    ['returned_for_correction', 'correction_requested'],
+  ] as const)(
+    'persists %s decisions without publishing canonical data',
+    async (decision, state) => {
+      await withRolledBackTransaction(async (client) => {
+        const current = testRecords();
+        const repository = createBatchRepository(client);
+        const batch = await repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-${decision}`,
+          state: 'awaiting_review',
+        });
+        const before = await client.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM delivery WHERE source_batch_item_id IS NOT NULL',
+        );
+        await repository.applyReviewDecision({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          decision,
+          reason: 'Reviewer disposition.',
+        });
+        await expect(repository.findBatchById(batch.batchId)).resolves.toMatchObject({ state });
+        await expect(repository.getLatestReviewDecision(batch.batchId)).resolves.toMatchObject({
+          decision,
+          actorId: current.accountId,
+          reason: 'Reviewer disposition.',
+          decidedAt: expect.any(String),
+        });
+        const after = await client.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM delivery WHERE source_batch_item_id IS NOT NULL',
+        );
+        expect(after.rows[0]).toEqual(before.rows[0]);
+      });
+    },
+  );
+
+  test('makes same-decision retries idempotent and rejects a competing decision', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-review-race`,
+        state: 'awaiting_review',
+      });
+      const input = {
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decision: 'approved' as const,
+        reason: 'Approve once.',
+      };
+      await expect(repository.applyReviewDecision(input)).resolves.toMatchObject({
+        resumePublication: true,
+      });
+      await expect(repository.applyReviewDecision(input)).resolves.toMatchObject({
+        resumePublication: true,
+      });
+      await expect(
+        repository.applyReviewDecision({ ...input, decision: 'rejected' }),
+      ).rejects.toBeInstanceOf(BatchReviewConflictError);
+      const decisions = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM batch_review_decision WHERE batch_id=$1::bigint',
+        [batch.batchId],
+      );
+      expect(decisions.rows[0]).toEqual({ count: '1' });
+    });
+  });
+
+  test('distinguishes exact published duplicates from conflicting published content', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `
+          SELECT
+            striker_id::text AS "strikerId",
+            non_striker_id::text AS "nonStrikerId",
+            bowler_id::text AS "bowlerId"
+          FROM delivery
+          WHERE delivery_id=$1::bigint
+        `,
+        [current.deliveryId],
+      );
+
+      const players = source.rows[0]!;
+
+      const basePayload = {
+        sequenceNumber: 900001,
+        ballNumber: '123.1',
+        strikerId: players.strikerId,
+        nonStrikerId: players.nonStrikerId,
+        bowlerId: players.bowlerId,
+        runs: {
+          offBat: 1,
+          extras: 0,
+          total: 1,
+          nonBoundary: false,
+        },
+        extras: {},
+        wickets: [],
+      };
+
+      const first = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-first`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'publishing',
+      });
+      await repository.insertBatchItems(first.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 123,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:source',
+          state: 'accepted',
+          payload: basePayload,
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(first.batchId, 'worker-first'),
+      ).resolves.toMatchObject({
+        published: 1,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+
+      const exact = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-exact`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'publishing',
+      });
+
+      await repository.insertBatchItems(exact.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 123,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:retry',
+          state: 'accepted',
+          payload: basePayload,
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(exact.batchId, 'worker-exact'),
+      ).resolves.toMatchObject({
+        published: 0,
+        duplicateSkipped: 1,
+        conflicts: 0,
+      });
+
+      const exactResult = await client.query<{
+        code: string;
+        severity: string;
+      }>(
+        `
+          SELECT
+            rule_code AS code,
+            severity::text AS severity
+          FROM batch_validation_result
+          WHERE batch_id=$1::bigint
+        `,
+        [exact.batchId],
+      );
+
+      expect(exactResult.rows).toEqual([
+        {
+          code: 'EXACT_PUBLISHED_DUPLICATE',
+          severity: 'warning',
+        },
+      ]);
+
+      const conflict = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-conflict`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'publishing',
+      });
+
+      await repository.insertBatchItems(conflict.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 123,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:conflict',
+          state: 'accepted',
+          payload: {
+            ...basePayload,
+            runs: {
+              ...basePayload.runs,
+              nonBoundary: true,
+            },
+          },
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(conflict.batchId, 'worker-conflict'),
+      ).resolves.toMatchObject({
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 1,
+      });
+
+      const conflictResult = await client.query<{
+        state: string;
+        rejectionCode: string | null;
+        ruleCode: string;
+        severity: string;
+      }>(
+        `
+            SELECT
+              bi.state::text AS state,
+              bi.rejection_code AS "rejectionCode",
+              vr.rule_code AS "ruleCode",
+              vr.severity::text AS severity
+            FROM batch_item bi
+            JOIN batch_validation_result vr
+              ON vr.batch_item_id =
+                 bi.batch_item_id
+            WHERE bi.batch_id=$1::bigint
+          `,
+        [conflict.batchId],
+      );
+
+      expect(conflictResult.rows).toEqual([
+        {
+          state: 'rejected',
+          rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          severity: 'error',
+        },
+      ]);
+
+      const reusedSource = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-published-comparison-source-conflict`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'publishing',
+      });
+
+      await repository.insertBatchItems(reusedSource.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 124,
+          positionInOver: 0,
+          sourceIdentity: 'test:published-comparison:source',
+          state: 'accepted',
+          payload: {
+            ...basePayload,
+            sequenceNumber: 900002,
+            ballNumber: '124.1',
+          },
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(reusedSource.batchId, 'worker-source-conflict'),
+      ).resolves.toMatchObject({
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 1,
+      });
+    });
+  });
+
+  test('publishes canonical batch wickets and fielders with their delivery', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `
+          SELECT
+            striker_id::text AS "strikerId",
+            non_striker_id::text AS "nonStrikerId",
+            bowler_id::text AS "bowlerId"
+          FROM delivery
+          WHERE delivery_id=$1::bigint
+        `,
+        [current.deliveryId],
+      );
+
+      const players = source.rows[0]!;
+
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-wicket-publication`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'publishing',
+      });
+
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 125,
+          positionInOver: 0,
+          sourceIdentity: 'test:wicket-publication',
+          state: 'accepted',
+          payload: {
+            sequenceNumber: 900003,
+            ballNumber: '125.1',
+            strikerId: players.strikerId,
+            nonStrikerId: players.nonStrikerId,
+            bowlerId: players.bowlerId,
+            runs: {
+              offBat: 0,
+              extras: 0,
+              total: 0,
+              nonBoundary: false,
+            },
+            extras: {},
+            wickets: [
+              {
+                kind: 'run out',
+                playerOutId: players.strikerId,
+                fielders: [
+                  {
+                    participantId: players.bowlerId,
+                    substitute: false,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ]);
+
+      await expect(
+        repository.publishAcceptedItems(batch.batchId, 'worker-wicket'),
+      ).resolves.toMatchObject({
+        published: 1,
+        conflicts: 0,
+      });
+
+      const wicket = await client.query<{
+        kind: string;
+        playerOutId: string;
+        fielderId: string | null;
+        substitute: boolean;
+      }>(
+        `
+          SELECT
+            dw.kind,
+            dw.player_out_id::text AS "playerOutId",
+            dwf.person_id::text AS "fielderId",
+            dwf.is_substitute AS substitute
+          FROM batch_item bi
+          JOIN delivery_wicket dw
+            ON dw.delivery_id =
+               bi.published_event_id
+          JOIN delivery_wicket_fielder dwf
+            ON dwf.wicket_id =
+               dw.wicket_id
+          WHERE bi.batch_id=$1::bigint
+        `,
+        [batch.batchId],
+      );
+
+      expect(wicket.rows).toEqual([
+        {
+          kind: 'run out',
+          playerOutId: players.strikerId,
+          fielderId: players.bowlerId,
+          substitute: false,
+        },
+      ]);
     });
   });
 
@@ -710,7 +1304,7 @@ describe.sequential('batch repository database integration', () => {
         competitionId: current.competitionId,
         idempotencyKey: `${sourcePrefix}-publication-lease-reclaim`,
         source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
-        state: 'awaiting_review',
+        state: 'publishing',
       });
       await repository.insertBatchItems(batch.batchId, [
         {
@@ -1049,6 +1643,86 @@ describe.sequential('batch repository database integration', () => {
       await expect(
         client.query('DELETE FROM delivery WHERE delivery_id = $1', [current.deliveryId]),
       ).rejects.toMatchObject({ code: '23503' });
+    });
+  });
+
+  test('queries summary counts, grouped faults and paginated report traceability', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-report`,
+        state: 'partially_published',
+      });
+      const items = await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 1,
+          positionInOver: 1,
+          payload: {},
+          sourceIdentity: `${sourcePrefix}-accepted`,
+          sourceLocation: { filePath: 'events.csv', rowNumber: 2 },
+          state: 'published',
+          publishedEventId: current.deliveryId,
+        },
+        {
+          ordinal: 1,
+          inningsId: null,
+          overNumber: 1,
+          positionInOver: 2,
+          payload: {},
+          sourceIdentity: `${sourcePrefix}-rejected`,
+          sourceLocation: { filePath: 'events.csv', rowNumber: 3 },
+          referenceResolutionState: 'unresolved',
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await repository.recordValidationResult({
+        batchId: batch.batchId,
+        batchItemId: items[1]!.batchItemId,
+        sourceOrdinal: 1,
+        ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+        ruleVersion: '1.0',
+        severity: 'error',
+        filePath: 'events.csv',
+        rowNumber: 3,
+        fieldPath: 'striker',
+        message: 'The striker reference is unknown.',
+      });
+
+      await expect(repository.getBatchCounts(batch.batchId)).resolves.toEqual({
+        accepted: 1,
+        rejected: 1,
+        unresolved: 1,
+        duplicate: 0,
+        conflicting: 0,
+      });
+      await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
+        { ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 },
+      ]);
+      const firstPage = await repository.listBatchReportItems(batch.batchId, {
+        limit: 1,
+      });
+      expect(firstPage).toHaveLength(1);
+      expect(firstPage[0]).toMatchObject({ ordinal: 0, publishedEventId: current.deliveryId });
+      await expect(
+        repository.listBatchReportItems(batch.batchId, { afterOrdinal: 0, limit: 1 }),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          ordinal: 1,
+          errors: [
+            expect.objectContaining({
+              ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+              fieldPath: 'striker',
+            }),
+          ],
+        }),
+      ]);
     });
   });
 

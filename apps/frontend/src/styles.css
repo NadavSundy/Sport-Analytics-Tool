@@ -1216,6 +1216,86 @@ main {
   border-bottom: 2px solid var(--colour-primary);
 }
 
+.batch-summary,
+.batch-list li,
+.batch-report-items > li {
+  padding: 1rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface-raised);
+}
+
+.batch-summary__state,
+.batch-report-item__heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.batch-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.75rem;
+}
+
+.batch-counts div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.batch-counts dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.batch-list,
+.batch-report-items {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.batch-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.batch-report-items code {
+  overflow-wrap: anywhere;
+}
+
+.batch-review {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface-raised);
+}
+
+.batch-review textarea {
+  min-height: 7rem;
+  padding: 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  color: var(--colour-text-primary);
+  background: var(--colour-surface);
+  font: inherit;
+}
+
+.batch-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .submission-form {
   display: grid;
   gap: 2rem;

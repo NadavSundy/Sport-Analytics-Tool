@@ -20,6 +20,7 @@ import {
   AuthenticationPage,
 } from './features/auth/AuthPages';
 import { SubmissionPage } from './features/submissions/SubmissionPage';
+import { BatchReportsPage } from './features/submissions/BatchReportsPage';
 import {
   FixtureStatisticDetailPage,
   FixtureStatisticsPage,
@@ -56,6 +57,8 @@ export function PublicApp() {
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/submissions/new" element={<SubmissionPage />} />
+        <Route path="/submissions/batches" element={<BatchReportsPage />} />
+        <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
 
         <Route path="*" element={<NotFoundPage />} />

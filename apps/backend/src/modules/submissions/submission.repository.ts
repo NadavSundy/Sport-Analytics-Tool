@@ -1,10 +1,13 @@
-import type {
-  ApiErrorDetail,
-  SubmissionEvent,
-  SubmissionRequest,
-  CorrectionRequest,
-  CorrectionHistoryResponse,
-  SubmissionSourceFile,
+import {
+  validateCricketBusinessRules,
+  type ApiErrorDetail,
+  type CricketValidationContext,
+  type CricketValidationResult,
+  type SubmissionEvent,
+  type SubmissionRequest,
+  type CorrectionRequest,
+  type CorrectionHistoryResponse,
+  type SubmissionSourceFile,
 } from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
 
@@ -20,6 +23,11 @@ import {
   SubmissionForbiddenError,
   SubmissionValidationError,
 } from './submission.errors';
+import {
+  deriveCorrectionStatisticsDependencies,
+  type StatisticsRefreshDependency,
+} from '../statistics/recomputation-dependencies';
+import { advanceFixtureStatisticsCacheVersions } from '../statistics/fixture-statistics.cache';
 
 interface FixtureSubmissionScope {
   fixtureId: string;
@@ -39,6 +47,7 @@ interface AcceptedSubmission {
 interface CorrectionTarget {
   fixtureId: string;
   competitionId: string | null;
+  season: string | null;
   sequenceNumber: number;
 }
 
@@ -46,13 +55,18 @@ interface AcceptedCorrection {
   eventId: string;
   fixtureId: string;
   revision: number;
+  refreshedScopes: Array<{
+    scope: StatisticsRefreshDependency['scope'];
+    participantId: string | null;
+    competitionId: string | null;
+    season: string | null;
+  }>;
 }
 
 type CorrectionHistory = CorrectionHistoryResponse['data'];
 
 export interface SubmissionRepository {
   findFixtureScope(fixtureId: string): Promise<FixtureSubmissionScope | null>;
-  findDismissalKinds(): Promise<Set<string>>;
   findCorrectionTarget(eventId: string): Promise<CorrectionTarget | null>;
   storeAcceptedSubmission(
     submission: SubmissionRequest,
@@ -76,6 +90,17 @@ interface ReferenceRows {
   inningsIds: string[];
   participantIds: string[];
   duplicateEventIds: string[];
+}
+
+interface CricketValidationInningsRow {
+  inningsId: string;
+  battingTeamId: string;
+  bowlingTeamId: string | null;
+}
+
+interface CricketValidationParticipantRow {
+  participantId: string;
+  teamId: string;
 }
 
 interface SubmissionRow {
@@ -170,6 +195,121 @@ function referencedParticipantIds(events: SubmissionEvent[]): string[] {
       ]),
     ]),
   );
+}
+
+function cricketValidationDetails(
+  results: readonly CricketValidationResult[],
+  fieldPrefix = '',
+): ApiErrorDetail[] {
+  return results.map((result) => ({
+    code: result.code,
+    message: result.message,
+    field: `${fieldPrefix}${result.fieldPath}`,
+    eventIndex: result.eventIndex,
+    ruleVersion: result.ruleVersion,
+    severity: result.severity,
+  }));
+}
+
+async function loadCricketValidationContext(
+  client: QueryExecutor,
+  fixtureId: string,
+  events: SubmissionEvent[],
+): Promise<CricketValidationContext> {
+  const inningsIds = unique(events.map((event) => event.inningsId));
+
+  const participantIds = referencedParticipantIds(events);
+
+  const [inningsResult, participantResult, dismissalResult] = await Promise.all([
+    executeQuery<CricketValidationInningsRow>(
+      client,
+      `
+        SELECT
+          i.innings_id::text AS "inningsId",
+          i.batting_team_id::text AS "battingTeamId",
+          (
+            SELECT fixture_team.team_id::text
+            FROM fixture_team
+            WHERE fixture_team.fixture_id = i.fixture_id
+              AND fixture_team.team_id <> i.batting_team_id
+            ORDER BY fixture_team.ordinal ASC
+            LIMIT 1
+          ) AS "bowlingTeamId"
+        FROM innings i
+        WHERE i.fixture_id = $1
+          AND i.innings_id = ANY($2::bigint[])
+      `,
+      [fixtureId, inningsIds],
+    ),
+
+    executeQuery<CricketValidationParticipantRow>(
+      client,
+      `
+        SELECT
+          person_id::text AS "participantId",
+          team_id::text AS "teamId"
+        FROM fixture_squad
+        WHERE fixture_id = $1
+          AND person_id = ANY($2::bigint[])
+      `,
+      [fixtureId, participantIds],
+    ),
+
+    executeQuery<{ code: string }>(
+      client,
+      `
+        SELECT code
+        FROM dismissal_kind
+      `,
+    ),
+  ]);
+
+  const inningsById: Record<
+    string,
+    {
+      battingTeamId: string;
+      bowlingTeamId: string;
+    }
+  > = {};
+
+  for (const innings of inningsResult.rows) {
+    if (innings.bowlingTeamId !== null) {
+      inningsById[innings.inningsId] = {
+        battingTeamId: innings.battingTeamId,
+        bowlingTeamId: innings.bowlingTeamId,
+      };
+    }
+  }
+
+  const participantTeamById: Record<string, string> = {};
+
+  for (const participant of participantResult.rows) {
+    participantTeamById[participant.participantId] = participant.teamId;
+  }
+
+  return {
+    inningsById,
+    participantTeamById,
+    dismissalKinds: dismissalResult.rows.map((row) => row.code),
+  };
+}
+
+async function validateCricketRules(
+  client: QueryExecutor,
+  fixtureId: string,
+  events: SubmissionEvent[],
+  fieldPrefix = '',
+): Promise<void> {
+  const context = await loadCricketValidationContext(client, fixtureId, events);
+
+  const results = validateCricketBusinessRules(events, context);
+
+  if (results.length > 0) {
+    throw new SubmissionValidationError(
+      'The submission contains invalid cricket event data.',
+      cricketValidationDetails(results, fieldPrefix),
+    );
+  }
 }
 
 async function validateReferences(
@@ -304,6 +444,7 @@ async function findLiveCorrectionTarget(
       SELECT
         i.fixture_id::text AS "fixtureId",
         f.competition_id::text AS "competitionId",
+        f.season,
         d.innings_sequence AS "sequenceNumber",
         d.delivery_id::text AS "deliveryId",
         d.submission_id::text AS "submissionId",
@@ -322,6 +463,40 @@ async function findLiveCorrectionTarget(
   );
 
   return result.rows[0] ?? null;
+}
+
+async function recordStatisticsRefreshDependencies(
+  client: QueryExecutor,
+  sourceEventId: string,
+  revision: number,
+  dependencies: StatisticsRefreshDependency[],
+): Promise<void> {
+  for (const dependency of dependencies) {
+    await executeQuery(
+      client,
+      `
+        INSERT INTO statistics_refresh_dependency (
+          source_event_id,
+          delivery_revision,
+          fixture_id,
+          scope,
+          participant_id,
+          competition_id,
+          season
+        )
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        sourceEventId,
+        revision,
+        dependency.fixtureId,
+        dependency.scope,
+        dependency.participantId,
+        dependency.competitionId,
+        dependency.season,
+      ],
+    );
+  }
 }
 
 async function insertDelivery(
@@ -531,19 +706,6 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
       return result.rows[0] ?? null;
     },
 
-    async findDismissalKinds() {
-      const databasePool = pool ?? getDatabasePool();
-      const result = await executeQuery<{ code: string }>(
-        databasePool,
-        `
-          SELECT code
-          FROM dismissal_kind
-        `,
-      );
-
-      return new Set(result.rows.map((row) => row.code));
-    },
-
     async findCorrectionTarget(eventId) {
       const databasePool = pool ?? getDatabasePool();
       const target = await findLiveCorrectionTarget(databasePool, eventId);
@@ -551,6 +713,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
         target && {
           fixtureId: target.fixtureId,
           competitionId: target.competitionId,
+          season: target.season,
           sequenceNumber: target.sequenceNumber,
         }
       );
@@ -564,6 +727,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           // a concurrent approval or scope revocation cannot race the request.
           await assertSubmissionAuthorized(client, submission.fixtureId, submitterId);
           await validateReferences(client, submission.fixtureId, submission.events);
+          await validateCricketRules(client, submission.fixtureId, submission.events);
 
           const submissionResult = await executeQuery<SubmissionRow>(
             client,
@@ -608,6 +772,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
             );
             await insertWickets(client, deliveryId, event);
           }
+          await advanceFixtureStatisticsCacheVersions(client, [submission.fixtureId]);
 
           return {
             submissionId: storedSubmission.submissionId,
@@ -658,6 +823,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           sequenceNumber: target.sequenceNumber,
         };
         await validateReferences(client, target.fixtureId, [event], false);
+        await validateCricketRules(client, target.fixtureId, [event], 'event.');
         const previousState = await loadEventSnapshot(client, target.deliveryId);
 
         // The base schema requires a superseded row to name a successor. Mark it
@@ -725,10 +891,31 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           ],
         );
 
+        const dependencies = deriveCorrectionStatisticsDependencies({
+          fixtureId: target.fixtureId,
+          competitionId: target.competitionId,
+          season: target.season,
+          previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
+          resultingParticipantIds: [event.strikerId, event.bowlerId],
+        });
+        await recordStatisticsRefreshDependencies(
+          client,
+          eventId,
+          target.revision + 1,
+          dependencies,
+        );
+        await advanceFixtureStatisticsCacheVersions(client, [target.fixtureId]);
+
         return {
           eventId,
           fixtureId: target.fixtureId,
           revision: target.revision + 1,
+          refreshedScopes: dependencies.map(({ scope, participantId, competitionId, season }) => ({
+            scope,
+            participantId,
+            competitionId,
+            season,
+          })),
         };
       });
     },

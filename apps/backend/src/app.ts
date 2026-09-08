@@ -29,6 +29,11 @@ import {
   createPublicReadService,
   type PublicReadService,
 } from './modules/public-read/public-read.service';
+import { createParticipantAggregatesRouter } from './modules/statistics/participant-aggregates.routes';
+import {
+  createParticipantAggregatesService,
+  type ParticipantAggregatesService,
+} from './modules/statistics/participant-aggregates.service';
 import { createFixtureStatisticsRouter } from './modules/statistics/fixture-statistics.routes';
 import {
   createFixtureStatisticsService,
@@ -56,6 +61,16 @@ import { createAzureObjectStorageComposition } from './modules/object-storage/az
 import type { BatchPayloadStorageService } from './modules/object-storage/batch-payload-storage.service';
 import { createBatchRouter } from './modules/batches/batch.routes';
 import { createBatchService, type BatchService } from './modules/batches/batch.service';
+import { createApiConsumerRouter } from './modules/api-consumers/api-consumer.routes';
+import {
+  createApiConsumerService,
+  type ApiConsumerService,
+} from './modules/api-consumers/api-consumer.service';
+import {
+  createLazyApiConsumerRepository,
+  type ApiConsumerRepository,
+} from './modules/api-consumers/api-consumer.repository';
+import { createConsumerRouter } from './modules/api-consumers/consumer.routes';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -63,6 +78,7 @@ export interface AppDependencies {
   synchronizeAccount?: SynchronizeAccount;
   publicReadService?: PublicReadService;
   fixtureStatisticsService?: FixtureStatisticsService;
+  participantAggregatesService?: ParticipantAggregatesService;
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
@@ -71,6 +87,8 @@ export interface AppDependencies {
   fixtureWeatherService?: FixtureWeatherService;
   batchPayloadStorageService?: BatchPayloadStorageService;
   batchService?: BatchService;
+  apiConsumerService?: ApiConsumerService;
+  apiConsumerRepository?: ApiConsumerRepository;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -81,6 +99,8 @@ export function createApp(dependencies: AppDependencies = {}) {
   const publicReadService = dependencies.publicReadService ?? createPublicReadService();
   const fixtureStatisticsService =
     dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
+  const participantAggregatesService =
+    dependencies.participantAggregatesService ?? createParticipantAggregatesService();
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
@@ -116,6 +136,10 @@ export function createApp(dependencies: AppDependencies = {}) {
   const batchService =
     dependencies.batchService ??
     (batchPayloadStorageService ? createBatchService(batchPayloadStorageService) : undefined);
+  const apiConsumerRepository =
+    dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
+  const apiConsumerService =
+    dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -150,7 +174,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(
     pinoHttp({
       autoLogging: process.env.NODE_ENV !== 'test',
-      redact: ['req.headers.authorization'],
+      redact: ['req.headers.authorization', 'req.headers.x-api-key'],
     }),
   );
 
@@ -162,6 +186,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(`${API_BASE_PATH}/health`, healthRouter);
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));
   app.use(API_BASE_PATH, createFixtureStatisticsRouter(fixtureStatisticsService));
+  app.use(API_BASE_PATH, createParticipantAggregatesRouter(participantAggregatesService));
   app.use(
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
@@ -178,6 +203,11 @@ export function createApp(dependencies: AppDependencies = {}) {
     createAccountDeletionRouter(verifyAccessToken, synchronizeAccount, accountDeletionService),
   );
   app.use(API_BASE_PATH, createAdminRouter(verifyAccessToken, synchronizeAccount, adminService));
+  app.use(
+    API_BASE_PATH,
+    createApiConsumerRouter(verifyAccessToken, synchronizeAccount, apiConsumerService),
+  );
+  app.use(API_BASE_PATH, createConsumerRouter(publicReadService, apiConsumerRepository));
   app.use(API_BASE_PATH, createPublicReadRouter(publicReadService));
   app.use(API_BASE_PATH, createWeatherRouter(weatherService, fixtureWeatherService));
 

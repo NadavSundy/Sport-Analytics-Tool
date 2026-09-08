@@ -125,6 +125,13 @@ decision are retained for provenance. Invalid source formats, a source ID for
 the wrong entity type, missing reference context, and duplicate event
 identities are contract validation errors.
 
+Reports expose existing candidates as readable labels with opaque candidate references. The batch
+owner or an administrator in the batch's competition scope can submit one of those references to
+the [batch reference-mapping endpoint](batches.md#reference-mapping). The server rechecks that the
+choice is still a valid candidate and asynchronously reruns canonical event and cricket validation.
+References without a safe existing candidate require reviewer contact; this workflow does not
+silently create records.
+
 ## Multi-file packages
 
 Use a manifest when a package contains more than one file. The manifest lists
@@ -142,7 +149,28 @@ values, corrections, ambiguous participants, invalid source references, and a
 valid/invalid multi-file manifest. The schema is exported from
 `@sport-analytics/contracts` for the future receipt endpoint and parsers.
 
+## Batch status and result reports
+
+Authenticated submitters can list their own batches at `GET /api/v1/batches` and retrieve a
+batch's lifecycle status at `GET /api/v1/batches/{batchReference}`. Administrator reviewers can
+use the same read endpoints across their authorised repository scope. A non-owner receives the
+same forbidden response as an unknown reference, so another submitter's private batch is never
+disclosed.
+
+Status includes received and last-updated timestamps, processed progress, and accepted, rejected,
+unresolved, duplicate and conflicting counts. `partially_published` and simultaneous non-zero
+accepted and rejected counts explicitly represent partial success.
+
+`GET /api/v1/batches/{batchReference}/report` returns cursor-paginated item outcomes. Every result
+retains its source ordinal and available file, sheet, row and JSON path, readable innings/over/event
+context, stable validation rule codes, and links to its staged item and published delivery where
+applicable. All recorded faults are returned instead of only the first fault. Rule summaries group
+errors by stable code. The complete report is available as JSON from
+`GET /api/v1/batches/{batchReference}/report/download`.
+
 ## AI Declaration
 
 This Issue #357 contract and documentation were generated with the assistance
-of Codex[GPT-5].
+of Codex[GPT-5]. The batch status and result-report section was generated with
+the assistance of Codex[GPT-5]. The reference-mapping section was generated with
+the assistance of Codex[GPT-5].

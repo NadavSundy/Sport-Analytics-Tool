@@ -55,7 +55,151 @@ tags:
   - name: Administration
     description: Administrator-only application-account and submitter-scope operations.
 
+  - name: Consumer API
+    description: API-key authenticated external consumer reads with per-consumer protections.
+
 paths:
+  /api/v1/admin/api-consumers:
+    get:
+      tags: [Administration]
+      summary: List administrator-owned API consumers
+      operationId: listApiConsumers
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Safe consumer and key metadata; raw keys are never returned.
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ApiConsumerListResponse' } },
+            }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Administration]
+      summary: Issue an external consumer API key
+      description: The raw API key is returned exactly once in this response and is not stored by the service.
+      operationId: issueApiConsumer
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ApiConsumerIssue' } } }
+      responses:
+        '201':
+          description: Consumer metadata and the one-time raw API key.
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ApiConsumerIssueResponse' } },
+            }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: The issue request is invalid.
+          content:
+            { application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } }
+
+  /api/v1/admin/api-consumers/{consumerId}/keys/rotate:
+    post:
+      tags: [Administration]
+      summary: Rotate an API consumer key
+      description: Revokes active keys before issuing the replacement. The raw replacement is returned once.
+      operationId: rotateApiConsumerKey
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: consumerId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+      responses:
+        '200':
+          {
+            description: Replacement key and safe metadata.,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: '#/components/schemas/ApiConsumerRotateResponse' } },
+              },
+          }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}:
+    delete:
+      tags: [Administration]
+      summary: Revoke an API consumer key
+      operationId: revokeApiConsumerKey
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - {
+            name: consumerId,
+            in: path,
+            required: true,
+            schema: { $ref: '#/components/schemas/DatabaseIdentifier' },
+          }
+        - {
+            name: keyId,
+            in: path,
+            required: true,
+            schema: { $ref: '#/components/schemas/DatabaseIdentifier' },
+          }
+      responses:
+        '204': { description: Key revoked. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/competitions:
+    get:
+      tags: [Consumer API]
+      summary: List competitions with a consumer API key
+      operationId: listConsumerCompetitions
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          {
+            description: Competition page.,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: '#/components/schemas/CompetitionCollectionResponse' } },
+              },
+          }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+
+  /api/v1/consumer/fixtures:
+    get:
+      tags: [Consumer API]
+      summary: List fixtures with a consumer API key
+      operationId: listConsumerFixtures
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          {
+            description: Fixture page.,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: '#/components/schemas/FixtureCollectionResponse' } },
+              },
+          }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+
   /api/v1/health:
     get:
       tags:
@@ -1100,7 +1244,84 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/participants/{participantId}/statistics:
+    get:
+      tags:
+        - Public Read
+      summary: Get a participant's season, competition and career aggregates
+      description: |
+        Derives a participant's batting and bowling figures rolled up to three
+        levels from the latest accepted revision of each delivery event: by
+        competition and season, by competition alone, and across their whole
+        career. Grouping is by participant identifier, never by display name.
+        Super-over innings are excluded from every level, so a career figure
+        equals the sum of the participant's published fixture figures. Rates are
+        recomputed over each group rather than averaged across fixtures, and are
+        null where their denominator is zero or where the fixtures in a group do
+        not share one balls-per-over divisor.
+      operationId: getParticipantAggregates
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/ParticipantAggregateScope'
+      responses:
+        '200':
+          description: Derived participant aggregates and completeness state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregatesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/participants/{participantId}/statistics/{statisticId}:
+    get:
+      tags:
+        - Public Read
+      summary: Get one derived participant aggregate resource
+      description: |
+        Resolves a stable statistic identifier returned by the participant
+        aggregates endpoint, at whichever level produced it.
+      operationId: getParticipantAggregate
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: One derived participant aggregate resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/batches:
+    get:
+      tags: [Batches]
+      summary: List batches visible to the authenticated submitter or reviewer
+      operationId: listBatches
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string, minLength: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: Submitters receive only their own batches; administrator reviewers receive their authorised repository scope.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchListResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Batches]
       summary: Stream a whole-season package into durable private staging
@@ -1194,6 +1415,118 @@ paths:
           }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/batches/{batchReference}/report:
+    get:
+      tags: [Batches]
+      summary: Retrieve a paginated item-level batch result report
+      operationId: getBatchReport
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cursor, in: query, schema: { type: string, minLength: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: Summary, grouped rules, source traceability and all faults for this report page.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchReportResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/batches/{batchReference}/report/download:
+    get:
+      tags: [Batches]
+      summary: Download the complete machine-readable batch report
+      operationId: downloadBatchReport
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Complete JSON report returned as a downloadable attachment.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReportDownloadResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/batches/{batchReference}/review:
+    post:
+      tags: [Batches]
+      summary: Decide and, on approval, publish a validated staged batch
+      description: Competition-scoped administrators may approve, reject, or return a batch for correction. Approval records the decision and moves the batch to the resumable publishing state before accepted events are published; unresolved or ambiguous references prevent approval. Rejection and return do not alter public event data.
+      operationId: reviewBatch
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchReviewRequest' }
+      responses:
+        '200':
+          description: Persisted decision and current publication lifecycle state.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Approval is unsafe, another decision won the race, or publication is leased.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The decision or required reason is invalid.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
+  /api/v1/batches/{batchReference}/reference-mappings:
+    post:
+      tags: [Batches]
+      summary: Map an ambiguous staged reference to a labeled candidate
+      description: The owning submitter or a competition-scoped administrator may select an opaque candidate returned by the batch report. The decision is retained and asynchronous validation restarts from the original private source; canonical database identifiers are never accepted from the client.
+      operationId: mapBatchReference
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchReferenceMappingRequest' }
+      responses:
+        '200':
+          description: An identical previously applied decision was returned idempotently.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '202':
+          description: The durable decision was accepted and asynchronous revalidation was queued.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: The candidate is stale, unavailable, or conflicts with a prior decision.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The mapping request is invalid.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/submissions/events/{eventId}:
     put:
@@ -1406,6 +1739,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Supabase access token
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
 
   parameters:
     Limit:
@@ -1512,6 +1849,17 @@ components:
       schema:
         $ref: '#/components/schemas/ApiIdentifier'
 
+    ParticipantAggregateScope:
+      name: scope
+      in: query
+      description: Restrict the response to one aggregate level. All three are returned by default.
+      schema:
+        type: string
+        enum:
+          - season
+          - competition
+          - career
+
   responses:
     BadRequest:
       description: Request validation failed.
@@ -1576,7 +1924,82 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
 
+    ApiKeyUnauthorized:
+      description: A missing, invalid or revoked API key was supplied.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: ApiKey }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
+    ConsumerLimitExceeded:
+      description: The consumer rate limit or daily quota was exhausted.
+      headers:
+        RateLimit-Limit: { schema: { type: integer } }
+        RateLimit-Remaining: { schema: { type: integer } }
+        RateLimit-Reset: { schema: { type: integer } }
+        X-Quota-Limit: { schema: { type: integer } }
+        X-Quota-Remaining: { schema: { type: integer } }
+        X-Quota-Reset: { schema: { type: integer } }
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
   schemas:
+    ApiConsumerIssue:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        rateLimitPerMinute: { type: integer, minimum: 1, maximum: 10000, default: 60 }
+        dailyQuota: { type: integer, minimum: 1, maximum: 10000, default: 10000 }
+    ApiConsumerKey:
+      type: object
+      additionalProperties: false
+      required: [id, prefix, createdAt, revokedAt]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        prefix: { type: string }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    ApiConsumer:
+      type: object
+      additionalProperties: false
+      required: [id, name, rateLimitPerMinute, dailyQuota, createdAt, keys]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        name: { type: string }
+        rateLimitPerMinute: { type: integer }
+        dailyQuota: { type: integer }
+        createdAt: { type: string, format: date-time }
+        keys: { type: array, items: { $ref: '#/components/schemas/ApiConsumerKey' } }
+    ApiConsumerIssueResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/ApiConsumer'
+            - type: object
+              required: [apiKey]
+              properties: { apiKey: { type: string, writeOnly: true } }
+    ApiConsumerRotateResponse:
+      $ref: '#/components/schemas/ApiConsumerIssueResponse'
+    ApiConsumerListResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [consumers]
+          properties:
+            consumers: { type: array, items: { $ref: '#/components/schemas/ApiConsumer' } }
     ApiIdentifier:
       type: string
       minLength: 1
@@ -1909,6 +2332,14 @@ components:
         eventIndex:
           type: integer
           minimum: 0
+        ruleVersion:
+          type: string
+          minLength: 1
+          description: Stable business-rule version when this detail comes from versioned validation.
+        severity:
+          type: string
+          enum: [error, warning]
+          description: Business-rule severity when this detail comes from versioned validation.
 
     ApiErrorResponse:
       type: object
@@ -2878,6 +3309,322 @@ components:
         data:
           $ref: '#/components/schemas/FixtureStatistic'
 
+    ParticipantAggregateBatting:
+      type: object
+      additionalProperties: false
+      required:
+        - runsScored
+        - ballsFaced
+        - fours
+        - sixes
+        - strikeRate
+      properties:
+        runsScored:
+          type: integer
+          minimum: 0
+        ballsFaced:
+          type: integer
+          minimum: 0
+        fours:
+          type: integer
+          minimum: 0
+        sixes:
+          type: integer
+          minimum: 0
+        strikeRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantAggregateBowling:
+      type: object
+      additionalProperties: false
+      required:
+        - runsConceded
+        - legalBallsBowled
+        - wicketsTaken
+        - ballsPerOver
+        - oversBowled
+        - economyRate
+      properties:
+        runsConceded:
+          type: integer
+          minimum: 0
+        legalBallsBowled:
+          type: integer
+          minimum: 0
+        wicketsTaken:
+          type: integer
+          minimum: 0
+        ballsPerOver:
+          description: |
+            The balls-per-over shared by the fixtures in this group, or null
+            where they do not agree. Legal balls are always counted from the
+            delivery rows and are never assumed to be six an over.
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+        oversBowled:
+          oneOf:
+            - type: string
+              pattern: '^\d+\.\d+$'
+            - type: 'null'
+        economyRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+
+    ParticipantSeasonAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - statisticId
+        - participantId
+        - participantName
+        - scope
+        - statisticCode
+        - competitionId
+        - competitionName
+        - seasonId
+        - season
+        - fixtureCount
+        - sourceEventCount
+        - batting
+        - bowling
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          const: season
+        statisticCode:
+          type: string
+          const: participant_season
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        seasonId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        season:
+          type: string
+          minLength: 1
+        fixtureCount:
+          type: integer
+          minimum: 0
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBowling'
+            - type: 'null'
+
+    ParticipantCompetitionAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - statisticId
+        - participantId
+        - participantName
+        - scope
+        - statisticCode
+        - competitionId
+        - competitionName
+        - fixtureCount
+        - sourceEventCount
+        - batting
+        - bowling
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          const: competition
+        statisticCode:
+          type: string
+          const: participant_competition
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        fixtureCount:
+          type: integer
+          minimum: 0
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBowling'
+            - type: 'null'
+
+    ParticipantCareerAggregate:
+      type: object
+      additionalProperties: false
+      required:
+        - statisticId
+        - participantId
+        - participantName
+        - scope
+        - statisticCode
+        - fixtureCount
+        - sourceEventCount
+        - batting
+        - bowling
+      properties:
+        statisticId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          const: career
+        statisticCode:
+          type: string
+          const: participant_career
+        fixtureCount:
+          type: integer
+          minimum: 0
+        sourceEventCount:
+          type: integer
+          minimum: 0
+        batting:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBatting'
+            - type: 'null'
+        bowling:
+          oneOf:
+            - $ref: '#/components/schemas/ParticipantAggregateBowling'
+            - type: 'null'
+
+    ParticipantAggregate:
+      oneOf:
+        - $ref: '#/components/schemas/ParticipantSeasonAggregate'
+        - $ref: '#/components/schemas/ParticipantCompetitionAggregate'
+        - $ref: '#/components/schemas/ParticipantCareerAggregate'
+      discriminator:
+        propertyName: scope
+        mapping:
+          season: '#/components/schemas/ParticipantSeasonAggregate'
+          competition: '#/components/schemas/ParticipantCompetitionAggregate'
+          career: '#/components/schemas/ParticipantCareerAggregate'
+
+    ParticipantAggregatesWarning:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - NO_ACCEPTED_EVENTS
+            - COMPETITION_UNKNOWN
+            - MIXED_BALLS_PER_OVER
+        message:
+          type: string
+          minLength: 1
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        season:
+          type: string
+          minLength: 1
+
+    ParticipantAggregates:
+      type: object
+      additionalProperties: false
+      required:
+        - participantId
+        - participantName
+        - status
+        - scope
+        - warnings
+        - statistics
+      properties:
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - complete
+            - partial
+        scope:
+          type: object
+          additionalProperties: false
+          required:
+            - superOversIncluded
+          properties:
+            superOversIncluded:
+              type: boolean
+              const: false
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantAggregatesWarning'
+        statistics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantAggregate'
+
+    ParticipantAggregatesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ParticipantAggregates'
+
+    ParticipantAggregateResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ParticipantAggregate'
+
     CompetitionResponse:
       type: object
       additionalProperties: false
@@ -3074,12 +3821,35 @@ components:
         accepted: { type: integer, minimum: 0 }
         rejected: { type: integer, minimum: 0 }
 
+    BatchCounts:
+      type: object
+      additionalProperties: false
+      required: [accepted, rejected, unresolved, duplicate, conflicting]
+      properties:
+        accepted: { type: integer, minimum: 0 }
+        rejected: { type: integer, minimum: 0 }
+        unresolved: { type: integer, minimum: 0 }
+        duplicate: { type: integer, minimum: 0 }
+        conflicting: { type: integer, minimum: 0 }
+
     BatchStatus:
       type: object
       additionalProperties: false
-      required: [batchReference, status, statusUrl, receivedAt, updatedAt, progress]
+      required:
+        [
+          batchReference,
+          competitionId,
+          status,
+          statusUrl,
+          receivedAt,
+          updatedAt,
+          progress,
+          counts,
+          review,
+        ]
       properties:
         batchReference: { type: string, format: uuid }
+        competitionId: { $ref: '#/components/schemas/DatabaseIdentifier' }
         status:
           type: string
           enum:
@@ -3089,6 +3859,7 @@ components:
               validating,
               rejected,
               awaiting_review,
+              correction_requested,
               publishing,
               published,
               partially_published,
@@ -3099,6 +3870,35 @@ components:
         receivedAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         progress: { $ref: '#/components/schemas/BatchProgress' }
+        counts: { $ref: '#/components/schemas/BatchCounts' }
+        review:
+          oneOf:
+            - { $ref: '#/components/schemas/BatchReviewDecision' }
+            - { type: 'null' }
+
+    BatchReviewDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, actor, decidedAt, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected, returned_for_correction] }
+        actor:
+          type: object
+          additionalProperties: false
+          required: [accountId, displayName]
+          properties:
+            accountId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+            displayName: { type: [string, 'null'] }
+        decidedAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
+
+    BatchReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected, returned_for_correction] }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
 
     BatchStatusResponse:
       type: object
@@ -3106,6 +3906,168 @@ components:
       required: [data]
       properties:
         data: { $ref: '#/components/schemas/BatchStatus' }
+
+    BatchListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/BatchStatus' } }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
+
+    BatchReportLocation:
+      type: object
+      additionalProperties: false
+      required: [filePath, sheetName, rowNumber, jsonPath, ordinal]
+      properties:
+        filePath: { type: [string, 'null'] }
+        sheetName: { type: [string, 'null'] }
+        rowNumber: { type: [integer, 'null'], minimum: 1 }
+        jsonPath: { type: [string, 'null'] }
+        ordinal: { type: integer, minimum: 0 }
+
+    BatchReportContext:
+      type: object
+      additionalProperties: false
+      required: [eventReference, inningsId, overNumber, positionInOver, description]
+      properties:
+        eventReference: { type: [string, 'null'] }
+        inningsId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        overNumber: { type: [integer, 'null'], minimum: 0 }
+        positionInOver: { type: [integer, 'null'], minimum: 1 }
+        description: { type: string, minLength: 1 }
+
+    BatchReportError:
+      type: object
+      additionalProperties: false
+      required: [ruleCode, message, location, context]
+      properties:
+        ruleCode: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        message: { type: string, minLength: 1 }
+        location: { $ref: '#/components/schemas/BatchReportLocation' }
+        context: { $ref: '#/components/schemas/BatchReportContext' }
+
+    BatchReferenceCandidate:
+      type: object
+      additionalProperties: false
+      required: [candidateReference, label]
+      properties:
+        candidateReference:
+          { type: string, format: uuid, description: Opaque candidate token; never a database ID. }
+        label: { type: string, minLength: 1 }
+
+    BatchReferenceResolution:
+      type: object
+      additionalProperties: false
+      required:
+        [referencePath, entityType, state, submittedReference, reason, requiredAction, candidates]
+      properties:
+        referencePath: { type: string, minLength: 1 }
+        entityType: { type: string, enum: [competition, team, fixture, innings, participant] }
+        state: { type: string, enum: [ambiguous, unresolved, invalid] }
+        submittedReference: {}
+        reason: { type: [string, 'null'], minLength: 1 }
+        requiredAction: { type: string, enum: [select_candidate, contact_reviewer] }
+        candidates: { type: array, items: { $ref: '#/components/schemas/BatchReferenceCandidate' } }
+
+    BatchReportItem:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          ordinal,
+          outcome,
+          location,
+          context,
+          stagedRecordId,
+          acceptedRecordId,
+          referenceResolutions,
+          errors,
+        ]
+      properties:
+        ordinal: { type: integer, minimum: 0 }
+        outcome:
+          { type: string, enum: [pending, accepted, rejected, unresolved, duplicate, conflicting] }
+        location: { $ref: '#/components/schemas/BatchReportLocation' }
+        context: { $ref: '#/components/schemas/BatchReportContext' }
+        stagedRecordId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        acceptedRecordId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        referenceResolutions:
+          { type: array, items: { $ref: '#/components/schemas/BatchReferenceResolution' } }
+        errors: { type: array, items: { $ref: '#/components/schemas/BatchReportError' } }
+
+    BatchReportRuleGroup:
+      type: object
+      additionalProperties: false
+      required: [ruleCode, count]
+      properties:
+        ruleCode: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        count: { type: integer, minimum: 1 }
+
+    BatchReport:
+      type: object
+      additionalProperties: false
+      required: [batch, errorGroups, items, pagination, downloadUrl]
+      properties:
+        batch: { $ref: '#/components/schemas/BatchStatus' }
+        errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
+        items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
+        downloadUrl: { type: string, pattern: '^/api/v1/batches/' }
+
+    BatchReportResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchReport' }
+
+    BatchReportDownload:
+      type: object
+      additionalProperties: false
+      required: [batch, errorGroups, items]
+      properties:
+        batch: { $ref: '#/components/schemas/BatchStatus' }
+        errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
+        items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
+
+    BatchReportDownloadResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchReportDownload' }
+
+    BatchReferenceMappingRequest:
+      type: object
+      additionalProperties: false
+      required: [itemOrdinal, referencePath, candidateReference, decisionKey]
+      properties:
+        itemOrdinal: { type: integer, minimum: 0 }
+        referencePath: { type: string, minLength: 1, maxLength: 1000 }
+        candidateReference: { type: string, format: uuid }
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
+    BatchReferenceMappingReceipt:
+      type: object
+      additionalProperties: false
+      required: [batchReference, decisionReference, status, statusUrl, submittedAt]
+      properties:
+        batchReference: { type: string, format: uuid }
+        decisionReference: { type: string, format: uuid }
+        status: { type: string, enum: [queued, applied] }
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        submittedAt: { type: string, format: date-time }
+
+    BatchReferenceMappingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchReferenceMappingReceipt' }
 
     SubmissionFielder:
       type: object
@@ -3425,7 +4387,7 @@ components:
     Correction:
       type: object
       additionalProperties: false
-      required: [eventId, fixtureId, revision]
+      required: [eventId, fixtureId, revision, refreshedScopes]
       properties:
         eventId:
           type: string
@@ -3435,6 +4397,30 @@ components:
         revision:
           type: integer
           minimum: 1
+        refreshedScopes:
+          type: array
+          description: Exact derived-statistic scopes whose live inputs changed with this correction.
+          items:
+            type: object
+            additionalProperties: false
+            required: [scope, participantId, competitionId, season]
+            properties:
+              scope:
+                type: string
+                enum: [fixture, season, competition, career]
+              participantId:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiIdentifier'
+                  - type: 'null'
+              competitionId:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiIdentifier'
+                  - type: 'null'
+              season:
+                oneOf:
+                  - type: string
+                    minLength: 1
+                  - type: 'null'
 
     CorrectionResponse:
       type: object

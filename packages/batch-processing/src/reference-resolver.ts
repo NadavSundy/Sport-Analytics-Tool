@@ -57,14 +57,19 @@ const CANONICAL_SOURCE_NAMESPACE = 'cricsheet';
  * issue #360 does not name it. A submitted season narrows the fixture lookup and
  * resolves to nothing of its own.
  */
-type ReferenceEntityType = 'competition' | 'team' | 'fixture' | 'innings' | 'participant';
+export type ReferenceEntityType = 'competition' | 'team' | 'fixture' | 'innings' | 'participant';
 
 /** Mirrors the `batch_reference_resolution_state` enum. */
 type ReferenceResolutionState = 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
 
 /** How a resolved reference was matched. Recorded for provenance. */
 type ReferenceMatchMethod =
-  'source-identifier' | 'exact-name' | 'exact-alias' | 'natural-key' | 'ordinal';
+  'source-identifier' | 'exact-name' | 'exact-alias' | 'natural-key' | 'ordinal' | 'manual';
+
+export interface ReferenceResolutionOverride {
+  entityType: ReferenceEntityType;
+  canonicalId: string;
+}
 
 interface ReferenceCandidate {
   canonicalId: string;
@@ -130,6 +135,8 @@ interface FixtureBySourceRefRow {
   competitionId: string | null;
   season: string | null;
   startDate: string | null;
+  teamIds: string[];
+  venue: string | null;
 }
 
 interface FixtureByNaturalKeyRow {
@@ -229,6 +236,27 @@ function outcome(
     candidates: detail.candidates ?? [],
     reason: detail.reason ?? null,
   };
+}
+
+function applyOverride(
+  value: ReferenceOutcome,
+  overrides: ReadonlyMap<string, ReferenceResolutionOverride>,
+): ReferenceOutcome {
+  const override = overrides.get(value.referencePath);
+  if (!override || value.state === 'resolved' || override.entityType !== value.entityType)
+    return value;
+  const selected = value.candidates.find(
+    (candidate) => candidate.canonicalId === override.canonicalId && !candidate.outOfScope,
+  );
+  return selected
+    ? {
+        ...value,
+        state: 'resolved',
+        canonicalId: selected.canonicalId,
+        matchedBy: 'manual',
+        reason: `Mapped to ${selected.label} by an authorised user.`,
+      }
+    : value;
 }
 
 /** Reduce an outcome to the provenance recorded against a staged item. */
@@ -376,8 +404,14 @@ function resolveFixtureBySourceId(
   referencePath: string,
   submitted: unknown,
   sourceId: string,
+  context: {
+    date: string;
+    venue?: string | undefined;
+  } | null,
+  teamOutcomes: ReferenceOutcome[],
   fixtureBySourceRef: Map<string, FixtureBySourceRefRow[]>,
   competitionId: string,
+  seasonName: string | null,
 ): ReferenceOutcome {
   const identifier = parseSourceIdentifier(sourceId);
 
@@ -431,6 +465,67 @@ function resolveFixtureBySourceId(
       ],
       reason:
         'The fixture exists but belongs to a different competition from the one this package declares.',
+    });
+  }
+
+  if (context && teamOutcomes.some((value) => value.state !== 'resolved')) {
+    return outcome(referencePath, 'fixture', submitted, 'unresolved', {
+      candidates: [
+        {
+          canonicalId: match.canonicalId,
+          label: fixtureLabel(match.startDate, match.season),
+        },
+      ],
+      reason:
+        'The fixture source identifier resolved, but the supplied fixture-team metadata could not be resolved, so it cannot be checked against the canonical fixture.',
+    });
+  }
+
+  const metadataConflicts: string[] = [];
+
+  if (context && match.startDate !== context.date) {
+    metadataConflicts.push(
+      `date (submitted ${context.date}, canonical ${match.startDate ?? 'unknown'})`,
+    );
+  }
+
+  if (seasonName !== null && match.season !== seasonName) {
+    metadataConflicts.push(
+      `season (submitted ${seasonName}, canonical ${match.season ?? 'unknown'})`,
+    );
+  }
+
+  if (context) {
+    const submittedTeamIds = teamOutcomes.map((value) => value.canonicalId as string).sort();
+    const canonicalTeamIds = match.teamIds.slice().sort();
+
+    const teamsMatch =
+      submittedTeamIds.length === canonicalTeamIds.length &&
+      submittedTeamIds.every((teamId, index) => teamId === canonicalTeamIds[index]);
+
+    if (!teamsMatch) {
+      metadataConflicts.push('team pair');
+    }
+
+    if (context.venue !== undefined && context.venue !== match.venue) {
+      metadataConflicts.push(
+        `venue (submitted ${context.venue}, canonical ${match.venue ?? 'unknown'})`,
+      );
+    }
+  }
+
+  if (metadataConflicts.length > 0) {
+    return outcome(referencePath, 'fixture', submitted, 'invalid', {
+      candidates: [
+        {
+          canonicalId: match.canonicalId,
+          label: fixtureLabel(match.startDate, match.season),
+        },
+      ],
+      reason:
+        'FIXTURE_METADATA_CONFLICT: The fixture source identifier resolves to canonical data that disagrees with the submitted ' +
+        metadataConflicts.join(', ') +
+        '. Canonical fixture data is not changed by batch resolution.',
     });
   }
 
@@ -696,6 +791,7 @@ function resolveParticipant(
 export async function resolvePackageReferences(
   client: QueryExecutor,
   uploadPackage: SeasonUploadPackage,
+  overrides: ReadonlyMap<string, ReferenceResolutionOverride> = new Map(),
 ): Promise<PackageResolution> {
   const outcomes: ReferenceOutcome[] = [];
   const items: ResolvedPackageItem[] = [];
@@ -761,13 +857,16 @@ export async function resolvePackageReferences(
   const competitionsByName = groupBy(competitionRows, (row) => row.name);
   const teamsByName = groupBy(teamRows, (row) => row.name);
 
-  const competitionOutcome = resolveNamedReference(
-    'competition',
-    'competition',
-    uploadPackage.competition,
-    competitionName,
-    competitionsByName,
-    'the competition name',
+  const competitionOutcome = applyOverride(
+    resolveNamedReference(
+      'competition',
+      'competition',
+      uploadPackage.competition,
+      competitionName,
+      competitionsByName,
+      'the competition name',
+    ),
+    overrides,
   );
   outcomes.push(competitionOutcome);
 
@@ -779,13 +878,16 @@ export async function resolvePackageReferences(
       continue;
     }
 
-    const resolved = resolveNamedReference(
-      path,
-      'team',
-      reference,
-      readableName(reference),
-      teamsByName,
-      'the team name',
+    const resolved = applyOverride(
+      resolveNamedReference(
+        path,
+        'team',
+        reference,
+        readableName(reference),
+        teamsByName,
+        'the team name',
+      ),
+      overrides,
     );
     teamOutcomeByPath.set(path, resolved);
     outcomes.push(resolved);
@@ -812,13 +914,28 @@ export async function resolvePackageReferences(
     fixtureSourceValues.length > 0
       ? executeQuery<FixtureBySourceRefRow>(
           client,
-          `SELECT fixture_id::text                    AS "canonicalId",
-                  source_ref                          AS "sourceRef",
-                  competition_id::text                AS "competitionId",
-                  season,
-                  to_char(start_date, 'YYYY-MM-DD')   AS "startDate"
-             FROM fixture
-            WHERE source_ref = ANY($1::text[])`,
+          `SELECT f.fixture_id::text                  AS "canonicalId",
+                  f.source_ref                        AS "sourceRef",
+                  f.competition_id::text              AS "competitionId",
+                  f.season,
+                  to_char(f.start_date, 'YYYY-MM-DD') AS "startDate",
+                  v.name                              AS venue,
+                  COALESCE(
+                    array_agg(ft.team_id::text ORDER BY ft.team_id)
+                      FILTER (WHERE ft.team_id IS NOT NULL),
+                    ARRAY[]::text[]
+                  )                                   AS "teamIds"
+             FROM fixture f
+             LEFT JOIN venue v ON v.venue_id = f.venue_id
+             LEFT JOIN fixture_team ft ON ft.fixture_id = f.fixture_id
+            WHERE f.source_ref = ANY($1::text[])
+            GROUP BY
+              f.fixture_id,
+              f.source_ref,
+              f.competition_id,
+              f.season,
+              f.start_date,
+              v.name`,
           [fixtureSourceValues],
         ).then((result) => result.rows)
       : Promise.resolve<FixtureBySourceRefRow[]>([]),
@@ -853,6 +970,10 @@ export async function resolvePackageReferences(
 
     let resolvedFixture: ReferenceOutcome;
 
+    const fixtureTeamOutcomes = (fixture.context?.teams ?? []).map((_team, teamIndex) =>
+      teamOutcomeByPath.get(`${fixturePath}.context.teams.${String(teamIndex)}`)!,
+    );
+
     if (competitionId === null) {
       resolvedFixture = outcome(fixturePath, 'fixture', submitted, 'unresolved', {
         reason:
@@ -863,14 +984,13 @@ export async function resolvePackageReferences(
         fixturePath,
         submitted,
         fixture.sourceId,
+        fixture.context ?? null,
+        fixtureTeamOutcomes,
         fixtureBySourceRef,
         competitionId,
+        seasonName,
       );
     } else if (fixture.context) {
-      const fixtureTeamOutcomes = (fixture.context.teams ?? []).map((_team, teamIndex) =>
-        teamOutcomeByPath.get(`${fixturePath}.context.teams.${String(teamIndex)}`)!,
-      );
-
       resolvedFixture = resolveFixtureByNaturalKey(
         fixturePath,
         submitted,
@@ -887,6 +1007,7 @@ export async function resolvePackageReferences(
       });
     }
 
+    resolvedFixture = applyOverride(resolvedFixture, overrides);
     outcomes.push(resolvedFixture);
     fixtureResolutions.push(resolvedFixture);
   }
@@ -970,34 +1091,56 @@ export async function resolvePackageReferences(
       const battingTeamOutcome =
         teamOutcomeByPath.get(`${inningsPath}.context.battingTeam`) ?? null;
 
-      const inningsOutcome = resolveInnings(
-        inningsPath,
-        submittedInnings,
-        innings.sourceId,
-        innings.context ?? null,
-        fixtureOutcome,
-        fixtureId ? (inningsByFixture.get(fixtureId) ?? []) : [],
-        battingTeamOutcome,
+      const inningsOutcome = applyOverride(
+        resolveInnings(
+          inningsPath,
+          submittedInnings,
+          innings.sourceId,
+          innings.context ?? null,
+          fixtureOutcome,
+          fixtureId ? (inningsByFixture.get(fixtureId) ?? []) : [],
+          battingTeamOutcome,
+        ),
+        overrides,
       );
       outcomes.push(inningsOutcome);
 
       for (const [eventIndex, event] of innings.events.entries()) {
         const eventPath = `${inningsPath}.events.${String(eventIndex)}`;
 
-        const participantOutcomes = (
-          [
-            ['striker', event.striker],
-            ['nonStriker', event.nonStriker],
-            ['bowler', event.bowler],
-          ] as const
-        ).map(([role, reference]) => {
-          const participantOutcome = resolveParticipant(
-            `${eventPath}.${role}`,
-            reference,
-            fixtureOutcome,
-            squadBySourceRef,
-            squadByDisplayName,
-            squadByAlias,
+        const participantReferences: Array<[string, typeof event.striker]> = [
+          ['striker', event.striker],
+          ['nonStriker', event.nonStriker],
+          ['bowler', event.bowler],
+        ];
+
+        for (const [wicketIndex, wicket] of event.wickets.entries()) {
+          participantReferences.push([
+            `wickets.${String(wicketIndex)}.playerOut`,
+            wicket.playerOut,
+          ]);
+
+          for (const [fielderIndex, fielder] of wicket.fielders.entries()) {
+            if (fielder.participant) {
+              participantReferences.push([
+                `wickets.${String(wicketIndex)}.fielders.${String(fielderIndex)}.participant`,
+                fielder.participant,
+              ]);
+            }
+          }
+        }
+
+        const participantOutcomes = participantReferences.map(([role, reference]) => {
+          const participantOutcome = applyOverride(
+            resolveParticipant(
+              `${eventPath}.${role}`,
+              reference,
+              fixtureOutcome,
+              squadBySourceRef,
+              squadByDisplayName,
+              squadByAlias,
+            ),
+            overrides,
           );
           outcomes.push(participantOutcome);
           return [role, participantOutcome] as const;

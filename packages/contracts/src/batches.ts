@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { apiDateTimeSchema, apiIdentifierSchema, createResourceResponseSchema } from './api';
+import {
+  apiDateTimeSchema,
+  apiIdentifierSchema,
+  createCollectionResponseSchema,
+  createResourceResponseSchema,
+  paginationQuerySchema,
+} from './api';
 
 export const BATCH_PACKAGE_VERSION = '1.0' as const;
 export const BATCH_MEDIA_TYPES = ['application/json', 'text/csv', 'application/x-ndjson'] as const;
@@ -10,6 +16,7 @@ export const BATCH_STATES = [
   'validating',
   'rejected',
   'awaiting_review',
+  'correction_requested',
   'publishing',
   'published',
   'partially_published',
@@ -39,9 +46,33 @@ export const batchReceiptSchema = z
 
 export const batchReceiptResponseSchema = createResourceResponseSchema(batchReceiptSchema);
 
+export const BATCH_REVIEW_DECISIONS = ['approved', 'rejected', 'returned_for_correction'] as const;
+
+export const batchReviewDecisionSchema = z
+  .object({
+    decision: z.enum(BATCH_REVIEW_DECISIONS),
+    actor: z
+      .object({
+        accountId: apiIdentifierSchema,
+        displayName: z.string().nullable(),
+      })
+      .strict(),
+    decidedAt: apiDateTimeSchema,
+    reason: z.string().min(1),
+  })
+  .strict();
+
+export const batchReviewRequestSchema = z
+  .object({
+    decision: z.enum(BATCH_REVIEW_DECISIONS),
+    reason: z.string().trim().min(1).max(2000),
+  })
+  .strict();
+
 export const batchStatusSchema = z
   .object({
     batchReference: batchReferenceSchema,
+    competitionId: apiIdentifierSchema,
     status: z.enum(BATCH_STATES),
     statusUrl: z.string().startsWith('/api/v1/batches/'),
     receivedAt: apiDateTimeSchema,
@@ -54,11 +85,159 @@ export const batchStatusSchema = z
         rejected: z.number().int().nonnegative(),
       })
       .strict(),
+    counts: z
+      .object({
+        accepted: z.number().int().nonnegative(),
+        rejected: z.number().int().nonnegative(),
+        unresolved: z.number().int().nonnegative(),
+        duplicate: z.number().int().nonnegative(),
+        conflicting: z.number().int().nonnegative(),
+      })
+      .strict(),
+    review: batchReviewDecisionSchema.nullable(),
   })
   .strict();
 
 export const batchStatusResponseSchema = createResourceResponseSchema(batchStatusSchema);
+export const batchReviewResponseSchema = createResourceResponseSchema(batchStatusSchema);
+
+export const batchListQuerySchema = paginationQuerySchema;
+export const batchListResponseSchema = createCollectionResponseSchema(batchStatusSchema);
+
+export const batchReportQuerySchema = paginationQuerySchema;
+
+export const batchReportLocationSchema = z
+  .object({
+    filePath: z.string().nullable(),
+    sheetName: z.string().nullable(),
+    rowNumber: z.number().int().positive().nullable(),
+    jsonPath: z.string().nullable(),
+    ordinal: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const batchReportContextSchema = z
+  .object({
+    eventReference: z.string().nullable(),
+    inningsId: apiIdentifierSchema.nullable(),
+    overNumber: z.number().int().nonnegative().nullable(),
+    positionInOver: z.number().int().positive().nullable(),
+    description: z.string().min(1),
+  })
+  .strict();
+
+export const batchReferenceEntityTypeSchema = z.enum([
+  'competition',
+  'team',
+  'fixture',
+  'innings',
+  'participant',
+]);
+
+export const batchReferenceResolutionSchema = z
+  .object({
+    referencePath: z.string().min(1),
+    entityType: batchReferenceEntityTypeSchema,
+    state: z.enum(['ambiguous', 'unresolved', 'invalid']),
+    submittedReference: z.unknown(),
+    reason: z.string().min(1).nullable(),
+    requiredAction: z.enum(['select_candidate', 'contact_reviewer']),
+    candidates: z.array(
+      z
+        .object({
+          candidateReference: z.string().uuid(),
+          label: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const batchReportErrorSchema = z
+  .object({
+    ruleCode: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+    message: z.string().min(1),
+    location: batchReportLocationSchema,
+    context: batchReportContextSchema,
+  })
+  .strict();
+
+export const batchReportItemSchema = z
+  .object({
+    ordinal: z.number().int().nonnegative(),
+    outcome: z.enum(['pending', 'accepted', 'rejected', 'unresolved', 'duplicate', 'conflicting']),
+    location: batchReportLocationSchema,
+    context: batchReportContextSchema,
+    stagedRecordId: apiIdentifierSchema.nullable(),
+    acceptedRecordId: apiIdentifierSchema.nullable(),
+    referenceResolutions: z.array(batchReferenceResolutionSchema),
+    errors: z.array(batchReportErrorSchema),
+  })
+  .strict();
+
+export const batchReportRuleGroupSchema = z
+  .object({
+    ruleCode: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+    count: z.number().int().positive(),
+  })
+  .strict();
+
+export const batchReportSchema = z
+  .object({
+    batch: batchStatusSchema,
+    errorGroups: z.array(batchReportRuleGroupSchema),
+    items: z.array(batchReportItemSchema),
+    pagination: z.object({ nextCursor: z.string().min(1).nullable() }).strict(),
+    downloadUrl: z.string().startsWith('/api/v1/batches/'),
+  })
+  .strict();
+
+export const batchReportResponseSchema = createResourceResponseSchema(batchReportSchema);
+
+export const batchReportDownloadSchema = batchReportSchema.omit({
+  pagination: true,
+  downloadUrl: true,
+});
+export const batchReportDownloadResponseSchema =
+  createResourceResponseSchema(batchReportDownloadSchema);
+
+export const batchReferenceMappingRequestSchema = z
+  .object({
+    itemOrdinal: z.number().int().nonnegative(),
+    referencePath: z.string().trim().min(1).max(1_000),
+    candidateReference: z.string().uuid(),
+    decisionKey: z.string().trim().min(1).max(255),
+  })
+  .strict();
+
+export const batchReferenceMappingReceiptSchema = z
+  .object({
+    batchReference: batchReferenceSchema,
+    decisionReference: z.string().uuid(),
+    status: z.enum(['queued', 'applied']),
+    statusUrl: z.string().startsWith('/api/v1/batches/'),
+    submittedAt: apiDateTimeSchema,
+  })
+  .strict();
+
+export const batchReferenceMappingResponseSchema = createResourceResponseSchema(
+  batchReferenceMappingReceiptSchema,
+);
 
 export type BatchMetadata = z.infer<typeof batchMetadataSchema>;
 export type BatchReceiptResponse = z.infer<typeof batchReceiptResponseSchema>;
 export type BatchStatusResponse = z.infer<typeof batchStatusResponseSchema>;
+export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
+export type BatchReviewRequest = z.infer<typeof batchReviewRequestSchema>;
+export type BatchReviewResponse = z.infer<typeof batchReviewResponseSchema>;
+export type BatchStatus = z.infer<typeof batchStatusSchema>;
+export type BatchListQuery = z.infer<typeof batchListQuerySchema>;
+export type BatchListResponse = z.infer<typeof batchListResponseSchema>;
+export type BatchReportQuery = z.infer<typeof batchReportQuerySchema>;
+export type BatchReportItem = z.infer<typeof batchReportItemSchema>;
+export type BatchReportRuleGroup = z.infer<typeof batchReportRuleGroupSchema>;
+export type BatchReportResponse = z.infer<typeof batchReportResponseSchema>;
+export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResponseSchema>;
+export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
+export type BatchReferenceMappingRequest = z.infer<typeof batchReferenceMappingRequestSchema>;
+export type BatchReferenceMappingResponse = z.infer<typeof batchReferenceMappingResponseSchema>;

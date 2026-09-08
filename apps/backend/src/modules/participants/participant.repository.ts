@@ -1,4 +1,5 @@
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
+import { standardInningsPredicate } from '../statistics/super-over-scope';
 
 export interface ParticipantRecord {
   participantId: string;
@@ -187,6 +188,12 @@ export interface ParticipantFixturePage {
  * 51 arrays. Both are now one grouped pass over the same set, which is why
  * `innings_event_count` exists rather than the two subqueries it replaces. The
  * plan captures are in `evidence/validation/issue-410-*`.
+ *
+ * `innings_event_count` reads `accepted_delivery`, which `standardInningsPredicate`
+ * has already restricted to standard innings, so it inherits the super-over
+ * boundary rather than restating it. It carries no `innings` alias of its own and
+ * must not acquire one: a second spelling of the exclusion is what
+ * `super-over-scope.ts` exists to prevent.
  */
 export async function listParticipantFixtures(
   options: ParticipantFixtureListOptions,
@@ -242,7 +249,7 @@ export async function listParticipantFixtures(
         FROM delivery_current d
         JOIN innings i
           ON i.innings_id = d.innings_id
-         AND i.is_super_over = false
+         AND ${standardInningsPredicate('i')}
         JOIN submission source_submission
           ON source_submission.submission_id = d.submission_id
          AND source_submission.status = 'accepted'
@@ -303,7 +310,7 @@ export async function listParticipantFixtures(
         FROM selected_fixture sf
         LEFT JOIN innings i
           ON i.fixture_id = sf.fixture_id
-         AND i.is_super_over = false
+         AND ${standardInningsPredicate('i')}
         LEFT JOIN innings_event_count iec
           ON iec.innings_id = i.innings_id
         GROUP BY sf.fixture_id
