@@ -11,6 +11,7 @@ import {
   createBatchService,
 } from '../../src/modules/batches/batch.service';
 import type { BatchPayloadStorageService } from '../../src/modules/object-storage/batch-payload-storage.service';
+import { ObjectStorageError } from '../../src/modules/object-storage/object-store';
 import { createTestAccount } from '../test-app';
 
 const metadata = {
@@ -75,6 +76,19 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
 }
 
 describe('batch receipt service', () => {
+  test('keeps read-only batch workflows available when payload storage is not configured', async () => {
+    const source = Readable.from('payload');
+
+    await expect(
+      createBatchService(undefined, repository()).receive(
+        createTestAccount({ role: 'submitter', competitionIds: ['5'] }),
+        metadata,
+        source,
+      ),
+    ).rejects.toBeInstanceOf(ObjectStorageError);
+    expect(source.destroyed).toBe(true);
+  });
+
   test('enforces persisted competition scope before it streams source bytes', async () => {
     const storage = { upload: vi.fn() } as unknown as BatchPayloadStorageService;
     const source = Readable.from('payload');

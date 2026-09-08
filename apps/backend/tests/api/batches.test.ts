@@ -84,6 +84,14 @@ function post(app: ReturnType<typeof createTestApp>) {
 }
 
 describe('batch receipt API', () => {
+  test('mounts batch workflows when payload storage is not configured', async () => {
+    const response = await request(createTestApp()).get('/api/v1/batches').expect(401);
+
+    expect(response.body).not.toMatchObject({
+      error: { code: 'UNSUPPORTED_API_VERSION' },
+    });
+  });
+
   test('returns an opaque staged receipt for an authorised submitter', async () => {
     const batchService = service();
     const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
