@@ -26,6 +26,7 @@ npm ci
 | `deploy-backend-azure.py`          | automatic/manual backend deployment                          | Creates the prepared backend ZIP and performs the shared Azure Kudu deployment/status logic after quality validation.                           |
 | `smoke-check-backend-artifact.mjs` | deployment workflow/helper use                               | Checks the prepared backend artifact locally before deployment.                                                                                 |
 | `smoke-check-deployment.mjs`       | deployment workflow/helper use                               | Performs retrying content-aware HTTP checks against deployed services. Use only against the intended documented target.                         |
+| `validate-user-feedback.mjs`       | `node scripts/validate-user-feedback.mjs`                    | Validates the anonymised Sprint 2 user-testing response store before evidence generation. It rejects unapproved fields and malformed responses. |
 
 ## Cricsheet and data-support Python scripts
 
