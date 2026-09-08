@@ -458,6 +458,11 @@ jobs:
       - name: Install root workspace dependencies
         run: npm ci
 
+      - name: Install rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+
       - name: Configure rclone for user-testing feedback
         env:
           RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
