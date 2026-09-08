@@ -15,6 +15,9 @@ v
 OneDrive response storage
 |
 v
+rclone retrieval
+|
+v
 JSON schema validation during evidence generation
 |
 v
@@ -57,7 +60,7 @@ Sport Analytics/
 
 The repository script:
 
-npm run retrieve:user-testing-feedback -- "<response-directory>"
+npm run retrieve:user-testing-feedback
 npm run generate:user-testing-evidence -- testing/user-feedback/input
 
 converts validated responses into Markdown:

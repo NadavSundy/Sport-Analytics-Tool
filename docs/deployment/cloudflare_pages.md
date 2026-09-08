@@ -50,9 +50,9 @@ For automated deployments, authentication should be provided using the following
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-The evidence-generation step does not use OneDrive credentials in CI. It runs against the committed,
-empty schema-valid response store under `testing/user-feedback/input/`, so deployment verifies the
-same generation path without accessing a developer's local OneDrive folder.
+The evidence-generation step retrieves anonymised responses through `rclone`. Configure the protected
+repository secrets `RCLONE_CONFIG`, `RCLONE_REMOTE`, and `RCLONE_SOURCE`; no credentials or response
+files are committed. The runner must provide `rclone`.
 
 ## Public Documentation
 
@@ -81,7 +81,7 @@ On an automatic deployment, CI:
 1. checks out the validated `main` commit;
 2. validates `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
 3. installs the root workspace dependencies;
-4. validates the committed feedback input and generates sanitised Markdown pages in
+4. configures rclone from `RCLONE_CONFIG`, retrieves and validates feedback, and generates sanitised Markdown pages in
    `docs/user-testing/evidence/generated/`;
 5. installs the documentation dependencies;
 6. builds the deployable site using:
@@ -114,7 +114,7 @@ The workflow authenticates using repository Actions secrets and never commits Cl
 The Cloudflare API token should be limited to the permissions required to deploy the
 `sports-analytics-tool` Pages project.
 
-Malformed committed feedback input and evidence-generation failures stop the deployment before MkDocs
-runs. Local OneDrive synchronisation remains a developer workflow and does not require CI secrets.
+Missing rclone configuration, failed retrieval, malformed feedback, and evidence-generation failures
+stop the deployment before MkDocs runs. Locally, developers use the same rclone retrieval command.
 
 Manual Wrangler deployment using the commands above remains a local/fallback option when required.

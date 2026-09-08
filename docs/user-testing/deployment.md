@@ -20,7 +20,10 @@ documentation.
     Power Automate
             |
             v
-    Local OneDrive-synchronised JSON responses
+    Wits OneDrive JSON responses
+            |
+            v
+    rclone retrieval
             |
             v
     testing/user-feedback/input/
@@ -56,7 +59,7 @@ schema and generates Markdown evidence documents.
 
 Run:
 
-    npm run retrieve:user-testing-feedback -- "<response-directory>"
+    npm run retrieve:user-testing-feedback
     npm run generate:user-testing-evidence -- testing/user-feedback/input
 
 ---
@@ -113,9 +116,13 @@ The documentation deployment workflow performs:
             v
     Deploy MkDocs site
 
-Documentation deployment generates evidence from the committed empty,
-schema-valid input store, then includes the resulting documentation pages.
-It does not access a developer's OneDrive folder.
+Documentation deployment configures `rclone` from a protected secret, retrieves anonymised feedback,
+generates evidence, then includes the resulting documentation pages.
+
+The deployment runner requires `rclone` and these repository secrets: `RCLONE_CONFIG`,
+`RCLONE_REMOTE`, and `RCLONE_SOURCE`. The script defaults the latter two to `wits-onedrive` and
+`Sport Analytics/User Testing/responses` when they are not set. `RCLONE_CONFIG` is written only to
+the runner's private rclone configuration file and is never logged or committed.
 
 ---
 

@@ -188,3 +188,12 @@ __pycache__/
 # Local Codex instructions
 /AGENTS.md
 AGENTS.md
+
+
+# rclone credentials
+.rclone/
+rclone.conf
+**/rclone.conf
+
+# OneDrive sync metadata
+.OneDrive/

@@ -1,87 +1,79 @@
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { execFile as execFileCallback } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+
+import { ingestFeedbackDirectory } from './user-feedback-ingestion.mjs';
 
 const defaultInputDirectory = 'testing/user-feedback/input';
-const safeJsonFilename = /^[A-Za-z0-9][A-Za-z0-9._-]*\.json$/i;
+const defaultRemote = 'wits-onedrive';
+const defaultSource = 'Sport Analytics/User Testing/responses';
+const execFile = promisify(execFileCallback);
 
-async function findJsonFiles(directory) {
-  let entries;
-  try {
-    entries = await readdir(directory, { withFileTypes: true });
-  } catch (error) {
-    const code =
-      error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
-        ? error.code
-        : undefined;
-    if (code === 'ENOENT' || code === 'ENOTDIR') {
-      throw new Error('User-testing feedback source directory does not exist.');
-    }
-    throw error;
-  }
-
-  const files = [];
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    const path = resolve(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await findJsonFiles(path)));
-    } else if (entry.isFile() && safeJsonFilename.test(entry.name)) {
-      files.push(path);
-    }
-  }
-  return files;
+function rcloneSettings(environment) {
+  return {
+    remote: environment.RCLONE_REMOTE?.trim() || defaultRemote,
+    source: environment.RCLONE_SOURCE?.trim() || defaultSource,
+  };
 }
 
-function normaliseJson(json) {
+function isMissingRclone(error) {
+  return error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT';
+}
+
+async function listRemoteJsonFiles(execute, remotePath) {
+  let result;
   try {
-    return `${JSON.stringify(JSON.parse(json), null, 2)}\n`;
-  } catch {
-    throw new Error('A user-testing feedback file contains invalid JSON.');
+    result = await execute('rclone', ['lsjson', remotePath, '--files-only', '--include', '*.json']);
+  } catch (error) {
+    if (isMissingRclone(error))
+      throw new Error('rclone is not installed or is not available on PATH.');
+    throw new Error('OneDrive retrieval failed while listing JSON feedback files.');
+  }
+
+  try {
+    const files = JSON.parse(result.stdout);
+    if (!Array.isArray(files) || files.length === 0) {
+      throw new Error('No JSON user-testing feedback files were retrieved from OneDrive.');
+    }
+    return files.length;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('No JSON')) throw error;
+    throw new Error('OneDrive retrieval returned an invalid JSON file listing.');
   }
 }
 
 /**
- * Copies recursively discovered JSON files from a local OneDrive-synchronised directory into the
- * evidence pipeline input directory. Schema validation remains the ingestion module's responsibility.
+ * Retrieves anonymised Power Automate JSON responses from the configured Wits OneDrive rclone
+ * remote, then validates them through the existing ingestion boundary before evidence generation.
  *
- * @param {string} sourceDirectory
- * @param {string} [destinationDirectory]
+ * @param {{ destinationDirectory?: string, environment?: NodeJS.ProcessEnv, execute?: typeof execFile }} [options]
  */
-export async function retrieveUserTestingFeedback(
-  sourceDirectory,
-  destinationDirectory = defaultInputDirectory,
-) {
-  const source = resolve(sourceDirectory);
-  const destination = resolve(destinationDirectory);
-  const sourceFiles = await findJsonFiles(source);
+export async function retrieveUserTestingFeedback(options = {}) {
+  const destination = resolve(options.destinationDirectory ?? defaultInputDirectory);
+  const environment = options.environment ?? process.env;
+  const execute = options.execute ?? execFile;
+  const settings = rcloneSettings(environment);
+  const remotePath = `${settings.remote}:${settings.source}`;
+  const count = await listRemoteJsonFiles(execute, remotePath);
 
   await mkdir(destination, { recursive: true });
-  const copiedNames = new Set();
-
-  for (const sourceFile of sourceFiles) {
-    const filename = basename(sourceFile);
-    if (copiedNames.has(filename)) {
-      throw new Error('User-testing feedback source contains duplicate JSON filenames.');
-    }
-    copiedNames.add(filename);
-    await writeFile(
-      resolve(destination, filename),
-      normaliseJson(await readFile(sourceFile, 'utf8')),
-      'utf8',
-    );
+  try {
+    await execute('rclone', ['copy', remotePath, destination, '--include', '*.json']);
+  } catch (error) {
+    if (isMissingRclone(error))
+      throw new Error('rclone is not installed or is not available on PATH.');
+    throw new Error('OneDrive retrieval failed while copying JSON feedback files.');
   }
 
-  return sourceFiles.length;
+  await ingestFeedbackDirectory(destination);
+  return count;
 }
 
 async function main() {
-  const sourceDirectory = process.argv[2];
-  if (!sourceDirectory) {
-    throw new Error('Supply a local directory containing user-testing feedback JSON files.');
-  }
-
-  const count = await retrieveUserTestingFeedback(sourceDirectory);
-  console.log(`Retrieved ${count} user-testing feedback JSON file(s).`);
+  const count = await retrieveUserTestingFeedback();
+  console.log(`Retrieved and validated ${count} user-testing feedback JSON file(s).`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

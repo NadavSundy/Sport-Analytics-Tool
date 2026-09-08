@@ -17,6 +17,9 @@ v
 OneDrive JSON responses
 |
 v
+rclone retrieval
+|
+v
 Evidence generator
 |
 v
@@ -29,6 +32,7 @@ Before generating evidence:
 - Microsoft Forms responses must exist.
 - Power Automate must export schema-compliant JSON.
 - Response files must be available in the OneDrive response directory.
+- `rclone` must be configured for the Wits OneDrive remote.
 
 ## Generated Evidence
 

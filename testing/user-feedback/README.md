@@ -12,10 +12,10 @@ replace the human facilitator's observations, consent checks, finding decisions,
 - `schema.json` is the versioned JSON Schema for normalised Power Automate responses.
 - `../../scripts/validate-user-feedback.mjs` validates a response store against the schema without
   adding a runtime dependency.
-- `input/responses.json` is the committed empty, schema-valid response store used by documentation
-  deployment. Other files copied into `input/` remain ignored local imports.
-- `../../scripts/retrieve-user-testing-feedback.mjs` copies a local OneDrive-synchronised response
-  directory into `input/` without using credentials or external services.
+- `input/responses.json` is the committed empty, schema-valid response store. Other retrieved files
+  in `input/` remain ignored local imports.
+- `../../scripts/retrieve-user-testing-feedback.mjs` uses `rclone` to copy the configured Wits
+  OneDrive response folder into `input/`, then validates the imported files.
 - `../../scripts/generate-user-testing-evidence.mjs` ingests validated response files and writes
   sanitised MkDocs evidence pages under `docs/user-testing/evidence/generated/`.
 - `tsconfig.json` applies the repository TypeScript checker to the executable ESM scripts without
@@ -33,10 +33,10 @@ Pass a normalised candidate file explicitly before replacing the committed store
 node scripts/validate-user-feedback.mjs path/to/sanitised-responses.json
 ```
 
-Copy local OneDrive-synchronised JSON response files into the ignored input directory:
+Retrieve JSON response files into the ignored input directory:
 
 ```bash
-npm run retrieve:user-testing-feedback -- "path/to/Sport Analytics/User Testing/responses"
+npm run retrieve:user-testing-feedback
 ```
 
 Validate and generate evidence from that directory:
@@ -66,10 +66,10 @@ The generator reads local files synchronised by Power Automate from:
 OneDrive/Sport Analytics/User Testing/responses/*.json
 ```
 
-Documentation deployment does not access OneDrive. It runs the generator against the committed empty
-response store in `input/responses.json`, which verifies the generation path without publishing
-fabricated participant evidence. Local OneDrive imports remain ignored and are generated only when a
-developer deliberately runs the retrieval command above.
+Set `RCLONE_REMOTE` and `RCLONE_SOURCE` to override the defaults `wits-onedrive` and `Sport
+Analytics/User Testing/responses`. CI configures the `rclone` remote from the protected
+`RCLONE_CONFIG` secret, retrieves the same source, then generates evidence before the MkDocs build.
+No response data or credentials are committed.
 
 Each JSON file must be either one response object or the response-store envelope. Every response
 requires these fields:

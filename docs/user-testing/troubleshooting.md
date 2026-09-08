@@ -31,17 +31,17 @@ Remove outdated local imports, then rerun retrieval from the required OneDrive r
 
 ---
 
-## OneDrive responses are missing locally
+## rclone cannot retrieve OneDrive responses
 
 Cause:
 
-The OneDrive client has not synchronised the Wits folder.
+`rclone` is unavailable, its Wits remote is not configured, or the configured source contains no JSON files.
 
 Solution:
 
-1. Open OneDrive.
-2. Confirm the Wits account is synchronised.
-3. Wait for the response JSON file to appear locally.
+1. Install `rclone` and configure the `wits-onedrive` remote.
+2. Set `RCLONE_REMOTE` or `RCLONE_SOURCE` only when the defaults are not correct.
+3. Confirm `Sport Analytics/User Testing/responses` contains anonymised JSON response files.
 
 ---
 
@@ -70,5 +70,5 @@ Verify:
 
 Run:
 
-npm run retrieve:user-testing-feedback -- "<response-directory>"
+npm run retrieve:user-testing-feedback
 npm run generate:user-testing-evidence -- testing/user-feedback/input

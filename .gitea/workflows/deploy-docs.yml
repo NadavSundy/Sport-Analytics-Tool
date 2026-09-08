@@ -39,6 +39,24 @@ jobs:
       - name: Install root workspace dependencies
         run: npm ci
 
+      - name: Configure rclone for user-testing feedback
+        env:
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          if [ -z "$RCLONE_CONFIG" ]; then
+            echo "::error::Required Gitea secret RCLONE_CONFIG is not configured."
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.config/rclone"
+          umask 077
+          printf '%s' "$RCLONE_CONFIG" > "$HOME/.config/rclone/rclone.conf"
+
+      - name: Retrieve user-testing feedback
+        env:
+          RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
+          RCLONE_SOURCE: ${{ secrets.RCLONE_SOURCE }}
+        run: npm run retrieve:user-testing-feedback
+
       - name: Generate user-testing evidence pages
         run: npm run generate:user-testing-evidence -- testing/user-feedback/input
 
