@@ -1,132 +1,86 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const requiredEnvironmentNames = [
-  'USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID',
-  'USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID',
-  'USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN',
-];
-
+const defaultInputDirectory = 'testing/user-feedback/input';
 const safeJsonFilename = /^[A-Za-z0-9][A-Za-z0-9._-]*\.json$/i;
 
-/**
- * @param {NodeJS.ProcessEnv} environment
- * @returns {{ driveId: string; folderId: string; accessToken: string }}
- */
-export function readFeedbackSourceConfig(environment = process.env) {
-  const driveId = environment.USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID;
-  const folderId = environment.USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID;
-  const accessToken = environment.USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN;
-  const missing = requiredEnvironmentNames.filter((name) => !environment[name]);
-  if (missing.length > 0 || !driveId || !folderId || !accessToken) {
-    throw new Error(
-      `Required feedback-source environment variable(s) not configured: ${missing.join(', ')}`,
-    );
-  }
-
-  return {
-    driveId,
-    folderId,
-    accessToken,
-  };
-}
-
-function graphHeaders(accessToken) {
-  return { Authorization: `Bearer ${accessToken}` };
-}
-
-function sourceError(action, response) {
-  return new Error(`OneDrive user-testing feedback ${action} failed with HTTP ${response.status}.`);
-}
-
-function safeGraphPageUrl(nextPage) {
-  const url = new URL(nextPage);
-  if (url.protocol !== 'https:' || url.hostname !== 'graph.microsoft.com') {
-    throw new Error('OneDrive user-testing feedback listing returned an unsafe next page.');
-  }
-  return url.toString();
-}
-
-async function listFeedbackFiles(config, fetchImplementation) {
-  const encodedDriveId = encodeURIComponent(config.driveId);
-  const encodedFolderId = encodeURIComponent(config.folderId);
-  /** @type {string | null} */
-  let nextPage = `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/items/${encodedFolderId}/children?$select=id,name,file`;
-  const files = [];
-
-  while (nextPage) {
-    const response = await fetchImplementation(nextPage, {
-      headers: graphHeaders(config.accessToken),
-    });
-    if (!response.ok) throw sourceError('listing', response);
-
-    const page = await response.json();
-    if (!page || !Array.isArray(page.value)) {
-      throw new Error('OneDrive user-testing feedback listing returned an invalid response.');
+async function findJsonFiles(directory) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    const code =
+      error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : undefined;
+    if (code === 'ENOENT' || code === 'ENOTDIR') {
+      throw new Error('User-testing feedback source directory does not exist.');
     }
-
-    files.push(...page.value);
-    nextPage =
-      typeof page['@odata.nextLink'] === 'string'
-        ? safeGraphPageUrl(page['@odata.nextLink'])
-        : null;
+    throw error;
   }
 
-  return files.filter(
-    (file) =>
-      file &&
-      typeof file.id === 'string' &&
-      typeof file.name === 'string' &&
-      file.file &&
-      safeJsonFilename.test(file.name),
-  );
+  const files = [];
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await findJsonFiles(path)));
+    } else if (entry.isFile() && safeJsonFilename.test(entry.name)) {
+      files.push(path);
+    }
+  }
+  return files;
+}
+
+function normaliseJson(json) {
+  try {
+    return `${JSON.stringify(JSON.parse(json), null, 2)}\n`;
+  } catch {
+    throw new Error('A user-testing feedback file contains invalid JSON.');
+  }
 }
 
 /**
- * Retrieves the restricted Power Automate JSON exports without logging source identifiers or tokens.
+ * Copies recursively discovered JSON files from a local OneDrive-synchronised directory into the
+ * evidence pipeline input directory. Schema validation remains the ingestion module's responsibility.
  *
- * @param {string} destinationDirectory
- * @param {{ environment?: NodeJS.ProcessEnv; fetchImplementation?: typeof fetch }} [options]
+ * @param {string} sourceDirectory
+ * @param {string} [destinationDirectory]
  */
-export async function retrieveUserTestingFeedback(destinationDirectory, options = {}) {
-  const config = readFeedbackSourceConfig(options.environment);
-  const fetchImplementation = options.fetchImplementation ?? fetch;
-  const files = await listFeedbackFiles(config, fetchImplementation);
+export async function retrieveUserTestingFeedback(
+  sourceDirectory,
+  destinationDirectory = defaultInputDirectory,
+) {
+  const source = resolve(sourceDirectory);
   const destination = resolve(destinationDirectory);
+  const sourceFiles = await findJsonFiles(source);
 
   await mkdir(destination, { recursive: true });
-  const writtenNames = new Set();
+  const copiedNames = new Set();
 
-  for (const file of files.sort((left, right) => left.name.localeCompare(right.name))) {
-    const filename = basename(file.name);
-    if (!safeJsonFilename.test(filename) || writtenNames.has(filename)) {
-      throw new Error(
-        'OneDrive user-testing feedback contains an unsafe or duplicate JSON filename.',
-      );
+  for (const sourceFile of sourceFiles) {
+    const filename = basename(sourceFile);
+    if (copiedNames.has(filename)) {
+      throw new Error('User-testing feedback source contains duplicate JSON filenames.');
     }
-    writtenNames.add(filename);
-
-    const encodedDriveId = encodeURIComponent(config.driveId);
-    const encodedFileId = encodeURIComponent(file.id);
-    const response = await fetchImplementation(
-      `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/items/${encodedFileId}/content`,
-      { headers: graphHeaders(config.accessToken) },
+    copiedNames.add(filename);
+    await writeFile(
+      resolve(destination, filename),
+      normaliseJson(await readFile(sourceFile, 'utf8')),
+      'utf8',
     );
-    if (!response.ok) throw sourceError('download', response);
-
-    await writeFile(resolve(destination, filename), await response.text(), 'utf8');
   }
 
-  return files.length;
+  return sourceFiles.length;
 }
 
 async function main() {
-  const destinationDirectory = process.argv[2];
-  if (!destinationDirectory)
-    throw new Error('Supply a local directory for retrieved user-testing feedback.');
+  const sourceDirectory = process.argv[2];
+  if (!sourceDirectory) {
+    throw new Error('Supply a local directory containing user-testing feedback JSON files.');
+  }
 
-  const count = await retrieveUserTestingFeedback(destinationDirectory);
+  const count = await retrieveUserTestingFeedback(sourceDirectory);
   console.log(`Retrieved ${count} user-testing feedback JSON file(s).`);
 }
 
