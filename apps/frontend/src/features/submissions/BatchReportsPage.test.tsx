@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import type { BatchReportItem, BatchReportResponse } from '@sport-analytics/contracts';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -87,11 +87,37 @@ function report(accepted: number, rejected: number): BatchReportResponse {
         statusUrl: `/api/v1/batches/${reference}`,
         receivedAt: '2026-09-07T10:00:00.000Z',
         updatedAt: '2026-09-07T10:05:00.000Z',
+        source: {
+          fileName: 'season.csv',
+          checksum: 'a'.repeat(64),
+          packageVersion: '1.0',
+          submitter: { accountId: '1', displayName: 'Batch Reviewer' },
+        },
         progress: { total: 3, processed: 3, accepted, rejected },
         counts: { accepted, rejected, unresolved: rejected, duplicate: 0, conflicting: 0 },
         review: null,
       },
       errorGroups: rejected > 0 ? [{ ruleCode: 'EVENT_SCHEMA_INVALID', count: rejected }] : [],
+      reviewSummary: {
+        validation: {
+          accepted,
+          rejected,
+          blockingErrors: rejected,
+          duplicate: 0,
+          conflicting: 0,
+        },
+        resolution: {
+          resolved: accepted,
+          ambiguous: 0,
+          unresolved: rejected,
+          invalid: 0,
+          proposed: 0,
+        },
+        approvalBlocked: rejected > 0,
+        blockingReasons: rejected > 0 ? ['Validation errors remain.'] : [],
+      },
+      fixtureSummaries: [],
+      acceptedSamples: [],
       items: [] as BatchReportItem[],
       pagination: { nextCursor: null },
       downloadUrl: `/api/v1/batches/${reference}/report/download`,
@@ -146,6 +172,8 @@ describe('batch report view', () => {
         },
         context: {
           eventReference: 'event-1',
+          fixtureId: '12',
+          fixtureLabel: 'Lions vs Bears · 2026-09-01',
           inningsId: '8',
           overNumber: 4,
           positionInOver: 2,
@@ -168,6 +196,8 @@ describe('batch report view', () => {
         },
         context: {
           eventReference: 'event-2',
+          fixtureId: '12',
+          fixtureLabel: 'Lions vs Bears · 2026-09-01',
           inningsId: null,
           overNumber: 4,
           positionInOver: 3,
@@ -189,6 +219,8 @@ describe('batch report view', () => {
             },
             context: {
               eventReference: 'event-2',
+              fixtureId: '12',
+              fixtureLabel: 'Lions vs Bears · 2026-09-01',
               inningsId: null,
               overNumber: 4,
               positionInOver: 3,
@@ -205,70 +237,14 @@ describe('batch report view', () => {
     expect(screen.getByText(/Choose a known striker reference/)).toBeInTheDocument();
   });
 
-  test('lets an in-scope administrator approve and displays the persisted decision', async () => {
+  test('keeps reviewer decisions out of the submitter report', async () => {
     const awaiting = report(3, 0);
     awaiting.data.batch.status = 'awaiting_review';
-    const published = report(3, 0);
-    published.data.batch.review = {
-      decision: 'approved',
-      actor: { accountId: '1', displayName: 'Batch Reviewer' },
-      decidedAt: '2026-09-07T11:00:00.000Z',
-      reason: 'Validated source and references.',
-    };
-    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).includes('/auth/me')) return Promise.resolve(apiResponse(profile('admin')));
-      if (init?.method === 'POST')
-        return Promise.resolve(apiResponse({ data: published.data.batch }));
-      const reportGets = fetchMock.mock.calls.filter(
-        ([calledInput, calledInit]) =>
-          String(calledInput).includes('/report') && calledInit?.method !== 'POST',
-      ).length;
-      return Promise.resolve(apiResponse(reportGets > 1 ? published : awaiting));
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('fetch', reportFetch(awaiting, profile('admin')));
     renderReport();
-
-    fireEvent.change(await screen.findByLabelText('Reason'), {
-      target: { value: 'Validated source and references.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Approve and publish' }));
-
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining(`/batches/${reference}/review`),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            decision: 'approved',
-            reason: 'Validated source and references.',
-          }),
-        }),
-      ),
-    );
-    expect(await screen.findByText(/Review: approved by Batch Reviewer/)).toBeInTheDocument();
-  });
-
-  test('shows all decisions only to administrators in the batch competition scope', async () => {
-    const awaiting = report(3, 0);
-    awaiting.data.batch.status = 'awaiting_review';
-    vi.stubGlobal('fetch', reportFetch(awaiting, profile('admin', ['6'])));
-    renderReport();
-    expect(await screen.findByText(/outside your authorised scope/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Batch summary' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
-  });
-
-  test('requires a reviewer reason before sending a decision', async () => {
-    const awaiting = report(3, 0);
-    awaiting.data.batch.status = 'awaiting_review';
-    const fetchMock = reportFetch(awaiting, profile('admin'));
-    vi.stubGlobal('fetch', fetchMock);
-    renderReport();
-    fireEvent.click(await screen.findByRole('button', { name: 'Reject batch' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Enter a reason');
-    expect(
-      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST'),
-    ).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import {
   batchListResponseSchema,
+  batchReferenceMappingResponseSchema,
   batchReportDownloadResponseSchema,
   batchReportResponseSchema,
   batchReviewResponseSchema,
@@ -7,6 +8,8 @@ import {
   type BatchReportResponse,
   type BatchReviewRequest,
   type BatchReviewResponse,
+  type BatchReferenceMappingRequest,
+  type BatchReferenceMappingResponse,
 } from '@sport-analytics/contracts';
 
 import type { AuthenticatedApiClient } from '../../api/client';
@@ -25,9 +28,31 @@ function parse<T>(
 export async function listBatches(
   client: AuthenticatedApiClient,
   cursor?: string,
+  status?: string,
 ): Promise<BatchListResponse> {
-  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  const parameters = new URLSearchParams();
+  if (cursor) parameters.set('cursor', cursor);
+  if (status) parameters.set('status', status);
+  const query = parameters.size > 0 ? `?${parameters.toString()}` : '';
   return parse(await client.request<unknown>(`/batches${query}`), batchListResponseSchema);
+}
+
+export async function mapBatchReference(
+  client: AuthenticatedApiClient,
+  batchReference: string,
+  request: BatchReferenceMappingRequest,
+): Promise<BatchReferenceMappingResponse> {
+  return parse(
+    await client.request<unknown>(
+      `/batches/${encodeURIComponent(batchReference)}/reference-mappings`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+    ),
+    batchReferenceMappingResponseSchema,
+  );
 }
 
 export async function getBatchReport(

@@ -26,6 +26,7 @@ import {
   FixtureStatisticsPage,
 } from './features/statistics/StatisticsPages';
 import { AdminUsersPage } from './features/admin/AdminUsersPage';
+import { BatchReviewWorkspacePage } from './features/reviews/BatchReviewWorkspacePage';
 
 export function PublicApp() {
   return (
@@ -60,6 +61,8 @@ export function PublicApp() {
         <Route path="/submissions/batches" element={<BatchReportsPage />} />
         <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
+        <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
