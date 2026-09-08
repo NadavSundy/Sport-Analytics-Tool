@@ -50,13 +50,13 @@ For automated deployments, authentication should be provided using the following
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-The evidence-generation step retrieves the approved anonymised Power Automate export through
-Microsoft Graph. Configure these as repository Actions secrets; do not commit their values or add
-them to a tracked `.env` file:
+The evidence-generation step additionally retrieves the approved anonymised Power Automate export
+from OneDrive. Configure these as repository Actions secrets; do not commit their values or add them
+to a local `.env` file:
 
-- `MICROSOFT_TENANT_ID`
-- `MICROSOFT_CLIENT_ID`
-- `MICROSOFT_CLIENT_SECRET`
+- `USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID`
+- `USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID`
+- `USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN`
 
 ## Public Documentation
 
@@ -85,9 +85,8 @@ On an automatic deployment, CI:
 1. checks out the validated `main` commit;
 2. validates `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
 3. installs the root workspace dependencies;
-4. obtains a short-lived Microsoft Graph access token with the configured client credentials, then
-   retrieves JSON files from `Sport Analytics/User Testing/responses` without logging credentials,
-   response content, or filenames;
+4. retrieves the latest anonymised JSON files from the configured OneDrive folder without logging
+   source identifiers or credentials;
 5. validates the response files and generates sanitised Markdown pages in
    `docs/user-testing/evidence/generated/`;
 6. installs the documentation dependencies;
@@ -121,10 +120,9 @@ The workflow authenticates using repository Actions secrets and never commits Cl
 The Cloudflare API token should be limited to the permissions required to deploy the
 `sports-analytics-tool` Pages project.
 
-The Azure app registration requires Microsoft Graph Application permission `Sites.Selected`, tenant
-admin consent, and a read grant for the Wits SharePoint site. Missing feedback-source configuration,
-authentication failures, missing folders, download failures, malformed JSON, and schema validation
-failures stop the deployment before MkDocs runs. Error messages name the failure stage but do not
-print secret values, response contents, source identifiers, filenames, or access tokens.
+The OneDrive access token must be limited to read access for the configured feedback folder. Missing
+feedback-source configuration, download failures, malformed JSON, and schema validation failures stop
+the deployment before MkDocs runs. Error messages name the missing configuration or failure stage but
+do not print secret values, response contents, source identifiers, or access tokens.
 
 Manual Wrangler deployment using the commands above remains a local/fallback option when required.

@@ -13,7 +13,7 @@ replace the human facilitator's observations, consent checks, finding decisions,
 - `../../scripts/validate-user-feedback.mjs` validates a response store against the schema without
   adding a runtime dependency.
 - `../../scripts/retrieve-user-testing-feedback.mjs` retrieves the restricted Power Automate export
-  from the Wits OneDrive source through Microsoft Graph.
+  from OneDrive using repository environment variables only.
 - `../../scripts/generate-user-testing-evidence.mjs` ingests validated response files and writes
   sanitised MkDocs evidence pages under `docs/user-testing/evidence/generated/`.
 - `tsconfig.json` applies the repository TypeScript checker to the executable ESM scripts without
@@ -31,17 +31,18 @@ Pass a normalised candidate file explicitly before replacing the committed store
 node scripts/validate-user-feedback.mjs path/to/sanitised-responses.json
 ```
 
-The Graph retrieval command writes JSON files to the ignored local input directory:
+Generate MkDocs evidence from a local OneDrive-synchronised directory of JSON response files:
 
 ```bash
-npm run retrieve:user-testing-feedback
+node scripts/generate-user-testing-evidence.mjs "path/to/Sport Analytics/User Testing/responses"
 ```
 
-Validate and generate evidence from that input directory:
+To exercise the complete local validation and generation path without contacting OneDrive, use a
+reviewed local directory containing fixture or approved anonymised JSON files:
 
 ```bash
-node scripts/user-feedback-ingestion.mjs testing/user-feedback/input
-npm run generate:user-testing-evidence -- testing/user-feedback/input
+node scripts/user-feedback-ingestion.mjs path/to/responses
+npm run generate:user-testing-evidence -- path/to/responses
 npm run test:user-feedback
 ```
 
@@ -56,43 +57,23 @@ Never commit a raw OneDrive export that includes respondent identity or timestam
 export in the team's approved restricted location and commit only reviewed, normalised JSON response
 data.
 
-## Microsoft Graph retrieval
-
-The retrieval script uses the OAuth 2.0 client-credentials flow against Microsoft Graph. It resolves
-the Wits OneDrive source and retrieves JSON files from:
-
-```text
-Sport Analytics/User Testing/responses
-```
-
-No SharePoint HTML page is fetched or scraped. The script writes valid JSON only to
-`testing/user-feedback/input/`, which is ignored by Git. It leaves schema validation and evidence
-generation to the existing commands above.
-
-### Azure app registration and permissions
-
-Create an Azure (Microsoft Entra ID) app registration in the Wits tenant, create a client secret,
-and grant Microsoft Graph **Application** permission `Sites.Selected`. An administrator must grant
-tenant consent and grant that application read access to the source SharePoint site. `Sites.Read.All`
-also works but is broader than required and should not be used unless the team has formally approved
-the broader access.
-
-Store these only as repository Actions secrets or transient local shell environment variables; never
-commit them or add them to a tracked environment file:
-
-- `MICROSOFT_TENANT_ID`
-- `MICROSOFT_CLIENT_ID`
-- `MICROSOFT_CLIENT_SECRET`
-
-For local retrieval, set the three variables in the active shell from the approved secret store, then
-run `npm run retrieve:user-testing-feedback`. Do not paste their values into terminal transcripts,
-documentation, fixtures, or repository files. Authentication failures, missing folders, download
-failures, and malformed JSON stop before any evidence page is generated.
-
 ## Power Automate JSON input
 
-Each retrieved JSON file must be either one response object or the response-store envelope. Every
-response requires these fields:
+The generator reads local files synchronised by Power Automate from:
+
+```text
+OneDrive/Sport Analytics/User Testing/responses/*.json
+```
+
+CI retrieves that source with these repository Actions secrets. They must never be committed or
+printed in logs:
+
+- `USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID`
+- `USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID`
+- `USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN`
+
+Each JSON file must be either one response object or the response-store envelope. Every response
+requires these fields:
 
 | Input field        | Requirement                                           |
 | ------------------ | ----------------------------------------------------- |
