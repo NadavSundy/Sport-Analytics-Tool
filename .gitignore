@@ -179,6 +179,9 @@ __pycache__/
 
 # Generated MkDocs output
 /site/
+
+# Restricted Power Automate feedback retrieved through Microsoft Graph
+/testing/user-feedback/input/
 # Local Codex instructions
 /AGENTS.md
 AGENTS.md

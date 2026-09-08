@@ -460,16 +460,16 @@ jobs:
 
       - name: Retrieve latest user-testing feedback
         env:
-          USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID: ${{ secrets.USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID }}
-          USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID: ${{ secrets.USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID }}
-          USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN: ${{ secrets.USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN }}
-        run: node scripts/retrieve-user-testing-feedback.mjs .user-testing-feedback
+          MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+          MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+        run: npm run retrieve:user-testing-feedback
 
       - name: Validate retrieved user-testing feedback
-        run: node scripts/user-feedback-ingestion.mjs .user-testing-feedback
+        run: node scripts/user-feedback-ingestion.mjs testing/user-feedback/input
 
       - name: Generate user-testing evidence pages
-        run: npm run generate:user-testing-evidence -- .user-testing-feedback
+        run: npm run generate:user-testing-evidence -- testing/user-feedback/input
 
       - name: Set up Python
         uses: actions/setup-python@v5
