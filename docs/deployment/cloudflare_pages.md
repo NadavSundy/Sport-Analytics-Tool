@@ -50,13 +50,9 @@ For automated deployments, authentication should be provided using the following
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-The evidence-generation step additionally retrieves the approved anonymised Power Automate export
-from OneDrive. Configure these as repository Actions secrets; do not commit their values or add them
-to a local `.env` file:
-
-- `USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID`
-- `USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID`
-- `USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN`
+The evidence-generation step does not use OneDrive credentials in CI. It runs against the committed,
+empty schema-valid response store under `testing/user-feedback/input/`, so deployment verifies the
+same generation path without accessing a developer's local OneDrive folder.
 
 ## Public Documentation
 
@@ -85,24 +81,22 @@ On an automatic deployment, CI:
 1. checks out the validated `main` commit;
 2. validates `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
 3. installs the root workspace dependencies;
-4. retrieves the latest anonymised JSON files from the configured OneDrive folder without logging
-   source identifiers or credentials;
-5. validates the response files and generates sanitised Markdown pages in
+4. validates the committed feedback input and generates sanitised Markdown pages in
    `docs/user-testing/evidence/generated/`;
-6. installs the documentation dependencies;
-7. builds the deployable site using:
+5. installs the documentation dependencies;
+6. builds the deployable site using:
 
    ```bash
    python -m mkdocs build --strict
    ```
 
-8. deploys the generated `site/` directory using:
+7. deploys the generated `site/` directory using:
 
    ```bash
    npx wrangler pages deploy site --project-name=sports-analytics-tool
    ```
 
-9. smoke checks the public documentation home page.
+8. smoke checks the public documentation home page.
 
 The strict MkDocs build is intentionally present both in validation and deployment: validation proves
 the source before the quality decision, while deployment must create the generated `site/` artifact on
@@ -120,9 +114,7 @@ The workflow authenticates using repository Actions secrets and never commits Cl
 The Cloudflare API token should be limited to the permissions required to deploy the
 `sports-analytics-tool` Pages project.
 
-The OneDrive access token must be limited to read access for the configured feedback folder. Missing
-feedback-source configuration, download failures, malformed JSON, and schema validation failures stop
-the deployment before MkDocs runs. Error messages name the missing configuration or failure stage but
-do not print secret values, response contents, source identifiers, or access tokens.
+Malformed committed feedback input and evidence-generation failures stop the deployment before MkDocs
+runs. Local OneDrive synchronisation remains a developer workflow and does not require CI secrets.
 
 Manual Wrangler deployment using the commands above remains a local/fallback option when required.

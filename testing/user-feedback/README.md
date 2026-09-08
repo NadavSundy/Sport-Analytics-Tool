@@ -12,8 +12,10 @@ replace the human facilitator's observations, consent checks, finding decisions,
 - `schema.json` is the versioned JSON Schema for normalised Power Automate responses.
 - `../../scripts/validate-user-feedback.mjs` validates a response store against the schema without
   adding a runtime dependency.
-- `../../scripts/retrieve-user-testing-feedback.mjs` retrieves the restricted Power Automate export
-  from OneDrive using repository environment variables only.
+- `input/responses.json` is the committed empty, schema-valid response store used by documentation
+  deployment. Other files copied into `input/` remain ignored local imports.
+- `../../scripts/retrieve-user-testing-feedback.mjs` copies a local OneDrive-synchronised response
+  directory into `input/` without using credentials or external services.
 - `../../scripts/generate-user-testing-evidence.mjs` ingests validated response files and writes
   sanitised MkDocs evidence pages under `docs/user-testing/evidence/generated/`.
 - `tsconfig.json` applies the repository TypeScript checker to the executable ESM scripts without
@@ -31,18 +33,17 @@ Pass a normalised candidate file explicitly before replacing the committed store
 node scripts/validate-user-feedback.mjs path/to/sanitised-responses.json
 ```
 
-Generate MkDocs evidence from a local OneDrive-synchronised directory of JSON response files:
+Copy local OneDrive-synchronised JSON response files into the ignored input directory:
 
 ```bash
-node scripts/generate-user-testing-evidence.mjs "path/to/Sport Analytics/User Testing/responses"
+npm run retrieve:user-testing-feedback -- "path/to/Sport Analytics/User Testing/responses"
 ```
 
-To exercise the complete local validation and generation path without contacting OneDrive, use a
-reviewed local directory containing fixture or approved anonymised JSON files:
+Validate and generate evidence from that directory:
 
 ```bash
-node scripts/user-feedback-ingestion.mjs path/to/responses
-npm run generate:user-testing-evidence -- path/to/responses
+node scripts/user-feedback-ingestion.mjs testing/user-feedback/input
+npm run generate:user-testing-evidence -- testing/user-feedback/input
 npm run test:user-feedback
 ```
 
@@ -65,12 +66,10 @@ The generator reads local files synchronised by Power Automate from:
 OneDrive/Sport Analytics/User Testing/responses/*.json
 ```
 
-CI retrieves that source with these repository Actions secrets. They must never be committed or
-printed in logs:
-
-- `USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID`
-- `USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID`
-- `USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN`
+Documentation deployment does not access OneDrive. It runs the generator against the committed empty
+response store in `input/responses.json`, which verifies the generation path without publishing
+fabricated participant evidence. Local OneDrive imports remain ignored and are generated only when a
+developer deliberately runs the retrieval command above.
 
 Each JSON file must be either one response object or the response-store envelope. Every response
 requires these fields:

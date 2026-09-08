@@ -24,15 +24,12 @@ test('automatic documentation deployment waits for validated main quality and pu
 test('automatic documentation deployment rebuilds the deployable site strictly and smoke checks Cloudflare', () => {
   const job = automaticDocsJob();
 
-  assert.match(job, /USER_TESTING_FEEDBACK_ONEDRIVE_DRIVE_ID/);
-  assert.match(job, /USER_TESTING_FEEDBACK_ONEDRIVE_FOLDER_ID/);
-  assert.match(job, /USER_TESTING_FEEDBACK_ONEDRIVE_ACCESS_TOKEN/);
-  assert.match(job, /retrieve-user-testing-feedback\.mjs \.user-testing-feedback/);
-  assert.match(job, /user-feedback-ingestion\.mjs \.user-testing-feedback/);
-  assert.match(job, /generate:user-testing-evidence -- \.user-testing-feedback/);
+  assert.match(job, /generate:user-testing-evidence -- testing\/user-feedback\/input/);
+  assert.doesNotMatch(job, /USER_TESTING_FEEDBACK_ONEDRIVE/);
+  assert.doesNotMatch(job, /retrieve-user-testing-feedback\.mjs/);
   assert.match(job, /python -m mkdocs build --strict/);
   assert.ok(
-    job.indexOf('generate:user-testing-evidence -- .user-testing-feedback') <
+    job.indexOf('generate:user-testing-evidence -- testing/user-feedback/input') <
       job.indexOf('python -m mkdocs build --strict'),
     'user-testing evidence must be generated before the MkDocs build',
   );
@@ -47,12 +44,15 @@ test('standalone documentation deployment workflow is manual recovery only', () 
   assert.match(manualDocsWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(manualDocsWorkflow, /\n\s*push:/);
   assert.match(manualDocsWorkflow, /python -m mkdocs build --strict/);
-  assert.match(manualDocsWorkflow, /retrieve-user-testing-feedback\.mjs \.user-testing-feedback/);
-  assert.match(manualDocsWorkflow, /user-feedback-ingestion\.mjs \.user-testing-feedback/);
-  assert.match(manualDocsWorkflow, /generate:user-testing-evidence -- \.user-testing-feedback/);
+  assert.match(
+    manualDocsWorkflow,
+    /generate:user-testing-evidence -- testing\/user-feedback\/input/,
+  );
+  assert.doesNotMatch(manualDocsWorkflow, /USER_TESTING_FEEDBACK_ONEDRIVE/);
+  assert.doesNotMatch(manualDocsWorkflow, /retrieve-user-testing-feedback\.mjs/);
   assert.match(manualDocsWorkflow, /wrangler pages deploy site/);
   assert.ok(
-    manualDocsWorkflow.indexOf('generate:user-testing-evidence -- .user-testing-feedback') <
+    manualDocsWorkflow.indexOf('generate:user-testing-evidence -- testing/user-feedback/input') <
       manualDocsWorkflow.indexOf('python -m mkdocs build --strict'),
     'manual recovery must generate user-testing evidence before the MkDocs build',
   );
