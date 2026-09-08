@@ -126,6 +126,33 @@ export const batchReportContextSchema = z
   })
   .strict();
 
+export const batchReferenceEntityTypeSchema = z.enum([
+  'competition',
+  'team',
+  'fixture',
+  'innings',
+  'participant',
+]);
+
+export const batchReferenceResolutionSchema = z
+  .object({
+    referencePath: z.string().min(1),
+    entityType: batchReferenceEntityTypeSchema,
+    state: z.enum(['ambiguous', 'unresolved', 'invalid']),
+    submittedReference: z.unknown(),
+    reason: z.string().min(1).nullable(),
+    requiredAction: z.enum(['select_candidate', 'contact_reviewer']),
+    candidates: z.array(
+      z
+        .object({
+          candidateReference: z.string().uuid(),
+          label: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
 export const batchReportErrorSchema = z
   .object({
     ruleCode: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
@@ -143,6 +170,7 @@ export const batchReportItemSchema = z
     context: batchReportContextSchema,
     stagedRecordId: apiIdentifierSchema.nullable(),
     acceptedRecordId: apiIdentifierSchema.nullable(),
+    referenceResolutions: z.array(batchReferenceResolutionSchema),
     errors: z.array(batchReportErrorSchema),
   })
   .strict();
@@ -173,6 +201,29 @@ export const batchReportDownloadSchema = batchReportSchema.omit({
 export const batchReportDownloadResponseSchema =
   createResourceResponseSchema(batchReportDownloadSchema);
 
+export const batchReferenceMappingRequestSchema = z
+  .object({
+    itemOrdinal: z.number().int().nonnegative(),
+    referencePath: z.string().trim().min(1).max(1_000),
+    candidateReference: z.string().uuid(),
+    decisionKey: z.string().trim().min(1).max(255),
+  })
+  .strict();
+
+export const batchReferenceMappingReceiptSchema = z
+  .object({
+    batchReference: batchReferenceSchema,
+    decisionReference: z.string().uuid(),
+    status: z.enum(['queued', 'applied']),
+    statusUrl: z.string().startsWith('/api/v1/batches/'),
+    submittedAt: apiDateTimeSchema,
+  })
+  .strict();
+
+export const batchReferenceMappingResponseSchema = createResourceResponseSchema(
+  batchReferenceMappingReceiptSchema,
+);
+
 export type BatchMetadata = z.infer<typeof batchMetadataSchema>;
 export type BatchReceiptResponse = z.infer<typeof batchReceiptResponseSchema>;
 export type BatchStatusResponse = z.infer<typeof batchStatusResponseSchema>;
@@ -187,3 +238,6 @@ export type BatchReportItem = z.infer<typeof batchReportItemSchema>;
 export type BatchReportRuleGroup = z.infer<typeof batchReportRuleGroupSchema>;
 export type BatchReportResponse = z.infer<typeof batchReportResponseSchema>;
 export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResponseSchema>;
+export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
+export type BatchReferenceMappingRequest = z.infer<typeof batchReferenceMappingRequestSchema>;
+export type BatchReferenceMappingResponse = z.infer<typeof batchReferenceMappingResponseSchema>;

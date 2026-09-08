@@ -153,6 +153,7 @@ describe('batch report view', () => {
         },
         stagedRecordId: '41',
         acceptedRecordId: '91',
+        referenceResolutions: [],
         errors: [],
       },
       {
@@ -174,6 +175,7 @@ describe('batch report view', () => {
         },
         stagedRecordId: '42',
         acceptedRecordId: null,
+        referenceResolutions: [],
         errors: [
           {
             ruleCode: 'REFERENCE_RESOLUTION_FAILED',

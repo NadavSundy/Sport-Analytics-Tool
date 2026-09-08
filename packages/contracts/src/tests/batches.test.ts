@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 import {
   BATCH_STATES,
   batchListResponseSchema,
+  batchReferenceMappingRequestSchema,
+  batchReferenceMappingResponseSchema,
   batchReportResponseSchema,
   batchReviewRequestSchema,
   batchStatusResponseSchema,
@@ -90,6 +92,22 @@ describe('batch reporting contracts', () => {
             },
             stagedRecordId: '42',
             acceptedRecordId: null,
+            referenceResolutions: [
+              {
+                referencePath: 'fixtures.0.innings.0.events.1.striker',
+                entityType: 'participant',
+                state: 'ambiguous',
+                submittedReference: { context: { name: 'A. Smith' } },
+                reason: 'Two squad members have this name.',
+                requiredAction: 'select_candidate',
+                candidates: [
+                  {
+                    candidateReference: 'e7b5945d-d738-5fc8-9278-8b15f50ab7c5',
+                    label: 'A. Smith (Wits)',
+                  },
+                ],
+              },
+            ],
             errors: [
               {
                 ruleCode: 'REFERENCE_RESOLUTION_FAILED',
@@ -126,5 +144,28 @@ describe('batch reporting contracts', () => {
         },
       }).success,
     ).toBe(false);
+  });
+
+  test('accepts an opaque, idempotent reference mapping and its durable receipt', () => {
+    const candidateReference = 'e7b5945d-d738-5fc8-9278-8b15f50ab7c5';
+    expect(
+      batchReferenceMappingRequestSchema.safeParse({
+        itemOrdinal: 1,
+        referencePath: 'fixtures.0.innings.0.events.1.striker',
+        candidateReference,
+        decisionKey: 'map-smith-1',
+      }).success,
+    ).toBe(true);
+    expect(
+      batchReferenceMappingResponseSchema.safeParse({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-07T12:00:00.000Z',
+        },
+      }).success,
+    ).toBe(true);
   });
 });

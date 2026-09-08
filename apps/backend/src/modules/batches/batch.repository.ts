@@ -128,6 +128,7 @@ export interface BatchReportItemRecord {
   sourceIdentity: string | null;
   sourceLocation: JsonValue | null;
   referenceResolutionState: BatchReferenceResolutionState | null;
+  resolvedReferences: JsonValue | null;
   state: BatchItemState | null;
   rejectionCode: string | null;
   publishedEventId: string | null;
@@ -208,8 +209,33 @@ interface ApplyReviewDecisionInput extends ReviewDecisionInput {
   reason: string;
 }
 
+interface QueueReferenceMappingInput {
+  decisionReference: string;
+  batchId: string;
+  actorId: string;
+  itemOrdinal: number;
+  referencePath: string;
+  entityType: string;
+  candidateId: string;
+  candidateLabel: string;
+  decisionKey: string;
+}
+
+interface BatchReferenceMappingRecord {
+  decisionReference: string;
+  itemOrdinal: number;
+  referencePath: string;
+  entityType: string;
+  candidateId: string;
+  candidateLabel: string;
+  decisionKey: string;
+  state: 'queued' | 'applied' | 'failed';
+  decidedAt: string;
+}
+
 export class BatchReviewConflictError extends Error {}
 export class BatchReviewResolutionError extends Error {}
+export class BatchReferenceMappingConflictError extends Error {}
 
 /**
  * The outcome of resolving one staged item's references.
@@ -268,6 +294,7 @@ export interface BatchRepository {
     review: BatchReviewDecisionRecord;
     resumePublication: boolean;
   }>;
+  queueReferenceMapping(input: QueueReferenceMappingInput): Promise<BatchReferenceMappingRecord>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
   publishAcceptedItems(batchId: string, workerId: string): Promise<BatchPublicationResult>;
@@ -906,6 +933,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
               (SELECT count(DISTINCT v.source_ordinal)
                FROM batch_validation_result v
                WHERE v.batch_id = b.batch_id AND v.severity = 'error'
+                 AND v.active
                  AND v.batch_item_id IS NULL)
             )::text AS rejected
           FROM batch b
@@ -942,6 +970,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             UNION
             SELECT source_ordinal FROM batch_validation_result
             WHERE batch_id = $1::bigint AND severity = 'error'
+              AND active
               AND batch_item_id IS NULL AND source_ordinal IS NOT NULL
           )
           SELECT
@@ -956,6 +985,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
               UNION
               SELECT source_ordinal FROM batch_validation_result
               WHERE batch_id = $1::bigint AND rule_code = 'DUPLICATE_BATCH_ITEM'
+                AND active
                 AND source_ordinal IS NOT NULL
             ) duplicates)::text AS duplicate,
             (SELECT count(DISTINCT ordinal) FROM (
@@ -964,6 +994,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
               UNION
               SELECT source_ordinal FROM batch_validation_result
               WHERE batch_id = $1::bigint AND rule_code LIKE '%CONFLICT%'
+                AND active
                 AND source_ordinal IS NOT NULL
             ) conflicts)::text AS conflicting
         `,
@@ -990,6 +1021,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             FROM batch_validation_result v
             LEFT JOIN batch_item i ON i.batch_item_id = v.batch_item_id
             WHERE v.batch_id = $1::bigint
+              AND v.active
               AND COALESCE(v.source_ordinal, i.ordinal) IS NOT NULL
           )
           SELECT
@@ -1001,6 +1033,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             i.source_identity AS "sourceIdentity",
             i.source_location AS "sourceLocation",
             i.reference_resolution_state::text AS "referenceResolutionState",
+            i.resolved_references AS "resolvedReferences",
             i.state::text AS state,
             i.rejection_code AS "rejectionCode",
             i.published_event_id::text AS "publishedEventId",
@@ -1020,6 +1053,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             ) AS rows
             FROM batch_validation_result v
             WHERE v.batch_id = $1::bigint
+              AND v.active
               AND COALESCE(v.source_ordinal, subjects.ordinal) = subjects.ordinal
               AND (v.batch_item_id IS NULL OR v.batch_item_id = i.batch_item_id)
               AND v.severity = 'error'
@@ -1038,7 +1072,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         database(),
         `SELECT rule_code AS "ruleCode", count(*)::text AS count
          FROM batch_validation_result
-         WHERE batch_id = $1::bigint AND severity = 'error'
+         WHERE batch_id = $1::bigint AND severity = 'error' AND active
          GROUP BY rule_code
          ORDER BY rule_code`,
         [batchId],
@@ -1341,6 +1375,156 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           decidedAt: decision.decidedAt.toISOString(),
         },
         resumePublication: input.decision === 'approved',
+      };
+    },
+
+    async queueReferenceMapping(input) {
+      if (!executor) {
+        return withTransaction(getDatabasePool(), (client) =>
+          createBatchRepository(client).queueReferenceMapping(input),
+        );
+      }
+
+      const locked = await executeQuery<BatchRow>(
+        executor,
+        `SELECT ${batchSelection} FROM batch WHERE batch_id = $1::bigint FOR UPDATE`,
+        [input.batchId],
+      );
+      const batch = mapBatch(requireRow(locked.rows[0], 'Batch mapping lookup'));
+      const existing = await executeQuery<{
+        decisionReference: string;
+        itemOrdinal: number;
+        referencePath: string;
+        entityType: string;
+        candidateId: string;
+        candidateLabel: string;
+        decisionKey: string;
+        state: BatchReferenceMappingRecord['state'];
+        decidedAt: Date;
+      }>(
+        executor,
+        `SELECT decision_reference::text AS "decisionReference", item_ordinal AS "itemOrdinal",
+                reference_path AS "referencePath", entity_type AS "entityType",
+                candidate_id::text AS "candidateId", candidate_label AS "candidateLabel",
+                decision_key AS "decisionKey", state::text AS state, decided_at AS "decidedAt"
+         FROM batch_reference_mapping_decision
+         WHERE batch_id = $1::bigint
+           AND ((item_ordinal = $2::integer AND reference_path = $3) OR decision_key = $4)
+         FOR UPDATE`,
+        [input.batchId, input.itemOrdinal, input.referencePath, input.decisionKey],
+      );
+      const prior = existing.rows[0];
+      if (prior) {
+        if (
+          prior.referencePath !== input.referencePath ||
+          prior.itemOrdinal !== input.itemOrdinal ||
+          prior.candidateId !== input.candidateId ||
+          prior.decisionKey !== input.decisionKey
+        ) {
+          throw new BatchReferenceMappingConflictError(
+            'This reference or decision key already has a different mapping.',
+          );
+        }
+        return { ...prior, decidedAt: prior.decidedAt.toISOString() };
+      }
+      if (!['rejected', 'awaiting_review', 'correction_requested'].includes(batch.state)) {
+        throw new BatchReferenceMappingConflictError(
+          'Reference mappings can only be applied after validation has finished.',
+        );
+      }
+
+      const inserted = await executeQuery<{
+        decisionReference: string;
+        state: BatchReferenceMappingRecord['state'];
+        decidedAt: Date;
+      }>(
+        executor,
+        `INSERT INTO batch_reference_mapping_decision (
+           decision_reference, batch_id, item_ordinal, reference_path, entity_type, candidate_id,
+           candidate_label, actor_id, decision_key
+         ) VALUES ($1::uuid,$2::bigint,$3::integer,$4,$5,$6::bigint,$7,$8::bigint,$9)
+         RETURNING decision_reference::text AS "decisionReference", state::text AS state,
+                   decided_at AS "decidedAt"`,
+        [
+          input.decisionReference,
+          input.batchId,
+          input.itemOrdinal,
+          input.referencePath,
+          input.entityType,
+          input.candidateId,
+          input.candidateLabel,
+          input.actorId,
+          input.decisionKey,
+        ],
+      );
+
+      await executeQuery(
+        executor,
+        `UPDATE batch_validation_result
+         SET active = false, superseded_at = now()
+         WHERE batch_id = $1::bigint AND active`,
+        [input.batchId],
+      );
+      await executeQuery(
+        executor,
+        `UPDATE batch_item
+         SET innings_id=NULL, state='pending', rejection_code=NULL, rejection_detail=NULL
+         WHERE batch_id=$1::bigint AND published_event_id IS NULL`,
+        [input.batchId],
+      );
+      await executeQuery(
+        executor,
+        `UPDATE batch_checkpoint
+         SET last_ordinal = -1, lease_owner = NULL, lease_expires_at = NULL, attempt_count = 0
+         WHERE batch_id = $1::bigint AND phase = 'validating'`,
+        [input.batchId],
+      );
+      const job = await executeQuery<{ jobId: string }>(
+        executor,
+        `UPDATE background_job
+         SET state='queued', progress_current=0, progress_total=NULL, attempt_count=0,
+             started_at=NULL, completed_at=NULL, last_error_code=NULL, last_error_message=NULL
+         WHERE batch_id=$1::bigint AND job_type='batch.validate'
+         RETURNING job_id::text AS "jobId"`,
+        [input.batchId],
+      );
+      const jobId = requireRow(job.rows[0], 'Batch validation job reset').jobId;
+      await executeQuery(
+        executor,
+        `INSERT INTO outbox_message (
+           outbox_message_id, job_id, message_type, contract_version, body
+         ) VALUES ($1::uuid,$2::uuid,'batch.validate',1,
+           jsonb_build_object('type','batch.validate','version',1,'commandId',$1::text,
+             'jobId',$2::text,'batchId',$3::text,'batchReference',$4::text))`,
+        [randomUUID(), jobId, batch.batchId, batch.batchReference],
+      );
+      await executeQuery(executor, `UPDATE batch SET state='stored' WHERE batch_id=$1::bigint`, [
+        input.batchId,
+      ]);
+      await executeQuery(
+        executor,
+        `INSERT INTO batch_state_transition (
+           batch_id,from_state,to_state,actor_kind,actor_identifier,reason
+         ) VALUES ($1::bigint,$2::batch_state,'stored','api',$3,$4)`,
+        [
+          input.batchId,
+          batch.state,
+          input.actorId,
+          `Reference mapping queued for ${input.referencePath}.`,
+        ],
+      );
+
+      const row = requireRow(inserted.rows[0], 'Batch mapping decision insertion');
+      return {
+        decisionReference: row.decisionReference,
+        itemOrdinal: input.itemOrdinal,
+        referencePath: input.referencePath,
+        entityType: input.entityType,
+        candidateId: input.candidateId,
+        candidateLabel: input.candidateLabel,
+        decisionKey: input.decisionKey,
+        state: row.state,
+        decidedAt: row.decidedAt.toISOString(),
       };
     },
 

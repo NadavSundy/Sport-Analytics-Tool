@@ -53,6 +53,7 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
     getLatestReviewDecision: vi.fn().mockResolvedValue(null),
     applyReviewDecision: vi.fn(),
+    queueReferenceMapping: vi.fn(),
     insertBatchItems: vi.fn(),
     listBatchItems: vi.fn(),
     findCheckpoint: vi.fn(),
@@ -354,6 +355,101 @@ describe('batch result reporting service', () => {
     expect(listBatches).toHaveBeenLastCalledWith(
       expect.objectContaining({ competitionIds: ['5', '6'] }),
     );
+  });
+
+  test('exposes opaque candidate labels and queues a currently valid mapping', async () => {
+    const unresolvedItem = {
+      batchItemId: '42',
+      batchId: persistedBatch.batchId,
+      ordinal: 1,
+      inningsId: null,
+      overNumber: 4,
+      positionInOver: 3,
+      payload: {},
+      sourceIdentity: 'event-2',
+      sourceLocation: { filePath: 'events.json', rowNumber: 13 },
+      referenceResolutionState: 'ambiguous' as const,
+      resolvedReferences: {
+        participants: {
+          striker: {
+            referencePath: 'fixtures.0.innings.0.events.1.striker',
+            entityType: 'participant',
+            state: 'ambiguous',
+            submittedReference: { context: { name: 'A. Smith' } },
+            canonicalId: null,
+            matchedBy: null,
+            candidates: [
+              { canonicalId: '71', label: 'A. Smith (Wits)' },
+              { canonicalId: '72', label: 'A. Smith (UCT)', outOfScope: true },
+            ],
+            reason: 'Two people share this name.',
+          },
+        },
+      },
+      state: 'rejected' as const,
+      rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+      rejectionDetail: null,
+      publishedEventId: null,
+      errors: [],
+    };
+    const queueReferenceMapping = vi.fn().mockResolvedValue({
+      decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+      itemOrdinal: 1,
+      referencePath: 'fixtures.0.innings.0.events.1.striker',
+      entityType: 'participant',
+      candidateId: '71',
+      candidateLabel: 'A. Smith (Wits)',
+      decisionKey: 'map-smith-1',
+      state: 'queued',
+      decidedAt: '2026-09-07T12:00:00.000Z',
+    });
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, state: 'rejected' }),
+      listBatchReportItems: vi.fn().mockResolvedValue([unresolvedItem]),
+      listBatchItems: vi.fn().mockResolvedValue([unresolvedItem]),
+      queueReferenceMapping,
+    });
+    const service = createBatchService({} as BatchPayloadStorageService, batches);
+    const account = createTestAccount({ role: 'submitter' });
+    const report = await service.getReport(account, persistedBatch.batchReference, { limit: 50 });
+    const resolution = report.data.items[0]!.referenceResolutions[0]!;
+    expect(resolution).toMatchObject({
+      entityType: 'participant',
+      requiredAction: 'select_candidate',
+      candidates: [{ label: 'A. Smith (Wits)' }],
+    });
+    expect(JSON.stringify(resolution)).not.toContain('71');
+    expect(JSON.stringify(resolution)).not.toContain('72');
+
+    const response = await service.mapReference(account, persistedBatch.batchReference, {
+      itemOrdinal: 1,
+      referencePath: resolution.referencePath,
+      candidateReference: resolution.candidates[0]!.candidateReference,
+      decisionKey: 'map-smith-1',
+    });
+    expect(response.data).toMatchObject({ status: 'queued' });
+    expect(queueReferenceMapping).toHaveBeenCalledWith(
+      expect.objectContaining({ candidateId: '71', candidateLabel: 'A. Smith (Wits)' }),
+    );
+  });
+
+  test('rejects stale opaque candidate selections before persistence', async () => {
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, state: 'rejected' }),
+      listBatchItems: vi.fn().mockResolvedValue([]),
+    });
+    await expect(
+      createBatchService({} as BatchPayloadStorageService, batches).mapReference(
+        createTestAccount({ role: 'submitter' }),
+        persistedBatch.batchReference,
+        {
+          itemOrdinal: 0,
+          referencePath: 'fixtures.0.striker',
+          candidateReference: 'e7b5945d-d738-5fc8-9278-8b15f50ab7c5',
+          decisionKey: 'stale',
+        },
+      ),
+    ).rejects.toBeInstanceOf(BatchConflictError);
   });
 });
 

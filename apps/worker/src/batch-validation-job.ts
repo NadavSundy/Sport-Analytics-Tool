@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
-import { resolvePackageReferences } from '@sport-analytics/batch-processing';
+import {
+  resolvePackageReferences,
+  type ReferenceResolutionOverride,
+} from '@sport-analytics/batch-processing';
 import {
   createCricketValidationState,
   submissionEventSchema,
@@ -38,6 +41,63 @@ const batchValidationJobSchema = z.object({
   batchReference: z.string().uuid(),
   traceId: z.string().trim().min(1).max(128).optional(),
 });
+
+interface ReferenceMappingRow {
+  decisionReference: string;
+  itemOrdinal: number;
+  referencePath: string;
+  entityType: ReferenceResolutionOverride['entityType'];
+  canonicalId: string;
+}
+
+export function referenceOverridesForChunk(
+  mappings: readonly ReferenceMappingRow[],
+  referencePathByOrdinal: ReadonlyMap<number, string>,
+) {
+  const overrides = new Map<string, ReferenceResolutionOverride>();
+  const decisionReferencesByPath = new Map<string, string[]>();
+  const conflictingPaths = new Set<string>();
+  for (const mapping of mappings) {
+    const currentEventPath = referencePathByOrdinal.get(mapping.itemOrdinal);
+    if (!currentEventPath) continue;
+    const eventMarker = mapping.referencePath.match(/\.events\.\d+/);
+    let currentPath: string;
+    if (mapping.referencePath === 'competition') {
+      currentPath = 'competition';
+    } else if (eventMarker?.index !== undefined) {
+      currentPath = `${currentEventPath}${mapping.referencePath.slice(eventMarker.index + eventMarker[0].length)}`;
+    } else {
+      const currentFixture = currentEventPath.match(/^fixtures\.\d+/)?.[0];
+      const currentInnings = currentEventPath.match(/^fixtures\.\d+\.innings\.\d+/)?.[0];
+      const storedInnings = mapping.referencePath.match(/^fixtures\.\d+\.innings\.\d+/)?.[0];
+      const storedFixture = mapping.referencePath.match(/^fixtures\.\d+/)?.[0];
+      if (storedInnings && currentInnings) {
+        currentPath = `${currentInnings}${mapping.referencePath.slice(storedInnings.length)}`;
+      } else if (storedFixture && currentFixture) {
+        currentPath = `${currentFixture}${mapping.referencePath.slice(storedFixture.length)}`;
+      } else {
+        continue;
+      }
+    }
+    const existing = overrides.get(currentPath);
+    if (existing && existing.canonicalId !== mapping.canonicalId) {
+      overrides.delete(currentPath);
+      decisionReferencesByPath.delete(currentPath);
+      conflictingPaths.add(currentPath);
+      continue;
+    }
+    if (conflictingPaths.has(currentPath)) continue;
+    overrides.set(currentPath, {
+      entityType: mapping.entityType,
+      canonicalId: mapping.canonicalId,
+    });
+    decisionReferencesByPath.set(currentPath, [
+      ...(decisionReferencesByPath.get(currentPath) ?? []),
+      mapping.decisionReference,
+    ]);
+  }
+  return { overrides, decisionReferencesByPath };
+}
 
 interface StoredSource {
   storageKey: string;
@@ -1035,7 +1095,19 @@ export function createBatchValidationJobHandler(
                 source_identity,source_location,reference_resolution_state,
                 resolved_references,state,rejection_code,rejection_detail
               ) VALUES ${tuples.join(',')}
-              ON CONFLICT DO NOTHING
+              ON CONFLICT (batch_id, ordinal) DO UPDATE SET
+                innings_id = EXCLUDED.innings_id,
+                over_number = EXCLUDED.over_number,
+                position_in_over = EXCLUDED.position_in_over,
+                payload = EXCLUDED.payload,
+                source_identity = EXCLUDED.source_identity,
+                source_location = EXCLUDED.source_location,
+                reference_resolution_state = EXCLUDED.reference_resolution_state,
+                resolved_references = EXCLUDED.resolved_references,
+                state = EXCLUDED.state,
+                rejection_code = EXCLUDED.rejection_code,
+                rejection_detail = EXCLUDED.rejection_detail
+              WHERE batch_item.published_event_id IS NULL
               RETURNING batch_item_id::text AS "batchItemId", ordinal
             `,
               values,
@@ -1128,6 +1200,7 @@ export function createBatchValidationJobHandler(
   async function finalise(
     claimResult: ClaimResult,
     eventCount: number,
+    appliedDecisionReferences: ReadonlySet<string>,
   ): Promise<'awaiting_review' | 'rejected'> {
     return transaction(database, async (client) => {
       const lease = await client.query(
@@ -1160,6 +1233,15 @@ export function createBatchValidationJobHandler(
         `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
          VALUES ($1::bigint,'validating',$2::batch_state,'worker',$3,$4)`,
         [claimResult.batchId, target, options.workerId, 'Asynchronous validation completed.'],
+      );
+      await client.query(
+        `UPDATE batch_reference_mapping_decision
+         SET state = CASE WHEN decision_reference = ANY($2::uuid[]) THEN 'applied' ELSE 'failed' END,
+             applied_at = CASE WHEN decision_reference = ANY($2::uuid[]) THEN now() ELSE NULL END,
+             error_message = CASE WHEN decision_reference = ANY($2::uuid[])
+               THEN NULL ELSE 'The selected candidate is no longer available in the batch context.' END
+         WHERE batch_id=$1::bigint AND state='queued'`,
+        [claimResult.batchId, [...appliedDecisionReferences]],
       );
       if (target === 'rejected') metrics.batchesRejected += 1;
       else metrics.batchesSucceeded += 1;
@@ -1252,6 +1334,15 @@ export function createBatchValidationJobHandler(
 
     const startedAt = Date.now();
     try {
+      const mappingRows = await database.query<ReferenceMappingRow>(
+        `SELECT decision_reference::text AS "decisionReference", item_ordinal AS "itemOrdinal",
+                reference_path AS "referencePath", entity_type AS "entityType",
+                candidate_id::text AS "canonicalId"
+         FROM batch_reference_mapping_decision
+         WHERE batch_id=$1::bigint AND state IN ('queued','applied')`,
+        [claimResult.batchId],
+      );
+      const appliedDecisionReferences = new Set<string>();
       const source = await storedSource(claimResult.sourceUri);
       const openSource: OpenBatchSource = () => objectStorage.read(source.storageKey);
       const scan = await scanBatchReferences(openSource, source.mediaType);
@@ -1275,9 +1366,23 @@ export function createBatchValidationJobHandler(
       const processCandidateChunk = async (): Promise<void> => {
         if (candidateChunk.length === 0) return;
         const referenceChunk = buildReferenceChunk(candidateChunk);
+        const { overrides: referenceOverrides, decisionReferencesByPath } =
+          referenceOverridesForChunk(mappingRows.rows, referenceChunk.referencePathByOrdinal);
         const resolution = referenceChunk.referencePackage
-          ? await resolvePackageReferences(database, referenceChunk.referencePackage)
+          ? await resolvePackageReferences(
+              database,
+              referenceChunk.referencePackage,
+              referenceOverrides,
+            )
           : { outcomes: [], items: [] };
+        for (const outcome of resolution.outcomes) {
+          if (outcome.matchedBy === 'manual') {
+            for (const decisionReference of decisionReferencesByPath.get(outcome.referencePath) ??
+              []) {
+              appliedDecisionReferences.add(decisionReference);
+            }
+          }
+        }
         const resolutionByPath = new Map(
           resolution.items.map((item) => [item.referencePath, item]),
         );
@@ -1406,7 +1511,7 @@ export function createBatchValidationJobHandler(
       if (chunkLastOrdinal > persistedOrdinal) {
         await writeChunk(claimResult, [], chunkLastOrdinal, scan.eventCount);
       }
-      const target = await finalise(claimResult, scan.eventCount);
+      const target = await finalise(claimResult, scan.eventCount, appliedDecisionReferences);
       logger.info('Batch validation completed.', {
         batchReference: claimResult.batchReference,
         jobId: claimResult.jobId,

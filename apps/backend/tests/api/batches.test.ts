@@ -59,6 +59,15 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
       data: { batch: status.data, errorGroups: [], items: [] },
     }),
     review: vi.fn<BatchService['review']>().mockResolvedValue(status),
+    mapReference: vi.fn<BatchService['mapReference']>().mockResolvedValue({
+      data: {
+        batchReference: reference,
+        decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+        status: 'queued',
+        statusUrl: `/api/v1/batches/${reference}`,
+        submittedAt: '2026-09-07T12:00:00.000Z',
+      },
+    }),
     ...overrides,
   };
 }
@@ -315,6 +324,78 @@ describe('batch receipt API', () => {
       ),
     ).expect(403);
     expect(batchService.receive).not.toHaveBeenCalled();
+  });
+
+  test('accepts an authorised opaque reference mapping for asynchronous processing', async () => {
+    const mapReference = vi.fn<BatchService['mapReference']>().mockResolvedValue({
+      data: {
+        batchReference: reference,
+        decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+        status: 'queued',
+        statusUrl: `/api/v1/batches/${reference}`,
+        submittedAt: '2026-09-07T12:00:00.000Z',
+      },
+    });
+    const app = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ mapReference }),
+    );
+    const decision = {
+      itemOrdinal: 1,
+      referencePath: 'fixtures.0.innings.0.events.1.striker',
+      candidateReference: 'e7b5945d-d738-5fc8-9278-8b15f50ab7c5',
+      decisionKey: 'map-smith-1',
+    };
+    await request(app)
+      .post(`/api/v1/batches/${reference}/reference-mappings`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(decision)
+      .expect(202);
+    expect(mapReference).toHaveBeenCalledWith(expect.anything(), reference, decision);
+  });
+
+  test('rejects malformed and conflicting reference mapping decisions', async () => {
+    const mapReference = vi
+      .fn<BatchService['mapReference']>()
+      .mockRejectedValue(new BatchConflictError('The candidate is stale.'));
+    const app = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ mapReference }),
+    );
+    await request(app)
+      .post(`/api/v1/batches/${reference}/reference-mappings`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ itemOrdinal: -1, referencePath: '', candidateReference: 'invalid', decisionKey: '' })
+      .expect(422);
+    const response = await request(app)
+      .post(`/api/v1/batches/${reference}/reference-mappings`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({
+        itemOrdinal: 1,
+        referencePath: 'fixtures.0.striker',
+        candidateReference: 'e7b5945d-d738-5fc8-9278-8b15f50ab7c5',
+        decisionKey: 'stale',
+      })
+      .expect(409);
+    expect(response.body.error.code).toBe('BATCH_REFERENCE_MAPPING_CONFLICT');
   });
 
   test.each(['approved', 'rejected', 'returned_for_correction'] as const)(
