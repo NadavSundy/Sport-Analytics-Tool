@@ -862,6 +862,56 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test.each(['active validation error', 'published-delivery conflict'])(
+    'blocks approval for an %s without persisting a decision',
+    async (blocker) => {
+      await withRolledBackTransaction(async (client) => {
+        const current = testRecords();
+        const repository = createBatchRepository(client);
+        const batch = await repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-blocked-review-${blocker}`,
+          state: 'awaiting_review',
+        });
+        const [item] = await repository.insertBatchItems(batch.batchId, [
+          {
+            ordinal: 0,
+            inningsId: current.inningsId,
+            overNumber: 0,
+            positionInOver: 1,
+            payload: {},
+            referenceResolutionState: 'resolved',
+            state: blocker === 'active validation error' ? 'accepted' : 'rejected',
+            rejectionCode:
+              blocker === 'published-delivery conflict' ? 'PUBLISHED_DELIVERY_CONFLICT' : null,
+          },
+        ]);
+        if (blocker === 'active validation error') {
+          await repository.recordValidationResult({
+            batchId: batch.batchId,
+            batchItemId: item.batchItemId,
+            ruleCode: 'EVENT_SCHEMA_INVALID',
+            ruleVersion: '1.0',
+            severity: 'error',
+            message: 'Runs total is inconsistent.',
+          });
+        }
+
+        await expect(
+          repository.applyReviewDecision({
+            batchId: batch.batchId,
+            actorId: current.accountId,
+            decision: 'approved',
+            reason: 'Unsafe approval attempt.',
+          }),
+        ).rejects.toBeInstanceOf(BatchReviewResolutionError);
+        await expect(repository.getLatestReviewDecision(batch.batchId)).resolves.toBeNull();
+      });
+    },
+  );
+
   test.each([
     ['rejected', 'rejected'],
     ['returned_for_correction', 'correction_requested'],
@@ -1705,11 +1755,45 @@ describe.sequential('batch repository database integration', () => {
       await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
         { ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 },
       ]);
+      await expect(repository.getBatchResolutionCounts(batch.batchId)).resolves.toEqual({
+        resolved: 1,
+        ambiguous: 0,
+        unresolved: 1,
+        invalid: 0,
+        proposed: 0,
+      });
+      const fixtureSummaries = await repository.listBatchFixtureSummaries(batch.batchId);
+      expect(fixtureSummaries).toHaveLength(2);
+      expect(fixtureSummaries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fixtureId: current.fixtureId,
+            total: 1,
+            accepted: 1,
+          }),
+          expect.objectContaining({
+            fixtureId: null,
+            label: 'Fixture unresolved',
+            total: 1,
+            rejected: 1,
+            unresolved: 1,
+          }),
+        ]),
+      );
       const firstPage = await repository.listBatchReportItems(batch.batchId, {
         limit: 1,
       });
       expect(firstPage).toHaveLength(1);
       expect(firstPage[0]).toMatchObject({ ordinal: 0, publishedEventId: current.deliveryId });
+      await expect(
+        repository.listBatchReportItems(batch.batchId, { acceptedOnly: true, limit: 15 }),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          ordinal: 0,
+          fixtureId: current.fixtureId,
+          fixtureLabel: expect.stringContaining(' · '),
+        }),
+      ]);
       await expect(
         repository.listBatchReportItems(batch.batchId, { afterOrdinal: 0, limit: 1 }),
       ).resolves.toEqual([

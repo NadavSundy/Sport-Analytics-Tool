@@ -1315,6 +1315,28 @@ paths:
             in: query,
             schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
           }
+        - {
+            name: status,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum:
+                  [
+                    received,
+                    stored,
+                    validating,
+                    rejected,
+                    awaiting_review,
+                    correction_requested,
+                    publishing,
+                    published,
+                    partially_published,
+                    failed,
+                    superseded,
+                  ],
+              },
+          }
       responses:
         '200':
           description: Submitters receive only their own batches; administrator reviewers receive their authorised repository scope.
@@ -1464,7 +1486,7 @@ paths:
     post:
       tags: [Batches]
       summary: Decide and, on approval, publish a validated staged batch
-      description: Competition-scoped administrators may approve, reject, or return a batch for correction. Approval records the decision and moves the batch to the resumable publishing state before accepted events are published; unresolved or ambiguous references prevent approval. Rejection and return do not alter public event data.
+      description: Competition-scoped administrators may approve, reject, or return a batch for correction. Approval records the decision and moves the batch to the resumable publishing state before accepted events are published; active blocking validation errors, conflicts, unresolved, invalid, or ambiguous references prevent approval. Rejection and return do not alter public event data.
       operationId: reviewBatch
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
@@ -3845,6 +3867,7 @@ components:
           updatedAt,
           progress,
           counts,
+          source,
           review,
         ]
       properties:
@@ -3871,6 +3894,21 @@ components:
         updatedAt: { type: string, format: date-time }
         progress: { $ref: '#/components/schemas/BatchProgress' }
         counts: { $ref: '#/components/schemas/BatchCounts' }
+        source:
+          type: object
+          additionalProperties: false
+          required: [fileName, checksum, packageVersion, submitter]
+          properties:
+            fileName: { type: [string, 'null'] }
+            checksum: { type: [string, 'null'], pattern: '^[0-9a-f]{64}$' }
+            packageVersion: { type: string, minLength: 1 }
+            submitter:
+              type: object
+              additionalProperties: false
+              required: [accountId, displayName]
+              properties:
+                accountId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+                displayName: { type: [string, 'null'] }
         review:
           oneOf:
             - { $ref: '#/components/schemas/BatchReviewDecision' }
@@ -3890,7 +3928,11 @@ components:
             accountId: { $ref: '#/components/schemas/DatabaseIdentifier' }
             displayName: { type: [string, 'null'] }
         decidedAt: { type: string, format: date-time }
-        reason: { type: string, minLength: 1, maxLength: 2000 }
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Reviewer-provided audit reason.
 
     BatchReviewRequest:
       type: object
@@ -3898,7 +3940,11 @@ components:
       required: [decision, reason]
       properties:
         decision: { type: string, enum: [approved, rejected, returned_for_correction] }
-        reason: { type: string, minLength: 1, maxLength: 2000 }
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Required for every decision; rejected and returned_for_correction decisions require at least 10 characters.
 
     BatchStatusResponse:
       type: object
@@ -3929,9 +3975,21 @@ components:
     BatchReportContext:
       type: object
       additionalProperties: false
-      required: [eventReference, inningsId, overNumber, positionInOver, description]
+      required:
+        [
+          eventReference,
+          fixtureId,
+          fixtureLabel,
+          inningsId,
+          overNumber,
+          positionInOver,
+          description,
+        ]
       properties:
         eventReference: { type: [string, 'null'] }
+        fixtureId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        fixtureLabel: { type: [string, 'null'], minLength: 1 }
         inningsId:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
         overNumber: { type: [integer, 'null'], minimum: 0 }
@@ -4007,13 +4065,69 @@ components:
         ruleCode: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
         count: { type: integer, minimum: 1 }
 
+    BatchFixtureSummary:
+      type: object
+      additionalProperties: false
+      required: [fixtureId, label, total, accepted, rejected, unresolved]
+      properties:
+        fixtureId:
+          { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        label: { type: string, minLength: 1 }
+        total: { type: integer, minimum: 0 }
+        accepted: { type: integer, minimum: 0 }
+        rejected: { type: integer, minimum: 0 }
+        unresolved: { type: integer, minimum: 0 }
+
+    BatchReviewSummary:
+      type: object
+      additionalProperties: false
+      required: [validation, resolution, approvalBlocked, blockingReasons]
+      properties:
+        validation:
+          type: object
+          additionalProperties: false
+          required: [accepted, rejected, blockingErrors, duplicate, conflicting]
+          properties:
+            accepted: { type: integer, minimum: 0 }
+            rejected: { type: integer, minimum: 0 }
+            blockingErrors: { type: integer, minimum: 0 }
+            duplicate: { type: integer, minimum: 0 }
+            conflicting: { type: integer, minimum: 0 }
+        resolution:
+          type: object
+          additionalProperties: false
+          required: [resolved, ambiguous, unresolved, invalid, proposed]
+          properties:
+            resolved: { type: integer, minimum: 0 }
+            ambiguous: { type: integer, minimum: 0 }
+            unresolved: { type: integer, minimum: 0 }
+            invalid: { type: integer, minimum: 0 }
+            proposed: { type: integer, minimum: 0 }
+        approvalBlocked: { type: boolean }
+        blockingReasons: { type: array, items: { type: string, minLength: 1 } }
+
     BatchReport:
       type: object
       additionalProperties: false
-      required: [batch, errorGroups, items, pagination, downloadUrl]
+      required:
+        [
+          batch,
+          errorGroups,
+          reviewSummary,
+          fixtureSummaries,
+          acceptedSamples,
+          items,
+          pagination,
+          downloadUrl,
+        ]
       properties:
         batch: { $ref: '#/components/schemas/BatchStatus' }
         errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
+        reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
+        fixtureSummaries:
+          { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        acceptedSamples:
+          { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
         pagination: { $ref: '#/components/schemas/PaginationMetadata' }
         downloadUrl: { type: string, pattern: '^/api/v1/batches/' }
@@ -4028,10 +4142,15 @@ components:
     BatchReportDownload:
       type: object
       additionalProperties: false
-      required: [batch, errorGroups, items]
+      required: [batch, errorGroups, reviewSummary, fixtureSummaries, acceptedSamples, items]
       properties:
         batch: { $ref: '#/components/schemas/BatchStatus' }
         errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
+        reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
+        fixtureSummaries:
+          { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        acceptedSamples:
+          { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
 
     BatchReportDownloadResponse:

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import {
   BATCH_STATES,
   batchListResponseSchema,
+  batchListQuerySchema,
   batchReferenceMappingRequestSchema,
   batchReferenceMappingResponseSchema,
   batchReportResponseSchema,
@@ -22,6 +23,12 @@ function status(state: (typeof BATCH_STATES)[number]) {
     statusUrl: `/api/v1/batches/${reference}`,
     receivedAt: '2026-09-03T10:00:00.000Z',
     updatedAt: '2026-09-03T10:05:00.000Z',
+    source: {
+      fileName: 'season.ndjson',
+      checksum: 'a'.repeat(64),
+      packageVersion: '1.0',
+      submitter: { accountId: '7', displayName: 'Data Submitter' },
+    },
     progress: { total: 3, processed: 3, accepted: 2, rejected: 1 },
     counts: { accepted: 2, rejected: 1, unresolved: 1, duplicate: 0, conflicting: 0 },
     review: null,
@@ -51,6 +58,13 @@ describe('batch reporting contracts', () => {
     ).toBe(true);
   });
 
+  test('accepts an awaiting-review queue filter', () => {
+    expect(batchListQuerySchema.parse({ status: 'awaiting_review' })).toEqual({
+      limit: 50,
+      status: 'awaiting_review',
+    });
+  });
+
   test.each(['approved', 'rejected', 'returned_for_correction'])(
     'accepts a reasoned %s review decision',
     (decision) => {
@@ -67,11 +81,49 @@ describe('batch reporting contracts', () => {
     ).toBe(false);
   });
 
+  test('requires a meaningful rejection or correction reason', () => {
+    expect(
+      batchReviewRequestSchema.safeParse({ decision: 'rejected', reason: 'No.' }).success,
+    ).toBe(false);
+    expect(batchReviewRequestSchema.safeParse({ decision: 'approved', reason: 'OK' }).success).toBe(
+      true,
+    );
+  });
+
   test('requires stable rules, complete locations, cricket context and traceability', () => {
     const response = {
       data: {
         batch: status('partially_published'),
         errorGroups: [{ ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 2 }],
+        reviewSummary: {
+          validation: {
+            accepted: 2,
+            rejected: 1,
+            blockingErrors: 2,
+            duplicate: 0,
+            conflicting: 0,
+          },
+          resolution: {
+            resolved: 2,
+            ambiguous: 1,
+            unresolved: 0,
+            invalid: 0,
+            proposed: 1,
+          },
+          approvalBlocked: true,
+          blockingReasons: ['Ambiguous references remain.'],
+        },
+        fixtureSummaries: [
+          {
+            fixtureId: '12',
+            label: 'Lions vs Bears · 2026-09-01',
+            total: 3,
+            accepted: 2,
+            rejected: 1,
+            unresolved: 1,
+          },
+        ],
+        acceptedSamples: [],
         items: [
           {
             ordinal: 1,
@@ -85,6 +137,8 @@ describe('batch reporting contracts', () => {
             },
             context: {
               eventReference: 'event-2',
+              fixtureId: '12',
+              fixtureLabel: 'Lions vs Bears · 2026-09-01',
               inningsId: null,
               overNumber: 4,
               positionInOver: 3,
@@ -121,6 +175,8 @@ describe('batch reporting contracts', () => {
                 },
                 context: {
                   eventReference: 'event-2',
+                  fixtureId: '12',
+                  fixtureLabel: 'Lions vs Bears · 2026-09-01',
                   inningsId: null,
                   overNumber: 4,
                   positionInOver: 3,

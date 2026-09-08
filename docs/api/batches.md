@@ -30,6 +30,25 @@ Revalidation uses the normal package resolver, event schema, cricket rules, and 
 checkpoint. Previous validation results remain retained as superseded evidence while status, counts,
 reports, and approval checks use only the current validation attempt.
 
+## Reviewer workspace
+
+Administrators use `/reviews/batches` to find only `awaiting_review` batches in their persisted
+competition scope. The authenticated batch list supports a `status` filter, while all list, report,
+mapping, and decision authorization remains enforced by the backend.
+
+Status and report responses include source filename, submitter label, received time, SHA-256
+checksum, and package version. Reports also include validation and reference-resolution counts,
+stable rule-code groups, fixture-level counts, and at most 15 accepted samples. The browser workspace
+therefore never renders a season-scale accepted dataset. Candidate reference tokens remain opaque;
+reviewers act on their human-readable labels through the existing reference-mapping endpoint.
+
+Approval is rejected by both the interface and repository transaction while active validation
+errors, conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires a
+reason; rejection and return-for-correction reasons require at least 10 characters. The interface
+adds an explicit modal confirmation before approve, reject, or return-for-correction and clearly
+presents publishing, failure, partial-publication, correction-requested, rejection, and publication
+states. Repeated identical decisions remain idempotent; competing or stale decisions return `409`.
+
 See [Batch submission packages](../data/batch-submission-packages.md) and the [Batch ingestion pipeline](../architecture/batch-ingestion-pipeline.md) for the package and lifecycle contracts.
 
 ## AI Declaration
@@ -37,3 +56,4 @@ See [Batch submission packages](../data/batch-submission-packages.md) and the [B
 The Issue #277 receipt API documentation was produced with the assistance of Codex[GPT-5].
 The Issue #280 idempotency behaviour was documented with the assistance of Codex[GPT-5].
 The Issue #425 reference-mapping API was documented with the assistance of Codex[GPT-5].
+The Issue #362 reviewer workspace documentation was produced with the assistance of Codex[GPT-5].

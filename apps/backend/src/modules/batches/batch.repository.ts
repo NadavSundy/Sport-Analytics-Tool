@@ -44,6 +44,8 @@ export interface BatchRecord {
   competitionId: string;
   idempotencyKey: string;
   packageVersion: string;
+  sourceFileName: string | null;
+  submitterDisplayName: string | null;
   source: BatchSource | null;
   state: BatchState;
   itemCount: number;
@@ -122,6 +124,8 @@ interface BatchReportErrorRecord {
 export interface BatchReportItemRecord {
   batchItemId: string | null;
   ordinal: number;
+  fixtureId?: string | null;
+  fixtureLabel?: string | null;
   inningsId: string | null;
   overNumber: number | null;
   positionInOver: number | null;
@@ -138,6 +142,23 @@ export interface BatchReportItemRecord {
 interface BatchRuleGroupRecord {
   ruleCode: string;
   count: number;
+}
+
+interface BatchFixtureSummaryRecord {
+  fixtureId: string | null;
+  label: string;
+  total: number;
+  accepted: number;
+  rejected: number;
+  unresolved: number;
+}
+
+interface BatchResolutionCountsRecord {
+  resolved: number;
+  ambiguous: number;
+  unresolved: number;
+  invalid: number;
+  proposed: number;
 }
 
 interface BatchPublicationResult {
@@ -157,6 +178,7 @@ export class BatchLeaseBusyError extends Error {
 
 interface BatchItemPageOptions {
   afterOrdinal?: number;
+  acceptedOnly?: boolean;
   limit: number;
 }
 interface BatchCheckpointRecord {
@@ -269,6 +291,7 @@ export interface BatchRepository {
     competitionIds?: string[];
     beforeCreatedAt?: string;
     beforeBatchId?: string;
+    status?: BatchState;
     limit: number;
   }): Promise<BatchRecord[]>;
   countNonTerminalBatches(submitterId: string): Promise<number>;
@@ -279,6 +302,8 @@ export interface BatchRepository {
     options: BatchItemPageOptions,
   ): Promise<BatchReportItemRecord[]>;
   listBatchRuleGroups(batchId: string): Promise<BatchRuleGroupRecord[]>;
+  getBatchResolutionCounts(batchId: string): Promise<BatchResolutionCountsRecord>;
+  listBatchFixtureSummaries(batchId: string): Promise<BatchFixtureSummaryRecord[]>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
   listBatchItems(batchId: string, options: BatchItemPageOptions): Promise<BatchItemRecord[]>;
   findCheckpoint(
@@ -307,6 +332,8 @@ interface BatchRow {
   competitionId: string;
   idempotencyKey: string;
   packageVersion: string;
+  sourceFileName: string | null;
+  submitterDisplayName: string | null;
   sourceChecksum: string | null;
   sourceUri: string | null;
   sourceSizeBytes: string | null;
@@ -333,6 +360,10 @@ const batchSelection = `
   competition_id::text AS "competitionId",
   idempotency_key AS "idempotencyKey",
   package_version AS "packageVersion",
+  (SELECT so.original_filename FROM stored_object so
+    WHERE 'stored-object:' || so.object_id::text = batch.source_uri) AS "sourceFileName",
+  (SELECT au.display_name FROM app_user au
+    WHERE au.app_user_id = batch.submitter_id) AS "submitterDisplayName",
   source_checksum AS "sourceChecksum",
   source_uri AS "sourceUri",
   source_size_bytes::text AS "sourceSizeBytes",
@@ -407,6 +438,8 @@ function mapBatch(row: BatchRow): BatchRecord {
     competitionId: row.competitionId,
     idempotencyKey: row.idempotencyKey,
     packageVersion: row.packageVersion,
+    sourceFileName: row.sourceFileName,
+    submitterDisplayName: row.submitterDisplayName,
     source,
     state: row.state,
     itemCount: row.itemCount,
@@ -885,6 +918,10 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           `(created_at, batch_id) < ($${values.length - 1}::timestamptz, $${values.length}::bigint)`,
         );
       }
+      if (options.status) {
+        values.push(options.status);
+        filters.push(`state = $${values.length}::batch_state`);
+      }
       values.push(options.limit);
       const result = await executeQuery<BatchRow>(
         database(),
@@ -1027,6 +1064,16 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           SELECT
             i.batch_item_id::text AS "batchItemId",
             subjects.ordinal,
+            fixture.fixture_id::text AS "fixtureId",
+            CASE
+              WHEN fixture.fixture_id IS NULL THEN NULL
+              ELSE COALESCE(
+                (SELECT string_agg(team.name, ' vs ' ORDER BY fixture_team.ordinal)
+                 FROM fixture_team JOIN team ON team.team_id = fixture_team.team_id
+                 WHERE fixture_team.fixture_id = fixture.fixture_id),
+                'Fixture ' || fixture.fixture_id::text
+              ) || ' · ' || fixture.start_date::text
+            END AS "fixtureLabel",
             i.innings_id::text AS "inningsId",
             i.over_number AS "overNumber",
             i.position_in_over AS "positionInOver",
@@ -1041,6 +1088,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           FROM subjects
           LEFT JOIN batch_item i
             ON i.batch_id = $1::bigint AND i.ordinal = subjects.ordinal
+          LEFT JOIN innings ON innings.innings_id = i.innings_id
+          LEFT JOIN fixture ON fixture.fixture_id = innings.fixture_id
           LEFT JOIN LATERAL (
             SELECT jsonb_agg(
               jsonb_build_object(
@@ -1059,10 +1108,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
               AND v.severity = 'error'
           ) errors ON true
           WHERE subjects.ordinal > $2::integer
+            AND (
+              NOT $4::boolean OR (
+                i.state IN ('accepted', 'published')
+                AND i.reference_resolution_state = 'resolved'
+                AND i.rejection_code IS NULL
+                AND jsonb_array_length(COALESCE(errors.rows, '[]'::jsonb)) = 0
+              )
+            )
           ORDER BY subjects.ordinal
           LIMIT $3::integer
         `,
-        [batchId, options.afterOrdinal ?? -1, options.limit],
+        [batchId, options.afterOrdinal ?? -1, options.limit, options.acceptedOnly ?? false],
       );
       return result.rows;
     },
@@ -1078,6 +1135,76 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         [batchId],
       );
       return result.rows.map((row) => ({ ruleCode: row.ruleCode, count: Number(row.count) }));
+    },
+
+    async getBatchResolutionCounts(batchId) {
+      const result = await executeQuery<{
+        resolved: string;
+        ambiguous: string;
+        unresolved: string;
+        invalid: string;
+        proposed: string;
+      }>(
+        database(),
+        `SELECT
+           count(*) FILTER (WHERE reference_resolution_state = 'resolved')::text AS resolved,
+           count(*) FILTER (WHERE reference_resolution_state = 'ambiguous')::text AS ambiguous,
+           count(*) FILTER (WHERE reference_resolution_state = 'unresolved')::text AS unresolved,
+           count(*) FILTER (WHERE reference_resolution_state = 'invalid')::text AS invalid,
+           count(*) FILTER (
+             WHERE reference_resolution_state <> 'resolved'
+               AND jsonb_path_exists(resolved_references, '$.**.candidates[*]')
+           )::text AS proposed
+         FROM batch_item WHERE batch_id = $1::bigint`,
+        [batchId],
+      );
+      const row = requireRow(result.rows[0], 'Batch resolution count lookup');
+      return {
+        resolved: Number(row.resolved),
+        ambiguous: Number(row.ambiguous),
+        unresolved: Number(row.unresolved),
+        invalid: Number(row.invalid),
+        proposed: Number(row.proposed),
+      };
+    },
+
+    async listBatchFixtureSummaries(batchId) {
+      const result = await executeQuery<{
+        fixtureId: string | null;
+        label: string;
+        total: string;
+        accepted: string;
+        rejected: string;
+        unresolved: string;
+      }>(
+        database(),
+        `SELECT f.fixture_id::text AS "fixtureId",
+                COALESCE(
+                  (SELECT string_agg(t.name, ' vs ' ORDER BY ft.ordinal)
+                   FROM fixture_team ft JOIN team t ON t.team_id = ft.team_id
+                   WHERE ft.fixture_id = f.fixture_id) || ' · ' || f.start_date::text,
+                  'Fixture unresolved'
+                ) AS label,
+                count(*)::text AS total,
+                count(*) FILTER (WHERE bi.state IN ('accepted','published','duplicate_skipped'))::text AS accepted,
+                count(*) FILTER (WHERE bi.state = 'rejected')::text AS rejected,
+                count(*) FILTER (WHERE bi.reference_resolution_state <> 'resolved')::text AS unresolved
+         FROM batch_item bi
+         LEFT JOIN innings i ON i.innings_id = bi.innings_id
+         LEFT JOIN fixture f ON f.fixture_id = i.fixture_id
+         WHERE bi.batch_id = $1::bigint
+         GROUP BY f.fixture_id, f.start_date
+         ORDER BY min(bi.ordinal)`,
+        [batchId],
+      );
+      return result.rows.map((row) => ({
+        fixtureId: row.fixtureId,
+        label: row.label,
+        total: Number(row.total),
+        accepted: Number(row.accepted),
+        rejected: Number(row.rejected),
+        unresolved: Number(row.unresolved),
+      }));
     },
 
     async insertBatchItems(batchId, items) {
@@ -1320,16 +1447,22 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
       if (input.decision === 'approved') {
-        const unresolved = await executeQuery<{ count: string }>(
+        const blockers = await executeQuery<{ count: string }>(
           executor,
-          `SELECT count(*)::text AS count FROM batch_item
-           WHERE batch_id = $1::bigint
-             AND reference_resolution_state IS DISTINCT FROM 'resolved'`,
+          `SELECT (
+             (SELECT count(*) FROM batch_item
+              WHERE batch_id = $1::bigint
+                AND reference_resolution_state IS DISTINCT FROM 'resolved') +
+             (SELECT count(*) FROM batch_validation_result
+              WHERE batch_id = $1::bigint AND severity = 'error' AND active) +
+             (SELECT count(*) FROM batch_item
+              WHERE batch_id = $1::bigint AND rejection_code LIKE '%CONFLICT%')
+           )::text AS count`,
           [input.batchId],
         );
-        if (Number(unresolved.rows[0]?.count ?? 0) > 0) {
+        if (Number(blockers.rows[0]?.count ?? 0) > 0) {
           throw new BatchReviewResolutionError(
-            'Resolve every ambiguous or unresolved reference before approval.',
+            'Resolve all blocking validation errors, conflicts and references before approval.',
           );
         }
       }

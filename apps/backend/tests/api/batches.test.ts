@@ -153,11 +153,14 @@ describe('batch receipt API', () => {
         batchService,
       ),
     )
-      .get('/api/v1/batches?limit=25')
+      .get('/api/v1/batches?limit=25&status=awaiting_review')
       .set('Authorization', 'Bearer batch-token')
       .expect(200);
     expect(response.body.data).toEqual([status.data]);
-    expect(batchService.list).toHaveBeenCalledWith(expect.anything(), { limit: 25 });
+    expect(batchService.list).toHaveBeenCalledWith(expect.anything(), {
+      limit: 25,
+      status: 'awaiting_review',
+    });
   });
 
   test('returns a paginated report and machine-readable download', async () => {

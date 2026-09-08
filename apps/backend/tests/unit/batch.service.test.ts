@@ -51,6 +51,14 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
       .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
     listBatchReportItems: vi.fn().mockResolvedValue([]),
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
+    getBatchResolutionCounts: vi.fn().mockResolvedValue({
+      resolved: 0,
+      ambiguous: 0,
+      unresolved: 0,
+      invalid: 0,
+      proposed: 0,
+    }),
+    listBatchFixtureSummaries: vi.fn().mockResolvedValue([]),
     getLatestReviewDecision: vi.fn().mockResolvedValue(null),
     applyReviewDecision: vi.fn(),
     queueReferenceMapping: vi.fn(),
@@ -350,10 +358,13 @@ describe('batch result reporting service', () => {
     expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
     await service.list(
       createTestAccount({ accountId: '7', role: 'admin', competitionIds: ['5', '6'] }),
-      { limit: 50 },
+      { limit: 50, status: 'awaiting_review' },
     );
     expect(listBatches).toHaveBeenLastCalledWith(
-      expect.objectContaining({ competitionIds: ['5', '6'] }),
+      expect.objectContaining({
+        competitionIds: ['5', '6'],
+        status: 'awaiting_review',
+      }),
     );
   });
 
