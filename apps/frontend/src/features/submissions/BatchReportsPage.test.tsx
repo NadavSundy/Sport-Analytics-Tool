@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import type { BatchReportItem, BatchReportResponse } from '@sport-analytics/contracts';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -235,6 +235,107 @@ describe('batch report view', () => {
     expect(await screen.findByText(/Accepted delivery: 91/)).toBeInTheDocument();
     expect(screen.getByText(/Source: events.csv, row 3, striker/)).toBeInTheDocument();
     expect(screen.getByText(/Choose a known striker reference/)).toBeInTheDocument();
+  });
+
+  test('maps an ambiguous reference through readable labeled controls', async () => {
+    const body = report(0, 1);
+    const candidateReference = '223e4567-e89b-42d3-a456-426614174000';
+    body.data.items = [
+      {
+        ordinal: 4,
+        outcome: 'unresolved',
+        location: {
+          filePath: 'deliveries.csv',
+          sheetName: 'Events',
+          rowNumber: 18,
+          jsonPath: 'striker',
+          ordinal: 4,
+        },
+        context: {
+          eventReference: 'provider:event:4',
+          fixtureId: null,
+          fixtureLabel: null,
+          inningsId: null,
+          overNumber: 2,
+          positionInOver: 4,
+          description: 'Over 2, delivery 4 between Wanderers and Strikers.',
+        },
+        stagedRecordId: null,
+        acceptedRecordId: null,
+        errors: [
+          {
+            ruleCode: 'REFERENCE_AMBIGUOUS',
+            message: 'More than one participant is named A. Smith.',
+            location: {
+              filePath: 'deliveries.csv',
+              sheetName: 'Events',
+              rowNumber: 18,
+              jsonPath: 'striker',
+              ordinal: 4,
+            },
+            context: {
+              eventReference: 'provider:event:4',
+              fixtureId: null,
+              fixtureLabel: null,
+              inningsId: null,
+              overNumber: 2,
+              positionInOver: 4,
+              description: 'Over 2, delivery 4 between Wanderers and Strikers.',
+            },
+          },
+        ],
+        referenceResolutions: [
+          {
+            referencePath: 'events.4.striker',
+            entityType: 'participant',
+            state: 'ambiguous',
+            submittedReference: { name: 'A. Smith' },
+            reason: 'Two participants have this retained alias.',
+            requiredAction: 'select_candidate',
+            candidates: [{ candidateReference, label: 'Alex Smith — Wanderers, 2026/27' }],
+          },
+        ],
+      },
+    ];
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/auth/me')) return Promise.resolve(apiResponse(profile()));
+      if (init?.method === 'POST') {
+        return Promise.resolve(
+          apiResponse({
+            data: {
+              batchReference: reference,
+              decisionReference: '323e4567-e89b-42d3-a456-426614174000',
+              status: 'queued',
+              statusUrl: `/api/v1/batches/${reference}`,
+              submittedAt: '2026-09-08T11:00:00.000Z',
+            },
+          }),
+        );
+      }
+      return Promise.resolve(apiResponse(body));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderReport();
+
+    expect(await screen.findByLabelText('Choose the matching participant')).toHaveDisplayValue(
+      'Alex Smith — Wanderers, 2026/27',
+    );
+    expect(
+      screen.getByRole('link', { name: /Go to deliveries.csv, sheet Events, row 18, striker/ }),
+    ).toHaveAttribute('href', '#batch-item-4-source');
+    fireEvent.click(screen.getByRole('button', { name: 'Use selected match' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(`/batches/${reference}/reference-mappings`),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining(candidateReference),
+        }),
+      ),
+    );
+    expect(await screen.findByRole('button', { name: 'Match queued' })).toBeDisabled();
+    expect(screen.getByText(/Background validation continues after you leave/)).toBeInTheDocument();
   });
 
   test('keeps reviewer decisions out of the submitter report', async () => {

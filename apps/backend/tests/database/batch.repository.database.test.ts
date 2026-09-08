@@ -434,7 +434,10 @@ describe.sequential('batch repository database integration', () => {
         outboxCount: '2',
       });
       await expect(
-        repository.queueReferenceMapping({ ...input, candidateId: current.competitionId }),
+        repository.queueReferenceMapping({
+          ...input,
+          candidateId: String(Number(current.accountId) + 1),
+        }),
       ).rejects.toBeInstanceOf(BatchReferenceMappingConflictError);
     });
   });

@@ -302,7 +302,7 @@ function decodeCursor<T>(value: string | undefined, schema: z.ZodType<T>): T | u
 }
 
 export function createBatchService(
-  storage: BatchPayloadStorageService | undefined,
+  storage?: BatchPayloadStorageService,
   repository: BatchRepository = createBatchRepository(),
 ): BatchService {
   async function findAuthorizedBatch(account: ApplicationAccount, reference: string) {
@@ -363,7 +363,7 @@ export function createBatchService(
       }
       if (!storage) {
         source.destroy();
-        throw new ObjectStorageError('Batch payload storage is unavailable.');
+        throw new ObjectStorageError('Batch payload storage is not configured.');
       }
 
       let object;

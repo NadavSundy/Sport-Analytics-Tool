@@ -549,7 +549,10 @@ export function SubmissionPage() {
           Select an authorised fixture and send ordered delivery events for backend validation and
           storage.
         </p>
-        <Link to="/submissions/batches">View batch reports</Link>
+        <div className="page-heading__actions">
+          <Link to="/submissions/batches/new">Upload a season or back catalogue</Link>
+          <Link to="/submissions/batches">View submission history</Link>
+        </div>
       </header>
 
       {isLoading || accessState.kind === 'loading' ? (

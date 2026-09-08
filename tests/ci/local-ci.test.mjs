@@ -35,6 +35,14 @@ test('native local CI validates the lockfile without replacing host node_modules
   );
 });
 
+test('local and hosted CI disable Knip raw transfer to avoid oversized virtual allocations', () => {
+  const localCi = readFileSync(new URL('../../scripts/ci-local.mjs', import.meta.url), 'utf8');
+  const hostedCi = readFileSync(new URL('../../.gitea/workflows/ci.yml', import.meta.url), 'utf8');
+
+  assert.match(localCi, /KNIP_DISABLE_RAW_TRANSFER: '1'/);
+  assert.match(hostedCi, /KNIP_DISABLE_RAW_TRANSFER: '1'/);
+});
+
 test('Docker local CI excludes host node_modules from the Linux workspace', () => {
   const dockerCi = readFileSync(new URL('../../scripts/ci-docker.mjs', import.meta.url), 'utf8');
 

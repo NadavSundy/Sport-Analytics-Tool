@@ -1,18 +1,36 @@
 import {
-  batchListResponseSchema,
+  BATCH_PACKAGE_VERSION,
+  batchReceiptResponseSchema,
   batchReferenceMappingResponseSchema,
+  batchListResponseSchema,
   batchReportDownloadResponseSchema,
   batchReportResponseSchema,
   batchReviewResponseSchema,
   type BatchListResponse,
+  type BatchReceiptResponse,
+  type BatchReferenceMappingRequest,
+  type BatchReferenceMappingResponse,
   type BatchReportResponse,
   type BatchReviewRequest,
   type BatchReviewResponse,
-  type BatchReferenceMappingRequest,
-  type BatchReferenceMappingResponse,
 } from '@sport-analytics/contracts';
 
 import type { AuthenticatedApiClient } from '../../api/client';
+
+export const MAX_BATCH_BYTES = 50 * 1024 * 1024;
+
+const mediaTypesByExtension = {
+  csv: 'text/csv',
+  json: 'application/json',
+  ndjson: 'application/x-ndjson',
+} as const;
+
+export class BatchUploadInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BatchUploadInputError';
+  }
+}
 
 function parse<T>(
   value: unknown,
@@ -52,6 +70,39 @@ export async function mapBatchReference(
       },
     ),
     batchReferenceMappingResponseSchema,
+  );
+}
+
+export async function uploadBatch(
+  client: AuthenticatedApiClient,
+  competitionId: string,
+  file: File,
+  idempotencyKey: string,
+): Promise<BatchReceiptResponse> {
+  const extension = file.name.split('.').pop()?.toLowerCase() as
+    keyof typeof mediaTypesByExtension | undefined;
+  const mediaType = extension ? mediaTypesByExtension[extension] : undefined;
+
+  if (!mediaType) {
+    throw new BatchUploadInputError('Choose a JSON, CSV, or NDJSON package.');
+  }
+  if (file.size > MAX_BATCH_BYTES) {
+    throw new BatchUploadInputError('The package is larger than the 50 MB upload limit.');
+  }
+
+  return parse(
+    await client.request<unknown>('/batches', {
+      method: 'POST',
+      headers: {
+        'Content-Type': mediaType,
+        'Idempotency-Key': idempotencyKey,
+        'X-Batch-Package-Version': BATCH_PACKAGE_VERSION,
+        'X-Competition-Id': competitionId,
+        'X-File-Name': file.name,
+      },
+      body: file,
+    }),
+    batchReceiptResponseSchema,
   );
 }
 

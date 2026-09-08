@@ -5,6 +5,7 @@ repo_url: https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool
 
 exclude_docs: |
   /README.md
+  /user-testing/README.md
 
 theme:
   name: material
@@ -112,6 +113,12 @@ nav:
       - Representative-scale Performance Baseline: development/performance-baseline.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
+      - User Testing Workflow: user-testing/workflow.md
+      - User Testing Evidence Generation: user-testing/evidence-generation.md
+      - User Testing Deployment: user-testing/deployment.md
+      - User Testing Troubleshooting: user-testing/troubleshooting.md
+      - User Testing Automation Decisions: user-testing/automation-decisions.md
+      - Generated User-Testing Evidence: user-testing/evidence/index.md
       - Bug Tracking: testing/bug-tracking.md
   - AI Use: ai/usage.md
   - Project Process & Evidence:

@@ -6,7 +6,7 @@ import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import { downloadBatchReport, getBatchReport, listBatches } from './batch-api';
+import { downloadBatchReport, getBatchReport, listBatches, mapBatchReference } from './batch-api';
 
 type ListState =
   | { kind: 'loading' }
@@ -32,6 +32,20 @@ const stateLabels: Record<BatchStatus['status'], string> = {
   superseded: 'Superseded',
 };
 
+const stateDescriptions: Record<BatchStatus['status'], string> = {
+  received: 'The package receipt is durable and storage is being confirmed.',
+  stored: 'The package is stored safely and waiting for background validation.',
+  validating: 'Fixtures and deliveries are being checked in the background.',
+  rejected: 'Nothing was published. Open the item results to correct the reported problems.',
+  awaiting_review: 'Automated checks passed and an administrator can review the staged records.',
+  correction_requested: 'A reviewer requested changes. Upload a corrected replacement package.',
+  publishing: 'Approved records are being published.',
+  published: 'Every accepted record is published.',
+  partially_published: 'Accepted records were published; rejected records remain in this report.',
+  failed: 'Processing could not finish. The durable receipt and report remain available.',
+  superseded: 'A corrected replacement now represents this source package.',
+};
+
 function outcomeLabel(outcome: BatchReportItem['outcome']) {
   return outcome === 'conflicting'
     ? 'Conflict'
@@ -47,6 +61,7 @@ function Summary({ batch }: { batch: BatchStatus }) {
         <strong>{stateLabels[batch.status]}</strong>
         {partial ? ' — partial success' : ''}
       </p>
+      <p>{stateDescriptions[batch.status]}</p>
       <dl className="batch-counts">
         <div>
           <dt>Total</dt>
@@ -103,6 +118,12 @@ function Summary({ batch }: { batch: BatchStatus }) {
           <dd>{batch.source.packageVersion}</dd>
         </div>
       </dl>
+      {batch.counts.duplicate > 0 ? (
+        <p>
+          Duplicate items reuse the already known record; they are not published twice. Corrected
+          replacements are retained separately and supersede the earlier version only after review.
+        </p>
+      ) : null}
       {batch.review ? (
         <p>
           Review: {batch.review.decision.replaceAll('_', ' ')} by{' '}
@@ -114,33 +135,148 @@ function Summary({ batch }: { batch: BatchStatus }) {
   );
 }
 
-function ReportItems({ items }: { items: BatchReportItem[] }) {
+function sourceLabel(location: BatchReportItem['location']) {
+  return [
+    location.filePath ?? 'uploaded package',
+    location.sheetName ? `sheet ${location.sheetName}` : null,
+    location.rowNumber ? `row ${location.rowNumber}` : null,
+    location.jsonPath ?? null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+function ReferenceControl({
+  batchReference,
+  item,
+  resolution,
+}: {
+  batchReference: string;
+  item: BatchReportItem;
+  resolution: BatchReportItem['referenceResolutions'][number];
+}) {
+  const client = useAuthenticatedApiClient();
+  const [candidateReference, setCandidateReference] = useState(
+    resolution.candidates[0]?.candidateReference ?? '',
+  );
+  const [state, setState] = useState<
+    { kind: 'idle' } | { kind: 'saving' } | { kind: 'queued' } | { kind: 'error'; message: string }
+  >({ kind: 'idle' });
+  const controlId = `mapping-${item.ordinal}-${resolution.referencePath.replace(/[^a-z0-9]/gi, '-')}`;
+
+  async function save() {
+    if (!candidateReference) return;
+    setState({ kind: 'saving' });
+    try {
+      await mapBatchReference(client, batchReference, {
+        itemOrdinal: item.ordinal,
+        referencePath: resolution.referencePath,
+        candidateReference,
+        decisionKey: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+      });
+      setState({ kind: 'queued' });
+    } catch (error) {
+      setState({
+        kind: 'error',
+        message:
+          error instanceof ApiResponseError && error.status === 409
+            ? `${error.message} Reload the report to see the current choices.`
+            : 'This mapping could not be saved. Try again.',
+      });
+    }
+  }
+
+  return (
+    <fieldset className="batch-reference-control" disabled={state.kind === 'saving'}>
+      <legend>{resolution.entityType.replaceAll('_', ' ')} needs a match</legend>
+      <p>
+        Submitted value: <code>{JSON.stringify(resolution.submittedReference)}</code>
+      </p>
+      {resolution.reason ? <p>{resolution.reason}</p> : null}
+      {resolution.requiredAction === 'contact_reviewer' || resolution.candidates.length === 0 ? (
+        <p role="status">
+          No safe existing match is available. Contact a reviewer; the system will not guess or
+          create a record silently.
+        </p>
+      ) : (
+        <>
+          <label htmlFor={controlId}>Choose the matching {resolution.entityType}</label>
+          <select
+            id={controlId}
+            value={candidateReference}
+            onChange={(event) => setCandidateReference(event.target.value)}
+          >
+            {resolution.candidates.map((candidate) => (
+              <option key={candidate.candidateReference} value={candidate.candidateReference}>
+                {candidate.label}
+              </option>
+            ))}
+          </select>
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={state.kind === 'queued'}
+            onClick={() => void save()}
+          >
+            {state.kind === 'saving'
+              ? 'Saving match…'
+              : state.kind === 'queued'
+                ? 'Match queued'
+                : 'Use selected match'}
+          </button>
+          {state.kind === 'queued' ? (
+            <p role="status">
+              Match saved. Background validation continues after you leave; reload this report for
+              updated results.
+            </p>
+          ) : state.kind === 'error' ? (
+            <p role="alert">{state.message}</p>
+          ) : null}
+        </>
+      )}
+    </fieldset>
+  );
+}
+
+function ReportItems({
+  batchReference,
+  items,
+}: {
+  batchReference: string;
+  items: BatchReportItem[];
+}) {
   if (items.length === 0) return <p>No report items are available yet.</p>;
   return (
     <ol className="batch-report-items">
       {items.map((item) => (
-        <li key={item.ordinal}>
+        <li key={item.ordinal} id={`batch-item-${item.ordinal}`}>
           <div className="batch-report-item__heading">
             <strong>{outcomeLabel(item.outcome)}</strong>
             <span>{item.context.description}</span>
           </div>
-          <p>
-            Source: {item.location.filePath ?? 'uploaded package'}
-            {item.location.sheetName ? `, sheet ${item.location.sheetName}` : ''}
-            {item.location.rowNumber ? `, row ${item.location.rowNumber}` : ''}
-            {item.location.jsonPath ? `, ${item.location.jsonPath}` : ''}
-          </p>
+          <p id={`batch-item-${item.ordinal}-source`}>Source: {sourceLabel(item.location)}</p>
           {item.stagedRecordId ? <p>Staged record: {item.stagedRecordId}</p> : null}
           {item.acceptedRecordId ? <p>Accepted delivery: {item.acceptedRecordId}</p> : null}
           {item.errors.length > 0 ? (
             <ul>
               {item.errors.map((error, index) => (
                 <li key={`${error.ruleCode}-${index}`}>
-                  <code>{error.ruleCode}</code>: {error.message}
+                  <code>{error.ruleCode}</code>: {error.message}{' '}
+                  <a href={`#batch-item-${item.ordinal}-source`}>
+                    Go to {sourceLabel(error.location)} — {error.context.description}
+                  </a>
                 </li>
               ))}
             </ul>
           ) : null}
+          {item.referenceResolutions.map((resolution) => (
+            <ReferenceControl
+              batchReference={batchReference}
+              item={item}
+              resolution={resolution}
+              key={resolution.referencePath}
+            />
+          ))}
         </li>
       ))}
     </ol>
@@ -219,6 +355,7 @@ function BatchList() {
           <li key={batch.batchReference}>
             <Link to={`/submissions/batches/${batch.batchReference}`}>{batch.batchReference}</Link>
             <span>
+              Received {new Date(batch.receivedAt).toLocaleDateString()} ·{' '}
               {stateLabels[batch.status]} · {batch.counts.accepted} accepted ·{' '}
               {batch.counts.rejected} rejected
             </span>
@@ -241,7 +378,9 @@ function BatchList() {
 function BatchReport({ batchReference }: { batchReference: string }) {
   const client = useAuthenticatedApiClient();
   const [state, setState] = useState<ReportState>({ kind: 'loading' });
-  const [downloading, setDownloading] = useState(false);
+  const [downloadState, setDownloadState] = useState<
+    { kind: 'idle' } | { kind: 'downloading' } | { kind: 'error' }
+  >({ kind: 'idle' });
   useEffect(() => {
     void getBatchReport(client, batchReference)
       .then((response) => {
@@ -263,11 +402,12 @@ function BatchReport({ batchReference }: { batchReference: string }) {
   }
 
   async function download() {
-    setDownloading(true);
+    setDownloadState({ kind: 'downloading' });
     try {
       await downloadBatchReport(client, batchReference);
-    } finally {
-      setDownloading(false);
+      setDownloadState({ kind: 'idle' });
+    } catch {
+      setDownloadState({ kind: 'error' });
     }
   }
 
@@ -296,13 +436,16 @@ function BatchReport({ batchReference }: { batchReference: string }) {
       <button
         className="button button--secondary"
         type="button"
-        disabled={downloading}
+        disabled={downloadState.kind === 'downloading'}
         onClick={() => void download()}
       >
-        {downloading ? 'Preparing report…' : 'Download JSON report'}
+        {downloadState.kind === 'downloading' ? 'Preparing report…' : 'Download JSON report'}
       </button>
+      {downloadState.kind === 'error' ? (
+        <p role="alert">The complete report is temporarily unavailable. Try the download again.</p>
+      ) : null}
       <h2>Item results</h2>
-      <ReportItems items={state.report.items} />
+      <ReportItems batchReference={batchReference} items={state.report.items} />
       {state.report.pagination.nextCursor ? (
         <button
           className="button button--secondary"
@@ -338,7 +481,7 @@ export function BatchReportsPage() {
         {batchReference ? (
           <Link to="/submissions/batches">Back to all batches</Link>
         ) : (
-          <Link to="/submissions/new">Submit delivery events</Link>
+          <Link to="/submissions/batches/new">Upload a batch package</Link>
         )}
       </header>
       {isLoading ? (

@@ -38,6 +38,8 @@ const events = [
   },
 ];
 
+const batchReference = '123e4567-e89b-42d3-a456-426614174000';
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const now = Math.floor(Date.now() / 1_000);
@@ -258,3 +260,183 @@ test('file validation identifies a rejected CSV row and returns focus to the res
   await expect(page.getByText(/Row 1.*file/)).toBeVisible();
   await expect(fileInput).toHaveAttribute('aria-invalid', 'true');
 });
+
+test(
+  'submitter uploads and resolves a batch through the responsive guided workflow',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    await page.route('**/api/v1/competitions/5', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { competitionId: '5', name: 'Premier T20' } }),
+      }),
+    );
+    await page.route('**/api/v1/seasons?**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              seasonId: '15',
+              competitionId: '5',
+              competitionName: 'Premier T20',
+              label: '2026/27',
+            },
+          ],
+          pagination: { nextCursor: null },
+        }),
+      }),
+    );
+    await page.route('**/api/v1/batches', async (route) => {
+      expect(route.request().headers()['x-competition-id']).toBe('5');
+      expect(route.request().headers()['x-file-name']).toBe('back-catalogue.csv');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            batchReference,
+            status: 'stored',
+            statusUrl: `/api/v1/batches/${batchReference}`,
+            receivedAt: '2026-09-08T09:30:00.000Z',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/submissions/batches/new');
+    await expect(page.getByLabel('Competition')).toHaveValue('5');
+    await expect(page.getByLabel('Season context')).toContainText('2026/27 — Premier T20');
+    await page.getByLabel('Batch package').setInputFiles({
+      name: 'back-catalogue.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('contractVersion,packageId\n1.0,provider:package:2026'),
+    });
+    await page.getByRole('button', { name: 'Upload batch package' }).click();
+    await expect(page.getByRole('progressbar', { name: 'Upload progress' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Batch received safely' })).toBeFocused();
+    await expect(page.getByText(/Processing continues after you leave/)).toBeVisible();
+
+    await page.route(`**/api/v1/batches/${batchReference}/report`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            batch: {
+              batchReference,
+              competitionId: '5',
+              status: 'rejected',
+              statusUrl: `/api/v1/batches/${batchReference}`,
+              receivedAt: '2026-09-08T09:30:00.000Z',
+              updatedAt: '2026-09-08T09:35:00.000Z',
+              progress: { total: 1, processed: 1, accepted: 0, rejected: 1 },
+              counts: { accepted: 0, rejected: 1, unresolved: 1, duplicate: 0, conflicting: 0 },
+              review: null,
+            },
+            errorGroups: [{ ruleCode: 'REFERENCE_AMBIGUOUS', count: 1 }],
+            items: [
+              {
+                ordinal: 0,
+                outcome: 'unresolved',
+                location: {
+                  filePath: 'back-catalogue.csv',
+                  sheetName: 'Events',
+                  rowNumber: 2,
+                  jsonPath: 'striker',
+                  ordinal: 0,
+                },
+                context: {
+                  eventReference: 'provider:event:1',
+                  inningsId: null,
+                  overNumber: 0,
+                  positionInOver: 1,
+                  description: 'Premier T20, Wanderers v Strikers, over 0 delivery 1.',
+                },
+                stagedRecordId: null,
+                acceptedRecordId: null,
+                errors: [
+                  {
+                    ruleCode: 'REFERENCE_AMBIGUOUS',
+                    message: 'More than one participant is named A. Smith.',
+                    location: {
+                      filePath: 'back-catalogue.csv',
+                      sheetName: 'Events',
+                      rowNumber: 2,
+                      jsonPath: 'striker',
+                      ordinal: 0,
+                    },
+                    context: {
+                      eventReference: 'provider:event:1',
+                      inningsId: null,
+                      overNumber: 0,
+                      positionInOver: 1,
+                      description: 'Premier T20, Wanderers v Strikers, over 0 delivery 1.',
+                    },
+                  },
+                ],
+                referenceResolutions: [
+                  {
+                    referencePath: 'events.0.striker',
+                    entityType: 'participant',
+                    state: 'ambiguous',
+                    submittedReference: { name: 'A. Smith' },
+                    reason: 'Two participants have this alias.',
+                    requiredAction: 'select_candidate',
+                    candidates: [
+                      {
+                        candidateReference: '223e4567-e89b-42d3-a456-426614174000',
+                        label: 'Alex Smith — Wanderers, 2026/27',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            pagination: { nextCursor: null },
+            downloadUrl: `/api/v1/batches/${batchReference}/report/download`,
+          },
+        }),
+      }),
+    );
+    await page.route(`**/api/v1/batches/${batchReference}/reference-mappings`, (route) =>
+      route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            batchReference,
+            decisionReference: '323e4567-e89b-42d3-a456-426614174000',
+            status: 'queued',
+            statusUrl: `/api/v1/batches/${batchReference}`,
+            submittedAt: '2026-09-08T09:40:00.000Z',
+          },
+        }),
+      }),
+    );
+
+    await page.getByRole('link', { name: 'Track this batch' }).click();
+    await expect(page.getByLabel('Choose the matching participant')).toHaveValue(
+      '223e4567-e89b-42d3-a456-426614174000',
+    );
+    const mapButton = page.getByRole('button', { name: 'Use selected match' });
+    await mapButton.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Match queued' })).toBeDisabled();
+    await expect(page.getByText(/Background validation continues after you leave/)).toBeVisible();
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
+  },
+);
