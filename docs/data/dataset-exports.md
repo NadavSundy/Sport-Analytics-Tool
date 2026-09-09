@@ -39,5 +39,34 @@ checksum-backed snapshot.
 
 The public calculation trace provides labelled CSV and JSON controls for the displayed event slice.
 It carries the trace's visible innings/team or player context into the export request without exposing
-pagination or technical-only controls. Versioned dataset releases, larger asynchronous export jobs
-and object storage remain outside Basic scope.
+pagination or technical-only controls.
+
+## Versioned dataset releases
+
+An administrator can create a named immutable release with:
+
+```http
+POST /api/v1/admin/dataset-releases
+Authorization: Bearer <administrator token>
+Content-Type: application/json
+
+{ "version": "2026.09.1" }
+```
+
+The version is a caller-selected stable identifier and can contain letters, digits, dots, underscores
+and hyphens. Reusing a version retrieves its original release rather than regenerating it. Public
+consumers retrieve the metadata and exact downloadable artifact at:
+
+```http
+GET /api/v1/dataset-releases/{version}
+GET /api/v1/dataset-releases/{version}/artifact.json
+```
+
+Each artifact is canonical JSON containing its format version, scope, field descriptions and ordered
+published accepted-delivery rows. It is generated only from the live, corrected `delivery_current`
+revision whose source submission is `accepted`; pending, rejected and superseded rows are excluded.
+The metadata response includes the SHA-256 checksum of the exact artifact bytes. Consumers should
+save the version and checksum with an analysis and verify the downloaded bytes before reuse.
+
+Release rows cannot be updated or deleted. Later corrections can be captured only in a new version,
+so a prior version and checksum always resolve to the same retained artifact.

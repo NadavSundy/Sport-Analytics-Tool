@@ -15,6 +15,7 @@ import type { FixtureWeatherService } from '../src/modules/weather/fixture-weath
 import type { BatchService } from '../src/modules/batches/batch.service';
 import type { ApiConsumerService } from '../src/modules/api-consumers/api-consumer.service';
 import type { ApiConsumerRepository } from '../src/modules/api-consumers/api-consumer.repository';
+import type { DatasetReleaseService } from '../src/modules/dataset-releases/dataset-release.service';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -97,6 +98,7 @@ export function createTestApp(
   participantAggregatesService?: ParticipantAggregatesService,
   apiConsumerService?: ApiConsumerService,
   apiConsumerRepository?: ApiConsumerRepository,
+  datasetReleaseService?: DatasetReleaseService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -114,6 +116,7 @@ export function createTestApp(
     ...(participantAggregatesService !== undefined ? { participantAggregatesService } : {}),
     ...(apiConsumerService !== undefined ? { apiConsumerService } : {}),
     ...(apiConsumerRepository !== undefined ? { apiConsumerRepository } : {}),
+    ...(datasetReleaseService !== undefined ? { datasetReleaseService } : {}),
   });
 }
 

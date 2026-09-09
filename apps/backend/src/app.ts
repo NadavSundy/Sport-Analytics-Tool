@@ -71,6 +71,11 @@ import {
   type ApiConsumerRepository,
 } from './modules/api-consumers/api-consumer.repository';
 import { createConsumerRouter } from './modules/api-consumers/consumer.routes';
+import { createDatasetReleaseRouter } from './modules/dataset-releases/dataset-release.routes';
+import {
+  createDatasetReleaseService,
+  type DatasetReleaseService,
+} from './modules/dataset-releases/dataset-release.service';
 
 export interface AppDependencies {
   environment?: Environment;
@@ -89,6 +94,7 @@ export interface AppDependencies {
   batchService?: BatchService;
   apiConsumerService?: ApiConsumerService;
   apiConsumerRepository?: ApiConsumerRepository;
+  datasetReleaseService?: DatasetReleaseService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -138,6 +144,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
+  const datasetReleaseService = dependencies.datasetReleaseService ?? createDatasetReleaseService();
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -204,6 +211,10 @@ export function createApp(dependencies: AppDependencies = {}) {
     createApiConsumerRouter(verifyAccessToken, synchronizeAccount, apiConsumerService),
   );
   app.use(API_BASE_PATH, createConsumerRouter(publicReadService, apiConsumerRepository));
+  app.use(
+    API_BASE_PATH,
+    createDatasetReleaseRouter(verifyAccessToken, synchronizeAccount, datasetReleaseService),
+  );
   app.use(API_BASE_PATH, createPublicReadRouter(publicReadService));
   app.use(API_BASE_PATH, createWeatherRouter(weatherService, fixtureWeatherService));
 

@@ -7,3 +7,4 @@ export * from './public-read';
 export * from './submissions';
 export * from './season-upload';
 export * from './cricket-delivery-comparison';
+export * from './dataset-releases';
