@@ -219,6 +219,8 @@ function reportContext(record: BatchReportItemRecord) {
       : `over ${record.overNumber}, delivery ${record.positionInOver}`;
   return {
     eventReference: event,
+    fixtureId: record.fixtureId ?? null,
+    fixtureLabel: record.fixtureLabel ?? null,
     inningsId: record.inningsId,
     overNumber: record.overNumber,
     positionInOver: record.positionInOver,
@@ -328,6 +330,15 @@ export function createBatchService(
       statusUrl: `${API_BASE_PATH}/batches/${batch.batchReference}`,
       receivedAt: batch.createdAt,
       updatedAt: batch.updatedAt,
+      source: {
+        fileName: batch.sourceFileName,
+        checksum: batch.source?.checksum.toLowerCase() ?? null,
+        packageVersion: batch.packageVersion,
+        submitter: {
+          accountId: batch.submitterId,
+          displayName: batch.submitterDisplayName,
+        },
+      },
       progress,
       counts,
       review: review
@@ -406,6 +417,7 @@ export function createBatchService(
         ...(account.role === 'admin'
           ? { competitionIds: account.competitionIds }
           : { submitterId: account.accountId }),
+        ...(query.status ? { status: query.status } : {}),
         ...(cursor ? { beforeCreatedAt: cursor.createdAt, beforeBatchId: cursor.batchId } : {}),
         limit: query.limit + 1,
       });
@@ -430,19 +442,47 @@ export function createBatchService(
       if (cursor && cursor.batchReference !== reference) {
         throw new BatchInputError('The pagination cursor is invalid for this batch.');
       }
-      const records = await repository.listBatchReportItems(batch.batchId, {
-        ...(cursor ? { afterOrdinal: cursor.ordinal } : {}),
-        limit: query.limit + 1,
-      });
+      const [records, acceptedRecords] = await Promise.all([
+        repository.listBatchReportItems(batch.batchId, {
+          ...(cursor ? { afterOrdinal: cursor.ordinal } : {}),
+          limit: query.limit + 1,
+        }),
+        repository.listBatchReportItems(batch.batchId, { acceptedOnly: true, limit: 15 }),
+      ]);
       const page = records.slice(0, query.limit);
-      const [batchStatus, errorGroups] = await Promise.all([
+      const [batchStatus, errorGroups, resolution, fixtureSummaries] = await Promise.all([
         status(batch),
         repository.listBatchRuleGroups(batch.batchId),
+        repository.getBatchResolutionCounts(batch.batchId),
+        repository.listBatchFixtureSummaries(batch.batchId),
       ]);
+      const blockingReasons: string[] = [];
+      if (batchStatus.counts.rejected > 0) blockingReasons.push('Validation errors remain.');
+      if (batchStatus.counts.conflicting > 0) blockingReasons.push('Conflicting records remain.');
+      if (resolution.ambiguous > 0) blockingReasons.push('Ambiguous references remain.');
+      if (resolution.unresolved > 0) blockingReasons.push('Unresolved references remain.');
+      if (resolution.invalid > 0) blockingReasons.push('Invalid references remain.');
       return {
         data: {
           batch: batchStatus,
           errorGroups,
+          reviewSummary: {
+            validation: {
+              accepted: batchStatus.counts.accepted,
+              rejected: batchStatus.counts.rejected,
+              blockingErrors: errorGroups.reduce((total, group) => total + group.count, 0),
+              duplicate: batchStatus.counts.duplicate,
+              conflicting: batchStatus.counts.conflicting,
+            },
+            resolution,
+            approvalBlocked: blockingReasons.length > 0,
+            blockingReasons,
+          },
+          fixtureSummaries,
+          acceptedSamples: acceptedRecords
+            .filter((record) => reportOutcome(record) === 'accepted')
+            .slice(0, 15)
+            .map((record) => mapReportItem(record, reference, batch.competitionId)),
           items: page.map((record) => mapReportItem(record, reference, batch.competitionId)),
           pagination: {
             nextCursor:
@@ -468,11 +508,40 @@ export function createBatchService(
         if (page.length < 1000) break;
         afterOrdinal = page.at(-1)!.ordinal;
       }
-      const [batchStatus, errorGroups] = await Promise.all([
+      const [batchStatus, errorGroups, resolution, fixtureSummaries] = await Promise.all([
         status(batch),
         repository.listBatchRuleGroups(batch.batchId),
+        repository.getBatchResolutionCounts(batch.batchId),
+        repository.listBatchFixtureSummaries(batch.batchId),
       ]);
-      return { data: { batch: batchStatus, errorGroups, items } };
+      const blockingReasons = [
+        ...(batchStatus.counts.rejected > 0 ? ['Validation errors remain.'] : []),
+        ...(batchStatus.counts.conflicting > 0 ? ['Conflicting records remain.'] : []),
+        ...(resolution.ambiguous > 0 ? ['Ambiguous references remain.'] : []),
+        ...(resolution.unresolved > 0 ? ['Unresolved references remain.'] : []),
+        ...(resolution.invalid > 0 ? ['Invalid references remain.'] : []),
+      ];
+      return {
+        data: {
+          batch: batchStatus,
+          errorGroups,
+          reviewSummary: {
+            validation: {
+              accepted: batchStatus.counts.accepted,
+              rejected: batchStatus.counts.rejected,
+              blockingErrors: errorGroups.reduce((total, group) => total + group.count, 0),
+              duplicate: batchStatus.counts.duplicate,
+              conflicting: batchStatus.counts.conflicting,
+            },
+            resolution,
+            approvalBlocked: blockingReasons.length > 0,
+            blockingReasons,
+          },
+          fixtureSummaries,
+          acceptedSamples: items.filter((item) => item.outcome === 'accepted').slice(0, 15),
+          items,
+        },
+      };
     },
 
     async review(account, reference, request) {

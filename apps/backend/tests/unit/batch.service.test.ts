@@ -11,6 +11,7 @@ import {
   createBatchService,
 } from '../../src/modules/batches/batch.service';
 import type { BatchPayloadStorageService } from '../../src/modules/object-storage/batch-payload-storage.service';
+import { ObjectStorageError } from '../../src/modules/object-storage/object-store';
 import { createTestAccount } from '../test-app';
 
 const metadata = {
@@ -51,6 +52,14 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
       .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
     listBatchReportItems: vi.fn().mockResolvedValue([]),
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
+    getBatchResolutionCounts: vi.fn().mockResolvedValue({
+      resolved: 0,
+      ambiguous: 0,
+      unresolved: 0,
+      invalid: 0,
+      proposed: 0,
+    }),
+    listBatchFixtureSummaries: vi.fn().mockResolvedValue([]),
     getLatestReviewDecision: vi.fn().mockResolvedValue(null),
     applyReviewDecision: vi.fn(),
     queueReferenceMapping: vi.fn(),
@@ -67,6 +76,19 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
 }
 
 describe('batch receipt service', () => {
+  test('keeps read-only batch workflows available when payload storage is not configured', async () => {
+    const source = Readable.from('payload');
+
+    await expect(
+      createBatchService(undefined, repository()).receive(
+        createTestAccount({ role: 'submitter', competitionIds: ['5'] }),
+        metadata,
+        source,
+      ),
+    ).rejects.toBeInstanceOf(ObjectStorageError);
+    expect(source.destroyed).toBe(true);
+  });
+
   test('enforces persisted competition scope before it streams source bytes', async () => {
     const storage = { upload: vi.fn() } as unknown as BatchPayloadStorageService;
     const source = Readable.from('payload');
@@ -350,10 +372,13 @@ describe('batch result reporting service', () => {
     expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
     await service.list(
       createTestAccount({ accountId: '7', role: 'admin', competitionIds: ['5', '6'] }),
-      { limit: 50 },
+      { limit: 50, status: 'awaiting_review' },
     );
     expect(listBatches).toHaveBeenLastCalledWith(
-      expect.objectContaining({ competitionIds: ['5', '6'] }),
+      expect.objectContaining({
+        competitionIds: ['5', '6'],
+        status: 'awaiting_review',
+      }),
     );
   });
 

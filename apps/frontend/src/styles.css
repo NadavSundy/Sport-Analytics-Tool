@@ -1251,6 +1251,120 @@ main {
   font-weight: 700;
 }
 
+.batch-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.batch-metadata div {
+  min-width: 0;
+}
+
+.batch-metadata dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.review-workspace {
+  display: grid;
+  gap: 1.5rem;
+  padding-block: 2rem;
+}
+
+.review-workspace__heading {
+  border-bottom: 2px solid var(--colour-primary);
+}
+
+.review-scope-note,
+.batch-lifecycle {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--colour-data-accent);
+  background: var(--colour-surface-raised);
+}
+
+.batch-lifecycle--failed,
+.batch-lifecycle--partially_published,
+.batch-lifecycle--rejected,
+.batch-lifecycle--correction_requested {
+  border-left-color: var(--colour-error);
+}
+
+.review-queue li > div,
+.fixture-summary-list li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.fixture-summary-list,
+.accepted-samples,
+.reference-resolution ul {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.fixture-summary-list {
+  padding: 0;
+  list-style: none;
+}
+
+.fixture-summary-list li,
+.reference-resolution,
+.review-error-group {
+  padding: 1rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface-raised);
+}
+
+.review-error-group + .review-error-group,
+.reference-resolution + .reference-resolution {
+  margin-top: 0.75rem;
+}
+
+.review-error-group summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.review-error-group summary:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 3px;
+}
+
+.review-dialog-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 65%);
+}
+
+.review-dialog {
+  width: min(32rem, 100%);
+  padding: 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--colour-surface);
+  box-shadow: var(--shadow-card);
+}
+
+@media (max-width: 39.9375rem) {
+  .review-workspace {
+    padding-block: 1rem;
+  }
+
+  .batch-review__actions .button,
+  .reference-resolution .button {
+    width: 100%;
+  }
+
+  .batch-metadata {
+    grid-template-columns: 1fr;
+  }
+}
+
 .batch-list,
 .batch-report-items {
   display: grid;

@@ -236,9 +236,14 @@ export function SubmitterAccessPanel() {
               Upload a batch
             </Link>
             {profileState.profile.role === 'admin' ? (
-              <Link className="button button--secondary" to="/admin/users">
-                Manage users
-              </Link>
+              <>
+                <Link className="button button--secondary" to="/reviews/batches">
+                  Review batches
+                </Link>
+                <Link className="button button--secondary" to="/admin/users">
+                  Manage users
+                </Link>
+              </>
             ) : null}
           </div>
         </div>

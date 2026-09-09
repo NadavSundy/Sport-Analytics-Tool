@@ -333,11 +333,40 @@ test(
               statusUrl: `/api/v1/batches/${batchReference}`,
               receivedAt: '2026-09-08T09:30:00.000Z',
               updatedAt: '2026-09-08T09:35:00.000Z',
+              source: {
+                fileName: 'back-catalogue.csv',
+                checksum: 'a'.repeat(64),
+                packageVersion: '1.0',
+                submitter: { accountId: '17', displayName: 'E2E Submitter' },
+              },
               progress: { total: 1, processed: 1, accepted: 0, rejected: 1 },
               counts: { accepted: 0, rejected: 1, unresolved: 1, duplicate: 0, conflicting: 0 },
               review: null,
             },
             errorGroups: [{ ruleCode: 'REFERENCE_AMBIGUOUS', count: 1 }],
+            reviewSummary: {
+              validation: {
+                accepted: 0,
+                rejected: 1,
+                blockingErrors: 0,
+                duplicate: 0,
+                conflicting: 0,
+              },
+              resolution: { resolved: 0, ambiguous: 1, unresolved: 0, invalid: 0, proposed: 1 },
+              approvalBlocked: true,
+              blockingReasons: ['Ambiguous references remain.'],
+            },
+            fixtureSummaries: [
+              {
+                fixtureId: null,
+                label: 'Fixture unresolved',
+                total: 1,
+                accepted: 0,
+                rejected: 1,
+                unresolved: 1,
+              },
+            ],
+            acceptedSamples: [],
             items: [
               {
                 ordinal: 0,
@@ -351,6 +380,8 @@ test(
                 },
                 context: {
                   eventReference: 'provider:event:1',
+                  fixtureId: null,
+                  fixtureLabel: null,
                   inningsId: null,
                   overNumber: 0,
                   positionInOver: 1,
@@ -371,6 +402,8 @@ test(
                     },
                     context: {
                       eventReference: 'provider:event:1',
+                      fixtureId: null,
+                      fixtureLabel: null,
                       inningsId: null,
                       overNumber: 0,
                       positionInOver: 1,

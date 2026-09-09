@@ -84,6 +84,14 @@ function post(app: ReturnType<typeof createTestApp>) {
 }
 
 describe('batch receipt API', () => {
+  test('mounts batch workflows when payload storage is not configured', async () => {
+    const response = await request(createTestApp()).get('/api/v1/batches').expect(401);
+
+    expect(response.body).not.toMatchObject({
+      error: { code: 'UNSUPPORTED_API_VERSION' },
+    });
+  });
+
   test('keeps batch report routes available when payload storage is not configured', async () => {
     const response = await request(createTestApp())
       .get(`/api/v1/batches/${reference}/report`)
@@ -161,11 +169,14 @@ describe('batch receipt API', () => {
         batchService,
       ),
     )
-      .get('/api/v1/batches?limit=25')
+      .get('/api/v1/batches?limit=25&status=awaiting_review')
       .set('Authorization', 'Bearer batch-token')
       .expect(200);
     expect(response.body.data).toEqual([status.data]);
-    expect(batchService.list).toHaveBeenCalledWith(expect.anything(), { limit: 25 });
+    expect(batchService.list).toHaveBeenCalledWith(expect.anything(), {
+      limit: 25,
+      status: 'awaiting_review',
+    });
   });
 
   test('returns a paginated report and machine-readable download', async () => {

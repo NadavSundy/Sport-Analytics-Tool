@@ -67,7 +67,19 @@ export const batchReviewRequestSchema = z
     decision: z.enum(BATCH_REVIEW_DECISIONS),
     reason: z.string().trim().min(1).max(2000),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.decision !== 'approved' && value.reason.length < 10) {
+      context.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 10,
+        type: 'string',
+        inclusive: true,
+        path: ['reason'],
+        message: 'Explain the rejection or correction in at least 10 characters.',
+      });
+    }
+  });
 
 export const batchStatusSchema = z
   .object({
@@ -77,6 +89,19 @@ export const batchStatusSchema = z
     statusUrl: z.string().startsWith('/api/v1/batches/'),
     receivedAt: apiDateTimeSchema,
     updatedAt: apiDateTimeSchema,
+    source: z
+      .object({
+        fileName: z.string().min(1).nullable(),
+        checksum: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/)
+          .nullable(),
+        packageVersion: z.string().min(1),
+        submitter: z
+          .object({ accountId: apiIdentifierSchema, displayName: z.string().nullable() })
+          .strict(),
+      })
+      .strict(),
     progress: z
       .object({
         total: z.number().int().nonnegative(),
@@ -101,7 +126,9 @@ export const batchStatusSchema = z
 export const batchStatusResponseSchema = createResourceResponseSchema(batchStatusSchema);
 export const batchReviewResponseSchema = createResourceResponseSchema(batchStatusSchema);
 
-export const batchListQuerySchema = paginationQuerySchema;
+export const batchListQuerySchema = paginationQuerySchema.extend({
+  status: z.enum(BATCH_STATES).optional(),
+});
 export const batchListResponseSchema = createCollectionResponseSchema(batchStatusSchema);
 
 export const batchReportQuerySchema = paginationQuerySchema;
@@ -119,6 +146,8 @@ export const batchReportLocationSchema = z
 export const batchReportContextSchema = z
   .object({
     eventReference: z.string().nullable(),
+    fixtureId: apiIdentifierSchema.nullable(),
+    fixtureLabel: z.string().min(1).nullable(),
     inningsId: apiIdentifierSchema.nullable(),
     overNumber: z.number().int().nonnegative().nullable(),
     positionInOver: z.number().int().positive().nullable(),
@@ -182,10 +211,49 @@ export const batchReportRuleGroupSchema = z
   })
   .strict();
 
+export const batchFixtureSummarySchema = z
+  .object({
+    fixtureId: apiIdentifierSchema.nullable(),
+    label: z.string().min(1),
+    total: z.number().int().nonnegative(),
+    accepted: z.number().int().nonnegative(),
+    rejected: z.number().int().nonnegative(),
+    unresolved: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const batchReviewSummarySchema = z
+  .object({
+    validation: z
+      .object({
+        accepted: z.number().int().nonnegative(),
+        rejected: z.number().int().nonnegative(),
+        blockingErrors: z.number().int().nonnegative(),
+        duplicate: z.number().int().nonnegative(),
+        conflicting: z.number().int().nonnegative(),
+      })
+      .strict(),
+    resolution: z
+      .object({
+        resolved: z.number().int().nonnegative(),
+        ambiguous: z.number().int().nonnegative(),
+        unresolved: z.number().int().nonnegative(),
+        invalid: z.number().int().nonnegative(),
+        proposed: z.number().int().nonnegative(),
+      })
+      .strict(),
+    approvalBlocked: z.boolean(),
+    blockingReasons: z.array(z.string().min(1)),
+  })
+  .strict();
+
 export const batchReportSchema = z
   .object({
     batch: batchStatusSchema,
     errorGroups: z.array(batchReportRuleGroupSchema),
+    reviewSummary: batchReviewSummarySchema,
+    fixtureSummaries: z.array(batchFixtureSummarySchema),
+    acceptedSamples: z.array(batchReportItemSchema).max(15),
     items: z.array(batchReportItemSchema),
     pagination: z.object({ nextCursor: z.string().min(1).nullable() }).strict(),
     downloadUrl: z.string().startsWith('/api/v1/batches/'),
@@ -236,6 +304,7 @@ export type BatchListResponse = z.infer<typeof batchListResponseSchema>;
 export type BatchReportQuery = z.infer<typeof batchReportQuerySchema>;
 export type BatchReportItem = z.infer<typeof batchReportItemSchema>;
 export type BatchReportRuleGroup = z.infer<typeof batchReportRuleGroupSchema>;
+export type BatchFixtureSummary = z.infer<typeof batchFixtureSummarySchema>;
 export type BatchReportResponse = z.infer<typeof batchReportResponseSchema>;
 export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResponseSchema>;
 export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
