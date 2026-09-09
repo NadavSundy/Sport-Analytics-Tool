@@ -20,6 +20,7 @@ rather than duplicating its content. New decisions should be added to this table
 | [ADR-010](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-010-background-jobs-and-workers.md)             | Transactional outbox, Azure Service Bus, and idempotent workers         | Accepted under #356   |
 | [ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md)                 | Private Azure Blob Storage with PostgreSQL provenance                   | Accepted under #356   |
 | [ADR-012](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-012-live-event-transport-and-replay.md)         | Adapter-based live ingestion with durable replay and server-sent events | See record            |
+| [ADR-013](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-013-task-based-user-testing-evidence.md)        | Task-based formal user testing with repository-retained evidence        | Accepted              |
 
 ## Supporting decisions
 
@@ -31,3 +32,4 @@ rather than duplicating its content. New decisions should be added to this table
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5],
 resolving issue #254.
 The issue #356 ADR statuses were updated with the assistance of Codex[GPT-5].
+ADR-013 and its index entry were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].

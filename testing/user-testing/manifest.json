@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "referenceFixture": {
+    "fixtureId": "5",
+    "inningsId": "11",
+    "competition": "ACC Eastern Region T20",
+    "fixture": "Thailand vs Singapore",
+    "knownResult": "Singapore 139; Thailand 96; Singapore won by 43 runs",
+    "writeSafety": "reference-validation-conflict-only"
+  },
+  "files": [
+    {
+      "path": "data/01_REFERENCE_fixture-5-accepted-events.json",
+      "mode": "reference",
+      "taskIds": ["PUB-02", "PUB-03", "ADM-02"]
+    },
+    {
+      "path": "data/02_WELL_FORMED_existing-published-slot-events.json",
+      "mode": "advanced-events",
+      "taskIds": ["SUB-05"],
+      "expected": "no silent duplicate or published-total mutation"
+    },
+    {
+      "path": "data/03_INVALID_runs-total-events.json",
+      "mode": "advanced-events",
+      "taskIds": ["SUB-06"],
+      "expected": "run-total validation rejection"
+    },
+    {
+      "path": "data/04_INVALID_same-striker-nonstriker-events.json",
+      "mode": "advanced-events",
+      "taskIds": ["SUB-06"],
+      "expected": "striker/non-striker validation rejection"
+    },
+    {
+      "path": "data/05_INVALID_two-errors-events.json",
+      "mode": "advanced-events",
+      "taskIds": ["SUB-06"],
+      "expected": "two distinguishable validation problems where supported"
+    }
+  ]
+}

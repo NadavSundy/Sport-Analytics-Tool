@@ -33,15 +33,26 @@ for a record tied to a specific issue number.
 
 ## Formal user testing
 
+The canonical Sprint 2 process is the task-based protocol established for Issue #264 / PR #317 and recorded in [ADR-013](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-013-task-based-user-testing-evidence.md). Each attempted Task ID receives its own Success / Partial / Failure outcome, and findings retain task-level traceability through decision, issue/fix and retest.
+
 Session records follow the
 [user-testing evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/README.md)
-and the [session template](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/session-template.md).
+and the [session template](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/session-template.md). Sprint 2 sessions are retained under
+[`evidence/user-testing/sprint-2/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2), with the consolidated result recorded in
+[`sprint-2-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md).
+
+Facilitators prepare environment-specific accounts, fixtures, batches and reusable validation/reference inputs from `testing/user-testing/`. The pack deliberately keeps credentials out of Git and separates safe fixture-5 validation/reference data from writable success/correction scenarios that require disposable test state.
+
+The execution work remains split by workflow so findings can be attributed cleanly:
+
+- #416 — public / analyst;
+- #417 — submission / batch;
+- #418 — review / administration.
 
 | Date        | Session                                                                                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 23 Aug 2026 | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md) |
 
-Further Sprint 2 formal user-testing sessions will be added to this table as they are produced.
+Further Sprint 2 formal user-testing sessions will be added to this table as they are produced. The retained repository evidence is authoritative; documentation deployment does not retrieve or regenerate feedback from an external service.
 
-The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5],
-resolving issue #254.
+The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5] and reviewed and edited with ChatGPT-Web[GPT-5.6 Sol], resolving issue #254 and the Sprint 2 user-testing process update.
