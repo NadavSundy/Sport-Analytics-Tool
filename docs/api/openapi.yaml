@@ -49,6 +49,9 @@ tags:
   - name: Submissions
     description: Approved-submitter event-submission operations.
 
+  - name: Provenance
+    description: Protected submission, event-revision and derived-statistic provenance.
+
   - name: Submitter Access
     description: Authenticated submitter-access request operations.
 
@@ -1300,6 +1303,99 @@ paths:
                 $ref: '#/components/schemas/ParticipantAggregateResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/provenance/submissions:
+    get:
+      tags: [Provenance]
+      summary: List protected submission and batch provenance
+      description: Submitters see their own sources; administrators see only their assigned competition review scope.
+      operationId: listSubmissionProvenance
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: kind
+          in: query
+          schema: { type: string, enum: [direct, file, batch] }
+      responses:
+        '200':
+          description: Cursor-paginated private provenance records.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProvenanceSubmissionListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/provenance/submissions/{reference}:
+    get:
+      tags: [Provenance]
+      summary: Inspect one direct, file or batch submission provenance record
+      operationId: getSubmissionProvenance
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: Numeric direct/file submission ID or UUID batch reference.
+          schema: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Source metadata, lifecycle and acceptance/publication decisions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProvenanceSubmissionDetailResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/provenance/events/{eventId}:
+    get:
+      tags: [Provenance]
+      summary: Trace an event through its current and superseded revisions
+      operationId: getEventProvenance
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Internal delivery identifier from a statistic contributor trace.
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+      responses:
+        '200':
+          description: Revision lineage with retained source and decision provenance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventProvenanceResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/provenance/fixtures/{fixtureId}/statistics/{statisticId}:
+    get:
+      tags: [Provenance]
+      summary: Trace a derived statistic to its current contributing event revisions
+      operationId: getStatisticProvenance
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: fixtureId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: Current statistic contributors with submission, batch and decision provenance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatisticProvenanceResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches:
     get:
@@ -3953,6 +4049,255 @@ components:
       properties:
         data: { $ref: '#/components/schemas/BatchStatus' }
 
+    ProvenanceActor:
+      type: object
+      additionalProperties: false
+      required: [accountId, displayName]
+      properties:
+        accountId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        displayName:
+          oneOf:
+            - { type: string, minLength: 1 }
+            - type: 'null'
+
+    ProvenanceSourceMetadata:
+      type: object
+      additionalProperties: false
+      required: [fileName, mediaType, sizeBytes, checksum, packageVersion]
+      properties:
+        fileName:
+          oneOf: [{ type: string, minLength: 1 }, { type: 'null' }]
+        mediaType:
+          oneOf: [{ type: string, minLength: 1 }, { type: 'null' }]
+        sizeBytes:
+          oneOf: [{ type: integer, minimum: 1 }, { type: 'null' }]
+        checksum:
+          oneOf:
+            - { type: string, pattern: '^[0-9a-f]{64}$' }
+            - type: 'null'
+        packageVersion:
+          oneOf: [{ type: string, minLength: 1 }, { type: 'null' }]
+
+    ProvenanceDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, actor, decidedAt, reason]
+      properties:
+        decision:
+          type: string
+          enum: [accepted, rejected, approved, returned_for_correction]
+        actor:
+          oneOf:
+            - $ref: '#/components/schemas/ProvenanceActor'
+            - type: 'null'
+        decidedAt: { type: string, format: date-time }
+        reason:
+          oneOf: [{ type: string, minLength: 1 }, { type: 'null' }]
+
+    ProvenanceLifecycleEntry:
+      type: object
+      additionalProperties: false
+      required: [fromState, toState, at, actorKind, actorIdentifier, reason]
+      properties:
+        fromState:
+          oneOf: [{ type: string, minLength: 1 }, { type: 'null' }]
+        toState: { type: string, minLength: 1 }
+        at: { type: string, format: date-time }
+        actorKind: { type: string, minLength: 1 }
+        actorIdentifier: { type: string, minLength: 1 }
+        reason: { type: string, minLength: 1 }
+
+    ProvenanceSubmission:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          kind,
+          reference,
+          submissionId,
+          batchReference,
+          fixtureId,
+          competitionId,
+          submitter,
+          status,
+          receivedAt,
+          updatedAt,
+          eventCount,
+          source,
+        ]
+      properties:
+        kind: { type: string, enum: [direct, file, batch] }
+        reference: { type: string, minLength: 1 }
+        submissionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        batchReference:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        fixtureId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        competitionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        submitter: { $ref: '#/components/schemas/ProvenanceActor' }
+        status: { type: string, minLength: 1 }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        eventCount: { type: integer, minimum: 0 }
+        source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
+
+    ProvenanceSubmissionDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProvenanceSubmission'
+        - type: object
+          required: [lifecycle, decisions]
+          properties:
+            lifecycle:
+              type: array
+              items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
+            decisions:
+              type: array
+              items: { $ref: '#/components/schemas/ProvenanceDecision' }
+
+    ProvenanceSubmissionListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceSubmission' }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
+
+    ProvenanceSubmissionDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/ProvenanceSubmissionDetail' }
+
+    ProvenanceEventSource:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          kind,
+          reference,
+          submissionId,
+          batchReference,
+          batchItemId,
+          submissionEventOrdinal,
+          submitter,
+          checksum,
+          decision,
+        ]
+      properties:
+        kind: { type: string, enum: [direct, file, batch] }
+        reference: { type: string, minLength: 1 }
+        submissionId: { $ref: '#/components/schemas/ApiIdentifier' }
+        batchReference:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        batchItemId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        submissionEventOrdinal:
+          oneOf: [{ type: integer, minimum: 0 }, { type: 'null' }]
+        submitter: { $ref: '#/components/schemas/ProvenanceActor' }
+        checksum:
+          oneOf:
+            - { type: string, pattern: '^[0-9a-f]{64}$' }
+            - type: 'null'
+        decision:
+          oneOf:
+            - $ref: '#/components/schemas/ProvenanceDecision'
+            - type: 'null'
+
+    ProvenanceCorrection:
+      type: object
+      additionalProperties: false
+      required: [correctionId, requester, correctedAt, reason, review]
+      properties:
+        correctionId: { $ref: '#/components/schemas/ApiIdentifier' }
+        requester: { $ref: '#/components/schemas/ProvenanceActor' }
+        correctedAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1 }
+        review:
+          oneOf:
+            - $ref: '#/components/schemas/ProvenanceDecision'
+            - type: 'null'
+
+    EventProvenanceRevision:
+      type: object
+      additionalProperties: false
+      required: [deliveryId, revision, recordedAt, supersededAt, current, source, correction]
+      properties:
+        deliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        revision: { type: integer, minimum: 1 }
+        recordedAt: { type: string, format: date-time }
+        supersededAt:
+          oneOf: [{ type: string, format: date-time }, { type: 'null' }]
+        current: { type: boolean }
+        source: { $ref: '#/components/schemas/ProvenanceEventSource' }
+        correction:
+          oneOf:
+            - $ref: '#/components/schemas/ProvenanceCorrection'
+            - type: 'null'
+
+    EventProvenance:
+      type: object
+      additionalProperties: false
+      required: [eventId, sourceEventId, fixtureId, competitionId, currentDeliveryId, revisions]
+      properties:
+        eventId: { $ref: '#/components/schemas/ApiIdentifier' }
+        sourceEventId:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        fixtureId: { $ref: '#/components/schemas/ApiIdentifier' }
+        competitionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        currentDeliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        revisions:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/EventProvenanceRevision' }
+
+    EventProvenanceResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/EventProvenance' }
+
+    StatisticProvenanceContributor:
+      type: object
+      additionalProperties: false
+      required: [deliveryId, revision, sourceEventId, source]
+      properties:
+        deliveryId: { $ref: '#/components/schemas/ApiIdentifier' }
+        revision: { type: integer, minimum: 1 }
+        sourceEventId:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        source: { $ref: '#/components/schemas/ProvenanceEventSource' }
+
+    StatisticProvenance:
+      type: object
+      additionalProperties: false
+      required: [statisticId, fixtureId, statisticCode, scope, sourceEventCount, contributors]
+      properties:
+        statisticId: { type: string, minLength: 1 }
+        fixtureId: { $ref: '#/components/schemas/ApiIdentifier' }
+        statisticCode: { type: string, minLength: 1 }
+        scope: { type: string, minLength: 1 }
+        sourceEventCount: { type: integer, minimum: 0 }
+        contributors:
+          type: array
+          items: { $ref: '#/components/schemas/StatisticProvenanceContributor' }
+
+    StatisticProvenanceResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/StatisticProvenance' }
+
     BatchListResponse:
       type: object
       additionalProperties: false
@@ -4384,6 +4729,10 @@ components:
         eventCount:
           type: integer
           minimum: 1
+        checksum:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: SHA-256 of the validated direct payload or original uploaded file bytes.
         sourceFile:
           $ref: '#/components/schemas/SubmissionSourceFile'
 

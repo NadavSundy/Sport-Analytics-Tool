@@ -2,6 +2,7 @@ import { MAX_SUBMISSION_UPLOAD_BYTES } from '@sport-analytics/contracts';
 import type { ApiErrorDetail, SubmissionSourceFile } from '@sport-analytics/contracts';
 import type { Express, RequestHandler } from 'express';
 import multer from 'multer';
+import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import { SubmissionValidationError } from './submission.errors';
 
@@ -43,6 +44,7 @@ type CsvRow = Record<CsvHeader, string>;
 export interface ParsedSubmissionUpload {
   submission: unknown;
   sourceFile: SubmissionSourceFile;
+  sourceChecksum: string;
 }
 
 function invalidFile(message: string, field = SUBMISSION_UPLOAD_FIELD): SubmissionValidationError {
@@ -309,17 +311,22 @@ export function parseSubmissionUpload(file: Express.Multer.File): ParsedSubmissi
     mediaType,
     sizeBytes: file.size,
   } as const;
+  const sourceChecksum = createHash('sha256').update(file.buffer).digest('hex');
   const content = file.buffer.toString('utf8');
 
   if (mediaType === 'application/json') {
     try {
-      return { submission: JSON.parse(content), sourceFile };
+      return { submission: JSON.parse(content), sourceFile, sourceChecksum };
     } catch {
       throw invalidFile('The uploaded JSON file is not valid JSON.');
     }
   }
 
-  return { submission: normaliseCsv(stripUtf8Bom(content), fileName), sourceFile };
+  return {
+    submission: normaliseCsv(stripUtf8Bom(content), fileName),
+    sourceFile,
+    sourceChecksum,
+  };
 }
 
 export function createSubmissionUploadMiddleware(): RequestHandler {

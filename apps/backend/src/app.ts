@@ -71,6 +71,11 @@ import {
   type ApiConsumerRepository,
 } from './modules/api-consumers/api-consumer.repository';
 import { createConsumerRouter } from './modules/api-consumers/consumer.routes';
+import { createProvenanceRouter } from './modules/provenance/provenance.routes';
+import {
+  createProvenanceService,
+  type ProvenanceService,
+} from './modules/provenance/provenance.service';
 import { createDatasetReleaseRouter } from './modules/dataset-releases/dataset-release.routes';
 import {
   createDatasetReleaseService,
@@ -95,6 +100,7 @@ export interface AppDependencies {
   apiConsumerService?: ApiConsumerService;
   apiConsumerRepository?: ApiConsumerRepository;
   datasetReleaseService?: DatasetReleaseService;
+  provenanceService?: ProvenanceService;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -145,6 +151,8 @@ export function createApp(dependencies: AppDependencies = {}) {
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
   const datasetReleaseService = dependencies.datasetReleaseService ?? createDatasetReleaseService();
+  const provenanceService =
+    dependencies.provenanceService ?? createProvenanceService(fixtureStatisticsService);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -197,6 +205,10 @@ export function createApp(dependencies: AppDependencies = {}) {
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
   );
   app.use(API_BASE_PATH, createBatchRouter(verifyAccessToken, synchronizeAccount, batchService));
+  app.use(
+    API_BASE_PATH,
+    createProvenanceRouter(verifyAccessToken, synchronizeAccount, provenanceService),
+  );
   app.use(
     API_BASE_PATH,
     createSubmitterAccessRouter(verifyAccessToken, synchronizeAccount, submitterAccessService),

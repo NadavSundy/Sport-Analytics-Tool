@@ -159,7 +159,7 @@ export function createSubmissionUploadController(service: SubmissionService): Re
     }
 
     void service
-      .submit(account, parsed.data, upload.sourceFile)
+      .submit(account, parsed.data, upload.sourceFile, upload.sourceChecksum)
       .then((submission) => response.status(201).json(submission))
       .catch((error: unknown) => {
         if (error instanceof SubmissionForbiddenError) {
