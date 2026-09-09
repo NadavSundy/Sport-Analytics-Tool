@@ -54,6 +54,7 @@
     "test:ci-routing": "node --test tests/ci/*.test.mjs",
     "ci:local": "node scripts/ci-local.mjs",
     "verify:intermediate-ingestion": "node scripts/verify-intermediate-ingestion.mjs",
+    "verify:intermediate-ingestion:invariants": "node scripts/verify-intermediate-ingestion.mjs --invariants-only",
     "ci:docker": "node scripts/ci-docker.mjs",
     "hooks:install": "node scripts/git-hooks.mjs install",
     "hooks:remove": "node scripts/git-hooks.mjs remove"

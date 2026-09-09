@@ -28,35 +28,28 @@ npm.cmd run ci:local
 The dedicated verifier is an acceptance harness; it does not replace the repository methodology or
 normal change-aware CI.
 
-## Hosted acceptance workflow
+## Pull Request merge gate
 
-The same harness is available through the manual Gitea Actions workflow:
+Intermediate ingestion acceptance is integrated into the existing **Sport Analytics CI** workflow.
+There is no second hosted workflow and no second copy of the database/browser suites. The change-aware
+planner exposes `intermediateIngestion=true` for the implemented ingestion boundaries and then forces
+the existing validation and browser lanes that together prove the cross-layer path.
 
-```text
-Intermediate Ingestion Acceptance
-```
+When the flag is selected:
 
-It is deliberately `workflow_dispatch`-only. Ordinary Pull Requests continue to use the existing
-change-aware `Sport Analytics CI / quality` gate, and pushes to `main` remain deployment-only after
-that gate. The acceptance workflow therefore does not make every ingestion-related change rerun the
-entire Intermediate exercise.
+- validation runs the shared contracts, backend, worker, PostgreSQL and OpenAPI checks once;
+- `npm run verify:intermediate-ingestion:invariants` adds only the #364-specific retained-evidence and
+  worker log-safety checks that are not already owned by those suites;
+- browser CI runs the focused submission, batch-review and correction journeys when the Pull Request
+  affects only Intermediate ingestion surfaces;
+- a simultaneous broader frontend/browser change upgrades that lane to the normal full Playwright suite
+  rather than running both; and
+- the existing `Sport Analytics CI / quality` status requires the selected validation and browser jobs
+  to succeed before merge where that status is protected.
 
-The hosted job follows the repository's existing runner/browser conventions instead of introducing a
-second CI policy:
-
-- Ubuntu 24.04 and Node.js 22;
-- one `npm ci` in one job, avoiding repeated checkout/install work across acceptance lanes;
-- the pinned Playwright 1.62.1 Chromium cache key already used by normal browser CI;
-- two Playwright workers, matching the measured shared-runner setting;
-- one production frontend build reused by the focused browser journeys with
-  `PLAYWRIGHT_REUSE_BUILD=1`; and
-- the repository's disposable PostgreSQL 16 integration-test runtime.
-
-The workflow does not deploy, generate duplicate coverage, or replace the required Pull Request
-quality status. Use it for milestone/final acceptance, after a material ingestion change when a full
-cross-layer regression is warranted, or when a hosted reproduction of the local verifier is useful.
-The Gitea run log is acceptable hosted execution evidence; record its run reference in the Issue #364
-validation record when used.
+This keeps #364 merge-affecting while preserving change-aware optimization for unrelated Pull Requests.
+The complete `npm run verify:intermediate-ingestion` command remains available for deliberate local or
+milestone evidence runs.
 
 ## Issue #364 acceptance map
 
