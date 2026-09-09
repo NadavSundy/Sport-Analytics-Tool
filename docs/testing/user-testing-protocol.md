@@ -1,39 +1,66 @@
 # User Testing Protocol
 
+> **User-testing trail:** [Overview](user-testing-overview.md) -> **Protocol** -> [Task Bank](user-testing-task-bank.md)
+
 ## Purpose
 
-This document defines the formal user-testing process used by the Sport Analytics Tool.
+This document defines the canonical formal user-testing process used by the Sport Analytics Tool.
 
 The purpose of user testing is to observe whether representative users can complete important workflows without being coached through the interface, identify usability and functional problems, record those findings consistently, and ensure important findings are either acted on or consciously rejected with a documented reason.
 
-This protocol is intended to be repeatable across Sprint 2 and later project iterations.
+Sprint 2 testing uses the task-based process established for Issue #264 / PR #317 and accepted in ADR-013. User-testing evidence is retained in the repository after facilitator review; Microsoft Forms, Power Automate, OneDrive retrieval and generated evidence pages are not required parts of the process.
 
 ---
 
 ## Scope
 
-Testing covers three principal user journeys:
+Testing is split into independently selectable workflow groups so that a participant only attempts tasks relevant to the role and functionality being evaluated:
 
-1. **Public / analyst user**
+1. **Authentication / account**
+   - Signs in through the managed Google/Supabase flow.
+   - Understands account and submitter-access state.
+   - Finds sign-out and account-deletion boundaries without destructive testing unless a disposable account is supplied.
+
+2. **Public / analyst**
    - Finds fixtures, events and statistics.
    - Filters or explores relevant cricket data.
    - Exports data where available.
    - Understands how to access the public API or datasets.
 
-2. **Approved submitter**
+3. **Approved submitter — direct submission**
    - Authenticates using an approved test account.
    - Submits event data.
    - Understands validation results.
    - Recovers from an invalid submission.
    - Uses correction functionality where available.
 
-3. **Administrator**
-   - Performs administrative workflows available in the current build.
-   - Reviews or manages authorised submitters where applicable.
-   - Reviews submitted data.
-   - Performs correction or review workflows where applicable.
+4. **Approved submitter — batch ingestion**
+   - Uploads a season or back-catalogue package.
+   - Understands the durable receipt and processing state.
+   - Finds and interprets the batch report.
+   - Understands accepted, rejected and correction-required outcomes.
+
+5. **Reviewer**
+   - Finds staged batches awaiting review.
+   - Interprets validation and reference-resolution information.
+   - Resolves references where required.
+   - Approves, returns or rejects a batch using the supplied scenario.
+
+6. **Administrator**
+   - Manages submitter access where applicable.
+   - Uses administrative/correction functionality available in the build.
 
 Only functionality available in the build being tested should be included in a testing session.
+
+### Sprint 2 execution issues
+
+The task bank is deliberately reusable across the existing Sprint 2 execution issues:
+
+- **#416** — public and analyst workflows;
+- **#417** — submission and batch workflows;
+- **#418** — review and administration workflows.
+
+A session does not need to test every task in a group. Select a small set of related tasks that answers the question being investigated.
 
 ---
 
@@ -46,19 +73,19 @@ Suitable participants may include:
 - students outside the development team;
 - friends or family members unfamiliar with the interface;
 - technically experienced participants acting as analysts/API consumers;
-- other individuals representative of the intended public, submitter or administrator roles.
+- other individuals representative of the intended public, submitter, reviewer or administrator roles.
 
 A team member may only participate where they did not implement or substantially design the workflow under test and their prior knowledge will not invalidate the test.
 
 ### Suggested Participant Mix
 
-Sprint 2 should aim to test all three major roles.
+Sprint 2 should aim to cover all three execution areas (#416–#418), rather than forcing every participant through the entire application.
 
-A useful minimum target is:
+A useful qualitative target is:
 
 - at least 2 public/analyst sessions;
-- at least 2 submitter sessions;
-- at least 1 administrator session.
+- at least 2 submitter sessions, including batch ingestion;
+- at least 1 reviewer/administrator session.
 
 Additional participants should be used where practical.
 
@@ -105,9 +132,15 @@ Before a session, the facilitator records:
 - application version, commit or release where available;
 - browser/device;
 - participant identifier;
-- role being tested.
+- role/workflow being tested.
 
 The facilitator should verify that the system is operational before starting but should not demonstrate the workflow that will be tested.
+
+Where a task depends on prepared data, the facilitator should also record the fixture/package/test file used so that the result can be reproduced.
+
+Use the version-controlled facilitator pack in `testing/user-testing/` before a prepared-data session. It defines reusable reference/error inputs, state prerequisites and safety boundaries for destructive or production-affecting tasks. Credentials are supplied separately and must never be committed.
+
+Successful submissions, corrections, approvals, rejections and account deletion can mutate state. Run those tasks only against disposable/staging data or a production test target that the team has explicitly approved and can restore. The published fixture-5 reference pack is safe for read-only comparison and deliberate validation/conflict checks; it is not a writable success target.
 
 ---
 
@@ -125,11 +158,9 @@ Tell the participant:
 
 The facilitator may repeat or clarify the wording of a task but must not explain how the interface works during the task.
 
----
+### 2. Select Tasks
 
-### 2. Run Tasks
-
-Tasks are selected from the project's user-testing task bank.
+Tasks are selected from the [User Testing Task Bank](user-testing-task-bank.md).
 
 Tasks should:
 
@@ -138,7 +169,8 @@ Tasks should:
 - avoid giving away navigation paths;
 - represent realistic user intentions;
 - be appropriate for the participant role;
-- only test functionality present in the current build.
+- only test functionality present in the current build;
+- be recorded individually so that one workflow result does not hide another.
 
 Example:
 
@@ -149,8 +181,6 @@ Example:
 **Avoid**
 
 > Click Fixtures, select the first fixture, open Statistics and use the filter dropdown.
-
----
 
 ### 3. Observe Without Coaching
 
@@ -164,6 +194,7 @@ During each task, the observer records:
 - functionality the participant expected but could not find;
 - comments made by the participant;
 - assistance requested;
+- assistance actually given;
 - notable positive observations.
 
 The facilitator should not correct behaviour simply because it differs from the intended workflow.
@@ -172,7 +203,7 @@ The facilitator should not correct behaviour simply because it differs from the 
 
 ## Task Outcome
 
-Each task receives one outcome:
+Every attempted task receives its **own** outcome. Do not assign one outcome to an entire session or combine several tasks into one result.
 
 ### Success
 
@@ -186,7 +217,27 @@ The participant made meaningful progress but could not complete the entire goal,
 
 The participant could not complete the goal.
 
-Where intervention occurs, the evidence should record what assistance was required.
+Where intervention occurs, the evidence must record what assistance was required.
+
+---
+
+## Findings
+
+A session may produce zero, one or many findings. Every finding receives a unique session-local ID such as `F01`, and must link back to the Task ID that produced it.
+
+A finding should record:
+
+- Finding ID;
+- related Task ID;
+- concise anonymised description;
+- severity;
+- decision (`accept`, `defer`, `reject`, or `pending`);
+- decision reason;
+- Gitea issue where applicable;
+- implementation PR/commit where applicable;
+- retest requirement and result where applicable.
+
+Positive observations may also be retained, but they do not require severity or follow-up work.
 
 ---
 
@@ -240,12 +291,13 @@ Possible outcomes are:
 3. **Feature request created**
 4. **Existing Gitea issue linked**
 5. **Accepted and fixed immediately**
-6. **No change**
+6. **Deferred**
+7. **Rejected / no change**
 
 Where an issue is created, it should include:
 
 - participant identifier;
-- affected task;
+- affected Task ID;
 - anonymised observation;
 - severity;
 - reproduction information where relevant;
@@ -279,7 +331,7 @@ This ensures feedback is evaluated rather than silently ignored.
 
 S1 and S2 findings that result in an accepted change must be retested.
 
-Where practical, the same task should be repeated:
+Where practical, repeat the same Task ID:
 
 - against the corrected build;
 - without telling the participant exactly what changed;
@@ -288,6 +340,7 @@ Where practical, the same task should be repeated:
 Retest evidence records:
 
 - original finding;
+- related Task ID;
 - related Gitea issue/PR;
 - build or commit tested;
 - new outcome;
@@ -299,7 +352,7 @@ S3 and S4 findings may also be retested where appropriate.
 
 ## Evidence Storage
 
-Sprint 2 evidence is stored under:
+Reviewed Sprint 2 evidence is stored in Git under:
 
 `evidence/user-testing/sprint-2/`
 
@@ -309,23 +362,21 @@ Session evidence uses:
 
 Examples:
 
-- `2026-09-03-P01-public.md`
-- `2026-09-04-P02-submitter.md`
-- `2026-09-05-P03-admin.md`
+- `2026-09-10-P01-public.md`
+- `2026-09-10-P02-submitter.md`
+- `2026-09-10-P03-reviewer.md`
 
 Supporting screenshots use the same prefix:
 
-- `2026-09-03-P01-public-task-01.png`
+- `2026-09-10-P01-public-PUB-02.png`
 
 The overall Sprint 2 summary is:
 
 `evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md`
 
-Evidence should link to relevant Gitea issues and pull requests where applicable.
+Before committing session evidence, the facilitator must review it for credentials, personal information and unnecessary identifying detail.
 
-Where anonymised Power Automate responses are used, the generated MkDocs presentation is stored under
-`docs/user-testing/evidence/generated/`. It is a sanitised publication layer, not a replacement for
-the retained session evidence, facilitator privacy review, follow-up decisions, or retest record.
+Evidence should link to relevant Gitea issues and pull requests where applicable. The committed evidence is the authoritative retained record for the Sprint; documentation deployment does not retrieve or regenerate user feedback from an external service.
 
 ---
 
@@ -336,11 +387,11 @@ After the testing round, the team should summarise:
 - number of participants;
 - participant-role distribution;
 - tasks tested;
-- success/partial/failure counts;
+- Success / Partial / Failure counts by Task ID;
 - S1–S4 findings;
+- accepted, deferred and rejected findings;
 - Gitea issues created;
 - findings implemented;
-- findings rejected and why;
 - retest results;
 - remaining concerns.
 
@@ -360,6 +411,14 @@ A user-testing finding that exposes a reproducible functional defect should norm
 
 ---
 
+## AI-Assisted Analysis
+
+AI may be used to help organise anonymised facilitator notes, identify repeated themes, draft Gitea issues, compare task outcomes and prepare summaries. The team remains responsible for checking the analysis against the original session evidence and for making severity, scope and implementation decisions.
+
+Do not provide participant credentials, unreviewed personal information or other restricted data to an AI tool.
+
+---
+
 ## AI Declaration
 
-The preceding document was generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

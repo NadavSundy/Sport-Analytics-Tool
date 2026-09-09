@@ -1,0 +1,21 @@
+[
+  {
+    "eventId": "00000000-0000-4000-8000-000000000959",
+    "inningsId": "11",
+    "sequenceNumber": 4,
+    "overNumber": 0,
+    "positionInOver": 3,
+    "ballNumber": "0.4",
+    "strikerId": "127",
+    "nonStrikerId": "124",
+    "bowlerId": "132",
+    "runs": {
+      "offBat": 4,
+      "extras": 0,
+      "total": 4,
+      "nonBoundary": false
+    },
+    "extras": {},
+    "wickets": []
+  }
+]

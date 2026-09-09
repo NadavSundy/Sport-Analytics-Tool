@@ -180,20 +180,6 @@ __pycache__/
 # Generated MkDocs output
 /site/
 
-# Restricted local user-testing imports and CI-generated evidence pages
-/testing/user-feedback/input/*
-!/testing/user-feedback/input/responses.json
-/docs/user-testing/evidence/generated/*.md
-!/docs/user-testing/evidence/generated/.gitkeep
 # Local Codex instructions
 /AGENTS.md
 AGENTS.md
-
-
-# rclone credentials
-.rclone/
-rclone.conf
-**/rclone.conf
-
-# OneDrive sync metadata
-.OneDrive/
