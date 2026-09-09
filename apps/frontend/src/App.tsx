@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
 import { HomePage } from './features/home/HomePage';
 import {
@@ -20,7 +20,6 @@ import {
   AuthenticationPage,
 } from './features/auth/AuthPages';
 import { SubmissionPage } from './features/submissions/SubmissionPage';
-import { BatchUploadPage } from './features/submissions/BatchUploadPage';
 import { BatchReportsPage } from './features/submissions/BatchReportsPage';
 import {
   FixtureStatisticDetailPage,
@@ -59,7 +58,10 @@ export function PublicApp() {
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/submissions/new" element={<SubmissionPage />} />
-        <Route path="/submissions/batches/new" element={<BatchUploadPage />} />
+        <Route
+          path="/submissions/batches/new"
+          element={<Navigate to="/submissions/new" replace />}
+        />
         <Route path="/submissions/batches" element={<BatchReportsPage />} />
         <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />

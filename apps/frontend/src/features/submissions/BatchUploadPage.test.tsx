@@ -1,3 +1,4 @@
+import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -6,11 +7,21 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
+import { BatchUploadWorkflow, type PackageUploadScope } from './BatchUploadPage';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
 
 const batchReference = '123e4567-e89b-42d3-a456-426614174000';
+const submitterProfile = {
+  id: '17',
+  subject: 'submitter-user',
+  displayName: 'Submitter User',
+  role: 'submitter' as const,
+  approvalState: 'approved' as const,
+  requestedCompetition: null,
+  competitionIds: ['5'],
+};
 
 function session(): Session {
   const user = {
@@ -53,7 +64,20 @@ function response(status: number, body: unknown): Response {
   } as unknown as Response;
 }
 
-function renderUpload(activeSession: Session | null = session()) {
+function renderUpload(
+  scope: PackageUploadScope = 'season',
+  profile: CurrentUserProfile = submitterProfile,
+) {
+  return render(
+    <AuthProvider client={authClient()}>
+      <MemoryRouter>
+        <BatchUploadWorkflow profile={profile} scope={scope} />
+      </MemoryRouter>
+    </AuthProvider>,
+  );
+}
+
+function renderLegacyRoute(activeSession: Session | null = session()) {
   return render(
     <AuthProvider client={authClient(activeSession)}>
       <MemoryRouter initialEntries={['/submissions/batches/new']}>
@@ -72,7 +96,7 @@ describe('guided batch upload', () => {
   test('redirects signed-out visitors without loading upload data', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    renderUpload(null);
+    renderLegacyRoute(null);
     expect(await screen.findByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -145,8 +169,8 @@ describe('guided batch upload', () => {
     const file = new File(['{"contractVersion":"1.0"}'], 'season.json', {
       type: 'application/json',
     });
-    fireEvent.change(screen.getByLabelText('Batch package'), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole('button', { name: 'Upload batch package' }));
+    fireEvent.change(screen.getByLabelText('Season package'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload season package' }));
     expect(screen.getByRole('progressbar', { name: 'Upload progress' })).toBeInTheDocument();
 
     await act(async () => {
@@ -162,10 +186,10 @@ describe('guided batch upload', () => {
       );
     });
 
-    expect(await screen.findByRole('heading', { name: 'Batch received safely' })).toHaveFocus();
+    expect(await screen.findByRole('heading', { name: 'Season received safely' })).toHaveFocus();
     expect(screen.getByText(batchReference)).toBeInTheDocument();
     expect(screen.getByText(/Processing continues after you leave/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Track this batch' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
       'href',
       `/submissions/batches/${batchReference}`,
     );
@@ -180,26 +204,14 @@ describe('guided batch upload', () => {
   });
 
   test('covers an empty scope without exposing ID inputs', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      response(200, {
-        user: {
-          id: '17',
-          subject: 'submitter-user',
-          displayName: null,
-          role: 'submitter',
-          approvalState: 'approved',
-          requestedCompetition: null,
-          competitionIds: [],
-        },
-      }),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    renderUpload();
+    renderUpload('season', { ...submitterProfile, competitionIds: [] });
     expect(
       await screen.findByRole('heading', { name: 'No authorised competitions' }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(/ID/i)).not.toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
   });
 
   test('keeps upload available when optional known-season choices are unavailable', async () => {
@@ -233,7 +245,7 @@ describe('guided batch upload', () => {
     expect(
       await screen.findByText(/Known seasons are unavailable.*readable season name/),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('Batch package')).toBeEnabled();
+    expect(screen.getByLabelText('Season package')).toBeEnabled();
   });
 
   test('distinguishes an access-loading failure from an empty scope', async () => {

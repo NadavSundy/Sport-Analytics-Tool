@@ -481,7 +481,7 @@ export function BatchReportsPage() {
         {batchReference ? (
           <Link to="/submissions/batches">Back to all batches</Link>
         ) : (
-          <Link to="/submissions/batches/new">Upload a batch package</Link>
+          <Link to="/submissions/new">Submit another package</Link>
         )}
       </header>
       {isLoading ? (

@@ -12,7 +12,8 @@ import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import { BatchUploadInputError, uploadBatch } from './batch-api';
+import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
+import { BatchUploadWorkflow, type PackageUploadScope } from './BatchUploadPage';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
 import {
   listAllFixtures,
@@ -20,6 +21,7 @@ import {
   SubmissionInputError,
   submitEvents,
 } from './submission-api';
+import { SingleFixturePackageError, validateSingleFixturePackage } from './single-fixture-package';
 
 const EMPTY_EVENTS = '[]';
 
@@ -31,7 +33,13 @@ type AccessState =
       role: CurrentUserProfile['role'];
       approvalState: CurrentUserProfile['approvalState'];
     }
-  | { kind: 'permitted'; fixtures: Fixture[]; role: 'submitter' | 'admin' };
+  | {
+      kind: 'permitted';
+      fixtures: Fixture[];
+      profile: CurrentUserProfile & { role: 'submitter' | 'admin' };
+    };
+
+type SubmissionWorkflow = 'fixture' | PackageUploadScope | 'technical';
 
 type ResultState =
   | { kind: 'idle' }
@@ -63,6 +71,18 @@ function formatFixtureOption(fixture: Fixture): string {
 
 function newDecisionKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+function readFileText(file: File): Promise<string> {
+  if (typeof file.text === 'function') return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => resolve(String(reader.result ?? '')));
+    reader.addEventListener('error', () =>
+      reject(new Error('The selected file could not be read.')),
+    );
+    reader.readAsText(file);
+  });
 }
 
 function formatValidationLocation(detail: ApiErrorDetail, uploadedFile: boolean): string {
@@ -147,12 +167,74 @@ function ValidationResults({
   );
 }
 
-function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submitter' | 'admin' }) {
+function SubmissionWorkflowSelector({
+  value,
+  onChange,
+}: {
+  value: SubmissionWorkflow;
+  onChange: (workflow: SubmissionWorkflow) => void;
+}) {
+  const options: Array<{ value: SubmissionWorkflow; label: string; description: string }> = [
+    {
+      value: 'fixture',
+      label: 'Single fixture',
+      description: 'Upload one fixture using readable team, competition, season and player names.',
+    },
+    {
+      value: 'season',
+      label: 'Season',
+      description: 'Upload one season containing one or more fixtures.',
+    },
+    {
+      value: 'catalogue',
+      label: 'Back catalogue',
+      description: 'Upload historical fixtures spanning one or more seasons.',
+    },
+    {
+      value: 'technical',
+      label: 'Advanced technical JSON',
+      description: 'Paste canonical delivery JSON when application references are already known.',
+    },
+  ];
+
+  return (
+    <fieldset className="submission-mode submission-workflow-selector">
+      <legend>What are you submitting?</legend>
+      <p className="field-help">
+        Choose a scope to see only the controls and guidance needed for that submission.
+      </p>
+      {options.map((option) => (
+        <label key={option.value}>
+          <input
+            type="radio"
+            name="submission-workflow"
+            value={option.value}
+            checked={value === option.value}
+            onChange={() => onChange(option.value)}
+          />
+          <span>
+            <strong>{option.label}</strong>
+            <span className="field-help">{option.description}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+function SubmissionForm({
+  fixtures,
+  role,
+  mode,
+}: {
+  fixtures: Fixture[];
+  role: 'submitter' | 'admin';
+  mode: 'file' | 'json';
+}) {
   const client = useAuthenticatedApiClient();
 
   const [fixtureId, setFixtureId] = useState(fixtures[0]?.fixtureId ?? '');
   const [eventJson, setEventJson] = useState(EMPTY_EVENTS);
-  const [mode, setMode] = useState<'file' | 'json'>('file');
   const [file, setFile] = useState<File | null>(null);
   const [decisionKey, setDecisionKey] = useState(newDecisionKey);
   const [result, setResult] = useState<ResultState>({ kind: 'idle' });
@@ -195,10 +277,14 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
         if (!/\.(json|csv)$/i.test(file.name)) {
           throw new SubmissionInputError('Choose a JSON or CSV fixture package.');
         }
+        if (file.size > MAX_BATCH_BYTES) {
+          throw new BatchUploadInputError('The package is larger than the 50 MB upload limit.');
+        }
         const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
         if (!fixture?.competitionId) {
           throw new SubmissionInputError('Select an available fixture before uploading.');
         }
+        validateSingleFixturePackage(file.name, await readFileText(file), fixture);
         const response = await uploadBatch(client, fixture.competitionId, file, decisionKey);
 
         setResult({
@@ -227,7 +313,7 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
         });
       }
     } catch (error) {
-      if (error instanceof SubmissionInputError) {
+      if (error instanceof SubmissionInputError || error instanceof SingleFixturePackageError) {
         setResult({
           kind: 'rejected',
           message: error.message,
@@ -298,43 +384,6 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
   return (
     <>
       <form className="submission-form" onSubmit={handleSubmit}>
-        <fieldset className="submission-mode" disabled={result.kind === 'submitting'}>
-          <legend>Choose how to submit</legend>
-
-          <p className="field-help">
-            A readable fixture package is the normal workflow. The canonical JSON editor remains
-            available for advanced integrations that already hold application references.
-          </p>
-
-          <label>
-            <input
-              type="radio"
-              name="submission-mode"
-              value="file"
-              checked={mode === 'file'}
-              onChange={() => {
-                setMode('file');
-                resetResult();
-              }}
-            />
-            Upload a readable fixture package
-          </label>
-
-          <label>
-            <input
-              type="radio"
-              name="submission-mode"
-              value="json"
-              checked={mode === 'json'}
-              onChange={() => {
-                setMode('json');
-                resetResult();
-              }}
-            />
-            Paste technical JSON
-          </label>
-        </fieldset>
-
         <section className="submission-scope" aria-labelledby="submission-scope-title">
           <h2 id="submission-scope-title">
             {role === 'admin' ? 'Administrator submission access' : 'Your authorised competitions'}
@@ -400,11 +449,19 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
                 package. Ambiguous or missing matches appear later in the batch report with labeled
                 correction controls.
               </p>
+              <p>
+                Before upload, the fixture date and team names are checked against your selection.
+                Choose Season or Back catalogue for a package containing multiple fixtures.
+              </p>
               <div className="batch-guidance__actions">
-                <a className="button button--secondary" href="/submission-template.json" download>
+                <a
+                  className="button button--secondary"
+                  href="/season-upload-template.json"
+                  download
+                >
                   Download JSON template
                 </a>
-                <a className="button button--secondary" href="/submission-template.csv" download>
+                <a className="button button--secondary" href="/season-upload-template.csv" download>
                   Download spreadsheet template
                 </a>
               </div>
@@ -593,6 +650,7 @@ export function SubmissionPage() {
   const [accessState, setAccessState] = useState<AccessState>({
     kind: 'loading',
   });
+  const [workflow, setWorkflow] = useState<SubmissionWorkflow>('fixture');
 
   usePageTitle();
 
@@ -624,7 +682,7 @@ export function SubmissionPage() {
         setAccessState({
           kind: 'permitted',
           fixtures,
-          role: profile.role,
+          profile: { ...profile, role: profile.role },
         });
       })
       .catch((error: unknown) => {
@@ -654,11 +712,10 @@ export function SubmissionPage() {
         <p className="eyebrow">Submitter workspace</p>
         <h1 id="submission-page-title">Submit Delivery Events</h1>
         <p>
-          Select an authorised fixture and send ordered delivery events for backend validation and
-          storage.
+          Upload a single fixture, a season or a back catalogue from one guided workflow. Use
+          readable names and let the platform resolve application references.
         </p>
         <div className="page-heading__actions">
-          <Link to="/submissions/batches/new">Upload a season or back catalogue</Link>
           <Link to="/submissions/batches">View submission history</Link>
         </div>
       </header>
@@ -673,7 +730,19 @@ export function SubmissionPage() {
       ) : accessState.kind === 'forbidden' ? (
         <ForbiddenState role={accessState.role} approvalState={accessState.approvalState} />
       ) : (
-        <SubmissionForm fixtures={accessState.fixtures} role={accessState.role} />
+        <>
+          <SubmissionWorkflowSelector value={workflow} onChange={setWorkflow} />
+          {workflow === 'season' || workflow === 'catalogue' ? (
+            <BatchUploadWorkflow key={workflow} profile={accessState.profile} scope={workflow} />
+          ) : (
+            <SubmissionForm
+              key={workflow}
+              fixtures={accessState.fixtures}
+              role={accessState.profile.role}
+              mode={workflow === 'fixture' ? 'file' : 'json'}
+            />
+          )}
+        </>
       )}
     </section>
   );

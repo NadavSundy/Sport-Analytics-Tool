@@ -76,12 +76,14 @@ Validation details include a field path and `eventIndex` where applicable.
 
 ## File uploads
 
-The normal `/submissions/new` interface accepts a one-fixture JSON or CSV package using the durable
-batch pipeline documented in [Batch submission packages](../data/batch-submission-packages.md). The
-submitter chooses a fixture by date, team names, competition and season, then completes a downloadable
-JSON or spreadsheet template using readable competition, season, team and player names. Database IDs
-are not required in either template. The interface sends the fixture's authorised competition scope
-to `POST /api/v1/batches`, displays upload progress and the durable receipt, and links to the batch
+The unified `/submissions/new` interface accepts single-fixture, season and back-catalogue packages
+using the durable batch pipeline documented in
+[Batch submission packages](../data/batch-submission-packages.md). In single-fixture mode, the
+submitter chooses a fixture by date, team names, competition and season; the browser verifies that a
+JSON or CSV package contains exactly that readable fixture context before upload. Season and
+back-catalogue modes use readable competition and optional season context and retain NDJSON support.
+All guided modes use the same maintained JSON and spreadsheet templates, and database IDs are not
+required. The interface displays upload progress and the durable receipt, and links to the batch
 report where background validation, source-row errors and ambiguous-reference mapping remain
 available after navigation.
 
@@ -233,3 +235,4 @@ The Issue #286 selective refresh dependency contract was documented with the ass
 Codex[GPT-5].
 The Issue #435 guided single-fixture upload behavior was documented with the assistance of
 Codex[GPT-5].
+The Issue #437 unified submission workflow was documented with the assistance of Codex[GPT-5].

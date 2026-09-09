@@ -92,6 +92,19 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test('the account Submit events action opens the unified submission workflow', async ({ page }) => {
+  await page.goto('/account');
+  await page.getByRole('link', { name: 'Submit events' }).click();
+
+  await expect(page).toHaveURL(/\/submissions\/new$/);
+  await expect(page.getByRole('heading', { name: 'Submit Delivery Events' })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
+  await expect(page.getByRole('radio', { name: /Season/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Back catalogue/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Upload a batch' })).toHaveCount(0);
+});
+
 test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
   await page.route('**/api/v1/submissions', async (route) => {
     const body = route.request().postDataJSON();
@@ -115,7 +128,7 @@ test('submitter completes the responsive workflow with a keyboard', async ({ pag
   });
 
   await page.goto('/submissions/new');
-  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
+  await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
 
   const fixtureSelector = page.getByLabel('Fixture', { exact: true });
   const editor = page.getByLabel('Delivery events JSON');
@@ -170,7 +183,7 @@ test('validation results remain associated with the editor and receive focus', a
   });
 
   await page.goto('/submissions/new');
-  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
+  await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
   const editor = page.getByLabel('Delivery events JSON');
   await editor.fill(JSON.stringify(events));
   await page.getByRole('button', { name: 'Submit events' }).click();
@@ -218,7 +231,20 @@ test(
       name: 'fixture-package.json',
       mimeType: 'application/json',
       buffer: Buffer.from(
-        JSON.stringify({ contractVersion: '1.0', packageId: 'provider:fixture-2026-08-20' }),
+        JSON.stringify({
+          contractVersion: '1.0',
+          packageId: 'provider:package:fixture-2026-08-20',
+          fixtures: [
+            {
+              context: {
+                date: fixture.startDate,
+                teams: fixture.competitors.map((competitor) => ({
+                  context: { name: competitor.name },
+                })),
+              },
+            },
+          ],
+        }),
       ),
     });
     await expect(page.getByText(/Selected: fixture-package.json/)).toBeVisible();
@@ -277,7 +303,7 @@ test('file validation identifies a rejected CSV row and returns focus to the res
   await fileInput.setInputFiles({
     name: 'events.csv',
     mimeType: 'text/csv',
-    buffer: Buffer.from('bad'),
+    buffer: Buffer.from('fixtureDate,homeTeamName,awayTeamName\n2026-08-20,Wanderers,Strikers\n'),
   });
   await page.getByRole('button', { name: 'Upload fixture package' }).click();
 
@@ -333,16 +359,20 @@ test(
     });
 
     await page.goto('/submissions/batches/new');
-    await expect(page.getByLabel('Competition')).toHaveValue('5');
-    await expect(page.getByLabel('Season context')).toContainText('2026/27 — Premier T20');
-    await page.getByLabel('Batch package').setInputFiles({
+    await expect(page).toHaveURL(/\/submissions\/new$/);
+    await page.getByRole('radio', { name: /Back catalogue/ }).click();
+    await expect(page.getByLabel('Competition', { exact: true })).toHaveValue('5');
+    await expect(page.getByLabel('Season context')).toHaveCount(0);
+    await page.getByLabel('Back catalogue package').setInputFiles({
       name: 'back-catalogue.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from('contractVersion,packageId\n1.0,provider:package:2026'),
     });
-    await page.getByRole('button', { name: 'Upload batch package' }).click();
+    await page.getByRole('button', { name: 'Upload back catalogue package' }).click();
     await expect(page.getByRole('progressbar', { name: 'Upload progress' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Batch received safely' })).toBeFocused();
+    await expect(
+      page.getByRole('heading', { name: 'Back catalogue received safely' }),
+    ).toBeFocused();
     await expect(page.getByText(/Processing continues after you leave/)).toBeVisible();
 
     await page.route(`**/api/v1/batches/${batchReference}/report`, (route) =>
@@ -476,7 +506,7 @@ test(
       }),
     );
 
-    await page.getByRole('link', { name: 'Track this batch' }).click();
+    await page.getByRole('link', { name: 'Track validation and errors' }).click();
     await expect(page.getByLabel('Choose the matching participant')).toHaveValue(
       '223e4567-e89b-42d3-a456-426614174000',
     );
