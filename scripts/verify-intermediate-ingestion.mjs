@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npmExecPath = process.env.npm_execpath;
+const invariantsOnly = process.argv.includes('--invariants-only');
 
 if (!npmExecPath) {
   throw new Error('Run this verifier through npm: npm run verify:intermediate-ingestion.');
@@ -113,6 +114,13 @@ async function main() {
 
   await assertEvidenceExists();
   await assertNoUnsafeWorkerLogFields();
+
+  if (invariantsOnly) {
+    console.log('\n==============================================');
+    console.log('INTERMEDIATE INGESTION INVARIANTS: PASS');
+    console.log('==============================================');
+    return;
+  }
 
   for (const [label, args] of automatedCommands) {
     await runNpm(label, args);

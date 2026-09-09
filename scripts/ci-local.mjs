@@ -241,6 +241,13 @@ async function runValidation(plan) {
     await runNpm(['run', 'openapi:lint'], { env: testEnvironment, label: 'OpenAPI lint' });
   }
 
+  if (plan.intermediateIngestion) {
+    await runNpm(['run', 'verify:intermediate-ingestion:invariants'], {
+      env: testEnvironment,
+      label: 'Intermediate ingestion acceptance invariants',
+    });
+  }
+
   if (plan.docs) {
     if (!existsSync(path.join(repoRoot, 'requirements-docs.txt'))) {
       throw new Error('requirements-docs.txt is required for strict documentation validation.');
@@ -284,9 +291,22 @@ async function runValidation(plan) {
       });
     }
 
-    await runNpm(['run', 'test:e2e'], {
+    const browserArgs = plan.e2eFull
+      ? ['run', 'test:e2e']
+      : [
+          'run',
+          'test:e2e',
+          '--',
+          'tests/e2e/submissions.spec.ts',
+          'tests/e2e/batch-review-workspace.spec.ts',
+          'tests/e2e/corrections.spec.ts',
+        ];
+
+    await runNpm(browserArgs, {
       env: browserEnvironment,
-      label: 'Browser and accessibility tests',
+      label: plan.e2eFull
+        ? 'Full browser and accessibility tests'
+        : 'Intermediate ingestion browser acceptance',
     });
   }
 

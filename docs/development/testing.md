@@ -123,8 +123,9 @@ because it needs a production build and Playwright environment.
 Lightweight evidence changes can skip npm-based validation entirely after the planner has checked the
 required repository structure. Unknown paths, root dependency changes and CI configuration changes
 deliberately fall back to full Pull Request application validation. A manual `workflow_dispatch` of the
-main **Sport Analytics CI** workflow selects full validation. Specialist acceptance workflows are
-manual-only and do not change the normal Pull Request routing.
+main **Sport Analytics CI** workflow selects full validation. Intermediate ingestion changes are
+identified by the same planner and force their existing validation/browser lanes as a merge-gated
+acceptance path rather than starting a second workflow.
 
 After a protected, up-to-date Pull Request has passed the required quality status and is merged, the
 `main` push is deployment-only: it reruns change planning and affected deployment/smoke checks instead of
@@ -149,20 +150,24 @@ every Pull Request or repeating the suite after merge.
 The detailed routing matrix, job graph, branch-protection contract, runner policy, failure semantics
 and local parity commands are documented in [CI/CD and quality gates](ci-cd.md).
 
-## Intermediate ingestion acceptance workflow
+## Intermediate ingestion acceptance gate
 
-Issue #364 retains a separate cross-layer acceptance harness:
+Issue #364 retains the full cross-layer local acceptance harness:
 
 ```text
 npm run verify:intermediate-ingestion
 ```
 
-For hosted milestone evidence, manually run the Gitea Actions workflow **Intermediate Ingestion
-Acceptance**. It is not triggered by ordinary Pull Requests or `main` pushes. The hosted workflow uses
-Ubuntu 24.04, Node.js 22, the same pinned Chromium cache and two-worker Playwright setting as normal
-browser CI, a single production frontend build reused by the browser portion, and the disposable
-PostgreSQL 16 database test runtime. This provides hosted parity without making every change pay for
-all Intermediate acceptance suites.
+For Pull Requests, the normal **Sport Analytics CI** planner now recognizes Intermediate ingestion
+paths and makes that acceptance merge-affecting without duplicating suites. The validation lane runs
+contracts/backend/worker/PostgreSQL/OpenAPI once plus the verifier's lightweight evidence/log-safety
+invariants. The browser lane runs the focused submission, batch-review and correction journeys when
+that is sufficient; if another changed path requires broader browser coverage, the full Playwright
+suite runs once instead. The existing `quality` job remains the branch-protection status that fails when
+a required validation or browser lane fails.
+
+Unrelated changes do not select the Intermediate gate, preserving the normal optimized change-aware
+routing.
 
 The detailed acceptance-to-evidence mapping is maintained in
 [Intermediate ingestion integrated acceptance](../testing/intermediate-ingestion-acceptance.md).
