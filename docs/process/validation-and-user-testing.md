@@ -5,7 +5,8 @@ user-testing evidence. For testing **strategy and procedures**, see
 [Automated & end-to-end testing](../development/testing.md),
 [User testing protocol](../testing/user-testing-protocol.md),
 [User testing task bank](../testing/user-testing-task-bank.md) and
-[Bug tracking](../testing/bug-tracking.md).
+[Bug tracking](../testing/bug-tracking.md) and the
+[Intermediate ingestion integrated acceptance](../testing/intermediate-ingestion-acceptance.md) runbook.
 
 ## Requirements traceability
 

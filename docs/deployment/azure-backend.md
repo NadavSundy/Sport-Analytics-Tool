@@ -37,20 +37,20 @@ private Azure Blob Storage and commit batch/job metadata through PostgreSQL. A t
 relay will deliver job identifiers to Azure Service Bus Standard, and a separately deployed Node.js
 worker in Azure Container Apps will process them.
 
-The API now uses `DefaultAzureCredential` and the App Service managed identity for Blob Storage.
-Blob account keys, connection strings, SAS tokens, and shared-key credentials are intentionally
-unsupported. The future worker will require its own managed-identity wiring when its separate
-deployment is implemented.
+The API uses `DefaultAzureCredential` and the App Service managed identity for Blob Storage. Blob
+account keys, connection strings, SAS tokens, and shared-key credentials are intentionally
+unsupported. The separate worker has its own managed-identity/deployment boundary documented in
+[Azure worker deployment](azure-worker.md).
 
 The development Blob resources are provisioned outside this repository: backend identity
 `statsthegame-api-dev`, storage account `statsthegameblobdev`, and private container
 `staged-ingestion`, with **Storage Blob Data Contributor** assigned to the backend identity. The
 repository does not create or mutate these Azure resources or RBAC assignments.
 
-The issue #358 private object-storage adapter, streaming safeguards, durable metadata, and
-production runtime composition are implemented in the backend. The batch receipt endpoint remains
-separate work. See
-the [private object-storage operations guide](object-storage-operations.md) for access, recovery and
+The issue #358 private object-storage adapter, streaming safeguards, durable metadata and production
+runtime composition are implemented in the backend. Batch receipt, durable validation/reporting and
+review/publication APIs now use that staged-ingestion boundary. See the
+[private object-storage operations guide](object-storage-operations.md) for access, recovery and
 credential-rotation requirements.
 
 `API_VERSION`, `CORS_ALLOWED_ORIGINS` and `LOG_LEVEL` appear as reserved placeholders in the current backend example environment file but are not read by the current application runtime. In particular, deployed CORS configuration must use `CORS_ORIGINS` unless the application code is deliberately changed.
@@ -137,3 +137,5 @@ The issue #358 object-storage implementation status was documented with the assi
 Codex[GPT-5].
 The production managed-identity composition and deployed storage settings were documented with the
 assistance of Codex[GPT-5].
+The Issue #364 Intermediate ingestion deployment-status reconciliation was reviewed and edited with
+the assistance of ChatGPT-Web[GPT-5.6 Sol].

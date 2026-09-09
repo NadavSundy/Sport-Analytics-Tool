@@ -13,26 +13,28 @@ flowchart LR
     Frontend -->|JSON over HTTPS| API
     API -->|SQL through server-side driver| DB[(PostgreSQL / Supabase-hosted Postgres)]
     API -->|Server-side request| External[Relevant external API]
-    API -.->|Transactional outbox| Queue[[Approved Azure Service Bus target]]
-    Queue -.-> Worker[Approved Azure Container App worker target]
+    API -->|Transactional outbox| Queue[[Azure Service Bus boundary]]
+    Queue --> Worker[Node batch worker / Azure Container App target]
     Worker --> DB
-    API -.-> Files[(Approved private Azure Blob Storage target)]
+    API --> Files[(Private Azure Blob Storage)]
     API -.-> Cache[(Future Azure Managed Redis)]
     Docs[Public MkDocs site] -. documents .-> Frontend
     Docs -. documents .-> API
     Docs -. documents .-> DB
 ```
 
-A background worker is shown as the approved independently deployable boundary for batch imports,
-large exports, and expensive derivations. Issue #356 accepted Azure Container Apps, a
-PostgreSQL transactional outbox and Azure Service Bus Standard for this boundary, and private Azure
-Blob Storage for retained batch bytes. Caching retains its separate measured adoption gate.
+The independently deployable background-worker boundary is implemented for batch ingestion using a
+PostgreSQL transactional outbox, Azure Service Bus Standard and the separate Node worker application;
+private Azure Blob Storage retains staged source bytes. The repository also contains the worker
+deployment workflow and recovery documentation. Caching retains a separate adoption boundary: the
+current fixture-statistics cache is PostgreSQL-backed, while external Redis remains optional.
 
 ## Later-tier service decisions
 
 Issue #55 records the initial recommendations for later-tier services. Issue #356 accepted ADR-010
-and ADR-011 for Intermediate implementation. ADR-009 and ADR-012 remain proposals, and no ADR status
-claims that its service is already provisioned or implemented.
+and ADR-011 for Intermediate implementation, and the repository now implements their worker/outbox
+and private-object-storage boundaries. ADR-009 and ADR-012 remain proposals for optional external
+caching and Advanced live ingestion.
 
 | Concern         | Direction                                                                                                                                                | Decision record                                                                                                                                       |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -113,3 +115,5 @@ The issue #55 advanced-service decision summary was drafted and reconciled with 
 the assistance of Codex[GPT-5]. The issue #356 adoption status was documented with the assistance of
 Codex[GPT-5].
 The issue #365 worker target status was documented with the assistance of Codex[GPT-5].
+The Issue #364 current-state architecture reconciliation was reviewed and edited with the
+assistance of ChatGPT-Web[GPT-5.6 Sol].

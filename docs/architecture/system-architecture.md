@@ -1,9 +1,8 @@
 # System architecture and development roadmap
 
-**Status:** Target architecture; foundation components are implemented, while later-tier
-components are explicitly marked as planned.  
-**Related issues:** #38, #55, #73
-**Last updated:** 21 August 2026
+**Status:** Current architecture with later-tier components explicitly marked where still planned.
+**Related issues:** #38, #55, #73, #275, #278, #283, #286, #293, #294, #363, #364
+**Last updated:** 9 September 2026
 
 ## 1. Purpose and architectural principles
 
@@ -111,10 +110,10 @@ flowchart TB
         Files[(Azure Blob Storage<br/>approved target for uploads and exports)]
     end
 
-    subgraph Future[Intermediate and advanced components]
+    subgraph Services[Intermediate and advanced services]
         Queue[[PostgreSQL outbox and<br/>Azure Service Bus]]
         Worker[Batch and derivation worker]
-        Cache[(Azure Managed Redis<br/>after measured adoption gate)]
+        Cache[(Optional external cache<br/>after measured adoption gate)]
         Live[Live event provider]
         Definitions[Versioned custom statistic definitions]
     end
@@ -128,10 +127,10 @@ flowchart TB
     API -->|TLS SQL through server-side driver| DB
     API -->|Upload and signed download operations| Files
     API -->|Timeouts, quotas, retries| External
-    API -.->|Enqueue durable work| Queue
-    Queue -.-> Worker
-    Worker -.-> DB
-    Worker -.-> Files
+    API -->|Enqueue durable work| Queue
+    Queue --> Worker
+    Worker --> DB
+    Worker --> Files
     API -.-> Cache
     Worker -.->|Invalidate or refresh| Cache
     Live -.->|Webhook, stream, or polling adapter| API
@@ -139,10 +138,10 @@ flowchart TB
     Definitions -.-> Worker
 ```
 
-Solid connections are Basic-tier boundaries or selected foundations. Dotted connections are
-Intermediate or Advanced additions. ADR-010 and ADR-011 are accepted for Intermediate
-implementation; ADR-009 and ADR-012 remain proposed. All dotted components remain unimplemented
-until their provisioning and feature-specific verification are complete.
+Solid connections are implemented Basic/Intermediate boundaries. Dotted connections are optional
+or later-tier additions that are not part of the current deployed product boundary. ADR-010 and
+ADR-011 underpin the implemented worker/object-storage path. ADR-009 and ADR-012 remain proposals;
+the current fixture-statistics cache is PostgreSQL-backed and does not require Redis.
 
 ### Trust boundaries
 
@@ -152,30 +151,30 @@ until their provisioning and feature-specific verification are complete.
 - Authentication-provider configuration safe for a browser may be exposed through frontend
   environment variables; database credentials, elevated auth keys, external API secrets, and
   storage credentials remain server-side.
-- Only the backend and future workers connect to PostgreSQL or object storage with write
+- Only the backend and asynchronous worker connect to PostgreSQL or object storage with write
   privileges.
 - Workers use the same domain services and validation rules as synchronous API operations;
   asynchronous execution must not create a second set of business rules.
 
 ## 4. Component responsibilities
 
-| Component                               | Responsibility                                                                                                                                                                                                                                  | Delivery tier and state                                                                                                                                                                              |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React frontend (`apps/frontend`)        | Render responsive and accessible search, dashboard, authentication, submission, review, and export journeys. Perform helpful client validation and send application data only to the backend.                                                   | Basic; authentication, public browsing and statistics, submitter-access, direct-submission, and administrator journeys are implemented; dataset export remains future work.                          |
-| Express backend (`apps/backend`)        | Own `/api/v1`, authoritative validation, authentication middleware, role and scope checks, event ingestion, derivation orchestration, queries, exports, external integrations, audit logs, and safe error responses.                            | Basic; authentication and account lifecycle, administrator access decisions, scoped submissions, public reads, fixture statistics, and weather integration are implemented; later-tier work remains. |
-| Shared contracts (`packages/contracts`) | Hold versioned request/response schemas and TypeScript types shared by the applications. It contains no secrets, database access, or authorisation decisions.                                                                                   | Basic; health, authentication, public-read, and submission contracts are implemented and tested.                                                                                                     |
-| Supabase Auth                           | Manage Google OAuth and identity lifecycle flows; issue tokens that the backend verifies. It proves identity but grants no application permission.                                                                                              | Basic; selected and backend verification is implemented.                                                                                                                                             |
-| Backend authorisation                   | Map the verified provider subject to `app_user`, enforce account status, one of the `viewer`, `submitter`, or `admin` roles, and scoped grants on every protected route.                                                                        | Basic; account synchronization, profile, administrator, submitter, and competition policies are implemented.                                                                                         |
-| PostgreSQL                              | Store identity mappings, grants, reference data, submissions, immutable event revisions, review and correction history, statistic definitions/results, export metadata, and audit records. Enforce integrity with constraints and transactions. | Basic foundations and the #276 batch, batch-item and checkpoint staging schema are implemented; later processing, release, and export storage remains future work.                                   |
-| Submission and validation service       | Accept manual JSON and file submissions, identify duplicates, apply versioned structural and cricket-domain rules, normalise source data, and produce actionable validation results.                                                            | Basic direct JSON submission and cricket-domain validation are implemented; file and batch ingestion remain future work.                                                                             |
-| Derivation service                      | Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.                                                                          | Basic fixture-level statistics are derived from event data; season, competition, and career aggregates are later-tier future work.                                                                   |
-| File and export service                 | Enforce upload type/size limits, calculate checksums, retain source provenance, create immutable release manifests, and provide authorised downloads.                                                                                           | Planned; filtered dataset export remains future work. Object storage and asynchronous large exports are later-tier work.                                                                             |
-| External integration adapter            | Isolate external providers behind the handwritten backend API and validate or safely map provider failures. Cricsheet is the historical file source; Open-Meteo is the runtime weather API.                                                     | Basic; Open-Meteo integration is implemented via ADR-008 and `GET /api/v1/weather`; fixture-to-venue coordinates and caching remain deferred.                                                        |
-| Worker and job queue                    | Use a PostgreSQL job/outbox transaction, Azure Service Bus Standard, and a separate idempotent Node worker for large imports, recomputation, exports, and scheduled synchronisation.                                                            | Container App host, queue, secure identity, health and deployment target are defined by #365; #278 adds batch processing and outbox relay behavior.                                                  |
-| Cache                                   | Use cache-aside Azure Managed Redis for measured hot published reads. Keys include data and definition versions; committed outbox events invalidate affected scopes.                                                                            | Intermediate; proposed in ADR-009 and introduced only after measurement.                                                                                                                             |
-| Live ingestion adapter                  | Normalise webhook, stream, or polling deliveries through the ordinary acceptance path; retain PostgreSQL replay cursors and expose public updates through SSE with snapshot recovery.                                                           | Advanced; proposed in ADR-012 and blocked on a licensed provider.                                                                                                                                    |
-| Custom statistic engine                 | Store reviewed, versioned definitions and calculate results in a restricted expression model. It must not execute arbitrary user code or unbounded database queries.                                                                            | Advanced.                                                                                                                                                                                            |
-| MkDocs site                             | Publish architecture, API, database, security, deployment, testing, methodology, and data-source documentation independently of the product applications.                                                                                       | Basic; deployed separately to Cloudflare Pages.                                                                                                                                                      |
+| Component                               | Responsibility                                                                                                                                                                                                                                  | Delivery tier and state                                                                                                                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| React frontend (`apps/frontend`)        | Render responsive and accessible search, dashboard, authentication, submission, review, and export journeys. Perform helpful client validation and send application data only to the backend.                                                   | Basic and Intermediate journeys are implemented for public browsing/statistics, submitter access, direct/file/batch submission, batch reports/review, corrections and bounded event export.                  |
+| Express backend (`apps/backend`)        | Own `/api/v1`, authoritative validation, authentication middleware, role and scope checks, event ingestion, derivation orchestration, queries, exports, external integrations, audit logs, and safe error responses.                            | Authentication/account lifecycle, scoped direct/file/batch ingestion and review, corrections, public reads, derived statistics, provenance, consumer controls, dataset releases and weather are implemented. |
+| Shared contracts (`packages/contracts`) | Hold versioned request/response schemas and TypeScript types shared by the applications. It contains no secrets, database access, or authorisation decisions.                                                                                   | Versioned health, authentication, public-read, submission, batch, provenance and release contracts are implemented and tested.                                                                               |
+| Supabase Auth                           | Manage Google OAuth and identity lifecycle flows; issue tokens that the backend verifies. It proves identity but grants no application permission.                                                                                              | Basic; selected and backend verification is implemented.                                                                                                                                                     |
+| Backend authorisation                   | Map the verified provider subject to `app_user`, enforce account status, one of the `viewer`, `submitter`, or `admin` roles, and scoped grants on every protected route.                                                                        | Basic; account synchronization, profile, administrator, submitter, and competition policies are implemented.                                                                                                 |
+| PostgreSQL                              | Store identity mappings, grants, reference data, submissions, immutable event revisions, review and correction history, statistic definitions/results, export metadata, and audit records. Enforce integrity with constraints and transactions. | Current schema includes direct/file/batch provenance, durable checkpoints/jobs/outbox state, review/correction history, participant aggregates, cache metadata and immutable dataset releases.               |
+| Submission and validation service       | Accept manual JSON and file submissions, identify duplicates, apply versioned structural and cricket-domain rules, normalise source data, and produce actionable validation results.                                                            | Direct JSON, JSON/CSV file upload and season/back-catalogue batch ingestion are implemented with idempotency, staged resolution, actionable reports and review-before-publication.                           |
+| Derivation service                      | Calculate deterministic fixture, season, competition, and career statistics from accepted current event revisions; record the definition version and input provenance.                                                                          | Fixture statistics plus participant season, competition-wide and career aggregates are implemented; accepted corrections selectively refresh dependent results.                                              |
+| File and export service                 | Enforce upload type/size limits, calculate checksums, retain source provenance, create immutable release manifests, and provide authorised downloads.                                                                                           | Bounded event export, private staged object storage, source checksums/provenance and immutable checksum-backed dataset releases are implemented; asynchronous large export jobs remain later-tier.           |
+| External integration adapter            | Isolate external providers behind the handwritten backend API and validate or safely map provider failures. Cricsheet is the historical file source; Open-Meteo is the runtime weather API.                                                     | Basic; Open-Meteo integration is implemented via ADR-008 and `GET /api/v1/weather`; fixture-to-venue coordinates and caching remain deferred.                                                                |
+| Worker and job queue                    | Use a PostgreSQL job/outbox transaction, Azure Service Bus Standard, and a separate idempotent Node worker for large imports, recomputation, exports, and scheduled synchronisation.                                                            | Separate Node worker, durable job/outbox processing, retry/drain behavior and deployment workflow are implemented for batch ingestion; later job types can reuse the same boundary.                          |
+| Cache                                   | Avoid repeated derivation for measured hot published reads while PostgreSQL remains authoritative.                                                                                                                                              | Intermediate fixture-statistics cache is implemented in PostgreSQL with data-version invalidation and bounded expiry; external Redis remains an unprovisioned scale-up option under ADR-009.                 |
+| Live ingestion adapter                  | Normalise webhook, stream, or polling deliveries through the ordinary acceptance path; retain PostgreSQL replay cursors and expose public updates through SSE with snapshot recovery.                                                           | Advanced; proposed in ADR-012 and blocked on a licensed provider.                                                                                                                                            |
+| Custom statistic engine                 | Store reviewed, versioned definitions and calculate results in a restricted expression model. It must not execute arbitrary user code or unbounded database queries.                                                                            | Advanced.                                                                                                                                                                                                    |
+| MkDocs site                             | Publish architecture, API, database, security, deployment, testing, methodology, and data-source documentation independently of the product applications.                                                                                       | Basic; deployed separately to Cloudflare Pages.                                                                                                                                                              |
 
 ## 5. Authorisation model
 
@@ -804,3 +803,5 @@ assistance of Codex[GPT-5].
 The issue #365 worker deployment status was documented with the assistance of Codex[GPT-5].
 The issue #286 selective statistics refresh architecture was documented with the assistance of
 Codex[GPT-5].
+The Issue #364 current-state architecture reconciliation was reviewed and edited with the
+assistance of ChatGPT-Web[GPT-5.6 Sol].
