@@ -260,13 +260,18 @@ Single sign-in method (Google, via Supabase Auth), reached from any page's heade
 ### 5.5 Submit delivery events (submitter)
 
 Single-column form restricted to fixtures within the account's confirmed scope. The normal route is
-an accessible JSON/CSV file upload with downloadable format templates and readable competition
-scope guidance; the direct JSON editor remains an advanced alternative.
+an accessible, one-fixture JSON/CSV package upload. The fixture selector presents date, teams,
+competition, season and match type instead of database IDs. Supported formats, the 50 MB and
+50,000-event limits, required readable fields, and downloadable JSON/spreadsheet templates precede
+the file control. The direct canonical JSON editor remains an advanced alternative for integrations
+that already hold application references.
 
 ![Submission – desktop](assets/wireframes/submission-desktop.svg)
 ![Submission – mobile](assets/wireframes/submission-mobile.svg)
 
-The linked `/submissions/batches/new` workflow handles whole seasons and back catalogues. It places
+The one-fixture package uses the same durable batch receipt, background processing, readable report
+and reference-mapping path as the linked `/submissions/batches/new` workflow for whole seasons and
+back catalogues. The batch page places
 supported JSON, CSV and NDJSON formats, the 50 MB and 50,000-event limits, required readable context,
 and JSON/spreadsheet templates before the file control. Competition and optional season context use
 names returned by the public API; canonical database identifiers are never typed by the submitter.
@@ -314,3 +319,5 @@ The issue #266 guided file-submission interface was documented with the assistan
 The issue #314 homepage narrative, illustrative-trajectory constraint and progressive fallback were
 documented with the assistance of Codex[GPT-5.6 Sol].
 The issue #361 guided batch-upload workflow was documented with the assistance of Codex[GPT-5].
+The issue #435 guided single-fixture upload alignment was documented with the assistance of
+Codex[GPT-5].
