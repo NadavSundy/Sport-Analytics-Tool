@@ -330,9 +330,11 @@ describe('role-gated event submission page', () => {
 
     const selector = screen.getByLabelText('Fixture');
     expect(within(selector).getAllByRole('option')).toHaveLength(2);
-    expect(within(selector).getByRole('option', { name: /fixture 7/i })).toBeInTheDocument();
-    expect(within(selector).getByRole('option', { name: /fixture 8/i })).toBeInTheDocument();
-    expect(within(selector).queryByRole('option', { name: /fixture 99/i })).toBeNull();
+    expect(
+      within(selector).getByRole('option', { name: /Example Competition/i }),
+    ).toBeInTheDocument();
+    expect(within(selector).getByRole('option', { name: /Premier League/i })).toBeInTheDocument();
+    expect(within(selector).queryByRole('option', { name: /Outside Scope/i })).toBeNull();
 
     const fixtureRequests = fetchMock.mock.calls
       .map(([input]) => String(input))
@@ -729,7 +731,8 @@ describe('role-gated event submission page', () => {
     );
   });
 
-  it('uploads a JSON file and shows the stored submission reference', async () => {
+  it('uploads a readable fixture package and shows its durable receipt', async () => {
+    const batchReference = '123e4567-e89b-42d3-a456-426614174000';
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
@@ -738,17 +741,14 @@ describe('role-gated event submission page', () => {
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
-      if (url.endsWith('/submissions/uploads') && init?.method === 'POST') {
+      if (url.endsWith('/batches') && init?.method === 'POST') {
         return Promise.resolve(
-          response(201, {
+          response(202, {
             data: {
-              submissionId: '301',
-              fixtureId: '7',
-              submitterId: '17',
-              status: 'accepted',
+              batchReference,
+              status: 'stored',
+              statusUrl: `/api/v1/batches/${batchReference}`,
               receivedAt: '2026-08-16T09:30:00.000Z',
-              schemaVersion: '1.0',
-              eventCount: 1,
             },
           }),
         );
@@ -759,26 +759,53 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
 
-    const input = await screen.findByLabelText('Event data file');
+    const fixtureSelect = await screen.findByLabelText('Fixture');
+    expect(fixtureSelect).toHaveAccessibleDescription(/never need to enter a database ID/i);
+    expect(within(fixtureSelect).getByRole('option')).toHaveTextContent(
+      '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+    );
+    expect(
+      screen.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Download JSON template' })).toHaveAttribute(
+      'href',
+      '/submission-template.json',
+    );
+    expect(screen.getByRole('link', { name: 'Download spreadsheet template' })).toHaveAttribute(
+      'href',
+      '/submission-template.csv',
+    );
+
+    const input = screen.getByLabelText('Fixture package');
     const file = new File(
-      [JSON.stringify({ fixtureId: '7', schemaVersion: '1.0', events: validEvents })],
-      'events.json',
+      [JSON.stringify({ contractVersion: '1.0', packageId: 'source:fixture-7' })],
+      'fixture-package.json',
       { type: 'application/json' },
     );
     fireEvent.change(input, { target: { files: [file] } });
-    fireEvent.click(screen.getByRole('button', { name: 'Upload and submit file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
-    expect(await screen.findByRole('heading', { name: 'Submission accepted' })).toHaveFocus();
-    expect(screen.getByText('301')).toBeInTheDocument();
-    expect(screen.getByText(/Example Competition/)).toBeInTheDocument();
-    const uploadCall = fetchMock.mock.calls.find(([request]) =>
-      String(request).endsWith('/submissions/uploads'),
+    expect(
+      await screen.findByRole('heading', { name: 'Fixture package received safely' }),
+    ).toHaveFocus();
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
+    expect(screen.getByText(/Processing continues after you leave this page/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+      'href',
+      `/submissions/batches/${batchReference}`,
     );
-    expect(uploadCall?.[1]).toMatchObject({ method: 'POST' });
-    expect((uploadCall?.[1] as RequestInit).body).toBeInstanceOf(FormData);
+    const uploadCall = fetchMock.mock.calls.find(([request]) =>
+      String(request).endsWith('/batches'),
+    );
+    expect(uploadCall?.[1]).toMatchObject({ method: 'POST', body: file });
+    const uploadHeaders = new Headers((uploadCall?.[1] as RequestInit).headers);
+    expect(uploadHeaders.get('Content-Type')).toBe('application/json');
+    expect(uploadHeaders.get('X-Batch-Package-Version')).toBe('1.0');
+    expect(uploadHeaders.get('X-Competition-Id')).toBe('5');
+    expect(uploadHeaders.get('X-File-Name')).toBe('fixture-package.json');
   });
 
-  it('shows file and row validation errors clearly', async () => {
+  it('shows immediate package and row validation errors clearly', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
@@ -803,15 +830,40 @@ describe('role-gated event submission page', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     renderSubmissionPage();
-    const input = await screen.findByLabelText('Event data file');
+    const input = await screen.findByLabelText('Fixture package');
     fireEvent.change(input, {
       target: { files: [new File(['invalid'], 'events.csv', { type: 'text/csv' })] },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Upload and submit file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
     expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
     expect(screen.getByText('Row 1 — file')).toBeInTheDocument();
     expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
     expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('rejects unsupported single-fixture package formats before upload', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    const input = await screen.findByLabelText('Fixture package');
+    fireEvent.change(input, {
+      target: { files: [new File(['unsupported'], 'events.ndjson')] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(screen.getByText('Choose a JSON or CSV fixture package.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith('/batches'))).toBe(
+      false,
+    );
   });
 });

@@ -92,64 +92,60 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test(
-  'submitter completes the responsive workflow with a keyboard',
-  { tag: '@mobile' },
-  async ({ page }) => {
-    await page.route('**/api/v1/submissions', async (route) => {
-      const body = route.request().postDataJSON();
-      expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });
+test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
+  await page.route('**/api/v1/submissions', async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });
 
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            submissionId: '300',
-            fixtureId: '7',
-            submitterId: '17',
-            status: 'accepted',
-            receivedAt: '2026-08-16T09:30:00.000Z',
-            schemaVersion: '1.0',
-            eventCount: 1,
-          },
-        }),
-      });
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          submissionId: '300',
+          fixtureId: '7',
+          submitterId: '17',
+          status: 'accepted',
+          receivedAt: '2026-08-16T09:30:00.000Z',
+          schemaVersion: '1.0',
+          eventCount: 1,
+        },
+      }),
     });
+  });
 
-    await page.goto('/submissions/new');
-    await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
+  await page.goto('/submissions/new');
+  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
 
-    const fixtureSelector = page.getByLabel('Fixture');
-    const editor = page.getByLabel('Delivery events JSON');
-    const submitButton = page.getByRole('button', { name: 'Submit events' });
+  const fixtureSelector = page.getByLabel('Fixture', { exact: true });
+  const editor = page.getByLabel('Delivery events JSON');
+  const submitButton = page.getByRole('button', { name: 'Submit events' });
 
-    await expect(fixtureSelector).toHaveValue('7');
-    await editor.fill(JSON.stringify(events, null, 2));
+  await expect(fixtureSelector).toHaveValue('7');
+  await editor.fill(JSON.stringify(events, null, 2));
 
-    await fixtureSelector.focus();
-    await page.keyboard.press('Tab');
-    await expect(editor).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(submitButton).toBeFocused();
-    await page.keyboard.press('Enter');
+  await fixtureSelector.focus();
+  await page.keyboard.press('Tab');
+  await expect(editor).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(submitButton).toBeFocused();
+  await page.keyboard.press('Enter');
 
-    const acceptedHeading = page.getByRole('heading', { name: 'Submission accepted' });
-    await expect(acceptedHeading).toBeFocused();
-    await expect(page.getByText('300')).toBeVisible();
+  const acceptedHeading = page.getByRole('heading', { name: 'Submission accepted' });
+  await expect(acceptedHeading).toBeFocused();
+  await expect(page.getByText('300')).toBeVisible();
 
-    const hasHorizontalOverflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    );
-    expect(hasHorizontalOverflow).toBe(false);
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
 
-    const results = await new AxeBuilder({ page }).analyze();
-    const seriousOrCriticalViolations = results.violations.filter(
-      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-    );
-    expect(seriousOrCriticalViolations).toEqual([]);
-  },
-);
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCriticalViolations = results.violations.filter(
+    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+  );
+  expect(seriousOrCriticalViolations).toEqual([]);
+});
 
 test('validation results remain associated with the editor and receive focus', async ({ page }) => {
   await page.route('**/api/v1/submissions', async (route) => {
@@ -185,48 +181,77 @@ test('validation results remain associated with the editor and receive focus', a
   await expect(editor).toHaveAttribute('aria-describedby', /submission-validation-results/);
 });
 
-test('submitter uploads a JSON file through the accessible file-first workflow', async ({
-  page,
-}) => {
-  await page.route('**/api/v1/submissions/uploads', async (route) => {
-    expect(route.request().method()).toBe('POST');
-    expect(route.request().headers().authorization).toBe('Bearer approved-e2e-token');
-    await route.fulfill({
-      status: 201,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          submissionId: '301',
-          fixtureId: '7',
-          submitterId: '17',
-          status: 'accepted',
-          receivedAt: '2026-08-16T09:30:00.000Z',
-          schemaVersion: '1.0',
-          eventCount: 1,
-        },
-      }),
+test(
+  'submitter uploads a readable fixture package and receives a durable receipt',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    await page.route('**/api/v1/batches', async (route) => {
+      expect(route.request().method()).toBe('POST');
+      expect(route.request().headers().authorization).toBe('Bearer approved-e2e-token');
+      expect(route.request().headers()['x-competition-id']).toBe('5');
+      expect(route.request().headers()['x-file-name']).toBe('fixture-package.json');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            batchReference,
+            status: 'stored',
+            statusUrl: `/api/v1/batches/${batchReference}`,
+            receivedAt: '2026-08-16T09:30:00.000Z',
+          },
+        }),
+      });
     });
-  });
 
-  await page.goto('/submissions/new');
-  await expect(page.getByText('Example Competition')).toBeVisible();
-  const fileInput = page.getByLabel('Event data file');
-  await fileInput.setInputFiles({
-    name: 'events.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify({ fixtureId: '7', schemaVersion: '1.0', events })),
-  });
-  await expect(page.getByText(/Selected: events.json/)).toBeVisible();
-  await page.getByRole('button', { name: 'Upload and submit file' }).click();
+    await page.goto('/submissions/new');
+    await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue('7');
+    await expect(page.getByLabel('Fixture', { exact: true }).locator('option')).toHaveText(
+      '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+    );
+    await expect(
+      page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
+    ).toBeVisible();
+    const fileInput = page.getByLabel('Fixture package', { exact: true });
+    await fileInput.setInputFiles({
+      name: 'fixture-package.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        JSON.stringify({ contractVersion: '1.0', packageId: 'provider:fixture-2026-08-20' }),
+      ),
+    });
+    await expect(page.getByText(/Selected: fixture-package.json/)).toBeVisible();
+    await page.getByRole('button', { name: 'Upload fixture package' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'creating its durable receipt' }),
+    ).toBeVisible();
 
-  await expect(page.getByRole('heading', { name: 'Submission accepted' })).toBeFocused();
-  await expect(page.getByText('301')).toBeVisible();
-});
+    await expect(
+      page.getByRole('heading', { name: 'Fixture package received safely' }),
+    ).toBeFocused();
+    await expect(page.getByText(batchReference)).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+      'href',
+      `/submissions/batches/${batchReference}`,
+    );
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
+  },
+);
 
 test('file validation identifies a rejected CSV row and returns focus to the result', async ({
   page,
 }) => {
-  await page.route('**/api/v1/submissions/uploads', async (route) => {
+  await page.route('**/api/v1/batches', async (route) => {
     await route.fulfill({
       status: 422,
       contentType: 'application/json',
@@ -248,13 +273,13 @@ test('file validation identifies a rejected CSV row and returns focus to the res
   });
 
   await page.goto('/submissions/new');
-  const fileInput = page.getByLabel('Event data file');
+  const fileInput = page.getByLabel('Fixture package', { exact: true });
   await fileInput.setInputFiles({
     name: 'events.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from('bad'),
   });
-  await page.getByRole('button', { name: 'Upload and submit file' }).click();
+  await page.getByRole('button', { name: 'Upload fixture package' }).click();
 
   await expect(page.getByRole('heading', { name: 'Submission rejected' })).toBeFocused();
   await expect(page.getByText(/Row 1.*file/)).toBeVisible();

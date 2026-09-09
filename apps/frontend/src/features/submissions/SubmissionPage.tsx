@@ -1,5 +1,6 @@
 import type {
   ApiErrorDetail,
+  BatchReceiptResponse,
   CurrentUserProfile,
   Fixture,
   SubmissionEvent,
@@ -11,13 +12,13 @@ import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
+import { BatchUploadInputError, uploadBatch } from './batch-api';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
 import {
   listAllFixtures,
   listScopedFixtures,
   SubmissionInputError,
   submitEvents,
-  submitSubmissionFile,
 } from './submission-api';
 
 const EMPTY_EVENTS = '[]';
@@ -43,6 +44,7 @@ type ResultState =
         fixture: Fixture;
       };
     }
+  | { kind: 'acceptedBatch'; receipt: BatchReceiptResponse['data']; fixture: Fixture }
   | { kind: 'rejected'; message: string; details: ApiErrorDetail[] }
   | { kind: 'error'; message: string };
 
@@ -53,7 +55,14 @@ function usePageTitle() {
 }
 
 function formatFixtureOption(fixture: Fixture): string {
-  return `${fixture.startDate} — ${fixture.matchType}, ${fixture.season} (fixture ${fixture.fixtureId})`;
+  const teams =
+    fixture.competitors.map((competitor) => competitor.name).join(' v ') || 'Teams unavailable';
+  const competition = fixture.competitionName ?? 'Competition unavailable';
+  return `${fixture.startDate} — ${teams} — ${competition}, ${fixture.seasonLabel} (${fixture.matchType})`;
+}
+
+function newDecisionKey(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
 function formatValidationLocation(detail: ApiErrorDetail, uploadedFile: boolean): string {
@@ -145,12 +154,18 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
   const [eventJson, setEventJson] = useState(EMPTY_EVENTS);
   const [mode, setMode] = useState<'file' | 'json'>('file');
   const [file, setFile] = useState<File | null>(null);
+  const [decisionKey, setDecisionKey] = useState(newDecisionKey);
   const [result, setResult] = useState<ResultState>({ kind: 'idle' });
 
   const resultRegionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (result.kind === 'accepted' || result.kind === 'rejected' || result.kind === 'error') {
+    if (
+      result.kind === 'accepted' ||
+      result.kind === 'acceptedBatch' ||
+      result.kind === 'rejected' ||
+      result.kind === 'error'
+    ) {
       resultRegionRef.current?.querySelector<HTMLElement>('[data-result-heading]')?.focus();
     }
   }, [result]);
@@ -177,11 +192,19 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
 
     try {
       if (mode === 'file' && file) {
-        const response = await submitSubmissionFile(client, file);
+        if (!/\.(json|csv)$/i.test(file.name)) {
+          throw new SubmissionInputError('Choose a JSON or CSV fixture package.');
+        }
+        const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
+        if (!fixture?.competitionId) {
+          throw new SubmissionInputError('Select an available fixture before uploading.');
+        }
+        const response = await uploadBatch(client, fixture.competitionId, file, decisionKey);
 
         setResult({
-          kind: 'accepted',
-          response,
+          kind: 'acceptedBatch',
+          receipt: response.data,
+          fixture,
         });
       } else {
         const accepted = await submitEvents(client, fixtureId, eventJson);
@@ -210,11 +233,30 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
           message: error.message,
           details: [],
         });
+      } else if (error instanceof BatchUploadInputError) {
+        setResult({
+          kind: 'rejected',
+          message:
+            error.message === 'Choose a JSON, CSV, or NDJSON package.'
+              ? 'Choose a JSON or CSV fixture package.'
+              : error.message,
+          details: [],
+        });
       } else if (error instanceof ApiResponseError && error.details) {
         setResult({
           kind: 'rejected',
           message: error.message,
           details: error.details,
+        });
+      } else if (mode === 'file' && error instanceof ApiResponseError && error.status === 409) {
+        setResult({
+          kind: 'error',
+          message: `${error.message} Retry the unchanged file to reuse its receipt, or select a corrected file to start a replacement upload.`,
+        });
+      } else if (mode === 'file' && error instanceof ApiResponseError && error.status === 413) {
+        setResult({
+          kind: 'error',
+          message: 'The fixture package exceeds the 50 MB upload limit.',
         });
       } else if (error instanceof ApiResponseError && error.status === 403) {
         setResult({
@@ -227,7 +269,9 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
           kind: 'error',
           message:
             error instanceof ApiResponseError
-              ? error.message
+              ? mode === 'file' && error.status === 503
+                ? 'Fixture-package storage is temporarily unavailable. Retry the same file safely.'
+                : error.message
               : 'The submission could not be completed. Please try again.',
         });
       }
@@ -258,8 +302,8 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
           <legend>Choose how to submit</legend>
 
           <p className="field-help">
-            Upload is the normal submitter workflow. The technical JSON editor remains available for
-            advanced use.
+            A readable fixture package is the normal workflow. The canonical JSON editor remains
+            available for advanced integrations that already hold application references.
           </p>
 
           <label>
@@ -273,7 +317,7 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
                 resetResult();
               }}
             />
-            Upload a JSON or CSV file
+            Upload a readable fixture package
           </label>
 
           <label>
@@ -308,72 +352,99 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
           )}
         </section>
 
+        <div className="submission-field">
+          <label htmlFor="submission-fixture">Fixture</label>
+
+          <select
+            id="submission-fixture"
+            aria-describedby="submission-fixture-help"
+            value={fixtureId}
+            onChange={(event) => {
+              setFixtureId(event.target.value);
+              setDecisionKey(newDecisionKey());
+              resetResult();
+            }}
+            disabled={result.kind === 'submitting'}
+          >
+            {fixtures.map((fixture) => (
+              <option key={fixture.fixtureId} value={fixture.fixtureId}>
+                {formatFixtureOption(fixture)}
+              </option>
+            ))}
+          </select>
+
+          <p id="submission-fixture-help" className="field-help">
+            Choose by date, teams, competition and season. The application uses the underlying
+            reference; you never need to enter a database ID.
+          </p>
+        </div>
+
         {mode === 'file' ? (
-          <div className="submission-field">
-            <label htmlFor="submission-file">Event data file</label>
-
-            <p id="submission-file-help" className="field-help">
-              Choose one <code>.json</code> or <code>.csv</code> file up to 1 MB. CSV must use the
-              documented header order.{' '}
-              <a href="/submission-template.json" download>
-                Download a JSON template
-              </a>{' '}
-              or{' '}
-              <a href="/submission-template.csv" download>
-                CSV template
-              </a>
-              .
-            </p>
-
-            <input
-              id="submission-file"
-              type="file"
-              accept=".json,application/json,.csv,text/csv"
-              onChange={(event) => {
-                setFile(event.target.files?.[0] ?? null);
-                resetResult();
-              }}
-              aria-describedby={
-                ['submission-file-help', resultDescriptionId].filter(Boolean).join(' ') || undefined
-              }
-              aria-invalid={result.kind === 'rejected'}
-              disabled={result.kind === 'submitting'}
-            />
-
-            {file ? (
-              <p className="field-help">
-                Selected: {file.name} ({Math.ceil(file.size / 1024)} KB)
-              </p>
-            ) : null}
-          </div>
-        ) : (
           <>
-            <div className="submission-field">
-              <label htmlFor="submission-fixture">Fixture</label>
+            <section className="batch-guidance" aria-labelledby="single-upload-guidance-title">
+              <h2 id="single-upload-guidance-title">Before you upload</h2>
+              <p>
+                Upload one JSON or CSV spreadsheet package up to 50 MB. Include one fixture and no
+                more than 50,000 delivery events.
+              </p>
+              <p>Every package must include:</p>
+              <ul>
+                <li>a contract version and stable package reference;</li>
+                <li>competition and season names;</li>
+                <li>fixture date and both team names;</li>
+                <li>innings number and batting-team name; and</li>
+                <li>stable event references, player names, delivery order and runs.</li>
+              </ul>
+              <p>
+                Names are resolved within the selected competition and the season named in the
+                package. Ambiguous or missing matches appear later in the batch report with labeled
+                correction controls.
+              </p>
+              <div className="batch-guidance__actions">
+                <a className="button button--secondary" href="/submission-template.json" download>
+                  Download JSON template
+                </a>
+                <a className="button button--secondary" href="/submission-template.csv" download>
+                  Download spreadsheet template
+                </a>
+              </div>
+            </section>
 
-              <select
-                id="submission-fixture"
-                value={fixtureId}
+            <div className="submission-field">
+              <label htmlFor="submission-file">Fixture package</label>
+
+              <p id="submission-file-help" className="field-help">
+                Choose a completed <code>.json</code> or <code>.csv</code> template. Processing
+                continues after you leave, and retrying the unchanged file safely reuses the same
+                request.
+              </p>
+
+              <input
+                id="submission-file"
+                type="file"
+                accept=".json,application/json,.csv,text/csv"
                 onChange={(event) => {
-                  setFixtureId(event.target.value);
+                  setFile(event.target.files?.[0] ?? null);
+                  setDecisionKey(newDecisionKey());
                   resetResult();
                 }}
+                aria-describedby={
+                  ['submission-file-help', resultDescriptionId].filter(Boolean).join(' ') ||
+                  undefined
+                }
+                aria-invalid={result.kind === 'rejected'}
                 disabled={result.kind === 'submitting'}
-              >
-                {fixtures.map((fixture) => (
-                  <option key={fixture.fixtureId} value={fixture.fixtureId}>
-                    {formatFixtureOption(fixture)}
-                  </option>
-                ))}
-              </select>
+              />
 
-              <p className="field-help">
-                {role === 'admin'
-                  ? 'Eligible fixtures from every competition appear for administrators.'
-                  : 'Only fixtures in your server-returned competition scope appear.'}
-              </p>
+              {file ? (
+                <p className="field-help">
+                  Selected: {file.name} ({Math.ceil(file.size / 1024)} KB)
+                </p>
+              ) : null}
             </div>
-
+          </>
+        ) : (
+          <>
             <div className="submission-field">
               <label htmlFor="submission-events">Delivery events JSON</label>
 
@@ -411,18 +482,55 @@ function SubmissionForm({ fixtures, role }: { fixtures: Fixture[]; role: 'submit
           {result.kind === 'submitting'
             ? 'Submitting…'
             : mode === 'file'
-              ? 'Upload and submit file'
+              ? 'Upload fixture package'
               : 'Submit events'}
         </button>
 
         {result.kind === 'submitting' ? (
           <p className="submission-progress" role="status">
-            Validating and storing the submission…
+            {mode === 'file'
+              ? 'Uploading the fixture package and creating its durable receipt…'
+              : 'Validating and storing the submission…'}
           </p>
         ) : null}
 
         <div id={resultDescriptionId} ref={resultRegionRef}>
-          {result.kind === 'accepted' ? (
+          {result.kind === 'acceptedBatch' ? (
+            <div className="submission-result submission-result--success" role="status">
+              <h2 tabIndex={-1} data-result-heading>
+                Fixture package received safely
+              </h2>
+
+              <p>
+                Processing continues after you leave this page. Use the durable receipt to follow
+                validation and resolve any readable-name ambiguity.
+              </p>
+
+              <dl className="submission-reference">
+                <div>
+                  <dt>Receipt</dt>
+                  <dd>{result.receipt.batchReference}</dd>
+                </div>
+
+                <div>
+                  <dt>Fixture</dt>
+                  <dd>{formatFixtureOption(result.fixture)}</dd>
+                </div>
+
+                <div>
+                  <dt>Received</dt>
+                  <dd>{new Date(result.receipt.receivedAt).toLocaleString()}</dd>
+                </div>
+              </dl>
+
+              <Link
+                className="button button--primary"
+                to={`/submissions/batches/${result.receipt.batchReference}`}
+              >
+                Track validation and errors
+              </Link>
+            </div>
+          ) : result.kind === 'accepted' ? (
             <div className="submission-result submission-result--success" role="status">
               <h2 tabIndex={-1} data-result-heading>
                 Submission accepted

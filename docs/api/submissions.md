@@ -76,6 +76,19 @@ Validation details include a field path and `eventIndex` where applicable.
 
 ## File uploads
 
+The normal `/submissions/new` interface accepts a one-fixture JSON or CSV package using the durable
+batch pipeline documented in [Batch submission packages](../data/batch-submission-packages.md). The
+submitter chooses a fixture by date, team names, competition and season, then completes a downloadable
+JSON or spreadsheet template using readable competition, season, team and player names. Database IDs
+are not required in either template. The interface sends the fixture's authorised competition scope
+to `POST /api/v1/batches`, displays upload progress and the durable receipt, and links to the batch
+report where background validation, source-row errors and ambiguous-reference mapping remain
+available after navigation.
+
+The direct endpoint below remains available for integrations that already use the canonical
+identifier-based submission contract. It is exposed in the interface only through the advanced
+technical JSON editor; its canonical CSV shape is not the downloadable guided-workflow template.
+
 `POST /api/v1/submissions/uploads` accepts one multipart form-data field named `file` from an
 authenticated `submitter` or `admin`. A submitter must be in scope, while an administrator may upload
 for any eligible competition without a scope assignment. It accepts only a `.json` file with
@@ -217,4 +230,6 @@ Codex[GPT-5].
 The Issue #311 administrator submission rule was documented with the assistance of Codex[GPT-5].
 The Issue #284 correction audit contract was documented with the assistance of Codex[GPT-5].
 The Issue #286 selective refresh dependency contract was documented with the assistance of
+Codex[GPT-5].
+The Issue #435 guided single-fixture upload behavior was documented with the assistance of
 Codex[GPT-5].
