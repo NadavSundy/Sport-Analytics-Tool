@@ -191,6 +191,15 @@ or innings context remains unresolved. This preserves evidence without placehold
 object-store adapter, never a public or signed provider URL. See
 [Batch persistence extensions](batch-persistence.md) for the #359 gap analysis and migration record.
 
+Issue #363 exposes this retained chain through protected APIs. Direct and uploaded submissions persist
+`submission.source_sha256`; uploaded files additionally retain filename, media type and byte size.
+Published batch deliveries retain `delivery.source_batch_item_id`, while batch source metadata and
+checksum remain in `batch`/`stored_object`, including after raw-object expiry. Current and superseded
+`delivery` revisions plus append-only `delivery_correction_history`, `batch_state_transition` and
+`batch_review_decision` records provide the trace from a derived statistic contributor back to its
+source, submitter and acceptance/publication decision. Account tombstoning keeps the internal account
+relationship while removing personal display information, so historical provenance remains resolvable.
+
 The `stored_object` relation holds the provider-independent metadata for those private bytes:
 application object ID, owner, sanitised original filename, media type, byte size, SHA-256 checksum,
 server-generated storage key, provider version, expiry time, and retention state. Its row is
@@ -371,3 +380,5 @@ assistance of Codex[GPT-5].
 The issue #359 batch-persistence extension was documented with the assistance of Codex[GPT-5].
 The issue #358 stored-object schema was documented with the assistance of Codex[GPT-5].
 The issue #284 immutable correction audit schema was documented with the assistance of Codex[GPT-5].
+
+The issue #363 protected provenance API documentation was generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

@@ -64,6 +64,7 @@ nav:
           - Public Read API: api/public-read.md
           - Weather API: api/weather.md
           - Direct Event Submissions: api/submissions.md
+          - Provenance and Audit API: api/provenance.md
           - Batch Ingestion Receipt API: api/batches.md
           - Consumer API Keys and Limits: api/consumer-keys.md
           - Season-upload contract: api/season-upload-contract.md

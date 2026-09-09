@@ -42,6 +42,7 @@ interface AcceptedSubmission {
   receivedAt: string;
   schemaVersion: '1.0';
   eventCount: number;
+  checksum?: string;
 }
 
 interface CorrectionTarget {
@@ -71,7 +72,8 @@ export interface SubmissionRepository {
   storeAcceptedSubmission(
     submission: SubmissionRequest,
     submitterId: string,
-    sourceFile?: SubmissionSourceFile,
+    sourceFile: SubmissionSourceFile | undefined,
+    sourceChecksum: string,
   ): Promise<AcceptedSubmission>;
   storeAcceptedCorrection(
     eventId: string,
@@ -719,7 +721,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
       );
     },
 
-    async storeAcceptedSubmission(submission, submitterId, sourceFile) {
+    async storeAcceptedSubmission(submission, submitterId, sourceFile, sourceChecksum) {
       const databasePool = pool ?? getDatabasePool();
       try {
         return await withTransaction(databasePool, async (client) => {
@@ -740,9 +742,10 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
                 source_file_name,
                 source_file_media_type,
                 source_file_size_bytes,
+                source_sha256,
                 status
               )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, 'accepted')
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'accepted')
               RETURNING
                 submission_id::text AS "submissionId",
                 received_at AS "receivedAt"
@@ -755,6 +758,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
               sourceFile?.fileName ?? null,
               sourceFile?.mediaType ?? null,
               sourceFile?.sizeBytes ?? null,
+              sourceChecksum,
             ],
           );
 
@@ -782,6 +786,7 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
             receivedAt: storedSubmission.receivedAt.toISOString(),
             schemaVersion: submission.schemaVersion,
             eventCount: submission.events.length,
+            checksum: sourceChecksum,
             ...(sourceFile ? { sourceFile } : {}),
           };
         });
