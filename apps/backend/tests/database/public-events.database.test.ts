@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
 import { createPublicEventRepository } from '../../src/modules/events/event.repository';
+import { createDatasetReleaseRepository } from '../../src/modules/dataset-releases/dataset-release.repository';
+import { createDatasetReleaseService } from '../../src/modules/dataset-releases/dataset-release.service';
 import { createPublicReadService } from '../../src/modules/public-read/public-read.service';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { createTestApp } from '../test-app';
@@ -411,5 +413,30 @@ describe.sequential('public events database API', () => {
       .get(`/api/v1/fixtures/${current.fixtureId}/events/${current.orderedEventIds[1]}`)
       .expect(200);
     expect(detail.body.data.eventId).toBe(current.orderedEventIds[1]);
+  });
+
+  test('creates and retrieves an immutable checksum-backed published-data release', async () => {
+    const client = await databasePool().connect();
+    try {
+      await client.query('BEGIN');
+      const service = createDatasetReleaseService(createDatasetReleaseRepository(client));
+      const version = `${sourcePrefix}-release`;
+
+      const first = await service.createRelease({ version });
+      const again = await service.createRelease({ version });
+      const artifact = await service.getArtifact(version);
+
+      const parsedArtifact = JSON.parse(artifact!);
+      expect(first.eventCount).toBe(parsedArtifact.events.length);
+      expect(first).toEqual(again);
+      expect(artifact).toContain(`"eventId":"${testRecords().orderedEventIds[0]}"`);
+      expect(await service.getRelease(version)).toEqual(first);
+      await expect(
+        client.query('UPDATE dataset_release SET event_count = 0 WHERE version = $1', [version]),
+      ).rejects.toThrow('Dataset releases are immutable');
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
   });
 });
