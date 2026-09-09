@@ -107,7 +107,8 @@ changed paths. Its rules are regression-tested by `tests/ci/change-plan.test.mjs
 
 The planner is conservative. Unknown files, root dependency changes and workflow/tooling changes
 select full application validation rather than guessing that a check can be skipped. A manual
-`workflow_dispatch` also selects full validation.
+`workflow_dispatch` of the main **Sport Analytics CI** workflow also selects full validation.
+Specialist manual acceptance workflows are separate from this planner and are documented below.
 
 | Change class                                                             | Required hosted work                                                                          | Work normally skipped                                                   |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -121,6 +122,28 @@ select full application validation rather than guessing that a check can be skip
 
 Documentation-only changes still run a strict MkDocs build. OpenAPI-related documentation also runs
 Redocly linting.
+
+## Specialist manual acceptance workflows
+
+Milestone acceptance is intentionally separate from routine change-aware Pull Request validation.
+`Intermediate Ingestion Acceptance` is a manual-only workflow for the retained Issue #364 cross-layer
+exercise. It runs `npm run verify:intermediate-ingestion` on Ubuntu 24.04/Node.js 22, reuses the same
+pinned Chromium cache and two-worker Playwright policy as normal browser CI, and prebuilds the
+production frontend once so the focused browser acceptance journeys preview rather than rebuild it.
+
+The workflow is not a branch-protection status, has no `push` or `pull_request` trigger, performs no
+deployment and does not generate duplicate coverage. This keeps the normal path unchanged:
+
+```text
+ordinary Pull Request -> change-aware validation/browser lanes -> Sport Analytics CI / quality
+milestone acceptance  -> manually dispatch Intermediate Ingestion Acceptance when evidence is needed
+main push             -> affected deployment only after required Pull Request quality
+```
+
+A workflow-file change still selects full Pull Request validation through the conservative planner, so
+changes to the acceptance automation itself are reviewed against the complete repository quality gate.
+Once merged, the manual acceptance workflow consumes runner time only when a team member explicitly
+starts it.
 
 ## Hosted fail-fast and lane ownership
 
@@ -229,7 +252,10 @@ The policy is therefore:
   solely for coverage;
 - pushes to `main`: do not repeat coverage or application test suites after the required Pull Request
   quality gate has already passed;
-- `workflow_dispatch`: generate coverage as part of deliberate full validation.
+- `workflow_dispatch` of **Sport Analytics CI**: generate coverage as part of deliberate full validation.
+
+Specialist manual acceptance workflows do not inherit this coverage policy unless coverage is part of
+their own acceptance criteria; Issue #364 deliberately avoids re-running duplicate coverage suites.
 
 If a repository-wide coverage threshold is introduced later, this policy must be reviewed because
 coverage may then become a merge-affecting gate.

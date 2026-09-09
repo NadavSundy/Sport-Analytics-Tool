@@ -112,6 +112,7 @@ nav:
       - Local CI Validation: development/local-ci.md
       - Automated & End-to-End Testing: development/testing.md
       - Representative-scale Performance Baseline: development/performance-baseline.md
+      - Intermediate Ingestion Acceptance: testing/intermediate-ingestion-acceptance.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md
       - User Testing Workflow: user-testing/workflow.md

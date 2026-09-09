@@ -2,7 +2,7 @@
 
 **Issue:** #275 — Design the batch staging, file storage and processing pipeline
 **Roadmap mapping:** S2-18 — Intermediate batch-pipeline foundation
-**Status:** Approved for implementation; remaining decisions resolved by #356 on 2 September 2026
+**Status:** Implemented Intermediate ingestion design; final integrated verification tracked by #364
 **Author:** B. Swartz
 
 ---
@@ -15,9 +15,10 @@ This document defines the implementation design for batch ingestion: the staging
 
 ### 1.2 Scope
 
-This document defines the approved design intent. Issues #276 and #283 have implemented the database
-staging foundation and review-before-publication boundary; the remaining issues listed in section 13
-carry the other application and infrastructure work.
+This document began as the approved design intent and is now retained as the implementation reference.
+The database staging/review boundary, package ingestion, durable worker processing, reference mapping,
+idempotency/recovery, publication and provenance paths have been implemented by the follow-on issues.
+Issue #364 verifies the complete Intermediate path against this design rather than adding new scope.
 
 ### 1.3 Out of scope
 
@@ -538,10 +539,11 @@ The corpus importer already performs chunked ingestion at this scale, and its ch
 
 ### 9.6 Repository transaction boundary (#276)
 
-The batch repository accepts any database query executor, including an existing transaction client.
-A future worker can therefore write chunk results and call the checkpoint upsert through the same
-client before committing. The repository does not open an independent transaction or implement
-leasing, resume policy, lifecycle transitions, or worker behaviour.
+The original #276 repository boundary accepted any database query executor, including an existing
+transaction client, so later worker code could persist chunk results and checkpoints in the same
+transaction. Subsequent worker/persistence issues implemented the durable lifecycle, lease/retry,
+resume and publication behavior around that boundary. The repository still avoids duplicating worker
+business rules inside persistence helpers.
 
 ---
 
@@ -714,8 +716,9 @@ The printed `ballNumber` is not verified against the `overNumber` and `positionI
 | D6  | B. Swartz, batch-design owner     | Packages use namespaced source identifiers where available and scoped human-readable references otherwise; ambiguous or missing references remain staged.        |
 | D7  | B. Swartz, batch-design owner     | Source adapters may add provider identity, revision and timing metadata, but all canonical events converge on the shared validation and immutable-revision path. |
 
-There are no unresolved decisions in this document that block #277. Provisioning and implementation
-remain owned by their follow-on issues.
+There are no unresolved design decisions in this document that block the Intermediate ingestion
+path. The follow-on implementation issues are now verified collectively by Issue #364; remaining
+close-out gates are representative throughput evidence and the linked formal user-testing records.
 
 ---
 
@@ -744,3 +747,5 @@ Codex[GPT-5].
 The issue #276 implementation record was added with the assistance of Codex[GPT-5].
 The issue #283 review and publication implementation record was added with the assistance of
 Codex[GPT-5].
+The Issue #364 implementation-status reconciliation was reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].
