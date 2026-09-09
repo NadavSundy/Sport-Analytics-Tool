@@ -280,6 +280,7 @@ describe('submitter access request and status interface', () => {
       'href',
       '/submissions/new',
     );
+    expect(screen.queryByRole('link', { name: 'Upload a batch' })).toBeNull();
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
   });
 

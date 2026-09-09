@@ -10,12 +10,14 @@ The server authenticates and checks the persisted submitter role and competition
 
 Package expansion, event validation, review, and publication remain asynchronous follow-on work. A stored batch is non-public and no staged item is included in public event or statistics reads.
 
-The submitter interface at `/submissions/batches/new` obtains the competition identifier from a
-readable, server-scoped competition choice. It explains JSON, CSV and NDJSON support, the 50 MB,
+The unified submitter interface at `/submissions/new` provides single-fixture, season and
+back-catalogue choices. Season and back-catalogue modes obtain the competition identifier from a
+readable, server-scoped choice. The interface explains JSON, CSV and NDJSON support, the 50 MB,
 50,000-item and three-active-batch limits, and required human-readable package context before upload.
 It links the maintained JSON and spreadsheet templates, shows transfer progress, and presents the
 durable receipt with a link to the later report. Retrying the unchanged selection retains its
-idempotency key; selecting a corrected replacement generates a new key.
+idempotency key; selecting a corrected replacement generates a new key. The retired
+`/submissions/batches/new` route redirects to `/submissions/new` for existing bookmarks.
 
 ## Reference mapping
 
@@ -65,3 +67,4 @@ The Issue #280 idempotency behaviour was documented with the assistance of Codex
 The Issue #425 reference-mapping API was documented with the assistance of Codex[GPT-5].
 The Issue #362 reviewer workspace documentation was produced with the assistance of Codex[GPT-5].
 The Issue #361 guided batch-upload interface was documented with the assistance of Codex[GPT-5].
+The Issue #437 unified submission route was documented with the assistance of Codex[GPT-5].

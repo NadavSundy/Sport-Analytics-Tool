@@ -96,7 +96,7 @@ async function fulfill(route: Route, status: number, body: unknown) {
 
 async function openAcceptedSubmission(page: Page) {
   await page.goto('/submissions/new');
-  await page.getByRole('radio', { name: 'Paste technical JSON' }).click();
+  await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
   await page.getByLabel('Delivery events JSON').fill(JSON.stringify(events, null, 2));
   await page.getByRole('button', { name: 'Submit events' }).click();
   await expect(page.getByRole('heading', { name: 'Submission accepted' })).toBeFocused();

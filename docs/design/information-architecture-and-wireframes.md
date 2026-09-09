@@ -144,22 +144,29 @@ flowchart LR
 - A pending request is visible on the account page as "Pending review"; the account remains a
   `viewer` — and therefore cannot submit — until an administrator approves it.
 
-### 3.3 Approved submitter — submit delivery events for a fixture
+### 3.3 Approved submitter — submit fixture, season or back-catalogue events
 
 ```mermaid
 flowchart LR
-    A[Open Submit events] --> B{Fixtures in scope?}
-    B -- none --> C[Empty state: no in-scope fixtures]
-    B -- some --> D[Select a fixture]
-    D --> E[Paste delivery events JSON]
-    E --> F[Submit]
-    F --> G{Backend validation}
-    G -- rejected --> H[Per-field validation errors shown; form retained]
-    G -- accepted --> I[Success panel; submission recorded]
+    A[Open Submit events] --> B{Choose submission scope}
+    B --> C[Single fixture]
+    B --> D[Season]
+    B --> E[Back catalogue]
+    B --> F[Advanced technical JSON]
+    C --> G[Choose readable fixture and package]
+    D --> H[Choose competition and season context]
+    E --> I[Choose competition context]
+    F --> J[Choose fixture and paste canonical events]
+    G --> K[Upload and receive durable receipt]
+    H --> K
+    I --> K
+    J --> L[Validate and store synchronously]
 ```
 
-- The fixture list shown is only what the backend returns as in-scope for that account — the
-  frontend does not compute scope itself.
+- The page is opened by the account area's single **Submit events** action. The legacy batch-upload
+  URL redirects here and no second upload action is presented.
+- Fixture, competition and season choices are only those returned for the account's backend-owned
+  scope. Single-fixture packages are checked against the selected date and team names before upload.
 - Final statistic totals are never entered directly; they are always derived from accepted
   events, consistent with the event-sourced design in the
   [system architecture](../architecture/system-architecture.md).
@@ -259,22 +266,21 @@ Single sign-in method (Google, via Supabase Auth), reached from any page's heade
 
 ### 5.5 Submit delivery events (submitter)
 
-Single-column form restricted to fixtures within the account's confirmed scope. The normal route is
-an accessible, one-fixture JSON/CSV package upload. The fixture selector presents date, teams,
-competition, season and match type instead of database IDs. Supported formats, the 50 MB and
-50,000-event limits, required readable fields, and downloadable JSON/spreadsheet templates precede
-the file control. The direct canonical JSON editor remains an advanced alternative for integrations
-that already hold application references.
+One page at `/submissions/new` presents four labeled scopes: single fixture, season, back catalogue,
+and advanced technical JSON. It is reached from the account area's **Submit events** action; the old
+`/submissions/batches/new` URL redirects to it. The fixture selector presents date, teams,
+competition, season and match type instead of database IDs, while season and catalogue modes use
+readable competition and season context. Supported formats, the 50 MB and 50,000-event limits,
+required readable fields, and the shared JSON/spreadsheet templates precede each file control.
 
 ![Submission – desktop](assets/wireframes/submission-desktop.svg)
 ![Submission – mobile](assets/wireframes/submission-mobile.svg)
 
-The one-fixture package uses the same durable batch receipt, background processing, readable report
-and reference-mapping path as the linked `/submissions/batches/new` workflow for whole seasons and
-back catalogues. The batch page places
-supported JSON, CSV and NDJSON formats, the 50 MB and 50,000-event limits, required readable context,
-and JSON/spreadsheet templates before the file control. Competition and optional season context use
-names returned by the public API; canonical database identifiers are never typed by the submitter.
+All guided package scopes use the same durable batch receipt, background processing, readable report
+and reference-mapping path. Single-fixture mode accepts JSON and CSV and verifies that exactly one
+fixture's date and teams match the readable selection. Season and back-catalogue modes additionally
+accept NDJSON. The advanced canonical JSON editor and accepted-event correction workspace remain
+available for integrations that already hold application references.
 
 An indeterminate upload indicator covers transfer time, then an accessible durable-receipt panel
 links to submission history. History and detail views use plain-language lifecycle descriptions,
@@ -321,3 +327,4 @@ documented with the assistance of Codex[GPT-5.6 Sol].
 The issue #361 guided batch-upload workflow was documented with the assistance of Codex[GPT-5].
 The issue #435 guided single-fixture upload alignment was documented with the assistance of
 Codex[GPT-5].
+The issue #437 unified submission workflow was documented with the assistance of Codex[GPT-5].

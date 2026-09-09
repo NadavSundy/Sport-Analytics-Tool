@@ -5,18 +5,15 @@ import type {
   Season,
 } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
-import { useAuth } from '../auth/AuthProvider';
-import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
 
 type AccessState =
   | { kind: 'loading' }
-  | { kind: 'forbidden' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; competitions: Competition[] };
 
@@ -69,8 +66,15 @@ function newDecisionKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
-export function BatchUploadPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+export type PackageUploadScope = 'season' | 'catalogue';
+
+export function BatchUploadWorkflow({
+  profile,
+  scope,
+}: {
+  profile: CurrentUserProfile;
+  scope: PackageUploadScope;
+}) {
   const client = useAuthenticatedApiClient();
   const [access, setAccess] = useState<AccessState>({ kind: 'loading' });
   const [competitionId, setCompetitionId] = useState('');
@@ -85,19 +89,10 @@ export function BatchUploadPage() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = "Upload a batch | Stat'sTheGame";
-  }, []);
-
-  useEffect(() => {
-    if (isLoading || !isAuthenticated) return;
     const controller = new AbortController();
-    void getCurrentUserProfile(client, controller.signal)
-      .then(async (profile) => {
-        if (profile.role !== 'submitter' && profile.role !== 'admin') {
-          setAccess({ kind: 'forbidden' });
-          return;
-        }
-        const competitions = await competitionOptions(profile, controller.signal);
+    setAccess({ kind: 'loading' });
+    void competitionOptions(profile, controller.signal)
+      .then((competitions) => {
         setAccess({ kind: 'ready', competitions });
         setCompetitionId(competitions[0]?.competitionId ?? '');
       })
@@ -107,10 +102,15 @@ export function BatchUploadPage() {
         }
       });
     return () => controller.abort();
-  }, [client, isAuthenticated, isLoading]);
+  }, [profile]);
 
   useEffect(() => {
-    if (!competitionId) return;
+    if (!competitionId || scope === 'catalogue') {
+      setSeasons([]);
+      setSeasonState('idle');
+      setSeasonId('package');
+      return;
+    }
     const controller = new AbortController();
     setSeasonState('loading');
     setSeasonId('package');
@@ -126,15 +126,13 @@ export function BatchUploadPage() {
         }
       });
     return () => controller.abort();
-  }, [competitionId]);
+  }, [competitionId, scope]);
 
   useEffect(() => {
     if (upload.kind === 'accepted' || upload.kind === 'error') {
       resultRef.current?.querySelector<HTMLElement>('[data-upload-result]')?.focus();
     }
   }, [upload]);
-
-  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -157,7 +155,10 @@ export function BatchUploadPage() {
       setUpload({
         kind: 'accepted',
         receipt: response.data,
-        context: `${competition?.name ?? 'Selected competition'} · ${season?.label ?? 'season named in package'}`,
+        context:
+          scope === 'season'
+            ? `${competition?.name ?? 'Selected competition'} · ${season?.label ?? 'season named in package'}`
+            : `${competition?.name ?? 'Selected competition'} · seasons named in package`,
       });
     } catch (error) {
       const message =
@@ -175,21 +176,14 @@ export function BatchUploadPage() {
   }
 
   const busy = upload.kind === 'uploading';
+  const scopeLabel = scope === 'season' ? 'season' : 'back catalogue';
 
   return (
-    <section className="submission-page content-boundary" aria-labelledby="batch-upload-title">
-      <header className="page-heading submission-page__heading">
-        <p className="eyebrow">Submitter workspace</p>
-        <h1 id="batch-upload-title">Upload fixtures, seasons or back catalogues</h1>
-        <p>
-          Choose readable competition context, download a template, and send one package for
-          background validation. You never need a database ID.
-        </p>
-        <Link to="/submissions/batches">View submission history</Link>
-      </header>
-
+    <div className="batch-upload-workflow">
       <section className="batch-guidance" aria-labelledby="batch-guidance-title">
-        <h2 id="batch-guidance-title">Before you upload</h2>
+        <h2 id="batch-guidance-title">
+          Before you upload a {scope === 'season' ? 'season' : 'back catalogue'}
+        </h2>
         <p>
           Upload one JSON, CSV spreadsheet, or NDJSON file up to 50 MB and 50,000 delivery events.
           At most three batches may be processing at once.
@@ -216,15 +210,10 @@ export function BatchUploadPage() {
         </div>
       </section>
 
-      {isLoading || access.kind === 'loading' ? (
+      {access.kind === 'loading' ? (
         <div className="state-message" role="status">
           <h2>Loading upload choices</h2>
           <p>Checking your competition scope…</p>
-        </div>
-      ) : access.kind === 'forbidden' ? (
-        <div className="state-message" role="status">
-          <h2>Submitter role required</h2>
-          <p>Your account is not authorised to upload batch packages.</p>
         </div>
       ) : access.kind === 'error' ? (
         <div className="state-message state-message--error" role="alert">
@@ -258,32 +247,40 @@ export function BatchUploadPage() {
             <p className="field-help">Only competitions authorised by the server appear here.</p>
           </div>
 
-          <div className="submission-field">
-            <label htmlFor="batch-season">Season context</label>
-            <select
-              id="batch-season"
-              value={seasonId}
-              disabled={busy || seasonState === 'loading'}
-              onChange={(event) => setSeasonId(event.target.value)}
-            >
-              <option value="package">New or historical season named in the package</option>
-              {seasons.map((season) => (
-                <option value={season.seasonId} key={season.seasonId}>
-                  {season.label} — {season.competitionName}
-                </option>
-              ))}
-            </select>
-            <p className="field-help" role={seasonState === 'unavailable' ? 'status' : undefined}>
-              {seasonState === 'loading'
-                ? 'Loading known seasons…'
-                : seasonState === 'unavailable'
-                  ? 'Known seasons are unavailable. You can still use the readable season name in your package.'
-                  : 'This label helps confirm context; the package season is validated during processing.'}
+          {scope === 'season' ? (
+            <div className="submission-field">
+              <label htmlFor="batch-season">Season context</label>
+              <select
+                id="batch-season"
+                value={seasonId}
+                disabled={busy || seasonState === 'loading'}
+                onChange={(event) => setSeasonId(event.target.value)}
+              >
+                <option value="package">New or historical season named in the package</option>
+                {seasons.map((season) => (
+                  <option value={season.seasonId} key={season.seasonId}>
+                    {season.label} — {season.competitionName}
+                  </option>
+                ))}
+              </select>
+              <p className="field-help" role={seasonState === 'unavailable' ? 'status' : undefined}>
+                {seasonState === 'loading'
+                  ? 'Loading known seasons…'
+                  : seasonState === 'unavailable'
+                    ? 'Known seasons are unavailable. You can still use the readable season name in your package.'
+                    : 'This label helps confirm context; the package season is validated during processing.'}
+              </p>
+            </div>
+          ) : (
+            <p className="field-help">
+              Each season is identified by its readable name inside the package.
             </p>
-          </div>
+          )}
 
           <div className="submission-field">
-            <label htmlFor="batch-file">Batch package</label>
+            <label htmlFor="batch-file">
+              {scope === 'season' ? 'Season' : 'Back catalogue'} package
+            </label>
             <input
               id="batch-file"
               type="file"
@@ -306,7 +303,7 @@ export function BatchUploadPage() {
           </div>
 
           <button className="button button--primary" type="submit" disabled={busy}>
-            {busy ? 'Uploading package…' : 'Upload batch package'}
+            {busy ? 'Uploading package…' : `Upload ${scopeLabel} package`}
           </button>
 
           {busy ? (
@@ -320,14 +317,14 @@ export function BatchUploadPage() {
             {upload.kind === 'error' ? (
               <div className="submission-result submission-result--error" role="alert">
                 <h2 tabIndex={-1} data-upload-result>
-                  Batch upload failed
+                  {scope === 'season' ? 'Season' : 'Back catalogue'} upload failed
                 </h2>
                 <p>{upload.message}</p>
               </div>
             ) : upload.kind === 'accepted' ? (
               <div className="submission-result" role="status">
                 <h2 tabIndex={-1} data-upload-result>
-                  Batch received safely
+                  {scope === 'season' ? 'Season' : 'Back catalogue'} received safely
                 </h2>
                 <p>
                   Processing continues after you leave this page. The same unchanged upload request
@@ -351,13 +348,13 @@ export function BatchUploadPage() {
                   className="button button--primary"
                   to={`/submissions/batches/${upload.receipt.batchReference}`}
                 >
-                  Track this batch
+                  Track validation and errors
                 </Link>
               </div>
             ) : null}
           </div>
         </form>
       )}
-    </section>
+    </div>
   );
 }

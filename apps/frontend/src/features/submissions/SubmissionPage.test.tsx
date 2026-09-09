@@ -106,7 +106,7 @@ function renderSubmissionPage(session: Session | null = createSession()) {
 }
 
 async function selectTechnicalJson() {
-  fireEvent.click(await screen.findByRole('radio', { name: 'Paste technical JSON' }));
+  fireEvent.click(await screen.findByRole('radio', { name: /Advanced technical JSON/ }));
 }
 
 function useSystemTheme() {
@@ -145,6 +145,10 @@ function currentUser(
 
 function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null } });
+}
+
+function singleFixtureCsv() {
+  return 'fixtureDate,homeTeamName,awayTeamName\n2026-08-20,Wanderers,Strikers\n';
 }
 
 function fixtureStatistics(totalRuns: number) {
@@ -760,6 +764,11 @@ describe('role-gated event submission page', () => {
     renderSubmissionPage();
 
     const fixtureSelect = await screen.findByLabelText('Fixture');
+    expect(screen.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Season/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Back catalogue/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Advanced technical JSON/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Upload a season or back catalogue/ })).toBeNull();
     expect(fixtureSelect).toHaveAccessibleDescription(/never need to enter a database ID/i);
     expect(within(fixtureSelect).getByRole('option')).toHaveTextContent(
       '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
@@ -769,16 +778,31 @@ describe('role-gated event submission page', () => {
     ).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download JSON template' })).toHaveAttribute(
       'href',
-      '/submission-template.json',
+      '/season-upload-template.json',
     );
     expect(screen.getByRole('link', { name: 'Download spreadsheet template' })).toHaveAttribute(
       'href',
-      '/submission-template.csv',
+      '/season-upload-template.csv',
     );
 
     const input = screen.getByLabelText('Fixture package');
     const file = new File(
-      [JSON.stringify({ contractVersion: '1.0', packageId: 'source:fixture-7' })],
+      [
+        JSON.stringify({
+          contractVersion: '1.0',
+          packageId: 'source:fixture-7',
+          fixtures: [
+            {
+              context: {
+                date: fixture.startDate,
+                teams: fixture.competitors.map((competitor) => ({
+                  context: { name: competitor.name },
+                })),
+              },
+            },
+          ],
+        }),
+      ],
       'fixture-package.json',
       { type: 'application/json' },
     );
@@ -832,7 +856,7 @@ describe('role-gated event submission page', () => {
     renderSubmissionPage();
     const input = await screen.findByLabelText('Fixture package');
     fireEvent.change(input, {
-      target: { files: [new File(['invalid'], 'events.csv', { type: 'text/csv' })] },
+      target: { files: [new File([singleFixtureCsv()], 'events.csv', { type: 'text/csv' })] },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
