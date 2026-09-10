@@ -91,15 +91,18 @@ jobs:
 
           az acr login --name "$ACR_NAME"
 
-          docker buildx create --use --name worker-builder || docker buildx use worker-builder
+          docker pull "$ACR_SERVER/sport-analytics-worker:buildcache" || true
 
-          docker buildx build \
+          DOCKER_BUILDKIT=1 docker build \
             --file apps/worker/Dockerfile \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from "$ACR_SERVER/sport-analytics-worker:buildcache" \
             --tag "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}" \
-            --cache-from "type=registry,ref=$ACR_SERVER/sport-analytics-worker:buildcache" \
-            --cache-to "type=registry,ref=$ACR_SERVER/sport-analytics-worker:buildcache,mode=max" \
-            --push \
+            --tag "$ACR_SERVER/sport-analytics-worker:buildcache" \
             .
+
+          docker push "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+          docker push "$ACR_SERVER/sport-analytics-worker:buildcache"
 
           echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
           echo "ACR_SERVER=$ACR_SERVER" >> "$GITHUB_ENV"
