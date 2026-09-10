@@ -24,6 +24,7 @@ export interface FixtureWeatherContextRecord {
   fixtureId: string;
   date: string;
   venue: {
+    venueId: string;
     name: string;
     city: string | null;
     latitude: number | null;
@@ -204,6 +205,33 @@ export async function findFixtureById(
   return result.rows[0] ?? null;
 }
 
+/**
+ * Persists resolved geocoding coordinates against a venue so future lookups
+ * reuse the stored value instead of geocoding the same venue again.
+ *
+ * The `venue` table enforces `latitude`/`longitude` are both null or both
+ * within their valid ranges (see the `add-venue-coordinates` migration), so
+ * an out-of-range value here fails at the database level rather than
+ * silently persisting bad data.
+ */
+export async function updateVenueCoordinates(
+  venueId: string,
+  latitude: number,
+  longitude: number,
+  executor: QueryExecutor = getDatabasePool(),
+): Promise<void> {
+  await executeQuery(
+    executor,
+    `
+      UPDATE venue
+      SET latitude = $2::double precision,
+          longitude = $3::double precision
+      WHERE venue_id = $1::bigint
+    `,
+    [venueId, latitude, longitude],
+  );
+}
+
 export async function findFixtureWeatherContext(
   fixtureId: string,
   executor: QueryExecutor = getDatabasePool(),
@@ -215,6 +243,7 @@ export async function findFixtureWeatherContext(
         f.fixture_id::text AS "fixtureId",
         f.start_date::text AS "date",
         CASE WHEN v.venue_id IS NULL THEN NULL ELSE jsonb_build_object(
+          'venueId', v.venue_id::text,
           'name', v.name,
           'city', v.city,
           'latitude', v.latitude,
