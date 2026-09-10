@@ -6,7 +6,7 @@ import type {
   ParticipantFixtureBowling,
   StatisticContributingEvent,
 } from '@sport-analytics/contracts';
-import { useCallback, useId, type ElementType, type ReactNode } from 'react';
+import { Component, useCallback, useId, type ElementType, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../../api/public-read';
 import {
@@ -282,6 +282,60 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
   );
 }
 
+function StatisticsSectionError({ reason, retry }: { reason?: string; retry(): void }) {
+  return (
+    <div className="state-message state-message--error" role="alert">
+      <h3>Match statistics could not be loaded</h3>
+      <p>Published match statistics could not be requested. Try this section again.</p>
+      {reason ? <p>{reason}</p> : null}
+      <button
+        aria-label="Retry match statistics"
+        className="button button--secondary"
+        onClick={retry}
+        type="button"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The application mounts no error boundary, so an exception raised while the
+ * published statistics are being displayed would otherwise unmount the match
+ * overview and leave the reader a blank section with no error and no retry.
+ * This boundary keeps such a failure inside the statistics section and gives it
+ * the same actionable error state as a failed request.
+ */
+class StatisticsSectionBoundary extends Component<
+  { children: ReactNode; onRetry(): void },
+  { failed: boolean }
+> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  private retry = () => {
+    this.setState({ failed: false });
+    this.props.onRetry();
+  };
+
+  override render() {
+    if (this.state.failed) {
+      return (
+        <StatisticsSectionError
+          reason="The published statistics could not be displayed."
+          retry={this.retry}
+        />
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) {
   const headingId = useId();
   const load = useCallback(
@@ -307,22 +361,13 @@ export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) 
       ) : null}
 
       {state.status === 'error' ? (
-        <div className="state-message state-message--error" role="alert">
-          <h3>Match statistics could not be loaded</h3>
-          <p>Published match statistics could not be requested. Try this section again.</p>
-          <button
-            aria-label="Retry match statistics"
-            className="button button--secondary"
-            onClick={state.reload}
-            type="button"
-          >
-            Try again
-          </button>
-        </div>
+        <StatisticsSectionError reason={state.error.message} retry={state.reload} />
       ) : null}
 
       {state.status === 'ready' ? (
-        <StatisticsResults headingLevel="h3" statistics={state.data.data} />
+        <StatisticsSectionBoundary onRetry={state.reload}>
+          <StatisticsResults headingLevel="h3" statistics={state.data.data} />
+        </StatisticsSectionBoundary>
       ) : null}
     </section>
   );
