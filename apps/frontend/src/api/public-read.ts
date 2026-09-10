@@ -4,6 +4,8 @@ import {
   competitionResponseSchema,
   competitorCollectionResponseSchema,
   competitorResponseSchema,
+  datasetReleaseCollectionResponseSchema,
+  datasetReleaseResponseSchema,
   fixtureCollectionResponseSchema,
   fixtureResponseSchema,
   fixtureWeatherResponseSchema,
@@ -16,6 +18,7 @@ import {
   seasonResponseSchema,
   type Competition,
   type Competitor,
+  type DatasetRelease,
   type Fixture,
   type FixtureWeather,
   type FixtureStatistic,
@@ -116,7 +119,25 @@ export async function downloadFixtureEventExport(
   return response.blob();
 }
 
+export function datasetReleaseArtifactUrl(version: string): string {
+  return `${apiBaseUrl}/dataset-releases/${encodeURIComponent(version)}/artifact.json`;
+}
+
 export const publicReadApi = {
+  listDatasetReleases(signal?: AbortSignal) {
+    return requestPublicApi<{ data: DatasetRelease[] }>(
+      '/dataset-releases',
+      datasetReleaseCollectionResponseSchema,
+      signal,
+    );
+  },
+  getDatasetRelease(version: string, signal?: AbortSignal) {
+    return requestPublicApi<{ data: DatasetRelease }>(
+      `/dataset-releases/${encodeURIComponent(version)}`,
+      datasetReleaseResponseSchema,
+      signal,
+    );
+  },
   listCompetitions(search: string, signal?: AbortSignal) {
     return requestPublicApi<CollectionResponse<Competition>>(
       `/competitions${search}`,

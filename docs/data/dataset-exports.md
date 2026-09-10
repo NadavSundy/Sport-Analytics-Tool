@@ -58,9 +58,15 @@ and hyphens. Reusing a version retrieves its original release rather than regene
 consumers retrieve the metadata and exact downloadable artifact at:
 
 ```http
+GET /api/v1/dataset-releases
 GET /api/v1/dataset-releases/{version}
 GET /api/v1/dataset-releases/{version}/artifact.json
 ```
+
+The collection is returned newest first and includes each release's stable version, creation time,
+scope, event count, format version, documented fields and SHA-256 checksum. The public application
+exposes the same catalogue at `/dataset-releases`; each release page presents its metadata, schema,
+checksum and a direct JSON download without requiring sign-in.
 
 Each artifact is canonical JSON containing its format version, scope, field descriptions and ordered
 published accepted-delivery rows. It is generated only from the live, corrected `delivery_current`
@@ -70,3 +76,8 @@ save the version and checksum with an analysis and verify the downloaded bytes b
 
 Release rows cannot be updated or deleted. Later corrections can be captured only in a new version,
 so a prior version and checksum always resolve to the same retained artifact.
+
+## AI Declaration
+
+The dataset-release catalogue and download documentation was updated with the assistance of
+Codex[GPT-5].
