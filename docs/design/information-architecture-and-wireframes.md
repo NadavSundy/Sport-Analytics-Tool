@@ -35,7 +35,8 @@ wireframe below assumes the backend re-checks role and scope on every request.
 ### 2.1 Site map
 
 All routes below exist today in `apps/frontend/src/App.tsx`. Public browsing routes require no
-session; `/submissions/new` requires `submitter`/`admin`; `/admin/users` requires `admin`.
+session; `/submissions/new` requires `submitter`/`admin`; `/admin/users` and
+`/admin/dataset-releases/new` require `admin`.
 
 ```mermaid
 flowchart TD
@@ -49,6 +50,7 @@ flowchart TD
         FixtureStats --> FixtureStatDetail["/fixtures/:id/statistics/:statisticId"]
         Competitors["/competitors"] --> CompetitorDetail["/competitors/:id"]
         Participants["/participants"] --> ParticipantDetail["/participants/:id"]
+        Releases["/dataset-releases"] --> ReleaseDetail["/dataset-releases/:version"]
     end
 
     subgraph Auth["Authentication"]
@@ -62,6 +64,7 @@ flowchart TD
 
     subgraph Admin["Administrator (role: admin)"]
         AdminUsers["/admin/users"]
+        PublishRelease["/admin/dataset-releases/new"]
     end
 
     Home --> Competitions
@@ -72,6 +75,7 @@ flowchart TD
     Home --> SignIn
     Account --> Submit
     Account --> AdminUsers
+    Account --> PublishRelease
     NotFound["* — 404 Not Found"]
 ```
 
@@ -82,10 +86,13 @@ flowchart TD
   reachable without an account.
 - The header shows **Sign in** for an unauthenticated visitor, and **Account** (leading to
   `/account`) once authenticated.
+- **Downloads** exposes the public dataset-release catalogue to every audience without requiring a
+  session.
 - **Submit events** appears in account-area navigation only for `submitter`/`admin` roles, and
   only once the account's scope has been confirmed by the backend (the page itself still checks
   independently — see §3.3).
-- **Manage users** appears in account-area navigation only for `admin`.
+- **Manage users** and **Publish dataset release** appear in account-area navigation only for
+  `admin`. Each destination independently checks the backend-owned role before exposing controls.
 - Deep links to any public detail page (`/fixtures/:id`, `/participants/:id`, etc.) work directly,
   without first visiting the list page, since these are the URLs likely to be shared or indexed.
 - An unknown path, or a public ID that does not resolve, renders the shared 404 page rather than
@@ -198,6 +205,27 @@ flowchart LR
   administrator cannot approve their own account or an already-admin account.
 - Every transition is visible immediately in the account's card; no page reload is required.
 
+### 3.5 Administrator — generate and publish a dataset release
+
+```mermaid
+flowchart LR
+    A[Open Account] --> B[Choose Publish dataset release]
+    B --> C[Review immutable public-action warning]
+    C --> D[Enter a stable release version]
+    D --> E{Version valid?}
+    E -- no --> F[Correct focused validation feedback]
+    E -- yes --> G[Generate and publish snapshot]
+    G --> H[View metadata and checksum]
+    H --> I[Open public detail, download or catalogue]
+```
+
+- The workflow verifies the current application role before rendering its form; frontend visibility
+  supplements rather than replaces the backend administrator guard.
+- Publication is presented as an immediate public and immutable operation. Reusing a version returns
+  its existing release, while corrections require a new version.
+- Validation and request failures retain the entered version. Successful publication moves focus to
+  the result containing creation time, event count, checksum and public follow-up links.
+
 ---
 
 ## 4. States considered per page
@@ -300,6 +328,13 @@ state.
 ![Admin users – desktop](assets/wireframes/admin-users-desktop.svg)
 ![Admin users – mobile](assets/wireframes/admin-users-mobile.svg)
 
+### 5.7 Publish dataset release (administrator)
+
+The responsive form follows the shared admin-page hierarchy: permission-check state, a prominent
+immutable-publication warning, one labelled version field, one primary publish action and a focused
+result region. On narrow screens, controls and result links become single-column and long checksums
+wrap without horizontal page overflow.
+
 ---
 
 ## 6. Open questions for review
@@ -328,3 +363,5 @@ The issue #361 guided batch-upload workflow was documented with the assistance o
 The issue #435 guided single-fixture upload alignment was documented with the assistance of
 Codex[GPT-5].
 The issue #437 unified submission workflow was documented with the assistance of Codex[GPT-5].
+The issue #458 administrator dataset-release workflow was documented with the assistance of
+Codex[GPT-5.6 Sol].

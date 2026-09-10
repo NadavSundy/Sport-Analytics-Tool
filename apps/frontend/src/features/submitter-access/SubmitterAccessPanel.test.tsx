@@ -294,6 +294,10 @@ describe('submitter access request and status interface', () => {
       'href',
       '/submissions/new',
     );
+    expect(screen.getByRole('link', { name: 'Publish dataset release' })).toHaveAttribute(
+      'href',
+      '/admin/dataset-releases/new',
+    );
   });
 
   it('permits a revoked viewer to request access again without restoring submission access', async () => {

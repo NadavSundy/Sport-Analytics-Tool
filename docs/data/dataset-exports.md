@@ -63,6 +63,12 @@ GET /api/v1/dataset-releases/{version}
 GET /api/v1/dataset-releases/{version}/artifact.json
 ```
 
+An authenticated administrator can perform the same operation without constructing an API request
+by opening **Publish dataset release** from the Account page. The admin-only workflow validates the
+version, explains that publication is immediate and immutable, and links the successful result to
+its public metadata, JSON artefact and catalogue entry. The backend administrator guard remains the
+authoritative permission boundary.
+
 The collection is returned newest first and includes each release's stable version, creation time,
 scope, event count, format version, documented fields and SHA-256 checksum. The public application
 exposes the same catalogue at `/dataset-releases`; each release page presents its metadata, schema,
@@ -80,4 +86,5 @@ so a prior version and checksum always resolve to the same retained artifact.
 ## AI Declaration
 
 The dataset-release catalogue and download documentation was updated with the assistance of
-Codex[GPT-5].
+Codex[GPT-5]. The administrator publication workflow was documented with the assistance of
+Codex[GPT-5.6 Sol].

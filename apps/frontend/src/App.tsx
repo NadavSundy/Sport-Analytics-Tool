@@ -31,6 +31,7 @@ import {
   DatasetReleaseCataloguePage,
   DatasetReleaseDetailPage,
 } from './features/dataset-releases/DatasetReleasePages';
+import { AdminDatasetReleasePage } from './features/dataset-releases/AdminDatasetReleasePage';
 
 export function PublicApp() {
   return (
@@ -72,6 +73,7 @@ export function PublicApp() {
         <Route path="/submissions/batches" element={<BatchReportsPage />} />
         <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
         <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
         <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
 
