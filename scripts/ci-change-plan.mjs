@@ -206,6 +206,7 @@ function applyPath(plan, file) {
 
   if (file === 'playwright.config.ts' || file.startsWith('tests/e2e/')) {
     plan.frontend = true;
+    plan.contracts = true;
     plan.e2e = true;
     if (!intermediateIngestion) plan.e2eFull = true;
     plan.needsNpm = true;
