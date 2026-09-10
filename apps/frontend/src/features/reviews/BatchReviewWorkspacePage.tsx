@@ -37,7 +37,7 @@ type LoadState<T> =
   { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; value: T };
 
 function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; children: ReactNode }) {
-  return profile.role === 'admin' ? (
+  return profile.role === 'admin' || profile.role === 'submitter' ? (
     children
   ) : (
     <div className="state-message state-message--error" role="alert">
@@ -99,8 +99,9 @@ function ReviewQueue() {
   return (
     <ReviewerGate profile={state.value.profile}>
       <p className="review-scope-note">
-        Showing awaiting-review batches only within your {state.value.profile.competitionIds.length}{' '}
-        assigned competition scope{state.value.profile.competitionIds.length === 1 ? '' : 's'}.
+        {state.value.profile.role === 'admin'
+          ? 'Showing all awaiting-review batches.'
+          : `Showing awaiting-review batches within your assigned competition scopes.`}
       </p>
       {state.value.batches.length === 0 ? (
         <p role="status">No batches are awaiting your review.</p>
@@ -650,7 +651,7 @@ export function BatchReviewWorkspacePage() {
         <p>
           {batchReference
             ? 'Evaluate a bounded, accessible summary before making a publication decision.'
-            : 'Find validated batches awaiting a decision in your competition scope.'}
+            : 'Find validated batches awaiting a decision.'}
         </p>
       </header>
       {isLoading ? (

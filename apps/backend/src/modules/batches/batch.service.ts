@@ -305,12 +305,17 @@ export function createBatchService(
   storage?: BatchPayloadStorageService,
   repository: BatchRepository = createBatchRepository(),
 ): BatchService {
+  function canReviewBatch(account: ApplicationAccount, batch: BatchRecord): boolean {
+    return (
+      account.role === 'admin' ||
+      (account.role === 'submitter' && account.competitionIds.includes(batch.competitionId))
+    );
+  }
+
   async function findAuthorizedBatch(account: ApplicationAccount, reference: string) {
     const batch = await repository.findBatchByReference(reference);
     const canInspect =
-      batch &&
-      (batch.submitterId === account.accountId ||
-        (account.role === 'admin' && account.competitionIds.includes(batch.competitionId)));
+      batch && (batch.submitterId === account.accountId || canReviewBatch(account, batch));
     if (!batch || !canInspect) {
       throw new BatchForbiddenError();
     }
@@ -414,9 +419,11 @@ export function createBatchService(
     async list(account, query) {
       const cursor = decodeCursor(query.cursor, batchListCursorSchema);
       const records = await repository.listBatches({
-        ...(account.role === 'admin'
+        ...(account.role === 'submitter' && query.status === 'awaiting_review'
           ? { competitionIds: account.competitionIds }
-          : { submitterId: account.accountId }),
+          : account.role === 'submitter'
+            ? { submitterId: account.accountId }
+            : {}),
         ...(query.status ? { status: query.status } : {}),
         ...(cursor ? { beforeCreatedAt: cursor.createdAt, beforeBatchId: cursor.batchId } : {}),
         limit: query.limit + 1,
@@ -546,11 +553,7 @@ export function createBatchService(
 
     async review(account, reference, request) {
       const batch = await repository.findBatchByReference(reference);
-      if (
-        !batch ||
-        account.role !== 'admin' ||
-        !account.competitionIds.includes(batch.competitionId)
-      ) {
+      if (!batch || !canReviewBatch(account, batch)) {
         throw new BatchForbiddenError();
       }
       try {
