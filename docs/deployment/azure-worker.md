@@ -212,9 +212,7 @@ relevant operational evidence.
 
 ## Deployment
 
-The manual `Sport Analytics - Provision and Deploy Batch Worker` Gitea workflow validates the worker,
-deploys support resources, builds an immutable commit-tagged image with ACR Tasks, deploys the
-Container App, and requires its active revision to report `Healthy`. Configure these Gitea secrets:
+The manual worker deployment workflow provisions the supporting Azure resources, builds an immutable commit-tagged worker image on the Gitea runner, pushes the image to Azure Container Registry, deploys the Container App revision and waits for the active revision to become healthy.
 
 - `AZURE_WORKER_CREDENTIALS`: Azure login JSON for a narrowly scoped deployment principal;
 - `AZURE_WORKER_RESOURCE_GROUP`: the development resource group;
@@ -223,8 +221,7 @@ Container App, and requires its active revision to report `Healthy`. Configure t
   `https://<vault>.vault.azure.net/secrets/worker-database-url`.
 
 Before running the workflow, place the PostgreSQL URL in that Key Vault secret and confirm the
-existing `statsthegameblobdev/staged-ingestion` container is private. The deployment principal needs
-resource deployment, ACR build and role-assignment permission in scope. Compile the template before
+existing `statsthegameblobdev/staged-ingestion` container is private. The deployment principal needs resource deployment, ACR push and role-assignment permission in scope. Compile the template before
 review with:
 
 ```text

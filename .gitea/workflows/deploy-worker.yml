@@ -44,6 +44,10 @@ jobs:
             fi
           done
           exit "$missing"
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
 
       - name: Sign in to Azure
         uses: azure/login@v2
@@ -65,13 +69,43 @@ jobs:
           databaseSecretUri="$DATABASE_SECRET_URI"
           storageAccountName=statsthegameblobdev
 
-      - name: Build immutable worker image in Azure Container Registry
+      - name: Build immutable worker image and push to Azure Container Registry
         env:
           RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
         run: |
-          ACR_NAME=$(az deployment group show --name worker-${{ github.sha }}-infra --resource-group "$RESOURCE_GROUP" --query properties.outputs.containerRegistryName.value -o tsv)
-          az acr build --registry "$ACR_NAME" --image "sport-analytics-worker:${{ github.sha }}" --file apps/worker/Dockerfile .
+          INFRA_DEPLOYMENT_NAME="worker-${{ github.sha }}-infra"
+
+          ACR_NAME=$(az deployment group show \
+            --name "$INFRA_DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.outputs.containerRegistryName.value \
+            -o tsv)
+
+          ACR_SERVER=$(az deployment group show \
+            --name "$INFRA_DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.outputs.containerRegistryServer.value \
+            -o tsv)
+
+          echo "Building worker image for registry $ACR_NAME"
+
+          az acr login --name "$ACR_NAME"
+
+          docker pull "$ACR_SERVER/sport-analytics-worker:buildcache" || true
+
+          DOCKER_BUILDKIT=1 docker build \
+            --file apps/worker/Dockerfile \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from "$ACR_SERVER/sport-analytics-worker:buildcache" \
+            --tag "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}" \
+            --tag "$ACR_SERVER/sport-analytics-worker:buildcache" \
+            .
+
+          docker push "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+          docker push "$ACR_SERVER/sport-analytics-worker:buildcache"
+
           echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+          echo "ACR_SERVER=$ACR_SERVER" >> "$GITHUB_ENV"
 
       - name: Deploy worker revision
         env:
@@ -93,6 +127,26 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
         run: |
-          az containerapp revision list --name statsthegame-dev-batch-worker --resource-group "$RESOURCE_GROUP" --query "[?properties.active].{name:name,healthy:properties.healthState,replicas:properties.replicas}" -o table
-          HEALTH=$(az containerapp revision list --name statsthegame-dev-batch-worker --resource-group "$RESOURCE_GROUP" --query "[?properties.active][0].properties.healthState" -o tsv)
-          test "$HEALTH" = "Healthy"
+          for attempt in {1..12}; do
+            HEALTH=$(az containerapp revision list \
+              --name statsthegame-dev-batch-worker \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active] | [0].properties.healthState" \
+              -o tsv)
+
+            echo "Health check $attempt/12: ${HEALTH:-pending}"
+
+            if [ "$HEALTH" = "Healthy" ]; then
+              az containerapp revision list \
+                --name statsthegame-dev-batch-worker \
+                --resource-group "$RESOURCE_GROUP" \
+                --query "[?properties.active].{Name:name,Health:properties.healthState,Running:properties.runningState,Replicas:properties.replicas}" \
+                -o table
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Worker did not become healthy within 120 seconds."
+          exit 1
