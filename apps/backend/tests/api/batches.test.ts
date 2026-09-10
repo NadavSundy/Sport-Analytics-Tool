@@ -448,9 +448,9 @@ describe('batch receipt API', () => {
     },
   );
 
-  test('requires an administrator and a non-blank review reason', async () => {
+  test('allows a scoped reviewer and requires a non-blank review reason', async () => {
     const batchService = service();
-    const submitterApp = createTestApp(
+    const reviewerApp = createTestApp(
       acceptToken,
       undefined,
       synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
@@ -463,7 +463,26 @@ describe('batch receipt API', () => {
       undefined,
       batchService,
     );
-    await request(submitterApp)
+    await request(reviewerApp)
+      .post(`/api/v1/batches/${reference}/review`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ decision: 'approved', reason: 'Approve.' })
+      .expect(200);
+
+    const viewerApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount()),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      batchService,
+    );
+    await request(viewerApp)
       .post(`/api/v1/batches/${reference}/review`)
       .set('Authorization', 'Bearer batch-token')
       .send({ decision: 'approved', reason: 'Approve.' })
@@ -487,7 +506,7 @@ describe('batch receipt API', () => {
       .set('Authorization', 'Bearer batch-token')
       .send({ decision: 'approved', reason: '   ' })
       .expect(422);
-    expect(batchService.review).not.toHaveBeenCalled();
+    expect(batchService.review).toHaveBeenCalledTimes(1);
   });
 
   test('returns a conflict for a competing or unsafe review decision', async () => {

@@ -205,7 +205,7 @@ describe('reviewer batch workspace', () => {
     vi.unstubAllGlobals();
   });
 
-  test('discovers only scoped awaiting-review batches', async () => {
+  test('shows the global awaiting-review queue to an administrator', async () => {
     const fetchMock = vi
       .fn()
       .mockImplementation((input: RequestInfo | URL) =>
@@ -225,7 +225,28 @@ describe('reviewer batch workspace', () => {
       expect.stringContaining('status=awaiting_review'),
       expect.anything(),
     );
-    expect(screen.getByText(/assigned competition scope/)).toBeInTheDocument();
+    expect(screen.getByText('Showing all awaiting-review batches.')).toBeInTheDocument();
+  });
+
+  test('shows assigned competition-scope messaging to a reviewer alias', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(
+            String(input).includes('/auth/me')
+              ? { user: { ...profile.user, role: 'submitter' } }
+              : { data: [report().data.batch], pagination: { nextCursor: null } },
+          ),
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage('/reviews/batches');
+    expect(
+      await screen.findByText(
+        'Showing awaiting-review batches within your assigned competition scopes.',
+      ),
+    ).toBeInTheDocument();
   });
 
   test('shows provenance, summaries, grouped details, bounded samples and blocks unsafe approval', async () => {
