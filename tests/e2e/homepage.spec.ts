@@ -9,6 +9,18 @@ async function expectNoHorizontalOverflow(page: Page) {
   ).toBe(false);
 }
 
+const THREE_INITIALISATION_TIMEOUT_MS = 15_000;
+
+async function hasWebGL(page: Page) {
+  return page.evaluate(() => {
+    if (typeof window.WebGLRenderingContext === 'undefined') {
+      return false;
+    }
+    const testCanvas = document.createElement('canvas');
+    return Boolean(testCanvas.getContext('webgl2') ?? testCanvas.getContext('webgl'));
+  });
+}
+
 test(
   'homepage presents the public event-to-statistic journey in both themes',
   { tag: '@mobile' },
@@ -146,13 +158,7 @@ test('Three.js enhancement pauses off-screen and unmounts without page errors', 
 
   const visual = page.locator('[data-hero-enhancement]');
   const canvas = visual.locator('canvas');
-  const webglAvailable = await page.evaluate(() => {
-    if (typeof window.WebGLRenderingContext === 'undefined') {
-      return false;
-    }
-    const testCanvas = document.createElement('canvas');
-    return Boolean(testCanvas.getContext('webgl2') ?? testCanvas.getContext('webgl'));
-  });
+  const webglAvailable = await hasWebGL(page);
 
   if (!webglAvailable) {
     test.skip(true, 'WebGL is unavailable in this browser runtime.');
@@ -185,8 +191,18 @@ test('Three.js enhancement reveals the fallback during context loss and restores
   page.on('pageerror', (error) => pageErrors.push(error.stack ?? error.message));
   await page.goto('/');
 
+  const webglAvailable = await hasWebGL(page);
+  test.skip(!webglAvailable, 'WebGL is unavailable in this browser runtime.');
+
   const visual = page.locator('[data-hero-enhancement]');
   const canvas = visual.locator('.hero-scene');
+
+  await expect(
+    canvas,
+    'Three.js should initialise when the browser runtime reports WebGL support.',
+  ).toHaveAttribute('data-context-state', 'ready', {
+    timeout: THREE_INITIALISATION_TIMEOUT_MS,
+  });
   await expect(visual).toHaveAttribute('data-hero-enhancement', 'three');
 
   const canSimulateContextLoss = await canvas.evaluate((element) => {
