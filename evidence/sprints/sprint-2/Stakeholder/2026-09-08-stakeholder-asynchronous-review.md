@@ -1,10 +1,10 @@
-# Sprint 2 Stakeholder Review — Asynchronous Interaction
+﻿# Sprint 2 Stakeholder Review â€” Asynchronous Interaction
 
-**Date:** 8 September 2026  
-**Stakeholder:** Terence Nkoua Mackyta  
-**Team:** Git Push Pray  
-**Sprint:** Sprint 2  
-**Interaction type:** Asynchronous stakeholder review via WhatsApp  
+**Date:** 8 September 2026
+**Stakeholder:** Terence Nkoua Mackyta
+**Team:** Git Push Pray
+**Sprint:** Sprint 2
+**Interaction type:** Asynchronous stakeholder review via WhatsApp
 **Status:** Feedback received and evaluated
 
 ## Purpose
@@ -17,11 +17,11 @@ The review focused on:
 - safety of already-published match data;
 - clarity and usefulness of validation/rejection messages;
 - derived match information and traceability; and
-- the overall upload → validate → review → publish workflow.
+- the overall upload â†’ validate â†’ review â†’ publish workflow.
 
 ## Material supplied
 
-At 14:41–14:50 on 8 September 2026, the team sent the stakeholder:
+At 14:41â€“14:50 on 8 September 2026, the team sent the stakeholder:
 
 - the deployed frontend URL;
 - a one-page Sprint 2 stakeholder review guide;
@@ -56,7 +56,7 @@ This interaction provides direct stakeholder confirmation that the current submi
 
 The interaction also demonstrates that the stakeholder could use the deployed system and supplied test pack independently, rather than only observing a team-led demonstration.
 
-The feedback did **not** explicitly confirm every part of the wider upload → validate → review → publish workflow, nor did it give detailed feedback on reviewer actions or final publication behaviour. Those areas therefore remain appropriate targets for the Sprint 2 closeout or the next stakeholder review.
+The feedback did **not** explicitly confirm every part of the wider upload â†’ validate â†’ review â†’ publish workflow, nor did it give detailed feedback on reviewer actions or final publication behaviour. Those areas therefore remain appropriate targets for the Sprint 2 closeout or the next stakeholder review.
 
 ## Integration / follow-up
 
@@ -69,9 +69,9 @@ Based on this feedback:
 
 ## Evidence trail
 
-- WhatsApp interaction: 8 September 2026, 14:41–17:49. A redacted transcript is stored alongside this record.
-- `Sprint_2_Stakeholder_Review_2026-09-08.pdf` — review guide sent to the stakeholder.
-- `README_FIRST.txt` and associated JSON/CSV test files — stakeholder test pack.
+- WhatsApp interaction: 8 September 2026, 14:41â€“17:49. A redacted transcript is stored alongside this record.
+- `Sprint_2_Stakeholder_Review_2026-09-08.pdf` â€” review guide sent to the stakeholder.
+- `README_FIRST.txt` and associated JSON/CSV test files â€” stakeholder test pack.
 
 > **Privacy/security note:** The source WhatsApp export contained a test-account password and a phone number. These must not be committed to the repository. Repository evidence should use the redacted transcript only. If the password is still active, rotate it.
 
