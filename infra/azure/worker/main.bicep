@@ -93,7 +93,7 @@ resource registry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
 }
 
 resource serviceBus 'Microsoft.ServiceBus/namespaces@2024-01-01' = {
-  name: take('${suffix}-${uniqueString(resourceGroup().id)}-sb', 50)
+  name: take('${suffix}-bus-${uniqueString(resourceGroup().id)}', 50)
   location: location
   sku: { name: 'Standard', tier: 'Standard' }
   properties: {
