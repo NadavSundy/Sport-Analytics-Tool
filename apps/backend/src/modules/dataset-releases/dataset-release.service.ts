@@ -31,6 +31,7 @@ const fields = [
 
 export interface DatasetReleaseService {
   createRelease(input: CreateDatasetRelease): Promise<DatasetRelease>;
+  listReleases(): Promise<DatasetRelease[]>;
   getRelease(version: string): Promise<DatasetRelease | null>;
   getArtifact(version: string): Promise<string | null>;
 }
@@ -76,6 +77,11 @@ export function createDatasetReleaseService(
       });
 
       return mapSnapshot(created);
+    },
+
+    async listReleases() {
+      const releases = await repository.list();
+      return releases.map(mapSnapshot);
     },
 
     async getRelease(version) {

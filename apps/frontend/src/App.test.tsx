@@ -171,6 +171,11 @@ describe('public application and authentication interface', () => {
     expect(within(accountNavigation).queryByRole('link', { name: 'Create Account' })).toBeNull();
     expect(within(accountNavigation).queryByRole('link', { name: 'Sign In' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Account' })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Public records' })).getByRole('link', {
+        name: 'Downloads',
+      }),
+    ).toHaveAttribute('href', '/dataset-releases');
     expect(fetchMock).not.toHaveBeenCalled();
 
     fireEvent.click(authenticationCallToAction);

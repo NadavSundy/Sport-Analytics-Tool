@@ -27,6 +27,10 @@ import {
 } from './features/statistics/StatisticsPages';
 import { AdminUsersPage } from './features/admin/AdminUsersPage';
 import { BatchReviewWorkspacePage } from './features/reviews/BatchReviewWorkspacePage';
+import {
+  DatasetReleaseCataloguePage,
+  DatasetReleaseDetailPage,
+} from './features/dataset-releases/DatasetReleasePages';
 
 export function PublicApp() {
   return (
@@ -53,6 +57,9 @@ export function PublicApp() {
 
         <Route path="/participants" element={<ParticipantsPage />} />
         <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
+
+        <Route path="/dataset-releases" element={<DatasetReleaseCataloguePage />} />
+        <Route path="/dataset-releases/:version" element={<DatasetReleaseDetailPage />} />
 
         <Route path="/sign-in" element={<AuthenticationPage />} />
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />

@@ -23,6 +23,7 @@ export interface DatasetReleaseRepository {
     artifact: string;
     checksum: string;
   }): Promise<DatasetReleaseSnapshot>;
+  list(): Promise<DatasetReleaseSnapshot[]>;
   findByVersion(version: string): Promise<DatasetReleaseSnapshot | null>;
   findArtifactByVersion(version: string): Promise<string | null>;
 }
@@ -97,6 +98,14 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
         throw new Error('Dataset release was not created or found.');
       }
       return existing;
+    },
+
+    async list() {
+      const result = await executeQuery<DatasetReleaseRow>(
+        database(),
+        `SELECT ${snapshotColumns} FROM dataset_release ORDER BY created_at DESC, version DESC`,
+      );
+      return result.rows;
     },
 
     findByVersion,

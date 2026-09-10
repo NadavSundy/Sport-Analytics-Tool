@@ -36,6 +36,10 @@ export function createDatasetReleaseRouter(
     },
   );
 
+  router.get('/dataset-releases', (_request, response) => {
+    void service.listReleases().then((releases) => response.status(200).json({ data: releases }));
+  });
+
   router.get('/dataset-releases/:version', (request, response) => {
     const version = datasetReleaseVersionSchema.safeParse(request.params.version);
     if (!version.success) {
@@ -58,12 +62,16 @@ export function createDatasetReleaseRouter(
   router.get('/dataset-releases/:version/artifact.json', (request, response) => {
     const version = datasetReleaseVersionSchema.safeParse(request.params.version);
     if (!version.success) {
-      response.status(404).end();
+      response
+        .status(404)
+        .json({ error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' } });
       return;
     }
     void service.getArtifact(version.data).then((artifact) => {
       if (!artifact) {
-        response.status(404).end();
+        response
+          .status(404)
+          .json({ error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' } });
         return;
       }
       response

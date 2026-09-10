@@ -36,6 +36,11 @@ export const datasetReleaseSchema = z
   .strict();
 
 export const datasetReleaseResponseSchema = createResourceResponseSchema(datasetReleaseSchema);
+export const datasetReleaseCollectionResponseSchema = z
+  .object({
+    data: z.array(datasetReleaseSchema),
+  })
+  .strict();
 
 export type CreateDatasetRelease = z.infer<typeof createDatasetReleaseSchema>;
 export type DatasetRelease = z.infer<typeof datasetReleaseSchema>;

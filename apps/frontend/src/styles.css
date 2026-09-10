@@ -3022,6 +3022,108 @@ h3 {
   margin-top: 2rem;
 }
 
+.release-page {
+  min-height: 38rem;
+  padding-block: 2rem 5rem;
+}
+
+.release-catalogue {
+  margin-top: 2rem;
+}
+
+.release-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release-list > li {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(24rem, 1.5fr);
+  gap: 2rem;
+  padding-block: 1.5rem;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.release-list h3,
+.release-list p {
+  margin: 0;
+}
+
+.release-list h3 a {
+  color: var(--colour-text);
+  text-decoration-color: var(--colour-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+.release-list h3 + p,
+.release-summary,
+.release-download > p,
+.release-schema > p {
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.release-list dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.release-list dt,
+.release-checksum dt,
+.release-schema dt {
+  color: var(--colour-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.release-list dd {
+  margin: 0.35rem 0 0;
+  font-weight: 700;
+}
+
+.release-download,
+.release-schema {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--colour-border);
+}
+
+.release-download .button {
+  margin-top: 0.5rem;
+}
+
+.release-checksum {
+  margin: 1.5rem 0 0;
+}
+
+.release-checksum dd {
+  margin: 0.5rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.release-schema > dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 2rem;
+  margin: 1rem 0 0;
+}
+
+.release-schema > dl > div {
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.release-schema dd {
+  margin: 0.5rem 0 0;
+  color: var(--colour-text-secondary);
+  line-height: 1.5;
+}
+
 .statistics-summary,
 .statistics-section {
   margin-top: 2rem;
@@ -3261,7 +3363,7 @@ h3 {
     grid-column: 1 / -1;
     grid-row: 2;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     width: 100%;
     padding-bottom: 0.75rem;
   }
@@ -3280,6 +3382,11 @@ h3 {
 
   .record-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .release-list > li {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .admin-user-toolbar {
@@ -3788,7 +3895,9 @@ h3 {
   }
 
   .filter-grid,
-  .record-facts {
+  .record-facts,
+  .release-list dl,
+  .release-schema > dl {
     grid-template-columns: 1fr;
   }
 
