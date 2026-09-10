@@ -2,4 +2,8 @@
 # See https://redocly.com/docs/cli/ for more information.
 docs/api/openapi.yaml:
   operation-4xx-response:
+    # Health has no client-controlled input and intentionally exposes only a successful health response.
     - '#/paths/~1api~1v1~1health/get/responses'
+    # The public dataset-release catalogue accepts no parameters, body, or authentication, so the
+    # implemented GET collection route has no meaningful client-error response to document.
+    - '#/paths/~1api~1v1~1dataset-releases/get/responses'
