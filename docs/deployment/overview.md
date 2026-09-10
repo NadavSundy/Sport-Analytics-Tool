@@ -6,7 +6,7 @@ The selected deployment architecture is:
 | ---------------------- | -------------------------- | ----------------------------------------------- |
 | React frontend         | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
 | Express backend API    | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
-| Asynchronous worker    | Azure Container Apps       | Bicep / ACR Tasks / Gitea Actions               |
+| Asynchronous worker    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions          |
 | PostgreSQL database    | Supabase-hosted PostgreSQL | Database migrations through the backend tooling |
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
 | Public documentation   | Cloudflare Pages           | Wrangler CLI                                    |
