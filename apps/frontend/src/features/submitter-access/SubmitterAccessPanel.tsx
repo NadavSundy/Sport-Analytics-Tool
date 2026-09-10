@@ -240,6 +240,9 @@ export function SubmitterAccessPanel() {
                 <Link className="button button--secondary" to="/admin/users">
                   Manage users
                 </Link>
+                <Link className="button button--secondary" to="/admin/dataset-releases/new">
+                  Publish dataset release
+                </Link>
               </>
             ) : null}
           </div>
