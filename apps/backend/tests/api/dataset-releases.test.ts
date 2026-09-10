@@ -21,6 +21,7 @@ const release = {
 function service(): DatasetReleaseService {
   return {
     createRelease: vi.fn(async () => release),
+    listReleases: vi.fn(async () => [release]),
     getRelease: vi.fn(async () => release),
     getArtifact: vi.fn(async () => '{"formatVersion":"1.0"}'),
   };
@@ -57,6 +58,9 @@ describe('dataset release API', () => {
     expect(created.body.data).toEqual(release);
     expect(releases.createRelease).toHaveBeenCalledWith({ version: '2026.09.1' });
 
+    await request(app)
+      .get('/api/v1/dataset-releases')
+      .expect(200, { data: [release] });
     await request(app).get('/api/v1/dataset-releases/2026.09.1').expect(200, { data: release });
     const artifact = await request(app)
       .get('/api/v1/dataset-releases/2026.09.1/artifact.json')
@@ -90,5 +94,44 @@ describe('dataset release API', () => {
       .send({ version: 'not a version' })
       .expect(403);
     await request(viewer).get('/api/v1/dataset-releases/not%20a%20version').expect(404);
+    await request(viewer)
+      .get('/api/v1/dataset-releases/not%20a%20version/artifact.json')
+      .expect(404, {
+        error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' },
+      });
+  });
+
+  test('fails clearly when a release or artifact is unavailable', async () => {
+    const releases = service();
+    vi.mocked(releases.getRelease).mockResolvedValue(null);
+    vi.mocked(releases.getArtifact).mockResolvedValue(null);
+    const app = createTestApp(
+      undefined,
+      undefined,
+      administrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      releases,
+    );
+
+    await request(app)
+      .get('/api/v1/dataset-releases/missing')
+      .expect(404, {
+        error: { code: 'NOT_FOUND', message: 'Dataset release not found.' },
+      });
+    await request(app)
+      .get('/api/v1/dataset-releases/missing/artifact.json')
+      .expect(404, {
+        error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' },
+      });
   });
 });

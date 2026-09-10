@@ -431,6 +431,7 @@ describe.sequential('public events database API', () => {
       expect(first).toEqual(again);
       expect(artifact).toContain(`"eventId":"${testRecords().orderedEventIds[0]}"`);
       expect(await service.getRelease(version)).toEqual(first);
+      expect(await service.listReleases()).toContainEqual(first);
       await expect(
         client.query('UPDATE dataset_release SET event_count = 0 WHERE version = $1', [version]),
       ).rejects.toThrow('Dataset releases are immutable');

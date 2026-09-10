@@ -5,13 +5,14 @@ available without an account; there is no global authentication gate.
 
 ## Public browsing routes
 
-| Public concept | Collection      | Detail                         |
-| -------------- | --------------- | ------------------------------ |
-| Competitions   | `/competitions` | `/competitions/:competitionId` |
-| Seasons        | `/seasons`      | `/seasons/:seasonId`           |
-| Fixtures       | `/fixtures`     | `/fixtures/:fixtureId`         |
-| Teams          | `/competitors`  | `/competitors/:competitorId`   |
-| Players        | `/participants` | `/participants/:participantId` |
+| Public concept   | Collection          | Detail                         |
+| ---------------- | ------------------- | ------------------------------ |
+| Competitions     | `/competitions`     | `/competitions/:competitionId` |
+| Seasons          | `/seasons`          | `/seasons/:seasonId`           |
+| Fixtures         | `/fixtures`         | `/fixtures/:fixtureId`         |
+| Teams            | `/competitors`      | `/competitors/:competitorId`   |
+| Players          | `/participants`     | `/participants/:participantId` |
+| Dataset releases | `/dataset-releases` | `/dataset-releases/:version`   |
 
 Published fixture statistics load directly in `/fixtures/:fixtureId` with the fixture outcome,
 completeness state, innings totals, player batting and bowling figures, and participating players.
@@ -26,6 +27,11 @@ by that result and links back to the named match, team, and player records.
 
 These pages call only the handwritten public API through `src/api/public-read.ts`. They do not
 read Supabase data, attach identity credentials, or require an authenticated session.
+
+Dataset releases are discoverable from the public navigation. The catalogue displays creation,
+scope, event-count and format metadata; its detail route displays the complete field documentation,
+SHA-256 checksum and canonical JSON artefact download. Missing releases retain the shared explicit
+error and retry experience.
 
 Collection pages preserve the API-supported filters, page size, and cursor in the URL query
 string. Competition, season, fixture, team, and player filters share a readable-name combobox with
@@ -71,3 +77,5 @@ Codex[GPT-5.6 Sol].
 The embedded player-overview route behavior was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The fixture-weather overview behavior was documented with the assistance of Codex[GPT-5].
+The dataset-release catalogue and download experience was documented with the assistance of
+Codex[GPT-5].

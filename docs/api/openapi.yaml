@@ -41,6 +41,9 @@ tags:
   - name: Public Read
     description: Anonymous sport-reference, fixture, accepted-event and statistic reads.
 
+  - name: Dataset Releases
+    description: Discoverable immutable published-data snapshots and artefact downloads.
+
   - name: Weather
     description: >-
       Contextual weather lookup for a location and date, backed by the
@@ -62,6 +65,95 @@ tags:
     description: API-key authenticated external consumer reads with per-consumer protections.
 
 paths:
+  /api/v1/dataset-releases:
+    get:
+      tags: [Dataset Releases]
+      summary: List available dataset releases
+      operationId: listDatasetReleases
+      x-implementation-status: implemented
+      security: []
+      responses:
+        '200':
+          description: Available immutable releases, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseCollectionResponse'
+
+  /api/v1/dataset-releases/{version}:
+    get:
+      tags: [Dataset Releases]
+      summary: Get dataset release metadata
+      operationId: getDatasetRelease
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/DatasetReleaseVersion'
+      responses:
+        '200':
+          description: Release scope, creation, schema and checksum metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/dataset-releases/{version}/artifact.json:
+    get:
+      tags: [Dataset Releases]
+      summary: Download a dataset release artefact
+      operationId: downloadDatasetReleaseArtifact
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/DatasetReleaseVersion'
+      responses:
+        '200':
+          description: The exact canonical JSON bytes covered by the release checksum.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the immutable release.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseArtifact'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/dataset-releases:
+    post:
+      tags: [Administration, Dataset Releases]
+      summary: Create an immutable dataset release
+      operationId: createDatasetRelease
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [version]
+              properties:
+                version:
+                  $ref: '#/components/schemas/DatasetReleaseVersion'
+      responses:
+        '201':
+          description: Created release metadata, or the existing immutable release for that version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/v1/admin/api-consumers:
     get:
       tags: [Administration]
@@ -1863,6 +1955,14 @@ components:
       name: X-API-Key
 
   parameters:
+    DatasetReleaseVersion:
+      name: version
+      in: path
+      required: true
+      description: Stable caller-selected release identifier.
+      schema:
+        $ref: '#/components/schemas/DatasetReleaseVersion'
+
     Limit:
       name: limit
       in: query
@@ -2066,6 +2166,75 @@ components:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
   schemas:
+    DatasetReleaseVersion:
+      type: string
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'
+
+    DatasetReleaseField:
+      type: object
+      additionalProperties: false
+      required: [name, description]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string, minLength: 1 }
+
+    DatasetRelease:
+      type: object
+      additionalProperties: false
+      required: [releaseId, version, createdAt, formatVersion, scope, eventCount, checksum, fields]
+      properties:
+        releaseId:
+          $ref: '#/components/schemas/DatabaseIdentifier'
+        version:
+          $ref: '#/components/schemas/DatasetReleaseVersion'
+        createdAt: { type: string, format: date-time }
+        formatVersion: { type: string, const: '1.0' }
+        scope: { type: string, const: published-accepted-deliveries }
+        eventCount: { type: integer, minimum: 0 }
+        checksum:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: SHA-256 digest of the exact downloadable artefact bytes.
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetReleaseField'
+
+    DatasetReleaseResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DatasetRelease'
+
+    DatasetReleaseCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetRelease'
+
+    DatasetReleaseArtifact:
+      type: object
+      additionalProperties: false
+      required: [formatVersion, scope, fields, events]
+      properties:
+        formatVersion: { type: string, const: '1.0' }
+        scope: { type: string, const: published-accepted-deliveries }
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetReleaseField'
+        events:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
     ApiConsumerIssue:
       type: object
       additionalProperties: false
