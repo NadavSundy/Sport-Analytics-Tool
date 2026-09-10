@@ -19,17 +19,12 @@ param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-hellowo
 @description('Existing storage account containing the private staged-ingestion container.')
 param storageAccountName string
 
-@description('Resource group containing the existing storage account.')
-param storageResourceGroupName string = resourceGroup().name
 
 @description('Existing private Blob container used for staged ingestion.')
 param storageContainerName string = 'staged-ingestion'
 
 @description('Existing Key Vault that stores the PostgreSQL connection string.')
 param keyVaultName string
-
-@description('Resource group containing the existing Key Vault.')
-param keyVaultResourceGroupName string = resourceGroup().name
 
 @description('Versionless HTTPS Key Vault secret URI for DATABASE_URL.')
 param databaseSecretUri string
@@ -129,12 +124,10 @@ resource queue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = {
 
 resource existingStorage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
-  scope: resourceGroup(storageResourceGroupName)
 }
 
 resource existingKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
-  scope: resourceGroup(keyVaultResourceGroupName)
 }
 
 resource serviceBusReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
