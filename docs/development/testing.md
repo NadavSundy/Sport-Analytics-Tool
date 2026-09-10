@@ -392,6 +392,27 @@ npm run test --workspace=@sport-analytics/frontend
 npm run test:e2e -- tests/e2e/submitter-access.spec.ts --workers=1
 ```
 
+## Administrator dataset-release coverage
+
+The administrator dataset-release frontend suite covers signed-out redirection, role denial,
+shared-contract version validation, pending-action duplicate prevention, authenticated creation,
+public result links, API authorisation feedback, unexpected response handling and preservation of
+the entered version after retryable failures. The existing public catalogue suite remains separate
+and verifies that public list, detail, checksum, schema and download behaviour is unchanged.
+
+The focused Playwright journey begins at the Account page, follows the administrator-only action,
+publishes against an intercepted release endpoint and confirms that the returned snapshot appears in
+the intercepted public catalogue. It runs in desktop Chromium and the tagged Pixel 7 project without
+mutating a shared release environment, checks horizontal overflow and scans for serious or critical
+Axe findings.
+
+Run the focused checks with:
+
+```text
+npm run test --workspace=@sport-analytics/frontend -- --run src/features/dataset-releases/AdminDatasetReleasePage.test.tsx src/features/dataset-releases/DatasetReleasePages.test.tsx src/features/submitter-access/SubmitterAccessPanel.test.tsx
+npm run test:e2e -- tests/e2e/admin-dataset-releases.spec.ts --workers=1
+```
+
 ## Direct submission coverage
 
 The contract and API suites cover the versioned delivery schema, anonymous users and viewers,
@@ -690,3 +711,5 @@ The Basic end-to-end acceptance workflow was documented with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
 The Basic accessibility and responsive-design audit documentation was produced with the assistance
 of ChatGPT-Web[GPT-5.6 Sol].
+The issue #458 administrator dataset-release coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].
