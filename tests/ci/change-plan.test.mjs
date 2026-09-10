@@ -58,6 +58,7 @@ test('browser-suite changes request browser validation without production deploy
   const plan = classifyChangedFiles(['tests/e2e/accessibility.spec.ts']);
 
   assert.equal(plan.frontend, true);
+  assert.equal(plan.contracts, true);
   assert.equal(plan.e2e, true);
   assert.equal(plan.database, false);
   assert.equal(plan.deployFrontend, false);
