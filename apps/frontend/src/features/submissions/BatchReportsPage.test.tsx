@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import type { BatchReportItem, BatchReportResponse } from '@sport-analytics/contracts';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -33,9 +33,18 @@ function session(): Session {
   };
 }
 
-function authClient() {
+function createDeferredSession() {
+  let resolve!: (result: { data: { session: Session | null } }) => void;
+  const promise = new Promise<{ data: { session: Session | null } }>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+}
+
+function authClient(sessionRequest: Promise<{ data: { session: Session | null } }>) {
   return {
-    getSession: vi.fn().mockResolvedValue({ data: { session: session() } }),
+    getSession: vi.fn(() => sessionRequest),
     onAuthStateChange: vi.fn((listener: AuthStateListener) => ({
       data: {
         subscription: { id: 'batch-reports-test', callback: listener, unsubscribe: vi.fn() },
@@ -125,14 +134,25 @@ function report(accepted: number, rejected: number): BatchReportResponse {
   };
 }
 
-function renderReport() {
-  return render(
-    <AuthProvider client={authClient()}>
+async function renderReport() {
+  const deferredSession = createDeferredSession();
+  const view = render(
+    <AuthProvider client={authClient(deferredSession.promise)}>
       <MemoryRouter initialEntries={[`/submissions/batches/${reference}`]}>
         <PublicApp />
       </MemoryRouter>
     </AuthProvider>,
   );
+
+  expect(screen.getByRole('heading', { name: 'Checking access' })).toBeInTheDocument();
+
+  await act(async () => {
+    deferredSession.resolve({ data: { session: session() } });
+    await deferredSession.promise;
+  });
+
+  expect(screen.queryByRole('heading', { name: 'Checking access' })).not.toBeInTheDocument();
+  return view;
 }
 
 describe('batch report view', () => {
@@ -147,7 +167,7 @@ describe('batch report view', () => {
     ['fully rejected', 0, 3, 'Rejected'],
   ])('shows a clear %s batch summary', async (_case, accepted, rejected, state) => {
     vi.stubGlobal('fetch', reportFetch(report(accepted, rejected)));
-    renderReport();
+    await renderReport();
     const summary = (await screen.findByRole('heading', { name: 'Batch summary' })).parentElement!;
     expect(summary).toHaveTextContent(state);
     expect(summary).toHaveTextContent(`Accepted${accepted}`);
@@ -231,7 +251,7 @@ describe('batch report view', () => {
       },
     ];
     vi.stubGlobal('fetch', reportFetch(body));
-    renderReport();
+    await renderReport();
     expect(await screen.findByText(/Accepted delivery: 91/)).toBeInTheDocument();
     expect(screen.getByText(/Source: events.csv, row 3, striker/)).toBeInTheDocument();
     expect(screen.getByText(/Choose a known striker reference/)).toBeInTheDocument();
@@ -315,7 +335,7 @@ describe('batch report view', () => {
       return Promise.resolve(apiResponse(body));
     });
     vi.stubGlobal('fetch', fetchMock);
-    renderReport();
+    await renderReport();
 
     expect(await screen.findByLabelText('Choose the matching participant')).toHaveDisplayValue(
       'Alex Smith — Wanderers, 2026/27',
@@ -342,7 +362,7 @@ describe('batch report view', () => {
     const awaiting = report(3, 0);
     awaiting.data.batch.status = 'awaiting_review';
     vi.stubGlobal('fetch', reportFetch(awaiting, profile('admin')));
-    renderReport();
+    await renderReport();
     expect(await screen.findByRole('heading', { name: 'Batch summary' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
