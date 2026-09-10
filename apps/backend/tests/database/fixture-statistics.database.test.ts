@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { fixtureStatisticsSchema } from '@sport-analytics/contracts';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
@@ -9,8 +10,13 @@ import {
   listCompetitorsForFixtures,
   listParticipantFixtures,
 } from '../../src/modules/participants/participant.repository';
+import {
+  advanceFixtureStatisticsCacheVersions,
+  createFixtureStatisticsCache,
+} from '../../src/modules/statistics/fixture-statistics.cache';
 import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
 import { loadFixtureStatisticsSource } from '../../src/modules/statistics/fixture-statistics.repository';
+import { createFixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';
 
 interface InningsScopeRow {
   ordinal: number;
@@ -302,5 +308,57 @@ describe.sequential('fixture statistics database integration', () => {
       expect(event.strikerParticipantName.length).toBeGreaterThan(0);
       expect(event.bowlerParticipantName.length).toBeGreaterThan(0);
     }
+  });
+
+  // The cache-aside path was previously only exercised through an injected
+  // fake, so its SQL, its cold-miss fall-through, and the shape of the value a
+  // hit returns to the public contract were never executed against a database.
+  test('serves the same published contract from a cold cache miss and from a hit', async () => {
+    const executor = databaseClient();
+    const currentFixtureId = ingestedFixtureId();
+    const cache = createFixtureStatisticsCache(executor);
+
+    const coldRead = await cache.read(currentFixtureId);
+    expect(coldRead).not.toBeNull();
+    // A miss must report the authoritative version and no value, so that the
+    // caller derives rather than publishing an empty result.
+    expect(coldRead?.value).toBeNull();
+
+    const derivations: string[] = [];
+    const service = createFixtureStatisticsService(async (id) => {
+      derivations.push(id);
+      return await loadFixtureStatisticsSource(id, executor);
+    }, cache);
+
+    const missResponse = await service.getFixtureStatistics(currentFixtureId, {
+      includeContributors: false,
+    });
+    const hitResponse = await service.getFixtureStatistics(currentFixtureId, {
+      includeContributors: false,
+    });
+
+    expect(derivations).toEqual([currentFixtureId]);
+    expect(missResponse).not.toBeNull();
+
+    // The value a hit returns has been through jsonb, so assert the published
+    // contract against it rather than assuming the round trip is lossless.
+    expect(fixtureStatisticsSchema.safeParse(missResponse).success).toBe(true);
+    expect(fixtureStatisticsSchema.safeParse(hitResponse).success).toBe(true);
+    expect(hitResponse).toEqual(missResponse);
+    expect((hitResponse?.statistics ?? []).length).toBeGreaterThan(0);
+
+    // An accepted event write advances the authoritative version in the same
+    // transaction, which must make the stored entry unreachable.
+    await advanceFixtureStatisticsCacheVersions(executor, [currentFixtureId]);
+
+    const readAfterAdvance = await cache.read(currentFixtureId);
+    expect(readAfterAdvance?.value).toBeNull();
+    expect(readAfterAdvance?.dataVersion).toBe((coldRead?.dataVersion ?? 0) + 1);
+
+    const afterAdvance = await service.getFixtureStatistics(currentFixtureId, {
+      includeContributors: false,
+    });
+    expect(derivations).toEqual([currentFixtureId, currentFixtureId]);
+    expect(afterAdvance).toEqual(missResponse);
   });
 });

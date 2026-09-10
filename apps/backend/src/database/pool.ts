@@ -17,8 +17,14 @@ function createDatabasePool(options: DatabasePoolOptions): Pool {
   const pool = new Pool({
     connectionString: options.connectionString,
     ssl: options.ssl,
+    max: options.max ?? 10,
     min: 1,
-
+    // A request that cannot obtain a connection must fail rather than wait
+    // forever: an unbounded wait never rejects, so the interface never leaves
+    // its loading state and the reader is given no error and no retry.
+    // evidence/validation/issue-369-idle-backend-latency.md records this bound
+    // as part of that fix; it was lost from the change that landed.
+    connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 30_000,
   });
 

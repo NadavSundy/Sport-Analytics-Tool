@@ -94,6 +94,15 @@ const participantStatistic = {
   },
 };
 
+const unavailableWeather = {
+  fixtureId: 'fixture-1',
+  date: '2026-08-09',
+  availability: 'unavailable',
+  reason: 'MISSING_COORDINATES',
+  venue: null,
+  weather: null,
+};
+
 const fixture = {
   fixtureId: 'fixture-1',
   competitionId: 'competition-1',
@@ -520,5 +529,91 @@ describe('public fixture statistics pages', () => {
       await screen.findByText('No accepted events are available to export for this trace.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Download CSV' })).not.toBeInTheDocument();
+  });
+
+  // Every other failure test resolves a non-OK Response. A transport failure
+  // rejects the fetch instead, which is what a dropped or refused connection to
+  // the deployed API produces, and it was not covered.
+  it('reports a transport failure as an actionable statistics error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/fixtures/fixture-1')) {
+          return Promise.resolve(response(200, { data: fixture }));
+        }
+        if (url.endsWith('/fixtures/fixture-1/weather')) {
+          return Promise.resolve(response(200, { data: unavailableWeather }));
+        }
+        if (url.includes('/participants?')) {
+          return Promise.resolve(collection([]));
+        }
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-1');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Published match statistics could not be requested. Try this section again.',
+    );
+    // The section previously discarded the reason, so every distinct failure
+    // reached the reader as the same sentence.
+    expect(alert).toHaveTextContent('Failed to fetch');
+    expect(screen.getByRole('button', { name: 'Retry match statistics' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+    ).toBeInTheDocument();
+  });
+
+  // The application mounts no error boundary, so before this guard an exception
+  // raised while displaying published statistics unmounted the whole match
+  // overview: a blank section with no error state and no retry.
+  it('keeps a failure to display statistics inside an actionable section', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/fixtures/fixture-1')) {
+          return Promise.resolve(response(200, { data: fixture }));
+        }
+        if (url.endsWith('/fixtures/fixture-1/weather')) {
+          return Promise.resolve(response(200, { data: unavailableWeather }));
+        }
+        if (url.includes('/participants?')) {
+          return Promise.resolve(collection([]));
+        }
+        return Promise.resolve(
+          response(200, {
+            data: {
+              fixtureId: 'fixture-1',
+              status: 'complete',
+              scope: { superOversIncluded: false },
+              outcome,
+              warnings: [],
+              // The published contract accepts any non-empty identifier, so a
+              // value the record links cannot encode is a contract-valid
+              // response that throws while the section is being displayed.
+              statistics: [{ ...inningsStatistic, competitorId: '\ud800' }],
+            },
+          }),
+        );
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-1');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Match statistics could not be loaded');
+    expect(alert).toHaveTextContent('The published statistics could not be displayed.');
+    expect(screen.getByRole('button', { name: 'Retry match statistics' })).toBeInTheDocument();
+    // The rest of the match overview must survive the failed section.
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Premier Cricket League')).toBeInTheDocument();
   });
 });
