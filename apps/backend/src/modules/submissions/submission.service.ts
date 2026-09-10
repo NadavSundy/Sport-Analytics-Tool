@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type {
   CorrectionRequest,
   CorrectionResponse,
@@ -17,6 +19,7 @@ export interface SubmissionService {
     account: ApplicationAccount,
     submission: SubmissionRequest,
     sourceFile?: SubmissionSourceFile,
+    sourceChecksum?: string,
   ): Promise<SubmissionResponse>;
   correct(
     account: ApplicationAccount,
@@ -33,7 +36,7 @@ export function createSubmissionService(
   repository: SubmissionRepository = createSubmissionRepository(),
 ): SubmissionService {
   return {
-    async submit(account, submission, sourceFile) {
+    async submit(account, submission, sourceFile, sourceChecksum) {
       const fixture = await repository.findFixtureScope(submission.fixtureId);
       if (!fixture) {
         throw new SubmissionValidationError('The submission references an unavailable fixture.', [
@@ -49,10 +52,13 @@ export function createSubmissionService(
         throw new SubmissionForbiddenError();
       }
 
+      const checksum =
+        sourceChecksum ?? createHash('sha256').update(JSON.stringify(submission)).digest('hex');
       const acceptedSubmission = await repository.storeAcceptedSubmission(
         submission,
         account.accountId,
         sourceFile,
+        checksum,
       );
 
       return {

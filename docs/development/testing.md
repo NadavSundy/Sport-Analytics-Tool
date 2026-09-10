@@ -122,8 +122,10 @@ because it needs a production build and Playwright environment.
 
 Lightweight evidence changes can skip npm-based validation entirely after the planner has checked the
 required repository structure. Unknown paths, root dependency changes and CI configuration changes
-deliberately fall back to full Pull Request application validation. A manual `workflow_dispatch` always
-selects full validation.
+deliberately fall back to full Pull Request application validation. A manual `workflow_dispatch` of the
+main **Sport Analytics CI** workflow selects full validation. Intermediate ingestion changes are
+identified by the same planner and force their existing validation/browser lanes as a merge-gated
+acceptance path rather than starting a second workflow.
 
 After a protected, up-to-date Pull Request has passed the required quality status and is merged, the
 `main` push is deployment-only: it reruns change planning and affected deployment/smoke checks instead of
@@ -147,6 +149,28 @@ every Pull Request or repeating the suite after merge.
 
 The detailed routing matrix, job graph, branch-protection contract, runner policy, failure semantics
 and local parity commands are documented in [CI/CD and quality gates](ci-cd.md).
+
+## Intermediate ingestion acceptance gate
+
+Issue #364 retains the full cross-layer local acceptance harness:
+
+```text
+npm run verify:intermediate-ingestion
+```
+
+For Pull Requests, the normal **Sport Analytics CI** planner now recognizes Intermediate ingestion
+paths and makes that acceptance merge-affecting without duplicating suites. The validation lane runs
+contracts/backend/worker/PostgreSQL/OpenAPI once plus the verifier's lightweight evidence/log-safety
+invariants. The browser lane runs the focused submission, batch-review and correction journeys when
+that is sufficient; if another changed path requires broader browser coverage, the full Playwright
+suite runs once instead. The existing `quality` job remains the branch-protection status that fails when
+a required validation or browser lane fails.
+
+Unrelated changes do not select the Intermediate gate, preserving the normal optimized change-aware
+routing.
+
+The detailed acceptance-to-evidence mapping is maintained in
+[Intermediate ingestion integrated acceptance](../testing/intermediate-ingestion-acceptance.md).
 
 ## Deployment workflow helper coverage
 
@@ -594,7 +618,7 @@ npm.cmd run check
 Playwright requires its managed Chromium installation. Local runs build and preview the frontend
 automatically. Hosted CI builds the production bundle once, reuses it for preview, runs every
 `tests/e2e/` test in desktop Chromium and runs only tests tagged `@mobile` in the Pixel 7 project.
-The hosted browser lane defaults to four workers; set `PLAYWRIGHT_WORKERS=1` only for runner-resource
+The hosted browser lane defaults to two workers; set `PLAYWRIGHT_WORKERS=1` only for runner-resource
 diagnosis or a deliberate serial reproduction.
 
 The Docker database workflow requires Docker with Compose support. It provisions the dedicated

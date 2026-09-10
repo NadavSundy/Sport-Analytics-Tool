@@ -54,6 +54,8 @@ function emptyPlan() {
     contracts: false,
     database: false,
     e2e: false,
+    e2eFull: false,
+    intermediateIngestion: false,
     hygiene: false,
     deployment: false,
     openapi: false,
@@ -74,6 +76,7 @@ function markFull(plan) {
   plan.contracts = true;
   plan.database = true;
   plan.e2e = true;
+  plan.e2eFull = true;
   plan.hygiene = true;
   plan.deployment = true;
   plan.openapi = true;
@@ -95,8 +98,64 @@ function isEvidenceLightweight(file) {
   return file.startsWith('evidence/') && EVIDENCE_LIGHTWEIGHT_EXTENSIONS.has(path.extname(file));
 }
 
+function isIntermediateIngestionPath(file) {
+  if (
+    [
+      'apps/backend/src/modules/batches/',
+      'apps/backend/src/modules/object-storage/',
+      'apps/backend/src/modules/provenance/',
+      'apps/backend/src/modules/submissions/',
+      'apps/worker/',
+      'packages/batch-processing/',
+      'apps/frontend/src/features/reviews/',
+      'apps/frontend/src/features/submissions/',
+    ].some((prefix) => file.startsWith(prefix))
+  ) {
+    return true;
+  }
+
+  if (
+    new Set([
+      'apps/backend/src/app.ts',
+      'apps/backend/src/modules/statistics/recomputation-dependencies.ts',
+      'packages/contracts/src/batches.ts',
+      'packages/contracts/src/cricket-delivery-comparison.ts',
+      'packages/contracts/src/cricket-validation.ts',
+      'packages/contracts/src/provenance.ts',
+      'packages/contracts/src/season-upload.ts',
+      'packages/contracts/src/submissions.ts',
+      'packages/contracts/src/tests/batches.test.ts',
+      'packages/contracts/src/tests/provenance.test.ts',
+      'packages/contracts/src/tests/season-upload.test.ts',
+      'packages/contracts/src/tests/submissions.test.ts',
+      'tests/e2e/batch-review-workspace.spec.ts',
+      'tests/e2e/corrections.spec.ts',
+      'tests/e2e/submissions.spec.ts',
+    ]).has(file)
+  ) {
+    return true;
+  }
+
+  if (
+    file.startsWith('apps/backend/tests/') &&
+    /(?:^|\/)(?:batch|provenance|submission|stored-object)[^/]*\.(?:test|spec)\.ts$/.test(file)
+  ) {
+    return true;
+  }
+
+  return (
+    file.startsWith('database/migrations/') &&
+    /(?:batch|ingestion|submission|correction|provenance|publication|review|stored-object|reference-mapping|statistics-refresh|fixture-statistics-cache)/i.test(
+      file,
+    )
+  );
+}
+
 function applyPath(plan, file) {
   if (!file) return;
+
+  const intermediateIngestion = isIntermediateIngestionPath(file);
+  if (intermediateIngestion) plan.intermediateIngestion = true;
 
   if (file.startsWith('evidence/')) {
     plan.evidence = true;
@@ -148,6 +207,7 @@ function applyPath(plan, file) {
   if (file === 'playwright.config.ts' || file.startsWith('tests/e2e/')) {
     plan.frontend = true;
     plan.e2e = true;
+    if (!intermediateIngestion) plan.e2eFull = true;
     plan.needsNpm = true;
     return;
   }
@@ -165,6 +225,7 @@ function applyPath(plan, file) {
     plan.frontend = true;
     plan.backend = true;
     plan.e2e = true;
+    if (!intermediateIngestion) plan.e2eFull = true;
     plan.hygiene = true;
     plan.openapi = true;
     plan.needsNpm = true;
@@ -191,6 +252,7 @@ function applyPath(plan, file) {
     const isFrontendTest = /(?:\.test\.[cm]?[jt]sx?|\/test\/)/.test(file);
     if (!isFrontendTest) {
       plan.e2e = true;
+      if (!intermediateIngestion) plan.e2eFull = true;
       plan.deployFrontend = true;
     }
     return;
@@ -329,6 +391,20 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
       // change plus real application/docs changes still deploys those targets.
       applyPath(plan, file.replaceAll('\\', '/'));
     }
+  }
+
+  if (plan.intermediateIngestion) {
+    // Intermediate ingestion changes use the existing merge-gated lanes as one
+    // cross-layer acceptance gate. Do not duplicate these suites in a second
+    // workflow: force the affected backend/worker/database/browser checks here.
+    plan.contracts = true;
+    plan.backend = true;
+    plan.worker = true;
+    plan.database = true;
+    plan.e2e = true;
+    plan.hygiene = true;
+    plan.openapi = true;
+    plan.needsNpm = true;
   }
 
   if (plan.frontend || plan.backend || plan.worker || plan.contracts) {

@@ -6,7 +6,7 @@ const fixtureStatisticsCacheTtlSeconds = 60;
 const cacheContractVersion = 'v1';
 const cacheResource = 'fixture-statistics';
 
-interface FixtureStatisticsCacheRead {
+export interface FixtureStatisticsCacheRead {
   dataVersion: number;
   value: FixtureStatistics | null;
 }

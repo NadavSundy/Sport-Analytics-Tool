@@ -63,8 +63,8 @@ test('browser-suite changes request browser validation without production deploy
   assert.equal(plan.deployFrontend, false);
 });
 
-test('backend source changes conservatively include database integration validation', () => {
-  const plan = classifyChangedFiles(['apps/backend/src/modules/submissions/submission.service.ts']);
+test('unrelated backend source changes conservatively include database integration without browser work', () => {
+  const plan = classifyChangedFiles(['apps/backend/src/modules/weather/weather.service.ts']);
 
   assert.equal(plan.backend, true);
   assert.equal(plan.contracts, true);
@@ -76,15 +76,18 @@ test('backend source changes conservatively include database integration validat
   assert.equal(plan.deployDocs, false);
 });
 
-test('worker changes select worker, database and deployment validation without browser work', () => {
+test('worker changes select the Intermediate ingestion merge gate plus deployment validation', () => {
   const plan = classifyChangedFiles(['apps/worker/src/index.ts']);
 
   assert.equal(plan.worker, true);
   assert.equal(plan.database, true);
   assert.equal(plan.deployment, true);
-  assert.equal(plan.e2e, false);
+  assert.equal(plan.intermediateIngestion, true);
+  assert.equal(plan.e2e, true);
+  assert.equal(plan.e2eFull, false);
   assert.equal(plan.frontend, false);
-  assert.equal(plan.backend, false);
+  assert.equal(plan.backend, true);
+  assert.equal(plan.contracts, true);
   assert.equal(plan.hygiene, true);
 });
 

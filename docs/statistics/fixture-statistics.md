@@ -29,6 +29,16 @@ lookup. `apps/backend/tests/unit/fixture-statistics.service.test.ts` asserts tha
 called once; the database correction test asserts that an existing version-41 entry is removed and
 the authoritative version advances to 42.
 
+Because the cache is disposable and PostgreSQL is authoritative, neither cache operation may fail a
+response the authoritative path can still produce. A failed cache read falls through to derivation.
+A failed cache write leaves the derived response untouched and costs only a repeated derivation for
+the next reader. Issue #430 records why: the write is on the request's critical path, so awaiting it
+without this rule turns a fully derived fixture into a failed public read.
+`apps/backend/tests/database/fixture-statistics.database.test.ts` runs the cache's own SQL, asserting
+that a cold miss falls through rather than publishing an empty result, that the value a hit returns
+still satisfies the published contract after its jsonb round trip, and that advancing the version
+makes the stored entry unreachable.
+
 ## Correction refresh dependencies
 
 Issue #286 makes correction refresh behaviour explicit without changing that authoritative
@@ -144,6 +154,16 @@ Each result links to `/fixtures/{fixtureId}/statistics/{statisticId}`. That rout
 the calculation. It does not expose submission ownership, account information, pending or rejected
 events, or internal audit data. The calculation trace identifies deliveries by readable match order
 and player names; stable event identifiers remain internal React keys.
+
+### Failure states
+
+The statistics section must always end in a state the reader can act on. A failed request shows the
+section error state, the reason reported by the API or the browser, and a retry control; the rest of
+the match overview keeps rendering. Because the application mounts no error boundary of its own, a
+failure to display an otherwise valid response would unmount the whole match overview and leave a
+blank page with no error and no retry, so the section carries its own boundary and presents such a
+failure in the same actionable error state. Issue #430 records the blank-section behaviour this
+replaces.
 
 ## Incomplete data
 

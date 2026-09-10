@@ -55,6 +55,40 @@ describe('versioned season-upload contract', () => {
     expect(JSON.stringify(seasonPackage())).not.toMatch(/"(?:fixture|innings|participant|team)Id"/);
   });
 
+  test('accepts a representative 70-fixture season without application database identifiers', () => {
+    const representativeSeason = seasonPackage({
+      fixtures: Array.from({ length: 70 }, (_, fixtureIndex) =>
+        fixture({
+          sourceId: `cricsheet:fixture:season-${fixtureIndex + 1}`,
+          innings: [
+            {
+              sourceId: `cricsheet:innings:season-${fixtureIndex + 1}-1`,
+              events: [
+                event({
+                  eventId: `cricsheet:delivery:season-${fixtureIndex + 1}-1`,
+                  occurrenceSequence: 1,
+                }),
+                event({
+                  eventId: `cricsheet:delivery:season-${fixtureIndex + 1}-2`,
+                  occurrenceSequence: 2,
+                  ballLabel: '0.2',
+                }),
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const result = seasonUploadPackageSchema.safeParse(representativeSeason);
+
+    expect(result.success).toBe(true);
+    expect(representativeSeason.fixtures).toHaveLength(70);
+    expect(JSON.stringify(representativeSeason)).not.toMatch(
+      /"(?:fixture|innings|participant|team|competition|submission|batch)Id"\s*:/,
+    );
+  });
+
   test('accepts a season package and treats array/file order independently from occurrence order', () => {
     const laterEvent = event({
       eventId: 'cricsheet:delivery:1412526-1-2',

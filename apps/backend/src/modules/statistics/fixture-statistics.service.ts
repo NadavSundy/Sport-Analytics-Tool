@@ -8,6 +8,7 @@ import { deriveFixtureStatistics } from './fixture-statistics.derivation';
 import {
   createFixtureStatisticsCache,
   type FixtureStatisticsCache,
+  type FixtureStatisticsCacheRead,
 } from './fixture-statistics.cache';
 import type { FixtureStatisticsSource } from './fixture-statistics.model';
 import { loadFixtureStatisticsSource } from './fixture-statistics.repository';
@@ -43,6 +44,32 @@ export function createFixtureStatisticsService(
     return resolvedCache ?? null;
   }
 
+  // PostgreSQL delivery rows are authoritative and the cache is disposable, so
+  // neither cache operation may fail a response the authoritative path can
+  // still produce. A failed read falls through to derivation; a failed write
+  // leaves the derived response untouched and only costs the next reader a
+  // repeated derivation.
+  async function readCache(fixtureId: string): Promise<FixtureStatisticsCacheRead | null> {
+    try {
+      return (await publicStatisticsCache()?.read(fixtureId)) ?? null;
+    } catch {
+      console.warn('Fixture statistics cache read failed; deriving from PostgreSQL instead.');
+      return null;
+    }
+  }
+
+  async function writeCache(
+    fixtureId: string,
+    dataVersion: number,
+    statistics: FixtureStatistics,
+  ): Promise<void> {
+    try {
+      await publicStatisticsCache()?.write(fixtureId, dataVersion, statistics);
+    } catch {
+      console.warn('Fixture statistics cache write failed; the derived response is unaffected.');
+    }
+  }
+
   async function derive(
     fixtureId: string,
     query: FixtureStatisticsQuery,
@@ -52,9 +79,7 @@ export function createFixtureStatisticsService(
     }
 
     // Contributor traces are explicit audit/reproduction requests and are not cached.
-    const cacheRead = query.includeContributors
-      ? null
-      : await publicStatisticsCache()?.read(fixtureId);
+    const cacheRead = query.includeContributors ? null : await readCache(fixtureId);
     if (cacheRead?.value) return cacheRead.value;
 
     const source = await loadSource(fixtureId);
@@ -66,7 +91,7 @@ export function createFixtureStatisticsService(
       includeContributors: query.includeContributors,
     });
     if (cacheRead && !query.includeContributors) {
-      await publicStatisticsCache()?.write(fixtureId, cacheRead.dataVersion, statistics);
+      await writeCache(fixtureId, cacheRead.dataVersion, statistics);
     }
     return statistics;
   }

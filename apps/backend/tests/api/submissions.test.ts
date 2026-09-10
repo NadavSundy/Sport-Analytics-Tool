@@ -372,6 +372,7 @@ describe('direct event submission API', () => {
       account,
       expect.objectContaining({ fixtureId: '7', schemaVersion: '1.0' }),
       expect.objectContaining({ fileName: 'match-events.csv', mediaType: 'text/csv' }),
+      expect.stringMatching(/^[a-f0-9]{64}$/),
     );
   });
 
@@ -507,6 +508,7 @@ describe('direct event submission API', () => {
       expect.objectContaining({ fixtureId: validPayload.fixtureId }),
       account.accountId,
       undefined,
+      expect.stringMatching(/^[0-9a-f]{64}$/),
     );
   });
 

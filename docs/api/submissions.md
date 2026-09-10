@@ -110,7 +110,10 @@ fixtureId,schemaVersion,eventId,inningsId,sequenceNumber,overNumber,positionInOv
 `wickets` cell is an empty array. Every CSV row must name the same fixture and schema version.
 Invalid file or normalised row errors return `422` with actionable details and an `eventIndex` for
 row-specific failures; oversized files return `413`. Uploads remain atomic and persist original
-filename, canonical media type, and byte length on the accepted submission.
+filename, canonical media type, byte length, and a SHA-256 checksum of the original uploaded bytes on
+the accepted submission. Direct JSON submissions persist a deterministic SHA-256 checksum of the
+validated request payload as well. These retained checksums are used by the protected
+[provenance and audit API](provenance.md).
 
 ## Correct an accepted event
 

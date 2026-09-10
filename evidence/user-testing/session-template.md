@@ -2,19 +2,21 @@
 
 ## Session Metadata
 
-| Field               | Value                              |
-| ------------------- | ---------------------------------- |
-| Date                |                                    |
-| Participant ID      | PXX                                |
-| Participant Role    | Public / Submitter / Administrator |
-| Relevant Experience |                                    |
-| Facilitator         |                                    |
-| Observer            |                                    |
-| Environment         | Local / Staging / Production       |
-| URL                 |                                    |
-| Commit / Release    |                                    |
-| Browser             |                                    |
-| Device              |                                    |
+| Field               | Value                                         |
+| ------------------- | --------------------------------------------- |
+| Date                |                                               |
+| Participant ID      | PXX                                           |
+| Participant Role    | Public / Submitter / Reviewer / Administrator |
+| Workflow focus      | #416 / #417 / #418 / other                    |
+| Relevant Experience |                                               |
+| Facilitator         |                                               |
+| Observer            |                                               |
+| Environment         | Local / Staging / Production                  |
+| URL                 |                                               |
+| Commit / Release    |                                               |
+| Browser             |                                               |
+| Device              |                                               |
+| Prepared data/files |                                               |
 
 ---
 
@@ -30,9 +32,10 @@
 
 # Tasks
 
-## Task 1
+Copy the task block below once for every task attempted. Do not combine several Task IDs into one outcome.
 
-**Task ID:**  
+## Task — `<TASK-ID>`
+
 **Task given to participant:**
 
 >
@@ -45,7 +48,7 @@
 
 ### Observations
 
-- Navigation taken:
+- Navigation/approach taken:
 - Confusion/hesitation:
 - Errors encountered:
 - Assistance requested:
@@ -53,73 +56,11 @@
 - Participant comments:
 - Positive observations:
 
-### Findings
+### Findings from this task
 
-| Finding | Severity          | Follow-up |
-| ------- | ----------------- | --------- |
-|         | S1 / S2 / S3 / S4 |           |
-
----
-
-## Task 2
-
-**Task ID:**  
-**Task given to participant:**
-
->
-
-### Outcome
-
-- [ ] Success
-- [ ] Partial
-- [ ] Failure
-
-### Observations
-
-- Navigation taken:
-- Confusion/hesitation:
-- Errors encountered:
-- Assistance requested:
-- Assistance given:
-- Participant comments:
-- Positive observations:
-
-### Findings
-
-| Finding | Severity          | Follow-up |
-| ------- | ----------------- | --------- |
-|         | S1 / S2 / S3 / S4 |           |
-
----
-
-## Task 3
-
-**Task ID:**  
-**Task given to participant:**
-
->
-
-### Outcome
-
-- [ ] Success
-- [ ] Partial
-- [ ] Failure
-
-### Observations
-
-- Navigation taken:
-- Confusion/hesitation:
-- Errors encountered:
-- Assistance requested:
-- Assistance given:
-- Participant comments:
-- Positive observations:
-
-### Findings
-
-| Finding | Severity          | Follow-up |
-| ------- | ----------------- | --------- |
-|         | S1 / S2 / S3 / S4 |           |
+| Finding ID | Finding | Severity          | Initial decision |
+| ---------- | ------- | ----------------- | ---------------- |
+| FXX        |         | S1 / S2 / S3 / S4 | Pending          |
 
 ---
 
@@ -151,59 +92,46 @@ Response:
 
 ---
 
-# Findings Summary
+# Task Results
 
-| ID  | Finding | Severity | Decision | Gitea Issue |
-| --- | ------- | -------- | -------- | ----------- |
-| F01 |         |          | Pending  |             |
-| F02 |         |          | Pending  |             |
-| F03 |         |          | Pending  |             |
+| Task ID | Outcome                     | Assistance required | Finding IDs |
+| ------- | --------------------------- | ------------------- | ----------- |
+|         | Success / Partial / Failure |                     |             |
 
 ---
 
-# Follow-Up Decisions
+# Findings Summary and Decisions
 
-## F01
+| ID  | Task ID | Finding | Severity | Decision | Decision reason | Gitea issue | Fix PR / commit | Retest |
+| --- | ------- | ------- | -------- | -------- | --------------- | ----------- | --------------- | ------ |
+| F01 |         |         |          | Pending  |                 |             |                 |        |
 
-**Decision:** Fix / Existing issue / Feature / No change
-
-**Reason:**
-
-**Gitea issue/PR:**
-
-**Retest required:** Yes / No
+Use `Accept`, `Defer` or `Reject` once the finding has been evaluated. A rejected/deferred finding still requires a reason.
 
 ---
 
-## F02
+# Retest Evidence
 
-**Decision:** Fix / Existing issue / Feature / No change
+Complete a row after an accepted finding requiring retest has been addressed.
 
-**Reason:**
-
-**Gitea issue/PR:**
-
-**Retest required:** Yes / No
-
----
-
-# Retest
-
-Complete after an accepted high-priority finding has been addressed.
-
-| Field            | Value                              |
-| ---------------- | ---------------------------------- |
-| Original Finding |                                    |
-| Gitea Issue      |                                    |
-| Fix PR / Commit  |                                    |
-| Retest Date      |                                    |
-| Participant ID   |                                    |
-| Outcome          | Resolved / Improved / Not Resolved |
+| Finding | Task ID | Issue / fix | Retest build / commit | Date | Participant | New task outcome            | Result                             |
+| ------- | ------- | ----------- | --------------------- | ---- | ----------- | --------------------------- | ---------------------------------- |
+|         |         |             |                       |      |             | Success / Partial / Failure | Resolved / Improved / Not resolved |
 
 ### Retest Notes
 
 ---
 
+## Facilitator Sign-Off
+
+- [ ] Evidence reviewed for personal information and credentials.
+- [ ] Every attempted task has an individual outcome.
+- [ ] Every finding links to the Task ID that produced it.
+- [ ] Actionable findings have a decision or are explicitly marked pending.
+- [ ] Issue/PR/retest links have been added where available.
+
+---
+
 ## AI Declaration
 
-The preceding document was generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

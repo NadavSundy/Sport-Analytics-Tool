@@ -265,6 +265,10 @@ export const submissionSchema = z.object({
   receivedAt: apiDateTimeSchema,
   schemaVersion: z.literal(DIRECT_SUBMISSION_SCHEMA_VERSION),
   eventCount: z.number().int().positive(),
+  checksum: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
   sourceFile: z
     .object({
       fileName: z.string().min(1).max(255),

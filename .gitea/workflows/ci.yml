@@ -21,6 +21,8 @@ jobs:
       contracts: ${{ steps.plan.outputs.contracts }}
       database: ${{ steps.plan.outputs.database }}
       e2e: ${{ steps.plan.outputs.e2e }}
+      e2eFull: ${{ steps.plan.outputs.e2eFull }}
+      intermediateIngestion: ${{ steps.plan.outputs.intermediateIngestion }}
       hygiene: ${{ steps.plan.outputs.hygiene }}
       deployment: ${{ steps.plan.outputs.deployment }}
       openapi: ${{ steps.plan.outputs.openapi }}
@@ -157,6 +159,10 @@ jobs:
         if: needs.plan.outputs.openapi == 'true'
         run: npm run openapi:lint
 
+      - name: Verify Intermediate ingestion acceptance invariants
+        if: needs.plan.outputs.intermediateIngestion == 'true'
+        run: npm run verify:intermediate-ingestion:invariants
+
       - name: Set up Python
         if: needs.plan.outputs.docs == 'true'
         uses: actions/setup-python@v5
@@ -226,7 +232,26 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium
 
+      - name: Run Intermediate ingestion browser acceptance
+        if: >-
+          needs.plan.outputs.intermediateIngestion == 'true' &&
+          needs.plan.outputs.e2eFull != 'true'
+        env:
+          NODE_ENV: production
+        run: >-
+          npm run test:e2e --
+          tests/e2e/submissions.spec.ts
+          tests/e2e/batch-review-workspace.spec.ts
+          tests/e2e/corrections.spec.ts
+
+      - name: Confirm full browser suite covers Intermediate ingestion acceptance
+        if: >-
+          needs.plan.outputs.intermediateIngestion == 'true' &&
+          needs.plan.outputs.e2eFull == 'true'
+        run: echo "Full browser validation includes the submission, batch-review and correction acceptance journeys."
+
       - name: Run browser and accessibility tests
+        if: needs.plan.outputs.e2eFull == 'true'
         env:
           NODE_ENV: production
         run: npm run test:e2e
@@ -249,6 +274,7 @@ jobs:
           VALIDATION_RESULT: ${{ needs.validation.result }}
           BROWSER_REQUIRED: ${{ needs.plan.outputs.e2e }}
           BROWSER_RESULT: ${{ needs.browser.result }}
+          INTERMEDIATE_INGESTION_REQUIRED: ${{ needs.plan.outputs.intermediateIngestion }}
         run: |
           if [ "$PLAN_RESULT" != "success" ]; then
             echo "::error::Change planning did not complete successfully ($PLAN_RESULT)."
@@ -264,6 +290,10 @@ jobs:
             if [ "$BROWSER_REQUIRED" = "true" ] && [ "$BROWSER_RESULT" != "success" ]; then
               echo "::error::Required browser validation did not complete successfully ($BROWSER_RESULT)."
               exit 1
+            fi
+
+            if [ "$INTERMEDIATE_INGESTION_REQUIRED" = "true" ]; then
+              echo "Intermediate ingestion merge-gated acceptance passed through the existing validation and browser lanes."
             fi
 
             echo "Required change-aware Pull Request validation passed."
@@ -457,32 +487,6 @@ jobs:
 
       - name: Install root workspace dependencies
         run: npm ci
-
-      - name: Install rclone
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rclone
-
-      - name: Configure rclone for user-testing feedback
-        env:
-          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
-        run: |
-          if [ -z "$RCLONE_CONFIG" ]; then
-            echo "::error::Required Gitea secret RCLONE_CONFIG is not configured."
-            exit 1
-          fi
-          install -d -m 700 "$HOME/.config/rclone"
-          umask 077
-          printf '%s' "$RCLONE_CONFIG" > "$HOME/.config/rclone/rclone.conf"
-
-      - name: Retrieve user-testing feedback
-        env:
-          RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
-          RCLONE_SOURCE: ${{ secrets.RCLONE_SOURCE }}
-        run: npm run retrieve:user-testing-feedback
-
-      - name: Generate user-testing evidence pages
-        run: npm run generate:user-testing-evidence -- testing/user-feedback/input
 
       - name: Set up Python
         uses: actions/setup-python@v5

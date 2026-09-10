@@ -48,6 +48,45 @@ describe('fixture statistics cache-aside service', () => {
     expect(cache.read).toHaveBeenCalledTimes(2);
   });
 
+  // The cache is disposable and PostgreSQL remains authoritative, so neither
+  // cache operation may turn a derivable fixture into a failed public read.
+  // The tests above only ever exercise a cache that succeeds, so a cache-side
+  // failure reaching the reader as "match statistics could not be loaded" was
+  // never covered.
+  test('derives from PostgreSQL when the cache read fails', async () => {
+    const cache: FixtureStatisticsCache = {
+      read: vi.fn(async () => {
+        throw new Error('cache unavailable');
+      }),
+      write: vi.fn(),
+    };
+    const loadSource = vi.fn<LoadFixtureStatisticsSource>().mockResolvedValue(source());
+    const service = createFixtureStatisticsService(loadSource, cache);
+
+    const statistics = await service.getFixtureStatistics('9', { includeContributors: false });
+
+    expect(statistics?.fixtureId).toBe('9');
+    expect(loadSource).toHaveBeenCalledOnce();
+    // A read that never produced a version cannot address a cache entry.
+    expect(cache.write).not.toHaveBeenCalled();
+  });
+
+  test('still returns derived statistics when the cache write fails', async () => {
+    const cache: FixtureStatisticsCache = {
+      read: vi.fn(async () => ({ dataVersion: 7, value: null })),
+      write: vi.fn(async () => {
+        throw new Error('cache write rejected');
+      }),
+    };
+    const loadSource = vi.fn<LoadFixtureStatisticsSource>().mockResolvedValue(source());
+    const service = createFixtureStatisticsService(loadSource, cache);
+
+    const statistics = await service.getFixtureStatistics('9', { includeContributors: false });
+
+    expect(statistics?.fixtureId).toBe('9');
+    expect(cache.write).toHaveBeenCalledOnce();
+  });
+
   test('never caches contributor traces', async () => {
     const cache: FixtureStatisticsCache = {
       read: vi.fn(),

@@ -107,7 +107,9 @@ changed paths. Its rules are regression-tested by `tests/ci/change-plan.test.mjs
 
 The planner is conservative. Unknown files, root dependency changes and workflow/tooling changes
 select full application validation rather than guessing that a check can be skipped. A manual
-`workflow_dispatch` also selects full validation.
+`workflow_dispatch` of the main **Sport Analytics CI** workflow also selects full validation.
+Intermediate ingestion changes are a named planner class described below; they reuse the existing
+validation/browser/quality jobs rather than spawning a duplicate acceptance workflow.
 
 | Change class                                                             | Required hosted work                                                                          | Work normally skipped                                                   |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -117,10 +119,43 @@ select full application validation rather than guessing that a check can be skip
 | Frontend implementation/browser                                          | contracts/hygiene, frontend lint/typecheck/unit plus browser-lane production build/Playwright | PostgreSQL                                                              |
 | Backend source                                                           | contracts/hygiene, backend lint/typecheck/unit/API/build, OpenAPI, PostgreSQL integration     | Playwright unless another changed path requires it                      |
 | Shared contracts                                                         | contracts plus affected frontend/backend and browser-lane validation                          | PostgreSQL unless another changed path requires it                      |
+| Intermediate ingestion runtime/contracts/UI                              | contracts, backend, worker, PostgreSQL, OpenAPI, focused ingestion browser acceptance         | full Playwright unless another broader browser path requires it         |
 | Root dependency, shared tooling, CI workflow or unknown path             | full Pull Request application validation                                                      | nothing except duplicate PR coverage                                    |
 
 Documentation-only changes still run a strict MkDocs build. OpenAPI-related documentation also runs
 Redocly linting.
+
+## Intermediate ingestion merge gate
+
+Issue #364 is integrated into the normal change-aware Pull Request workflow rather than retained as a
+second CI pipeline. `scripts/ci-change-plan.mjs` marks changes to the batch/submission/provenance
+backend modules, worker, batch-processing package, ingestion contracts, submission/review frontend
+features, related database migrations and focused ingestion browser journeys as
+`intermediateIngestion`.
+
+That flag forces the existing merge-gated lanes to cover the complete persisted path without rerunning
+the same suites in a separate workflow:
+
+- `validation` runs contracts, backend, worker, PostgreSQL and OpenAPI checks once, plus the lightweight
+  retained-evidence/log-safety invariants from `verify:intermediate-ingestion:invariants`;
+- `browser` runs only the focused submission, batch-review and correction journeys when no broader
+  browser-affecting change is present;
+- if the same Pull Request also changes a broader frontend/browser surface, the normal full Playwright
+  suite runs once and supersedes the focused subset; and
+- `quality` remains the single required status. Because Intermediate changes force both validation and
+  browser work, either lane failing causes `quality` to fail and therefore blocks merge where that status
+  is protected.
+
+```text
+unrelated Pull Request -> normal change-aware lanes only
+Intermediate ingestion  -> validation + focused browser -> Sport Analytics CI / quality
+Intermediate + broad UI  -> validation + full browser    -> Sport Analytics CI / quality
+main push                -> affected deployment only after required Pull Request quality
+```
+
+The full `npm run verify:intermediate-ingestion` command remains a deliberate local/milestone exercise
+for #364 evidence. CI uses only its unique invariant checks and relies on the existing authoritative
+test lanes for contracts, API, worker, database and browser coverage, avoiding duplicate runner work.
 
 ## Hosted fail-fast and lane ownership
 
@@ -229,7 +264,10 @@ The policy is therefore:
   solely for coverage;
 - pushes to `main`: do not repeat coverage or application test suites after the required Pull Request
   quality gate has already passed;
-- `workflow_dispatch`: generate coverage as part of deliberate full validation.
+- `workflow_dispatch` of **Sport Analytics CI**: generate coverage as part of deliberate full validation.
+
+The Intermediate ingestion merge gate does not generate a second coverage run; it reuses the same
+change-aware validation/browser ownership described above.
 
 If a repository-wide coverage threshold is introduced later, this policy must be reviewed because
 coverage may then become a merge-affecting gate.
