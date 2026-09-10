@@ -1,6 +1,6 @@
 # Issue #463 — Dev batch worker deployment
 
-**Date:** 10 September 2026  
+**Date:** 10 September 2026
 **Issue:** #463 — Provision dev batch worker and Service Bus pipeline
 
 ## Problem observed
