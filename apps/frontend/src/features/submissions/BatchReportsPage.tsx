@@ -255,6 +255,14 @@ function ReportItems({
             <span>{item.context.description}</span>
           </div>
           <p id={`batch-item-${item.ordinal}-source`}>Source: {sourceLabel(item.location)}</p>
+          {item.correctionTarget ? (
+            <p>
+              Correction target: <code>{item.correctionTarget.sourceEventId}</code>
+              {item.correctionTarget.resolvedDeliveryId
+                ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
+                : ' (not resolved)'}
+            </p>
+          ) : null}
           {item.stagedRecordId ? <p>Staged record: {item.stagedRecordId}</p> : null}
           {item.acceptedRecordId ? <p>Accepted delivery: {item.acceptedRecordId}</p> : null}
           {item.errors.length > 0 ? (

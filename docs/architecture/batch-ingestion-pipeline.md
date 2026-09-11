@@ -203,6 +203,11 @@ at the first rule violation.
   and `runs.extras` equals the supplied extras breakdown.
 - Exact published duplicates are warnings and deterministic skips; differing
   published cricket content is an error.
+- A staged `correction` resolves its exact `correctsEventId` to one current
+  published delivery in the declared fixture and competition. Differing
+  cricket content is then expected correction input rather than an ordinary
+  published-delivery conflict; other live deliveries at its destination remain
+  conflicts.
 - Resolving an existing fixture by source identifier never mutates its
   canonical metadata. Contradictory supplied metadata is staged as
   `FIXTURE_METADATA_CONFLICT`.

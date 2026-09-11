@@ -56,9 +56,23 @@ the rejected source records remain unpublished in the report. Approval is still 
 interface and repository transaction while batch-level or accepted-item validation errors,
 publication conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires
 a reason; rejection and return-for-correction reasons require at least 10 characters. The interface
+Each report item also identifies whether it is an ordinary upsert or a correction. Correction items
+show the submitted `correctsEventId` and, when resolution succeeded, the published delivery revision
+selected during validation. Submitter reports and the bounded reviewer sample both present this
+target before a publication decision.
+
+Approval is rejected by both the interface and repository transaction while active validation
+errors, conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires a
+reason; rejection and return-for-correction reasons require at least 10 characters. The interface
 adds an explicit modal confirmation before approve, reject, or return-for-correction and clearly
 presents publishing, failure, partial-publication, correction-requested, rejection, and publication
 states. Repeated identical decisions remain idempotent; competing or stale decisions return `409`.
+
+Approved correction items publish through immutable delivery revision and supersession history,
+including the submitting account, approving reviewer, review reason and affected-statistics
+dependencies. Publication rechecks that the target is still the current revision in the declared
+fixture and competition. Ordinary upserts retain their existing exact-duplicate skip and
+different-content conflict behaviour.
 
 See [Batch submission packages](../data/batch-submission-packages.md) and the [Batch ingestion pipeline](../architecture/batch-ingestion-pipeline.md) for the package and lifecycle contracts.
 
