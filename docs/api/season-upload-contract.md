@@ -173,7 +173,6 @@ choice is still a valid candidate and asynchronously reruns canonical event and 
 References without a safe existing candidate require reviewer contact; this workflow does not
 silently create records.
 
-<<<<<<< HEAD
 ## Reviewer canonical-fixture decisions
 
 For an unresolved fixture supplied under the versioned fixture-proposal contract, an administrator
@@ -185,17 +184,14 @@ creates a fixture, after which the normal revalidation pass can resolve their re
 
 ## Upload context and retries
 
+The upload form selects an authorised competition only. The package's own season name/reference is
+authoritative; the form does not offer a season selector because it cannot constrain processing.
+
 The browser derives the batch idempotency key from the authorised competition and SHA-256 of the
 file bytes. Reselecting unchanged content, including after refreshing and reselecting the file,
 therefore reuses the durable receipt. A byte-level content change or a competition change uses a
 different key. The receiver remains the authority that rejects any same-key/different-checksum
 conflict.
-=======
-## Upload context
-
-The upload form selects an authorised competition only. The package's own season name/reference is
-authoritative; the form does not offer a season selector because it cannot constrain processing.
->>>>>>> origin/main
 
 ## Multi-file packages
 

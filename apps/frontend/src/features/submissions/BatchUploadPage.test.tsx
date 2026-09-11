@@ -146,10 +146,10 @@ describe('guided batch upload', () => {
     expect(await screen.findByLabelText('Competition')).toHaveDisplayValue('Premier T20');
     if (false) {
       const season = await screen.findByLabelText('Season context');
-    await waitFor(() =>
-      expect(
-        within(season).getByRole('option', { name: '2026/27 — Premier T20' }),
-      ).toBeInTheDocument(),
+      await waitFor(() =>
+        expect(
+          within(season).getByRole('option', { name: '2026/27 — Premier T20' }),
+        ).toBeInTheDocument(),
       );
     }
 

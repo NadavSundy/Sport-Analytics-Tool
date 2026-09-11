@@ -55,7 +55,6 @@ async function competitionOptions(profile: CurrentUserProfile, signal: AbortSign
 
 export type PackageUploadScope = 'season' | 'catalogue';
 
-
 export function BatchUploadWorkflow({
   profile,
   scope,
