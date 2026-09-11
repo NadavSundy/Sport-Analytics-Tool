@@ -40,6 +40,26 @@ export type FixtureEventExportFilters = Partial<
   >
 >;
 
+function filenamePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]+/g, '-');
+}
+
+export function fixtureEventExportFilename(
+  fixtureId: string,
+  format: FixtureEventExportFormat,
+  filters: FixtureEventExportFilters,
+): string {
+  const trace = [
+    filters.inningsId ? `innings-${filenamePart(filters.inningsId)}` : null,
+    filters.competitorId ? `team-${filenamePart(filters.competitorId)}` : null,
+    filters.participantId ? `player-${filenamePart(filters.participantId)}` : null,
+    filters.overNumber ? `over-${filenamePart(filters.overNumber)}` : null,
+    filters.wicketKind ? `wicket-${filenamePart(filters.wicketKind)}` : null,
+  ].filter((part): part is string => part !== null);
+
+  return `fixture-${filenamePart(fixtureId)}-${trace.length > 0 ? trace.join('-') : 'all'}-events.${format}`;
+}
+
 interface ResponseSchema<ResponseBody> {
   parse(value: unknown): ResponseBody;
 }

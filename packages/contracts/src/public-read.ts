@@ -95,6 +95,7 @@ export const participantSchema = z.object({
 
 export const publicEventFielderSchema = z.object({
   participantId: apiIdentifierSchema.nullable(),
+  participantName: z.string().min(1).nullable(),
   isSubstitute: z.boolean(),
 });
 
@@ -102,12 +103,15 @@ export const publicEventWicketSchema = z.object({
   wicketId: apiIdentifierSchema,
   kind: z.string().min(1),
   playerOutParticipantId: apiIdentifierSchema,
+  playerOutParticipantName: z.string().min(1),
   fielders: z.array(publicEventFielderSchema),
 });
 
 export const publicEventSchema = z.object({
   eventId: apiIdentifierSchema,
   fixtureId: apiIdentifierSchema,
+  competitionId: apiIdentifierSchema.nullable(),
+  competitionName: z.string().min(1).nullable(),
   inningsId: apiIdentifierSchema,
   inningsOrdinal: z.number().int().nonnegative(),
   sequenceNumber: z.number().int().positive(),
@@ -115,10 +119,15 @@ export const publicEventSchema = z.object({
   positionInOver: z.number().int().nonnegative(),
   ballNumber: z.string().min(1),
   battingCompetitorId: apiIdentifierSchema,
+  battingCompetitorName: z.string().min(1),
   bowlingCompetitorId: apiIdentifierSchema.nullable(),
+  bowlingCompetitorName: z.string().min(1).nullable(),
   strikerParticipantId: apiIdentifierSchema,
+  strikerParticipantName: z.string().min(1),
   nonStrikerParticipantId: apiIdentifierSchema,
+  nonStrikerParticipantName: z.string().min(1),
   bowlerParticipantId: apiIdentifierSchema,
+  bowlerParticipantName: z.string().min(1),
   runs: z.object({
     offBat: z.number().int().nonnegative(),
     extras: z.number().int().nonnegative(),

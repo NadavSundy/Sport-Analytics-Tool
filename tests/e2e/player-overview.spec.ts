@@ -356,7 +356,7 @@ test(
     purposefulInteractions += 1;
 
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Wanderers innings 1 total' }),
+      page.getByRole('heading', { level: 1, name: 'Wanderers innings 0 total' }),
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Contributing events' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Delivery 1' })).toBeVisible();
