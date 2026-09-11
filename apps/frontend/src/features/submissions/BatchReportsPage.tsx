@@ -7,6 +7,11 @@ import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { downloadBatchReport, getBatchReport, listBatches, mapBatchReference } from './batch-api';
+import {
+  formatBatchValidationMessage,
+  formatValidationField,
+  validationRuleLabel,
+} from './submission-validation-copy';
 
 type ListState =
   | { kind: 'loading' }
@@ -140,7 +145,7 @@ function sourceLabel(location: BatchReportItem['location']) {
     location.filePath ?? 'uploaded package',
     location.sheetName ? `sheet ${location.sheetName}` : null,
     location.rowNumber ? `row ${location.rowNumber}` : null,
-    location.jsonPath ?? null,
+    location.jsonPath ? formatValidationField(location.jsonPath) : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -269,10 +274,24 @@ function ReportItems({
             <ul>
               {item.errors.map((error, index) => (
                 <li key={`${error.ruleCode}-${index}`}>
-                  <code>{error.ruleCode}</code>: {error.message}{' '}
+                  <strong>{validationRuleLabel(error.ruleCode)}</strong>{' '}
+                  <span>{formatBatchValidationMessage(error.ruleCode, error.message)}</span>{' '}
                   <a href={`#batch-item-${item.ordinal}-source`}>
                     Go to {sourceLabel(error.location)} — {error.context.description}
                   </a>
+                  <details className="validation-technical-details">
+                    <summary>Technical details</summary>
+                    <p>
+                      <code>{error.ruleCode}</code>
+                      {error.location.jsonPath ? (
+                        <>
+                          {' · '}
+                          <code>{error.location.jsonPath}</code>
+                        </>
+                      ) : null}
+                    </p>
+                    <p>{error.message}</p>
+                  </details>
                 </li>
               ))}
             </ul>
@@ -436,10 +455,29 @@ function BatchReport({ batchReference }: { batchReference: string }) {
     <>
       <Summary batch={state.report.batch} />
       {state.report.errorGroups.length > 0 ? (
-        <p>
-          Validation rules:{' '}
-          {state.report.errorGroups.map((group) => `${group.ruleCode} (${group.count})`).join(', ')}
-        </p>
+        <section
+          className="batch-validation-summary"
+          aria-labelledby="batch-validation-summary-title"
+        >
+          <h2 id="batch-validation-summary-title">What needs attention</h2>
+          <ul>
+            {state.report.errorGroups.map((group) => (
+              <li key={group.ruleCode}>
+                {validationRuleLabel(group.ruleCode)} ({group.count})
+              </li>
+            ))}
+          </ul>
+          <details className="validation-technical-details">
+            <summary>Technical validation details</summary>
+            <ul>
+              {state.report.errorGroups.map((group) => (
+                <li key={group.ruleCode}>
+                  <code>{group.ruleCode}</code> ({group.count})
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
       ) : null}
       <button
         className="button button--secondary"

@@ -8,6 +8,7 @@ import {
 } from '@sport-analytics/contracts';
 import type { AuthenticatedApiClient } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
+import { formatSchemaValidationFailure } from './submission-validation-copy';
 
 export class SubmissionInputError extends Error {
   constructor(message: string) {
@@ -104,7 +105,11 @@ export function createTechnicalBatchFile(
 
   if (!acceptedPayload.success) {
     const issue = acceptedPayload.error.issues[0];
-    throw new SubmissionInputError(issue?.message ?? 'The technical JSON is invalid.');
+    throw new SubmissionInputError(
+      issue
+        ? formatSchemaValidationFailure(issue.message, issue.path.join('.'))
+        : 'The technical JSON is invalid.',
+    );
   }
 
   if (!fixture.competitionId || !fixture.competitionName) {
@@ -186,7 +191,11 @@ export async function submitLegacyAdminEvents(
   const acceptedPayload = submissionRequestSchema.safeParse(payload);
   if (!acceptedPayload.success) {
     const issue = acceptedPayload.error.issues[0];
-    throw new SubmissionInputError(issue?.message ?? 'The technical JSON is invalid.');
+    throw new SubmissionInputError(
+      issue
+        ? formatSchemaValidationFailure(issue.message, issue.path.join('.'))
+        : 'The technical JSON is invalid.',
+    );
   }
 
   const response = await client.request<unknown>('/submissions', {

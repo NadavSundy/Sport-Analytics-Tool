@@ -691,6 +691,33 @@ describe('role-gated event submission page', () => {
     expect(screen.getByText(/accepted event was not changed/i)).toBeInTheDocument();
   });
 
+  it('explains local technical schema failures without schema jargon', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    const editor = await screen.findByLabelText('Delivery events JSON');
+    fireEvent.change(editor, {
+      target: { value: JSON.stringify([{ ...validEvents[0], eventId: 'not-a-uuid' }]) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(
+      screen.getByText('Event identifier: This identifier is not in the expected format.'),
+    ).toBeInTheDocument();
+  });
+
   it('shows event-specific and field-specific validation results', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
@@ -738,8 +765,11 @@ describe('role-gated event submission page', () => {
 
     const heading = await screen.findByRole('heading', { name: 'Submission rejected' });
     expect(heading).toHaveFocus();
-    expect(screen.getByText('Event 1 — runs.total')).toBeInTheDocument();
-    expect(screen.getByText('Event 2 — eventId')).toBeInTheDocument();
+    expect(screen.getByText('Event 1 — Total runs')).toBeInTheDocument();
+    expect(screen.getByText('Event 2 — Event identifier')).toBeInTheDocument();
+    expect(screen.getAllByText('Technical details')).toHaveLength(2);
+    expect(screen.getByText('events.0.runs.total')).toBeInTheDocument();
+    expect(screen.getAllByText('INVALID_FIELD', { selector: 'code' })).toHaveLength(2);
     expect(editor).toHaveAttribute('aria-invalid', 'true');
     expect(editor).toHaveAttribute(
       'aria-describedby',
@@ -940,7 +970,7 @@ describe('role-gated event submission page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
     expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
-    expect(screen.getByText('Row 1 — file')).toBeInTheDocument();
+    expect(screen.getByText('Row 1 — File')).toBeInTheDocument();
     expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
