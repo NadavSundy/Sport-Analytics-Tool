@@ -966,7 +966,12 @@ export async function resolvePackageReferences(
 
   for (const [fixtureIndex, fixture] of uploadPackage.fixtures.entries()) {
     const fixturePath = `fixtures.${String(fixtureIndex)}`;
-    const submitted = { sourceId: fixture.sourceId, context: fixture.context };
+    const submitted = {
+      sourceId: fixture.sourceId,
+      context: fixture.context,
+      proposal: fixture.proposal,
+      season: uploadPackage.season,
+    };
 
     let resolvedFixture: ReferenceOutcome;
 

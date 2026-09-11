@@ -9,6 +9,7 @@ import {
 } from './api';
 
 export const BATCH_PACKAGE_VERSION = '1.0' as const;
+export const BATCH_PACKAGE_VERSIONS = ['1.0', '1.1'] as const;
 export const BATCH_MEDIA_TYPES = ['application/json', 'text/csv', 'application/x-ndjson'] as const;
 export const BATCH_STATES = [
   'received',
@@ -29,7 +30,7 @@ export const batchMetadataSchema = z
   .object({
     competitionId: apiIdentifierSchema.regex(/^[1-9]\d*$/, 'Expected a positive competition ID.'),
     idempotencyKey: z.string().trim().min(1).max(255),
-    packageVersion: z.literal(BATCH_PACKAGE_VERSION),
+    packageVersion: z.enum(BATCH_PACKAGE_VERSIONS),
     fileName: z.string().trim().min(1).max(255),
     mediaType: z.enum(BATCH_MEDIA_TYPES),
   })
