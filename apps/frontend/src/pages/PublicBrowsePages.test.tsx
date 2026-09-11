@@ -78,6 +78,74 @@ function playerMatch(
   };
 }
 
+/**
+ * A participant aggregate response at career scope. The figures are chosen so
+ * that none of them equals, or is the sum of, the match-history figures that
+ * playerMatch produces, so a page that derived its career totals from the
+ * history instead of reading them from this endpoint would show different
+ * numbers.
+ */
+function careerAggregates(
+  options: {
+    none?: boolean;
+    status?: 'complete' | 'partial';
+    warnings?: Array<{ code: string; message: string }>;
+  } = {},
+) {
+  return response(200, {
+    data: {
+      participantId: 'player-1',
+      participantName: 'A Player',
+      status: options.status ?? 'complete',
+      scope: { superOversIncluded: false },
+      warnings: options.warnings ?? [],
+      statistics: options.none
+        ? []
+        : [
+            {
+              statisticId: 'stat-career-1',
+              participantId: 'player-1',
+              participantName: 'A Player',
+              scope: 'career',
+              statisticCode: 'participant_career',
+              fixtureCount: 58,
+              sourceEventCount: 1677,
+              batting: {
+                runsScored: 1234,
+                ballsFaced: 987,
+                fours: 101,
+                sixes: 37,
+                strikeRate: 125.03,
+              },
+              bowling: {
+                runsConceded: 842,
+                legalBallsBowled: 690,
+                wicketsTaken: 41,
+                ballsPerOver: 6,
+                oversBowled: '115.0',
+                economyRate: 7.32,
+              },
+            },
+          ],
+    },
+  });
+}
+
+function sectionTitled(title: string): HTMLElement {
+  const section = screen.getByRole('heading', { level: 2, name: title }).closest('section');
+  if (!section) {
+    throw new Error(`Expected the "${title}" heading to sit inside a section.`);
+  }
+  return section;
+}
+
+function metricValue(container: HTMLElement, group: string, label: string): string | null {
+  const region = within(container).getByRole('region', { name: group });
+  return (
+    within(region).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent ?? null
+  );
+}
+
 function useSystemTheme() {
   vi.stubGlobal(
     'matchMedia',
@@ -1025,6 +1093,9 @@ describe('public browsing pages', () => {
               : collection([playerMatch('fixture-1')], 'next-matches'),
           );
         }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return Promise.resolve(careerAggregates());
+        }
         return Promise.resolve(collection([]));
       }),
     );
@@ -1093,6 +1164,9 @@ describe('public browsing pages', () => {
                 ]),
           );
         }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return Promise.resolve(careerAggregates());
+        }
         return Promise.resolve(collection([]));
       }),
     );
@@ -1102,6 +1176,8 @@ describe('public browsing pages', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('Match history could not be loaded');
     expect(screen.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    // The failed history must not take the independently loaded career totals with it.
+    expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry matches' }));
     expect(await screen.findByText('Partial data')).toBeVisible();
@@ -1126,6 +1202,9 @@ describe('public browsing pages', () => {
             response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
           );
         }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return Promise.resolve(careerAggregates());
+        }
         return new Promise<Response>((resolve) => {
           resolveHistory = resolve;
         });
@@ -1143,6 +1222,293 @@ describe('public browsing pages', () => {
     expect(
       screen.getByText('No published match history is available for this player.'),
     ).toBeVisible();
+  });
+
+  it('shows career totals from the participant aggregate endpoint alongside the match history', async () => {
+    const requestedUrls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        requestedUrls.push(requestUrl);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+          return Promise.resolve(collection([playerMatch('fixture-1')]));
+        }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return Promise.resolve(careerAggregates());
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    const career = sectionTitled('Career totals');
+    await within(career).findByText('Complete data');
+
+    // Every figure is the endpoint's career level, paired with its own label.
+    expect(metricValue(career, 'Batting statistics', 'Runs')).toBe('1234');
+    expect(metricValue(career, 'Batting statistics', 'Balls faced')).toBe('987');
+    expect(metricValue(career, 'Batting statistics', 'Strike rate')).toBe('125.03');
+    expect(metricValue(career, 'Batting statistics', 'Fours')).toBe('101');
+    expect(metricValue(career, 'Batting statistics', 'Sixes')).toBe('37');
+    expect(metricValue(career, 'Bowling statistics', 'Runs conceded')).toBe('842');
+    expect(metricValue(career, 'Bowling statistics', 'Legal balls')).toBe('690');
+    expect(metricValue(career, 'Bowling statistics', 'Overs')).toBe('115.0');
+    expect(metricValue(career, 'Bowling statistics', 'Economy rate')).toBe('7.32');
+    expect(metricValue(career, 'Bowling statistics', 'Wickets')).toBe('41');
+    expect(career).toHaveTextContent(
+      'Based on 1677 accepted events from 58 matches in which this player batted or bowled.',
+    );
+
+    // The match history is still rendered, with its own per-match figures.
+    const history = sectionTitled('Match history');
+    expect(
+      await within(history).findByRole('link', { name: 'Wanderers vs Strikers' }),
+    ).toBeVisible();
+    expect(metricValue(history, 'Batting statistics', 'Runs')).toBe('42');
+    expect(within(career).queryByText('42')).not.toBeInTheDocument();
+
+    // One resource request at career scope. The endpoint does not page, so the
+    // client must neither send a cursor nor cap it with a page size.
+    const aggregateRequests = requestedUrls
+      .map((requestUrl) => new URL(requestUrl))
+      .filter((url) => url.pathname.endsWith('/participants/player-1/statistics'));
+    expect(aggregateRequests).toHaveLength(1);
+    expect(aggregateRequests[0]?.search).toBe('?scope=career');
+    expect(document.querySelector('main')).not.toHaveTextContent(/player-1|stat-career-1/);
+  });
+
+  it('requests the career totals and the match history concurrently with independent loading states', async () => {
+    const requestedPaths: string[] = [];
+    let resolveCareer!: (value: Response) => void;
+    let resolveHistory!: (value: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        requestedPaths.push(url.pathname);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return new Promise<Response>((resolve) => {
+            resolveCareer = resolve;
+          });
+        }
+        if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+          return new Promise<Response>((resolve) => {
+            resolveHistory = resolve;
+          });
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    // Both requests are in flight while neither has been answered. Issued in
+    // sequence, the second would not start until the first resolved.
+    await waitFor(() =>
+      expect(requestedPaths).toEqual(
+        expect.arrayContaining([
+          '/api/v1/participants/player-1/statistics',
+          '/api/v1/participants/player-1/fixtures',
+        ]),
+      ),
+    );
+    expect(screen.getByRole('heading', { level: 3, name: 'Loading career totals' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'Loading matches' })).toBeVisible();
+
+    resolveHistory(collection([playerMatch('fixture-1')]));
+    expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'Loading career totals' })).toBeVisible();
+
+    resolveCareer(careerAggregates());
+    expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+  });
+
+  it('states that a player with no accepted deliveries has no career totals without hiding the match history', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+          // Selected for a match without batting or bowling: history, but no figures.
+          return Promise.resolve(
+            collection([playerMatch('fixture-1', { batting: null, bowling: null })]),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return Promise.resolve(
+            careerAggregates({
+              none: true,
+              status: 'partial',
+              warnings: [
+                {
+                  code: 'NO_ACCEPTED_EVENTS',
+                  message: 'The participant has no accepted standard delivery events.',
+                },
+              ],
+            }),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    const career = sectionTitled('Career totals');
+    expect(
+      await within(career).findByRole('heading', { level: 3, name: 'No career totals available' }),
+    ).toBeVisible();
+    expect(
+      within(career).getByText('The participant has no accepted standard delivery events.'),
+    ).toBeVisible();
+    // An absence is not reported as a career of zeroes.
+    expect(within(career).queryByRole('region', { name: 'Batting statistics' })).toBeNull();
+    expect(within(career).queryByText('0')).toBeNull();
+
+    expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+    expect(
+      screen.getByText(
+        'No batting or bowling figures are published for this player in this match.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      name: 'an error response',
+      failure: () =>
+        Promise.resolve(
+          response(503, {
+            error: {
+              code: 'SERVICE_UNAVAILABLE',
+              message: 'Career totals are temporarily unavailable.',
+            },
+          }),
+        ),
+      reason: 'Career totals are temporarily unavailable.',
+    },
+    {
+      name: 'a transport failure',
+      failure: () => Promise.reject(new TypeError('Failed to fetch')),
+      reason: 'Failed to fetch',
+    },
+  ])(
+    'keeps the match history and states the failure when the career request fails with $name',
+    async ({ failure, reason }) => {
+      let careerRequests = 0;
+      let historyRequests = 0;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((requestUrl: string) => {
+          const url = new URL(requestUrl);
+          if (url.pathname.endsWith('/participants/player-1')) {
+            return Promise.resolve(
+              response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+            );
+          }
+          if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+            historyRequests += 1;
+            return Promise.resolve(collection([playerMatch('fixture-1')]));
+          }
+          if (url.pathname.endsWith('/participants/player-1/statistics')) {
+            careerRequests += 1;
+            return careerRequests === 1 ? failure() : Promise.resolve(careerAggregates());
+          }
+          return Promise.resolve(collection([]));
+        }),
+      );
+
+      renderRoute('/participants/player-1');
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent('Career totals could not be loaded');
+      expect(alert).toHaveTextContent(
+        'Published career totals could not be requested. Try this section again.',
+      );
+      expect(alert).toHaveTextContent(reason);
+      expect(sectionTitled('Career totals')).toContainElement(alert);
+
+      // The history is unaffected: rendered, with its figures, and not in error.
+      expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+      expect(metricValue(sectionTitled('Match history'), 'Batting statistics', 'Runs')).toBe('42');
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Retry career totals' }));
+      expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(careerRequests).toBe(2);
+      // Retrying one section does not re-request the other.
+      expect(historyRequests).toBe(1);
+    },
+  );
+
+  // Before #476 the player page had no error boundary, so this contract-valid
+  // record, whose competition identifier cannot be encoded into a link, unmounted
+  // the entire page: no heading, no error and no retry.
+  it('keeps a failure to display the match history inside its section beside the career totals', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let historyRequests = 0;
+    const unencodable = playerMatch('fixture-1');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((requestUrl: string) => {
+        const url = new URL(requestUrl);
+        if (url.pathname.endsWith('/participants/player-1')) {
+          return Promise.resolve(
+            response(200, { data: { participantId: 'player-1', displayName: 'A Player' } }),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+          historyRequests += 1;
+          return Promise.resolve(
+            collection([
+              historyRequests === 1
+                ? { ...unencodable, fixture: { ...unencodable.fixture, competitionId: '\ud800' } }
+                : playerMatch('fixture-1'),
+            ]),
+          );
+        }
+        if (url.pathname.endsWith('/participants/player-1/statistics')) {
+          return Promise.resolve(careerAggregates());
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/participants/player-1');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Match history could not be loaded');
+    expect(alert).toHaveTextContent('The published match history could not be displayed.');
+    expect(sectionTitled('Match history')).toContainElement(alert);
+    expect(screen.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry matches' }));
+    expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(historyRequests).toBe(2);
   });
 
   it.each([
