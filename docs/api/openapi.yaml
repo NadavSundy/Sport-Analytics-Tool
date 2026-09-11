@@ -4717,6 +4717,8 @@ components:
           context,
           stagedRecordId,
           acceptedRecordId,
+          operation,
+          correctionTarget,
           referenceResolutions,
           errors,
         ]
@@ -4730,6 +4732,23 @@ components:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
         acceptedRecordId:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
+        operation: { type: string, enum: [upsert, correction] }
+        correctionTarget:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [sourceEventId, resolvedDeliveryId]
+              properties:
+                sourceEventId:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                  description: Exact external delivery identity supplied in correctsEventId.
+                resolvedDeliveryId:
+                  oneOf:
+                    - { $ref: '#/components/schemas/DatabaseIdentifier' }
+                    - { type: 'null' }
+            - { type: 'null' }
         referenceResolutions:
           { type: array, items: { $ref: '#/components/schemas/BatchReferenceResolution' } }
         errors: { type: array, items: { $ref: '#/components/schemas/BatchReportError' } }

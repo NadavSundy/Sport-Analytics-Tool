@@ -880,6 +880,189 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('publishes an approved batch correction as one immutable, retry-safe revision', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const players = (
+        await client.query<{
+          strikerId: string;
+          nonStrikerId: string;
+          bowlerId: string;
+        }>(
+          `SELECT striker_id::text AS "strikerId",
+                  non_striker_id::text AS "nonStrikerId",
+                  bowler_id::text AS "bowlerId"
+           FROM delivery WHERE delivery_id=$1::bigint`,
+          [current.deliveryId],
+        )
+      ).rows[0]!;
+      const sourceIdentity = 'cricsheet:delivery:batch-correction-target';
+      const basePayload = {
+        eventId: randomUUID(),
+        sequenceNumber: 700001,
+        ballNumber: '125.1',
+        strikerId: players.strikerId,
+        nonStrikerId: players.nonStrikerId,
+        bowlerId: players.bowlerId,
+        runs: { offBat: 1, extras: 0, total: 1, nonBoundary: false },
+        extras: {},
+        wickets: [],
+      };
+      const original = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-correction-original`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'publishing',
+      });
+      const [originalItem] = await repository.insertBatchItems(original.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 125,
+          positionInOver: 0,
+          sourceIdentity,
+          state: 'accepted',
+          payload: basePayload,
+        },
+      ]);
+      await expect(
+        repository.publishAcceptedItems(original.batchId, 'worker-original'),
+      ).resolves.toMatchObject({
+        published: 1,
+      });
+      const originalDeliveryId = (
+        await repository.listBatchItems(original.batchId, { limit: 1 })
+      )[0]!.publishedEventId!;
+
+      const correction = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-correction-replacement`,
+        source: { checksum: 'b'.repeat(64), uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(correction.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 125,
+          positionInOver: 0,
+          sourceIdentity: 'cricsheet:delivery:batch-correction-replacement',
+          operation: 'correction',
+          correctsSourceIdentity: sourceIdentity,
+          correctionTargetDeliveryId: originalDeliveryId,
+          state: 'accepted',
+          payload: {
+            ...basePayload,
+            eventId: randomUUID(),
+            runs: { offBat: 4, extras: 0, total: 4, nonBoundary: false },
+          },
+        },
+      ]);
+      await repository.applyReviewDecision({
+        batchId: correction.batchId,
+        actorId: current.accountId,
+        decision: 'approved',
+        reason: 'Verified the corrected score against the source.',
+      });
+
+      await expect(
+        repository.publishAcceptedItems(correction.batchId, 'worker-correction'),
+      ).resolves.toEqual({
+        published: 1,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+      await expect(
+        repository.publishAcceptedItems(correction.batchId, 'worker-retry'),
+      ).resolves.toEqual({
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 0,
+      });
+
+      const revisions = await client.query<{
+        deliveryId: string;
+        revision: number;
+        offBat: number;
+        supersededAt: Date | null;
+        supersedesDeliveryId: string | null;
+      }>(
+        `SELECT delivery_id::text AS "deliveryId", revision,
+                runs_off_bat AS "offBat", superseded_at AS "supersededAt",
+                supersedes_delivery_id::text AS "supersedesDeliveryId"
+         FROM delivery WHERE source_event_id=(
+           SELECT source_event_id FROM delivery WHERE delivery_id=$1::bigint
+         ) ORDER BY revision`,
+        [originalDeliveryId],
+      );
+      expect(revisions.rows).toEqual([
+        expect.objectContaining({
+          deliveryId: originalDeliveryId,
+          revision: 1,
+          offBat: 1,
+          supersededAt: expect.any(Date),
+          supersedesDeliveryId: null,
+        }),
+        expect.objectContaining({
+          revision: 2,
+          offBat: 4,
+          supersededAt: null,
+          supersedesDeliveryId: originalDeliveryId,
+        }),
+      ]);
+      const audit = await client.query<{
+        count: string;
+        requesterId: string;
+        reviewerId: string;
+        originalBatchItemId: string;
+      }>(
+        `SELECT count(*)::text AS count,
+                min(requester_id)::text AS "requesterId",
+                min(reviewer_id)::text AS "reviewerId",
+                min(original_batch_item_id)::text AS "originalBatchItemId"
+         FROM delivery_correction_history
+         WHERE previous_delivery_id=$1::bigint`,
+        [originalDeliveryId],
+      );
+      expect(audit.rows[0]).toEqual({
+        count: '1',
+        requesterId: current.accountId,
+        reviewerId: current.accountId,
+        originalBatchItemId: originalItem!.batchItemId,
+      });
+      const currentAndDependencies = await client.query<{
+        currentOffBat: number;
+        dependencyCount: string;
+      }>(
+        `SELECT current.runs_off_bat AS "currentOffBat",
+                (SELECT count(*)::text
+                 FROM statistics_refresh_dependency dependency
+                 WHERE dependency.source_event_id=current.source_event_id
+                   AND dependency.delivery_revision=current.revision) AS "dependencyCount"
+         FROM delivery current
+         WHERE current.delivery_id=$1::bigint`,
+        [revisions.rows[1]!.deliveryId],
+      );
+      expect(currentAndDependencies.rows[0]).toEqual({
+        currentOffBat: 4,
+        dependencyCount: '7',
+      });
+      const publishedItem = await repository.listBatchItems(correction.batchId, { limit: 1 });
+      expect(publishedItem[0]).toMatchObject({
+        state: 'published',
+        operation: 'correction',
+        correctsSourceIdentity: sourceIdentity,
+        correctionTargetDeliveryId: originalDeliveryId,
+        publishedEventId: revisions.rows[1]!.deliveryId,
+      });
+    });
+  });
+
   test('blocks approval for unresolved items without persisting a decision', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();

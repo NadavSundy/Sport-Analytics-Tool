@@ -333,6 +333,9 @@ describe('batch result reporting service', () => {
           state: 'published',
           rejectionCode: null,
           publishedEventId: '91',
+          operation: 'correction',
+          correctsSourceIdentity: 'cricsheet:delivery:100-original',
+          correctionTargetDeliveryId: '88',
           errors: [],
         },
         {
@@ -347,6 +350,9 @@ describe('batch result reporting service', () => {
           state: 'rejected',
           rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
           publishedEventId: null,
+          operation: 'upsert',
+          correctsSourceIdentity: null,
+          correctionTargetDeliveryId: null,
           errors: [
             {
               ruleCode: 'REFERENCE_RESOLUTION_FAILED',
@@ -375,6 +381,11 @@ describe('batch result reporting service', () => {
       outcome: 'accepted',
       stagedRecordId: '41',
       acceptedRecordId: '91',
+      operation: 'correction',
+      correctionTarget: {
+        sourceEventId: 'cricsheet:delivery:100-original',
+        resolvedDeliveryId: '88',
+      },
     });
     expect(response.data.items[1]).toMatchObject({
       outcome: 'unresolved',
@@ -488,6 +499,9 @@ describe('batch result reporting service', () => {
       rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
       rejectionDetail: null,
       publishedEventId: null,
+      operation: 'upsert' as const,
+      correctsSourceIdentity: null,
+      correctionTargetDeliveryId: null,
       errors: [],
     };
     const queueReferenceMapping = vi.fn().mockResolvedValue({
