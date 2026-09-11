@@ -224,9 +224,12 @@ function reportContext(record: BatchReportItemRecord) {
     inningsId: record.inningsId,
     overNumber: record.overNumber,
     positionInOver: record.positionInOver,
-    description: event
-      ? `Event ${event} at ${cricketPosition}.`
-      : `Cricket event at ${cricketPosition}.`,
+    description:
+      record.operation === 'correction' && record.correctsSourceIdentity
+        ? `Correction event ${event ?? `source item ${record.ordinal + 1}`} targets ${record.correctsSourceIdentity} at ${cricketPosition}.`
+        : event
+          ? `Event ${event} at ${cricketPosition}.`
+          : `Cricket event at ${cricketPosition}.`,
   };
 }
 
@@ -281,6 +284,14 @@ function mapReportItem(
     context,
     stagedRecordId: record.batchItemId,
     acceptedRecordId: record.publishedEventId,
+    operation: record.operation,
+    correctionTarget:
+      record.operation === 'correction' && record.correctsSourceIdentity
+        ? {
+            sourceEventId: record.correctsSourceIdentity,
+            resolvedDeliveryId: record.correctionTargetDeliveryId,
+          }
+        : null,
     referenceResolutions: reportReferenceResolutions(record, batchReference, competitionId),
     errors: record.errors.map((error) => ({
       ruleCode: error.ruleCode,

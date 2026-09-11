@@ -526,7 +526,18 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
         ) : (
           <ol className="accepted-samples">
             {report.acceptedSamples.map((item) => (
-              <li key={item.ordinal}>{item.context.description}</li>
+              <li key={item.ordinal}>
+                {item.context.description}
+                {item.correctionTarget ? (
+                  <span>
+                    {' '}
+                    Target: <code>{item.correctionTarget.sourceEventId}</code>
+                    {item.correctionTarget.resolvedDeliveryId
+                      ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
+                      : ' (not resolved)'}
+                  </span>
+                ) : null}
+              </li>
             ))}
           </ol>
         )}

@@ -7,6 +7,7 @@ import {
   createResourceResponseSchema,
   paginationQuerySchema,
 } from './api';
+import { sourceIdentifierSchema } from './season-upload';
 
 export const BATCH_PACKAGE_VERSION = '1.0' as const;
 export const BATCH_MEDIA_TYPES = ['application/json', 'text/csv', 'application/x-ndjson'] as const;
@@ -199,6 +200,15 @@ export const batchReportItemSchema = z
     context: batchReportContextSchema,
     stagedRecordId: apiIdentifierSchema.nullable(),
     acceptedRecordId: apiIdentifierSchema.nullable(),
+    operation: z.enum(['upsert', 'correction']).default('upsert'),
+    correctionTarget: z
+      .object({
+        sourceEventId: sourceIdentifierSchema,
+        resolvedDeliveryId: apiIdentifierSchema.nullable(),
+      })
+      .strict()
+      .nullable()
+      .default(null),
     referenceResolutions: z.array(batchReferenceResolutionSchema),
     errors: z.array(batchReportErrorSchema),
   })

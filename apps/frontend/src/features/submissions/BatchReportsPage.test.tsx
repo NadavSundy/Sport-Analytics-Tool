@@ -196,6 +196,11 @@ describe('batch report view', () => {
         },
         stagedRecordId: '41',
         acceptedRecordId: '91',
+        operation: 'correction',
+        correctionTarget: {
+          sourceEventId: 'cricsheet:delivery:100-original',
+          resolvedDeliveryId: '88',
+        },
         referenceResolutions: [],
         errors: [],
       },
@@ -220,6 +225,8 @@ describe('batch report view', () => {
         },
         stagedRecordId: '42',
         acceptedRecordId: null,
+        operation: 'upsert',
+        correctionTarget: null,
         referenceResolutions: [],
         errors: [
           {
@@ -248,6 +255,9 @@ describe('batch report view', () => {
     vi.stubGlobal('fetch', reportFetch(body));
     await renderReport();
     expect(await screen.findByText(/Accepted delivery: 91/)).toBeInTheDocument();
+    expect(screen.getByText(/Correction target:/)).toHaveTextContent(
+      'cricsheet:delivery:100-original (published delivery 88)',
+    );
     expect(screen.getByText(/Source: events.csv, row 3, striker/)).toBeInTheDocument();
     expect(screen.getByText(/Choose a known striker reference/)).toBeInTheDocument();
   });
@@ -277,6 +287,8 @@ describe('batch report view', () => {
         },
         stagedRecordId: null,
         acceptedRecordId: null,
+        operation: 'upsert',
+        correctionTarget: null,
         errors: [
           {
             ruleCode: 'REFERENCE_AMBIGUOUS',
