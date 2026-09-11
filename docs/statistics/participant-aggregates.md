@@ -82,6 +82,20 @@ A rate is `null` when its denominator is zero, which distinguishes an undefined 
 rate of zero. `batting` or `bowling` is `null` when the participant never took that role in the
 group, which distinguishes a player who did not bat from one who was dismissed for nought.
 
+### Figures not derived
+
+Batting average, highest score and bowling average are **not** derived at any level, and §7 does
+not name them. A batting average needs the number of times the participant was dismissed as a
+batter, but the grouped statement counts only wickets credited to the participant as bowler. A
+highest score needs a per-innings maximum, but the statement groups by competition, season and
+career and never by innings. Neither figure can be recovered from the published fields, and a client
+must not reconstruct one from the paginated fixture history, which would give a maximum over the page
+it holds rather than over the career.
+
+Issue #476 asked for the career totals on the player page to include an average or highest score.
+The player page presents the career level of this endpoint as published and omits both figures
+until they are derived here.
+
 ### Balls per over is never assumed
 
 Legal balls are counted from delivery rows. §10 records 175 innings carrying `miscounted_overs`,
@@ -150,4 +164,5 @@ zero runs from zero fixtures is an absence rather than a figure. An unknown part
 The preceding calculation, performance and API documentation was generated with the assistance of
 Claude Code[Claude Opus 5]. The corpus measurements were taken against the imported corpus and are
 reproduced in the issue #285 validation record. The selective correction-refresh dependency model
-was documented with the assistance of Codex[GPT-5].
+was documented with the assistance of Codex[GPT-5]. The record of figures not derived, under issue
+#476, was documented with the assistance of Claude Code[Claude Opus 5].
