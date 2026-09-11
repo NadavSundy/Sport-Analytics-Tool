@@ -3449,7 +3449,8 @@ h3 {
   margin: 0;
 }
 
-.event-export-controls > div > p:last-child,
+.event-export-controls h2 + p,
+.event-export-controls__status,
 .event-export-controls__empty,
 .event-export-controls__error {
   margin-top: 0.5rem;

@@ -110,20 +110,20 @@ export async function requestPublicApi<ResponseBody>(
   }
 }
 
-export async function downloadFixtureEventExport(
+/**
+ * Downloads exactly the accepted events a calculation trace displays. The
+ * server derives the event set from the statistic and pages through it in full,
+ * so the file cannot be a filtered look-alike of the trace or a single page of
+ * it; any failure, including one partway through, arrives as an error response
+ * rather than a short file.
+ */
+export async function downloadFixtureStatisticEventExport(
   fixtureId: string,
+  statisticId: string,
   format: FixtureEventExportFormat,
-  filters: FixtureEventExportFilters,
 ): Promise<Blob> {
-  const parameters = new URLSearchParams();
-  for (const [name, value] of Object.entries(filters)) {
-    if (value) {
-      parameters.set(name, value);
-    }
-  }
-  const search = parameters.size > 0 ? `?${parameters.toString()}` : '';
   const response = await fetch(
-    `${apiBaseUrl}/fixtures/${encodeURIComponent(fixtureId)}/events/export.${format}${search}`,
+    `${apiBaseUrl}/fixtures/${encodeURIComponent(fixtureId)}/statistics/${encodeURIComponent(statisticId)}/events/export.${format}`,
     { headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' } },
   );
 

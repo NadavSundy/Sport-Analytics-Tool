@@ -446,7 +446,9 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
       ? `${statistic.competitorName} innings ${statistic.inningsOrdinal} total`
       : `${statistic.participantName} performance`;
   const contributingEvents = statistic.contributingEvents ?? [];
-  const exportFilters =
+  // Names the downloaded file only. The exported events come from the
+  // statistic itself, so they are exactly the contributing events listed below.
+  const exportFilenameFilters =
     statistic.scope === 'innings'
       ? { inningsId: statistic.inningsId, competitorId: statistic.competitorId }
       : { participantId: statistic.participantId };
@@ -488,9 +490,10 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
           </p>
         ) : null}
         <EventExportControls
-          filters={exportFilters}
+          eventCount={contributingEvents.length}
+          filenameFilters={exportFilenameFilters}
           fixtureId={statistic.fixtureId}
-          hasEvents={contributingEvents.length > 0}
+          statisticId={statistic.statisticId}
         />
         {contributingEvents.length > 0 ? (
           <ol className="event-trace-list">

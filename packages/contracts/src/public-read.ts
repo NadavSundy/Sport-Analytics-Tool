@@ -5,14 +5,23 @@ import {
   apiIdentifierSchema,
   createCollectionResponseSchema,
   createResourceResponseSchema,
+  MAX_PAGE_LIMIT,
   paginationQuerySchema,
 } from './api';
 
 const filterTextSchema = z.string().trim().min(1);
 
-// Basic exports are deliberately synchronous and capped. Larger or paginated
-// dataset releases belong to the later asynchronous export work.
-export const FIXTURE_EVENT_EXPORT_LIMIT = 100;
+// Basic exports are synchronous and complete. Issue #467 found the export read a
+// single page of 100 and discarded the cursor, so 85% of imported innings were
+// exported short without any indication. An export now follows the event
+// collection's cursor at the public maximum page size until it is exhausted.
+export const FIXTURE_EVENT_EXPORT_PAGE_SIZE = MAX_PAGE_LIMIT;
+
+// The bound that keeps a synchronous export finite. Reaching it fails the whole
+// export with EXPORT_TOO_LARGE rather than returning a short file. The largest
+// fixture in the imported corpus has 346 accepted events, so a filtered or
+// single-fixture export does not approach it.
+export const FIXTURE_EVENT_EXPORT_MAX_EVENTS = 5_000;
 
 export const competitionSchema = z.object({
   competitionId: apiIdentifierSchema,
@@ -316,9 +325,13 @@ export const fixtureEventListQuerySchema = paginationQuerySchema.extend(
   fixtureEventFilterQueryShape,
 );
 
-// Exports intentionally accept the same event filters as the paginated read,
-// but not cursor or limit: every export has the fixed Basic-tier row cap.
+// Exports accept the same event filters as the paginated read but not cursor or
+// limit: an export is the whole filtered result set, paged on the server.
 export const fixtureEventExportQuerySchema = z.object(fixtureEventFilterQueryShape).strict();
+
+// A calculation-trace export takes its event set from the statistic itself, so
+// it accepts no filters that could make the file differ from the trace.
+export const fixtureStatisticEventExportQuerySchema = z.object({}).strict();
 
 export const fixtureStatisticsQuerySchema = z.object({
   includeContributors: z
