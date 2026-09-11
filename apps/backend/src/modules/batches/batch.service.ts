@@ -3,6 +3,8 @@ import type { Readable } from 'node:stream';
 
 import {
   API_BASE_PATH,
+  FIXTURE_PROPOSAL_CONTRACT_VERSION,
+  fixtureProposalSchema,
   type BatchListQuery,
   type BatchListResponse,
   type BatchMetadata,
@@ -682,15 +684,18 @@ export function createBatchService(
             sourceId?: string;
             context?: { date?: string; teams?: { context?: { name?: string } }[] };
             proposal?: Record<string, unknown>;
+            season?: { context?: { name?: string } };
           }
         | undefined;
-      const proposal = submitted?.proposal;
+      const proposal = fixtureProposalSchema.safeParse(submitted?.proposal);
       const teams = submitted?.context?.teams?.map((team) => team.context?.name).filter(Boolean);
       if (
         !item ||
+        batch.packageVersion !== FIXTURE_PROPOSAL_CONTRACT_VERSION ||
         !submitted?.sourceId ||
         !submitted.context?.date ||
-        !proposal ||
+        !submitted.season?.context?.name ||
+        !proposal.success ||
         teams?.length !== 2
       ) {
         throw new BatchConflictError('A complete version 1.1 fixture proposal is required.');
@@ -705,12 +710,10 @@ export function createBatchService(
           referencePath: request.referencePath,
           decisionKey: request.decisionKey,
           sourceRef: submitted.sourceId.split(':', 3)[2]!,
-          season: String(
-            (submitted as { season?: { context?: { name?: string } } }).season?.context?.name ?? '',
-          ),
+          season: submitted.season.context.name,
           startDate: submitted.context.date,
           teamNames: teams as string[],
-          proposal,
+          proposal: proposal.data,
         });
         return {
           data: {

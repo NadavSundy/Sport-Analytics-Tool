@@ -224,6 +224,7 @@ describe('reviewer batch workspace', () => {
 
   test('creates only a valid unresolved fixture proposal and refreshes the report', async () => {
     const body = report(true);
+    body.data.batch.source.packageVersion = '1.1';
     body.data.items[0]!.referenceResolutions = [
       {
         referencePath: 'fixtures.0',
@@ -295,6 +296,35 @@ describe('reviewer batch workspace', () => {
         entityType: 'fixture',
         state: 'unresolved',
         submittedReference: { sourceId: 'cricsheet:fixture:legacy' },
+        reason: 'New fixture.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+    await screen.findByText(/New fixture\./);
+    expect(
+      screen.queryByRole('button', { name: 'Create canonical fixture from proposal' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('does not offer creation for a legacy or malformed fixture proposal', async () => {
+    const body = report(true);
+    body.data.items[0]!.referenceResolutions = [
+      {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'cricsheet:fixture:legacy',
+          proposal: { sourceVersion: '1.1' },
+        },
         reason: 'New fixture.',
         requiredAction: 'contact_reviewer',
         candidates: [],

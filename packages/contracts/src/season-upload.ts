@@ -75,7 +75,7 @@ const fixtureContextSchema = z
   })
   .strict();
 
-const fixtureProposalSchema = z
+export const fixtureProposalSchema = z
   .object({
     endDate: localDateSchema,
     matchType: readableNameSchema,
@@ -354,3 +354,4 @@ export const referenceResolutionRequirementSchema = z
 export type SeasonUploadPackage = z.infer<typeof seasonUploadPackageSchema>;
 export type SeasonUploadManifest = z.infer<typeof seasonUploadManifestSchema>;
 export type SeasonUploadEvent = z.infer<typeof seasonUploadEventSchema>;
+export type FixtureProposal = z.infer<typeof fixtureProposalSchema>;

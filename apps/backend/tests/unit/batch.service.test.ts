@@ -502,7 +502,9 @@ describe('batch result reporting service', () => {
       decidedAt: '2026-09-07T12:00:00.000Z',
     });
     const batches = repository({
-      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, state: 'rejected' }),
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, packageVersion: '1.1', state: 'rejected' }),
       listBatchReportItems: vi.fn().mockResolvedValue([unresolvedItem]),
       listBatchItems: vi.fn().mockResolvedValue([unresolvedItem]),
       queueReferenceMapping,
@@ -533,7 +535,9 @@ describe('batch result reporting service', () => {
 
   test('rejects stale opaque candidate selections before persistence', async () => {
     const batches = repository({
-      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, state: 'rejected' }),
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, packageVersion: '1.1', state: 'rejected' }),
       listBatchItems: vi.fn().mockResolvedValue([]),
     });
     await expect(
@@ -628,7 +632,7 @@ describe('canonical fixture creation', () => {
     expect(batches.publishAcceptedItems).not.toHaveBeenCalled();
   });
 
-  test('rejects non-administrators and incomplete proposals', async () => {
+  test('rejects non-administrators, legacy packages, and incomplete proposals', async () => {
     const service = createBatchService(
       {} as BatchPayloadStorageService,
       repository({
@@ -645,6 +649,13 @@ describe('canonical fixture creation', () => {
         { itemOrdinal: 1, referencePath: 'fixtures.0', decisionKey: 'x' },
       ),
     ).rejects.toBeInstanceOf(BatchForbiddenError);
+    await expect(
+      service.createCanonicalFixture(
+        createTestAccount({ role: 'admin' }),
+        persistedBatch.batchReference,
+        { itemOrdinal: 1, referencePath: 'fixtures.0', decisionKey: 'legacy' },
+      ),
+    ).rejects.toBeInstanceOf(BatchConflictError);
     await expect(
       service.createCanonicalFixture(
         createTestAccount({ role: 'admin' }),

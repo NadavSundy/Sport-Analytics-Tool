@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   classifyPublishedCricketDelivery,
   type ComparableCricketDelivery,
+  type FixtureProposal,
   type PublishedCricketDelivery,
 } from '@sport-analytics/contracts';
 
@@ -333,7 +334,7 @@ export interface BatchRepository {
     season: string;
     startDate: string;
     teamNames: string[];
-    proposal: Record<string, unknown>;
+    proposal: FixtureProposal;
   }): Promise<BatchReferenceMappingRecord>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
@@ -1713,12 +1714,19 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         return withTransaction(getDatabasePool(), (client) =>
           createBatchRepository(client).createCanonicalFixtureAndQueueMapping(input),
         );
-      const existing = await executeQuery<{ fixtureId: string }>(
+      const existing = await executeQuery<{ fixtureId: string; competitionId: string }>(
         executor,
-        `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1 FOR UPDATE`,
+        `SELECT fixture_id::text AS "fixtureId", competition_id::text AS "competitionId"
+         FROM fixture WHERE source_ref=$1 FOR UPDATE`,
         [input.sourceRef],
       );
-      let fixtureId = existing.rows[0]?.fixtureId;
+      const existingFixture = existing.rows[0];
+      if (existingFixture && existingFixture.competitionId !== input.competitionId) {
+        throw new BatchReferenceMappingConflictError(
+          'A fixture with this source reference belongs to a different competition.',
+        );
+      }
+      let fixtureId = existingFixture?.fixtureId;
       if (!fixtureId) {
         const teams = await executeQuery<{ teamId: string }>(
           executor,
@@ -1751,14 +1759,22 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           ],
         );
         fixtureId = inserted.rows[0]?.fixtureId;
-        if (!fixtureId)
-          fixtureId = (
-            await executeQuery<{ fixtureId: string }>(
+        if (!fixtureId) {
+          const concurrentFixture = (
+            await executeQuery<{ fixtureId: string; competitionId: string }>(
               executor,
-              `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1`,
+              `SELECT fixture_id::text AS "fixtureId", competition_id::text AS "competitionId"
+               FROM fixture WHERE source_ref=$1`,
               [input.sourceRef],
             )
-          ).rows[0]?.fixtureId;
+          ).rows[0];
+          if (concurrentFixture && concurrentFixture.competitionId !== input.competitionId) {
+            throw new BatchReferenceMappingConflictError(
+              'A fixture with this source reference belongs to a different competition.',
+            );
+          }
+          fixtureId = concurrentFixture?.fixtureId;
+        }
         if (!fixtureId)
           throw new BatchReferenceMappingConflictError('The fixture could not be created.');
         await executeQuery(

@@ -148,6 +148,9 @@ describe('guided batch upload', () => {
     expect(
       screen.getByText(/season name and reference inside the package are authoritative/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/including after a page refresh and reselecting the file/i),
+    ).toBeInTheDocument();
 
     const fileBytes = '{"contractVersion":"1.0"}';
     const file = new File([fileBytes], 'season.json', {
@@ -232,6 +235,40 @@ describe('guided batch upload', () => {
     expect(await screen.findByText(/package are authoritative/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Season package')).toBeEnabled();
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/seasons?'))).toBe(false);
+  });
+
+  test('keeps the catalogue upload workflow package-authoritative', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) return Promise.resolve(response(200, { user: submitterProfile }));
+      if (url.endsWith('/competitions/5'))
+        return Promise.resolve(response(200, { data: { competitionId: '5', name: 'Premier T20' } }));
+      if (url.endsWith('/batches') && init?.method === 'POST')
+        return Promise.resolve(
+          response(202, {
+            data: {
+              batchReference,
+              status: 'stored',
+              statusUrl: `/api/v1/batches/${batchReference}`,
+              receivedAt: '2026-09-08T09:30:00.000Z',
+            },
+          }),
+        );
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderUpload('catalogue');
+    expect(await screen.findByLabelText('Back catalogue package')).toBeEnabled();
+    expect(screen.getByText(/Each season is identified by its readable name/i)).toBeInTheDocument();
+    const bytes = '{"contractVersion":"1.0"}';
+    const file = new File([bytes], 'catalogue.json', { type: 'application/json' });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => new TextEncoder().encode(bytes).buffer,
+    });
+    fireEvent.change(screen.getByLabelText('Back catalogue package'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload back catalogue package' }));
+    expect(await screen.findByRole('heading', { name: 'Back catalogue received safely' })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/seasons?'))).toBe(false);
   });
 
   test('distinguishes an access-loading failure from an empty scope', async () => {

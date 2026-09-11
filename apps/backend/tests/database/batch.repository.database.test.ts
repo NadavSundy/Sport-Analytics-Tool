@@ -2059,7 +2059,7 @@ describe.sequential('batch repository database integration', () => {
           teamType: 'club',
           gender: 'mixed',
           ballsPerOver: 6,
-          outcome: 'tie',
+          outcome: 'tie' as const,
           sourceVersion: '1.1',
           sourceRevision: 1,
         },
@@ -2070,21 +2070,50 @@ describe.sequential('batch repository database integration', () => {
         fixtures: string;
         batchId: string;
         referencePath: string;
+        fixtureId: string;
         actorId: string;
+        decidedAt: string;
         state: string;
         published: string;
+        validationJob: string;
+        outbox: string;
+        checkpoint: number;
       }>(
-        `SELECT (SELECT count(*)::text FROM fixture WHERE source_ref=$1) AS fixtures, (SELECT batch_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "batchId", (SELECT reference_path FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "referencePath", (SELECT actor_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "actorId", (SELECT state::text FROM batch WHERE batch_id=$2) AS state, (SELECT count(*)::text FROM batch_item WHERE batch_id=$2 AND published_event_id IS NOT NULL) AS published`,
+        `SELECT (SELECT count(*)::text FROM fixture WHERE source_ref=$1) AS fixtures, (SELECT batch_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "batchId", (SELECT reference_path FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "referencePath", (SELECT fixture_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "fixtureId", (SELECT actor_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "actorId", (SELECT decided_at::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "decidedAt", (SELECT state::text FROM batch WHERE batch_id=$2) AS state, (SELECT count(*)::text FROM batch_item WHERE batch_id=$2 AND published_event_id IS NOT NULL) AS published, (SELECT state::text FROM background_job WHERE batch_id=$2 AND job_type='batch.validate') AS "validationJob", (SELECT count(*)::text FROM outbox_message WHERE body->>'batchId'=$2::text) AS outbox, (SELECT last_ordinal FROM batch_checkpoint WHERE batch_id=$2 AND phase='validating') AS checkpoint`,
         [input.sourceRef, batch.batchId],
       );
       expect(result.rows[0]).toEqual({
         fixtures: '1',
         batchId: batch.batchId,
         referencePath: 'fixtures.0',
+        fixtureId: expect.any(String),
         actorId: current.accountId,
+        decidedAt: expect.any(String),
         state: 'stored',
         published: '0',
+        validationJob: 'queued',
+        outbox: '1',
+        checkpoint: -1,
       });
+
+      const otherCompetition = await client.query<{ competitionId: string }>(
+        `INSERT INTO competition (name) VALUES ($1) RETURNING competition_id::text AS "competitionId"`,
+        [`${sourcePrefix}-other-competition`],
+      );
+      const crossCompetitionSourceRef = `${sourcePrefix}-other-competition-fixture`;
+      await client.query(
+        `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,source_version,source_revision)
+         VALUES ($1,$2::bigint,'2026','T20','club','mixed',6,'2026-01-01','2026-01-01','tie','1.1',1)`,
+        [crossCompetitionSourceRef, otherCompetition.rows[0]!.competitionId],
+      );
+      await expect(
+        repository.createCanonicalFixtureAndQueueMapping({
+          ...input,
+          sourceRef: crossCompetitionSourceRef,
+          referencePath: 'fixtures.1',
+          decisionKey: 'cross-competition',
+        }),
+      ).rejects.toBeInstanceOf(BatchReferenceMappingConflictError);
     });
   });
 });

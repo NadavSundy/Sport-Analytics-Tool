@@ -4,6 +4,7 @@ import type {
   BatchReviewRequest,
   BatchStatus,
   CurrentUserProfile,
+  fixtureProposalSchema,
 } from '@sport-analytics/contracts';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
@@ -40,7 +41,7 @@ type LoadState<T> =
 function hasFixtureProposal(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
   const record = value as { sourceId?: unknown; proposal?: unknown };
-  return typeof record.sourceId === 'string' && !!record.proposal;
+  return typeof record.sourceId === 'string' && fixtureProposalSchema.safeParse(record.proposal).success;
 }
 
 function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; children: ReactNode }) {
@@ -292,10 +293,12 @@ function ErrorGroups({ report }: { report: BatchReportResponse['data'] }) {
 
 function ReferenceResolution({
   batchReference,
+  packageVersion,
   item,
   refresh,
 }: {
   batchReference: string;
+  packageVersion: string;
   item: BatchReportItem;
   refresh(): Promise<void>;
 }) {
@@ -317,6 +320,7 @@ function ReferenceResolution({
             <>
               <p>No proposed match is available.</p>
               {resolution.entityType === 'fixture' &&
+              packageVersion === '1.1' &&
               hasFixtureProposal(resolution.submittedReference) ? (
                 <button
                   className="button button--primary"
@@ -572,6 +576,7 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
             <ReferenceResolution
               key={item.ordinal}
               batchReference={batchReference}
+              packageVersion={report.batch.source.packageVersion}
               item={item}
               refresh={load}
             />

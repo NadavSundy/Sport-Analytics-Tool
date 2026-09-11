@@ -88,6 +88,48 @@ describe('versioned season-upload contract', () => {
         ],
       }).success,
     ).toBe(false);
+    for (const field of [
+      'endDate',
+      'matchType',
+      'teamType',
+      'gender',
+      'ballsPerOver',
+      'outcome',
+      'sourceVersion',
+      'sourceRevision',
+    ]) {
+      const { [field]: _missing, ...incompleteProposal } = fixtureProposal;
+      expect(
+        seasonUploadPackageSchema.safeParse({
+          ...complete,
+          fixtures: [
+            fixture({ sourceId: 'cricsheet:fixture:1412526', proposal: incompleteProposal }),
+          ],
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      seasonUploadPackageSchema.safeParse({
+        ...complete,
+        fixtures: [
+          fixture({
+            sourceId: 'cricsheet:fixture:1412526',
+            proposal: { ...fixtureProposal, endDate: '2026-03-13' },
+          }),
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse({
+        ...complete,
+        fixtures: [
+          fixture({
+            sourceId: 'cricsheet:fixture:1412526',
+            proposal: { ...fixtureProposal, ballsPerOver: 0 },
+          }),
+        ],
+      }).success,
+    ).toBe(false);
   });
   test('accepts a fixture package using readable context without database keys', () => {
     const result = seasonUploadPackageSchema.safeParse(seasonPackage());

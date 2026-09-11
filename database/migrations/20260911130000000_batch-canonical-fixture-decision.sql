@@ -1,3 +1,4 @@
+-- Up Migration
 CREATE TABLE batch_canonical_fixture_decision (
   decision_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   batch_id bigint NOT NULL REFERENCES batch(batch_id) ON DELETE RESTRICT,

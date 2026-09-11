@@ -95,9 +95,9 @@ An administrator may use `POST /api/v1/batches/{batchReference}/canonical-fixtur
 version 1.1 fixture. The backend rechecks the source fixture immediately before insertion, records
 the reviewer, batch and reference path, then queues normal reference resolution and validation. It
 does not publish any staged delivery; unresolved teams and participants remain review prerequisites.
-New teams and participants cannot yet be created through this review flow. They must be established
-as canonical records before a reviewer creates the fixture, after which their references can be
-resolved by the normal revalidation pass.
+New teams, participants and seasons cannot yet be created through this review flow. They must be
+established as canonical records before a reviewer creates the fixture, after which their references
+can be resolved by the normal revalidation pass.
 
 ## Corrections and duplicates
 
