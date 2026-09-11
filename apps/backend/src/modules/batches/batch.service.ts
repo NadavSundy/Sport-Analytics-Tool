@@ -416,7 +416,9 @@ export function createBatchService(
     async list(account, query) {
       const cursor = decodeCursor(query.cursor, batchListCursorSchema);
       const records = await repository.listBatches({
-        ...(account.role === 'submitter' ? { submitterId: account.accountId } : {}),
+        ...(account.role === 'admin' && query.status === 'awaiting_review'
+          ? {}
+          : { submitterId: account.accountId }),
         ...(query.status ? { status: query.status } : {}),
         ...(cursor ? { beforeCreatedAt: cursor.createdAt, beforeBatchId: cursor.batchId } : {}),
         limit: query.limit + 1,
@@ -450,14 +452,16 @@ export function createBatchService(
         repository.listBatchReportItems(batch.batchId, { acceptedOnly: true, limit: 15 }),
       ]);
       const page = records.slice(0, query.limit);
-      const [batchStatus, errorGroups, resolution, fixtureSummaries] = await Promise.all([
-        status(batch),
-        repository.listBatchRuleGroups(batch.batchId),
-        repository.getBatchResolutionCounts(batch.batchId),
-        repository.listBatchFixtureSummaries(batch.batchId),
-      ]);
+      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
+        await Promise.all([
+          status(batch),
+          repository.listBatchRuleGroups(batch.batchId),
+          repository.countBlockingValidationErrors(batch.batchId),
+          repository.getBatchResolutionCounts(batch.batchId),
+          repository.listBatchFixtureSummaries(batch.batchId),
+        ]);
       const blockingReasons: string[] = [];
-      if (batchStatus.counts.rejected > 0) blockingReasons.push('Validation errors remain.');
+      if (blockingValidationErrors > 0) blockingReasons.push('Blocking validation errors remain.');
       if (batchStatus.counts.conflicting > 0) blockingReasons.push('Conflicting records remain.');
       if (resolution.ambiguous > 0) blockingReasons.push('Ambiguous references remain.');
       if (resolution.unresolved > 0) blockingReasons.push('Unresolved references remain.');
@@ -470,7 +474,7 @@ export function createBatchService(
             validation: {
               accepted: batchStatus.counts.accepted,
               rejected: batchStatus.counts.rejected,
-              blockingErrors: errorGroups.reduce((total, group) => total + group.count, 0),
+              blockingErrors: blockingValidationErrors,
               duplicate: batchStatus.counts.duplicate,
               conflicting: batchStatus.counts.conflicting,
             },
@@ -508,14 +512,16 @@ export function createBatchService(
         if (page.length < 1000) break;
         afterOrdinal = page.at(-1)!.ordinal;
       }
-      const [batchStatus, errorGroups, resolution, fixtureSummaries] = await Promise.all([
-        status(batch),
-        repository.listBatchRuleGroups(batch.batchId),
-        repository.getBatchResolutionCounts(batch.batchId),
-        repository.listBatchFixtureSummaries(batch.batchId),
-      ]);
+      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
+        await Promise.all([
+          status(batch),
+          repository.listBatchRuleGroups(batch.batchId),
+          repository.countBlockingValidationErrors(batch.batchId),
+          repository.getBatchResolutionCounts(batch.batchId),
+          repository.listBatchFixtureSummaries(batch.batchId),
+        ]);
       const blockingReasons = [
-        ...(batchStatus.counts.rejected > 0 ? ['Validation errors remain.'] : []),
+        ...(blockingValidationErrors > 0 ? ['Blocking validation errors remain.'] : []),
         ...(batchStatus.counts.conflicting > 0 ? ['Conflicting records remain.'] : []),
         ...(resolution.ambiguous > 0 ? ['Ambiguous references remain.'] : []),
         ...(resolution.unresolved > 0 ? ['Unresolved references remain.'] : []),
@@ -529,7 +535,7 @@ export function createBatchService(
             validation: {
               accepted: batchStatus.counts.accepted,
               rejected: batchStatus.counts.rejected,
-              blockingErrors: errorGroups.reduce((total, group) => total + group.count, 0),
+              blockingErrors: blockingValidationErrors,
               duplicate: batchStatus.counts.duplicate,
               conflicting: batchStatus.counts.conflicting,
             },

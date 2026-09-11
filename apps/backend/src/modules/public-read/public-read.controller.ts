@@ -1,59 +1,28 @@
 import {
   competitionListQuerySchema,
   competitorListQuerySchema,
-  FIXTURE_EVENT_EXPORT_LIMIT,
+  FIXTURE_EVENT_EXPORT_MAX_EVENTS,
   fixtureEventExportQuerySchema,
   fixtureEventListQuerySchema,
   fixtureListQuerySchema,
+  fixtureStatisticEventExportQuerySchema,
   participantFixtureListQuerySchema,
   participantListQuerySchema,
   seasonListQuerySchema,
 } from '@sport-analytics/contracts';
-import type { PublicEvent } from '@sport-analytics/contracts';
+import type { FixtureStatistic, PublicEvent } from '@sport-analytics/contracts';
 import type { Request, RequestHandler, Response } from 'express';
 import type { z } from 'zod';
 
-import { PublicReadInputError } from './public-read.errors';
+import type { FixtureStatisticsService } from '../statistics/fixture-statistics.service';
+import {
+  fixtureEventExportFilename,
+  normalizeExportEvent,
+  serializeFixtureEventsCsv,
+  type FixtureEventExportFilenameFilters,
+} from './fixture-event-export';
+import { FixtureEventExportTooLargeError, PublicReadInputError } from './public-read.errors';
 import type { PublicReadService } from './public-read.service';
-
-const fixtureEventCsvColumns = [
-  'eventId',
-  'fixtureId',
-  'competitionId',
-  'competitionName',
-  'inningsId',
-  'inningsOrdinal',
-  'sequenceNumber',
-  'overNumber',
-  'positionInOver',
-  'ballNumber',
-  'battingCompetitorId',
-  'battingCompetitorName',
-  'bowlingCompetitorId',
-  'bowlingCompetitorName',
-  'strikerParticipantId',
-  'strikerParticipantName',
-  'nonStrikerParticipantId',
-  'nonStrikerParticipantName',
-  'bowlerParticipantId',
-  'bowlerParticipantName',
-  'runsOffBat',
-  'runsExtras',
-  'runsTotal',
-  'runsNonBoundary',
-  'extrasWides',
-  'extrasNoBalls',
-  'extrasByes',
-  'extrasLegByes',
-  'extrasPenalty',
-  'wicketCount',
-  'wicketIds',
-  'wicketKinds',
-  'playersOutParticipantIds',
-  'playersOutParticipantNames',
-  'fielderParticipantIds',
-  'fielderParticipantNames',
-] as const;
 
 type AsyncHandler = (request: Request, response: Response) => Promise<void>;
 
@@ -70,6 +39,19 @@ function wrapPublicHandler(handler: AsyncHandler): RequestHandler {
         return;
       }
 
+      if (error instanceof FixtureEventExportTooLargeError) {
+        response.status(422).json({
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      // Any other failure, including one on a later export page, reaches the
+      // error handler before a file has been sent, so it can never produce a
+      // short export.
       next(error);
     });
   };
@@ -122,106 +104,19 @@ function sendNotFound(response: Response, resource: string): void {
   });
 }
 
-function escapeCsvCell(value: boolean | number | string | null): string {
-  let text = value === null ? '' : String(value);
-
-  // Prevent spreadsheet applications from interpreting public text as a formula.
-  if (/^[=+\-@]/.test(text)) {
-    text = `'${text}`;
-  }
-
-  return `"${text.replaceAll('"', '""')}"`;
+// The trace filters a statistic corresponds to, used only to name its export
+// file the same way the filtered export of that trace is named.
+function traceFilenameFilters(statistic: FixtureStatistic): FixtureEventExportFilenameFilters {
+  return statistic.scope === 'innings'
+    ? { inningsId: statistic.inningsId, competitorId: statistic.competitorId }
+    : { participantId: statistic.participantId };
 }
 
-function normalizeExportEvent(event: PublicEvent): PublicEvent {
-  return {
-    ...event,
-    extras: {
-      wides: event.extras.wides ?? 0,
-      noBalls: event.extras.noBalls ?? 0,
-      byes: event.extras.byes ?? 0,
-      legByes: event.extras.legByes ?? 0,
-      penalty: event.extras.penalty ?? 0,
-    },
-  };
-}
-
-function filenamePart(value: string | number): string {
-  return String(value).replace(/[^a-zA-Z0-9_-]+/g, '-');
-}
-
-function fixtureEventExportFilename(
-  fixtureId: string,
-  query: z.output<typeof fixtureEventExportQuerySchema>,
-): string {
-  const trace = [
-    query.inningsId ? `innings-${filenamePart(query.inningsId)}` : null,
-    query.competitorId ? `team-${filenamePart(query.competitorId)}` : null,
-    query.participantId ? `player-${filenamePart(query.participantId)}` : null,
-    query.overNumber !== undefined ? `over-${query.overNumber}` : null,
-    query.wicketKind ? `wicket-${filenamePart(query.wicketKind)}` : null,
-  ].filter((part): part is string => part !== null);
-
-  return `fixture-${filenamePart(fixtureId)}-${trace.length > 0 ? trace.join('-') : 'all'}-events.csv`;
-}
-
-function serializeFixtureEventsCsv(events: PublicEvent[]): string {
-  const rows = events.map((event) => {
-    const wickets = event.wickets;
-    const fielderParticipantIds = wickets.flatMap((wicket) =>
-      wicket.fielders.flatMap((fielder) =>
-        fielder.participantId === null ? [] : [fielder.participantId],
-      ),
-    );
-    const fielderParticipantNames = wickets.flatMap((wicket) =>
-      wicket.fielders.flatMap((fielder) =>
-        fielder.participantName === null ? [] : [fielder.participantName],
-      ),
-    );
-
-    const values: Array<boolean | number | string | null> = [
-      event.eventId,
-      event.fixtureId,
-      event.competitionId,
-      event.competitionName,
-      event.inningsId,
-      event.inningsOrdinal,
-      event.sequenceNumber,
-      event.overNumber,
-      event.positionInOver,
-      event.ballNumber,
-      event.battingCompetitorId,
-      event.battingCompetitorName,
-      event.bowlingCompetitorId,
-      event.bowlingCompetitorName,
-      event.strikerParticipantId,
-      event.strikerParticipantName,
-      event.nonStrikerParticipantId,
-      event.nonStrikerParticipantName,
-      event.bowlerParticipantId,
-      event.bowlerParticipantName,
-      event.runs.offBat,
-      event.runs.extras,
-      event.runs.total,
-      event.runs.nonBoundary,
-      event.extras.wides ?? 0,
-      event.extras.noBalls ?? 0,
-      event.extras.byes ?? 0,
-      event.extras.legByes ?? 0,
-      event.extras.penalty ?? 0,
-      wickets.length,
-      wickets.map((wicket) => wicket.wicketId).join('|'),
-      wickets.map((wicket) => wicket.kind).join('|'),
-      wickets.map((wicket) => wicket.playerOutParticipantId).join('|'),
-      wickets.map((wicket) => wicket.playerOutParticipantName).join('|'),
-      fielderParticipantIds.join('|'),
-      fielderParticipantNames.join('|'),
-    ];
-
-    return values.map(escapeCsvCell).join(',');
-  });
-
-  return [fixtureEventCsvColumns.join(','), ...rows].join('\r\n').concat('\r\n');
+function sameEventOrder(events: PublicEvent[], eventIds: string[]): boolean {
+  return (
+    events.length === eventIds.length &&
+    events.every((event, index) => event.eventId === eventIds[index])
+  );
 }
 
 export function createPublicReadController(service: PublicReadService) {
@@ -319,12 +214,12 @@ export function createPublicReadController(service: PublicReadService) {
         return;
       }
 
-      const result = await service.listFixtureEvents(getPathParameter(request, 'fixtureId'), {
-        ...query,
-        limit: FIXTURE_EVENT_EXPORT_LIMIT,
-      });
+      const events = await service.exportFixtureEvents(
+        getPathParameter(request, 'fixtureId'),
+        query,
+      );
 
-      if (!result) {
+      if (!events) {
         sendNotFound(response, 'Fixture');
         return;
       }
@@ -332,7 +227,7 @@ export function createPublicReadController(service: PublicReadService) {
       response
         .status(200)
         .type('application/json')
-        .json({ data: result.data.map(normalizeExportEvent) });
+        .json({ data: events.map(normalizeExportEvent) });
     }),
 
     exportFixtureEventsCsv: wrapPublicHandler(async (request, response) => {
@@ -343,12 +238,9 @@ export function createPublicReadController(service: PublicReadService) {
       }
 
       const fixtureId = getPathParameter(request, 'fixtureId');
-      const result = await service.listFixtureEvents(fixtureId, {
-        ...query,
-        limit: FIXTURE_EVENT_EXPORT_LIMIT,
-      });
+      const events = await service.exportFixtureEvents(fixtureId, query);
 
-      if (!result) {
+      if (!events) {
         sendNotFound(response, 'Fixture');
         return;
       }
@@ -357,7 +249,7 @@ export function createPublicReadController(service: PublicReadService) {
         .status(200)
         .type('text/csv')
         .attachment(fixtureEventExportFilename(fixtureId, query))
-        .send(serializeFixtureEventsCsv(result.data));
+        .send(serializeFixtureEventsCsv(events));
     }),
 
     getFixtureEvent: wrapPublicHandler(async (request, response) => {
@@ -440,6 +332,102 @@ export function createPublicReadController(service: PublicReadService) {
       }
 
       response.status(200).json(result);
+    }),
+  };
+}
+
+/**
+ * Calculation-trace exports: exactly the events a trace displays, so the file
+ * reproduces the figure on the page it was downloaded from.
+ */
+export function createFixtureStatisticEventExportController(
+  service: Pick<PublicReadService, 'exportFixtureEvents'>,
+  fixtureStatisticsService: Pick<FixtureStatisticsService, 'getFixtureStatistic'>,
+) {
+  /**
+   * The statistic's own contributing events, resolved through the derivation
+   * the trace page renders, then read in full through the paging export.
+   * Returns null when a response has already been sent.
+   */
+  async function readStatisticTraceEvents(
+    request: Request,
+    response: Response,
+  ): Promise<{ fixtureId: string; events: PublicEvent[]; statistic: FixtureStatistic } | null> {
+    const query = parseQuery(fixtureStatisticEventExportQuerySchema, request, response);
+    if (!query) {
+      return null;
+    }
+
+    const fixtureId = getPathParameter(request, 'fixtureId');
+    const statistic = await fixtureStatisticsService.getFixtureStatistic(
+      fixtureId,
+      getPathParameter(request, 'statisticId'),
+      { includeContributors: true },
+    );
+    if (!statistic) {
+      sendNotFound(response, 'Fixture statistic');
+      return null;
+    }
+
+    const tracedEventIds = (statistic.contributingEvents ?? []).map((event) => event.eventId);
+    if (tracedEventIds.length > FIXTURE_EVENT_EXPORT_MAX_EVENTS) {
+      throw new FixtureEventExportTooLargeError(FIXTURE_EVENT_EXPORT_MAX_EVENTS);
+    }
+
+    const events =
+      tracedEventIds.length === 0
+        ? []
+        : await service.exportFixtureEvents(fixtureId, { eventIds: tracedEventIds });
+    if (!events) {
+      sendNotFound(response, 'Fixture');
+      return null;
+    }
+
+    // The trace and the event rows are read separately, so a correction
+    // accepted between the two reads could make them differ. The file must
+    // then not be sent: it would silently disagree with the trace it names.
+    if (!sameEventOrder(events, tracedEventIds)) {
+      response.status(409).json({
+        error: {
+          code: 'EXPORT_TRACE_CHANGED',
+          message:
+            'The accepted events changed while this export was prepared, so it no longer matches the calculation trace. Reload the trace and try again.',
+        },
+      });
+      return null;
+    }
+
+    return { fixtureId, events, statistic };
+  }
+
+  return {
+    exportFixtureStatisticEventsJson: wrapPublicHandler(async (request, response) => {
+      const trace = await readStatisticTraceEvents(request, response);
+
+      if (!trace) {
+        return;
+      }
+
+      response
+        .status(200)
+        .type('application/json')
+        .json({ data: trace.events.map(normalizeExportEvent) });
+    }),
+
+    exportFixtureStatisticEventsCsv: wrapPublicHandler(async (request, response) => {
+      const trace = await readStatisticTraceEvents(request, response);
+
+      if (!trace) {
+        return;
+      }
+
+      response
+        .status(200)
+        .type('text/csv')
+        .attachment(
+          fixtureEventExportFilename(trace.fixtureId, traceFilenameFilters(trace.statistic)),
+        )
+        .send(serializeFixtureEventsCsv(trace.events));
     }),
   };
 }

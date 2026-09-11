@@ -1,8 +1,8 @@
 # Dataset exports
 
-Basic-tier dataset exports let an analyst download a bounded, filtered slice of accepted cricket
-delivery data without scraping the public interface. They require no sign-in and are intended for
-small, immediate analysis tasks.
+Basic-tier dataset exports let an analyst download the complete filtered set of accepted cricket
+delivery data for a fixture without scraping the public interface. They require no sign-in and are
+intended for immediate analysis tasks.
 
 ## Fixture-event slice
 
@@ -21,14 +21,36 @@ collection](../api/public-read.md#fixture-event-endpoints). For example:
 GET /api/v1/fixtures/481/events/export.csv?participantId=30&overNumber=4
 ```
 
-Exports are ordered by innings ordinal, event sequence number, then event identifier. They contain
-at most **100 events**. `cursor` and `limit` are intentionally unsupported, so a request containing
-either is rejected with HTTP `400`; use the normal paginated public-read endpoint for browsing more
-than one bounded slice.
+Exports are ordered by innings ordinal, event sequence number, then event identifier, and contain
+every event the filters match. The server follows the event collection's cursor until it is
+exhausted; `cursor` and `limit` are therefore not accepted, and a request containing either is
+rejected with HTTP `400`.
+
+An export is limited to **5,000 events** so that it stays synchronous; the largest fixture in the
+imported corpus has 346. An export over that limit fails with HTTP `422` and `EXPORT_TOO_LARGE`
+rather than downloading a partial file, and a failure part of the way through reading returns an
+error rather than the rows read so far. Before issue #467 an export silently stopped at the first
+100 events, which cut short most innings.
 
 The JSON response is `{ "data": [...] }`. The CSV response has `Content-Type: text/csv; charset=utf-8`
-and downloads as `fixture-{fixtureId}-events.csv`. Its fixed columns include the event's stable IDs,
-delivery position, competitor and participant IDs, runs, extras and flattened wicket details.
+and downloads with a name identifying its filters, such as
+`fixture-481-player-30-over-4-events.csv`. Its fixed columns include the event's stable IDs, delivery
+position, competitor and participant IDs, runs, extras and flattened wicket details.
+
+## Calculation-trace export
+
+A calculation trace downloads exactly the events it displays:
+
+```http
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv
+```
+
+The rows are the statistic's contributing events, so an innings trace export reproduces the innings'
+delivery runs and a player trace export contains only the standard-innings deliveries that player
+faced or bowled. The filtered export with `participantId` is wider: it also includes deliveries where
+the player was the non-striker, was dismissed or fielded, and super-over deliveries. See the
+[public read reference](../api/public-read.md#calculation-trace-exports).
 
 ## Data safety and scope
 
@@ -37,9 +59,10 @@ private account information, submitter identities, submission IDs, source/revisi
 audit timestamps or secrets. It is a current accepted-data view, not an immutable release or
 checksum-backed snapshot.
 
-The public calculation trace provides labelled CSV and JSON controls for the displayed event slice.
-It carries the trace's visible innings/team or player context into the export request without exposing
-pagination or technical-only controls.
+The public calculation trace provides labelled CSV and JSON controls that download the calculation-
+trace export for that statistic. The control states how many events the file contains, announces
+while the export is being prepared and once it has downloaded, and shows the server's reason when an
+export fails; it exposes no pagination or technical-only controls.
 
 ## Versioned dataset releases
 
@@ -87,4 +110,5 @@ so a prior version and checksum always resolve to the same retained artifact.
 
 The dataset-release catalogue and download documentation was updated with the assistance of
 Codex[GPT-5]. The administrator publication workflow was documented with the assistance of
-Codex[GPT-5.6 Sol].
+Codex[GPT-5.6 Sol]. The complete-export and calculation-trace export documentation for issue #467 was
+updated with the assistance of Claude Code[Claude Opus 5].

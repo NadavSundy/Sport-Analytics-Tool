@@ -227,7 +227,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     API_BASE_PATH,
     createDatasetReleaseRouter(verifyAccessToken, synchronizeAccount, datasetReleaseService),
   );
-  app.use(API_BASE_PATH, createPublicReadRouter(publicReadService));
+  app.use(API_BASE_PATH, createPublicReadRouter(publicReadService, fixtureStatisticsService));
   app.use(API_BASE_PATH, createWeatherRouter(weatherService, fixtureWeatherService));
 
   app.use('/api', (request, response, next) => {

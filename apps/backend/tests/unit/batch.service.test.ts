@@ -52,6 +52,7 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
       .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
     listBatchReportItems: vi.fn().mockResolvedValue([]),
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
+    countBlockingValidationErrors: vi.fn().mockResolvedValue(0),
     getBatchResolutionCounts: vi.fn().mockResolvedValue({
       resolved: 0,
       ambiguous: 0,
@@ -259,6 +260,50 @@ describe('batch result reporting service', () => {
     expect(response.data.counts).toMatchObject(result);
   });
 
+  test('reports ordinary rejected records without blocking approval of the accepted subset', async () => {
+    const batches = repository({
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, state: 'awaiting_review' }),
+      getBatchProgress: vi
+        .fn()
+        .mockResolvedValue({ total: 2, processed: 2, accepted: 1, rejected: 1 }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        accepted: 1,
+        rejected: 1,
+        unresolved: 0,
+        duplicate: 0,
+        conflicting: 0,
+      }),
+      listBatchRuleGroups: vi
+        .fn()
+        .mockResolvedValue([{ ruleCode: 'CRICKET_BUSINESS_RULE_FAILED', count: 1 }]),
+      countBlockingValidationErrors: vi.fn().mockResolvedValue(0),
+      getBatchResolutionCounts: vi.fn().mockResolvedValue({
+        resolved: 2,
+        ambiguous: 0,
+        unresolved: 0,
+        invalid: 0,
+        proposed: 0,
+      }),
+    });
+
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getReport(
+      createTestAccount({ role: 'admin' }),
+      persistedBatch.batchReference,
+      { limit: 50 },
+    );
+
+    expect(response.data.errorGroups).toEqual([
+      { ruleCode: 'CRICKET_BUSINESS_RULE_FAILED', count: 1 },
+    ]);
+    expect(response.data.reviewSummary).toMatchObject({
+      validation: { accepted: 1, rejected: 1, blockingErrors: 0 },
+      approvalBlocked: false,
+      blockingReasons: [],
+    });
+  });
+
   test('returns every item fault with source location, cricket context and record traceability', async () => {
     const batches = repository({
       findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
@@ -371,7 +416,7 @@ describe('batch result reporting service', () => {
     ).resolves.toMatchObject({ data: { batchReference: persistedBatch.batchReference } });
   });
 
-  test('lists submitter batches by owner and administrator review queues globally', async () => {
+  test('lists personal history by owner while keeping administrator review queues global', async () => {
     const listBatches = vi.fn().mockResolvedValue([]);
     const service = createBatchService(
       {} as BatchPayloadStorageService,
@@ -379,6 +424,9 @@ describe('batch result reporting service', () => {
     );
 
     await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
+    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
+
+    await service.list(createTestAccount({ accountId: '7', role: 'admin' }), { limit: 50 });
     expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
 
     await service.list(
@@ -398,6 +446,7 @@ describe('batch result reporting service', () => {
         limit: 50,
         status: 'awaiting_review',
       });
+
       expect(listBatches).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: 'awaiting_review', limit: 51 }),
       );
