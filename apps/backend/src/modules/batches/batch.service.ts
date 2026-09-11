@@ -416,7 +416,7 @@ export function createBatchService(
     async list(account, query) {
       const cursor = decodeCursor(query.cursor, batchListCursorSchema);
       const records = await repository.listBatches({
-...(account.role === 'admin' && query.status === 'awaiting_review'
+        ...(account.role === 'admin' && query.status === 'awaiting_review'
           ? {}
           : { submitterId: account.accountId }),
         ...(query.status ? { status: query.status } : {}),
