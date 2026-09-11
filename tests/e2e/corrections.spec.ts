@@ -40,17 +40,16 @@ const events = [
   },
 ];
 
-function currentUser(role: 'viewer' | 'submitter') {
+function currentUser(role: 'viewer' | 'submitter' | 'admin') {
   return {
     user: {
       id: '17',
       subject: 'approved-user',
       displayName: 'Submitter User',
       role,
-      approvalState: role === 'submitter' ? 'approved' : 'pending',
-      requestedCompetition:
-        role === 'submitter' ? { competitionId: '5', name: 'Premier T20' } : null,
-      competitionIds: role === 'submitter' ? ['5'] : [],
+      approvalState: role === 'viewer' ? 'pending' : 'approved',
+      requestedCompetition: role === 'viewer' ? null : { competitionId: '5', name: 'Premier T20' },
+      competitionIds: role === 'viewer' ? [] : ['5'],
     },
   };
 }
@@ -129,7 +128,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('authorised submitter corrects an event by keyboard and sees refreshed statistics', async ({
+test('administrator direct-import correction works by keyboard and refreshes statistics', async ({
   page,
 }) => {
   let statisticsRequests = 0;
@@ -139,10 +138,10 @@ test('authorised submitter corrects an event by keyboard and sees refreshed stat
     const url = new URL(request.url());
 
     if (url.pathname.endsWith('/auth/me')) {
-      await fulfill(route, 200, currentUser('submitter'));
+      await fulfill(route, 200, currentUser('admin'));
       return;
     }
-    if (url.pathname.endsWith('/fixtures') && url.searchParams.has('competitionId')) {
+    if (url.pathname.endsWith('/fixtures')) {
       await fulfill(route, 200, { data: [fixture], pagination: { nextCursor: null } });
       return;
     }
@@ -232,7 +231,9 @@ test('authorised submitter corrects an event by keyboard and sees refreshed stat
   ).toEqual([]);
 });
 
-test('correction validation remains associated with the relevant input', async ({ page }) => {
+test('administrator correction validation remains associated with the relevant input', async ({
+  page,
+}) => {
   let statisticsRequests = 0;
 
   await page.route('**/api/v1/**', async (route) => {
@@ -240,8 +241,8 @@ test('correction validation remains associated with the relevant input', async (
     const url = new URL(request.url());
 
     if (url.pathname.endsWith('/auth/me')) {
-      await fulfill(route, 200, currentUser('submitter'));
-    } else if (url.pathname.endsWith('/fixtures') && url.searchParams.has('competitionId')) {
+      await fulfill(route, 200, currentUser('admin'));
+    } else if (url.pathname.endsWith('/fixtures')) {
       await fulfill(route, 200, { data: [fixture], pagination: { nextCursor: null } });
     } else if (url.pathname.endsWith('/submissions') && request.method() === 'POST') {
       await fulfill(route, 201, {
