@@ -48,8 +48,10 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('reviewer inspects and safely rejects a staged batch @mobile', async ({ page }, testInfo) => {
-  let status: 'awaiting_review' | 'rejected' = 'awaiting_review';
+test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
+  page,
+}, testInfo) => {
+  let status: 'awaiting_review' | 'published' = 'awaiting_review';
   const batch = () => ({
     batchReference: reference,
     competitionId: '5',
@@ -99,13 +101,13 @@ test('reviewer inspects and safely rejects a staged batch @mobile', async ({ pag
         validation: {
           accepted: 19_999,
           rejected: 1,
-          blockingErrors: 1,
+          blockingErrors: 0,
           duplicate: 0,
           conflicting: 0,
         },
         resolution: { resolved: 20_000, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
-        approvalBlocked: true,
-        blockingReasons: ['Validation errors remain.'],
+        approvalBlocked: false,
+        blockingReasons: [],
       },
       fixtureSummaries: [
         {
@@ -188,10 +190,10 @@ test('reviewer inspects and safely rejects a staged batch @mobile', async ({ pag
   await page.route(`**/api/v1/batches/${reference}/review`, async (route) => {
     expect(route.request().headers().authorization).toBe('Bearer reviewer-e2e-token');
     expect(route.request().postDataJSON()).toEqual({
-      decision: 'rejected',
-      reason: 'Source totals do not reconcile.',
+      decision: 'approved',
+      reason: 'Publish the independently accepted records.',
     });
-    status = 'rejected';
+    status = 'published';
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -207,23 +209,25 @@ test('reviewer inspects and safely rejects a staged batch @mobile', async ({ pag
   await expect(page.getByText('Lions vs Bears · 2026-09-01')).toBeVisible();
   await page.getByText(/1 rejection/).click();
   await expect(page.getByText('Runs total does not match its components.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
+  await expect(page.getByText('Only the accepted subset will publish')).toBeVisible();
+  const approve = page.getByRole('button', { name: 'Approve and publish' });
+  await expect(approve).toBeEnabled();
 
-  await page.getByLabel(/Reason/).fill('Source totals do not reconcile.');
-  const reject = page.getByRole('button', { name: 'Reject batch' });
-  await reject.click();
-  const dialog = page.getByRole('dialog', { name: 'Confirm reject batch' });
+  await page.getByLabel(/Reason/).fill('Publish the independently accepted records.');
+  await approve.click();
+  const dialog = page.getByRole('dialog', { name: 'Confirm approve and publish' });
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button', { name: 'Confirm reject batch' })).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'Confirm approve and publish' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
-  await expect(reject).toBeFocused();
-  await reject.click();
-  await dialog.getByRole('button', { name: 'Confirm reject batch' }).click();
-  await expect(page.getByText('Current state: Rejected')).toBeVisible();
+  await expect(approve).toBeFocused();
+  await approve.click();
+  await dialog.getByRole('button', { name: 'Confirm approve and publish' }).click();
+  await expect(page.getByText('Current state: Published')).toBeVisible();
+  await expect(page.getByText('Runs total does not match its components.')).toBeVisible();
 
   expect(
     await page.evaluate(

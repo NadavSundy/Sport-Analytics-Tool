@@ -569,6 +569,18 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               </ul>
             </div>
           ) : null}
+          {!report.reviewSummary.approvalBlocked && report.batch.counts.rejected > 0 ? (
+            <div className="state-message" role="status">
+              <strong>Only the accepted subset will publish</strong>
+              <p>
+                Approving publishes {report.batch.counts.accepted} accepted{' '}
+                {report.batch.counts.accepted === 1 ? 'record' : 'records'}. The{' '}
+                {report.batch.counts.rejected} rejected{' '}
+                {report.batch.counts.rejected === 1 ? 'record remains' : 'records remain'}{' '}
+                unpublished and retained in this report.
+              </p>
+            </div>
+          ) : null}
           <label htmlFor="review-reason">
             Reason <span>(required; corrections and rejections need at least 10 characters)</span>
           </label>
