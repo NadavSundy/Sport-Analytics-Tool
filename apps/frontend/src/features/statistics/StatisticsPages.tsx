@@ -2,11 +2,14 @@ import type {
   FixtureOutcome,
   FixtureStatistic,
   FixtureStatistics,
+  ParticipantAggregateBowling,
+  ParticipantAggregates,
+  ParticipantCareerAggregate,
   ParticipantFixtureBatting,
   ParticipantFixtureBowling,
   StatisticContributingEvent,
 } from '@sport-analytics/contracts';
-import { Component, useCallback, useId, type ElementType, type ReactNode } from 'react';
+import { useCallback, useId, type ElementType, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../../api/public-read';
 import {
@@ -16,6 +19,7 @@ import {
   RecordFacts,
   RelatedLinks,
 } from '../browse/RecordDetail';
+import { SectionBoundary, SectionError } from '../browse/SectionBoundary';
 import { usePublicData } from '../browse/usePublicData';
 import { EventExportControls } from './EventExportControls';
 
@@ -67,7 +71,7 @@ export function PlayerPerformance({
   showUnavailable = false,
 }: {
   batting: ParticipantFixtureBatting | null;
-  bowling: ParticipantFixtureBowling | null;
+  bowling: ParticipantFixtureBowling | ParticipantAggregateBowling | null;
   showUnavailable?: boolean;
 }) {
   return (
@@ -95,7 +99,7 @@ export function PlayerPerformance({
           <MetricList>
             <StatisticMetric label="Runs conceded" value={bowling.runsConceded} />
             <StatisticMetric label="Legal balls" value={bowling.legalBallsBowled} />
-            <StatisticMetric label="Overs" value={bowling.oversBowled} />
+            <StatisticMetric label="Overs" value={bowling.oversBowled ?? 'Not available'} />
             <StatisticMetric label="Economy rate" value={bowling.economyRate ?? 'Not available'} />
             <StatisticMetric label="Wickets" value={bowling.wicketsTaken} />
           </MetricList>
@@ -282,58 +286,16 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
   );
 }
 
-function StatisticsSectionError({ reason, retry }: { reason?: string; retry(): void }) {
+function StatisticsSectionError({ reason, retry }: { reason: string; retry(): void }) {
   return (
-    <div className="state-message state-message--error" role="alert">
-      <h3>Match statistics could not be loaded</h3>
-      <p>Published match statistics could not be requested. Try this section again.</p>
-      {reason ? <p>{reason}</p> : null}
-      <button
-        aria-label="Retry match statistics"
-        className="button button--secondary"
-        onClick={retry}
-        type="button"
-      >
-        Try again
-      </button>
-    </div>
+    <SectionError
+      description="Published match statistics could not be requested. Try this section again."
+      reason={reason}
+      retry={retry}
+      retryLabel="Retry match statistics"
+      title="Match statistics could not be loaded"
+    />
   );
-}
-
-/**
- * The application mounts no error boundary, so an exception raised while the
- * published statistics are being displayed would otherwise unmount the match
- * overview and leave the reader a blank section with no error and no retry.
- * This boundary keeps such a failure inside the statistics section and gives it
- * the same actionable error state as a failed request.
- */
-class StatisticsSectionBoundary extends Component<
-  { children: ReactNode; onRetry(): void },
-  { failed: boolean }
-> {
-  override state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  private retry = () => {
-    this.setState({ failed: false });
-    this.props.onRetry();
-  };
-
-  override render() {
-    if (this.state.failed) {
-      return (
-        <StatisticsSectionError
-          reason="The published statistics could not be displayed."
-          retry={this.retry}
-        />
-      );
-    }
-
-    return this.props.children;
-  }
 }
 
 export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) {
@@ -365,11 +327,135 @@ export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) 
       ) : null}
 
       {state.status === 'ready' ? (
-        <StatisticsSectionBoundary onRetry={state.reload}>
+        <SectionBoundary
+          onRetry={state.reload}
+          renderError={(retry) => (
+            <StatisticsSectionError
+              reason="The published statistics could not be displayed."
+              retry={retry}
+            />
+          )}
+        >
           <StatisticsResults headingLevel="h3" statistics={state.data.data} />
-        </StatisticsSectionBoundary>
+        </SectionBoundary>
       ) : null}
     </section>
+  );
+}
+
+function ParticipantCareerResults({ aggregates }: { aggregates: ParticipantAggregates }) {
+  const noticesHeadingId = useId();
+  // Selected, not calculated: every figure below is the career level exactly as
+  // the aggregate endpoint derived it.
+  const career = aggregates.statistics.find(
+    (statistic): statistic is ParticipantCareerAggregate => statistic.scope === 'career',
+  );
+
+  return (
+    <>
+      {aggregates.warnings.length > 0 ? (
+        <section aria-labelledby={noticesHeadingId} className="statistics-warnings">
+          <h3 id={noticesHeadingId}>Data notices</h3>
+          <ul>
+            {aggregates.warnings.map((warning, index) => (
+              <li key={`${warning.code}-${index}`}>{warning.message}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {career ? (
+        <div className="statistic-card participant-career-card">
+          <header className="statistic-card__heading">
+            <div>
+              <p className="record-list__meta">Super overs excluded</p>
+              <h3>Across all published matches</h3>
+            </div>
+            <p className={`statistics-status statistics-status--${aggregates.status}`}>
+              {aggregates.status === 'complete' ? 'Complete data' : 'Partial data'}
+            </p>
+          </header>
+          <PlayerPerformance batting={career.batting} bowling={career.bowling} showUnavailable />
+          <p className="statistic-card__source-count">
+            Based on {career.sourceEventCount}{' '}
+            {career.sourceEventCount === 1 ? 'accepted event' : 'accepted events'} from{' '}
+            {career.fixtureCount} {career.fixtureCount === 1 ? 'match' : 'matches'} in which this
+            player batted or bowled.
+          </p>
+        </div>
+      ) : (
+        <div className="state-message" role="status">
+          <h3>No career totals available</h3>
+          <p>No career batting or bowling figures are published for this player.</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Career figures for the player page, from the participant aggregate endpoint.
+ *
+ * The request is independent of the match history beside it: each section owns
+ * its loading, empty and error states, so a failure in one never hides the
+ * other. The endpoint returns every requested level in one response and does
+ * not page, so there is no cursor to follow.
+ */
+export function ParticipantCareerOverview({ participantId }: { participantId: string }) {
+  const headingId = useId();
+  const load = useCallback(
+    (signal: AbortSignal) =>
+      publicReadApi.getParticipantAggregates(participantId, 'career', signal),
+    [participantId],
+  );
+  const state = usePublicData(load, participantId);
+
+  return (
+    <section aria-labelledby={headingId} className="related-collection">
+      <div className="statistics-section-heading">
+        <div>
+          <p className="eyebrow">Published player record</p>
+          <h2 id={headingId}>Career totals</h2>
+        </div>
+      </div>
+
+      {state.status === 'loading' ? (
+        <div className="state-message" role="status">
+          <h3>Loading career totals</h3>
+          <p>The published career batting and bowling figures are being requested.</p>
+        </div>
+      ) : null}
+
+      {state.status === 'error' ? (
+        <CareerSectionError reason={state.error.message} retry={state.reload} />
+      ) : null}
+
+      {state.status === 'ready' ? (
+        <SectionBoundary
+          onRetry={state.reload}
+          renderError={(retry) => (
+            <CareerSectionError
+              reason="The published career totals could not be displayed."
+              retry={retry}
+            />
+          )}
+        >
+          <ParticipantCareerResults aggregates={state.data.data} />
+        </SectionBoundary>
+      ) : null}
+    </section>
+  );
+}
+
+function CareerSectionError({ reason, retry }: { reason: string; retry(): void }) {
+  return (
+    <SectionError
+      description="Published career totals could not be requested. Try this section again."
+      reason={reason}
+      retry={retry}
+      retryLabel="Retry career totals"
+      title="Career totals could not be loaded"
+    />
   );
 }
 

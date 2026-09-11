@@ -50,6 +50,15 @@ the complete fixture overview and present readable competition, season, date, ma
 role context with available batting and bowling figures. The history section owns its loading,
 empty, error, retry, and cursor-pagination states, while partial and unavailable figures are stated
 without deriving aggregate player statistics in presentation code.
+Beside the history, a career totals section requests
+`/api/v1/participants/:participantId/statistics?scope=career` and presents the career batting and
+bowling figures exactly as that endpoint derives them, with its completeness state and data notices.
+The endpoint returns one resource rather than a page, so there is no cursor to follow. The two
+sections are mounted together so their requests are issued concurrently, and each owns its loading,
+empty, error, and retry states, so a failure in one never hides the other. Both sections sit inside
+the shared section error boundary, which keeps an exception while displaying either one inside that
+section with an actionable retry instead of unmounting the page. Batting average and highest score
+are not shown: the aggregate endpoint does not derive them.
 
 ## Authentication routes
 
@@ -79,3 +88,4 @@ Codex[GPT-5.6 Sol].
 The fixture-weather overview behavior was documented with the assistance of Codex[GPT-5].
 The dataset-release catalogue and download experience was documented with the assistance of
 Codex[GPT-5].
+The player career totals behaviour was documented with the assistance of Claude Code[Claude Opus 5].
