@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ApiContractError,
   downloadFixtureEventExport,
+  fixtureEventExportFilename,
   type FixtureEventExportFilters,
   type FixtureEventExportFormat,
 } from '../../api/public-read';
@@ -37,7 +38,7 @@ export function EventExportControls({
       const objectUrl = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = `fixture-${fixtureId}-events.${format}`;
+      link.download = fixtureEventExportFilename(fixtureId, format, filters);
       link.click();
       URL.revokeObjectURL(objectUrl);
     } catch (caughtError) {

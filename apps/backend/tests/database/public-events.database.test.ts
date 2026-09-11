@@ -387,17 +387,28 @@ describe.sequential('public events database API', () => {
     expect(response.body.data[0]).toMatchObject({
       eventId: current.orderedEventIds[1],
       fixtureId: current.fixtureId,
+      competitionId: current.competitionId,
+      competitionName: `${sourcePrefix}-competition`,
       inningsId: current.firstInningsId,
       battingCompetitorId: current.firstCompetitorId,
+      battingCompetitorName: `${sourcePrefix}-first-team`,
       bowlingCompetitorId: current.secondCompetitorId,
+      bowlingCompetitorName: `${sourcePrefix}-second-team`,
+      strikerParticipantId: current.strikerId,
+      strikerParticipantName: `striker ${sourcePrefix}`,
+      nonStrikerParticipantId: current.nonStrikerId,
+      nonStrikerParticipantName: `non-striker ${sourcePrefix}`,
       bowlerParticipantId: current.bowlerId,
+      bowlerParticipantName: `bowler ${sourcePrefix}`,
       wickets: [
         {
           kind: 'caught',
           playerOutParticipantId: current.strikerId,
+          playerOutParticipantName: `striker ${sourcePrefix}`,
           fielders: [
             {
               participantId: current.bowlerId,
+              participantName: `bowler ${sourcePrefix}`,
               isSubstitute: false,
             },
           ],

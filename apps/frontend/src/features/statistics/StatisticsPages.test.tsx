@@ -383,7 +383,7 @@ describe('public fixture statistics pages', () => {
     renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Wanderers innings 1 total' }),
+      await screen.findByRole('heading', { level: 1, name: 'Wanderers innings 0 total' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Delivery 1' })).toBeInTheDocument();
     expect(screen.queryByText('event-1')).not.toBeInTheDocument();
@@ -409,6 +409,7 @@ describe('public fixture statistics pages', () => {
 
   it('exports the visible innings trace as labelled CSV or JSON without pagination filters', async () => {
     const exportBlob = new Blob(['event data'], { type: 'text/csv' });
+    const downloadedFilenames: string[] = [];
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/events/export.')) {
@@ -444,7 +445,11 @@ describe('public fixture statistics pages', () => {
       createObjectURL: vi.fn(() => 'blob:event-data'),
       revokeObjectURL: vi.fn(),
     });
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      downloadedFilenames.push(this.download);
+    });
 
     renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
 
@@ -468,6 +473,10 @@ describe('public fixture statistics pages', () => {
     );
     expect(fetchMock.mock.calls.flatMap(([url]) => String(url))).not.toContain('cursor=');
     expect(fetchMock.mock.calls.flatMap(([url]) => String(url))).not.toContain('limit=');
+    expect(downloadedFilenames).toEqual([
+      'fixture-fixture-1-innings-innings-1-team-team-1-events.csv',
+      'fixture-fixture-1-innings-innings-1-team-team-1-events.json',
+    ]);
   });
 
   it('explains an invalid export response', async () => {

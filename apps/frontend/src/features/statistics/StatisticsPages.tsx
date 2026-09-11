@@ -134,7 +134,7 @@ function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {
         <div>
           <p className="record-list__meta">
             {statistic.scope === 'innings'
-              ? `Innings ${statistic.inningsOrdinal + 1}`
+              ? `Innings ${statistic.inningsOrdinal}`
               : 'Player performance'}
           </p>
           <h3>
@@ -404,7 +404,7 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
   return (
     <li className="event-trace">
       <header>
-        <p className="record-list__meta">Innings {event.inningsOrdinal + 1}</p>
+        <p className="record-list__meta">Innings {event.inningsOrdinal}</p>
         <h3>Delivery {event.sequenceNumber}</h3>
       </header>
       <dl>
@@ -443,7 +443,7 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
   const fixtureId = encodeURIComponent(statistic.fixtureId);
   const title =
     statistic.scope === 'innings'
-      ? `${statistic.competitorName} innings ${statistic.inningsOrdinal + 1} total`
+      ? `${statistic.competitorName} innings ${statistic.inningsOrdinal} total`
       : `${statistic.participantName} performance`;
   const contributingEvents = statistic.contributingEvents ?? [];
   const exportFilters =
