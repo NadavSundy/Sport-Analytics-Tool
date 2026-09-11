@@ -6,9 +6,9 @@ separate from the synchronous [direct event submission](submissions.md)
 contract. A package is stored and resolved before it can become staged delivery
 items; this page defines the submitted shape, not a published-event API.
 
-The initial contract version is **`1.0`**. Every JSON package and every
-multi-file manifest must declare `contractVersion: "1.0"`. A receiver must
-reject an unsupported version rather than attempting a best-effort parse.
+Version **`1.0`** remains accepted for matching existing canonical fixtures.
+Version **`1.1`** adds a required fixture proposal. A receiver rejects
+unsupported versions rather than attempting a best-effort parse.
 
 ## Templates
 
@@ -78,6 +78,14 @@ JSON-array position, CSV row number, manifest-file order, nor `ballLabel` is
 used as an identity or ordering key. A printed label is optional display data,
 so a no-ball or wide cannot change identity merely by repeating a legal-ball
 label.
+
+## Fixture proposals in version 1.1
+
+A `1.1` fixture must retain its stable fixture source ID and include a complete
+`proposal`. The proposal carries `endDate`, `matchType`, `teamType`, `gender`,
+`ballsPerOver`, `outcome`, `sourceVersion`, and `sourceRevision`. It is rejected
+if absent, malformed, or if its end date precedes the fixture date. Existing
+`1.0` packages remain valid for resolution against existing canonical records.
 
 ## Corrections and duplicates
 
