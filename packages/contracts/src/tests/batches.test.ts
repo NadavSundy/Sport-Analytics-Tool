@@ -146,6 +146,11 @@ describe('batch reporting contracts', () => {
             },
             stagedRecordId: '42',
             acceptedRecordId: null,
+            operation: 'correction',
+            correctionTarget: {
+              sourceEventId: 'cricsheet:delivery:100-original',
+              resolvedDeliveryId: null,
+            },
             referenceResolutions: [
               {
                 referencePath: 'fixtures.0.innings.0.events.1.striker',
@@ -190,7 +195,14 @@ describe('batch reporting contracts', () => {
         downloadUrl: `/api/v1/batches/${reference}/report/download`,
       },
     };
-    expect(batchReportResponseSchema.safeParse(response).success).toBe(true);
+    const parsed = batchReportResponseSchema.parse(response);
+    expect(parsed.data.items[0]).toMatchObject({
+      operation: 'correction',
+      correctionTarget: {
+        sourceEventId: 'cricsheet:delivery:100-original',
+        resolvedDeliveryId: null,
+      },
+    });
     expect(
       batchReportResponseSchema.safeParse({
         ...response,

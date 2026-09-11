@@ -132,9 +132,10 @@ interface ClaimResult {
   attemptCount: number;
   maxAttempts: number;
   sourceUri: string;
+  competitionId: string;
 }
 
-interface PreparedItem {
+export interface PreparedItem {
   ordinal: number;
   inningsId: string | null;
   overNumber: number;
@@ -142,6 +143,9 @@ interface PreparedItem {
   // Store the authoritative, resolved delivery shape. The source identity and
   // original references remain in their dedicated provenance columns.
   payload: Record<string, unknown>;
+  operation: 'upsert' | 'correction';
+  correctsSourceIdentity: string | null;
+  correctionTargetDeliveryId: string | null;
   sourceIdentity: string;
   sourceLocation: Record<string, string | number | null>;
   referenceResolutionState: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
@@ -292,7 +296,7 @@ function referenceResolutionFailureCode(resolvedReferences: Record<string, unkno
   return 'REFERENCE_RESOLUTION_FAILED';
 }
 
-function prepareItem(
+export function prepareItem(
   candidate: NormalisedCandidate,
   resolution: {
     inningsId: string | null;
@@ -308,6 +312,9 @@ function prepareItem(
     overNumber: coordinates.overNumber,
     positionInOver: coordinates.positionInOver,
     payload: candidate.event,
+    operation: candidate.event.operation,
+    correctsSourceIdentity: candidate.event.correctsEventId ?? null,
+    correctionTargetDeliveryId: null,
     sourceIdentity: candidate.event.eventId,
     sourceLocation: {
       filePath: candidate.filePath,
@@ -464,6 +471,163 @@ function mapPublishedDelivery(row: PublishedDeliveryMatchRow): PublishedCricketD
   };
 }
 
+interface CorrectionTargetRow {
+  ordinal: number;
+  deliveryId: string;
+  sequenceNumber: number;
+  fixtureId: string;
+  competitionId: string;
+  declaredFixtureId: string;
+  declaredCompetitionId: string;
+}
+
+function correctionValidationResult(
+  item: PreparedItem,
+  code:
+    | 'CORRECTION_TARGET_NOT_FOUND'
+    | 'CORRECTION_TARGET_AMBIGUOUS'
+    | 'CORRECTION_TARGET_WRONG_FIXTURE'
+    | 'CORRECTION_TARGET_WRONG_COMPETITION',
+  message: string,
+  detail: Record<string, unknown>,
+): CricketValidationResult {
+  item.state = 'rejected';
+  item.rejectionCode = code;
+  item.rejectionMessage = message;
+  item.rejectionDetail = detail;
+  return {
+    code,
+    ruleVersion: '1.0',
+    severity: 'error',
+    eventIndex: item.ordinal,
+    fieldPath: 'correctsEventId',
+    message,
+  };
+}
+
+export async function resolveCorrectionTargets(
+  client: Pick<PoolClient, 'query'>,
+  items: PreparedItem[],
+  batchCompetitionId: string,
+): Promise<Map<number, CricketValidationResult[]>> {
+  const corrections = items.filter(
+    (item) =>
+      item.state === 'accepted' &&
+      item.operation === 'correction' &&
+      item.correctsSourceIdentity !== null &&
+      item.inningsId !== null,
+  );
+  const results = new Map<number, CricketValidationResult[]>();
+  if (corrections.length === 0) return results;
+
+  const values: unknown[] = [];
+  const tuples = corrections.map((item) => {
+    const first = values.length + 1;
+    values.push(item.ordinal, item.correctsSourceIdentity, item.inningsId);
+    return `($${first}::integer,$${first + 1}::text,$${first + 2}::bigint)`;
+  });
+  const targets = await client.query<CorrectionTargetRow>(
+    `
+      WITH requested (ordinal, corrects_source_identity, innings_id) AS (
+        VALUES ${tuples.join(',')}
+      )
+      SELECT requested.ordinal,
+             target.delivery_id::text AS "deliveryId",
+             target.innings_sequence AS "sequenceNumber",
+             target_fixture.fixture_id::text AS "fixtureId",
+             target_fixture.competition_id::text AS "competitionId",
+             declared_fixture.fixture_id::text AS "declaredFixtureId",
+             declared_fixture.competition_id::text AS "declaredCompetitionId"
+      FROM requested
+      JOIN innings declared_innings ON declared_innings.innings_id=requested.innings_id
+      JOIN fixture declared_fixture ON declared_fixture.fixture_id=declared_innings.fixture_id
+      JOIN batch_item source_item
+        ON source_item.source_identity=requested.corrects_source_identity
+      JOIN delivery linked
+        ON linked.delivery_id=source_item.published_event_id
+      JOIN delivery_current target
+        ON target.source_event_id=linked.source_event_id
+      JOIN innings target_innings ON target_innings.innings_id=target.innings_id
+      JOIN fixture target_fixture ON target_fixture.fixture_id=target_innings.fixture_id
+      ORDER BY requested.ordinal, target.delivery_id
+    `,
+    values,
+  );
+  const rowsByOrdinal = new Map<number, CorrectionTargetRow[]>();
+  for (const row of targets.rows) {
+    rowsByOrdinal.set(row.ordinal, [...(rowsByOrdinal.get(row.ordinal) ?? []), row]);
+  }
+
+  for (const item of corrections) {
+    const matches = rowsByOrdinal.get(item.ordinal) ?? [];
+    if (matches.length === 0) {
+      results.set(item.ordinal, [
+        correctionValidationResult(
+          item,
+          'CORRECTION_TARGET_NOT_FOUND',
+          `No current published delivery matches ${item.correctsSourceIdentity}.`,
+          { correctsEventId: item.correctsSourceIdentity },
+        ),
+      ]);
+      continue;
+    }
+    if (matches.length > 1) {
+      results.set(item.ordinal, [
+        correctionValidationResult(
+          item,
+          'CORRECTION_TARGET_AMBIGUOUS',
+          `More than one current published delivery matches ${item.correctsSourceIdentity}.`,
+          {
+            correctsEventId: item.correctsSourceIdentity,
+            candidateDeliveryIds: matches.map((match) => match.deliveryId),
+          },
+        ),
+      ]);
+      continue;
+    }
+
+    const target = matches[0]!;
+    if (
+      target.competitionId !== batchCompetitionId ||
+      target.declaredCompetitionId !== batchCompetitionId
+    ) {
+      results.set(item.ordinal, [
+        correctionValidationResult(
+          item,
+          'CORRECTION_TARGET_WRONG_COMPETITION',
+          'The correction target does not belong to the batch competition.',
+          {
+            correctsEventId: item.correctsSourceIdentity,
+            targetCompetitionId: target.competitionId,
+            batchCompetitionId,
+          },
+        ),
+      ]);
+      continue;
+    }
+    if (target.fixtureId !== target.declaredFixtureId) {
+      results.set(item.ordinal, [
+        correctionValidationResult(
+          item,
+          'CORRECTION_TARGET_WRONG_FIXTURE',
+          'The correction target does not belong to the fixture declared by this item.',
+          {
+            correctsEventId: item.correctsSourceIdentity,
+            targetFixtureId: target.fixtureId,
+            declaredFixtureId: target.declaredFixtureId,
+          },
+        ),
+      ]);
+      continue;
+    }
+
+    item.correctionTargetDeliveryId = target.deliveryId;
+    item.payload = { ...item.payload, sequenceNumber: target.sequenceNumber };
+  }
+
+  return results;
+}
+
 async function loadPublishedDeliveryMatches(
   client: PoolClient,
   items: readonly PreparedItem[],
@@ -582,7 +746,15 @@ async function publishedValidationResults(
 
     const submitted = submissionEventSchema.parse(item.payload);
 
-    const classifications = [...published.values()].map((delivery) =>
+    const comparablePublished = [...published.entries()].filter(
+      ([deliveryId]) => deliveryId !== item.correctionTargetDeliveryId,
+    );
+
+    if (item.operation === 'correction' && comparablePublished.length === 0) {
+      continue;
+    }
+
+    const classifications = comparablePublished.map(([, delivery]) =>
       classifyPublishedCricketDelivery(submitted, delivery),
     );
 
@@ -851,12 +1023,14 @@ export function createBatchValidationJobHandler(
         batchReference: string;
         batchState: string;
         sourceUri: string | null;
+        competitionId: string;
       }>(
         `
           SELECT j.job_id::text AS "jobId", j.state::text AS "jobState",
                  j.attempt_count AS "attemptCount", j.max_attempts AS "maxAttempts",
                  b.batch_id::text AS "batchId", b.batch_reference::text AS "batchReference",
-                 b.state::text AS "batchState", b.source_uri AS "sourceUri"
+                 b.state::text AS "batchState", b.source_uri AS "sourceUri",
+                 b.competition_id::text AS "competitionId"
           FROM background_job j
           JOIN batch b ON b.batch_id = j.batch_id
           WHERE j.job_id = $1::uuid AND j.batch_id = $2::bigint
@@ -891,6 +1065,7 @@ export function createBatchValidationJobHandler(
           attemptCount: row.attemptCount,
           maxAttempts: row.maxAttempts,
           sourceUri: row.sourceUri,
+          competitionId: row.competitionId,
         };
       }
       if (!['queued', 'running', 'failed'].includes(row.jobState)) {
@@ -976,6 +1151,7 @@ export function createBatchValidationJobHandler(
         attemptCount,
         maxAttempts: row.maxAttempts,
         sourceUri: row.sourceUri,
+        competitionId: row.competitionId,
       };
     });
   }
@@ -1082,8 +1258,11 @@ export function createBatchValidationJobHandler(
           item.state,
           item.rejectionCode,
           item.rejectionDetail ? JSON.stringify(item.rejectionDetail) : null,
+          item.operation,
+          item.correctsSourceIdentity,
+          item.correctionTargetDeliveryId,
         );
-        return `($${first}::bigint,$${first + 1}::integer,$${first + 2}::bigint,$${first + 3}::smallint,$${first + 4}::smallint,$${first + 5}::jsonb,$${first + 6},$${first + 7}::jsonb,$${first + 8}::batch_reference_resolution_state,$${first + 9}::jsonb,$${first + 10}::batch_item_state,$${first + 11},$${first + 12}::jsonb)`;
+        return `($${first}::bigint,$${first + 1}::integer,$${first + 2}::bigint,$${first + 3}::smallint,$${first + 4}::smallint,$${first + 5}::jsonb,$${first + 6},$${first + 7}::jsonb,$${first + 8}::batch_reference_resolution_state,$${first + 9}::jsonb,$${first + 10}::batch_item_state,$${first + 11},$${first + 12}::jsonb,$${first + 13}::batch_item_operation,$${first + 14},$${first + 15}::bigint)`;
       });
       const inserted =
         items.length === 0
@@ -1093,7 +1272,8 @@ export function createBatchValidationJobHandler(
               INSERT INTO batch_item (
                 batch_id,ordinal,innings_id,over_number,position_in_over,payload,
                 source_identity,source_location,reference_resolution_state,
-                resolved_references,state,rejection_code,rejection_detail
+                resolved_references,state,rejection_code,rejection_detail,
+                operation,corrects_source_identity,correction_target_delivery_id
               ) VALUES ${tuples.join(',')}
               ON CONFLICT (batch_id, ordinal) DO UPDATE SET
                 innings_id = EXCLUDED.innings_id,
@@ -1106,7 +1286,10 @@ export function createBatchValidationJobHandler(
                 resolved_references = EXCLUDED.resolved_references,
                 state = EXCLUDED.state,
                 rejection_code = EXCLUDED.rejection_code,
-                rejection_detail = EXCLUDED.rejection_detail
+                rejection_detail = EXCLUDED.rejection_detail,
+                operation = EXCLUDED.operation,
+                corrects_source_identity = EXCLUDED.corrects_source_identity,
+                correction_target_delivery_id = EXCLUDED.correction_target_delivery_id
               WHERE batch_item.published_event_id IS NULL
               RETURNING batch_item_id::text AS "batchItemId", ordinal
             `,
@@ -1422,7 +1605,9 @@ export function createBatchValidationJobHandler(
           if (item) prepared.push(item);
         }
 
-        const businessResultsByOrdinal = new Map<number, CricketValidationResult[]>();
+        const businessResultsByOrdinal = await transaction(database, (client) =>
+          resolveCorrectionTargets(client, prepared, claimResult.competitionId),
+        );
         const canonicalItems = prepared
           .filter((item) => item.state === 'accepted')
           .map((item) => {

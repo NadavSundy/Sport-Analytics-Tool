@@ -118,6 +118,24 @@ innings, are invalid. A receiver treats a previously accepted stable event ID
 as a duplicate/retry according to the batch lifecycle; it must not create a
 second delivery from it.
 
+During asynchronous validation, `operation` and `correctsEventId` are retained
+on the staged item. A correction target is resolved only from a current
+published delivery carrying that exact external source identity. The target
+must be unique and must belong to both the fixture declared by the item and the
+batch competition. Missing, ambiguous, wrong-fixture, and wrong-competition
+targets are reported against `correctsEventId` with distinct actionable rule
+codes.
+
+The submitted replacement is validated with the target's existing occurrence
+sequence. It is not classified as a conflicting ordinary upsert merely because
+its cricket content differs from the target. After reviewer approval,
+publication inserts a new immutable delivery revision, supersedes the current
+target revision, records correction and reviewer provenance, and refreshes the
+same dependent statistics as the direct correction workflow. Publication
+rechecks the live lineage under a transaction lock, so a retry cannot create a
+second replacement revision. Ordinary `upsert` duplicate and conflict handling
+is unchanged.
+
 ## Reference resolution
 
 After receipt, the API resolves exact source identifiers first. Otherwise it

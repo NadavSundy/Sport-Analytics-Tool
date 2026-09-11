@@ -4,10 +4,12 @@ import {
   classifyPublishedCricketDelivery,
   type ComparableCricketDelivery,
   type PublishedCricketDelivery,
+  type SubmissionEvent,
 } from '@sport-analytics/contracts';
 
 import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
 import { advanceFixtureStatisticsCacheVersions } from '../statistics/fixture-statistics.cache';
+import { deriveCorrectionStatisticsDependencies } from '../statistics/recomputation-dependencies';
 
 type BatchState =
   | 'received'
@@ -78,6 +80,9 @@ interface InsertBatchItemInput {
   rejectionCode?: string | null;
   rejectionDetail?: JsonValue | null;
   publishedEventId?: string | null;
+  operation?: 'upsert' | 'correction';
+  correctsSourceIdentity?: string | null;
+  correctionTargetDeliveryId?: string | null;
 }
 
 interface BatchItemRecord {
@@ -96,6 +101,9 @@ interface BatchItemRecord {
   rejectionCode: string | null;
   rejectionDetail: JsonValue | null;
   publishedEventId: string | null;
+  operation: 'upsert' | 'correction';
+  correctsSourceIdentity: string | null;
+  correctionTargetDeliveryId: string | null;
 }
 
 interface BatchProgressRecord {
@@ -136,6 +144,9 @@ export interface BatchReportItemRecord {
   state: BatchItemState | null;
   rejectionCode: string | null;
   publishedEventId: string | null;
+  operation: 'upsert' | 'correction';
+  correctsSourceIdentity: string | null;
+  correctionTargetDeliveryId: string | null;
   errors: BatchReportErrorRecord[];
 }
 
@@ -404,7 +415,10 @@ const batchItemSelection = `
   state::text AS state,
   rejection_code AS "rejectionCode",
   rejection_detail AS "rejectionDetail",
-  published_event_id::text AS "publishedEventId"
+  published_event_id::text AS "publishedEventId",
+  operation::text AS operation,
+  corrects_source_identity AS "correctsSourceIdentity",
+  correction_target_delivery_id::text AS "correctionTargetDeliveryId"
 `;
 
 function batchItemSelectionFor(table: string): string {
@@ -423,7 +437,10 @@ function batchItemSelectionFor(table: string): string {
   ${table}.state::text AS state,
   ${table}.rejection_code AS "rejectionCode",
   ${table}.rejection_detail AS "rejectionDetail",
-  ${table}.published_event_id::text AS "publishedEventId"
+  ${table}.published_event_id::text AS "publishedEventId",
+  ${table}.operation::text AS operation,
+  ${table}.corrects_source_identity AS "correctsSourceIdentity",
+  ${table}.correction_target_delivery_id::text AS "correctionTargetDeliveryId"
 `;
 }
 
@@ -734,6 +751,274 @@ async function publishedDeliveryMatchesForItem(
     deliveryId: row.deliveryId,
     delivery: mapPublishedBatchDelivery(row),
   }));
+}
+
+interface BatchCorrectionTarget {
+  deliveryId: string;
+  fixtureId: string;
+  competitionId: string;
+  season: string;
+  sourceEventId: string;
+  submissionId: string;
+  eventOrdinal: number;
+  revision: number;
+  sequenceNumber: number;
+  sourceBatchItemId: string;
+}
+
+async function loadBatchCorrectionTarget(
+  target: QueryExecutor,
+  item: BatchItemRecord,
+): Promise<BatchCorrectionTarget | null> {
+  if (!item.correctionTargetDeliveryId || !item.correctsSourceIdentity) return null;
+  const result = await executeQuery<BatchCorrectionTarget>(
+    target,
+    `
+      SELECT current.delivery_id::text AS "deliveryId",
+             innings.fixture_id::text AS "fixtureId",
+             fixture.competition_id::text AS "competitionId",
+             fixture.season,
+             current.source_event_id::text AS "sourceEventId",
+             current.submission_id::text AS "submissionId",
+             current.submission_event_ordinal AS "eventOrdinal",
+             current.revision,
+             current.innings_sequence AS "sequenceNumber",
+             current.source_batch_item_id::text AS "sourceBatchItemId"
+      FROM delivery validated
+      JOIN batch_item source_item
+        ON source_item.source_identity=$2::text
+      JOIN delivery linked
+        ON linked.delivery_id=source_item.published_event_id
+      JOIN delivery current
+        ON current.source_event_id=validated.source_event_id
+       AND current.source_event_id=linked.source_event_id
+       AND current.superseded_at IS NULL
+      JOIN innings ON innings.innings_id=current.innings_id
+      JOIN fixture ON fixture.fixture_id=innings.fixture_id
+      JOIN submission ON submission.submission_id=current.submission_id
+                     AND submission.status='accepted'
+      WHERE validated.delivery_id=$1::bigint
+      FOR UPDATE OF current
+    `,
+    [item.correctionTargetDeliveryId, item.correctsSourceIdentity],
+  );
+  return result.rows[0] ?? null;
+}
+
+async function loadBatchEventSnapshot(
+  target: QueryExecutor,
+  deliveryId: string,
+): Promise<SubmissionEvent> {
+  const result = await executeQuery<{ state: SubmissionEvent }>(
+    target,
+    `
+      SELECT jsonb_build_object(
+        'eventId', d.source_event_id::text,
+        'inningsId', d.innings_id::text,
+        'sequenceNumber', d.innings_sequence,
+        'overNumber', d.over_number,
+        'positionInOver', d.position_in_over,
+        'ballNumber', d.ball_number,
+        'strikerId', d.striker_id::text,
+        'nonStrikerId', d.non_striker_id::text,
+        'bowlerId', d.bowler_id::text,
+        'runs', jsonb_build_object(
+          'offBat', d.runs_off_bat, 'extras', d.runs_extras,
+          'total', d.runs_total, 'nonBoundary', d.non_boundary
+        ),
+        'extras', jsonb_strip_nulls(jsonb_build_object(
+          'wides', d.extra_wides, 'noBalls', d.extra_noballs,
+          'byes', d.extra_byes, 'legByes', d.extra_legbyes,
+          'penalty', d.extra_penalty
+        )),
+        'wickets', COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'kind', wicket.kind,
+            'playerOutId', wicket.player_out_id::text,
+            'fielders', COALESCE((
+              SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+                'participantId', fielder.person_id::text,
+                'substitute', fielder.is_substitute
+              )) ORDER BY fielder.ordinal)
+              FROM delivery_wicket_fielder fielder
+              WHERE fielder.wicket_id=wicket.wicket_id
+            ), '[]'::jsonb)
+          ) ORDER BY wicket.ordinal)
+          FROM delivery_wicket wicket WHERE wicket.delivery_id=d.delivery_id
+        ), '[]'::jsonb)
+      ) AS state
+      FROM delivery d WHERE d.delivery_id=$1::bigint
+    `,
+    [deliveryId],
+  );
+  const state = result.rows[0]?.state;
+  if (!state) throw new Error('Batch correction snapshot query returned no event.');
+  return state;
+}
+
+async function insertBatchCorrectionWickets(
+  target: QueryExecutor,
+  deliveryId: string,
+  event: SubmissionEvent,
+): Promise<void> {
+  for (const [wicketOrdinal, wicket] of event.wickets.entries()) {
+    const inserted = await executeQuery<{ wicketId: string }>(
+      target,
+      `INSERT INTO delivery_wicket (delivery_id,ordinal,kind,source_kind,player_out_id)
+       VALUES ($1::bigint,$2::smallint,$3,$3,$4::bigint)
+       RETURNING wicket_id::text AS "wicketId"`,
+      [deliveryId, wicketOrdinal, wicket.kind, wicket.playerOutId],
+    );
+    const wicketId = inserted.rows[0]?.wicketId;
+    if (!wicketId) throw new Error('Batch correction wicket insertion returned no identifier.');
+    for (const [fielderOrdinal, fielder] of wicket.fielders.entries()) {
+      await executeQuery(
+        target,
+        `INSERT INTO delivery_wicket_fielder (wicket_id,ordinal,person_id,is_substitute)
+         VALUES ($1::bigint,$2::smallint,$3::bigint,$4)`,
+        [wicketId, fielderOrdinal, fielder.participantId ?? null, fielder.substitute],
+      );
+    }
+  }
+}
+
+async function publishBatchCorrection(
+  target: QueryExecutor,
+  item: BatchItemRecord & { fixtureId: string },
+  submitted: ComparableCricketDelivery,
+  batch: {
+    competitionId: string;
+    submitterId: string;
+    reviewerId: string;
+    reviewReason: string;
+    reviewedAt: Date;
+  },
+): Promise<string> {
+  await executeQuery(target, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+    item.correctsSourceIdentity,
+  ]);
+  const correctionTarget = await loadBatchCorrectionTarget(target, item);
+  if (
+    !correctionTarget ||
+    correctionTarget.fixtureId !== item.fixtureId ||
+    correctionTarget.competitionId !== batch.competitionId
+  ) {
+    throw new Error('The validated batch correction target is no longer available in scope.');
+  }
+  const event: SubmissionEvent = {
+    ...submitted,
+    eventId: correctionTarget.sourceEventId,
+    sequenceNumber: correctionTarget.sequenceNumber,
+  };
+  const previousState = await loadBatchEventSnapshot(target, correctionTarget.deliveryId);
+
+  await executeQuery(
+    target,
+    `UPDATE delivery SET superseded_at=now(), superseded_by=delivery_id
+     WHERE delivery_id=$1::bigint`,
+    [correctionTarget.deliveryId],
+  );
+  const inserted = await executeQuery<{ deliveryId: string }>(
+    target,
+    `INSERT INTO delivery (
+       innings_id,over_number,position_in_over,innings_sequence,ball_number,
+       striker_id,non_striker_id,bowler_id,runs_off_bat,runs_extras,runs_total,
+       non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,extra_penalty,
+       submission_id,source_event_id,submission_event_ordinal,revision,
+       supersedes_delivery_id,source_batch_item_id
+     ) VALUES (
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+       $18,$19,$20,$21,$22,$23
+     ) RETURNING delivery_id::text AS "deliveryId"`,
+    [
+      event.inningsId,
+      event.overNumber,
+      event.positionInOver,
+      event.sequenceNumber,
+      event.ballNumber,
+      event.strikerId,
+      event.nonStrikerId,
+      event.bowlerId,
+      event.runs.offBat,
+      event.runs.extras,
+      event.runs.total,
+      event.runs.nonBoundary,
+      event.extras.wides ?? null,
+      event.extras.noBalls ?? null,
+      event.extras.byes ?? null,
+      event.extras.legByes ?? null,
+      event.extras.penalty ?? null,
+      correctionTarget.submissionId,
+      correctionTarget.sourceEventId,
+      correctionTarget.eventOrdinal,
+      correctionTarget.revision + 1,
+      correctionTarget.deliveryId,
+      correctionTarget.sourceBatchItemId,
+    ],
+  );
+  const replacementId = requireRow(inserted.rows[0], 'Batch correction insertion').deliveryId;
+  await insertBatchCorrectionWickets(target, replacementId, event);
+  await executeQuery(
+    target,
+    'UPDATE delivery SET superseded_by=$2::bigint WHERE delivery_id=$1::bigint',
+    [correctionTarget.deliveryId, replacementId],
+  );
+  const resultingState = await loadBatchEventSnapshot(target, replacementId);
+  await executeQuery(
+    target,
+    `INSERT INTO delivery_correction_history (
+       source_event_id,previous_delivery_id,replacement_delivery_id,requester_id,reason,
+       previous_state,resulting_state,original_submission_id,original_submission_ordinal,
+       original_batch_item_id,reviewer_id,review_decision,reviewed_at,review_reason
+     ) VALUES ($1::uuid,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10,$11,'approved',$12,$13)`,
+    [
+      correctionTarget.sourceEventId,
+      correctionTarget.deliveryId,
+      replacementId,
+      batch.submitterId,
+      `Batch correction of ${item.correctsSourceIdentity}.`,
+      JSON.stringify(previousState),
+      JSON.stringify(resultingState),
+      correctionTarget.submissionId,
+      correctionTarget.eventOrdinal,
+      correctionTarget.sourceBatchItemId,
+      batch.reviewerId,
+      batch.reviewedAt,
+      batch.reviewReason,
+    ],
+  );
+  const dependencies = deriveCorrectionStatisticsDependencies({
+    fixtureId: correctionTarget.fixtureId,
+    competitionId: correctionTarget.competitionId,
+    season: correctionTarget.season,
+    previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
+    resultingParticipantIds: [event.strikerId, event.bowlerId],
+  });
+  for (const dependency of dependencies) {
+    await executeQuery(
+      target,
+      `INSERT INTO statistics_refresh_dependency (
+         source_event_id,delivery_revision,fixture_id,scope,participant_id,competition_id,season
+       ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7)`,
+      [
+        correctionTarget.sourceEventId,
+        correctionTarget.revision + 1,
+        dependency.fixtureId,
+        dependency.scope,
+        dependency.participantId,
+        dependency.competitionId,
+        dependency.season,
+      ],
+    );
+  }
+  await advanceFixtureStatisticsCacheVersions(target, [correctionTarget.fixtureId]);
+  await executeQuery(
+    target,
+    `UPDATE batch_item SET state='published', published_event_id=$2::bigint
+     WHERE batch_item_id=$1::bigint`,
+    [item.batchItemId, replacementId],
+  );
+  return replacementId;
 }
 
 export function createBatchRepository(executor?: QueryExecutor): BatchRepository {
@@ -1125,6 +1410,9 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             i.state::text AS state,
             i.rejection_code AS "rejectionCode",
             i.published_event_id::text AS "publishedEventId",
+            i.operation::text AS operation,
+            i.corrects_source_identity AS "correctsSourceIdentity",
+            i.correction_target_delivery_id::text AS "correctionTargetDeliveryId",
             COALESCE(errors.rows, '[]'::jsonb) AS errors
           FROM subjects
           LEFT JOIN batch_item i
@@ -1280,6 +1568,9 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             ? null
             : JSON.stringify(item.rejectionDetail),
           item.publishedEventId ?? null,
+          item.operation ?? 'upsert',
+          item.correctsSourceIdentity ?? null,
+          item.correctionTargetDeliveryId ?? null,
         );
 
         return `(
@@ -1296,7 +1587,10 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           $${first + 9}::batch_item_state,
           $${first + 10}::text,
           $${first + 11}::jsonb,
-          $${first + 12}::bigint
+          $${first + 12}::bigint,
+          $${first + 13}::batch_item_operation,
+          $${first + 14}::text,
+          $${first + 15}::bigint
         )`;
       });
 
@@ -1317,7 +1611,10 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             state,
             rejection_code,
             rejection_detail,
-            published_event_id
+            published_event_id,
+            operation,
+            corrects_source_identity,
+            correction_target_delivery_id
           )
           VALUES ${tuples.join(',')}
           RETURNING ${batchItemSelection}
@@ -1868,10 +2165,27 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           state: BatchState;
           submitterId: string;
           checksum: string;
+          competitionId: string;
+          reviewerId: string | null;
+          reviewReason: string | null;
+          reviewedAt: Date | null;
         }>(
           target,
-          `SELECT state::text AS state, submitter_id::text AS "submitterId", source_checksum AS checksum
-           FROM batch WHERE batch_id = $1::bigint FOR UPDATE`,
+          `SELECT batch.state::text AS state,
+                  batch.submitter_id::text AS "submitterId",
+                  batch.source_checksum AS checksum,
+                  batch.competition_id::text AS "competitionId",
+                  review.actor_id::text AS "reviewerId",
+                  review.reason AS "reviewReason",
+                  review.decided_at AS "reviewedAt"
+           FROM batch
+           LEFT JOIN LATERAL (
+             SELECT actor_id, reason, decided_at
+             FROM batch_review_decision
+             WHERE batch_id=batch.batch_id AND decision='approved'
+             ORDER BY batch_review_decision_id DESC LIMIT 1
+           ) review ON true
+           WHERE batch.batch_id = $1::bigint FOR UPDATE OF batch`,
           [batchId],
         );
         const current = requireRow(batch.rows[0], 'Batch publication lookup');
@@ -1941,6 +2255,20 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         for (const item of items.rows) {
           const payload = payloadRecord(item.payload);
           const submitted = comparableDeliveryForItem(item, payload);
+
+          if (item.operation === 'correction') {
+            if (!current.reviewerId || !current.reviewReason || !current.reviewedAt) {
+              throw new Error('Approved batch correction has no reviewer provenance.');
+            }
+            await publishBatchCorrection(target, item, submitted, {
+              ...current,
+              reviewerId: current.reviewerId,
+              reviewReason: current.reviewReason,
+              reviewedAt: current.reviewedAt,
+            });
+            result.published += 1;
+            continue;
+          }
 
           const publishedMatches = await publishedDeliveryMatchesForItem(target, item);
 
@@ -2071,6 +2399,11 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             byes: delivery.extras.byes,
             legByes: delivery.extras.legByes,
             penalty: delivery.extras.penalty,
+            sourceEventId:
+              typeof payloadRecord(item.payload).eventId === 'string'
+                ? payloadRecord(item.payload).eventId
+                : null,
+            eventOrdinal: item.ordinal,
           }));
           const published = await executeQuery<{ count: string }>(
             target,
@@ -2081,7 +2414,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
                  "ballNumber" text, "strikerId" bigint, "nonStrikerId" bigint, "bowlerId" bigint,
                  "offBat" smallint, "runsExtras" smallint, "total" smallint,
                  "nonBoundary" boolean, wides smallint, "noBalls" smallint,
-                 byes smallint, "legByes" smallint, penalty smallint
+                 byes smallint, "legByes" smallint, penalty smallint, "sourceEventId" uuid,
+                 "eventOrdinal" integer
                )
              ), inserted_submissions AS (
                INSERT INTO submission (
@@ -2095,12 +2429,14 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
                  innings_id, over_number, position_in_over, innings_sequence, ball_number,
                  striker_id, non_striker_id, bowler_id, runs_off_bat, runs_extras, runs_total,
                  non_boundary, extra_wides, extra_noballs, extra_byes, extra_legbyes,
-                 extra_penalty, submission_id, source_batch_item_id
+                 extra_penalty, submission_id, source_batch_item_id, source_event_id,
+                 submission_event_ordinal
                )
                SELECT s."inningsId", s."overNumber", s."positionInOver", s."sequenceNumber",
                  s."ballNumber", s."strikerId", s."nonStrikerId", s."bowlerId", s."offBat",
                  s."runsExtras", s.total, s."nonBoundary", s.wides, s."noBalls", s.byes,
-                 s."legByes", s.penalty, submission.submission_id, s."batchItemId"
+                 s."legByes", s.penalty, submission.submission_id, s."batchItemId",
+                 COALESCE(s."sourceEventId", gen_random_uuid()), s."eventOrdinal"
                FROM source s
                JOIN inserted_submissions submission ON submission.fixture_id=s."fixtureId"
                ON CONFLICT DO NOTHING

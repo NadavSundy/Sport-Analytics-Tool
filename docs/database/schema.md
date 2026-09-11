@@ -191,6 +191,17 @@ or innings context remains unresolved. This preserves evidence without placehold
 object-store adapter, never a public or signed provider URL. See
 [Batch persistence extensions](batch-persistence.md) for the #359 gap analysis and migration record.
 
+Batch correction intent is stored explicitly as `batch_item.operation`,
+`corrects_source_identity`, and the validation-time
+`correction_target_delivery_id`. A missing or invalid target can therefore
+remain rejected with its original intent intact. Publication locks and reloads
+the current revision in that target's stable event lineage, inserts the
+replacement revision with the original delivery provenance, and points the
+correction batch item at the replacement. Batch-published delivery lineages
+carry `source_event_id` and `submission_event_ordinal` so the existing immutable
+revision and `delivery_correction_history` constraints apply without a parallel
+history model.
+
 Issue #363 exposes this retained chain through protected APIs. Direct and uploaded submissions persist
 `submission.source_sha256`; uploaded files additionally retain filename, media type and byte size.
 Published batch deliveries retain `delivery.source_batch_item_id`, while batch source metadata and

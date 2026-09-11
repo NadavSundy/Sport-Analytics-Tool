@@ -90,6 +90,11 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
     },
     stagedRecordId: '40',
     acceptedRecordId: '90',
+    operation: 'correction',
+    correctionTarget: {
+      sourceEventId: 'cricsheet:delivery:100-original',
+      resolvedDeliveryId: '88',
+    },
     referenceResolutions: [],
     errors: [],
   };
@@ -206,6 +211,8 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
   await page.getByRole('link', { name: 'season.csv' }).click();
   await expect(page.getByRole('heading', { name: 'Review staged batch' })).toBeVisible();
   await expect(page.getByText('Data Submitter')).toBeVisible();
+  await expect(page.getByText('cricsheet:delivery:100-original')).toBeVisible();
+  await expect(page.getByText(/published delivery 88/)).toBeVisible();
   await expect(page.getByText('Lions vs Bears · 2026-09-01')).toBeVisible();
   await page.getByText(/1 rejection/).click();
   await expect(page.getByText('Runs total does not match its components.')).toBeVisible();
