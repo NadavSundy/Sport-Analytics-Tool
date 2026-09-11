@@ -3,17 +3,19 @@
 Application roles define application-wide capability. Competition scopes separately limit where a
 submission-capable account may operate.
 
-| Capability                | Viewer | Submitter                  | Admin                    |
-| ------------------------- | ------ | -------------------------- | ------------------------ |
-| View fixtures/statistics  | Yes    | Yes                        | Yes                      |
-| Manage own account        | Yes    | Yes                        | Yes                      |
-| Submit event data         | No     | Yes, within assigned scope | Yes, for any competition |
-| Correct submitted data    | No     | Yes, within assigned scope | Yes, for any competition |
-| View submission history   | No     | Yes                        | Yes                      |
-| Manage users              | No     | No                         | Yes                      |
-| Assign roles              | No     | No                         | Yes                      |
-| Assign competition scopes | No     | No                         | Yes                      |
-| Access admin endpoints    | No     | No                         | Yes                      |
+| Capability                 | Viewer | Submitter                  | Admin                    |
+| -------------------------- | ------ | -------------------------- | ------------------------ |
+| View fixtures/statistics   | Yes    | Yes                        | Yes                      |
+| Manage own account         | Yes    | Yes                        | Yes                      |
+| Submit event data          | No     | Yes, within assigned scope | Yes, for any competition |
+| Correct submitted data     | No     | Yes, within assigned scope | Yes, for any competition |
+| View submission history    | No     | Yes                        | Yes                      |
+| Review staged batches      | No     | No                         | Yes                      |
+| Approve/reject publication | No     | No                         | Yes                      |
+| Manage users               | No     | No                         | Yes                      |
+| Assign roles               | No     | No                         | Yes                      |
+| Assign competition scopes  | No     | No                         | Yes                      |
+| Access admin endpoints     | No     | No                         | Yes                      |
 
 ## Authoritative role
 
@@ -29,6 +31,7 @@ application_role
 - `viewer` is the normal registered-account role and cannot submit or administer the application.
 - `submitter` can use submission workflows but cannot use administrator endpoints.
 - `admin` can use administrator workflows and permitted submission workflows.
+- Batch review decisions are administrator-only. Submitters may inspect their own batch reports, but competition scope does not grant review, approval, rejection, or publication authority.
 
 The backend treats `submitter` and `admin` as submission-capable roles. It independently checks
 `submitter_competition_scope` for every ordinary submitter's target competition; role checks alone

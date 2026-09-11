@@ -11,6 +11,7 @@ import {
   fixtureWeatherResponseSchema,
   fixtureStatisticResponseSchema,
   fixtureStatisticsResponseSchema,
+  participantAggregatesResponseSchema,
   participantCollectionResponseSchema,
   participantFixtureCollectionResponseSchema,
   participantResponseSchema,
@@ -25,6 +26,8 @@ import {
   type FixtureStatistics,
   type PaginationMetadata,
   type Participant,
+  type ParticipantAggregateScope,
+  type ParticipantAggregates,
   type ParticipantFixture,
   type Season,
 } from '@sport-analytics/contracts';
@@ -253,6 +256,19 @@ export const publicReadApi = {
     return requestPublicApi<CollectionResponse<ParticipantFixture>>(
       `/participants/${encodeURIComponent(participantId)}/fixtures${search}`,
       participantFixtureCollectionResponseSchema,
+      signal,
+    );
+  },
+  // A single resource, not a collection: the endpoint returns every requested
+  // level in one response, so there is no cursor to follow.
+  getParticipantAggregates(
+    participantId: string,
+    scope: ParticipantAggregateScope,
+    signal?: AbortSignal,
+  ) {
+    return requestPublicApi<{ data: ParticipantAggregates }>(
+      `/participants/${encodeURIComponent(participantId)}/statistics?scope=${scope}`,
+      participantAggregatesResponseSchema,
       signal,
     );
   },
