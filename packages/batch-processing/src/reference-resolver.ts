@@ -676,7 +676,10 @@ function resolveInnings(
     return outcome(referencePath, 'innings', submitted, 'unresolved', {
       reason: sourceId?.startsWith(`${APPLICATION_SOURCE_NAMESPACE}:`)
         ? 'The application innings identifier does not belong to the resolved fixture.'
-        : withNote(note, `The resolved fixture has no innings with ordinal ${String(context?.ordinal)}.`),
+        : withNote(
+            note,
+            `The resolved fixture has no innings with ordinal ${String(context?.ordinal)}.`,
+          ),
     });
   }
 
@@ -695,7 +698,8 @@ function resolveInnings(
   if (context && match.ordinal !== context.ordinal) {
     return outcome(referencePath, 'innings', submitted, 'invalid', {
       candidates: [{ canonicalId: match.canonicalId, label: `innings ${String(match.ordinal)}` }],
-      reason: 'The application innings identifier resolves to a different ordinal from the submitted context.',
+      reason:
+        'The application innings identifier resolves to a different ordinal from the submitted context.',
     });
   }
 
@@ -751,7 +755,8 @@ function resolveParticipant(
     if (identifier.namespace === APPLICATION_SOURCE_NAMESPACE) {
       if (!/^[1-9]\d*$/.test(identifier.value)) {
         return outcome(referencePath, 'participant', submitted, 'invalid', {
-          reason: 'An application participant reference must contain a positive database identifier.',
+          reason:
+            'An application participant reference must contain a positive database identifier.',
         });
       }
       const matches = squadByCanonicalId.get(identifier.value) ?? [];

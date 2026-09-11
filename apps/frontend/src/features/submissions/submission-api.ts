@@ -165,7 +165,6 @@ export function createTechnicalBatchFile(
   });
 }
 
-
 export async function submitLegacyAdminEvents(
   client: AuthenticatedApiClient,
   fixtureId: string,
