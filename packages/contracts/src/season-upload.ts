@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 /** The first published package format for season and back-catalogue uploads. */
 export const SEASON_UPLOAD_CONTRACT_VERSION = '1.0' as const;
-export const FIXTURE_PROPOSAL_CONTRACT_VERSION = '1.1' as const;
 
 const readableNameSchema = z.string().trim().min(1).max(200);
 const localDateSchema = z
@@ -72,19 +71,6 @@ const fixtureContextSchema = z
     date: localDateSchema,
     teams: z.array(teamReferenceSchema).length(2),
     venue: readableNameSchema.optional(),
-  })
-  .strict();
-
-export const fixtureProposalSchema = z
-  .object({
-    endDate: localDateSchema,
-    matchType: readableNameSchema,
-    teamType: readableNameSchema,
-    gender: readableNameSchema,
-    ballsPerOver: z.number().int().min(1).max(36),
-    outcome: z.enum(['won', 'tie', 'draw', 'no result']),
-    sourceVersion: readableNameSchema,
-    sourceRevision: z.number().int().nonnegative(),
   })
   .strict();
 
@@ -249,7 +235,6 @@ const fixtureSchema = z
   .object({
     sourceId: sourceIdentifierFor('fixture').optional(),
     context: fixtureContextSchema.optional(),
-    proposal: fixtureProposalSchema.optional(),
     innings: z.array(inningsSchema).min(1).max(8),
   })
   .strict()
@@ -265,42 +250,13 @@ const fixtureSchema = z
 /** Canonical one-file JSON package for a fixture, season, or back catalogue. */
 export const seasonUploadPackageSchema = z
   .object({
-    contractVersion: z.union([
-      z.literal(SEASON_UPLOAD_CONTRACT_VERSION),
-      z.literal(FIXTURE_PROPOSAL_CONTRACT_VERSION),
-    ]),
+    contractVersion: z.literal(SEASON_UPLOAD_CONTRACT_VERSION),
     packageId: sourceIdentifierFor('package'),
     competition: competitionReferenceSchema,
     season: seasonReferenceSchema,
     fixtures: z.array(fixtureSchema).min(1),
   })
-  .strict()
-  .superRefine((uploadPackage, issueContext) => {
-    if (uploadPackage.contractVersion !== FIXTURE_PROPOSAL_CONTRACT_VERSION) return;
-    for (const [index, fixture] of uploadPackage.fixtures.entries()) {
-      if (!fixture.proposal) {
-        issueContext.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['fixtures', index, 'proposal'],
-          message: 'Version 1.1 requires a complete fixture proposal for reviewer creation.',
-        });
-      }
-      if (!fixture.sourceId) {
-        issueContext.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['fixtures', index, 'sourceId'],
-          message: 'Version 1.1 fixture proposals require a stable fixture source identifier.',
-        });
-      }
-      if (fixture.proposal && fixture.context && fixture.proposal.endDate < fixture.context.date) {
-        issueContext.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['fixtures', index, 'proposal', 'endDate'],
-          message: 'A fixture proposal end date cannot precede its fixture date.',
-        });
-      }
-    }
-  });
+  .strict();
 
 /**
  * A manifest is used when a package is split across JSON, CSV, or NDJSON files.
@@ -354,4 +310,3 @@ export const referenceResolutionRequirementSchema = z
 export type SeasonUploadPackage = z.infer<typeof seasonUploadPackageSchema>;
 export type SeasonUploadManifest = z.infer<typeof seasonUploadManifestSchema>;
 export type SeasonUploadEvent = z.infer<typeof seasonUploadEventSchema>;
-export type FixtureProposal = z.infer<typeof fixtureProposalSchema>;

@@ -6,10 +6,9 @@ separate from the synchronous [direct event submission](submissions.md)
 contract. A package is stored and resolved before it can become staged delivery
 items; this page defines the submitted shape, not a published-event API.
 
-Version **`1.0`** remains accepted for matching existing canonical fixtures.
-Version **`1.1`** adds a required fixture proposal for the later privileged
-canonical-creation workflow. A receiver rejects unsupported versions rather
-than attempting a best-effort parse.
+The initial contract version is **`1.0`**. Every JSON package and every
+multi-file manifest must declare `contractVersion: "1.0"`. A receiver must
+reject an unsupported version rather than attempting a best-effort parse.
 
 ## Templates
 
@@ -80,25 +79,6 @@ used as an identity or ordering key. A printed label is optional display data,
 so a no-ball or wide cannot change identity merely by repeating a legal-ball
 label.
 
-## Fixture proposals in version 1.1
-
-A `1.1` fixture must retain its stable fixture source ID and include a complete
-`proposal`. This is staged provenance for reviewer-only creation in #483; it
-does not itself create or publish a canonical fixture. The proposal carries
-`endDate`, `matchType`, `teamType`, `gender`, `ballsPerOver`, `outcome`,
-`sourceVersion`, and `sourceRevision`. It is rejected if absent, malformed, or
-if its end date precedes the fixture date. Existing `1.0` packages remain valid
-for resolution against existing canonical records, but cannot request canonical
-creation because they do not contain the necessary facts.
-
-An administrator may use `POST /api/v1/batches/{batchReference}/canonical-fixtures` for an unresolved
-version 1.1 fixture. The backend rechecks the source fixture immediately before insertion, records
-the reviewer, batch and reference path, then queues normal reference resolution and validation. It
-does not publish any staged delivery; unresolved teams and participants remain review prerequisites.
-New teams, participants and seasons cannot yet be created through this review flow. They must be
-established as canonical records before a reviewer creates the fixture, after which their references
-can be resolved by the normal revalidation pass.
-
 ## Corrections and duplicates
 
 A correction creates a new submitted delivery identity and points at the
@@ -152,10 +132,16 @@ choice is still a valid candidate and asynchronously reruns canonical event and 
 References without a safe existing candidate require reviewer contact; this workflow does not
 silently create records.
 
-## Upload context and retries
+## Reviewer canonical-fixture decisions
 
-The upload form selects an authorised competition only. The package's own season name/reference is
-authoritative; the form does not offer a season selector because it cannot constrain processing.
+For an unresolved fixture supplied under the versioned fixture-proposal contract, an administrator
+may use `POST /api/v1/batches/{batchReference}/canonical-fixtures`. The backend rechecks the source
+fixture immediately before insertion, records the reviewer, batch and reference path, then queues
+normal reference resolution and validation. It does not publish any staged delivery. Teams,
+participants, and seasons are prerequisites: they must already be canonical records before a reviewer
+creates a fixture, after which the normal revalidation pass can resolve their references.
+
+## Upload context and retries
 
 The browser derives the batch idempotency key from the authorised competition and SHA-256 of the
 file bytes. Reselecting unchanged content, including after refreshing and reselecting the file,

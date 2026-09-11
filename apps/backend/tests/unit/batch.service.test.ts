@@ -609,7 +609,9 @@ describe('canonical fixture creation', () => {
       decidedAt: '2026-09-11T12:00:00.000Z',
     });
     const batches = repository({
-      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, state: 'rejected' }),
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, packageVersion: '1.1', state: 'rejected' }),
       listBatchItems: vi.fn().mockResolvedValue([unresolvedFixture]),
       createCanonicalFixtureAndQueueMapping,
     });
