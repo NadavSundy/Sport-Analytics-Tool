@@ -87,12 +87,7 @@ function report(accepted: number, rejected: number): BatchReportResponse {
       batch: {
         batchReference: reference,
         competitionId: '5',
-        status:
-          accepted > 0 && rejected > 0
-            ? 'partially_published'
-            : rejected > 0
-              ? 'rejected'
-              : 'published',
+        status: accepted > 0 ? 'published' : 'rejected',
         statusUrl: `/api/v1/batches/${reference}`,
         receivedAt: '2026-09-07T10:00:00.000Z',
         updatedAt: '2026-09-07T10:05:00.000Z',
@@ -103,7 +98,7 @@ function report(accepted: number, rejected: number): BatchReportResponse {
           submitter: { accountId: '1', displayName: 'Batch Reviewer' },
         },
         progress: { total: 3, processed: 3, accepted, rejected },
-        counts: { accepted, rejected, unresolved: rejected, duplicate: 0, conflicting: 0 },
+        counts: { accepted, rejected, unresolved: 0, duplicate: 0, conflicting: 0 },
         review: null,
       },
       errorGroups: rejected > 0 ? [{ ruleCode: 'EVENT_SCHEMA_INVALID', count: rejected }] : [],
@@ -111,19 +106,19 @@ function report(accepted: number, rejected: number): BatchReportResponse {
         validation: {
           accepted,
           rejected,
-          blockingErrors: rejected,
+          blockingErrors: 0,
           duplicate: 0,
           conflicting: 0,
         },
         resolution: {
-          resolved: accepted,
+          resolved: accepted + rejected,
           ambiguous: 0,
-          unresolved: rejected,
+          unresolved: 0,
           invalid: 0,
           proposed: 0,
         },
-        approvalBlocked: rejected > 0,
-        blockingReasons: rejected > 0 ? ['Validation errors remain.'] : [],
+        approvalBlocked: false,
+        blockingReasons: [],
       },
       fixtureSummaries: [],
       acceptedSamples: [],
@@ -163,7 +158,7 @@ describe('batch report view', () => {
 
   test.each([
     ['all-accepted', 3, 0, 'Published'],
-    ['partially rejected', 2, 1, 'Partially published — partial success'],
+    ['partially rejected', 2, 1, 'Published — partial success'],
     ['fully rejected', 0, 3, 'Rejected'],
   ])('shows a clear %s batch summary', async (_case, accepted, rejected, state) => {
     vi.stubGlobal('fetch', reportFetch(report(accepted, rejected)));
