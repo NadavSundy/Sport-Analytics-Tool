@@ -346,8 +346,9 @@ describe('role-gated event submission page', () => {
     expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
   });
 
-  it('submits valid delivery events and focuses the stored reference summary', async () => {
-    let resolveSubmission!: (value: Response) => void;
+  it('stages advanced technical JSON through the batch review pipeline', async () => {
+    const batchReference = '223e4567-e89b-42d3-a456-426614174000';
+    let resolveBatch!: (value: Response) => void;
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
@@ -356,15 +357,9 @@ describe('role-gated event submission page', () => {
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
-      if (url.includes('/participants?fixtureId=7')) {
-        return Promise.resolve(participatingPlayers());
-      }
-      if (url.endsWith('/fixtures/7/statistics')) {
-        return Promise.resolve(fixtureStatistics(4));
-      }
-      if (url.endsWith('/submissions') && init?.method === 'POST') {
+      if (url.endsWith('/batches') && init?.method === 'POST') {
         return new Promise<Response>((resolve) => {
-          resolveSubmission = resolve;
+          resolveBatch = resolve;
         });
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -380,42 +375,62 @@ describe('role-gated event submission page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
 
     expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Validating and storing');
+    expect(screen.getByRole('status')).toHaveTextContent(/validation and review/i);
 
     await act(async () => {
-      resolveSubmission(
-        response(201, {
+      resolveBatch(
+        response(202, {
           data: {
-            submissionId: '300',
-            fixtureId: '7',
-            submitterId: '17',
-            status: 'accepted',
+            batchReference,
+            status: 'stored',
+            statusUrl: `/api/v1/batches/${batchReference}`,
             receivedAt: '2026-08-16T09:30:00.000Z',
-            schemaVersion: '1.0',
-            eventCount: 1,
           },
         }),
       );
     });
 
-    const heading = await screen.findByRole('heading', { name: 'Submission accepted' });
+    const heading = await screen.findByRole('heading', { name: 'Fixture package received safely' });
     expect(heading).toHaveFocus();
-    expect(screen.getByText('300')).toBeInTheDocument();
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save correction' })).not.toBeInTheDocument();
 
-    const submissionCall = fetchMock.mock.calls.find(([input]) =>
-      String(input).endsWith('/submissions'),
-    );
-    const request = submissionCall?.[1] as RequestInit;
+    const batchCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/batches'));
+    expect(batchCall).toBeDefined();
+    const request = batchCall?.[1] as RequestInit;
     expect(new Headers(request.headers).get('Authorization')).toBe('Bearer approved-access-token');
-    expect(JSON.parse(String(request.body))).toEqual({
-      fixtureId: '7',
-      schemaVersion: '1.0',
-      events: validEvents,
+    expect(new Headers(request.headers).get('X-Competition-Id')).toBe('5');
+    expect(new Headers(request.headers).get('X-File-Name')).toBe('technical-7.json');
+    expect(request.body).toBeInstanceOf(File);
+
+    const packageText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(String(reader.result ?? '')));
+      reader.addEventListener('error', () =>
+        reject(new Error('The staged technical package could not be read.')),
+      );
+      reader.readAsText(request.body as File);
     });
-    expect(String(request.body)).not.toMatch(/finalStatistic|totalWickets|finalScore/i);
-    expect(await screen.findByRole('button', { name: 'Save correction' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Striker')).toHaveDisplayValue('Opening Batter');
-    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('4');
+    const packagePayload = JSON.parse(packageText) as {
+      fixtures: Array<{
+        sourceId: string;
+        innings: Array<{
+          sourceId: string;
+          events: Array<Record<string, unknown>>;
+        }>;
+      }>;
+    };
+    expect(packagePayload.fixtures[0]?.sourceId).toBe('app:fixture:7');
+    expect(packagePayload.fixtures[0]?.innings[0]?.sourceId).toBe('app:innings:10');
+    expect(packagePayload.fixtures[0]?.innings[0]?.events[0]).toMatchObject({
+      eventId: `app:delivery:${validEvents[0]!.eventId}`,
+      striker: { sourceId: 'app:participant:20' },
+      nonStriker: { sourceId: 'app:participant:21' },
+      bowler: { sourceId: 'app:participant:22' },
+    });
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/submissions'))).toBe(
+      false,
+    );
   });
 
   it('saves a prefilled correction and refreshes the event and statistic displays', async () => {
@@ -423,7 +438,7 @@ describe('role-gated event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
@@ -540,7 +555,7 @@ describe('role-gated event submission page', () => {
         .mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
           const url = String(input);
           if (url.endsWith('/auth/me')) {
-            return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+            return Promise.resolve(currentUser('admin', 'approved', ['5']));
           }
           if (url.includes('/fixtures?')) {
             return Promise.resolve(fixtures([fixture]));
@@ -598,7 +613,7 @@ describe('role-gated event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
