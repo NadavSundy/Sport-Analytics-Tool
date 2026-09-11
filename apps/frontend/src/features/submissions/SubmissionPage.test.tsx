@@ -1,9 +1,14 @@
-import type { ApplicationRole, CurrentUserProfile } from '@sport-analytics/contracts';
+import {
+  seasonUploadPackageSchema,
+  type ApplicationRole,
+  type CurrentUserProfile,
+} from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import seasonUploadTemplate from '../../../public/season-upload-template.json';
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
 
@@ -145,6 +150,28 @@ function currentUser(
 
 function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null } });
+}
+
+/**
+ * The downloadable template completed the way the guided page asks: readable
+ * names for the selected fixture and nothing else. Each placeholder must be
+ * present, so a template change cannot quietly make the upload test vacuous.
+ */
+function readableFixturePackage(): unknown {
+  let text = JSON.stringify(seasonUploadTemplate);
+  const readableValues: [placeholder: string, value: string][] = [
+    ['"Competition name"', '"Example Competition"'],
+    ['"2026-03-14"', `"${fixture.startDate}"`],
+    ['"Home team"', '"Wanderers"'],
+    ['"Away team"', '"Strikers"'],
+    ['"Striker"', '"Opening Batter"'],
+    ['"Bowler"', '"Opening Bowler"'],
+  ];
+  for (const [placeholder, value] of readableValues) {
+    expect(text).toContain(placeholder);
+    text = text.replaceAll(placeholder, value);
+  }
+  return JSON.parse(text);
 }
 
 function singleFixtureCsv() {
@@ -667,11 +694,16 @@ describe('role-gated event submission page', () => {
   it('shows event-specific and field-specific validation results', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
+      // Since #480 only administrators reach the direct /submissions path, which
+      // is the endpoint that returns event-indexed validation details.
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
+      }
+      if (!url.endsWith('/submissions')) {
+        throw new Error(`Unexpected request: ${url}`);
       }
       return Promise.resolve(
         response(422, {
@@ -718,11 +750,16 @@ describe('role-gated event submission page', () => {
   it('shows invalid JSON and backend failures as distinct clear results', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
+      // The direct /submissions path whose failure this test displays is
+      // administrator-only since #480.
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
+      }
+      if (!url.endsWith('/submissions')) {
+        throw new Error(`Unexpected request: ${url}`);
       }
       return Promise.resolve(
         response(503, {
@@ -801,26 +838,13 @@ describe('role-gated event submission page', () => {
     );
 
     const input = screen.getByLabelText('Fixture package');
-    const file = new File(
-      [
-        JSON.stringify({
-          contractVersion: '1.0',
-          packageId: 'source:fixture-7',
-          fixtures: [
-            {
-              context: {
-                date: fixture.startDate,
-                teams: fixture.competitors.map((competitor) => ({
-                  context: { name: competitor.name },
-                })),
-              },
-            },
-          ],
-        }),
-      ],
-      'fixture-package.json',
-      { type: 'application/json' },
-    );
+    // The upload is mocked, so the package must satisfy the real contract here;
+    // otherwise the 202 below would accept a package the worker rejects.
+    const readablePackage = readableFixturePackage();
+    expect(seasonUploadPackageSchema.safeParse(readablePackage).success).toBe(true);
+    const file = new File([JSON.stringify(readablePackage)], 'fixture-package.json', {
+      type: 'application/json',
+    });
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
@@ -844,12 +868,52 @@ describe('role-gated event submission page', () => {
     expect(uploadHeaders.get('X-File-Name')).toBe('fixture-package.json');
   });
 
+  it('keeps the guided single-fixture path free of identifiers and advanced mode set apart', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    // #500 candidate 2: the default guided path must not fall through to the
+    // identifier-based JSON editor.
+    await screen.findByLabelText('Fixture package');
+    expect(screen.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
+    expect(screen.queryByLabelText('Delivery events JSON')).not.toBeInTheDocument();
+
+    const guided = screen.getByRole('group', { name: /Guided upload/ });
+    const advanced = screen.getByRole('group', { name: /application identifiers required/ });
+    expect(
+      within(guided)
+        .getAllByRole('radio')
+        .map((radio) => (radio as HTMLInputElement).value),
+    ).toEqual(['fixture', 'season', 'catalogue']);
+    expect(within(guided).queryByRole('radio', { name: /Advanced technical JSON/ })).toBeNull();
+    expect(
+      within(advanced).getByRole('radio', { name: /Advanced technical JSON/ }),
+    ).not.toBeChecked();
+
+    expect(screen.getByText(/You never need a database ID/)).toBeVisible();
+    expect(screen.getByText(/labels are ones you make up/)).toBeVisible();
+
+    fireEvent.click(within(advanced).getByRole('radio', { name: /Advanced technical JSON/ }));
+    expect(await screen.findByLabelText('Delivery events JSON')).toHaveAccessibleDescription(
+      /uses application identifiers.*choose Single fixture/,
+    );
+    expect(screen.queryByLabelText('Fixture package')).not.toBeInTheDocument();
+  });
+
   it('shows immediate package and row validation errors clearly', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (!url.endsWith('/batches')) throw new Error(`Unexpected request: ${url}`);
       return Promise.resolve(
         response(422, {
           error: {

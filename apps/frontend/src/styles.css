@@ -1535,6 +1535,22 @@ main {
   font-weight: 400;
 }
 
+.submission-workflow-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.submission-workflow-group__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.submission-workflow-group--advanced {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--colour-border);
+}
+
 .submission-scope p {
   margin: 0;
   color: var(--colour-text-secondary);
