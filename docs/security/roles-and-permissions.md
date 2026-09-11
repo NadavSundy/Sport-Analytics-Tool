@@ -3,19 +3,19 @@
 Application roles define application-wide capability. Competition scopes separately limit where a
 submission-capable account may operate.
 
-| Capability                | Viewer | Submitter                  | Admin                    |
-| ------------------------- | ------ | -------------------------- | ------------------------ |
-| View fixtures/statistics  | Yes    | Yes                        | Yes                      |
-| Manage own account        | Yes    | Yes                        | Yes                      |
-| Submit event data         | No     | Yes, within assigned scope | Yes, for any competition |
-| Correct submitted data    | No     | Yes, within assigned scope | Yes, for any competition |
-| View submission history   | No     | Yes                        | Yes                      |
-| Review staged batches     | No     | No                         | Yes                      |
+| Capability                 | Viewer | Submitter                  | Admin                    |
+| -------------------------- | ------ | -------------------------- | ------------------------ |
+| View fixtures/statistics   | Yes    | Yes                        | Yes                      |
+| Manage own account         | Yes    | Yes                        | Yes                      |
+| Submit event data          | No     | Yes, within assigned scope | Yes, for any competition |
+| Correct submitted data     | No     | Yes, within assigned scope | Yes, for any competition |
+| View submission history    | No     | Yes                        | Yes                      |
+| Review staged batches      | No     | No                         | Yes                      |
 | Approve/reject publication | No     | No                         | Yes                      |
-| Manage users              | No     | No                         | Yes                      |
-| Assign roles              | No     | No                         | Yes                      |
-| Assign competition scopes | No     | No                         | Yes                      |
-| Access admin endpoints    | No     | No                         | Yes                      |
+| Manage users               | No     | No                         | Yes                      |
+| Assign roles               | No     | No                         | Yes                      |
+| Assign competition scopes  | No     | No                         | Yes                      |
+| Access admin endpoints     | No     | No                         | Yes                      |
 
 ## Authoritative role
 

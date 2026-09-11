@@ -379,9 +379,7 @@ describe('batch result reporting service', () => {
     );
 
     await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
-    expect(listBatches).toHaveBeenLastCalledWith(
-      expect.objectContaining({ submitterId: '7' }),
-    );
+    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
 
     await service.list(
       createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['5', '6'] }),
@@ -585,26 +583,23 @@ describe('batch review service', () => {
     createTestAccount({ accountId: '1', role: 'submitter', competitionIds: ['5'] }),
     createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['5'] }),
     createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['6'] }),
-  ])(
-    'prevents an unauthorized account from deciding a batch',
-    async (account) => {
-      const applyReviewDecision = vi.fn();
-      const service = createBatchService(
-        {} as BatchPayloadStorageService,
-        repository({
-          findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
-          applyReviewDecision,
-        }),
-      );
-      await expect(
-        service.review(account, awaitingReview.batchReference, {
-          decision: 'approved',
-          reason: 'Attempted approval.',
-        }),
-      ).rejects.toBeInstanceOf(BatchForbiddenError);
-      expect(applyReviewDecision).not.toHaveBeenCalled();
-    },
-  );
+  ])('prevents an unauthorized account from deciding a batch', async (account) => {
+    const applyReviewDecision = vi.fn();
+    const service = createBatchService(
+      {} as BatchPayloadStorageService,
+      repository({
+        findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
+        applyReviewDecision,
+      }),
+    );
+    await expect(
+      service.review(account, awaitingReview.batchReference, {
+        decision: 'approved',
+        reason: 'Attempted approval.',
+      }),
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
+    expect(applyReviewDecision).not.toHaveBeenCalled();
+  });
 
   test('reports unresolved-reference approval and retry races as conflicts', async () => {
     const service = createBatchService(

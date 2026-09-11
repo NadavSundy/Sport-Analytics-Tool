@@ -274,13 +274,9 @@ describe('reviewer batch workspace', () => {
     expect(
       await screen.findByRole('heading', { name: 'Administrator access required' }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Approve and publish' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Return for correction' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
   });
 
   test('shows provenance, summaries, grouped details, bounded samples and blocks unsafe approval', async () => {
