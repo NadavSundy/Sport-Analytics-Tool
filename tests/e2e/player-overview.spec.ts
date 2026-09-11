@@ -170,6 +170,34 @@ const matchHistory = [
   ),
 ];
 
+const careerAggregates = {
+  participantId: 'player-1',
+  participantName: 'A Player',
+  status: 'complete',
+  scope: { superOversIncluded: false },
+  warnings: [],
+  statistics: [
+    {
+      statisticId: 'stat-career-1',
+      participantId: 'player-1',
+      participantName: 'A Player',
+      scope: 'career',
+      statisticCode: 'participant_career',
+      fixtureCount: 58,
+      sourceEventCount: 1677,
+      batting: { runsScored: 1234, ballsFaced: 987, fours: 101, sixes: 37, strikeRate: 125.03 },
+      bowling: {
+        runsConceded: 842,
+        legalBallsBowled: 690,
+        wicketsTaken: 41,
+        ballsPerOver: 6,
+        oversBowled: '115.0',
+        economyRate: 7.32,
+      },
+    },
+  ],
+};
+
 test(
   'player overview presents multiple matches, partial data, and unavailable statistics',
   { tag: '@mobile' },
@@ -184,6 +212,11 @@ test(
         await route.fulfill({
           json: { data: matchHistory, pagination: { nextCursor: null } },
         });
+        return;
+      }
+
+      if (url.pathname.endsWith('/participants/player-1/statistics')) {
+        await route.fulfill({ json: { data: careerAggregates } });
         return;
       }
 
@@ -286,6 +319,9 @@ test(
     purposefulInteractions += 1;
 
     await expect(page.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Career totals' })).toBeVisible();
+    await expect(page.getByText('1234', { exact: true })).toBeVisible();
+    await expect(page.getByText('7.32', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Match history' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Wanderers vs Titans' })).toBeVisible();
@@ -303,8 +339,12 @@ test(
     expect(
       requestedUrls.some((url) => url.includes('/participants/player-1/fixtures?limit=10')),
     ).toBe(true);
+    expect(
+      requestedUrls.some((url) => url.endsWith('/participants/player-1/statistics?scope=career')),
+    ).toBe(true);
 
     const internalValues = [
+      'stat-career-1',
       'player-1',
       'fixture-1',
       'fixture-2',

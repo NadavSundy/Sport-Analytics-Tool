@@ -7,7 +7,7 @@ import type {
   ParticipantFixture,
   Season,
 } from '@sport-analytics/contracts';
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useId, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../api/public-read';
 import { BrowseCollection, type FilterField } from '../features/browse/BrowseCollection';
@@ -20,9 +20,11 @@ import {
   RecordFact,
   RecordFacts,
 } from '../features/browse/RecordDetail';
+import { SectionBoundary, SectionError } from '../features/browse/SectionBoundary';
 import { usePublicData } from '../features/browse/usePublicData';
 import {
   FixtureStatisticsOverview,
+  ParticipantCareerOverview,
   PlayerPerformance,
 } from '../features/statistics/StatisticsPages';
 
@@ -397,7 +399,30 @@ function PlayerMatchRecords({ matches }: { matches: ParticipantFixture[] }) {
 
 const playerMatchFilters = new URLSearchParams();
 
+function PlayerMatchHistoryDisplayError({ retry }: { retry(): void }) {
+  const headingId = useId();
+
+  return (
+    <section aria-labelledby={headingId} className="related-collection">
+      <div className="results-heading">
+        <h2 id={headingId}>Match history</h2>
+      </div>
+      <SectionError
+        description="Published matches could not be requested. Try this section again."
+        reason="The published match history could not be displayed."
+        retry={retry}
+        retryLabel="Retry matches"
+        title="Match history could not be loaded"
+      />
+    </section>
+  );
+}
+
 function PlayerMatchHistory({ participantId }: { participantId: string }) {
+  // Remounting the collection is how a retry after a display failure requests
+  // the history again; its own reload lives inside the unmounted section.
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((count) => count + 1), []);
   const load = useCallback(
     (search: string, signal: AbortSignal) =>
       publicReadApi.listParticipantFixtures(participantId, search, signal),
@@ -405,14 +430,20 @@ function PlayerMatchHistory({ participantId }: { participantId: string }) {
   );
 
   return (
-    <RelatedCollection
-      emptyMessage="No published match history is available for this player."
-      filters={playerMatchFilters}
-      load={load}
-      renderRecords={(matches) => <PlayerMatchRecords matches={matches} />}
-      resourceLabel="matches"
-      title="Match history"
-    />
+    <SectionBoundary
+      onRetry={retry}
+      renderError={(boundaryRetry) => <PlayerMatchHistoryDisplayError retry={boundaryRetry} />}
+    >
+      <RelatedCollection
+        emptyMessage="No published match history is available for this player."
+        filters={playerMatchFilters}
+        key={attempt}
+        load={load}
+        renderRecords={(matches) => <PlayerMatchRecords matches={matches} />}
+        resourceLabel="matches"
+        title="Match history"
+      />
+    </SectionBoundary>
   );
 }
 
@@ -1006,6 +1037,9 @@ export function ParticipantDetailPage() {
             eyebrow="Player"
             title={participant.displayName}
           >
+            {/* Siblings, so both requests start in the same commit rather than one
+                waiting on the other; neither section's state can hide the other. */}
+            <ParticipantCareerOverview participantId={participant.participantId} />
             <PlayerMatchHistory participantId={participant.participantId} />
           </DetailLayout>
         );
