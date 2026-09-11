@@ -26,17 +26,22 @@ import {
   PlayerPerformance,
 } from '../features/statistics/StatisticsPages';
 
-function optionSearch(filters?: URLSearchParams): string {
+function optionSearch(filters: URLSearchParams, name: string): string {
   const params = new URLSearchParams(filters);
   params.set('limit', '100');
+  params.delete('cursor');
+  if (name) {
+    params.set('name', name);
+  }
   return `?${params.toString()}`;
 }
 
 async function loadCompetitionOptions(
-  _filters: URLSearchParams,
+  filters: URLSearchParams,
+  query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const response = await publicReadApi.listCompetitions(optionSearch(), signal);
+  const response = await publicReadApi.listCompetitions(optionSearch(filters, query), signal);
   return response.data.map((competition) => ({
     label: competition.name,
     value: competition.competitionId,
@@ -45,17 +50,19 @@ async function loadCompetitionOptions(
 
 async function loadCompetitionNameOptions(
   filters: URLSearchParams,
+  query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const options = await loadCompetitionOptions(filters, signal);
+  const options = await loadCompetitionOptions(filters, query, signal);
   return options.map((option) => ({ ...option, value: option.label }));
 }
 
 async function loadSeasonOptions(
   filters: URLSearchParams,
+  query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const response = await publicReadApi.listSeasons(optionSearch(filters), signal);
+  const response = await publicReadApi.listSeasons(optionSearch(filters, query), signal);
   return response.data.map((season) => ({
     description: `Season in ${season.competitionName}`,
     keywords: [season.label, season.competitionName],
@@ -66,9 +73,10 @@ async function loadSeasonOptions(
 
 async function loadFixtureOptions(
   filters: URLSearchParams,
+  _query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const response = await publicReadApi.listFixtures(optionSearch(filters), signal);
+  const response = await publicReadApi.listFixtures(optionSearch(filters, ''), signal);
   return response.data.map((fixture) => {
     const teamNames = fixture.competitors.map(({ name }) => name);
     const title = teamNames.length > 0 ? teamNames.join(' vs ') : 'Fixture teams unavailable';
@@ -89,24 +97,11 @@ async function loadFixtureOptions(
 
 async function loadTeamOptions(
   filters: URLSearchParams,
+  query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const params = new URLSearchParams(filters);
-  params.set('limit', '100');
-  params.delete('cursor');
-  const teams: Competitor[] = [];
-  let nextCursor: string | null = null;
-
-  do {
-    if (nextCursor) {
-      params.set('cursor', nextCursor);
-    }
-    const response = await publicReadApi.listCompetitors(`?${params.toString()}`, signal);
-    teams.push(...response.data);
-    nextCursor = response.pagination.nextCursor;
-  } while (nextCursor);
-
-  return teams.map((team) => ({
+  const response = await publicReadApi.listCompetitors(optionSearch(filters, query), signal);
+  return response.data.map((team) => ({
     label: team.name,
     value: team.competitorId,
   }));
@@ -114,17 +109,19 @@ async function loadTeamOptions(
 
 async function loadTeamNameOptions(
   filters: URLSearchParams,
+  query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const options = await loadTeamOptions(filters, signal);
+  const options = await loadTeamOptions(filters, query, signal);
   return options.map((option) => ({ ...option, value: option.label }));
 }
 
 async function loadPlayerNameOptions(
   filters: URLSearchParams,
+  query: string,
   signal: AbortSignal,
 ): Promise<NameComboboxOption[]> {
-  const response = await publicReadApi.listParticipants(optionSearch(filters), signal);
+  const response = await publicReadApi.listParticipants(optionSearch(filters, query), signal);
   return response.data.map((player) => ({
     label: player.displayName,
     value: player.displayName,

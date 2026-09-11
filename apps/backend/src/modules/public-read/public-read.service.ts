@@ -401,6 +401,7 @@ export function createPublicReadService(
       const page = await listSeasonRecords({
         limit: query.limit,
         ...(query.competitionId !== undefined ? { competitionId: query.competitionId } : {}),
+        ...(query.name !== undefined ? { name: query.name } : {}),
         ...(after !== undefined ? { after } : {}),
       });
 

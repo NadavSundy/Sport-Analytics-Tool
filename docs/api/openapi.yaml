@@ -724,6 +724,12 @@ paths:
           description: Limit results to one competition.
           schema:
             $ref: '#/components/schemas/ApiIdentifier'
+        - name: name
+          in: query
+          description: Match a season label or competition name.
+          schema:
+            type: string
+            minLength: 1
       responses:
         '200':
           description: Paginated seasons.

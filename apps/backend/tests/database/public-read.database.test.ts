@@ -103,6 +103,26 @@ describe.sequential('public read relationship summaries database integration', (
     });
   });
 
+  test('searches seasons by season label or competition name before pagination', async () => {
+    const executor = databaseClient();
+
+    const byCompetition = await listSeasons({ limit: 1, name: 'New Zealand T20I' }, executor);
+    const byLabel = await listSeasons({ limit: 1, name: '2009/10' }, executor);
+
+    expect(byCompetition.records).toEqual([
+      expect.objectContaining({
+        competitionName: 'Australia in New Zealand T20I Series',
+        label: '2009/10',
+      }),
+    ]);
+    expect(byLabel.records).toEqual([
+      expect.objectContaining({
+        competitionName: 'Australia in New Zealand T20I Series',
+        label: '2009/10',
+      }),
+    ]);
+  });
+
   test('returns fixtures with readable competition and participating team summaries', async () => {
     const executor = databaseClient();
     const currentFixtureId = ingestedFixtureId();

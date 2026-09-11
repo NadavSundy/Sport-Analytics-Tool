@@ -13,6 +13,7 @@ import {
   participantFixtureListQuerySchema,
   participantListQuerySchema,
   publicEventCollectionResponseSchema,
+  seasonListQuerySchema,
   seasonSchema,
 } from '../public-read';
 
@@ -99,6 +100,13 @@ describe('public read contracts', () => {
     });
     expect(participantFixtureListQuerySchema.parse({})).toEqual({
       limit: 50,
+    });
+  });
+
+  test('accepts server-side season name search', () => {
+    expect(seasonListQuerySchema.parse({ name: 'World Twenty20' })).toEqual({
+      limit: 50,
+      name: 'World Twenty20',
     });
   });
 
