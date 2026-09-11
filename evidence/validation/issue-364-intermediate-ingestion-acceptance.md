@@ -67,10 +67,39 @@ performance, API versioning, consumer keys/rate limits/quotas, caching, and repr
 releases. The detailed source/test mapping is maintained in the linked acceptance guide rather than
 repeated here.
 
+## Live development integration evidence - 11 September 2026
+
+Issue #463 supplied a real deployed-development integration exercise for the batch path documented by this acceptance record.
+
+A controlled season package progressed through the deployed path as follows:
+
+```text
+upload
+-> stored batch
+-> transactional outbox
+-> Service Bus batch.validate
+-> worker validation/reference resolution
+-> awaiting_review
+-> global reviewer queue
+-> approved
+-> published
+```
+
+Batch `f65118c3-3367-47d8-9d2d-5f29469225ff` reached `awaiting_review` with one accepted and zero rejected items. The reviewer opened the report, approved the batch, and the persisted batch state became `published`.
+
+The staged event exactly matched published delivery `4157`. Publication therefore marked the batch item `duplicate_skipped`, linked it to delivery `4157`, and a live canonical query confirmed the natural delivery position still contained exactly one delivery. This supplies deployed evidence for review-before-publication and duplicate-safe replay.
+
+The same #463 exercise also demonstrated recovery of previously stored/pending outbox commands after the worker/Service Bus runtime path was repaired, without resubmitting those source batches.
+
+See `evidence/validation/issue-463-dev-worker-deployment.md` for the full operational record.
+
+This evidence strengthens the deployed integration trail but does **not** replace the remaining #364 close-out gates for representative season-scale throughput and #417/#418 formal user testing.
+
 ## Defects found
 
-None recorded yet. Add only defects actually observed during the integrated run, with issue/commit
-references and the rerun that proves the fix.
+The deployed #463 acceptance run identified a real report-contract defect: valid zero-based cricket delivery positions (`positionInOver: 0`) were rejected by the frontend report response schema because it used `positive()` rather than `nonnegative()`. The backend report endpoint returned HTTP 200; the shared frontend contract rejected the response. The defect was fixed separately with regression coverage and the same already-staged batch then loaded successfully.
+
+The final duplicate-safe publication check also observed two active `EXACT_PUBLISHED_DUPLICATE` warning rows for one source ordinal. This did not affect acceptance or canonical publication and should be tracked separately as a validation-result persistence/idempotency defect.
 
 ## Final decision
 
