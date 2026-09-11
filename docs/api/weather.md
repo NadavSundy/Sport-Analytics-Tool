@@ -44,10 +44,13 @@ GET /api/v1/weather?latitude={latitude}&longitude={longitude}&date={date}
 GET /api/v1/fixtures/{fixtureId}/weather
 ```
 
-This endpoint automatically uses the fixture's `start_date` and optional stored venue coordinates.
-It is the appropriate endpoint for fixture pages: the frontend calls this backend endpoint only and
-never calls Open-Meteo. Weather is contextual external information; it does not change or
-authoritatively describe fixture, event, or statistic records.
+This endpoint automatically uses the fixture's `start_date` and stored venue coordinates. When
+coordinates are absent, it asks Open-Meteo's geocoding endpoint for the stored city first, then
+falls back to the raw venue name if the city cannot be resolved. A successful result is persisted
+on the venue and reused by later requests. It is the appropriate endpoint for fixture pages: the
+frontend calls this backend endpoint only and never calls Open-Meteo. Weather is contextual
+external information; it does not change or authoritatively describe fixture, event, or statistic
+records.
 
 When weather is available, the response includes fixture and venue context plus the same daily
 temperature, precipitation, and wind fields returned by `/weather`:
@@ -72,14 +75,14 @@ temperature, precipitation, and wind fields returned by `/weather`:
 }
 ```
 
-An existing fixture without a venue, complete coordinates, or supported coordinate values returns
-`200 OK` with `availability: "unavailable"`, a machine-readable reason (`MISSING_VENUE`,
-`MISSING_COORDINATES`, `UNSUPPORTED_LOCATION`, or `UNSUPPORTED_DATE`), and `weather: null`. This
-does not call the provider or invent a location or date. `UNSUPPORTED_DATE` is returned when the
-fixture's date falls outside both the forecast and archive endpoints' supported ranges (see
-"External provider" above). An unknown fixture returns `404 NOT_FOUND`. Provider failures return
-the same `502`, `503`, or `504` codes as the direct weather endpoint and affect only this weather
-request, not ordinary fixture reads.
+An existing fixture without a venue or with unsupported stored coordinate values returns `200 OK`
+with `availability: "unavailable"`, a machine-readable reason, and `weather: null`. If neither the
+city nor venue-name lookup can resolve a location, the reason is `LOCATION_NOT_FOUND`; no
+coordinates are invented. `MISSING_COORDINATES` remains a compatible unavailable reason for older
+responses. `UNSUPPORTED_DATE` is returned when the fixture's date falls outside both the forecast
+and archive endpoints' supported ranges (see "External provider" above). An unknown fixture
+returns `404 NOT_FOUND`. Provider failures return the same `502`, `503`, or `504` codes as the
+direct weather endpoint and affect only this weather request, not ordinary fixture reads.
 
 | Parameter   | Required | Description                                |
 | ----------- | -------- | ------------------------------------------ |
@@ -145,9 +148,9 @@ error internals to the client.
 
 ## Known limitations
 
-- Venue coordinates are optional stored data (`venue.latitude` and `venue.longitude`); imported
-  Cricsheet venue names/cities are not geocoded. Fixtures without stored coordinates therefore
-  return the documented unavailable state.
+- Venue coordinates are optional stored data (`venue.latitude` and `venue.longitude`). Missing
+  coordinates are resolved lazily from the stored city, then raw venue name, and persisted when
+  Open-Meteo resolves either query. Weather responses themselves are not cached.
 - Open-Meteo's archive endpoint only covers dates from `1940-01-01` onward, and the forecast
   endpoint only extends 16 days into the future. Dates outside this combined range return
   `422 DATE_UNSUPPORTED` from `/api/v1/weather`, or `availability: "unavailable"` with reason

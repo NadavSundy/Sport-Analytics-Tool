@@ -97,6 +97,26 @@ describe('public event repository', () => {
     ]);
   });
 
+  test('restricts a page to the events a calculation trace names', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [event('500', 1)],
+      rowCount: 1,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    });
+    const repository = createPublicEventRepository({ query } as unknown as QueryExecutor);
+
+    await repository.listAcceptedFixtureEvents({
+      fixtureId: '100',
+      eventIds: ['500', '502'],
+      limit: 100,
+    });
+
+    expect(String(query.mock.calls[0]?.[0])).toContain('d.delivery_id = ANY($2::bigint[])');
+    expect(query.mock.calls[0]?.[1]).toEqual(['100', ['500', '502'], 101]);
+  });
+
   test('scopes stable event detail reads to the fixture and accepted event set', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [event('500', 1)],

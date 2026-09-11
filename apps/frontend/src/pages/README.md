@@ -23,7 +23,10 @@ independent from the fixture record so external-service failures do not hide mat
 The previous `/fixtures/:fixtureId/statistics` route remains available for compatible deep links,
 but it is not required to view the primary statistics. Each statistic links to
 `/fixtures/:fixtureId/statistics/:statisticId`, which requests the accepted contributing events used
-by that result and links back to the named match, team, and player records.
+by that result and links back to the named match, team, and player records. Its CSV and JSON export
+controls download that statistic's calculation-trace export, so the file holds exactly the events
+the trace lists however many there are; the control states the event count, announces preparation
+and completion, and shows the server's reason when an export fails instead of downloading a file.
 
 These pages call only the handwritten public API through `src/api/public-read.ts`. They do not
 read Supabase data, attach identity credentials, or require an authenticated session.
@@ -88,4 +91,6 @@ Codex[GPT-5.6 Sol].
 The fixture-weather overview behavior was documented with the assistance of Codex[GPT-5].
 The dataset-release catalogue and download experience was documented with the assistance of
 Codex[GPT-5].
+The calculation-trace export behaviour for issue #467 was documented with the assistance of
+Claude Code[Claude Opus 5].
 The player career totals behaviour was documented with the assistance of Claude Code[Claude Opus 5].

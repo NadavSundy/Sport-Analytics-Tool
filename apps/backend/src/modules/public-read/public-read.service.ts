@@ -1,9 +1,14 @@
+import {
+  FIXTURE_EVENT_EXPORT_MAX_EVENTS,
+  FIXTURE_EVENT_EXPORT_PAGE_SIZE,
+} from '@sport-analytics/contracts';
 import type {
   Competition,
   CompetitionListQuery,
   Competitor,
   CompetitorListQuery,
   Fixture,
+  FixtureEventExportQuery,
   FixtureEventListQuery,
   FixtureListQuery,
   Participant,
@@ -48,7 +53,7 @@ import {
 import { findSeason, listSeasons as listSeasonRecords } from '../seasons/season.repository';
 import { calculateRate, formatOvers } from '../statistics/fixture-statistics.metrics';
 import { createCursor, InvalidCursorError, readCursor } from './cursor';
-import { PublicReadInputError } from './public-read.errors';
+import { FixtureEventExportTooLargeError, PublicReadInputError } from './public-read.errors';
 import { createSeasonId, parseSeasonId } from './season-id';
 
 const databaseIdSchema = z.string().regex(/^\d+$/);
@@ -157,8 +162,27 @@ export interface PublicReadService {
     };
   } | null>;
 
+  /**
+   * Every accepted event matching the filters, read by following the event
+   * collection's cursor until it is exhausted. Null for an unknown fixture.
+   * Rejects with FixtureEventExportTooLargeError rather than returning a short
+   * result, and propagates a failure on any page rather than returning the
+   * pages read before it.
+   */
+  exportFixtureEvents(
+    fixtureId: string,
+    filters: FixtureEventExportFilters,
+  ): Promise<PublicEvent[] | null>;
+
   getFixtureEvent(fixtureId: string, eventId: string): Promise<PublicEvent | null>;
 }
+
+type FixtureEventExportFilters = FixtureEventExportQuery & {
+  // Restricts the export to these events, as a calculation-trace export does.
+  eventIds?: string[];
+};
+
+type FixtureEventPageQuery = FixtureEventListQuery & Pick<FixtureEventExportFilters, 'eventIds'>;
 
 export interface ParticipantFixtureHistoryRepository {
   findParticipantById(participantId: string): Promise<ParticipantRecord | null>;
@@ -364,6 +388,62 @@ export function createPublicReadService(
   eventRepository: PublicEventRepository = createPublicEventRepository(),
   participantFixtureHistoryRepository: ParticipantFixtureHistoryRepository = defaultParticipantFixtureHistoryRepository,
 ): PublicReadService {
+  function assertEventFilters(
+    query: Pick<FixtureEventListQuery, 'inningsId' | 'competitorId' | 'participantId'>,
+  ): void {
+    assertDatabaseFilter(query.inningsId, 'inningsId');
+    assertDatabaseFilter(query.competitorId, 'competitorId');
+    assertDatabaseFilter(query.participantId, 'participantId');
+  }
+
+  // One page of a fixture's accepted events, for a fixture already known to
+  // exist. Shared by the paginated collection and by exports, which follow the
+  // nextCursor this returns.
+  async function readFixtureEventPage(
+    fixtureId: string,
+    query: FixtureEventPageQuery,
+  ): Promise<{ data: PublicEvent[]; pagination: { nextCursor: string | null } }> {
+    const after = decodeCursor(query.cursor, eventCursorSchema);
+    if (after && after.fixtureId !== fixtureId) {
+      throw new PublicReadInputError(
+        'INVALID_CURSOR',
+        'The pagination cursor does not belong to this fixture.',
+      );
+    }
+
+    const page = await eventRepository.listAcceptedFixtureEvents({
+      fixtureId,
+      limit: query.limit,
+      ...(query.eventIds !== undefined ? { eventIds: query.eventIds } : {}),
+      ...(query.inningsId !== undefined ? { inningsId: query.inningsId } : {}),
+      ...(query.competitorId !== undefined ? { competitorId: query.competitorId } : {}),
+      ...(query.participantId !== undefined ? { participantId: query.participantId } : {}),
+      ...(query.overNumber !== undefined ? { overNumber: query.overNumber } : {}),
+      ...(query.wicketKind !== undefined ? { wicketKind: query.wicketKind } : {}),
+      ...(after !== undefined
+        ? {
+            after: {
+              inningsOrdinal: after.inningsOrdinal,
+              sequenceNumber: after.sequenceNumber,
+              eventId: after.eventId,
+            },
+          }
+        : {}),
+    });
+
+    return {
+      data: page.records,
+      pagination: {
+        nextCursor: createNextCursor(page.hasMore, page.records, (record) => ({
+          fixtureId: record.fixtureId,
+          inningsOrdinal: record.inningsOrdinal,
+          sequenceNumber: record.sequenceNumber,
+          eventId: record.eventId,
+        })),
+      },
+    };
+  }
+
   return {
     async listCompetitions(query) {
       const after = decodeCursor(query.cursor, competitionCursorSchema);
@@ -624,53 +704,49 @@ export function createPublicReadService(
         return null;
       }
 
-      assertDatabaseFilter(query.inningsId, 'inningsId');
-      assertDatabaseFilter(query.competitorId, 'competitorId');
-      assertDatabaseFilter(query.participantId, 'participantId');
+      assertEventFilters(query);
 
       const fixtureExists = await eventRepository.fixtureExists(fixtureId);
       if (!fixtureExists) {
         return null;
       }
 
-      const after = decodeCursor(query.cursor, eventCursorSchema);
-      if (after && after.fixtureId !== fixtureId) {
-        throw new PublicReadInputError(
-          'INVALID_CURSOR',
-          'The pagination cursor does not belong to this fixture.',
-        );
+      return readFixtureEventPage(fixtureId, query);
+    },
+
+    async exportFixtureEvents(fixtureId, filters) {
+      if (!isDatabaseId(fixtureId)) {
+        return null;
       }
 
-      const page = await eventRepository.listAcceptedFixtureEvents({
-        fixtureId,
-        limit: query.limit,
-        ...(query.inningsId !== undefined ? { inningsId: query.inningsId } : {}),
-        ...(query.competitorId !== undefined ? { competitorId: query.competitorId } : {}),
-        ...(query.participantId !== undefined ? { participantId: query.participantId } : {}),
-        ...(query.overNumber !== undefined ? { overNumber: query.overNumber } : {}),
-        ...(query.wicketKind !== undefined ? { wicketKind: query.wicketKind } : {}),
-        ...(after !== undefined
-          ? {
-              after: {
-                inningsOrdinal: after.inningsOrdinal,
-                sequenceNumber: after.sequenceNumber,
-                eventId: after.eventId,
-              },
-            }
-          : {}),
-      });
+      assertEventFilters(filters);
 
-      return {
-        data: page.records,
-        pagination: {
-          nextCursor: createNextCursor(page.hasMore, page.records, (record) => ({
-            fixtureId: record.fixtureId,
-            inningsOrdinal: record.inningsOrdinal,
-            sequenceNumber: record.sequenceNumber,
-            eventId: record.eventId,
-          })),
-        },
-      };
+      const fixtureExists = await eventRepository.fixtureExists(fixtureId);
+      if (!fixtureExists) {
+        return null;
+      }
+
+      const events: PublicEvent[] = [];
+      let cursor: string | null = null;
+
+      do {
+        const page = await readFixtureEventPage(fixtureId, {
+          ...filters,
+          limit: FIXTURE_EVENT_EXPORT_PAGE_SIZE,
+          ...(cursor !== null ? { cursor } : {}),
+        });
+        events.push(...page.data);
+
+        // A page only carries a cursor when it holds at least one event, so
+        // this bound is also what guarantees the loop ends.
+        if (events.length > FIXTURE_EVENT_EXPORT_MAX_EVENTS) {
+          throw new FixtureEventExportTooLargeError(FIXTURE_EVENT_EXPORT_MAX_EVENTS);
+        }
+
+        cursor = page.pagination.nextCursor;
+      } while (cursor !== null);
+
+      return events;
     },
 
     async getFixtureEvent(fixtureId, eventId) {
