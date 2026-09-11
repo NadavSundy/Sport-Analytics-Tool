@@ -54,7 +54,7 @@ const profile = {
 };
 
 function report(blocked = true): BatchReportResponse {
-  const item = {
+  const item: BatchReportResponse['data']['items'][number] = {
     ordinal: 1,
     outcome: blocked ? 'unresolved' : 'accepted',
     location: {
