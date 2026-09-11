@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@azure/identity": "4.13.1",
-    "@azure/storage-blob": "12.27.0",
+    "@azure/storage-blob": "^12.27.0",
     "@sport-analytics/batch-processing": "0.1.0",
     "@sport-analytics/contracts": "0.1.0",
     "@supabase/supabase-js": "^2.112.1",

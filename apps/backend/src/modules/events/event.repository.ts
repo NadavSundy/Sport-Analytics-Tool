@@ -5,6 +5,9 @@ import { executeQuery, getDatabasePool, type QueryExecutor } from '../../databas
 interface PublicEventListOptions {
   fixtureId: string;
   limit: number;
+  // Restricts the page to these events, in the collection's own order. Used to
+  // export exactly the events a fixture statistic was derived from.
+  eventIds?: string[];
   inningsId?: string;
   competitorId?: string;
   participantId?: string;
@@ -46,6 +49,11 @@ async function queryAcceptedFixtureEvents(
   if (options.eventId) {
     values.push(options.eventId);
     conditions.push(`d.delivery_id = $${values.length}::bigint`);
+  }
+
+  if (options.eventIds) {
+    values.push(options.eventIds);
+    conditions.push(`d.delivery_id = ANY($${values.length}::bigint[])`);
   }
 
   if (options.inningsId) {

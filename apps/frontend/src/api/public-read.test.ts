@@ -1,4 +1,7 @@
-import { competitionCollectionResponseSchema } from '@sport-analytics/contracts';
+import {
+  competitionCollectionResponseSchema,
+  fixtureWeatherResponseSchema,
+} from '@sport-analytics/contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from './client';
 import { ApiContractError, fixtureEventExportFilename, requestPublicApi } from './public-read';
@@ -84,4 +87,29 @@ describe('public read API client', () => {
       requestPublicApi('/competitions', competitionCollectionResponseSchema),
     ).rejects.toBeInstanceOf(ApiContractError);
   });
+
+  it.each(['LOCATION_NOT_FOUND', 'UNSUPPORTED_DATE'])(
+    'parses fixture-weather unavailable responses without a contract error',
+    async (reason) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          response(200, {
+            data: {
+              fixtureId: '17',
+              date: '2026-08-19',
+              availability: 'unavailable',
+              reason,
+              venue: { name: 'AMI Stadium', city: 'Christchurch' },
+              weather: null,
+            },
+          }),
+        ),
+      );
+
+      await expect(
+        requestPublicApi('/fixtures/17/weather', fixtureWeatherResponseSchema),
+      ).resolves.toMatchObject({ data: { availability: 'unavailable', reason } });
+    },
+  );
 });

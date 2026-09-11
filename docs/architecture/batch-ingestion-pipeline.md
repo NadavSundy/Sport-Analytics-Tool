@@ -580,7 +580,10 @@ bounded transactions from the durable `publishing` state and checkpoint; an inte
 be retried with the same decision to resume it. A competing decision is rejected. Rejection and return
 for correction commit only their audit record and terminal state, so canonical delivery data remains
 unchanged. Publication accepts only `publishing` batches and only items still marked `accepted`;
-unresolved or ambiguous references prevent the approval transition.
+ordinary validation rejections remain staged and visible in the immutable report without blocking the
+accepted subset. Batch-level validation failures, validation errors attached to otherwise publishable
+items, publication conflicts, and unresolved, ambiguous, or invalid references still prevent the
+approval transition.
 
 ---
 

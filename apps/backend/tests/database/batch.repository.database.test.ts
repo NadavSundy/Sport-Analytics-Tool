@@ -752,7 +752,7 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
-  test('publishes an accepted item once and makes a replay a deterministic no-op', async () => {
+  test('publishes only the accepted subset of a mixed batch and makes replay a no-op', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
       const repository = createBatchRepository(client);
@@ -774,7 +774,7 @@ describe.sequential('batch repository database integration', () => {
         source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
         state: 'awaiting_review',
       });
-      await repository.insertBatchItems(batch.batchId, [
+      const items = await repository.insertBatchItems(batch.batchId, [
         {
           ordinal: 0,
           inningsId: current.inningsId,
@@ -793,7 +793,29 @@ describe.sequential('batch repository database integration', () => {
             extras: {},
           },
         },
+        {
+          ordinal: 1,
+          inningsId: current.inningsId,
+          overNumber: 0,
+          positionInOver: 2,
+          sourceIdentity: 'test:delivery:publication-rejected',
+          referenceResolutionState: 'resolved',
+          state: 'rejected',
+          rejectionCode: 'CRICKET_BUSINESS_RULE_FAILED',
+          payload: {},
+        },
       ]);
+      await repository.recordValidationResult({
+        batchId: batch.batchId,
+        batchItemId: items[1]!.batchItemId,
+        sourceOrdinal: 1,
+        ruleCode: 'CRICKET_BUSINESS_RULE_FAILED',
+        ruleVersion: '1.0',
+        severity: 'error',
+        message: 'The rejected event failed a deterministic cricket rule.',
+      });
+
+      await expect(repository.countBlockingValidationErrors(batch.batchId)).resolves.toBe(0);
 
       const staged = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count FROM delivery
@@ -838,8 +860,23 @@ describe.sequential('batch repository database integration', () => {
         [batch.batchId, current.inningsId],
       );
       expect(published.rows).toEqual([{ count: '1', state: 'published' }]);
-      const item = await repository.listBatchItems(batch.batchId, { limit: 10 });
-      expect(item[0]).toMatchObject({ state: 'published', publishedEventId: expect.any(String) });
+      const finalItems = await repository.listBatchItems(batch.batchId, { limit: 10 });
+      expect(finalItems).toEqual([
+        expect.objectContaining({ state: 'published', publishedEventId: expect.any(String) }),
+        expect.objectContaining({
+          state: 'rejected',
+          rejectionCode: 'CRICKET_BUSINESS_RULE_FAILED',
+          publishedEventId: null,
+        }),
+      ]);
+      await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
+        { ruleCode: 'CRICKET_BUSINESS_RULE_FAILED', count: 1 },
+      ]);
+      const decisions = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM batch_review_decision WHERE batch_id=$1::bigint',
+        [batch.batchId],
+      );
+      expect(decisions.rows[0]).toEqual({ count: '1' });
     });
   });
 

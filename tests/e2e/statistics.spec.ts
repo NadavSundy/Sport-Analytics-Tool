@@ -250,6 +250,9 @@ test(
     await expect(page.getByText('event-1')).toHaveCount(0);
     expect(requestedUrls.some((url) => url.includes('includeContributors=true'))).toBe(true);
 
+    await expect(
+      page.getByText('Download the 1 event shown in this trace, in match order, for analysis.'),
+    ).toBeVisible();
     const csvDownload = page.getByRole('button', { name: 'Download CSV' });
     await csvDownload.focus();
     await expect(csvDownload).toBeFocused();
@@ -257,18 +260,19 @@ test(
     expect(csv.suggestedFilename()).toBe(
       'fixture-fixture-1-innings-innings-1-team-team-1-events.csv',
     );
+    await expect(page.getByText('CSV export of 1 event downloaded.')).toBeVisible();
+    // Issue #467: the trace exports its own statistic's events, never a
+    // filtered slice or a single page of one.
     await expect
       .poll(() =>
-        requestedUrls.some(
-          (url) =>
-            url.includes('/events/export.csv') &&
-            url.includes('inningsId=innings-1') &&
-            url.includes('competitorId=team-1') &&
-            !url.includes('cursor=') &&
-            !url.includes('limit='),
+        requestedUrls.some((url) =>
+          url.endsWith('/fixtures/fixture-1/statistics/stat-innings-1/events/export.csv'),
         ),
       )
       .toBe(true);
+    expect(requestedUrls.some((url) => url.includes('/fixtures/fixture-1/events/export'))).toBe(
+      false,
+    );
 
     const [json] = await Promise.all([
       page.waitForEvent('download'),
@@ -279,11 +283,8 @@ test(
     );
     await expect
       .poll(() =>
-        requestedUrls.some(
-          (url) =>
-            url.includes('/events/export.json') &&
-            url.includes('inningsId=innings-1') &&
-            url.includes('competitorId=team-1'),
+        requestedUrls.some((url) =>
+          url.endsWith('/fixtures/fixture-1/statistics/stat-innings-1/events/export.json'),
         ),
       )
       .toBe(true);

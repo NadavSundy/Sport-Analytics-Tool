@@ -119,6 +119,17 @@ out-of-range date never reaches Open-Meteo and never surfaces provider internals
 
 The response parsing logic is unchanged: both endpoints return the same `daily.*` field shape.
 
+## Amendment: fixture location resolution (issue #473)
+
+Fixture weather now resolves missing venue coordinates lazily through Open-Meteo's geocoding API.
+The backend reuses valid persisted coordinates without geocoding. Otherwise it queries the stored
+city first and, only when that cannot be resolved, queries the raw venue name; it never constructs a
+combined venue-and-city query. Successful coordinates are persisted on the existing venue record for
+later requests. If neither lookup resolves, fixture weather returns the normal successful
+unavailable state with `LOCATION_NOT_FOUND`; geocoding timeout and upstream failures retain the
+safe `504` and `502` mappings. Weather data remains uncached, and forecast/archive selection is
+unchanged.
+
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of Claude Sonnet 5.
