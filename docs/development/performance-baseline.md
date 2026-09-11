@@ -61,9 +61,11 @@ internet latency.
 The statistics endpoint derives fixture, innings, and participant values from
 accepted events. The participant-fixture endpoint is the currently implemented
 public cross-fixture aggregate; no unimplemented season aggregate is substituted
-for this baseline. The export remains bounded by the public API's 100-event
-limit, so the measurement records the implemented export contract rather than a
-future bulk-export design.
+for this baseline. Since issue #467 the export returns every matching event by
+following the event collection's cursor at 100 events per page, up to a
+5,000-event bound, so an unfiltered export of a fixture with more than 100
+events issues one database read per page. The target was set when the export
+was a single page and has not been re-set for the complete export.
 
 ## Repeatable procedure
 

@@ -1,11 +1,22 @@
 import { Router } from 'express';
 
-import { createPublicReadController } from './public-read.controller';
+import type { FixtureStatisticsService } from '../statistics/fixture-statistics.service';
+import {
+  createFixtureStatisticEventExportController,
+  createPublicReadController,
+} from './public-read.controller';
 import type { PublicReadService } from './public-read.service';
 
-export function createPublicReadRouter(service: PublicReadService): Router {
+export function createPublicReadRouter(
+  service: PublicReadService,
+  fixtureStatisticsService: Pick<FixtureStatisticsService, 'getFixtureStatistic'>,
+): Router {
   const router = Router();
   const controller = createPublicReadController(service);
+  const traceExportController = createFixtureStatisticEventExportController(
+    service,
+    fixtureStatisticsService,
+  );
 
   router.get('/competitions', controller.listCompetitions);
 
@@ -26,6 +37,16 @@ export function createPublicReadRouter(service: PublicReadService): Router {
   router.get('/fixtures/:fixtureId/events/export.csv', controller.exportFixtureEventsCsv);
 
   router.get('/fixtures/:fixtureId/events/:eventId', controller.getFixtureEvent);
+
+  router.get(
+    '/fixtures/:fixtureId/statistics/:statisticId/events/export.json',
+    traceExportController.exportFixtureStatisticEventsJson,
+  );
+
+  router.get(
+    '/fixtures/:fixtureId/statistics/:statisticId/events/export.csv',
+    traceExportController.exportFixtureStatisticEventsCsv,
+  );
 
   router.get('/competitors', controller.listCompetitors);
 

@@ -37,7 +37,7 @@ export class GeocodingUpstreamError extends Error {
   }
 }
 
-export interface GeocodingService {
+interface GeocodingService {
   /**
    * Resolves a free-text place name (e.g. a venue name, optionally combined
    * with a city) to coordinates.
