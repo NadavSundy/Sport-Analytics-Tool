@@ -37,12 +37,12 @@ type LoadState<T> =
   { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; value: T };
 
 function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; children: ReactNode }) {
-  return profile.role === 'admin' || profile.role === 'submitter' ? (
+  return profile.role === 'admin' ? (
     children
   ) : (
     <div className="state-message state-message--error" role="alert">
-      <h2>Reviewer access required</h2>
-      <p>This workspace is available only to authorised reviewers.</p>
+      <h2>Administrator access required</h2>
+      <p>Batch review decisions are available only to administrators.</p>
     </div>
   );
 }
@@ -98,11 +98,7 @@ function ReviewQueue() {
   }
   return (
     <ReviewerGate profile={state.value.profile}>
-      <p className="review-scope-note">
-        {state.value.profile.role === 'admin'
-          ? 'Showing all awaiting-review batches.'
-          : `Showing awaiting-review batches within your assigned competition scopes.`}
-      </p>
+      <p className="review-scope-note">Showing all awaiting-review batches.</p>
       {state.value.batches.length === 0 ? (
         <p role="status">No batches are awaiting your review.</p>
       ) : (

@@ -228,7 +228,7 @@ describe('reviewer batch workspace', () => {
     expect(screen.getByText('Showing all awaiting-review batches.')).toBeInTheDocument();
   });
 
-  test('shows assigned competition-scope messaging to a reviewer alias', async () => {
+  test('blocks submitters from the reviewer queue', async () => {
     const fetchMock = vi
       .fn()
       .mockImplementation((input: RequestInfo | URL) =>
@@ -240,13 +240,47 @@ describe('reviewer batch workspace', () => {
           ),
         ),
       );
+
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/reviews/batches');
+
     expect(
-      await screen.findByText(
-        'Showing awaiting-review batches within your assigned competition scopes.',
-      ),
+      await screen.findByRole('heading', { name: 'Administrator access required' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText('Batch review decisions are available only to administrators.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'season.csv' })).not.toBeInTheDocument();
+  });
+
+  test('does not expose review decision controls to a submitter on a direct batch URL', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL) =>
+          Promise.resolve(
+            response(
+              String(input).includes('/auth/me')
+                ? { user: { ...profile.user, role: 'submitter' } }
+                : report(false),
+            ),
+          ),
+        ),
+    );
+
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Administrator access required' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Approve and publish' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Return for correction' }),
+    ).not.toBeInTheDocument();
   });
 
   test('shows provenance, summaries, grouped details, bounded samples and blocks unsafe approval', async () => {
