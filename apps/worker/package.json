@@ -18,11 +18,11 @@
     "probe:enqueue": "tsx --env-file=.env scripts/enqueue-probe.ts"
   },
   "dependencies": {
-    "@sport-analytics/batch-processing": "0.1.0",
-    "@sport-analytics/contracts": "0.1.0",
     "@azure/identity": "4.13.1",
     "@azure/service-bus": "7.9.5",
-    "@azure/storage-blob": "12.27.0",
+    "@azure/storage-blob": "^12.27.0",
+    "@sport-analytics/batch-processing": "0.1.0",
+    "@sport-analytics/contracts": "0.1.0",
     "pg": "^8.22.0",
     "zod": "^3.23.8"
   },

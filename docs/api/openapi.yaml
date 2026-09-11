@@ -922,13 +922,16 @@ paths:
         - Public Read
       summary: Export accepted fixture events as JSON
       description: |
-        Exports up to 100 current accepted fixture events in deterministic innings
-        and sequence order. It accepts the same filters as the public event
-        collection except for cursor and limit, which are intentionally omitted
-        so that Basic-tier exports remain bounded. Records pair competition, team
-        and participant identifiers with readable names and represent absent
-        extras categories as zero. Submission ownership, revision history and
-        internal audit fields are not exposed.
+        Exports every current accepted fixture event matching the filters, in
+        deterministic innings and sequence order. It accepts the same filters as
+        the public event collection except for cursor and limit: the server
+        follows the collection's cursor at the maximum page size until it is
+        exhausted. An export that would exceed 5,000 events fails as a whole
+        with EXPORT_TOO_LARGE, and a failure on any page returns an error rather
+        than the rows read so far, so a partial export is never returned.
+        Records pair competition, team and participant identifiers with readable
+        names and represent absent extras categories as zero. Submission
+        ownership, revision history and internal audit fields are not exposed.
       operationId: exportFixtureEventsJson
       x-implementation-status: implemented
       security: []
@@ -964,7 +967,7 @@ paths:
             minLength: 1
       responses:
         '200':
-          description: A bounded accepted-event export in occurrence order.
+          description: Every matching accepted event in occurrence order.
           content:
             application/json:
               schema:
@@ -973,6 +976,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ExportTooLarge'
 
   /api/v1/fixtures/{fixtureId}/events/export.csv:
     get:
@@ -980,7 +985,7 @@ paths:
         - Public Read
       summary: Export accepted fixture events as CSV
       description: |
-        Exports the same filtered, bounded slice as `export.json` in CSV form.
+        Exports the same complete filtered set as `export.json` in CSV form.
         Rows use the same deterministic occurrence order and the response is an
         attachment whose filename identifies every active trace filter, for
         example `fixture-481-player-30-over-4-events.csv`.
@@ -1019,7 +1024,7 @@ paths:
             minLength: 1
       responses:
         '200':
-          description: A bounded CSV attachment of accepted events in occurrence order.
+          description: A CSV attachment of every matching accepted event in occurrence order.
           headers:
             Content-Disposition:
               description: Attachment filename for the CSV export.
@@ -1034,6 +1039,84 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ExportTooLarge'
+
+  /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
+    get:
+      tags:
+        - Public Read
+      summary: Export a calculation trace's accepted events as JSON
+      description: |
+        Exports exactly the accepted events a fixture statistic was derived
+        from, which are the events its calculation trace displays, in
+        occurrence order. For a participant statistic these are the
+        standard-innings deliveries the participant faced or bowled; unlike the
+        participantId filter, they exclude deliveries where the participant was
+        only the non-striker, was dismissed or fielded, and super-over
+        deliveries. Rows are read in full with the same paging and bound as the
+        filtered export. If the accepted events change between reading the trace
+        and its rows, the export fails with EXPORT_TRACE_CHANGED rather than
+        returning a file that disagrees with the trace.
+      operationId: exportFixtureStatisticEventsJson
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: The statistic's contributing accepted events in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventExportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ExportTraceChanged'
+        '422':
+          $ref: '#/components/responses/ExportTooLarge'
+
+  /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
+    get:
+      tags:
+        - Public Read
+      summary: Export a calculation trace's accepted events as CSV
+      description: |
+        Exports the same events as the calculation-trace JSON export in the
+        fixture-event CSV format. The attachment is named after the trace, for
+        example `fixture-481-innings-900-team-20-events.csv` or
+        `fixture-481-player-30-events.csv`.
+      operationId: exportFixtureStatisticEventsCsv
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: A CSV attachment of the statistic's contributing accepted events.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the CSV export.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ExportTraceChanged'
+        '422':
+          $ref: '#/components/responses/ExportTooLarge'
 
   /api/v1/fixtures/{fixtureId}/statistics:
     get:
@@ -1142,11 +1225,13 @@ paths:
         - Weather
       summary: Get contextual weather for a fixture
       description: |
-        Resolves the fixture's start date and its stored venue coordinates, then
-        retrieves daily weather through the server-side Open-Meteo integration.
+        Resolves the fixture's start date and venue coordinates, reusing stored
+        coordinates or resolving the city first and raw venue name second when
+        coordinates are absent. Resolved coordinates are persisted before daily
+        weather is retrieved through the server-side Open-Meteo integration.
         Weather is contextual external information and is not authoritative
         fixture, event, or statistic data. If the fixture exists but cannot be
-        located with stored coordinates, or its date falls outside Open-Meteo's
+        located after those lookups, or its date falls outside Open-Meteo's
         supported forecast and archive ranges, a successful unavailable
         response is returned and Open-Meteo is not called.
       operationId: getFixtureWeather
@@ -1185,7 +1270,7 @@ paths:
                       fixtureId: '17'
                       date: '2026-08-19'
                       availability: unavailable
-                      reason: MISSING_COORDINATES
+                      reason: LOCATION_NOT_FOUND
                       venue:
                         name: Wits Cricket Oval
                         city: Johannesburg
@@ -2121,6 +2206,25 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
 
+    ExportTooLarge:
+      description: >-
+        The export would exceed the synchronous bound of 5,000 events. The whole export fails with
+        EXPORT_TOO_LARGE so that a partial file is never returned; narrow it with a filter.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    ExportTraceChanged:
+      description: >-
+        The accepted events changed between reading the calculation trace and reading its rows,
+        so the export would not match the trace. It fails with EXPORT_TRACE_CHANGED; reload the
+        trace and export again.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
     UnsupportedDate:
       description: >-
         The requested date is validly formatted but falls outside both the Open-Meteo forecast
@@ -2772,7 +2876,14 @@ components:
           enum: [unavailable]
         reason:
           type: string
-          enum: [MISSING_VENUE, MISSING_COORDINATES, UNSUPPORTED_LOCATION, UNSUPPORTED_DATE]
+          enum:
+            [
+              MISSING_VENUE,
+              MISSING_COORDINATES,
+              UNSUPPORTED_LOCATION,
+              LOCATION_NOT_FOUND,
+              UNSUPPORTED_DATE,
+            ]
         venue:
           oneOf:
             - $ref: '#/components/schemas/FixtureWeatherVenue'

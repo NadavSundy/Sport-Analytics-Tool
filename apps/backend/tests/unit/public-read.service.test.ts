@@ -1,9 +1,16 @@
-import type { PublicEvent } from '@sport-analytics/contracts';
+import {
+  FIXTURE_EVENT_EXPORT_MAX_EVENTS,
+  FIXTURE_EVENT_EXPORT_PAGE_SIZE,
+  type PublicEvent,
+} from '@sport-analytics/contracts';
 import { describe, expect, test, vi } from 'vitest';
 
 import type { PublicEventRepository } from '../../src/modules/events/event.repository';
 import type { ParticipantFixtureRecord } from '../../src/modules/participants/participant.repository';
-import { PublicReadInputError } from '../../src/modules/public-read/public-read.errors';
+import {
+  FixtureEventExportTooLargeError,
+  PublicReadInputError,
+} from '../../src/modules/public-read/public-read.errors';
 import {
   createPublicReadService,
   type ParticipantFixtureHistoryRepository,
@@ -163,6 +170,132 @@ describe('public read event service', () => {
 
     await expect(service.listFixtureEvents('999', { limit: 50 })).resolves.toBeNull();
     expect(repository.listAcceptedFixtureEvents).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A repository that pages like the real keyset query: it honours `after` and
+ * `limit` and reports `hasMore`, so an export only reaches later events by
+ * following the cursors the service issues.
+ */
+function keysetEventRepository(
+  events: PublicEvent[],
+  options: { failOnPage?: number } = {},
+): PublicEventRepository & {
+  listAcceptedFixtureEvents: ReturnType<
+    typeof vi.fn<PublicEventRepository['listAcceptedFixtureEvents']>
+  >;
+} {
+  let pagesRead = 0;
+  const listAcceptedFixtureEvents = vi.fn<PublicEventRepository['listAcceptedFixtureEvents']>(
+    async (query) => {
+      pagesRead += 1;
+      if (pagesRead === options.failOnPage) {
+        throw new Error('Connection terminated unexpectedly');
+      }
+
+      const start = query.after
+        ? events.findIndex((candidate) => candidate.eventId === query.after?.eventId) + 1
+        : 0;
+      return {
+        records: events.slice(start, start + query.limit),
+        hasMore: start + query.limit < events.length,
+      };
+    },
+  );
+
+  return {
+    fixtureExists: vi.fn().mockResolvedValue(true),
+    listAcceptedFixtureEvents,
+    findAcceptedFixtureEvent: vi.fn().mockResolvedValue(null),
+  };
+}
+
+function eventsInOrder(count: number): PublicEvent[] {
+  return Array.from({ length: count }, (_, index) => event(String(1000 + index), index + 1));
+}
+
+describe('public fixture event export service', () => {
+  // Issue #467: a single page of 100 was exported and its cursor discarded.
+  test('follows the cursor until the result set is exhausted', async () => {
+    const events = eventsInOrder(250);
+    const repository = keysetEventRepository(events);
+    const service = createPublicReadService(repository);
+
+    const exported = await service.exportFixtureEvents('100', { inningsId: '200' });
+
+    expect(exported?.map((record) => record.eventId)).toEqual(
+      events.map((record) => record.eventId),
+    );
+    expect(repository.fixtureExists).toHaveBeenCalledTimes(1);
+    expect(repository.listAcceptedFixtureEvents).toHaveBeenCalledTimes(3);
+    expect(repository.listAcceptedFixtureEvents.mock.calls.map(([query]) => query)).toEqual([
+      { fixtureId: '100', inningsId: '200', limit: FIXTURE_EVENT_EXPORT_PAGE_SIZE },
+      {
+        fixtureId: '100',
+        inningsId: '200',
+        limit: FIXTURE_EVENT_EXPORT_PAGE_SIZE,
+        after: { inningsOrdinal: 0, sequenceNumber: 100, eventId: '1099' },
+      },
+      {
+        fixtureId: '100',
+        inningsId: '200',
+        limit: FIXTURE_EVENT_EXPORT_PAGE_SIZE,
+        after: { inningsOrdinal: 0, sequenceNumber: 200, eventId: '1199' },
+      },
+    ]);
+  });
+
+  test('returns a result set of exactly the bound in full', async () => {
+    const service = createPublicReadService(
+      keysetEventRepository(eventsInOrder(FIXTURE_EVENT_EXPORT_MAX_EVENTS)),
+    );
+
+    await expect(service.exportFixtureEvents('100', {})).resolves.toHaveLength(
+      FIXTURE_EVENT_EXPORT_MAX_EVENTS,
+    );
+  });
+
+  test('fails the whole export past the bound instead of returning a short result', async () => {
+    const repository = keysetEventRepository(eventsInOrder(FIXTURE_EVENT_EXPORT_MAX_EVENTS + 1));
+    const service = createPublicReadService(repository);
+
+    await expect(service.exportFixtureEvents('100', {})).rejects.toBeInstanceOf(
+      FixtureEventExportTooLargeError,
+    );
+    // Bounded paging: the loop stops as soon as the bound is passed.
+    expect(repository.listAcceptedFixtureEvents).toHaveBeenCalledTimes(
+      FIXTURE_EVENT_EXPORT_MAX_EVENTS / FIXTURE_EVENT_EXPORT_PAGE_SIZE + 1,
+    );
+  });
+
+  test('propagates a failure partway through paging rather than the pages already read', async () => {
+    const service = createPublicReadService(
+      keysetEventRepository(eventsInOrder(250), { failOnPage: 2 }),
+    );
+
+    await expect(service.exportFixtureEvents('100', {})).rejects.toThrow(
+      'Connection terminated unexpectedly',
+    );
+  });
+
+  test('restricts an export to given events and returns no result for an unknown fixture', async () => {
+    const repository = keysetEventRepository(eventsInOrder(3));
+    const service = createPublicReadService(repository);
+
+    await service.exportFixtureEvents('100', { eventIds: ['1000', '1002'] });
+    expect(repository.listAcceptedFixtureEvents).toHaveBeenCalledWith({
+      fixtureId: '100',
+      eventIds: ['1000', '1002'],
+      limit: FIXTURE_EVENT_EXPORT_PAGE_SIZE,
+    });
+
+    const missing = keysetEventRepository([]);
+    vi.mocked(missing.fixtureExists).mockResolvedValue(false);
+    await expect(
+      createPublicReadService(missing).exportFixtureEvents('999', {}),
+    ).resolves.toBeNull();
+    expect(missing.listAcceptedFixtureEvents).not.toHaveBeenCalled();
   });
 });
 

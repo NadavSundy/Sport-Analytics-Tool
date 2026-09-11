@@ -3,13 +3,13 @@ import { describe, expect, test, vi } from 'vitest';
 
 import type { FixtureWeatherService } from '../../src/modules/weather/fixture-weather.service';
 import {
+  LocationGeocodingTimeoutError,
+  LocationGeocodingUpstreamError,
+} from '../../src/modules/weather/location-geocoding.service';
+import {
   WeatherTimeoutError,
   WeatherUpstreamError,
 } from '../../src/modules/weather/weather.service';
-import {
-  GeocodingTimeoutError,
-  GeocodingUpstreamError,
-} from '../../src/modules/weather/geocoding.service';
 import { createTestApp } from '../test-app';
 
 function createService(overrides: Partial<FixtureWeatherService> = {}): FixtureWeatherService {
@@ -150,11 +150,37 @@ describe('fixture weather API', () => {
     });
   });
 
+  test('returns LOCATION_NOT_FOUND as an unavailable fixture result', async () => {
+    const response = await request(
+      createApp(
+        createService({
+          async getFixtureWeather() {
+            return {
+              fixtureId: '17',
+              date: '2026-08-19',
+              availability: 'unavailable',
+              reason: 'LOCATION_NOT_FOUND',
+              venue: { name: 'AMI Stadium', city: 'Christchurch' },
+              weather: null,
+            };
+          },
+        }),
+      ),
+    )
+      .get('/api/v1/fixtures/17/weather')
+      .expect(200);
+
+    expect(response.body.data).toMatchObject({
+      availability: 'unavailable',
+      reason: 'LOCATION_NOT_FOUND',
+    });
+  });
+
   test.each([
     [new WeatherUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
     [new WeatherTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
-    [new GeocodingUpstreamError('geocoding provider error'), 502, 'UPSTREAM_ERROR'],
-    [new GeocodingTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
+    [new LocationGeocodingUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
+    [new LocationGeocodingTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
   ])('maps a weather or geocoding provider failure safely', async (error, status, code) => {
     const app = createApp(
       createService({

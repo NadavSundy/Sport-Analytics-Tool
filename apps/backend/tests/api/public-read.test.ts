@@ -1,11 +1,15 @@
 import request from 'supertest';
 import { describe, expect, test, vi } from 'vitest';
 
-import type { ParticipantFixture, PublicEvent } from '@sport-analytics/contracts';
+import type { FixtureStatistic, ParticipantFixture, PublicEvent } from '@sport-analytics/contracts';
 
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { PublicReadService } from '../../src/modules/public-read/public-read.service';
-import { PublicReadInputError } from '../../src/modules/public-read/public-read.errors';
+import {
+  FixtureEventExportTooLargeError,
+  PublicReadInputError,
+} from '../../src/modules/public-read/public-read.errors';
+import type { FixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';
 import { createTestApp } from '../test-app';
 
 function createService(overrides: Partial<PublicReadService> = {}): PublicReadService {
@@ -93,11 +97,61 @@ function createService(overrides: Partial<PublicReadService> = {}): PublicReadSe
       };
     },
 
+    async exportFixtureEvents() {
+      return [];
+    },
+
     async getFixtureEvent() {
       return null;
     },
 
     ...overrides,
+  };
+}
+
+function statisticsServiceReturning(statistic: FixtureStatistic | null): FixtureStatisticsService {
+  return {
+    async getFixtureStatistics() {
+      return null;
+    },
+    getFixtureStatistic: vi
+      .fn<FixtureStatisticsService['getFixtureStatistic']>()
+      .mockResolvedValue(statistic),
+  };
+}
+
+function contributingEvent(eventId: string, sequenceNumber: number) {
+  return {
+    eventId,
+    fixtureId: '100',
+    inningsId: '200',
+    inningsOrdinal: 0,
+    sequenceNumber,
+    strikerParticipantId: '30',
+    strikerParticipantName: 'Opening Batter',
+    bowlerParticipantId: '32',
+    bowlerParticipantName: 'Opening Bowler',
+    runs: { offBat: 4, extras: 0, total: 4 },
+    extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
+    nonBoundary: false,
+    bowlerWickets: 0,
+  };
+}
+
+function participantTraceStatistic(eventIds: string[]): FixtureStatistic {
+  return {
+    statisticId: 'stat_player',
+    fixtureId: '100',
+    scope: 'participant',
+    statisticCode: 'participant_fixture',
+    participantId: '30',
+    participantName: 'Opening Batter',
+    competitorId: '20',
+    competitorName: 'India',
+    sourceEventCount: eventIds.length,
+    batting: { runsScored: 8, ballsFaced: 2, strikeRate: 400, fours: 2, sixes: 0 },
+    bowling: null,
+    contributingEvents: eventIds.map((eventId, index) => contributingEvent(eventId, index + 1)),
   };
 }
 
@@ -456,19 +510,23 @@ describe('public read API', () => {
     expect(response.body.data[0]).not.toHaveProperty('recordedAt');
   });
 
-  test('exports a filtered fixture-event JSON slice with the fixed Basic limit', async () => {
+  // Before #467 this test asserted a single page of 100 was exported and its
+  // cursor, deliberately named 'not-exported', discarded.
+  test('exports every filtered fixture event, not a single page', async () => {
     const verifyAccessToken = vi.fn<VerifyAccessToken>();
-    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>().mockResolvedValue({
-      data: [publicEvent()],
-      pagination: {
-        nextCursor: 'not-exported',
-      },
-    });
+    const events = Array.from({ length: 125 }, (_, index) =>
+      publicEvent({ eventId: String(500 + index), sequenceNumber: index + 1 }),
+    );
+    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>();
+    const exportFixtureEvents = vi
+      .fn<PublicReadService['exportFixtureEvents']>()
+      .mockResolvedValue(events);
 
     const response = await request(
       createTestApp(
         verifyAccessToken,
         createService({
+          exportFixtureEvents,
           listFixtureEvents,
         }),
       ),
@@ -485,29 +543,28 @@ describe('public read API', () => {
       .expect(200);
 
     expect(verifyAccessToken).not.toHaveBeenCalled();
-    expect(listFixtureEvents).toHaveBeenCalledWith('100', {
+    expect(exportFixtureEvents).toHaveBeenCalledWith('100', {
       inningsId: '200',
       competitorId: '20',
       participantId: '30',
       overNumber: 0,
       wicketKind: 'caught',
-      limit: 100,
     });
-    expect(response.body).toEqual({
-      data: [
-        {
-          ...publicEvent(),
-          extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, penalty: 0 },
-        },
-      ],
+    // The export must not bypass the paging service with a single page read.
+    expect(listFixtureEvents).not.toHaveBeenCalled();
+    expect(response.body.data).toHaveLength(125);
+    expect(response.body.data[0]).toEqual({
+      ...publicEvent(),
+      extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, penalty: 0 },
     });
     expect(JSON.stringify(response.body)).not.toContain('submissionId');
     expect(JSON.stringify(response.body)).not.toContain('audit');
   });
 
   test('exports deterministic CSV rows with a download filename', async () => {
-    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>().mockResolvedValue({
-      data: [
+    const exportFixtureEvents = vi
+      .fn<PublicReadService['exportFixtureEvents']>()
+      .mockResolvedValue([
         publicEvent({
           wickets: [
             {
@@ -525,17 +582,13 @@ describe('public read API', () => {
             },
           ],
         }),
-      ],
-      pagination: {
-        nextCursor: null,
-      },
-    });
+      ]);
 
     const response = await request(
       createTestApp(
         undefined,
         createService({
-          listFixtureEvents,
+          exportFixtureEvents,
         }),
       ),
     )
@@ -544,9 +597,8 @@ describe('public read API', () => {
       .expect('Content-Disposition', 'attachment; filename="fixture-100-wicket-caught-events.csv"')
       .expect(200);
 
-    expect(listFixtureEvents).toHaveBeenCalledWith('100', {
+    expect(exportFixtureEvents).toHaveBeenCalledWith('100', {
       wicketKind: 'caught',
-      limit: 100,
     });
     expect(response.text).toBe(
       'eventId,fixtureId,competitionId,competitionName,inningsId,inningsOrdinal,sequenceNumber,overNumber,positionInOver,ballNumber,battingCompetitorId,battingCompetitorName,bowlingCompetitorId,bowlingCompetitorName,strikerParticipantId,strikerParticipantName,nonStrikerParticipantId,nonStrikerParticipantName,bowlerParticipantId,bowlerParticipantName,runsOffBat,runsExtras,runsTotal,runsNonBoundary,extrasWides,extrasNoBalls,extrasByes,extrasLegByes,extrasPenalty,wicketCount,wicketIds,wicketKinds,playersOutParticipantIds,playersOutParticipantNames,fielderParticipantIds,fielderParticipantNames\r\n' +
@@ -558,10 +610,7 @@ describe('public read API', () => {
     const app = createTestApp(
       undefined,
       createService({
-        listFixtureEvents: async () => ({
-          data: [],
-          pagination: { nextCursor: null },
-        }),
+        exportFixtureEvents: async () => [],
       }),
     );
 
@@ -580,13 +629,137 @@ describe('public read API', () => {
   });
 
   test('rejects invalid and paginated fixture-event export filters', async () => {
-    const listFixtureEvents = vi.fn<PublicReadService['listFixtureEvents']>();
-    const app = createTestApp(undefined, createService({ listFixtureEvents }));
+    const exportFixtureEvents = vi.fn<PublicReadService['exportFixtureEvents']>();
+    const app = createTestApp(undefined, createService({ exportFixtureEvents }));
 
     await request(app).get('/api/v1/fixtures/100/events/export.json?overNumber=-1').expect(400);
     await request(app).get('/api/v1/fixtures/100/events/export.csv?limit=101').expect(400);
+    await request(app).get('/api/v1/fixtures/100/events/export.csv?cursor=abc').expect(400);
 
-    expect(listFixtureEvents).not.toHaveBeenCalled();
+    expect(exportFixtureEvents).not.toHaveBeenCalled();
+  });
+
+  test('states that an export is too large instead of sending a short file', async () => {
+    const app = createTestApp(
+      undefined,
+      createService({
+        exportFixtureEvents: async () => {
+          throw new FixtureEventExportTooLargeError(5000);
+        },
+      }),
+    );
+
+    for (const format of ['json', 'csv']) {
+      const response = await request(app)
+        .get(`/api/v1/fixtures/100/events/export.${format}`)
+        .expect('Content-Type', /application\/json/)
+        .expect(422);
+
+      expect(response.headers['content-disposition']).toBeUndefined();
+      expect(response.body.error).toEqual({
+        code: 'EXPORT_TOO_LARGE',
+        message:
+          'This export has more than 5000 events. Narrow it with an innings, team, player, over or wicket-kind filter.',
+      });
+    }
+  });
+
+  test('surfaces a failure partway through paging as an error, not a short file', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const app = createTestApp(
+      undefined,
+      createService({
+        exportFixtureEvents: async () => {
+          throw new Error('Connection terminated unexpectedly');
+        },
+      }),
+    );
+
+    const response = await request(app)
+      .get('/api/v1/fixtures/100/events/export.csv')
+      .expect('Content-Type', /application\/json/)
+      .expect(500);
+
+    expect(response.headers['content-disposition']).toBeUndefined();
+    expect(response.text).not.toContain('eventId,fixtureId');
+    expect(response.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+  });
+
+  test('exports exactly the events a calculation trace displays', async () => {
+    const traced = participantTraceStatistic(['500', '503']);
+    const statisticsService = statisticsServiceReturning(traced);
+    const exportFixtureEvents = vi
+      .fn<PublicReadService['exportFixtureEvents']>()
+      .mockResolvedValue([
+        publicEvent({ eventId: '500' }),
+        publicEvent({ eventId: '503', sequenceNumber: 4 }),
+      ]);
+    const app = createTestApp(
+      undefined,
+      createService({ exportFixtureEvents }),
+      undefined,
+      statisticsService,
+    );
+
+    const csv = await request(app)
+      .get('/api/v1/fixtures/100/statistics/stat_player/events/export.csv')
+      .expect('Content-Type', /text\/csv/)
+      .expect('Content-Disposition', 'attachment; filename="fixture-100-player-30-events.csv"')
+      .expect(200);
+
+    expect(statisticsService.getFixtureStatistic).toHaveBeenCalledWith('100', 'stat_player', {
+      includeContributors: true,
+    });
+    // The trace's own events, never the participant filter, which also matches
+    // non-striker, dismissal and fielding rows the trace does not display.
+    expect(exportFixtureEvents).toHaveBeenCalledWith('100', { eventIds: ['500', '503'] });
+    const rows = csv.text.trimEnd().split('\r\n').slice(1);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.split(',')[0])).toEqual(['"500"', '"503"']);
+
+    const json = await request(app)
+      .get('/api/v1/fixtures/100/statistics/stat_player/events/export.json')
+      .expect(200);
+    expect(json.body.data.map((event: PublicEvent) => event.eventId)).toEqual(['500', '503']);
+  });
+
+  test('refuses a trace export whose rows no longer match the trace', async () => {
+    const app = createTestApp(
+      undefined,
+      createService({
+        exportFixtureEvents: async () => [publicEvent({ eventId: '500' })],
+      }),
+      undefined,
+      statisticsServiceReturning(participantTraceStatistic(['500', '503'])),
+    );
+
+    const response = await request(app)
+      .get('/api/v1/fixtures/100/statistics/stat_player/events/export.csv')
+      .expect(409);
+
+    expect(response.headers['content-disposition']).toBeUndefined();
+    expect(response.body.error.code).toBe('EXPORT_TRACE_CHANGED');
+  });
+
+  test('rejects filters on a trace export and reports an unknown statistic', async () => {
+    const exportFixtureEvents = vi.fn<PublicReadService['exportFixtureEvents']>();
+    const statisticsService = statisticsServiceReturning(null);
+    const app = createTestApp(
+      undefined,
+      createService({ exportFixtureEvents }),
+      undefined,
+      statisticsService,
+    );
+
+    await request(app)
+      .get('/api/v1/fixtures/100/statistics/stat_player/events/export.csv?participantId=30')
+      .expect(400);
+    const missing = await request(app)
+      .get('/api/v1/fixtures/100/statistics/stat_unknown/events/export.json')
+      .expect(404);
+
+    expect(missing.body.error.code).toBe('NOT_FOUND');
+    expect(exportFixtureEvents).not.toHaveBeenCalled();
   });
 
   test('retrieves an accepted fixture event by stable identifier', async () => {

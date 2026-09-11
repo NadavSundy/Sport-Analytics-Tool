@@ -158,9 +158,11 @@ GET /api/v1/fixtures/{fixtureId}/events
 GET /api/v1/fixtures/{fixtureId}/events/{eventId}
 GET /api/v1/fixtures/{fixtureId}/events/export.json
 GET /api/v1/fixtures/{fixtureId}/events/export.csv
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv
 ```
 
-Both endpoints are public. They return only the current accepted revision of each cricket delivery
+These endpoints are public. They return only the current accepted revision of each cricket delivery
 event. Events from pending or rejected submissions, superseded accepted revisions, submitter
 accounts, submission identifiers, source event identifiers, revision numbers and audit timestamps
 are not exposed.
@@ -265,11 +267,22 @@ fields such as `ballNumber`, runs, extras and wicket kinds, while never exposing
 submission administration fields, revision history, audit data or secrets.
 
 Both formats accept the same filters as `GET /fixtures/{fixtureId}/events`:
-`inningsId`, `competitorId`, `participantId`, `overNumber` and `wicketKind`. They deliberately do
-not accept `cursor` or `limit`: each response is synchronously capped at **100 events** in the
-collection's fixed occurrence order. Passing either pagination parameter is a validation error.
-This predictable cap keeps the Basic export endpoint bounded; versioned snapshots, larger exports
-and background jobs are outside this scope.
+`inningsId`, `competitorId`, `participantId`, `overNumber` and `wicketKind`. They do not accept
+`cursor` or `limit`, and passing either is a validation error: an export is the **whole** filtered
+result set in the collection's fixed occurrence order. The server reads it by following the event
+collection's `nextCursor` at the maximum page size of 100 until the cursor is exhausted.
+
+Issue #467 replaced an earlier design in which each export was capped at the first 100 events and
+the cursor was discarded. That cap was silent: 23,832 of the 28,021 imported innings have more than
+100 accepted events, so most innings exports were short with no indication, and the calculation
+trace beside the export control displayed events the file did not contain.
+
+A synchronous export is still bounded, at **5,000 events**. The largest fixture in the imported
+corpus has 346 accepted events. An export that would exceed the bound fails as a whole with HTTP
+`422` and error code `EXPORT_TOO_LARGE`, naming the filters that narrow it; a short file is never
+returned. A failure while reading any page, including after earlier pages have been read, returns an
+error response rather than the rows read so far. Versioned snapshots and background jobs remain
+outside this scope.
 
 The JSON endpoint returns `{ "data": [...] }` without pagination metadata. The CSV endpoint returns
 `text/csv; charset=utf-8` with a trace-specific attachment name such as
@@ -285,6 +298,32 @@ Example:
 ```http
 GET /api/v1/fixtures/481/events/export.csv?participantId=30&overNumber=4
 ```
+
+### Calculation-trace exports
+
+A calculation trace exports exactly the events it displays:
+
+```http
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv
+```
+
+The event set is the statistic's own contributing events, taken from the same derivation as
+`GET /fixtures/{fixtureId}/statistics/{statisticId}?includeContributors=true`, and read in full
+through the same paging and bound as the filtered export. The rows, columns, escaping and filename
+convention are identical to the filtered export. These endpoints accept no query parameters.
+
+This is deliberately not the same set as the filtered export with `participantId`. That filter
+matches every delivery involving the participant, including those where they were the non-striker,
+were dismissed or fielded, and it does not exclude super-over innings. A player's calculation trace
+contains only the standard-innings deliveries they faced or bowled, because those are the deliveries
+their batting and bowling figures are calculated from. For participant 14255 in fixture 8936 the
+trace holds 6 deliveries and the participant filter 11. The filtered export remains available for
+that wider involvement.
+
+Because the trace and the event rows are read separately, a correction accepted between the two
+reads could make them differ. The export then returns HTTP `409` with `EXPORT_TRACE_CHANGED` instead
+of a file that disagrees with the trace it is named after.
 
 ## Fixture statistics endpoints
 
@@ -556,4 +595,5 @@ The machine-readable specification is documented in the [OpenAPI specification](
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
-ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
+ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5]. The complete export and calculation-trace export
+documentation for issue #467 was updated with the assistance of Claude Code[Claude Opus 5].
