@@ -222,7 +222,7 @@ See [Public Read API](public-read.md) for filters, pagination, deterministic ord
 
 ### Direct event submission
 
-Approved submitters can send scoped, ordered cricket delivery events through:
+Administrators can use the privileged legacy direct-import endpoint:
 
 ```text
 POST /api/v1/submissions
@@ -237,9 +237,8 @@ validation errors, payload limit, and rate limit.
 POST /api/v1/submissions/uploads
 ```
 
-An approved, in-scope submitter may upload one bounded JSON or CSV event file. The backend
-normalises it into the direct-submission contract and applies the same authorisation, validation,
-and atomic persistence path. See [Direct Event Submissions](submissions.md#file-uploads) for the
+Administrators may use this legacy synchronous JSON/CSV import path. Ordinary submitter uploads
+use the staged `/api/v1/batches` pipeline so validation and review occur before publication. See [Direct Event Submissions](submissions.md#file-uploads) for the
 file types, CSV columns, limits, and errors.
 
 ### Weather integration
