@@ -1683,7 +1683,7 @@ paths:
     post:
       tags: [Batches]
       summary: Decide and, on approval, publish a validated staged batch
-      description: Competition-scoped administrators may approve, reject, or return a batch for correction. Approval records the decision and moves the batch to the resumable publishing state before accepted events are published; active blocking validation errors, conflicts, unresolved, invalid, or ambiguous references prevent approval. Rejection and return do not alter public event data.
+      description: Competition-scoped administrators may approve, reject, or return a batch for correction. Approval records the decision and moves the batch to the resumable publishing state before accepted events are published. Ordinary rejected items remain unpublished and do not block the accepted subset; batch-level or accepted-item validation errors, conflicts, unresolved, invalid, or ambiguous references prevent approval. Rejection and return do not alter public event data.
       operationId: reviewBatch
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
@@ -4656,7 +4656,10 @@ components:
           properties:
             accepted: { type: integer, minimum: 0 }
             rejected: { type: integer, minimum: 0 }
-            blockingErrors: { type: integer, minimum: 0 }
+            blockingErrors:
+              type: integer
+              minimum: 0
+              description: Active batch-level or otherwise publishable-item validation errors that prevent approval; ordinary rejected-item errors are excluded.
             duplicate: { type: integer, minimum: 0 }
             conflicting: { type: integer, minimum: 0 }
         resolution:
