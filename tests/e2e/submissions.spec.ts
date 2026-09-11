@@ -137,23 +137,43 @@ test('the account Submit events action opens the unified submission workflow', a
   await expect(page.getByLabel('Delivery events JSON')).toHaveCount(0);
 });
 
-test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
-  await page.route('**/api/v1/submissions', async (route) => {
-    const body = route.request().postDataJSON();
-    expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });
+test('submitter stages advanced technical JSON with a keyboard', async ({ page }) => {
+  await page.route('**/api/v1/batches', async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe('POST');
+    expect(request.headers()['x-competition-id']).toBe('5');
+    expect(request.headers()['x-file-name']).toBe('technical-7.json');
+    expect(request.postDataJSON()).toMatchObject({
+      contractVersion: '1.0',
+      fixtures: [
+        {
+          sourceId: 'app:fixture:7',
+          innings: [
+            {
+              sourceId: 'app:innings:10',
+              events: [
+                {
+                  eventId: `app:delivery:${events[0]!.eventId}`,
+                  striker: { sourceId: 'app:participant:20' },
+                  nonStriker: { sourceId: 'app:participant:21' },
+                  bowler: { sourceId: 'app:participant:22' },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
     await route.fulfill({
-      status: 201,
+      status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
         data: {
-          submissionId: '300',
-          fixtureId: '7',
-          submitterId: '17',
-          status: 'accepted',
+          batchReference,
+          status: 'stored',
+          statusUrl: `/api/v1/batches/${batchReference}`,
           receivedAt: '2026-08-16T09:30:00.000Z',
-          schemaVersion: '1.0',
-          eventCount: 1,
         },
       }),
     });
@@ -176,9 +196,14 @@ test('submitter completes the responsive workflow with a keyboard', async ({ pag
   await expect(submitButton).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const acceptedHeading = page.getByRole('heading', { name: 'Submission accepted' });
-  await expect(acceptedHeading).toBeFocused();
-  await expect(page.getByText('300')).toBeVisible();
+  const stagedHeading = page.getByRole('heading', { name: 'Fixture package received safely' });
+  await expect(stagedHeading).toBeFocused();
+  await expect(page.getByText(batchReference, { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+    'href',
+    `/submissions/batches/${batchReference}`,
+  );
+  await expect(page.getByRole('button', { name: 'Save correction' })).toHaveCount(0);
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -192,36 +217,22 @@ test('submitter completes the responsive workflow with a keyboard', async ({ pag
   expect(seriousOrCriticalViolations).toEqual([]);
 });
 
-test('validation results remain associated with the editor and receive focus', async ({ page }) => {
-  await page.route('**/api/v1/submissions', async (route) => {
-    await route.fulfill({
-      status: 422,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        error: {
-          code: 'VALIDATION_FAILED',
-          message: 'The submission is invalid.',
-          details: [
-            {
-              code: 'INVALID_FIELD',
-              message: 'Total runs must equal off-bat runs plus extras.',
-              field: 'events.0.runs.total',
-              eventIndex: 0,
-            },
-          ],
-        },
-      }),
-    });
-  });
+test('technical JSON schema errors remain associated with the editor and receive focus', async ({
+  page,
+}) => {
+  const invalidEvents = events.map((event) => ({
+    ...event,
+    runs: { ...event.runs, total: event.runs.total + 1 },
+  }));
 
   await page.goto('/submissions/new');
   await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
   const editor = page.getByLabel('Delivery events JSON');
-  await editor.fill(JSON.stringify(events));
+  await editor.fill(JSON.stringify(invalidEvents));
   await page.getByRole('button', { name: 'Submit events' }).click();
 
   await expect(page.getByRole('heading', { name: 'Submission rejected' })).toBeFocused();
-  await expect(page.getByText('Event 1 — runs.total')).toBeVisible();
+  await expect(page.getByText('Total runs must equal off-bat runs plus extras.')).toBeVisible();
   await expect(editor).toHaveAttribute('aria-invalid', 'true');
   await expect(editor).toHaveAttribute('aria-describedby', /submission-validation-results/);
 });

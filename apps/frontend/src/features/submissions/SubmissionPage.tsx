@@ -19,7 +19,8 @@ import {
   listAllFixtures,
   listScopedFixtures,
   SubmissionInputError,
-  submitEvents,
+  createTechnicalBatchFile,
+  submitLegacyAdminEvents,
 } from './submission-api';
 import { SingleFixturePackageError, validateSingleFixturePackage } from './single-fixture-package';
 
@@ -322,24 +323,33 @@ function SubmissionForm({
           fixture,
         });
       } else {
-        const accepted = await submitEvents(client, fixtureId, eventJson);
-
-        const fixture = fixtures.find(
-          (candidate) => candidate.fixtureId === accepted.response.data.fixtureId,
-        );
-
-        if (!fixture) {
+        const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
+        if (!fixture?.competitionId) {
           throw new SubmissionInputError('Select an available fixture before submitting.');
         }
 
-        setResult({
-          kind: 'accepted',
-          response: accepted.response,
-          correctionContext: {
-            events: accepted.events,
+        if (role === 'admin') {
+          const accepted = await submitLegacyAdminEvents(client, fixtureId, eventJson);
+          setResult({
+            kind: 'accepted',
+            response: accepted.response,
+            correctionContext: { events: accepted.events, fixture },
+          });
+        } else {
+          const technicalFile = createTechnicalBatchFile(fixture, eventJson, decisionKey);
+          const response = await uploadBatch(
+            client,
+            fixture.competitionId,
+            technicalFile,
+            decisionKey,
+          );
+
+          setResult({
+            kind: 'acceptedBatch',
+            receipt: response.data,
             fixture,
-          },
-        });
+          });
+        }
       }
     } catch (error) {
       if (error instanceof SubmissionInputError || error instanceof SingleFixturePackageError) {
@@ -546,7 +556,10 @@ function SubmissionForm({
                 <code>strikerId</code>, <code>nonStrikerId</code> and <code>bowlerId</code>. To
                 submit with readable team and player names instead, choose Single fixture. Fixture
                 and schema version are added automatically. Final statistic totals are derived by
-                the platform and are not accepted here.
+                the platform and are not accepted here.{' '}
+                {role === 'admin'
+                  ? 'Administrators use the privileged direct-import path; ordinary submitters are staged for review.'
+                  : 'This technical input is staged and must pass review before publication.'}
               </p>
 
               <textarea
@@ -585,7 +598,9 @@ function SubmissionForm({
           <p className="submission-progress" role="status">
             {mode === 'file'
               ? 'Uploading the fixture package and creating its durable receipt…'
-              : 'Validating and storing the submission…'}
+              : role === 'admin'
+                ? 'Validating the privileged administrator import…'
+                : 'Staging the technical submission for validation and review…'}
           </p>
         ) : null}
 

@@ -74,6 +74,13 @@ function report(blocked = true) {
     },
     stagedRecordId: '41',
     acceptedRecordId: blocked ? null : '91',
+    operation: blocked ? 'upsert' : 'correction',
+    correctionTarget: blocked
+      ? null
+      : {
+          sourceEventId: 'cricsheet:delivery:100-original',
+          resolvedDeliveryId: '88',
+        },
     referenceResolutions: blocked
       ? [
           {
@@ -359,6 +366,8 @@ describe('reviewer batch workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderPage(`/reviews/batches/${reference}`);
     const reject = await screen.findByRole('button', { name: 'Reject batch' });
+    expect(screen.getByText('cricsheet:delivery:100-original')).toBeInTheDocument();
+    expect(screen.getByText(/published delivery 88/)).toBeInTheDocument();
     fireEvent.click(reject);
     expect(screen.getByText(/Explain the rejection or correction/)).toHaveTextContent(
       'at least 10 characters',

@@ -1174,6 +1174,37 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(resolution.items[0]?.state).toBe('resolved');
   });
 
+  test('keeps resolving an application fixture identifier exactly when readable context is also supplied', async () => {
+    // #480 made `app:fixture:<id>` a compared namespace. The #500 rule for
+    // identifiers that can never resolve must not discard it in favour of the
+    // natural key, even though the date and teams would also match.
+    const seed = records();
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `app:fixture:${seed.singleFixtureId}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+    expect(fixture.state).toBe('resolved');
+    expect(fixture.canonicalId).toBe(seed.singleFixtureId);
+    expect(fixture.matchedBy).toBe('application-id');
+    expect(fixture.reason ?? '').not.toContain('ignored');
+  });
+
   test('still stages an unknown cricsheet fixture identifier even when readable context is supplied', async () => {
     // A comparable identifier that matches nothing is "not found this time", not
     // "can never resolve". It stays staged rather than silently falling back.

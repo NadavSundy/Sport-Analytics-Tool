@@ -160,12 +160,13 @@ platform has not seen yet, and the resolver reports it as such.
    published before #500 emit an innings carrying both a `sourceId` and readable context, and copies
    already downloaded keep it. Rejecting the field would make a template-derived package
    unresolvable.
-4. Issue #500 applies the same rule to a fixture identifier outside the `cricsheet` namespace, the
-   only namespace compared with `fixture.source_ref`. Such an identifier can never resolve either, so
-   where readable fixture context is supplied the natural key is used and the ignored identifier is
-   recorded. Before this, the pre-#500 template placeholder `replace-with-provider:fixture:…` took
-   precedence over the readable context and left every delivery in a names-only package unresolved.
-   A `cricsheet` identifier that matches nothing remains a staged "not found", not a fallback.
+4. Issue #500 applies the same rule to a fixture identifier from a namespace that is never compared.
+   `cricsheet` is compared with `fixture.source_ref` and, since #480, `app` with `fixture.fixture_id`
+   for the technical submission path; any other namespace can never resolve, so where readable
+   fixture context is supplied the natural key is used and the ignored identifier is recorded. Before
+   this, the pre-#500 template placeholder `replace-with-provider:fixture:…` took precedence over the
+   readable context and left every delivery in a names-only package unresolved. A `cricsheet` or
+   `app` identifier that matches nothing remains a staged "not found", not a fallback.
 
 ## 3.8 Versioned cricket business-rule validation
 
@@ -210,6 +211,11 @@ at the first rule violation.
   and `runs.extras` equals the supplied extras breakdown.
 - Exact published duplicates are warnings and deterministic skips; differing
   published cricket content is an error.
+- A staged `correction` resolves its exact `correctsEventId` to one current
+  published delivery in the declared fixture and competition. Differing
+  cricket content is then expected correction input rather than an ordinary
+  published-delivery conflict; other live deliveries at its destination remain
+  conflicts.
 - Resolving an existing fixture by source identifier never mutates its
   canonical metadata. Contradictory supplied metadata is staged as
   `FIXTURE_METADATA_CONFLICT`.

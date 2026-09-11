@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
-import { requireSubmitter } from '../../middleware/require-authorization';
+import { requireAdministrator, requireSubmitter } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import {
   createCorrectionController,
@@ -24,7 +24,7 @@ export function createSubmissionRouter(
   router.post(
     '/submissions',
     requireAuthentication(verifyAccessToken, synchronizeAccount),
-    requireSubmitter(),
+    requireAdministrator(),
     createSubmissionRateLimit(),
     createSubmissionController(service),
   );
@@ -32,7 +32,7 @@ export function createSubmissionRouter(
   router.post(
     '/submissions/uploads',
     requireAuthentication(verifyAccessToken, synchronizeAccount),
-    requireSubmitter(),
+    requireAdministrator(),
     createSubmissionRateLimit(),
     createSubmissionUploadMiddleware(),
     createSubmissionUploadController(service),
