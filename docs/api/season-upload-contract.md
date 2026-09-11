@@ -24,6 +24,13 @@ not need application identifiers, and a parser can group the rows into the
 canonical JSON package. Its file row is an arrival position only, not a
 delivery identity or ordering value.
 
+Since issue #500 the templates carry no provider reference: every `sourceId`
+value and every CSV column ending in `SourceId` is empty, so a submitter who
+fills in only the readable names produces a package that resolves. The two
+identities the contract requires, `packageId` and each `eventId`, are labels
+the submitter chooses and keeps unchanged, for example
+`my-club:delivery:innings-0-ball-1`; neither is a database identifier.
+
 ## Canonical JSON format
 
 ```json
@@ -129,6 +136,14 @@ is unchanged.
 After receipt, the API resolves exact source identifiers first. Otherwise it
 resolves competition and season, then fixture, innings, team and participant
 context. It never fuzzy-matches or chooses the first same-name participant.
+
+Only `cricsheet` fixture identifiers, and since #480 the `app` identifiers the
+technical submission path generates, are compared. A fixture identifier from any
+other namespace can never resolve, so where the fixture also carries readable
+context the identifier is ignored, the fixture resolves on its date, season and
+teams, and the result records that the identifier had no effect. Templates
+downloaded before #500 carry such a placeholder. A `cricsheet` identifier that
+matches no stored fixture is still staged rather than falling back to context.
 An unresolved or ambiguous reference produces an actionable staged resolution
 requirement, for example:
 
@@ -158,6 +173,7 @@ choice is still a valid candidate and asynchronously reruns canonical event and 
 References without a safe existing candidate require reviewer contact; this workflow does not
 silently create records.
 
+<<<<<<< HEAD
 ## Reviewer canonical-fixture decisions
 
 For an unresolved fixture supplied under the versioned fixture-proposal contract, an administrator
@@ -174,6 +190,12 @@ file bytes. Reselecting unchanged content, including after refreshing and resele
 therefore reuses the durable receipt. A byte-level content change or a competition change uses a
 different key. The receiver remains the authority that rejects any same-key/different-checksum
 conflict.
+=======
+## Upload context
+
+The upload form selects an authorised competition only. The package's own season name/reference is
+authoritative; the form does not offer a season selector because it cannot constrain processing.
+>>>>>>> origin/main
 
 ## Multi-file packages
 

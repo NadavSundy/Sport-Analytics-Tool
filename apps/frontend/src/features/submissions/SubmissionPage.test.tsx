@@ -1,9 +1,14 @@
-import type { ApplicationRole, CurrentUserProfile } from '@sport-analytics/contracts';
+import {
+  seasonUploadPackageSchema,
+  type ApplicationRole,
+  type CurrentUserProfile,
+} from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import seasonUploadTemplate from '../../../public/season-upload-template.json';
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
 
@@ -145,6 +150,28 @@ function currentUser(
 
 function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null } });
+}
+
+/**
+ * The downloadable template completed the way the guided page asks: readable
+ * names for the selected fixture and nothing else. Each placeholder must be
+ * present, so a template change cannot quietly make the upload test vacuous.
+ */
+function readableFixturePackage(): unknown {
+  let text = JSON.stringify(seasonUploadTemplate);
+  const readableValues: [placeholder: string, value: string][] = [
+    ['"Competition name"', '"Example Competition"'],
+    ['"2026-03-14"', `"${fixture.startDate}"`],
+    ['"Home team"', '"Wanderers"'],
+    ['"Away team"', '"Strikers"'],
+    ['"Striker"', '"Opening Batter"'],
+    ['"Bowler"', '"Opening Bowler"'],
+  ];
+  for (const [placeholder, value] of readableValues) {
+    expect(text).toContain(placeholder);
+    text = text.replaceAll(placeholder, value);
+  }
+  return JSON.parse(text);
 }
 
 function singleFixtureCsv() {
@@ -346,8 +373,9 @@ describe('role-gated event submission page', () => {
     expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
   });
 
-  it('submits valid delivery events and focuses the stored reference summary', async () => {
-    let resolveSubmission!: (value: Response) => void;
+  it('stages advanced technical JSON through the batch review pipeline', async () => {
+    const batchReference = '223e4567-e89b-42d3-a456-426614174000';
+    let resolveBatch!: (value: Response) => void;
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
@@ -356,15 +384,9 @@ describe('role-gated event submission page', () => {
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
-      if (url.includes('/participants?fixtureId=7')) {
-        return Promise.resolve(participatingPlayers());
-      }
-      if (url.endsWith('/fixtures/7/statistics')) {
-        return Promise.resolve(fixtureStatistics(4));
-      }
-      if (url.endsWith('/submissions') && init?.method === 'POST') {
+      if (url.endsWith('/batches') && init?.method === 'POST') {
         return new Promise<Response>((resolve) => {
-          resolveSubmission = resolve;
+          resolveBatch = resolve;
         });
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -380,42 +402,62 @@ describe('role-gated event submission page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
 
     expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Validating and storing');
+    expect(screen.getByRole('status')).toHaveTextContent(/validation and review/i);
 
     await act(async () => {
-      resolveSubmission(
-        response(201, {
+      resolveBatch(
+        response(202, {
           data: {
-            submissionId: '300',
-            fixtureId: '7',
-            submitterId: '17',
-            status: 'accepted',
+            batchReference,
+            status: 'stored',
+            statusUrl: `/api/v1/batches/${batchReference}`,
             receivedAt: '2026-08-16T09:30:00.000Z',
-            schemaVersion: '1.0',
-            eventCount: 1,
           },
         }),
       );
     });
 
-    const heading = await screen.findByRole('heading', { name: 'Submission accepted' });
+    const heading = await screen.findByRole('heading', { name: 'Fixture package received safely' });
     expect(heading).toHaveFocus();
-    expect(screen.getByText('300')).toBeInTheDocument();
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save correction' })).not.toBeInTheDocument();
 
-    const submissionCall = fetchMock.mock.calls.find(([input]) =>
-      String(input).endsWith('/submissions'),
-    );
-    const request = submissionCall?.[1] as RequestInit;
+    const batchCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/batches'));
+    expect(batchCall).toBeDefined();
+    const request = batchCall?.[1] as RequestInit;
     expect(new Headers(request.headers).get('Authorization')).toBe('Bearer approved-access-token');
-    expect(JSON.parse(String(request.body))).toEqual({
-      fixtureId: '7',
-      schemaVersion: '1.0',
-      events: validEvents,
+    expect(new Headers(request.headers).get('X-Competition-Id')).toBe('5');
+    expect(new Headers(request.headers).get('X-File-Name')).toBe('technical-7.json');
+    expect(request.body).toBeInstanceOf(File);
+
+    const packageText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(String(reader.result ?? '')));
+      reader.addEventListener('error', () =>
+        reject(new Error('The staged technical package could not be read.')),
+      );
+      reader.readAsText(request.body as File);
     });
-    expect(String(request.body)).not.toMatch(/finalStatistic|totalWickets|finalScore/i);
-    expect(await screen.findByRole('button', { name: 'Save correction' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Striker')).toHaveDisplayValue('Opening Batter');
-    expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('4');
+    const packagePayload = JSON.parse(packageText) as {
+      fixtures: Array<{
+        sourceId: string;
+        innings: Array<{
+          sourceId: string;
+          events: Array<Record<string, unknown>>;
+        }>;
+      }>;
+    };
+    expect(packagePayload.fixtures[0]?.sourceId).toBe('app:fixture:7');
+    expect(packagePayload.fixtures[0]?.innings[0]?.sourceId).toBe('app:innings:10');
+    expect(packagePayload.fixtures[0]?.innings[0]?.events[0]).toMatchObject({
+      eventId: `app:delivery:${validEvents[0]!.eventId}`,
+      striker: { sourceId: 'app:participant:20' },
+      nonStriker: { sourceId: 'app:participant:21' },
+      bowler: { sourceId: 'app:participant:22' },
+    });
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/submissions'))).toBe(
+      false,
+    );
   });
 
   it('saves a prefilled correction and refreshes the event and statistic displays', async () => {
@@ -423,7 +465,7 @@ describe('role-gated event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
@@ -540,7 +582,7 @@ describe('role-gated event submission page', () => {
         .mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
           const url = String(input);
           if (url.endsWith('/auth/me')) {
-            return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+            return Promise.resolve(currentUser('admin', 'approved', ['5']));
           }
           if (url.includes('/fixtures?')) {
             return Promise.resolve(fixtures([fixture]));
@@ -598,7 +640,7 @@ describe('role-gated event submission page', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
@@ -649,7 +691,7 @@ describe('role-gated event submission page', () => {
     expect(screen.getByText(/accepted event was not changed/i)).toBeInTheDocument();
   });
 
-  it('shows event-specific and field-specific validation results', async () => {
+  it('explains local technical schema failures without schema jargon', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me')) {
@@ -657,6 +699,38 @@ describe('role-gated event submission page', () => {
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    const editor = await screen.findByLabelText('Delivery events JSON');
+    fireEvent.change(editor, {
+      target: { value: JSON.stringify([{ ...validEvents[0], eventId: 'not-a-uuid' }]) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(
+      screen.getByText('Event identifier: This identifier is not in the expected format.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows event-specific and field-specific validation results', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      // Since #480 only administrators reach the direct /submissions path, which
+      // is the endpoint that returns event-indexed validation details.
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      if (!url.endsWith('/submissions')) {
+        throw new Error(`Unexpected request: ${url}`);
       }
       return Promise.resolve(
         response(422, {
@@ -691,8 +765,11 @@ describe('role-gated event submission page', () => {
 
     const heading = await screen.findByRole('heading', { name: 'Submission rejected' });
     expect(heading).toHaveFocus();
-    expect(screen.getByText('Event 1 — runs.total')).toBeInTheDocument();
-    expect(screen.getByText('Event 2 — eventId')).toBeInTheDocument();
+    expect(screen.getByText('Event 1 — Total runs')).toBeInTheDocument();
+    expect(screen.getByText('Event 2 — Event identifier')).toBeInTheDocument();
+    expect(screen.getAllByText('Technical details')).toHaveLength(2);
+    expect(screen.getByText('events.0.runs.total')).toBeInTheDocument();
+    expect(screen.getAllByText('INVALID_FIELD', { selector: 'code' })).toHaveLength(2);
     expect(editor).toHaveAttribute('aria-invalid', 'true');
     expect(editor).toHaveAttribute(
       'aria-describedby',
@@ -703,11 +780,16 @@ describe('role-gated event submission page', () => {
   it('shows invalid JSON and backend failures as distinct clear results', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
+      // The direct /submissions path whose failure this test displays is
+      // administrator-only since #480.
       if (url.endsWith('/auth/me')) {
-        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+        return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
+      }
+      if (!url.endsWith('/submissions')) {
+        throw new Error(`Unexpected request: ${url}`);
       }
       return Promise.resolve(
         response(503, {
@@ -786,26 +868,13 @@ describe('role-gated event submission page', () => {
     );
 
     const input = screen.getByLabelText('Fixture package');
-    const file = new File(
-      [
-        JSON.stringify({
-          contractVersion: '1.0',
-          packageId: 'source:fixture-7',
-          fixtures: [
-            {
-              context: {
-                date: fixture.startDate,
-                teams: fixture.competitors.map((competitor) => ({
-                  context: { name: competitor.name },
-                })),
-              },
-            },
-          ],
-        }),
-      ],
-      'fixture-package.json',
-      { type: 'application/json' },
-    );
+    // The upload is mocked, so the package must satisfy the real contract here;
+    // otherwise the 202 below would accept a package the worker rejects.
+    const readablePackage = readableFixturePackage();
+    expect(seasonUploadPackageSchema.safeParse(readablePackage).success).toBe(true);
+    const file = new File([JSON.stringify(readablePackage)], 'fixture-package.json', {
+      type: 'application/json',
+    });
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
@@ -829,12 +898,52 @@ describe('role-gated event submission page', () => {
     expect(uploadHeaders.get('X-File-Name')).toBe('fixture-package.json');
   });
 
+  it('keeps the guided single-fixture path free of identifiers and advanced mode set apart', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    // #500 candidate 2: the default guided path must not fall through to the
+    // identifier-based JSON editor.
+    await screen.findByLabelText('Fixture package');
+    expect(screen.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
+    expect(screen.queryByLabelText('Delivery events JSON')).not.toBeInTheDocument();
+
+    const guided = screen.getByRole('group', { name: /Guided upload/ });
+    const advanced = screen.getByRole('group', { name: /application identifiers required/ });
+    expect(
+      within(guided)
+        .getAllByRole('radio')
+        .map((radio) => (radio as HTMLInputElement).value),
+    ).toEqual(['fixture', 'season', 'catalogue']);
+    expect(within(guided).queryByRole('radio', { name: /Advanced technical JSON/ })).toBeNull();
+    expect(
+      within(advanced).getByRole('radio', { name: /Advanced technical JSON/ }),
+    ).not.toBeChecked();
+
+    expect(screen.getByText(/You never need a database ID/)).toBeVisible();
+    expect(screen.getByText(/labels are ones you make up/)).toBeVisible();
+
+    fireEvent.click(within(advanced).getByRole('radio', { name: /Advanced technical JSON/ }));
+    expect(await screen.findByLabelText('Delivery events JSON')).toHaveAccessibleDescription(
+      /uses application identifiers.*choose Single fixture/,
+    );
+    expect(screen.queryByLabelText('Fixture package')).not.toBeInTheDocument();
+  });
+
   it('shows immediate package and row validation errors clearly', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (!url.endsWith('/batches')) throw new Error(`Unexpected request: ${url}`);
       return Promise.resolve(
         response(422, {
           error: {
@@ -861,7 +970,7 @@ describe('role-gated event submission page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
     expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
-    expect(screen.getByText('Row 1 — file')).toBeInTheDocument();
+    expect(screen.getByText('Row 1 — File')).toBeInTheDocument();
     expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });

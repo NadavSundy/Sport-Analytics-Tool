@@ -237,7 +237,7 @@ describe.sequential('direct submission database integration', () => {
       [current.accountId],
     );
 
-    await request(app())
+    await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(unauthorizedPayload)
@@ -254,7 +254,7 @@ describe.sequential('direct submission database integration', () => {
       [current.accountId],
     );
 
-    await request(app())
+    await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(unauthorizedPayload)
@@ -336,7 +336,7 @@ describe.sequential('direct submission database integration', () => {
 
   test('stores a valid submission and its ordered event provenance atomically', async () => {
     const eventId = '123e4567-e89b-42d3-a456-426614174010';
-    const response = await request(app())
+    const response = await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(payload([{ eventId, sequenceNumber: 1, positionInOver: 0 }]))
@@ -397,7 +397,7 @@ describe.sequential('direct submission database integration', () => {
     );
     const rolledBackEventId = '123e4567-e89b-42d3-a456-426614174011';
 
-    const response = await request(app())
+    const response = await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(
@@ -440,7 +440,7 @@ describe.sequential('direct submission database integration', () => {
       [testRecords().fixtureId],
     );
 
-    const response = await request(app())
+    const response = await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(
@@ -549,7 +549,7 @@ describe.sequential('direct submission database integration', () => {
     ]);
     unrelated.events[0].runs = { offBat: 2, extras: 0, total: 2 };
 
-    await request(app())
+    await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(unrelated)
@@ -795,7 +795,7 @@ describe.sequential('direct submission database integration', () => {
   test('serializes concurrent corrections into monotonic immutable revisions', async () => {
     const eventId = '123e4567-e89b-42d3-a456-426614174015';
     const submitted = payload([{ eventId, sequenceNumber: 3, positionInOver: 2 }]);
-    await request(app())
+    await request(app({ role: 'admin' }))
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer database-test-token')
       .send(submitted)
@@ -918,7 +918,7 @@ describe.sequential('direct submission database integration', () => {
     const uploadPayload = payload([{ eventId, sequenceNumber: 20, positionInOver: 20 }]);
     const source = Buffer.from(JSON.stringify(uploadPayload));
 
-    const response = await request(app())
+    const response = await request(app({ role: 'admin' }))
       .post('/api/v1/submissions/uploads')
       .set('Authorization', 'Bearer database-test-token')
       .attach('file', source, {

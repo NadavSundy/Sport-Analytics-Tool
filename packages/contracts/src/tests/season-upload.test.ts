@@ -99,7 +99,9 @@ describe('versioned season-upload contract', () => {
       'sourceRevision',
     ] as const satisfies readonly (keyof typeof fixtureProposal)[];
     for (const field of requiredFields) {
-      const { [field]: _missing, ...incompleteProposal } = fixtureProposal;
+      const incompleteProposal = Object.fromEntries(
+        Object.entries(fixtureProposal).filter(([key]) => key !== field),
+      );
       expect(
         seasonUploadPackageSchema.safeParse({
           ...complete,

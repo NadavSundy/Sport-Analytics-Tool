@@ -2,7 +2,6 @@ import type {
   BatchReceiptResponse,
   Competition,
   CurrentUserProfile,
-  Season,
 } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -54,20 +53,8 @@ async function competitionOptions(profile: CurrentUserProfile, signal: AbortSign
   return competitions.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-async function seasonOptions(competitionId: string, signal: AbortSignal): Promise<Season[]> {
-  const seasons: Season[] = [];
-  let cursor: string | null = null;
-  do {
-    const parameters = new URLSearchParams({ competitionId, limit: '100' });
-    if (cursor) parameters.set('cursor', cursor);
-    const response = await publicReadApi.listSeasons(`?${parameters.toString()}`, signal);
-    seasons.push(...response.data);
-    cursor = response.pagination.nextCursor;
-  } while (cursor);
-  return seasons.sort((left, right) => right.label.localeCompare(left.label));
-}
-
 export type PackageUploadScope = 'season' | 'catalogue';
+
 
 export function BatchUploadWorkflow({
   profile,
@@ -79,11 +66,6 @@ export function BatchUploadWorkflow({
   const client = useAuthenticatedApiClient();
   const [access, setAccess] = useState<AccessState>({ kind: 'loading' });
   const [competitionId, setCompetitionId] = useState('');
-  const [seasons, setSeasons] = useState<Season[]>([]);
-  const [seasonState, setSeasonState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>(
-    'idle',
-  );
-  const [seasonId, setSeasonId] = useState('package');
   const [file, setFile] = useState<File | null>(null);
   const [upload, setUpload] = useState<UploadState>({ kind: 'idle' });
   const resultRef = useRef<HTMLDivElement>(null);
@@ -103,30 +85,6 @@ export function BatchUploadWorkflow({
       });
     return () => controller.abort();
   }, [profile]);
-
-  useEffect(() => {
-    if (!competitionId || scope === 'catalogue') {
-      setSeasons([]);
-      setSeasonState('idle');
-      setSeasonId('package');
-      return;
-    }
-    const controller = new AbortController();
-    setSeasonState('loading');
-    setSeasonId('package');
-    void seasonOptions(competitionId, controller.signal)
-      .then((options) => {
-        setSeasons(options);
-        setSeasonState('ready');
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setSeasons([]);
-          setSeasonState('unavailable');
-        }
-      });
-    return () => controller.abort();
-  }, [competitionId, scope]);
 
   useEffect(() => {
     if (upload.kind === 'accepted' || upload.kind === 'error') {
@@ -156,13 +114,12 @@ export function BatchUploadWorkflow({
         access.kind === 'ready'
           ? access.competitions.find((option) => option.competitionId === competitionId)
           : undefined;
-      const season = seasons.find((option) => option.seasonId === seasonId);
       setUpload({
         kind: 'accepted',
         receipt: response.data,
         context:
           scope === 'season'
-            ? `${competition?.name ?? 'Selected competition'} · ${season?.label ?? 'season named in package'}`
+            ? `${competition?.name ?? 'Selected competition'} · season named in package`
             : `${competition?.name ?? 'Selected competition'} · seasons named in package`,
       });
     } catch (error) {
@@ -253,29 +210,10 @@ export function BatchUploadWorkflow({
           </div>
 
           {scope === 'season' ? (
-            <div className="submission-field">
-              <label htmlFor="batch-season">Season context</label>
-              <select
-                id="batch-season"
-                value={seasonId}
-                disabled={busy || seasonState === 'loading'}
-                onChange={(event) => setSeasonId(event.target.value)}
-              >
-                <option value="package">New or historical season named in the package</option>
-                {seasons.map((season) => (
-                  <option value={season.seasonId} key={season.seasonId}>
-                    {season.label} — {season.competitionName}
-                  </option>
-                ))}
-              </select>
-              <p className="field-help" role={seasonState === 'unavailable' ? 'status' : undefined}>
-                {seasonState === 'loading'
-                  ? 'Loading known seasons…'
-                  : seasonState === 'unavailable'
-                    ? 'Known seasons are unavailable. You can still use the readable season name in your package.'
-                    : 'This label helps confirm context; the package season is validated during processing.'}
-              </p>
-            </div>
+            <p className="field-help">
+              The season name and reference inside the package are authoritative and are validated
+              during processing. Known seasons are not selected during upload.
+            </p>
           ) : (
             <p className="field-help">
               Each season is identified by its readable name inside the package.

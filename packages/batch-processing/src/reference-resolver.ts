@@ -50,6 +50,7 @@ import { executeQuery, type QueryExecutor } from './database';
  * mean something different elsewhere.
  */
 const CANONICAL_SOURCE_NAMESPACE = 'cricsheet';
+const APPLICATION_SOURCE_NAMESPACE = 'app';
 
 /**
  * Entity types this resolver produces outcomes for. `season` is deliberately
@@ -64,7 +65,13 @@ type ReferenceResolutionState = 'resolved' | 'ambiguous' | 'unresolved' | 'inval
 
 /** How a resolved reference was matched. Recorded for provenance. */
 type ReferenceMatchMethod =
-  'source-identifier' | 'exact-name' | 'exact-alias' | 'natural-key' | 'ordinal' | 'manual';
+  | 'source-identifier'
+  | 'application-id'
+  | 'exact-name'
+  | 'exact-alias'
+  | 'natural-key'
+  | 'ordinal'
+  | 'manual';
 
 export interface ReferenceResolutionOverride {
   entityType: ReferenceEntityType;
@@ -337,6 +344,31 @@ function withNote(note: string | null, reason: string): string {
 }
 
 /**
+ * Whether a fixture source identifier can never be compared with a stored
+ * record. Only `CANONICAL_SOURCE_NAMESPACE` (against `fixture.source_ref`) and,
+ * since #480, `APPLICATION_SOURCE_NAMESPACE` (against `fixture.fixture_id`) are
+ * compared. An identifier that cannot be read at all is not covered here; it
+ * stays invalid.
+ */
+function isIncomparableFixtureSourceIdentifier(sourceId: string): boolean {
+  const identifier = parseSourceIdentifier(sourceId);
+  return (
+    identifier !== null &&
+    identifier.namespace !== CANONICAL_SOURCE_NAMESPACE &&
+    identifier.namespace !== APPLICATION_SOURCE_NAMESPACE
+  );
+}
+
+/** Note that an incomparable fixture identifier was ignored in favour of the natural key. */
+function ignoredFixtureSourceIdentifier(sourceId: string): string {
+  return (
+    `The submitted source identifier "${sourceId}" was ignored: only "${CANONICAL_SOURCE_NAMESPACE}" ` +
+    `and "${APPLICATION_SOURCE_NAMESPACE}" fixture identifiers can be compared. ` +
+    `Resolution used the fixture date and teams.`
+  );
+}
+
+/**
  * Resolve a reference whose only available key is an exact name, such as a
  * competition or a team.
  */
@@ -410,6 +442,7 @@ function resolveFixtureBySourceId(
   } | null,
   teamOutcomes: ReferenceOutcome[],
   fixtureBySourceRef: Map<string, FixtureBySourceRefRow[]>,
+  fixtureByCanonicalId: Map<string, FixtureBySourceRefRow[]>,
   competitionId: string,
   seasonName: string | null,
 ): ReferenceOutcome {
@@ -421,18 +454,31 @@ function resolveFixtureBySourceId(
     });
   }
 
-  if (identifier.namespace !== CANONICAL_SOURCE_NAMESPACE) {
+  let matches: FixtureBySourceRefRow[];
+  let matchMethod: ReferenceMatchMethod;
+  let missingReason: string;
+
+  if (identifier.namespace === CANONICAL_SOURCE_NAMESPACE) {
+    matches = fixtureBySourceRef.get(identifier.value) ?? [];
+    matchMethod = 'source-identifier';
+    missingReason = `No fixture carries the source reference "${identifier.value}".`;
+  } else if (identifier.namespace === APPLICATION_SOURCE_NAMESPACE) {
+    if (!/^[1-9]\d*$/.test(identifier.value)) {
+      return outcome(referencePath, 'fixture', submitted, 'invalid', {
+        reason: 'An application fixture reference must contain a positive database identifier.',
+      });
+    }
+    matches = fixtureByCanonicalId.get(identifier.value) ?? [];
+    matchMethod = 'application-id';
+    missingReason = `No fixture has application identifier "${identifier.value}".`;
+  } else {
     return outcome(referencePath, 'fixture', submitted, 'unresolved', {
-      reason: `Source identifiers are compared only within the "${CANONICAL_SOURCE_NAMESPACE}" namespace; this reference names "${identifier.namespace}".`,
+      reason: `Source identifiers are compared only within the "${CANONICAL_SOURCE_NAMESPACE}" or "${APPLICATION_SOURCE_NAMESPACE}" namespaces; this reference names "${identifier.namespace}".`,
     });
   }
 
-  const matches = fixtureBySourceRef.get(identifier.value) ?? [];
-
   if (matches.length === 0) {
-    return outcome(referencePath, 'fixture', submitted, 'unresolved', {
-      reason: `No fixture carries the source reference "${identifier.value}".`,
-    });
+    return outcome(referencePath, 'fixture', submitted, 'unresolved', { reason: missingReason });
   }
 
   // `fixture.source_ref` is unique, so more than one match is not reachable
@@ -531,7 +577,7 @@ function resolveFixtureBySourceId(
 
   return outcome(referencePath, 'fixture', submitted, 'resolved', {
     canonicalId: match.canonicalId,
-    matchedBy: 'source-identifier',
+    matchedBy: matchMethod,
   });
 }
 
@@ -542,11 +588,14 @@ function resolveFixtureByNaturalKey(
   teamOutcomes: ReferenceOutcome[],
   candidateRows: FixtureByNaturalKeyRow[],
   seasonName: string | null,
+  ignoredNote: string | null = null,
 ): ReferenceOutcome {
   if (teamOutcomes.some((value) => value.state !== 'resolved')) {
     return outcome(referencePath, 'fixture', submitted, 'unresolved', {
-      reason:
+      reason: withNote(
+        ignoredNote,
         'The fixture natural key is expressed in terms of its teams, and at least one team reference did not resolve.',
+      ),
     });
   }
 
@@ -574,6 +623,7 @@ function resolveFixtureByNaturalKey(
     return outcome(referencePath, 'fixture', submitted, 'resolved', {
       canonicalId: matches[0]!.canonicalId,
       matchedBy: 'natural-key',
+      reason: ignoredNote,
     });
   }
 
@@ -585,13 +635,18 @@ function resolveFixtureByNaturalKey(
         canonicalId: row.canonicalId,
         label: fixtureLabel(row.startDate, row.season),
       })),
-      reason: `The competition, season, date and teams identify ${String(matches.length)} fixtures.`,
+      reason: withNote(
+        ignoredNote,
+        `The competition, season, date and teams identify ${String(matches.length)} fixtures.`,
+      ),
     });
   }
 
   return outcome(referencePath, 'fixture', submitted, 'unresolved', {
-    reason:
+    reason: withNote(
+      ignoredNote,
       'No fixture in the declared competition matches this date, season and pair of teams. A new fixture is a review decision, not a resolution.',
+    ),
   });
 }
 
@@ -612,56 +667,76 @@ function resolveInnings(
   }
 
   const inningsKey = 'the innings ordinal and batting team';
+  let matches: InningsRow[];
+  let matchedBy: ReferenceMatchMethod;
+  let note: string | null = null;
 
-  if (sourceId && !context) {
-    return outcome(referencePath, 'innings', submitted, 'unresolved', {
-      reason: unsupportedSourceIdentifier('innings', inningsKey),
-    });
-  }
+  if (sourceId) {
+    const identifier = parseSourceIdentifier(sourceId);
+    if (!identifier) {
+      return outcome(referencePath, 'innings', submitted, 'invalid', {
+        reason: 'The source identifier could not be read as namespace:entityType:value.',
+      });
+    }
 
-  if (!context) {
+    if (identifier.namespace === APPLICATION_SOURCE_NAMESPACE) {
+      if (!/^[1-9]\d*$/.test(identifier.value)) {
+        return outcome(referencePath, 'innings', submitted, 'invalid', {
+          reason: 'An application innings reference must contain a positive database identifier.',
+        });
+      }
+      matches = inningsRows.filter((row) => row.canonicalId === identifier.value);
+      matchedBy = 'application-id';
+    } else {
+      if (!context) {
+        return outcome(referencePath, 'innings', submitted, 'unresolved', {
+          reason: unsupportedSourceIdentifier('innings', inningsKey),
+        });
+      }
+      matches = inningsRows.filter((row) => row.ordinal === context.ordinal);
+      matchedBy = 'ordinal';
+      note = ignoredSourceIdentifier('innings', inningsKey);
+    }
+  } else if (context) {
+    matches = inningsRows.filter((row) => row.ordinal === context.ordinal);
+    matchedBy = 'ordinal';
+  } else {
     return outcome(referencePath, 'innings', submitted, 'invalid', {
       reason: 'The innings reference carries neither a source identifier nor readable context.',
     });
   }
 
-  // The shipped package templates carry both an innings sourceId and readable
-  // context, so ignoring the unsupported identifier and resolving on the
-  // ordinal is what lets a template-derived package resolve at all.
-  const ignoredNote = sourceId ? ignoredSourceIdentifier('innings', inningsKey) : null;
-
-  // A package ordinal is the stored ordinal. Both count innings from zero, so
-  // there is deliberately no conversion here: see the column comment on
-  // `innings.ordinal` and `inningsContextSchema` in the package contract.
-  const matches = inningsRows.filter((row) => row.ordinal === context.ordinal);
-
   if (matches.length === 0) {
     return outcome(referencePath, 'innings', submitted, 'unresolved', {
-      reason: withNote(
-        ignoredNote,
-        `The resolved fixture has no innings with ordinal ${String(context.ordinal)}.`,
-      ),
+      reason: sourceId?.startsWith(`${APPLICATION_SOURCE_NAMESPACE}:`)
+        ? 'The application innings identifier does not belong to the resolved fixture.'
+        : withNote(
+            note,
+            `The resolved fixture has no innings with ordinal ${String(context?.ordinal)}.`,
+          ),
     });
   }
 
-  // (fixture_id, ordinal) is unique, so this is not presently reachable.
   if (matches.length > 1) {
     return outcome(referencePath, 'innings', submitted, 'ambiguous', {
       candidates: matches.map((row) => ({
         canonicalId: row.canonicalId,
         label: `innings ${String(row.ordinal)}`,
       })),
-      reason: withNote(
-        ignoredNote,
-        'More than one innings carries this ordinal within the resolved fixture.',
-      ),
+      reason: withNote(note, 'More than one innings matched within the resolved fixture.'),
     });
   }
 
   const match = matches[0]!;
 
-  // A batting team resolving to a different team from the one the innings
-  // records is a contradiction, not an unknown.
+  if (context && match.ordinal !== context.ordinal) {
+    return outcome(referencePath, 'innings', submitted, 'invalid', {
+      candidates: [{ canonicalId: match.canonicalId, label: `innings ${String(match.ordinal)}` }],
+      reason:
+        'The application innings identifier resolves to a different ordinal from the submitted context.',
+    });
+  }
+
   if (
     battingTeamOutcome &&
     battingTeamOutcome.state === 'resolved' &&
@@ -669,18 +744,18 @@ function resolveInnings(
     match.battingTeamId !== battingTeamOutcome.canonicalId
   ) {
     return outcome(referencePath, 'innings', submitted, 'invalid', {
-      candidates: [{ canonicalId: match.canonicalId, label: `innings ${String(context.ordinal)}` }],
+      candidates: [{ canonicalId: match.canonicalId, label: `innings ${String(match.ordinal)}` }],
       reason: withNote(
-        ignoredNote,
-        'The innings exists at this ordinal but records a different batting team from the one submitted.',
+        note,
+        'The innings records a different batting team from the one submitted.',
       ),
     });
   }
 
   return outcome(referencePath, 'innings', submitted, 'resolved', {
     canonicalId: match.canonicalId,
-    matchedBy: 'ordinal',
-    reason: ignoredNote,
+    matchedBy,
+    reason: note,
   });
 }
 
@@ -689,6 +764,7 @@ function resolveParticipant(
   reference: ReferenceInput,
   fixtureOutcome: ReferenceOutcome,
   squadBySourceRef: Map<string, SquadMemberRow[]>,
+  squadByCanonicalId: Map<string, SquadMemberRow[]>,
   squadByDisplayName: Map<string, SquadMemberRow[]>,
   squadByAlias: Map<string, SquadAliasRow[]>,
 ): ReferenceOutcome {
@@ -710,9 +786,28 @@ function resolveParticipant(
       });
     }
 
+    if (identifier.namespace === APPLICATION_SOURCE_NAMESPACE) {
+      if (!/^[1-9]\d*$/.test(identifier.value)) {
+        return outcome(referencePath, 'participant', submitted, 'invalid', {
+          reason:
+            'An application participant reference must contain a positive database identifier.',
+        });
+      }
+      const matches = squadByCanonicalId.get(identifier.value) ?? [];
+      if (matches.length === 1) {
+        return outcome(referencePath, 'participant', submitted, 'resolved', {
+          canonicalId: matches[0]!.canonicalId,
+          matchedBy: 'application-id',
+        });
+      }
+      return outcome(referencePath, 'participant', submitted, 'unresolved', {
+        reason: `Participant "${identifier.value}" is not a member of the resolved fixture squad.`,
+      });
+    }
+
     if (identifier.namespace !== CANONICAL_SOURCE_NAMESPACE) {
       return outcome(referencePath, 'participant', submitted, 'unresolved', {
-        reason: `Source identifiers are compared only within the "${CANONICAL_SOURCE_NAMESPACE}" namespace; this reference names "${identifier.namespace}".`,
+        reason: `Source identifiers are compared only within the "${CANONICAL_SOURCE_NAMESPACE}" or "${APPLICATION_SOURCE_NAMESPACE}" namespaces; this reference names "${identifier.namespace}".`,
       });
     }
 
@@ -904,13 +999,24 @@ export async function resolvePackageReferences(
     }),
   );
 
+  const fixtureCanonicalValues = distinct(
+    uploadPackage.fixtures.flatMap((fixture) => {
+      const identifier = fixture.sourceId ? parseSourceIdentifier(fixture.sourceId) : null;
+      return identifier &&
+        identifier.namespace === APPLICATION_SOURCE_NAMESPACE &&
+        /^[1-9]\d*$/.test(identifier.value)
+        ? [identifier.value]
+        : [];
+    }),
+  );
+
   const fixtureDates = distinct(
     uploadPackage.fixtures.flatMap((fixture) =>
       fixture.context?.date ? [fixture.context.date] : [],
     ),
   );
 
-  const [fixtureBySourceRows, fixtureByNaturalKeyRows] = await Promise.all([
+  const [fixtureBySourceRows, fixtureByCanonicalRows, fixtureByNaturalKeyRows] = await Promise.all([
     fixtureSourceValues.length > 0
       ? executeQuery<FixtureBySourceRefRow>(
           client,
@@ -939,6 +1045,34 @@ export async function resolvePackageReferences(
           [fixtureSourceValues],
         ).then((result) => result.rows)
       : Promise.resolve<FixtureBySourceRefRow[]>([]),
+    fixtureCanonicalValues.length > 0
+      ? executeQuery<FixtureBySourceRefRow>(
+          client,
+          `SELECT f.fixture_id::text                  AS "canonicalId",
+                  f.source_ref                        AS "sourceRef",
+                  f.competition_id::text              AS "competitionId",
+                  f.season,
+                  to_char(f.start_date, 'YYYY-MM-DD') AS "startDate",
+                  v.name                              AS venue,
+                  COALESCE(
+                    array_agg(ft.team_id::text ORDER BY ft.team_id)
+                      FILTER (WHERE ft.team_id IS NOT NULL),
+                    ARRAY[]::text[]
+                  )                                   AS "teamIds"
+             FROM fixture f
+             LEFT JOIN venue v ON v.venue_id = f.venue_id
+             LEFT JOIN fixture_team ft ON ft.fixture_id = f.fixture_id
+            WHERE f.fixture_id = ANY($1::bigint[])
+            GROUP BY
+              f.fixture_id,
+              f.source_ref,
+              f.competition_id,
+              f.season,
+              f.start_date,
+              v.name`,
+          [fixtureCanonicalValues],
+        ).then((result) => result.rows)
+      : Promise.resolve<FixtureBySourceRefRow[]>([]),
     competitionId !== null && fixtureDates.length > 0
       ? executeQuery<FixtureByNaturalKeyRow>(
           client,
@@ -962,6 +1096,7 @@ export async function resolvePackageReferences(
   ]);
 
   const fixtureBySourceRef = groupBy(fixtureBySourceRows, (row) => row.sourceRef);
+  const fixtureByCanonicalId = groupBy(fixtureByCanonicalRows, (row) => row.canonicalId);
   const fixtureResolutions: ReferenceOutcome[] = [];
 
   for (const [fixtureIndex, fixture] of uploadPackage.fixtures.entries()) {
@@ -984,7 +1119,10 @@ export async function resolvePackageReferences(
         reason:
           'The competition reference did not resolve, so no fixture scope is available. Resolution is scoped from competition to fixture and is not attempted globally.',
       });
-    } else if (fixture.sourceId) {
+    } else if (
+      fixture.sourceId &&
+      !(fixture.context && isIncomparableFixtureSourceIdentifier(fixture.sourceId))
+    ) {
       resolvedFixture = resolveFixtureBySourceId(
         fixturePath,
         submitted,
@@ -992,10 +1130,16 @@ export async function resolvePackageReferences(
         fixture.context ?? null,
         fixtureTeamOutcomes,
         fixtureBySourceRef,
+        fixtureByCanonicalId,
         competitionId,
         seasonName,
       );
     } else if (fixture.context) {
+      // Section 3.7 applied to the fixture (#500). An identifier from a namespace
+      // that is never compared can never resolve, so readable context is the
+      // supported key. The templates published before #500 carried such a
+      // placeholder, and copies already downloaded keep it. A comparable
+      // `cricsheet` or `app` (#480) identifier never reaches this arm.
       resolvedFixture = resolveFixtureByNaturalKey(
         fixturePath,
         submitted,
@@ -1003,6 +1147,7 @@ export async function resolvePackageReferences(
         fixtureTeamOutcomes,
         fixtureByNaturalKeyRows,
         seasonName,
+        fixture.sourceId ? ignoredFixtureSourceIdentifier(fixture.sourceId) : null,
       );
     } else {
       // The contract requires a sourceId or context. This arm keeps the resolver
@@ -1086,6 +1231,7 @@ export async function resolvePackageReferences(
       ),
       (member) => member.sourceRef,
     );
+    const squadByCanonicalId = groupBy(squad, (member) => member.canonicalId);
     const squadByDisplayName = groupBy(squad, (member) => member.displayName);
     const squadByAlias = groupBy(aliases, (alias) => alias.name);
 
@@ -1142,6 +1288,7 @@ export async function resolvePackageReferences(
               reference,
               fixtureOutcome,
               squadBySourceRef,
+              squadByCanonicalId,
               squadByDisplayName,
               squadByAlias,
             ),

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 
 import { describe, expect, it } from 'vitest';
@@ -68,6 +69,65 @@ function csvRow(
     .map((value) => (value.includes(',') ? `"${value}"` : value))
     .join(',');
 }
+
+/**
+ * A shipped template with only its readable placeholders replaced, as a submitter
+ * who knows the match but not the platform would complete it. Each placeholder
+ * must be present, so a template change cannot quietly make a test vacuous.
+ */
+function shippedTemplateWithReadableNames(fileName: string): string {
+  let text = readFileSync(new URL(`../../frontend/public/${fileName}`, import.meta.url), 'utf8');
+  const readableValues: [placeholder: RegExp, value: string][] = [
+    [/Competition name/g, 'Premier T20'],
+    [/Home team/g, 'Wanderers'],
+    [/Away team/g, 'Strikers'],
+    [/\bStriker\b/g, 'A. Batter'],
+    [/Non-striker/g, 'B. Batter'],
+    [/\bBowler\b/g, 'C. Bowler'],
+  ];
+  for (const [placeholder, value] of readableValues) {
+    expect(text).toMatch(placeholder);
+    text = text.replace(placeholder, value);
+  }
+  return text;
+}
+
+describe('shipped guided templates (#500)', () => {
+  it.each([
+    ['season-upload-template.csv', 'text/csv'],
+    ['season-upload-template.json', 'application/json'],
+  ])(
+    'expands %s with only readable names filled in and carries no reference identifier',
+    async (fileName, mediaType) => {
+      const source = shippedTemplateWithReadableNames(fileName);
+
+      const scan = await scanBatchReferences(async () => Readable.from(source), mediaType);
+      expect(scan.fatal).toBe(false);
+      expect(scan.sourceFaults).toEqual([]);
+      expect(scan.eventCount).toBe(1);
+
+      const { referencePackage } = await referenceChunkFor(source, mediaType);
+      const fixture = referencePackage?.fixtures[0];
+      const innings = fixture?.innings[0];
+      const event = innings?.events[0];
+
+      // Competition, fixture, innings and participants must reach the resolver as
+      // readable context alone. A placeholder identifier would be preferred over
+      // the names and leave every delivery unresolved.
+      expect(referencePackage?.competition.sourceId).toBeUndefined();
+      expect(referencePackage?.competition.context?.name).toBe('Premier T20');
+      expect(fixture?.sourceId).toBeUndefined();
+      expect(fixture?.context?.teams).toEqual([
+        { context: { name: 'Wanderers' } },
+        { context: { name: 'Strikers' } },
+      ]);
+      expect(innings?.sourceId).toBeUndefined();
+      for (const role of ['striker', 'nonStriker', 'bowler'] as const) {
+        expect(event?.[role].sourceId).toBeUndefined();
+      }
+    },
+  );
+});
 
 describe('batch package streaming expansion', () => {
   it('preserves correction metadata from CSV packages', async () => {

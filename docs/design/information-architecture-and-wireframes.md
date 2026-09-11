@@ -312,9 +312,11 @@ available for integrations that already hold application references.
 
 An indeterminate upload indicator covers transfer time, then an accessible durable-receipt panel
 links to submission history. History and detail views use plain-language lifecycle descriptions,
-source row/field links, downloadable complete reports and labeled reference-mapping controls. Empty,
-partial, unavailable and error states retain the standard state patterns in §4. Background processing
-does not depend on the page remaining open.
+source row/field links, downloadable complete reports and labeled reference-mapping controls.
+Validation failures name readable fields and explain the next corrective action instead of leading with
+schema paths or rule codes; those identifiers remain available in collapsed **Technical details** for
+debugging and support. Empty, partial, unavailable and error states retain the standard state patterns
+in §4. Background processing does not depend on the page remaining open.
 
 The implemented workflow and its desktop/mobile accessibility journey are ready to be exercised by
 the formal submitter-testing activity tracked under #417. Issue #361 does not record a separate
@@ -365,3 +367,5 @@ Codex[GPT-5].
 The issue #437 unified submission workflow was documented with the assistance of Codex[GPT-5].
 The issue #458 administrator dataset-release workflow was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #499 plain-language submission validation guidance was documented with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].

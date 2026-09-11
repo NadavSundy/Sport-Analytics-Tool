@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { seasonUploadPackageSchema } from '@sport-analytics/contracts';
 
 const fixture = {
   fixtureId: '7',
@@ -39,6 +42,26 @@ const events = [
 ];
 
 const batchReference = '123e4567-e89b-42d3-a456-426614174000';
+
+/**
+ * The downloadable JSON template completed with readable names for the listed
+ * fixture only, as the guided page asks (#500). Every placeholder must exist, so
+ * a template change cannot quietly make the journey vacuous.
+ */
+function readableFixturePackage(): string {
+  let text = readFileSync('apps/frontend/public/season-upload-template.json', 'utf8');
+  const readableValues: [placeholder: string, value: string][] = [
+    ['"Competition name"', `"${fixture.competitionName}"`],
+    ['"2026-03-14"', `"${fixture.startDate}"`],
+    ['"Home team"', '"Wanderers"'],
+    ['"Away team"', '"Strikers"'],
+  ];
+  for (const [placeholder, value] of readableValues) {
+    expect(text).toContain(placeholder);
+    text = text.replaceAll(placeholder, value);
+  }
+  return text;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -103,25 +126,54 @@ test('the account Submit events action opens the unified submission workflow', a
   await expect(page.getByRole('radio', { name: /Back catalogue/ })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Upload a batch' })).toHaveCount(0);
+
+  // #500: the guided scopes and the identifier-based mode are separate groups,
+  // and the default guided path shows no JSON editor.
+  const guided = page.getByRole('group', { name: /Guided upload/ });
+  const advanced = page.getByRole('group', { name: /application identifiers required/ });
+  await expect(guided.getByRole('radio')).toHaveCount(3);
+  await expect(guided.getByRole('radio', { name: /Advanced technical JSON/ })).toHaveCount(0);
+  await expect(advanced.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
+  await expect(page.getByLabel('Delivery events JSON')).toHaveCount(0);
 });
 
-test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
-  await page.route('**/api/v1/submissions', async (route) => {
-    const body = route.request().postDataJSON();
-    expect(body).toEqual({ fixtureId: '7', schemaVersion: '1.0', events });
+test('submitter stages advanced technical JSON with a keyboard', async ({ page }) => {
+  await page.route('**/api/v1/batches', async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe('POST');
+    expect(request.headers()['x-competition-id']).toBe('5');
+    expect(request.headers()['x-file-name']).toBe('technical-7.json');
+    expect(request.postDataJSON()).toMatchObject({
+      contractVersion: '1.0',
+      fixtures: [
+        {
+          sourceId: 'app:fixture:7',
+          innings: [
+            {
+              sourceId: 'app:innings:10',
+              events: [
+                {
+                  eventId: `app:delivery:${events[0]!.eventId}`,
+                  striker: { sourceId: 'app:participant:20' },
+                  nonStriker: { sourceId: 'app:participant:21' },
+                  bowler: { sourceId: 'app:participant:22' },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
     await route.fulfill({
-      status: 201,
+      status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
         data: {
-          submissionId: '300',
-          fixtureId: '7',
-          submitterId: '17',
-          status: 'accepted',
+          batchReference,
+          status: 'stored',
+          statusUrl: `/api/v1/batches/${batchReference}`,
           receivedAt: '2026-08-16T09:30:00.000Z',
-          schemaVersion: '1.0',
-          eventCount: 1,
         },
       }),
     });
@@ -144,9 +196,14 @@ test('submitter completes the responsive workflow with a keyboard', async ({ pag
   await expect(submitButton).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const acceptedHeading = page.getByRole('heading', { name: 'Submission accepted' });
-  await expect(acceptedHeading).toBeFocused();
-  await expect(page.getByText('300')).toBeVisible();
+  const stagedHeading = page.getByRole('heading', { name: 'Fixture package received safely' });
+  await expect(stagedHeading).toBeFocused();
+  await expect(page.getByText(batchReference, { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+    'href',
+    `/submissions/batches/${batchReference}`,
+  );
+  await expect(page.getByRole('button', { name: 'Save correction' })).toHaveCount(0);
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -160,36 +217,22 @@ test('submitter completes the responsive workflow with a keyboard', async ({ pag
   expect(seriousOrCriticalViolations).toEqual([]);
 });
 
-test('validation results remain associated with the editor and receive focus', async ({ page }) => {
-  await page.route('**/api/v1/submissions', async (route) => {
-    await route.fulfill({
-      status: 422,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        error: {
-          code: 'VALIDATION_FAILED',
-          message: 'The submission is invalid.',
-          details: [
-            {
-              code: 'INVALID_FIELD',
-              message: 'Total runs must equal off-bat runs plus extras.',
-              field: 'events.0.runs.total',
-              eventIndex: 0,
-            },
-          ],
-        },
-      }),
-    });
-  });
+test('technical JSON schema errors remain associated with the editor and receive focus', async ({
+  page,
+}) => {
+  const invalidEvents = events.map((event) => ({
+    ...event,
+    runs: { ...event.runs, total: event.runs.total + 1 },
+  }));
 
   await page.goto('/submissions/new');
   await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
   const editor = page.getByLabel('Delivery events JSON');
-  await editor.fill(JSON.stringify(events));
+  await editor.fill(JSON.stringify(invalidEvents));
   await page.getByRole('button', { name: 'Submit events' }).click();
 
   await expect(page.getByRole('heading', { name: 'Submission rejected' })).toBeFocused();
-  await expect(page.getByText('Event 1 — runs.total')).toBeVisible();
+  await expect(page.getByText('Total runs must equal off-bat runs plus extras.')).toBeVisible();
   await expect(editor).toHaveAttribute('aria-invalid', 'true');
   await expect(editor).toHaveAttribute('aria-describedby', /submission-validation-results/);
 });
@@ -198,11 +241,16 @@ test(
   'submitter uploads a readable fixture package and receives a durable receipt',
   { tag: '@mobile' },
   async ({ page }) => {
+    const uploadedPackage = readableFixturePackage();
     await page.route('**/api/v1/batches', async (route) => {
       expect(route.request().method()).toBe('POST');
       expect(route.request().headers().authorization).toBe('Bearer approved-e2e-token');
       expect(route.request().headers()['x-competition-id']).toBe('5');
       expect(route.request().headers()['x-file-name']).toBe('fixture-package.json');
+      // The receipt is mocked, so the body must satisfy the real package contract.
+      const body = route.request().postDataBuffer()?.toString('utf8') ?? '';
+      expect(body).toBe(uploadedPackage);
+      expect(seasonUploadPackageSchema.safeParse(JSON.parse(body)).success).toBe(true);
       await new Promise((resolve) => setTimeout(resolve, 100));
       await route.fulfill({
         status: 202,
@@ -226,26 +274,12 @@ test(
     await expect(
       page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
     ).toBeVisible();
+    await expect(page.getByText(/You never need a database ID/)).toBeVisible();
     const fileInput = page.getByLabel('Fixture package', { exact: true });
     await fileInput.setInputFiles({
       name: 'fixture-package.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(
-        JSON.stringify({
-          contractVersion: '1.0',
-          packageId: 'provider:package:fixture-2026-08-20',
-          fixtures: [
-            {
-              context: {
-                date: fixture.startDate,
-                teams: fixture.competitors.map((competitor) => ({
-                  context: { name: competitor.name },
-                })),
-              },
-            },
-          ],
-        }),
-      ),
+      buffer: Buffer.from(uploadedPackage),
     });
     await expect(page.getByText(/Selected: fixture-package.json/)).toBeVisible();
     await page.getByRole('button', { name: 'Upload fixture package' }).click();
@@ -288,8 +322,8 @@ test('file validation identifies a rejected CSV row and returns focus to the res
           details: [
             {
               code: 'INVALID_FILE_ROW',
-              message: 'CSV row 2 is invalid.',
-              field: 'file',
+              message: 'Expected number, received string',
+              field: 'events.0.runs.total',
               eventIndex: 0,
             },
           ],
@@ -308,7 +342,9 @@ test('file validation identifies a rejected CSV row and returns focus to the res
   await page.getByRole('button', { name: 'Upload fixture package' }).click();
 
   await expect(page.getByRole('heading', { name: 'Submission rejected' })).toBeFocused();
-  await expect(page.getByText(/Row 1.*file/)).toBeVisible();
+  await expect(page.getByText('Row 1 — Total runs')).toBeVisible();
+  await expect(page.getByText('Use a number here instead of text.')).toBeVisible();
+  await expect(page.getByText('Technical details')).toBeVisible();
   await expect(fileInput).toHaveAttribute('aria-invalid', 'true');
 });
 
@@ -507,6 +543,13 @@ test(
     );
 
     await page.getByRole('link', { name: 'Track validation and errors' }).click();
+    await expect(page.getByText('More than one match was found (1)')).toBeVisible();
+    await expect(
+      page.getByText(
+        'More than one participant is named A. Smith. Choose the correct match before continuing.',
+      ),
+    ).toBeVisible();
+    await expect(page.getByText('Technical validation details')).toBeVisible();
     await expect(page.getByLabel('Choose the matching participant')).toHaveValue(
       '223e4567-e89b-42d3-a456-426614174000',
     );
