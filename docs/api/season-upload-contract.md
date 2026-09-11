@@ -150,6 +150,11 @@ choice is still a valid candidate and asynchronously reruns canonical event and 
 References without a safe existing candidate require reviewer contact; this workflow does not
 silently create records.
 
+## Upload context
+
+The upload form selects an authorised competition only. The package's own season name/reference is
+authoritative; the form does not offer a season selector because it cannot constrain processing.
+
 ## Multi-file packages
 
 Use a manifest when a package contains more than one file. The manifest lists
