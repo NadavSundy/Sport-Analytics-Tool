@@ -150,7 +150,7 @@ export const batchReportContextSchema = z
     fixtureLabel: z.string().min(1).nullable(),
     inningsId: apiIdentifierSchema.nullable(),
     overNumber: z.number().int().nonnegative().nullable(),
-    positionInOver: z.number().int().positive().nullable(),
+    positionInOver: z.number().int().nonnegative().nullable(),
     description: z.string().min(1),
   })
   .strict();
