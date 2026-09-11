@@ -92,6 +92,16 @@ silently narrowing Intermediate to ingestion alone.
 | Cache repeated reads                                                       | `evidence/validation/issue-293-cache-performance.md` and fixture-statistics cache tests.                                  |
 | Versioned reproducible dataset releases with schema/checksum               | `dataset-releases` API tests, release persistence and dataset documentation/OpenAPI contracts.                            |
 
+## Live development deployment evidence
+
+The repository-level tests are supplemented by a deployed-development acceptance record from Issue #463.
+
+On 11 September 2026, a controlled season package was processed by the real Azure worker/Service Bus path, reached `awaiting_review`, appeared in the reviewer queue, was approved and reached `published`. Because the item exactly matched an existing published delivery, publication marked it `duplicate_skipped`; a live canonical query confirmed the delivery count remained one.
+
+The complete operational evidence, including runtime defects found/fixed during provisioning and the post-merge deployment check, is retained in `evidence/validation/issue-463-dev-worker-deployment.md`.
+
+This deployed evidence complements rather than replaces the representative-scale throughput and formal user-testing close-out gates below.
+
 ## External close-out gates
 
 Two criteria cannot be honestly manufactured by this patch:

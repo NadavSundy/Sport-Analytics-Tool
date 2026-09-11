@@ -352,6 +352,82 @@ describe('public browsing pages', () => {
     ).toBeVisible();
   });
 
+  it('finds competition, season, and team options beyond initial pages by server-side name', async () => {
+    const requestedUrls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        requestedUrls.push(input);
+        const url = new URL(input);
+        const name = url.searchParams.get('name');
+
+        if (url.pathname.endsWith('/competitions')) {
+          return Promise.resolve(
+            name === 'World Twenty20'
+              ? collection([{ competitionId: 'competition-world', name: 'World Twenty20' }])
+              : collection(
+                  [{ competitionId: 'competition-first', name: 'ACC Eastern Region T20' }],
+                  'next-competition-page',
+                ),
+          );
+        }
+        if (url.pathname.endsWith('/seasons')) {
+          return Promise.resolve(
+            name === '2007'
+              ? collection([
+                  {
+                    competitionId: 'competition-world',
+                    competitionName: 'World Twenty20',
+                    label: '2007',
+                    seasonId: 'season-world-2007',
+                  },
+                ])
+              : collection([], 'next-season-page'),
+          );
+        }
+        if (url.pathname.endsWith('/competitors')) {
+          return Promise.resolve(
+            name === 'India'
+              ? collection([{ competitorId: 'team-india', name: 'India' }])
+              : collection([], 'next-team-page'),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/fixtures');
+
+    const competition = screen.getByRole('combobox', { name: 'Competition' });
+    fireEvent.change(competition, { target: { value: 'World Twenty20' } });
+    fireEvent.click(await screen.findByRole('option', { name: 'World Twenty20' }));
+
+    const season = screen.getByRole('combobox', { name: 'Season' });
+    fireEvent.change(season, { target: { value: '2007' } });
+    fireEvent.click(await screen.findByRole('option', { name: /World Twenty20 — 2007/ }));
+
+    const team = screen.getByRole('combobox', { name: 'Team' });
+    fireEvent.change(team, { target: { value: 'India' } });
+    expect(await screen.findByRole('option', { name: 'India' })).toBeVisible();
+
+    expect(
+      requestedUrls.some((url) => url.includes('/competitions?limit=100&name=World+Twenty20')),
+    ).toBe(true);
+    expect(
+      requestedUrls.some((url) =>
+        url.includes('/seasons?competitionId=competition-world&limit=100&name=2007'),
+      ),
+    ).toBe(true);
+    expect(
+      requestedUrls.some((url) =>
+        url.includes(
+          '/competitors?competitionId=competition-world&seasonId=season-world-2007&limit=100&name=India',
+        ),
+      ),
+    ).toBe(true);
+    expect(requestedUrls.some((url) => url.includes('cursor=next-'))).toBe(false);
+  });
+
   it('loads readable fixture, team, and player suggestions from public endpoints', async () => {
     const requestedUrls: string[] = [];
     const fixture = {
@@ -383,7 +459,7 @@ describe('public browsing pages', () => {
         }
         if (url.pathname.endsWith('/competitors')) {
           return Promise.resolve(
-            url.searchParams.get('cursor') === 'teams-page-2'
+            url.searchParams.get('name') === 'South Africa'
               ? collection([{ competitorId: 'team-sa', name: 'South Africa' }])
               : collection([{ competitorId: 'team-1', name: 'Wanderers' }], 'teams-page-2'),
           );
@@ -413,13 +489,12 @@ describe('public browsing pages', () => {
 
     expect(await screen.findByRole('option', { name: 'A Player' })).toBeVisible();
     expect(requestedUrls.some((url) => url.includes('/fixtures?limit=100'))).toBe(true);
-    expect(requestedUrls.some((url) => url.includes('/competitors?limit=100'))).toBe(true);
     expect(
-      requestedUrls.some((url) => url.includes('/competitors?limit=100&cursor=teams-page-2')),
+      requestedUrls.some((url) => url.includes('/competitors?limit=100&name=South+Africa')),
     ).toBe(true);
     expect(
       requestedUrls.some((url) =>
-        url.includes('/participants?fixtureId=fixture-1&competitorId=team-sa&limit=100'),
+        url.includes('/participants?fixtureId=fixture-1&competitorId=team-sa&limit=100&name=A+Pl'),
       ),
     ).toBe(true);
   });

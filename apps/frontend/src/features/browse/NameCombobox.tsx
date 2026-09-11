@@ -20,7 +20,7 @@ interface NameComboboxProps {
   entityName: string;
   inputValue: string;
   label: string;
-  loadOptions(signal: AbortSignal): Promise<NameComboboxOption[]>;
+  loadOptions(query: string, signal: AbortSignal): Promise<NameComboboxOption[]>;
   onInputChange(value: string): void;
   onSelectionChange(option: NameComboboxOption | null): void;
   onSelectionResolved(option: NameComboboxOption | null): void;
@@ -135,14 +135,15 @@ export function NameCombobox({
   const listboxId = `${inputId}-listbox`;
   const feedbackId = `${inputId}-feedback`;
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const loadedDependencyKeyRef = useRef<string | null>(null);
+  const loadedRequestKeyRef = useRef<string | null>(null);
   const onSelectionResolvedRef = useRef(onSelectionResolved);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [requestVersion, setRequestVersion] = useState(0);
   const [state, setState] = useState<OptionsState>({ status: 'idle', options: [] });
+  const requestKey = `${dependencyKey}\u0000${inputValue.trim()}`;
   const shouldLoad =
-    (open && loadedDependencyKeyRef.current !== dependencyKey) ||
+    (open && loadedRequestKeyRef.current !== requestKey) ||
     (Boolean(selectedValue) && (state.status === 'idle' || state.status === 'loading'));
 
   useEffect(() => {
@@ -157,13 +158,13 @@ export function NameCombobox({
     const controller = new AbortController();
     setState((current) => ({ status: 'loading', options: current.options }));
 
-    void loadOptions(controller.signal)
+    void loadOptions(inputValue.trim(), controller.signal)
       .then((options) => {
         if (controller.signal.aborted) {
           return;
         }
 
-        loadedDependencyKeyRef.current = dependencyKey;
+        loadedRequestKeyRef.current = requestKey;
         setState({ status: 'ready', options });
         if (selectedValue) {
           onSelectionResolvedRef.current(
@@ -173,12 +174,13 @@ export function NameCombobox({
       })
       .catch(() => {
         if (!controller.signal.aborted) {
+          loadedRequestKeyRef.current = requestKey;
           setState((current) => ({ status: 'error', options: current.options }));
         }
       });
 
     return () => controller.abort();
-  }, [dependencyKey, loadOptions, requestVersion, selectedValue, shouldLoad]);
+  }, [inputValue, loadOptions, requestKey, requestVersion, selectedValue, shouldLoad]);
 
   useEffect(() => {
     if (!open) {
@@ -203,6 +205,7 @@ export function NameCombobox({
     [searchQuery, state.options],
   );
   const activeOption = activeIndex >= 0 ? rankedOptions[activeIndex] : undefined;
+  const optionsPending = open && loadedRequestKeyRef.current !== requestKey;
 
   function showOptions() {
     setOpen(true);
@@ -272,14 +275,18 @@ export function NameCombobox({
     if (!open) {
       return selectedOption ? `${selectedOption.label} selected.` : '';
     }
-    if (state.status === 'loading') {
-      return `Loading ${entityName} options.`;
+    if (state.status === 'loading' || optionsPending) {
+      return searchQuery
+        ? `Matching ${entityName} options are loading.`
+        : `Loading ${entityName} options.`;
     }
     if (state.status === 'error') {
       return `${label} options could not be loaded.`;
     }
     if (state.status === 'ready' && rankedOptions.length === 0) {
-      return `No matching ${entityName} options.`;
+      return searchQuery
+        ? `No such ${entityName} was found.`
+        : `No ${entityName} options are available.`;
     }
     if (state.status === 'ready') {
       return `${rankedOptions.length} ${entityName} ${rankedOptions.length === 1 ? 'option' : 'options'} available.`;
@@ -359,18 +366,23 @@ export function NameCombobox({
 
       {open ? (
         <div className="name-combobox__popover">
-          {state.status === 'loading' ? (
+          {state.status === 'loading' || optionsPending ? (
             <p className="name-combobox__state" role="status">
-              Loading {entityName} options…
+              {searchQuery
+                ? `Matching ${entityName} options are loading…`
+                : `Loading ${entityName} options…`}
             </p>
           ) : null}
 
-          {state.status === 'error' ? (
+          {state.status === 'error' && !optionsPending ? (
             <div className="name-combobox__state name-combobox__state--error" role="alert">
               <p>{label} options could not be loaded.</p>
               <button
                 className="button button--secondary"
-                onClick={() => setRequestVersion((version) => version + 1)}
+                onClick={() => {
+                  loadedRequestKeyRef.current = null;
+                  setRequestVersion((version) => version + 1);
+                }}
                 type="button"
               >
                 Retry {entityName} options
@@ -378,13 +390,15 @@ export function NameCombobox({
             </div>
           ) : null}
 
-          {state.status === 'ready' && rankedOptions.length === 0 ? (
+          {state.status === 'ready' && !optionsPending && rankedOptions.length === 0 ? (
             <p className="name-combobox__state" role="status">
-              No matching {entityName} options.
+              {searchQuery
+                ? `No such ${entityName} was found.`
+                : `No ${entityName} options are available.`}
             </p>
           ) : null}
 
-          {state.status === 'ready' && rankedOptions.length > 0 ? (
+          {state.status === 'ready' && !optionsPending && rankedOptions.length > 0 ? (
             <ul
               aria-label={`${label} options`}
               className="name-combobox__options"

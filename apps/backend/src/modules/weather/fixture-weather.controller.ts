@@ -9,6 +9,7 @@ import {
   WeatherUpstreamError,
   WeatherValidationError,
 } from './weather.service';
+import { GeocodingTimeoutError, GeocodingUpstreamError } from './geocoding.service';
 import type { FixtureWeatherService } from './fixture-weather.service';
 
 function pathParameter(request: Request, name: string): string {
@@ -45,7 +46,7 @@ export function getFixtureWeather(service: FixtureWeatherService): RequestHandle
           return;
         }
 
-        if (error instanceof WeatherTimeoutError) {
+        if (error instanceof WeatherTimeoutError || error instanceof GeocodingTimeoutError) {
           response.status(504).json({
             error: {
               code: 'UPSTREAM_TIMEOUT',
@@ -55,7 +56,7 @@ export function getFixtureWeather(service: FixtureWeatherService): RequestHandle
           return;
         }
 
-        if (error instanceof WeatherUpstreamError) {
+        if (error instanceof WeatherUpstreamError || error instanceof GeocodingUpstreamError) {
           response.status(502).json({
             error: { code: 'UPSTREAM_ERROR', message: 'The weather provider returned an error.' },
           });

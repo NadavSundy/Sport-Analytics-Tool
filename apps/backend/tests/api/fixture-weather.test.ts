@@ -10,6 +10,10 @@ import {
   WeatherTimeoutError,
   WeatherUpstreamError,
 } from '../../src/modules/weather/weather.service';
+import {
+  GeocodingTimeoutError,
+  GeocodingUpstreamError,
+} from '../../src/modules/weather/geocoding.service';
 import { createTestApp } from '../test-app';
 
 function createService(overrides: Partial<FixtureWeatherService> = {}): FixtureWeatherService {
@@ -133,8 +137,8 @@ describe('fixture weather API', () => {
               fixtureId: '17',
               date: '2026-08-19',
               availability: 'unavailable',
-              reason: 'MISSING_COORDINATES',
-              venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+              reason: 'LOCATION_NOT_FOUND',
+              venue: { name: 'Somewhere Unresolvable', city: null },
               weather: null,
             };
           },
@@ -146,7 +150,7 @@ describe('fixture weather API', () => {
 
     expect(response.body.data).toMatchObject({
       availability: 'unavailable',
-      reason: 'MISSING_COORDINATES',
+      reason: 'LOCATION_NOT_FOUND',
     });
   });
 
@@ -176,21 +180,22 @@ describe('fixture weather API', () => {
     });
   });
 
-  test.each([
-    [new WeatherUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
-    [new WeatherTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
-    [new LocationGeocodingUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
-    [new LocationGeocodingTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
-  ])('maps a weather provider failure safely', async (error, status, code) => {
-    const app = createApp(
-      createService({
-        async getFixtureWeather() {
-          throw error;
-        },
-      }),
-    );
+test.each([
+  [new WeatherUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
+  [new WeatherTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
+  [new LocationGeocodingUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
+  [new LocationGeocodingTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
+])('maps a weather or geocoding provider failure safely', async (error, status, code) => {
+  const app = createApp(
+    createService({
+      async getFixtureWeather() {
+        throw error;
+      },
+    }),
+  );
 
-    const response = await request(app).get('/api/v1/fixtures/17/weather').expect(status);
-    expect(response.body.error.code).toBe(code);
-  });
+  const response = await request(app).get('/api/v1/fixtures/17/weather').expect(status);
+  expect(response.body.error.code).toBe(code);
+});
+
 });

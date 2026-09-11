@@ -157,13 +157,13 @@ export function createRuntimeDependencies(environment: WorkerEnvironment): Runti
     outboxSender: {
       async send(messages) {
         if (messages.length === 0) return;
-        await queueSender.sendMessages(
-          messages.map((message) => ({
+        for (const message of messages) {
+          await queueSender.sendMessages({
             messageId: message.messageId,
             body: message.body,
             contentType: 'application/json',
-          })),
-        );
+          });
+        }
       },
     },
     async close() {

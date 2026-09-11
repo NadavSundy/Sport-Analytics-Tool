@@ -9,6 +9,7 @@ export interface SeasonRecord {
 export interface SeasonListOptions {
   limit: number;
   competitionId?: string;
+  name?: string;
   after?: {
     competitionId: string;
     label: string;
@@ -26,6 +27,11 @@ export async function listSeasons(
   if (options.competitionId) {
     values.push(options.competitionId);
     innerConditions.push(`f.competition_id = $${values.length}::bigint`);
+  }
+
+  if (options.name) {
+    values.push(`%${options.name}%`);
+    outerConditions.push(`(s.season ILIKE $${values.length} OR c.name ILIKE $${values.length})`);
   }
 
   if (options.after) {

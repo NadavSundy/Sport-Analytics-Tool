@@ -13,6 +13,7 @@ import {
   participantFixtureListQuerySchema,
   participantListQuerySchema,
   publicEventCollectionResponseSchema,
+  seasonListQuerySchema,
   seasonSchema,
 } from '../public-read';
 
@@ -101,6 +102,13 @@ describe('public read contracts', () => {
     });
     expect(participantFixtureListQuerySchema.parse({})).toEqual({
       limit: 50,
+    });
+  });
+
+  test('accepts server-side season name search', () => {
+    expect(seasonListQuerySchema.parse({ name: 'World Twenty20' })).toEqual({
+      limit: 50,
+      name: 'World Twenty20',
     });
   });
 
@@ -249,6 +257,8 @@ describe('public read contracts', () => {
         {
           eventId: '500',
           fixtureId: '100',
+          competitionId: '10',
+          competitionName: 'World Twenty20',
           inningsId: '200',
           inningsOrdinal: 0,
           sequenceNumber: 1,
@@ -256,10 +266,15 @@ describe('public read contracts', () => {
           positionInOver: 0,
           ballNumber: '0.1',
           battingCompetitorId: '20',
+          battingCompetitorName: 'India',
           bowlingCompetitorId: '21',
+          bowlingCompetitorName: 'Pakistan',
           strikerParticipantId: '30',
+          strikerParticipantName: 'Opening Batter',
           nonStrikerParticipantId: '31',
+          nonStrikerParticipantName: 'Non-striker',
           bowlerParticipantId: '32',
+          bowlerParticipantName: 'Opening Bowler',
           runs: {
             offBat: 1,
             extras: 0,

@@ -45,6 +45,7 @@ interface FixtureWeatherUnavailable {
 type FixtureWeatherResult = FixtureWeatherAvailable | FixtureWeatherUnavailable;
 
 type FindFixtureWeatherContext = (fixtureId: string) => Promise<FixtureWeatherContext | null>;
+
 type PersistVenueCoordinates = (
   venueId: string,
   latitude: number,
@@ -53,23 +54,19 @@ type PersistVenueCoordinates = (
 
 const databaseIdPattern = /^\d+$/;
 
-function hasUsableCoordinates(
-  venue: NonNullable<FixtureWeatherContext['venue']>,
-): venue is NonNullable<FixtureWeatherContext['venue']> & {
+interface Coordinates {
   latitude: number;
   longitude: number;
-} {
-  if (venue.latitude === null || venue.longitude === null) {
-    return false;
-  }
+}
 
+function hasUsableCoordinates(coordinates: Coordinates): boolean {
   return (
-    Number.isFinite(venue.latitude) &&
-    Number.isFinite(venue.longitude) &&
-    venue.latitude >= -90 &&
-    venue.latitude <= 90 &&
-    venue.longitude >= -180 &&
-    venue.longitude <= 180
+    Number.isFinite(coordinates.latitude) &&
+    Number.isFinite(coordinates.longitude) &&
+    coordinates.latitude >= -90 &&
+    coordinates.latitude <= 90 &&
+    coordinates.longitude >= -180 &&
+    coordinates.longitude <= 180
   );
 }
 
@@ -105,7 +102,11 @@ export function createFixtureWeatherService(
         };
       }
 
-      const venue = { name: context.venue.name, city: context.venue.city };
+      const venue = {
+        name: context.venue.name,
+        city: context.venue.city,
+      };
+
       if (classifyWeatherDate(context.date) === 'unsupported') {
         return {
           fixtureId: context.fixtureId,
@@ -119,15 +120,22 @@ export function createFixtureWeatherService(
 
       let latitude = context.venue.latitude;
       let longitude = context.venue.longitude;
+
       if (latitude === null || longitude === null) {
         const queries = context.venue.city
-          ? [context.venue.city, context.venue.name]
+          ? [`${context.venue.name}, ${context.venue.city}`, context.venue.name]
           : [context.venue.name];
+
         let resolved: GeocodedLocation | null = null;
+
         for (const query of queries) {
           resolved = await geocodingService.resolve(query);
-          if (resolved) break;
+
+          if (resolved) {
+            break;
+          }
         }
+
         if (!resolved) {
           return {
             fixtureId: context.fixtureId,
@@ -138,13 +146,23 @@ export function createFixtureWeatherService(
             weather: null,
           };
         }
+
         latitude = resolved.latitude;
         longitude = resolved.longitude;
-        await persistVenueCoordinates(context.venue.venueId, latitude, longitude);
+
+        await persistVenueCoordinates(
+          context.venue.venueId,
+          latitude,
+          longitude,
+        );
       }
 
-      const resolvedVenue = { ...context.venue, latitude, longitude };
-      if (!hasUsableCoordinates(resolvedVenue)) {
+      const resolvedCoordinates = {
+        latitude,
+        longitude,
+      };
+
+      if (!hasUsableCoordinates(resolvedCoordinates)) {
         return {
           fixtureId: context.fixtureId,
           date: context.date,
@@ -156,8 +174,8 @@ export function createFixtureWeatherService(
       }
 
       const weather = await weatherService.getWeather(
-        resolvedVenue.latitude,
-        resolvedVenue.longitude,
+        resolvedCoordinates.latitude,
+        resolvedCoordinates.longitude,
         context.date,
       );
 

@@ -1236,7 +1236,11 @@ export function createBatchValidationJobHandler(
       );
       await client.query(
         `UPDATE batch_reference_mapping_decision
-         SET state = CASE WHEN decision_reference = ANY($2::uuid[]) THEN 'applied' ELSE 'failed' END,
+         SET state = CASE
+          WHEN decision_reference = ANY($2::uuid[])
+            THEN 'applied'::batch_reference_mapping_state
+          ELSE 'failed'::batch_reference_mapping_state
+         END,
              applied_at = CASE WHEN decision_reference = ANY($2::uuid[]) THEN now() ELSE NULL END,
              error_message = CASE WHEN decision_reference = ANY($2::uuid[])
                THEN NULL ELSE 'The selected candidate is no longer available in the batch context.' END

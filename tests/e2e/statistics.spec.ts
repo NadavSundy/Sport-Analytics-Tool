@@ -242,7 +242,7 @@ test(
     await page.keyboard.press('Enter');
 
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Team One innings 1 total' }),
+      page.getByRole('heading', { level: 1, name: 'Team One innings 0 total' }),
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Contributing events' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Delivery 1' })).toBeVisible();
@@ -253,7 +253,10 @@ test(
     const csvDownload = page.getByRole('button', { name: 'Download CSV' });
     await csvDownload.focus();
     await expect(csvDownload).toBeFocused();
-    await page.keyboard.press('Enter');
+    const [csv] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
+    expect(csv.suggestedFilename()).toBe(
+      'fixture-fixture-1-innings-innings-1-team-team-1-events.csv',
+    );
     await expect
       .poll(() =>
         requestedUrls.some(
@@ -267,7 +270,13 @@ test(
       )
       .toBe(true);
 
-    await page.getByRole('button', { name: 'Download JSON' }).click();
+    const [json] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download JSON' }).click(),
+    ]);
+    expect(json.suggestedFilename()).toBe(
+      'fixture-fixture-1-innings-innings-1-team-team-1-events.json',
+    );
     await expect
       .poll(() =>
         requestedUrls.some(

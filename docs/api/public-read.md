@@ -57,9 +57,11 @@ Supported collection filter:
 
 ```text
 competitionId
+name
 ```
 
 A season resource is derived from a competition and the season value recorded on its fixtures.
+The `name` filter matches either the season label or its competition name.
 
 Season resources include `competitionName` alongside `competitionId`, allowing consumers to present
 the associated competition without making a separate name-resolution request. The stable identifier
@@ -192,6 +194,8 @@ Example response:
     {
       "eventId": "7021",
       "fixtureId": "481",
+      "competitionId": "12",
+      "competitionName": "World Twenty20",
       "inningsId": "900",
       "inningsOrdinal": 0,
       "sequenceNumber": 25,
@@ -199,10 +203,15 @@ Example response:
       "positionInOver": 0,
       "ballNumber": "4.1",
       "battingCompetitorId": "20",
+      "battingCompetitorName": "India",
       "bowlingCompetitorId": "21",
+      "bowlingCompetitorName": "Pakistan",
       "strikerParticipantId": "30",
+      "strikerParticipantName": "Opening Batter",
       "nonStrikerParticipantId": "31",
+      "nonStrikerParticipantName": "Non-striker",
       "bowlerParticipantId": "42",
+      "bowlerParticipantName": "Opening Bowler",
       "runs": {
         "offBat": 4,
         "extras": 0,
@@ -251,9 +260,9 @@ GET /api/v1/fixtures/{fixtureId}/events/export.csv
 
 They are public and derive exclusively from the same accepted-event public-read model as the event
 collection. Consequently, they preserve stable event, fixture, innings, competitor and participant
-identifiers plus readable delivery fields such as `ballNumber`, runs, extras and wicket kinds, while
-never exposing account data, submission administration fields, revision history, audit data or
-secrets.
+identifiers and add readable competition, team and participant names. They also retain delivery
+fields such as `ballNumber`, runs, extras and wicket kinds, while never exposing account data,
+submission administration fields, revision history, audit data or secrets.
 
 Both formats accept the same filters as `GET /fixtures/{fixtureId}/events`:
 `inningsId`, `competitorId`, `participantId`, `overNumber` and `wicketKind`. They deliberately do
@@ -263,11 +272,13 @@ This predictable cap keeps the Basic export endpoint bounded; versioned snapshot
 and background jobs are outside this scope.
 
 The JSON endpoint returns `{ "data": [...] }` without pagination metadata. The CSV endpoint returns
-`text/csv; charset=utf-8` as an attachment named `fixture-{fixtureId}-events.csv`. Its columns and
-their order are stable: event and fixture identifiers; innings and delivery position; competitor and
-participant identifiers; run and extras fields; then flattened wicket identifiers, kinds, dismissed
-participants and fielder participant identifiers. Multiple wicket values use `|` within their
-escaped CSV field.
+`text/csv; charset=utf-8` with a trace-specific attachment name such as
+`fixture-481-player-30-over-4-events.csv`. The filename includes every active innings, team, player,
+over and wicket-kind filter; an unfiltered export uses `all`. Its columns and their order are stable:
+event, fixture and competition identity; zero-based innings and delivery position; competitor and
+participant identifiers paired with names; run and extras fields; then flattened wicket identifiers,
+kinds, dismissed participants and fielders paired with names. Multiple wicket values use `|` within
+their escaped CSV field. Both formats represent an absent extras category as numeric `0`.
 
 Example:
 

@@ -4,7 +4,7 @@ import {
 } from '@sport-analytics/contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from './client';
-import { ApiContractError, requestPublicApi } from './public-read';
+import { ApiContractError, fixtureEventExportFilename, requestPublicApi } from './public-read';
 
 function response(status: number, body: unknown): Response {
   return {
@@ -43,6 +43,19 @@ describe('public read API client', () => {
     );
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(request.headers).has('Authorization')).toBe(false);
+  });
+
+  it('names event exports for their active trace filters', () => {
+    expect(fixtureEventExportFilename('8936', 'csv', { participantId: '20511' })).toBe(
+      'fixture-8936-player-20511-events.csv',
+    );
+    expect(
+      fixtureEventExportFilename('8936', 'csv', {
+        inningsId: '401',
+        competitorId: '77',
+      }),
+    ).toBe('fixture-8936-innings-401-team-77-events.csv');
+    expect(fixtureEventExportFilename('8936', 'json', {})).toBe('fixture-8936-all-events.json');
   });
 
   it('exposes a safe backend error message and status', async () => {

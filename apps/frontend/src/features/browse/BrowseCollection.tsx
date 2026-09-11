@@ -18,7 +18,11 @@ interface NameComboboxFilterField {
   entityName: string;
   kind: 'combobox';
   label: string;
-  loadOptions(filters: URLSearchParams, signal: AbortSignal): Promise<NameComboboxOption[]>;
+  loadOptions(
+    filters: URLSearchParams,
+    query: string,
+    signal: AbortSignal,
+  ): Promise<NameComboboxOption[]>;
   name: string;
   placeholder?: string;
   routeValue: 'name' | 'reference';
@@ -108,7 +112,8 @@ function FilterCombobox({
     return params.toString();
   }, [field.dependsOn, values]);
   const loadOptions = useCallback(
-    (signal: AbortSignal) => field.loadOptions(new URLSearchParams(dependencyKey), signal),
+    (query: string, signal: AbortSignal) =>
+      field.loadOptions(new URLSearchParams(dependencyKey), query, signal),
     [dependencyKey, field],
   );
 

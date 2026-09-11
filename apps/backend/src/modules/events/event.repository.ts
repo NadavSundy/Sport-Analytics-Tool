@@ -135,6 +135,8 @@ async function queryAcceptedFixtureEvents(
       SELECT
         d.delivery_id::text AS "eventId",
         i.fixture_id::text AS "fixtureId",
+        event_fixture.competition_id::text AS "competitionId",
+        event_competition.name AS "competitionName",
         i.innings_id::text AS "inningsId",
         i.ordinal AS "inningsOrdinal",
         d.innings_sequence AS "sequenceNumber",
@@ -142,6 +144,7 @@ async function queryAcceptedFixtureEvents(
         d.position_in_over AS "positionInOver",
         d.ball_number AS "ballNumber",
         i.batting_team_id::text AS "battingCompetitorId",
+        batting_competitor.name AS "battingCompetitorName",
         (
           SELECT fixture_team.team_id::text
           FROM fixture_team
@@ -150,9 +153,22 @@ async function queryAcceptedFixtureEvents(
           ORDER BY fixture_team.ordinal ASC
           LIMIT 1
         ) AS "bowlingCompetitorId",
+        (
+          SELECT bowling_competitor.name
+          FROM fixture_team bowling_fixture_team
+          INNER JOIN team bowling_competitor
+            ON bowling_competitor.team_id = bowling_fixture_team.team_id
+          WHERE bowling_fixture_team.fixture_id = i.fixture_id
+            AND bowling_fixture_team.team_id <> i.batting_team_id
+          ORDER BY bowling_fixture_team.ordinal ASC
+          LIMIT 1
+        ) AS "bowlingCompetitorName",
         d.striker_id::text AS "strikerParticipantId",
+        striker.display_name AS "strikerParticipantName",
         d.non_striker_id::text AS "nonStrikerParticipantId",
+        non_striker.display_name AS "nonStrikerParticipantName",
         d.bowler_id::text AS "bowlerParticipantId",
+        bowler.display_name AS "bowlerParticipantName",
         jsonb_build_object(
           'offBat', d.runs_off_bat,
           'extras', d.runs_extras,
@@ -173,16 +189,24 @@ async function queryAcceptedFixtureEvents(
                 'wicketId', event_wicket.wicket_id::text,
                 'kind', event_wicket.kind,
                 'playerOutParticipantId', event_wicket.player_out_id::text,
+                'playerOutParticipantName', (
+                  SELECT player_out.display_name
+                  FROM person player_out
+                  WHERE player_out.person_id = event_wicket.player_out_id
+                ),
                 'fielders', COALESCE(
                   (
                     SELECT jsonb_agg(
                       jsonb_build_object(
                         'participantId', event_fielder.person_id::text,
+                        'participantName', event_fielder_person.display_name,
                         'isSubstitute', event_fielder.is_substitute
                       )
                       ORDER BY event_fielder.ordinal ASC
                     )
                     FROM delivery_wicket_fielder event_fielder
+                    LEFT JOIN person event_fielder_person
+                      ON event_fielder_person.person_id = event_fielder.person_id
                     WHERE event_fielder.wicket_id = event_wicket.wicket_id
                   ),
                   '[]'::jsonb
@@ -198,6 +222,18 @@ async function queryAcceptedFixtureEvents(
       FROM accepted_delivery d
       INNER JOIN innings i
         ON i.innings_id = d.innings_id
+      INNER JOIN fixture event_fixture
+        ON event_fixture.fixture_id = i.fixture_id
+      LEFT JOIN competition event_competition
+        ON event_competition.competition_id = event_fixture.competition_id
+      INNER JOIN team batting_competitor
+        ON batting_competitor.team_id = i.batting_team_id
+      INNER JOIN person striker
+        ON striker.person_id = d.striker_id
+      INNER JOIN person non_striker
+        ON non_striker.person_id = d.non_striker_id
+      INNER JOIN person bowler
+        ON bowler.person_id = d.bowler_id
       ${where}
       ORDER BY i.ordinal ASC, d.innings_sequence ASC, d.delivery_id ASC
       LIMIT $${limitParameter}

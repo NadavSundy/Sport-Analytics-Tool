@@ -7,7 +7,8 @@ COPY apps/frontend/package.json apps/frontend/package.json
 COPY apps/worker/package.json apps/worker/tsconfig.json apps/worker/
 COPY packages/contracts/package.json packages/contracts/tsconfig.json packages/contracts/
 COPY packages/batch-processing/package.json packages/batch-processing/tsconfig.json packages/batch-processing/
-RUN npm ci --workspace=@sport-analytics/worker
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --workspace=@sport-analytics/worker
 COPY packages/contracts/src packages/contracts/src
 COPY packages/batch-processing/src packages/batch-processing/src
 COPY apps/worker/src apps/worker/src

@@ -141,7 +141,7 @@ describe('batch reporting contracts', () => {
               fixtureLabel: 'Lions vs Bears · 2026-09-01',
               inningsId: null,
               overNumber: 4,
-              positionInOver: 3,
+              positionInOver: 0,
               description: 'Event event-2 at over 4, delivery 3.',
             },
             stagedRecordId: '42',

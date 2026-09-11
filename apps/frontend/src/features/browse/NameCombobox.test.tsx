@@ -12,7 +12,7 @@ const options: NameComboboxOption[] = [
 function Harness({
   loadOptions = vi.fn().mockResolvedValue(options),
 }: {
-  loadOptions?: (signal: AbortSignal) => Promise<NameComboboxOption[]>;
+  loadOptions?: (query: string, signal: AbortSignal) => Promise<NameComboboxOption[]>;
 }) {
   const [inputValue, setInputValue] = useState('');
   const [selectedValue, setSelectedValue] = useState('');
@@ -54,7 +54,7 @@ describe('NameCombobox', () => {
   it('opens without typing, reports loading and selects an option directly', async () => {
     let resolveOptions!: (value: NameComboboxOption[]) => void;
     const loadOptions = vi.fn(
-      () =>
+      (_query: string) =>
         new Promise<NameComboboxOption[]>((resolve) => {
           resolveOptions = resolve;
         }),
@@ -79,7 +79,8 @@ describe('NameCombobox', () => {
   });
 
   it('supports fuzzy typing, keyboard selection and dismissal', async () => {
-    render(<Harness />);
+    const loadOptions = vi.fn().mockResolvedValue(options);
+    render(<Harness loadOptions={loadOptions} />);
     const combobox = screen.getByRole('combobox', { name: 'Competition' });
 
     fireEvent.change(combobox, { target: { value: 'prem' } });
@@ -88,6 +89,7 @@ describe('NameCombobox', () => {
       'Premier Cricket League',
       "Women's Premier League",
     ]);
+    expect(loadOptions).toHaveBeenCalledWith('prem', expect.any(AbortSignal));
 
     fireEvent.keyDown(combobox, { key: 'ArrowDown' });
     expect(combobox).toHaveAttribute('aria-activedescendant');
@@ -102,10 +104,17 @@ describe('NameCombobox', () => {
   });
 
   it('reports no matches and retries an option request failure', async () => {
+    let resolveSearch!: (value: NameComboboxOption[]) => void;
     const loadOptions = vi
-      .fn<(signal: AbortSignal) => Promise<NameComboboxOption[]>>()
+      .fn<(query: string, signal: AbortSignal) => Promise<NameComboboxOption[]>>()
       .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValueOnce(options);
+      .mockResolvedValueOnce(options)
+      .mockImplementationOnce(
+        () =>
+          new Promise<NameComboboxOption[]>((resolve) => {
+            resolveSearch = resolve;
+          }),
+      );
     render(<Harness loadOptions={loadOptions} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Show competition options' }));
@@ -117,8 +126,12 @@ describe('NameCombobox', () => {
     expect(loadOptions).toHaveBeenCalledTimes(2);
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'unknown' } });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /Matching competition options are loading/,
+    );
+    await act(async () => resolveSearch([]));
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('No matching competition options.'),
+      expect(screen.getByRole('status')).toHaveTextContent('No such competition was found.'),
     );
   });
 });
