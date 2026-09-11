@@ -150,7 +150,9 @@ describe('administrator user management page', () => {
     const fetchMock = vi.fn().mockResolvedValue(currentUser('viewer'));
     vi.stubGlobal('fetch', fetchMock);
     renderPage(null);
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument(),
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
