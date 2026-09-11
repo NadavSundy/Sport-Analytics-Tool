@@ -51,9 +51,11 @@ stable rule-code groups, fixture-level counts, and at most 15 accepted samples. 
 therefore never renders a season-scale accepted dataset. Candidate reference tokens remain opaque;
 reviewers act on their human-readable labels through the existing reference-mapping endpoint.
 
-Approval is rejected by both the interface and repository transaction while active validation
-errors, conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires a
-reason; rejection and return-for-correction reasons require at least 10 characters. The interface
+Ordinary item-level validation rejections do not prevent approval: the accepted subset publishes and
+the rejected source records remain unpublished in the report. Approval is still rejected by both the
+interface and repository transaction while batch-level or accepted-item validation errors,
+publication conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires
+a reason; rejection and return-for-correction reasons require at least 10 characters. The interface
 adds an explicit modal confirmation before approve, reject, or return-for-correction and clearly
 presents publishing, failure, partial-publication, correction-requested, rejection, and publication
 states. Repeated identical decisions remain idempotent; competing or stale decisions return `409`.

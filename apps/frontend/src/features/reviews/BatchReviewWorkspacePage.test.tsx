@@ -165,7 +165,7 @@ function report(blocked = true) {
         },
         approvalBlocked: blocked,
         blockingReasons: blocked
-          ? ['Validation errors remain.', 'Ambiguous references remain.']
+          ? ['Blocking validation errors remain.', 'Ambiguous references remain.']
           : [],
       },
       fixtureSummaries: [
@@ -184,6 +184,22 @@ function report(blocked = true) {
       downloadUrl: `/api/v1/batches/${reference}/report/download`,
     },
   };
+}
+
+function publishableMixedReport() {
+  const body = report(false);
+  const rejected = report(true);
+  body.data.batch.progress.accepted = 19999;
+  body.data.batch.progress.rejected = 1;
+  body.data.batch.counts.accepted = 19999;
+  body.data.batch.counts.rejected = 1;
+  body.data.errorGroups = [{ ruleCode: 'EVENT_SCHEMA_INVALID', count: 1 }];
+  body.data.reviewSummary.validation.accepted = 19999;
+  body.data.reviewSummary.validation.rejected = 1;
+  body.data.fixtureSummaries[0]!.accepted = 19999;
+  body.data.fixtureSummaries[0]!.rejected = 1;
+  body.data.items = rejected.data.items;
+  return body;
 }
 
 function response(body: unknown, status = 200) {
@@ -301,6 +317,28 @@ describe('reviewer batch workspace', () => {
       screen.getByRole('button', { name: 'Use Lions vs Bears · 2026-09-01' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
+  });
+
+  test('allows approval of a mixed batch and explains that rejected records stay unpublished', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL) =>
+          Promise.resolve(
+            response(String(input).includes('/auth/me') ? profile : publishableMixedReport()),
+          ),
+        ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByText('Only the accepted subset will publish')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Approving publishes 19999 accepted records. The 1 rejected record remains unpublished and retained in this report.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
   });
 
   test('requires a meaningful reason and explicit confirmation before a decision', async () => {

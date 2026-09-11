@@ -302,6 +302,7 @@ export interface BatchRepository {
     options: BatchItemPageOptions,
   ): Promise<BatchReportItemRecord[]>;
   listBatchRuleGroups(batchId: string): Promise<BatchRuleGroupRecord[]>;
+  countBlockingValidationErrors(batchId: string): Promise<number>;
   getBatchResolutionCounts(batchId: string): Promise<BatchResolutionCountsRecord>;
   listBatchFixtureSummaries(batchId: string): Promise<BatchFixtureSummaryRecord[]>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
@@ -726,6 +727,32 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
     return executor ?? getDatabasePool();
   }
 
+  async function queryBlockingValidationErrorCount(
+    target: QueryExecutor,
+    batchId: string,
+  ): Promise<number> {
+    const result = await executeQuery<{ count: string }>(
+      target,
+      `SELECT count(*)::text AS count
+       FROM batch_validation_result validation
+       WHERE validation.batch_id = $1::bigint
+         AND validation.severity = 'error'
+         AND validation.active
+         AND (
+           (validation.batch_item_id IS NULL AND validation.source_ordinal IS NULL)
+           OR EXISTS (
+             SELECT 1
+             FROM batch_item item
+             WHERE item.batch_item_id = validation.batch_item_id
+               AND item.batch_id = validation.batch_id
+               AND item.state NOT IN ('rejected', 'duplicate_skipped')
+           )
+         )`,
+      [batchId],
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  }
+
   async function insertBatch(target: QueryExecutor, input: CreateBatchInput): Promise<BatchRecord> {
     const result = await executeQuery<BatchRow>(
       target,
@@ -1137,6 +1164,10 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       return result.rows.map((row) => ({ ruleCode: row.ruleCode, count: Number(row.count) }));
     },
 
+    async countBlockingValidationErrors(batchId) {
+      return queryBlockingValidationErrorCount(database(), batchId);
+    },
+
     async getBatchResolutionCounts(batchId) {
       const result = await executeQuery<{
         resolved: string;
@@ -1447,20 +1478,22 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
       if (input.decision === 'approved') {
-        const blockers = await executeQuery<{ count: string }>(
+        const blockingValidationErrors = await queryBlockingValidationErrorCount(
+          executor,
+          input.batchId,
+        );
+        const otherBlockers = await executeQuery<{ count: string }>(
           executor,
           `SELECT (
              (SELECT count(*) FROM batch_item
               WHERE batch_id = $1::bigint
                 AND reference_resolution_state IS DISTINCT FROM 'resolved') +
-             (SELECT count(*) FROM batch_validation_result
-              WHERE batch_id = $1::bigint AND severity = 'error' AND active) +
              (SELECT count(*) FROM batch_item
               WHERE batch_id = $1::bigint AND rejection_code LIKE '%CONFLICT%')
            )::text AS count`,
           [input.batchId],
         );
-        if (Number(blockers.rows[0]?.count ?? 0) > 0) {
+        if (blockingValidationErrors + Number(otherBlockers.rows[0]?.count ?? 0) > 0) {
           throw new BatchReviewResolutionError(
             'Resolve all blocking validation errors, conflicts and references before approval.',
           );
