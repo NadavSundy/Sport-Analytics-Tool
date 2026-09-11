@@ -343,23 +343,26 @@ describe('batch result reporting service', () => {
     });
   });
 
-  test('keeps another unscoped submitter batch private while allowing scoped and global reviewers', async () => {
+  test('keeps another submitter batch private from submitters even when competition-scoped, while allowing administrators', async () => {
     const batches = repository({
       findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, submitterId: '9' }),
     });
     const service = createBatchService({} as BatchPayloadStorageService, batches);
+
     await expect(
       service.getStatus(
         createTestAccount({ accountId: '1', role: 'submitter' }),
         persistedBatch.batchReference,
       ),
     ).rejects.toBeInstanceOf(BatchForbiddenError);
+
     await expect(
       service.getStatus(
         createTestAccount({ accountId: '1', role: 'submitter', competitionIds: ['5'] }),
         persistedBatch.batchReference,
       ),
-    ).resolves.toMatchObject({ data: { batchReference: persistedBatch.batchReference } });
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
+
     await expect(
       service.getStatus(
         createTestAccount({ accountId: '1', role: 'admin', competitionIds: [] }),
@@ -368,32 +371,41 @@ describe('batch result reporting service', () => {
     ).resolves.toMatchObject({ data: { batchReference: persistedBatch.batchReference } });
   });
 
-  test('lists submitter history by owner, scoped reviewer queues by competition, and administrator queues globally', async () => {
+  test('lists personal history by owner while keeping administrator review queues global', async () => {
     const listBatches = vi.fn().mockResolvedValue([]);
     const service = createBatchService(
       {} as BatchPayloadStorageService,
       repository({ listBatches }),
     );
+
     await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
     expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
+
+    await service.list(createTestAccount({ accountId: '7', role: 'admin' }), { limit: 50 });
+    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
+
     await service.list(
       createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['5', '6'] }),
       { limit: 50, status: 'awaiting_review' },
     );
     expect(listBatches).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        competitionIds: ['5', '6'],
+        submitterId: '7',
         status: 'awaiting_review',
       }),
     );
+    expect(listBatches.mock.calls.at(-1)![0]).not.toHaveProperty('competitionIds');
+
     for (const competitionIds of [[], ['5']]) {
       await service.list(createTestAccount({ accountId: '7', role: 'admin', competitionIds }), {
         limit: 50,
         status: 'awaiting_review',
       });
+
       expect(listBatches).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: 'awaiting_review', limit: 51 }),
       );
+      expect(listBatches.mock.calls.at(-1)![0]).not.toHaveProperty('submitterId');
       expect(listBatches.mock.calls.at(-1)![0]).not.toHaveProperty('competitionIds');
     }
   });
@@ -562,7 +574,7 @@ describe('batch review service', () => {
           .mockResolvedValue({ ...decision, decision: reviewDecision }),
       });
       await createBatchService({} as BatchPayloadStorageService, batches).review(
-        createTestAccount({ role: 'submitter', competitionIds: ['5'] }),
+        createTestAccount({ role: 'admin', competitionIds: [] }),
         awaitingReview.batchReference,
         { decision: reviewDecision, reason: 'Needs reviewer action.' },
       );
@@ -570,26 +582,28 @@ describe('batch review service', () => {
     },
   );
 
-  test.each([createTestAccount(), createTestAccount({ role: 'submitter', competitionIds: ['6'] })])(
-    'prevents an unauthorized account from deciding a batch',
-    async (account) => {
-      const applyReviewDecision = vi.fn();
-      const service = createBatchService(
-        {} as BatchPayloadStorageService,
-        repository({
-          findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
-          applyReviewDecision,
-        }),
-      );
-      await expect(
-        service.review(account, awaitingReview.batchReference, {
-          decision: 'approved',
-          reason: 'Attempted approval.',
-        }),
-      ).rejects.toBeInstanceOf(BatchForbiddenError);
-      expect(applyReviewDecision).not.toHaveBeenCalled();
-    },
-  );
+  test.each([
+    createTestAccount(),
+    createTestAccount({ accountId: '1', role: 'submitter', competitionIds: ['5'] }),
+    createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['5'] }),
+    createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['6'] }),
+  ])('prevents an unauthorized account from deciding a batch', async (account) => {
+    const applyReviewDecision = vi.fn();
+    const service = createBatchService(
+      {} as BatchPayloadStorageService,
+      repository({
+        findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
+        applyReviewDecision,
+      }),
+    );
+    await expect(
+      service.review(account, awaitingReview.batchReference, {
+        decision: 'approved',
+        reason: 'Attempted approval.',
+      }),
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
+    expect(applyReviewDecision).not.toHaveBeenCalled();
+  });
 
   test('reports unresolved-reference approval and retry races as conflicts', async () => {
     const service = createBatchService(

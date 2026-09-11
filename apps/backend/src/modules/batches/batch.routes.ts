@@ -2,7 +2,7 @@ import { json, Router } from 'express';
 
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
-import { requireSubmitter } from '../../middleware/require-authorization';
+import { requireAdministrator, requireSubmitter } from '../../middleware/require-authorization';
 import type { SynchronizeAccount } from '../accounts/account.service';
 import { createSubmissionRateLimit } from '../submissions/submission-rate-limit';
 import {
@@ -46,7 +46,7 @@ export function createBatchRouter(
     '/batches/:batchReference/review',
     json({ limit: '16kb' }),
     requireAuthentication(verifyAccessToken, synchronizeAccount),
-    requireSubmitter(),
+    requireAdministrator(),
     createBatchReviewController(service),
   );
   router.get(
