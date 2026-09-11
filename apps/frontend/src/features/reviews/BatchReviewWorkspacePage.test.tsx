@@ -1,4 +1,5 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import type { BatchReportResponse } from '@sport-analytics/contracts';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -52,7 +53,7 @@ const profile = {
   },
 };
 
-function report(blocked = true) {
+function report(blocked = true): BatchReportResponse {
   const item = {
     ordinal: 1,
     outcome: blocked ? 'unresolved' : 'accepted',
