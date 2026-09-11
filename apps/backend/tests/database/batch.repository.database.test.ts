@@ -2224,6 +2224,10 @@ describe.sequential('batch repository database integration', () => {
         `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
         [batch.batchId],
       );
+      const initialOutbox = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM outbox_message WHERE body->>'batchId'=$1::text`,
+        [batch.batchId],
+      );
       const input = {
         batchId: batch.batchId,
         batchReference: batch.batchReference,
@@ -2260,7 +2264,7 @@ describe.sequential('batch repository database integration', () => {
         published: string;
         validationJob: string;
         outbox: string;
-        checkpoint: number;
+        checkpoint: number | null;
       }>(
         `SELECT (SELECT count(*)::text FROM fixture WHERE source_ref=$1) AS fixtures, (SELECT batch_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "batchId", (SELECT reference_path FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "referencePath", (SELECT fixture_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "fixtureId", (SELECT actor_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "actorId", (SELECT decided_at::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "decidedAt", (SELECT state::text FROM batch WHERE batch_id=$2) AS state, (SELECT count(*)::text FROM batch_item WHERE batch_id=$2 AND published_event_id IS NOT NULL) AS published, (SELECT state::text FROM background_job WHERE batch_id=$2 AND job_type='batch.validate') AS "validationJob", (SELECT count(*)::text FROM outbox_message WHERE body->>'batchId'=$2::text) AS outbox, (SELECT last_ordinal FROM batch_checkpoint WHERE batch_id=$2 AND phase='validating') AS checkpoint`,
         [input.sourceRef, batch.batchId],
@@ -2275,8 +2279,8 @@ describe.sequential('batch repository database integration', () => {
         state: 'stored',
         published: '0',
         validationJob: 'queued',
-        outbox: '1',
-        checkpoint: -1,
+        outbox: String(Number(initialOutbox.rows[0]!.count) + 1),
+        checkpoint: null,
       });
 
       const otherCompetition = await client.query<{ competitionId: string }>(

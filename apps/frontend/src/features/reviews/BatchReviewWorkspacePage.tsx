@@ -4,8 +4,8 @@ import type {
   BatchReviewRequest,
   BatchStatus,
   CurrentUserProfile,
-  fixtureProposalSchema,
 } from '@sport-analytics/contracts';
+import { fixtureProposalSchema } from '@sport-analytics/contracts';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
@@ -41,7 +41,9 @@ type LoadState<T> =
 function hasFixtureProposal(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
   const record = value as { sourceId?: unknown; proposal?: unknown };
-  return typeof record.sourceId === 'string' && fixtureProposalSchema.safeParse(record.proposal).success;
+  return (
+    typeof record.sourceId === 'string' && fixtureProposalSchema.safeParse(record.proposal).success
+  );
 }
 
 function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; children: ReactNode }) {

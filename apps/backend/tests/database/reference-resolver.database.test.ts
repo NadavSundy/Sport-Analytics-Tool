@@ -532,10 +532,7 @@ describe.sequential('batch reference resolution database integration', () => {
     const seed = records();
     const context = {
       date: '2026-01-01',
-      teams: [
-        { context: { name: `${prefix}-alpha` } },
-        { context: { name: `${prefix}-beta` } },
-      ],
+      teams: [{ context: { name: `${prefix}-alpha` } }, { context: { name: `${prefix}-beta` } }],
     };
     const proposal = {
       endDate: '2026-01-01',
