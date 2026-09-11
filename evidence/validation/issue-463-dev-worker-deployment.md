@@ -166,7 +166,7 @@ Azure API logs proved the report endpoint itself returned HTTP `200`.
 The frontend shared report contract incorrectly required:
 
 ```ts
-positionInOver: z.number().int().positive().nullable()
+positionInOver: z.number().int().positive().nullable();
 ```
 
 while cricket delivery positions are zero-based and the accepted event used `positionInOver: 0`.
@@ -224,23 +224,23 @@ Therefore approval of the exact published duplicate did **not** create a second 
 
 ## Acceptance matrix
 
-| Criterion | Result | Evidence |
-| --- | --- | --- |
-| Worker exists and runs in dev | PASS | Healthy Container App revision |
-| Service Bus queue exists | PASS | `batch-ingestion` queue provisioned and used |
-| PostgreSQL reachable from worker | PASS | repeated live DB connectivity checks |
-| Staged Blob reachable from worker | PASS | live Blob access check |
-| Outbox commands publish | PASS | worker logs showed successful command publication |
-| Worker receives validation jobs | PASS | live delivery receipt logs |
-| Existing stored work recovers without resubmission | PASS | pending outbox commands processed after runtime fix |
-| Validation executes and finalises | PASS | conflict batch ended `rejected`, job `succeeded`, one attempt |
-| Valid batch reaches review | PASS | batch `f65118c3-...` reached `awaiting_review`, 1 accepted / 0 rejected |
-| Global reviewer queue contains batch | PASS | deployed reviewer queue displayed the batch |
-| Reviewer report loads | PASS after separate regression fix | zero-based report contract corrected |
-| Approval is recorded | PASS | `batch_review_decision = approved` |
-| Publication completes | PASS | batch state `published` |
-| Equivalent published delivery is not duplicated | PASS | item `duplicate_skipped`, `published_event_id = 4157`, live count = 1 |
-| Post-merge worker deployment from `main` | PASS | `statsthegame-dev-batch-worker--0000005` / `06815e9f725056db14c090139b5785a08b09723c` |
+| Criterion                                          | Result                             | Evidence                                                                              |
+| -------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------- |
+| Worker exists and runs in dev                      | PASS                               | Healthy Container App revision                                                        |
+| Service Bus queue exists                           | PASS                               | `batch-ingestion` queue provisioned and used                                          |
+| PostgreSQL reachable from worker                   | PASS                               | repeated live DB connectivity checks                                                  |
+| Staged Blob reachable from worker                  | PASS                               | live Blob access check                                                                |
+| Outbox commands publish                            | PASS                               | worker logs showed successful command publication                                     |
+| Worker receives validation jobs                    | PASS                               | live delivery receipt logs                                                            |
+| Existing stored work recovers without resubmission | PASS                               | pending outbox commands processed after runtime fix                                   |
+| Validation executes and finalises                  | PASS                               | conflict batch ended `rejected`, job `succeeded`, one attempt                         |
+| Valid batch reaches review                         | PASS                               | batch `f65118c3-...` reached `awaiting_review`, 1 accepted / 0 rejected               |
+| Global reviewer queue contains batch               | PASS                               | deployed reviewer queue displayed the batch                                           |
+| Reviewer report loads                              | PASS after separate regression fix | zero-based report contract corrected                                                  |
+| Approval is recorded                               | PASS                               | `batch_review_decision = approved`                                                    |
+| Publication completes                              | PASS                               | batch state `published`                                                               |
+| Equivalent published delivery is not duplicated    | PASS                               | item `duplicate_skipped`, `published_event_id = 4157`, live count = 1                 |
+| Post-merge worker deployment from `main`           | PASS                               | `statsthegame-dev-batch-worker--0000005` / `06815e9f725056db14c090139b5785a08b09723c` |
 
 ## Follow-up observations
 
