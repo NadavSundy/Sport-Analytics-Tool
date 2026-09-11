@@ -379,14 +379,10 @@ describe('batch result reporting service', () => {
     );
 
     await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
-    expect(listBatches).toHaveBeenLastCalledWith(
-      expect.objectContaining({ submitterId: '7' }),
-    );
+    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
 
     await service.list(createTestAccount({ accountId: '7', role: 'admin' }), { limit: 50 });
-    expect(listBatches).toHaveBeenLastCalledWith(
-      expect.objectContaining({ submitterId: '7' }),
-    );
+    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
 
     await service.list(
       createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['5', '6'] }),
