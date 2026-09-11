@@ -925,8 +925,10 @@ paths:
         Exports up to 100 current accepted fixture events in deterministic innings
         and sequence order. It accepts the same filters as the public event
         collection except for cursor and limit, which are intentionally omitted
-        so that Basic-tier exports remain bounded. Submission ownership,
-        revision history and internal audit fields are not exposed.
+        so that Basic-tier exports remain bounded. Records pair competition, team
+        and participant identifiers with readable names and represent absent
+        extras categories as zero. Submission ownership, revision history and
+        internal audit fields are not exposed.
       operationId: exportFixtureEventsJson
       x-implementation-status: implemented
       security: []
@@ -980,7 +982,8 @@ paths:
       description: |
         Exports the same filtered, bounded slice as `export.json` in CSV form.
         Rows use the same deterministic occurrence order and the response is an
-        attachment named `fixture-{fixtureId}-events.csv`.
+        attachment whose filename identifies every active trace filter, for
+        example `fixture-481-player-30-over-4-events.csv`.
       operationId: exportFixtureEventsCsv
       x-implementation-status: implemented
       security: []
@@ -3048,11 +3051,17 @@ components:
       additionalProperties: false
       required:
         - participantId
+        - participantName
         - isSubstitute
       properties:
         participantId:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        participantName:
+          oneOf:
+            - type: string
+              minLength: 1
             - type: 'null'
         isSubstitute:
           type: boolean
@@ -3064,6 +3073,7 @@ components:
         - wicketId
         - kind
         - playerOutParticipantId
+        - playerOutParticipantName
         - fielders
       properties:
         wicketId:
@@ -3073,6 +3083,9 @@ components:
           minLength: 1
         playerOutParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        playerOutParticipantName:
+          type: string
+          minLength: 1
         fielders:
           type: array
           items:
@@ -3084,6 +3097,8 @@ components:
       required:
         - eventId
         - fixtureId
+        - competitionId
+        - competitionName
         - inningsId
         - inningsOrdinal
         - sequenceNumber
@@ -3091,10 +3106,15 @@ components:
         - positionInOver
         - ballNumber
         - battingCompetitorId
+        - battingCompetitorName
         - bowlingCompetitorId
+        - bowlingCompetitorName
         - strikerParticipantId
+        - strikerParticipantName
         - nonStrikerParticipantId
+        - nonStrikerParticipantName
         - bowlerParticipantId
+        - bowlerParticipantName
         - runs
         - extras
         - wickets
@@ -3103,6 +3123,15 @@ components:
           $ref: '#/components/schemas/ApiIdentifier'
         fixtureId:
           $ref: '#/components/schemas/ApiIdentifier'
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        competitionName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
         inningsId:
           $ref: '#/components/schemas/ApiIdentifier'
         inningsOrdinal:
@@ -3123,16 +3152,33 @@ components:
           description: Display label only; never used for ordering or identity.
         battingCompetitorId:
           $ref: '#/components/schemas/ApiIdentifier'
+        battingCompetitorName:
+          type: string
+          minLength: 1
         bowlingCompetitorId:
           oneOf:
             - $ref: '#/components/schemas/ApiIdentifier'
             - type: 'null'
+        bowlingCompetitorName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
         strikerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        strikerParticipantName:
+          type: string
+          minLength: 1
         nonStrikerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        nonStrikerParticipantName:
+          type: string
+          minLength: 1
         bowlerParticipantId:
           $ref: '#/components/schemas/ApiIdentifier'
+        bowlerParticipantName:
+          type: string
+          minLength: 1
         runs:
           type: object
           additionalProperties: false
