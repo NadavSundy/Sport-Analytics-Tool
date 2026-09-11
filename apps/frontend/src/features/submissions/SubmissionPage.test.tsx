@@ -403,7 +403,15 @@ describe('role-gated event submission page', () => {
     expect(new Headers(request.headers).get('X-File-Name')).toBe('technical-7.json');
     expect(request.body).toBeInstanceOf(File);
 
-    const packagePayload = JSON.parse(await (request.body as File).text()) as {
+    const packageText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(String(reader.result ?? '')));
+      reader.addEventListener('error', () =>
+        reject(new Error('The staged technical package could not be read.')),
+      );
+      reader.readAsText(request.body as File);
+    });
+    const packagePayload = JSON.parse(packageText) as {
       fixtures: Array<{
         sourceId: string;
         innings: Array<{
