@@ -10,10 +10,6 @@ import {
   WeatherTimeoutError,
   WeatherUpstreamError,
 } from '../../src/modules/weather/weather.service';
-import {
-  GeocodingTimeoutError,
-  GeocodingUpstreamError,
-} from '../../src/modules/weather/geocoding.service';
 import { createTestApp } from '../test-app';
 
 function createService(overrides: Partial<FixtureWeatherService> = {}): FixtureWeatherService {
