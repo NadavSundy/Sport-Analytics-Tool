@@ -1,7 +1,7 @@
 # Issue #480 — technical JSON review gate
 
-**Date:** 2026-09-11  
-**Tool:** ChatGPT-Web  
+**Date:** 2026-09-11
+**Tool:** ChatGPT-Web
 **Model:** GPT-5.6 Sol
 
 ## User request
