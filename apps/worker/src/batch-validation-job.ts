@@ -176,6 +176,11 @@ class PermanentBatchFailure extends Error {
 }
 
 function deterministicEventUuid(sourceIdentity: string): string {
+  const applicationUuid = /^app:delivery:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(
+    sourceIdentity,
+  )?.[1];
+  if (applicationUuid) return applicationUuid.toLowerCase();
+
   const bytes = createHash('sha256')
     .update('sport-analytics:batch-event:v1\0')
     .update(sourceIdentity)
