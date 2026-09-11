@@ -371,7 +371,7 @@ describe('batch result reporting service', () => {
     ).resolves.toMatchObject({ data: { batchReference: persistedBatch.batchReference } });
   });
 
-  test('lists submitter batches by owner and administrator review queues globally', async () => {
+  test('lists personal history by owner while keeping administrator review queues global', async () => {
     const listBatches = vi.fn().mockResolvedValue([]);
     const service = createBatchService(
       {} as BatchPayloadStorageService,
@@ -379,7 +379,14 @@ describe('batch result reporting service', () => {
     );
 
     await service.list(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 });
-    expect(listBatches).toHaveBeenLastCalledWith(expect.objectContaining({ submitterId: '7' }));
+    expect(listBatches).toHaveBeenLastCalledWith(
+      expect.objectContaining({ submitterId: '7' }),
+    );
+
+    await service.list(createTestAccount({ accountId: '7', role: 'admin' }), { limit: 50 });
+    expect(listBatches).toHaveBeenLastCalledWith(
+      expect.objectContaining({ submitterId: '7' }),
+    );
 
     await service.list(
       createTestAccount({ accountId: '7', role: 'submitter', competitionIds: ['5', '6'] }),
@@ -398,6 +405,7 @@ describe('batch result reporting service', () => {
         limit: 50,
         status: 'awaiting_review',
       });
+
       expect(listBatches).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: 'awaiting_review', limit: 51 }),
       );
