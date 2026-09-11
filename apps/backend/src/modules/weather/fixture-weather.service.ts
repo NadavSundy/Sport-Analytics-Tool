@@ -1,13 +1,23 @@
-import { findFixtureWeatherContext } from '../fixtures/fixture.repository';
+import { findFixtureWeatherContext, updateVenueCoordinates } from '../fixtures/fixture.repository';
+import {
+  type GeocodedLocation,
+  type LocationGeocodingService,
+  OpenMeteoLocationGeocodingService,
+} from './location-geocoding.service';
 import { classifyWeatherDate, type WeatherData, type WeatherService } from './weather.service';
 
 type FixtureWeatherUnavailableReason =
-  'MISSING_VENUE' | 'MISSING_COORDINATES' | 'UNSUPPORTED_LOCATION' | 'UNSUPPORTED_DATE';
+  | 'MISSING_VENUE'
+  | 'MISSING_COORDINATES'
+  | 'UNSUPPORTED_LOCATION'
+  | 'LOCATION_NOT_FOUND'
+  | 'UNSUPPORTED_DATE';
 
 export interface FixtureWeatherContext {
   fixtureId: string;
   date: string;
   venue: {
+    venueId: string;
     name: string;
     city: string | null;
     latitude: number | null;
@@ -35,6 +45,11 @@ interface FixtureWeatherUnavailable {
 type FixtureWeatherResult = FixtureWeatherAvailable | FixtureWeatherUnavailable;
 
 type FindFixtureWeatherContext = (fixtureId: string) => Promise<FixtureWeatherContext | null>;
+type PersistVenueCoordinates = (
+  venueId: string,
+  latitude: number,
+  longitude: number,
+) => Promise<void>;
 
 const databaseIdPattern = /^\d+$/;
 
@@ -57,6 +72,7 @@ function hasUsableCoordinates(
     venue.longitude <= 180
   );
 }
+
 export interface FixtureWeatherService {
   getFixtureWeather(fixtureId: string): Promise<FixtureWeatherResult | null>;
 }
@@ -64,6 +80,8 @@ export interface FixtureWeatherService {
 export function createFixtureWeatherService(
   weatherService: WeatherService,
   findContext: FindFixtureWeatherContext = findFixtureWeatherContext,
+  geocodingService: LocationGeocodingService = new OpenMeteoLocationGeocodingService(),
+  persistVenueCoordinates: PersistVenueCoordinates = updateVenueCoordinates,
 ): FixtureWeatherService {
   return {
     async getFixtureWeather(fixtureId) {
@@ -88,28 +106,6 @@ export function createFixtureWeatherService(
       }
 
       const venue = { name: context.venue.name, city: context.venue.city };
-      if (context.venue.latitude === null || context.venue.longitude === null) {
-        return {
-          fixtureId: context.fixtureId,
-          date: context.date,
-          availability: 'unavailable',
-          reason: 'MISSING_COORDINATES',
-          venue,
-          weather: null,
-        };
-      }
-
-      if (!hasUsableCoordinates(context.venue)) {
-        return {
-          fixtureId: context.fixtureId,
-          date: context.date,
-          availability: 'unavailable',
-          reason: 'UNSUPPORTED_LOCATION',
-          venue,
-          weather: null,
-        };
-      }
-
       if (classifyWeatherDate(context.date) === 'unsupported') {
         return {
           fixtureId: context.fixtureId,
@@ -121,9 +117,47 @@ export function createFixtureWeatherService(
         };
       }
 
+      let latitude = context.venue.latitude;
+      let longitude = context.venue.longitude;
+      if (latitude === null || longitude === null) {
+        const queries = context.venue.city
+          ? [context.venue.city, context.venue.name]
+          : [context.venue.name];
+        let resolved: GeocodedLocation | null = null;
+        for (const query of queries) {
+          resolved = await geocodingService.resolve(query);
+          if (resolved) break;
+        }
+        if (!resolved) {
+          return {
+            fixtureId: context.fixtureId,
+            date: context.date,
+            availability: 'unavailable',
+            reason: 'LOCATION_NOT_FOUND',
+            venue,
+            weather: null,
+          };
+        }
+        latitude = resolved.latitude;
+        longitude = resolved.longitude;
+        await persistVenueCoordinates(context.venue.venueId, latitude, longitude);
+      }
+
+      const resolvedVenue = { ...context.venue, latitude, longitude };
+      if (!hasUsableCoordinates(resolvedVenue)) {
+        return {
+          fixtureId: context.fixtureId,
+          date: context.date,
+          availability: 'unavailable',
+          reason: 'UNSUPPORTED_LOCATION',
+          venue,
+          weather: null,
+        };
+      }
+
       const weather = await weatherService.getWeather(
-        context.venue.latitude,
-        context.venue.longitude,
+        resolvedVenue.latitude,
+        resolvedVenue.longitude,
         context.date,
       );
 

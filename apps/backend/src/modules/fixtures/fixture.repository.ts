@@ -24,11 +24,25 @@ export interface FixtureWeatherContextRecord {
   fixtureId: string;
   date: string;
   venue: {
+    venueId: string;
     name: string;
     city: string | null;
     latitude: number | null;
     longitude: number | null;
   } | null;
+}
+
+export async function updateVenueCoordinates(
+  venueId: string,
+  latitude: number,
+  longitude: number,
+  executor: QueryExecutor = getDatabasePool(),
+): Promise<void> {
+  await executeQuery(
+    executor,
+    `UPDATE venue SET latitude = $1, longitude = $2 WHERE venue_id = $3::bigint`,
+    [latitude, longitude, venueId],
+  );
 }
 
 export interface FixtureListOptions {
@@ -215,6 +229,7 @@ export async function findFixtureWeatherContext(
         f.fixture_id::text AS "fixtureId",
         f.start_date::text AS "date",
         CASE WHEN v.venue_id IS NULL THEN NULL ELSE jsonb_build_object(
+          'venueId', v.venue_id::text,
           'name', v.name,
           'city', v.city,
           'latitude', v.latitude,

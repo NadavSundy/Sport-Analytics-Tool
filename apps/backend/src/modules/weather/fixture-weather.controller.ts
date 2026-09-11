@@ -1,6 +1,10 @@
 import type { Request, RequestHandler } from 'express';
 
 import {
+  LocationGeocodingTimeoutError,
+  LocationGeocodingUpstreamError,
+} from './location-geocoding.service';
+import {
   WeatherTimeoutError,
   WeatherUpstreamError,
   WeatherValidationError,
@@ -54,6 +58,23 @@ export function getFixtureWeather(service: FixtureWeatherService): RequestHandle
         if (error instanceof WeatherUpstreamError) {
           response.status(502).json({
             error: { code: 'UPSTREAM_ERROR', message: 'The weather provider returned an error.' },
+          });
+          return;
+        }
+
+        if (error instanceof LocationGeocodingTimeoutError) {
+          response.status(504).json({
+            error: {
+              code: 'UPSTREAM_TIMEOUT',
+              message: 'The location provider did not respond in time.',
+            },
+          });
+          return;
+        }
+
+        if (error instanceof LocationGeocodingUpstreamError) {
+          response.status(502).json({
+            error: { code: 'UPSTREAM_ERROR', message: 'The location provider returned an error.' },
           });
           return;
         }

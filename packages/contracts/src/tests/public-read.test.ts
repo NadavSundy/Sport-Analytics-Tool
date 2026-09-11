@@ -59,38 +59,40 @@ describe('public read contracts', () => {
   });
 
   test('validates available and unavailable fixture weather', () => {
-    expect(
-      fixtureWeatherResponseSchema.safeParse({
-        data: {
-          fixtureId: '100',
-          date: '2026-08-09',
-          availability: 'available',
-          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
-          weather: {
+    for (const reason of ['MISSING_COORDINATES', 'LOCATION_NOT_FOUND', 'UNSUPPORTED_DATE']) {
+      expect(
+        fixtureWeatherResponseSchema.safeParse({
+          data: {
+            fixtureId: '100',
             date: '2026-08-09',
-            latitude: -26.1929,
-            longitude: 28.0305,
-            temperatureMax: 24,
-            temperatureMin: 11,
-            precipitationSum: 0,
-            windSpeedMax: 17,
+            availability: 'available',
+            venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+            weather: {
+              date: '2026-08-09',
+              latitude: -26.1929,
+              longitude: 28.0305,
+              temperatureMax: 24,
+              temperatureMin: 11,
+              precipitationSum: 0,
+              windSpeedMax: 17,
+            },
           },
-        },
-      }).success,
-    ).toBe(true);
+        }).success,
+      ).toBe(true);
 
-    expect(
-      fixtureWeatherResponseSchema.safeParse({
-        data: {
-          fixtureId: '100',
-          date: '2026-08-09',
-          availability: 'unavailable',
-          reason: 'MISSING_COORDINATES',
-          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
-          weather: null,
-        },
-      }).success,
-    ).toBe(true);
+      expect(
+        fixtureWeatherResponseSchema.safeParse({
+          data: {
+            fixtureId: '100',
+            date: '2026-08-09',
+            availability: 'unavailable',
+            reason,
+            venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+            weather: null,
+          },
+        }).success,
+      ).toBe(true);
+    }
   });
 
   test('applies pagination defaults', () => {
