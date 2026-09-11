@@ -399,11 +399,11 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
       await route.fulfill({
         json: {
           data:
-            url.searchParams.get('cursor') === 'teams-page-2'
+            url.searchParams.get('name') === 'South Africa'
               ? [{ competitorId: 'competitor-sa', name: 'South Africa' }]
               : [{ competitorId: 'competitor-1', name: 'Wanderers' }],
           pagination: {
-            nextCursor: url.searchParams.get('cursor') === 'teams-page-2' ? null : 'teams-page-2',
+            nextCursor: url.searchParams.has('name') ? null : 'teams-page-2',
           },
         },
       });
@@ -443,6 +443,7 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
   await competition.press('ArrowDown');
   await competition.press('Enter');
   await expect(competition).toHaveValue('Premier Cricket League');
+  expect(requestedUrls.some((url) => url.includes('/competitions?limit=100&name=prem'))).toBe(true);
 
   await page.getByRole('button', { name: 'Show season options' }).click();
   await expect(page.getByRole('option', { name: /Premier Cricket League — 2026/ })).toBeVisible();
@@ -460,7 +461,7 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
   expect(
     requestedUrls.some((url) =>
       url.includes(
-        '/competitors?competitionId=competition-1&seasonId=season-1&limit=100&cursor=teams-page-2',
+        '/competitors?competitionId=competition-1&seasonId=season-1&limit=100&name=South+Africa',
       ),
     ),
   ).toBe(true);

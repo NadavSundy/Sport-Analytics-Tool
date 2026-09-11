@@ -261,6 +261,7 @@ export const competitionListQuerySchema = paginationQuerySchema.extend({
 
 export const seasonListQuerySchema = paginationQuerySchema.extend({
   competitionId: apiIdentifierSchema.optional(),
+  name: filterTextSchema.optional(),
 });
 
 export const fixtureListQuerySchema = paginationQuerySchema

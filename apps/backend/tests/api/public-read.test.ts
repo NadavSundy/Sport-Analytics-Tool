@@ -194,13 +194,14 @@ describe('public read API', () => {
         }),
       ),
     )
-      .get('/api/v1/competitions')
+      .get('/api/v1/competitions?name=World%20Twenty20')
       .expect(200);
 
     expect(verifyAccessToken).not.toHaveBeenCalled();
 
     expect(listCompetitions).toHaveBeenCalledWith({
       limit: 50,
+      name: 'World Twenty20',
     });
 
     expect(response.body).toEqual({
@@ -271,11 +272,12 @@ describe('public read API', () => {
       }),
     );
 
-    await request(app).get('/api/v1/seasons?competitionId=12').expect(200);
+    await request(app).get('/api/v1/seasons?competitionId=12&name=2026').expect(200);
 
     expect(listSeasons).toHaveBeenCalledWith({
       competitionId: '12',
       limit: 50,
+      name: '2026',
     });
 
     const detail = await request(app).get('/api/v1/seasons/season_example').expect(200);
@@ -658,12 +660,15 @@ describe('public read API', () => {
       }),
     );
 
-    await request(app).get('/api/v1/participants?fixtureId=100&competitorId=20').expect(200);
+    await request(app)
+      .get('/api/v1/participants?fixtureId=100&competitorId=20&name=Player')
+      .expect(200);
 
     expect(listParticipants).toHaveBeenCalledWith({
       fixtureId: '100',
       competitorId: '20',
       limit: 50,
+      name: 'Player',
     });
 
     const detail = await request(app).get('/api/v1/participants/30').expect(200);

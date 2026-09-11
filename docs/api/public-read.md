@@ -57,9 +57,11 @@ Supported collection filter:
 
 ```text
 competitionId
+name
 ```
 
 A season resource is derived from a competition and the season value recorded on its fixtures.
+The `name` filter matches either the season label or its competition name.
 
 Season resources include `competitionName` alongside `competitionId`, allowing consumers to present
 the associated competition without making a separate name-resolution request. The stable identifier
