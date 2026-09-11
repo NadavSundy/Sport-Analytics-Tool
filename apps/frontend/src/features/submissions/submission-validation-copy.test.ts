@@ -44,10 +44,16 @@ describe('submission validation copy', () => {
     ).toBe('Row 2 — Over number');
   });
 
-  it('turns a local schema failure into a readable field instruction', () => {
+  it('turns local UUID schema failures into a readable field instruction', () => {
     expect(formatSchemaValidationFailure('Invalid uuid', 'events.0.eventId')).toBe(
       'Event identifier: This identifier is not in the expected format.',
     );
+    expect(
+      formatSchemaValidationFailure(
+        'Event identifiers must be UUIDs so retries and accidental duplicates can be detected.',
+        'events.0.eventId',
+      ),
+    ).toBe('Event identifier: This identifier is not in the expected format.');
   });
 
   it('rewrites common schema diagnostics as plain instructions', () => {

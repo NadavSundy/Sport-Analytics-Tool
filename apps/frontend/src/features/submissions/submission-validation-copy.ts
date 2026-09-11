@@ -160,10 +160,7 @@ export function formatValidationField(field: string): string {
   return humaniseToken(lastSegment ?? normalised);
 }
 
-export function formatApiValidationLocation(
-  detail: ApiErrorDetail,
-  uploadedFile: boolean,
-): string {
+export function formatApiValidationLocation(detail: ApiErrorDetail, uploadedFile: boolean): string {
   const containerLabel =
     detail.eventIndex === undefined
       ? uploadedFile
@@ -189,7 +186,9 @@ function plainSchemaMessage(message: string): string {
   }
   if (/^expected string, received /i.test(trimmed)) return 'Use text here.';
   if (/^expected array, received /i.test(trimmed)) return 'Use a list of values here.';
-  if (/invalid uuid/i.test(trimmed)) return 'This identifier is not in the expected format.';
+  if (/invalid uuid/i.test(trimmed) || /event identifiers? must be uuids?/i.test(trimmed)) {
+    return 'This identifier is not in the expected format.';
+  }
   if (/invalid enum value/i.test(trimmed)) {
     return 'Choose one of the supported values for this field.';
   }

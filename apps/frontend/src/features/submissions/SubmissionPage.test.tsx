@@ -906,7 +906,7 @@ describe('role-gated event submission page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
     expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
-    expect(screen.getByText('Row 1 — file')).toBeInTheDocument();
+    expect(screen.getByText('Row 1 — File')).toBeInTheDocument();
     expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
