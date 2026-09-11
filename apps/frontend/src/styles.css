@@ -3392,7 +3392,8 @@ h3 {
   margin: 1.25rem 0 0;
 }
 
-.player-match-list {
+.player-match-list,
+.participant-career-card {
   margin-top: 1rem;
 }
 
