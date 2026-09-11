@@ -1,6 +1,6 @@
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -144,8 +144,8 @@ describe('guided batch upload', () => {
       'download',
     );
     expect(await screen.findByLabelText('Competition')).toHaveDisplayValue('Premier T20');
-    if (false) {
-      const season = await screen.findByLabelText('Season context');
+    const season = screen.queryByLabelText('Season context');
+    if (season) {
       await waitFor(() =>
         expect(
           within(season).getByRole('option', { name: '2026/27 — Premier T20' }),
@@ -269,8 +269,12 @@ describe('guided batch upload', () => {
     renderUpload('catalogue');
     expect(await screen.findByLabelText('Back catalogue package')).toBeEnabled();
     expect(screen.getByText(/Each season is identified by its readable name/i)).toBeInTheDocument();
-    const file = new File(['{"contractVersion":"1.0"}'], 'catalogue.json', {
+    const fileBytes = '{"contractVersion":"1.0"}';
+    const file = new File([fileBytes], 'catalogue.json', {
       type: 'application/json',
+    });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => new TextEncoder().encode(fileBytes).buffer,
     });
     fireEvent.change(screen.getByLabelText('Back catalogue package'), {
       target: { files: [file] },
