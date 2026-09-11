@@ -105,6 +105,8 @@ function publicEvent(overrides: Partial<PublicEvent> = {}): PublicEvent {
   return {
     eventId: '500',
     fixtureId: '100',
+    competitionId: '10',
+    competitionName: 'World Twenty20',
     inningsId: '200',
     inningsOrdinal: 0,
     sequenceNumber: 1,
@@ -112,10 +114,15 @@ function publicEvent(overrides: Partial<PublicEvent> = {}): PublicEvent {
     positionInOver: 0,
     ballNumber: '0.1',
     battingCompetitorId: '20',
+    battingCompetitorName: 'India',
     bowlingCompetitorId: '21',
+    bowlingCompetitorName: 'Pakistan',
     strikerParticipantId: '30',
+    strikerParticipantName: 'Opening Batter',
     nonStrikerParticipantId: '31',
+    nonStrikerParticipantName: 'Non-striker',
     bowlerParticipantId: '32',
+    bowlerParticipantName: 'Opening Bowler',
     runs: {
       offBat: 4,
       extras: 0,
@@ -487,7 +494,12 @@ describe('public read API', () => {
       limit: 100,
     });
     expect(response.body).toEqual({
-      data: [publicEvent()],
+      data: [
+        {
+          ...publicEvent(),
+          extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, penalty: 0 },
+        },
+      ],
     });
     expect(JSON.stringify(response.body)).not.toContain('submissionId');
     expect(JSON.stringify(response.body)).not.toContain('audit');
@@ -502,9 +514,11 @@ describe('public read API', () => {
               wicketId: '700',
               kind: 'caught, "behind"',
               playerOutParticipantId: '30',
+              playerOutParticipantName: 'Opening Batter',
               fielders: [
                 {
                   participantId: '33',
+                  participantName: 'Wicket Keeper',
                   isSubstitute: false,
                 },
               ],
@@ -527,7 +541,7 @@ describe('public read API', () => {
     )
       .get('/api/v1/fixtures/100/events/export.csv?wicketKind=caught')
       .expect('Content-Type', /text\/csv/)
-      .expect('Content-Disposition', 'attachment; filename="fixture-100-events.csv"')
+      .expect('Content-Disposition', 'attachment; filename="fixture-100-wicket-caught-events.csv"')
       .expect(200);
 
     expect(listFixtureEvents).toHaveBeenCalledWith('100', {
@@ -535,8 +549,8 @@ describe('public read API', () => {
       limit: 100,
     });
     expect(response.text).toBe(
-      'eventId,fixtureId,inningsId,inningsOrdinal,sequenceNumber,overNumber,positionInOver,ballNumber,battingCompetitorId,bowlingCompetitorId,strikerParticipantId,nonStrikerParticipantId,bowlerParticipantId,runsOffBat,runsExtras,runsTotal,runsNonBoundary,extrasWides,extrasNoBalls,extrasByes,extrasLegByes,extrasPenalty,wicketCount,wicketIds,wicketKinds,playersOutParticipantIds,fielderParticipantIds\r\n' +
-        '"500","100","200","0","1","0","0","0.1","20","21","30","31","32","4","0","4","false","","","","","","1","700","caught, ""behind""","30","33"\r\n',
+      'eventId,fixtureId,competitionId,competitionName,inningsId,inningsOrdinal,sequenceNumber,overNumber,positionInOver,ballNumber,battingCompetitorId,battingCompetitorName,bowlingCompetitorId,bowlingCompetitorName,strikerParticipantId,strikerParticipantName,nonStrikerParticipantId,nonStrikerParticipantName,bowlerParticipantId,bowlerParticipantName,runsOffBat,runsExtras,runsTotal,runsNonBoundary,extrasWides,extrasNoBalls,extrasByes,extrasLegByes,extrasPenalty,wicketCount,wicketIds,wicketKinds,playersOutParticipantIds,playersOutParticipantNames,fielderParticipantIds,fielderParticipantNames\r\n' +
+        '"500","100","10","World Twenty20","200","0","1","0","0","0.1","20","India","21","Pakistan","30","Opening Batter","31","Non-striker","32","Opening Bowler","4","0","4","false","0","0","0","0","0","1","700","caught, ""behind""","30","Opening Batter","33","Wicket Keeper"\r\n',
     );
   });
 
