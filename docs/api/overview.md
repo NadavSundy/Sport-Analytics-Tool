@@ -211,6 +211,8 @@ GET /api/v1/fixtures/{fixtureId}/events/export.json
 GET /api/v1/fixtures/{fixtureId}/events/export.csv
 GET /api/v1/fixtures/{fixtureId}/statistics
 GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv
 GET /api/v1/competitors
 GET /api/v1/competitors/{competitorId}
 GET /api/v1/participants
