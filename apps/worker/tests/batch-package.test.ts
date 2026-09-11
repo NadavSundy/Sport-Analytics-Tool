@@ -21,7 +21,11 @@ async function referenceChunkFor(source: string | Buffer, mediaType: string) {
   return buildReferenceChunk(candidates);
 }
 
-function csvRow(competitionName = 'Competition'): string {
+function csvRow(
+  competitionName = 'Competition',
+  operation: 'upsert' | 'correction' = 'upsert',
+  correctsEventId = '',
+): string {
   return [
     '1.0',
     'test:package:season-1',
@@ -44,8 +48,8 @@ function csvRow(competitionName = 'Competition'): string {
     '0',
     '0',
     '0.1',
-    'upsert',
-    '',
+    operation,
+    correctsEventId,
     '',
     'Striker',
     '',
@@ -66,6 +70,77 @@ function csvRow(competitionName = 'Competition'): string {
 }
 
 describe('batch package streaming expansion', () => {
+  it('preserves correction metadata from CSV packages', async () => {
+    const source = `${header}\n${csvRow(
+      'Competition',
+      'correction',
+      'cricsheet:delivery:100-original',
+    )}\n`;
+    const candidates = [];
+    for await (const candidate of normalisedBatchCandidates(
+      async () => Readable.from(source),
+      'text/csv',
+    )) {
+      candidates.push(candidate);
+    }
+
+    expect(candidates[0]?.event).toMatchObject({
+      operation: 'correction',
+      correctsEventId: 'cricsheet:delivery:100-original',
+    });
+  });
+
+  it('preserves correction metadata from JSON packages', async () => {
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:season-1',
+      competition: { context: { name: 'Competition' } },
+      season: { context: { name: '2026' } },
+      fixtures: [
+        {
+          sourceId: 'cricsheet:fixture:100',
+          context: {
+            date: '2026-03-14',
+            teams: [{ context: { name: 'Home' } }, { context: { name: 'Away' } }],
+          },
+          innings: [
+            {
+              context: { ordinal: 0, battingTeam: { context: { name: 'Home' } } },
+              events: [
+                {
+                  eventId: 'cricsheet:delivery:100-revision-2',
+                  occurrenceSequence: 1,
+                  overNumber: 0,
+                  positionInOver: 0,
+                  ballLabel: '0.1',
+                  operation: 'correction',
+                  correctsEventId: 'cricsheet:delivery:100-original',
+                  striker: { context: { name: 'Striker' } },
+                  nonStriker: { context: { name: 'Non-striker' } },
+                  bowler: { context: { name: 'Bowler' } },
+                  runs: { offBat: 1, extras: 0, total: 1 },
+                  extras: {},
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const candidates = [];
+    for await (const candidate of normalisedBatchCandidates(
+      async () => Readable.from(source),
+      'application/json',
+    )) {
+      candidates.push(candidate);
+    }
+
+    expect(candidates[0]?.event).toMatchObject({
+      operation: 'correction',
+      correctsEventId: 'cricsheet:delivery:100-original',
+    });
+  });
+
   it('strips a UTF-8 BOM and honours quoted CSV fields', async () => {
     const source = `\uFEFF${header}\r\n${csvRow('Premier, League')}\r\n`;
     const result = await scanBatchReferences(
