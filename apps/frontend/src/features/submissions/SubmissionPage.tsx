@@ -177,7 +177,9 @@ function SubmissionWorkflowSelector({
   value: SubmissionWorkflow;
   onChange: (workflow: SubmissionWorkflow) => void;
 }) {
-  const options: Array<{ value: SubmissionWorkflow; label: string; description: string }> = [
+  type Option = { value: SubmissionWorkflow; label: string; description: string };
+
+  const guidedOptions: Option[] = [
     {
       value: 'fixture',
       label: 'Single fixture',
@@ -193,12 +195,34 @@ function SubmissionWorkflowSelector({
       label: 'Back catalogue',
       description: 'Upload historical fixtures spanning one or more seasons.',
     },
-    {
-      value: 'technical',
-      label: 'Advanced technical JSON',
-      description: 'Paste canonical delivery JSON when application references are already known.',
-    },
   ];
+
+  // The advanced mode keeps canonical identifiers (#360); it is set apart so a
+  // submitter cannot mistake it for a guided upload (#500).
+  const advancedOption: Option = {
+    value: 'technical',
+    label: 'Advanced technical JSON',
+    description:
+      'For technical integrations. Every event needs application identifiers for its innings and players; choose a guided upload if you do not have them.',
+  };
+
+  function renderOption(option: Option) {
+    return (
+      <label key={option.value}>
+        <input
+          type="radio"
+          name="submission-workflow"
+          value={option.value}
+          checked={value === option.value}
+          onChange={() => onChange(option.value)}
+        />
+        <span>
+          <strong>{option.label}</strong>
+          <span className="field-help">{option.description}</span>
+        </span>
+      </label>
+    );
+  }
 
   return (
     <fieldset className="submission-mode submission-workflow-selector">
@@ -206,21 +230,26 @@ function SubmissionWorkflowSelector({
       <p className="field-help">
         Choose a scope to see only the controls and guidance needed for that submission.
       </p>
-      {options.map((option) => (
-        <label key={option.value}>
-          <input
-            type="radio"
-            name="submission-workflow"
-            value={option.value}
-            checked={value === option.value}
-            onChange={() => onChange(option.value)}
-          />
-          <span>
-            <strong>{option.label}</strong>
-            <span className="field-help">{option.description}</span>
-          </span>
-        </label>
-      ))}
+      <div
+        className="submission-workflow-group"
+        role="group"
+        aria-labelledby="submission-workflow-guided-title"
+      >
+        <p id="submission-workflow-guided-title" className="submission-workflow-group__title">
+          Guided upload: readable names, no database IDs
+        </p>
+        {guidedOptions.map(renderOption)}
+      </div>
+      <div
+        className="submission-workflow-group submission-workflow-group--advanced"
+        role="group"
+        aria-labelledby="submission-workflow-advanced-title"
+      >
+        <p id="submission-workflow-advanced-title" className="submission-workflow-group__title">
+          Advanced: application identifiers required
+        </p>
+        {renderOption(advancedOption)}
+      </div>
     </fieldset>
   );
 }
@@ -450,12 +479,18 @@ function SubmissionForm({
               </p>
               <p>Every package must include:</p>
               <ul>
-                <li>a contract version and stable package reference;</li>
                 <li>competition and season names;</li>
                 <li>fixture date and both team names;</li>
-                <li>innings number and batting-team name; and</li>
-                <li>stable event references, player names, delivery order and runs.</li>
+                <li>innings number and batting-team name;</li>
+                <li>player names, delivery order and runs; and</li>
+                <li>a label for the package and a label for each delivery.</li>
               </ul>
+              <p>
+                You never need a database ID. The package and delivery labels are ones you make up
+                and keep unchanged, such as <code>my-club:delivery:innings-0-ball-1</code>, so a
+                retried upload is recognised rather than duplicated. Leave the provider reference
+                columns (ending in <code>SourceId</code>) blank; the names are enough.
+              </p>
               <p>
                 Names are resolved within the selected competition and the season named in the
                 package. Ambiguous or missing matches appear later in the batch report with labeled
@@ -518,9 +553,12 @@ function SubmissionForm({
               <label htmlFor="submission-events">Delivery events JSON</label>
 
               <p id="submission-events-help" className="field-help">
-                Paste the <code>events</code> array for Basic schema 1.0. Fixture and schema version
-                are added automatically. Final statistic totals are derived by the platform and are
-                not accepted here.{' '}
+                Paste the <code>events</code> array for Basic schema 1.0. This advanced mode uses
+                application identifiers: each event needs <code>inningsId</code>,{' '}
+                <code>strikerId</code>, <code>nonStrikerId</code> and <code>bowlerId</code>. To
+                submit with readable team and player names instead, choose Single fixture. Fixture
+                and schema version are added automatically. Final statistic totals are derived by
+                the platform and are not accepted here.{' '}
                 {role === 'admin'
                   ? 'Administrators use the privileged direct-import path; ordinary submitters are staged for review.'
                   : 'This technical input is staged and must pass review before publication.'}

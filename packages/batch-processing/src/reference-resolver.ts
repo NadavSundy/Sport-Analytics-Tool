@@ -344,6 +344,31 @@ function withNote(note: string | null, reason: string): string {
 }
 
 /**
+ * Whether a fixture source identifier can never be compared with a stored
+ * record. Only `CANONICAL_SOURCE_NAMESPACE` (against `fixture.source_ref`) and,
+ * since #480, `APPLICATION_SOURCE_NAMESPACE` (against `fixture.fixture_id`) are
+ * compared. An identifier that cannot be read at all is not covered here; it
+ * stays invalid.
+ */
+function isIncomparableFixtureSourceIdentifier(sourceId: string): boolean {
+  const identifier = parseSourceIdentifier(sourceId);
+  return (
+    identifier !== null &&
+    identifier.namespace !== CANONICAL_SOURCE_NAMESPACE &&
+    identifier.namespace !== APPLICATION_SOURCE_NAMESPACE
+  );
+}
+
+/** Note that an incomparable fixture identifier was ignored in favour of the natural key. */
+function ignoredFixtureSourceIdentifier(sourceId: string): string {
+  return (
+    `The submitted source identifier "${sourceId}" was ignored: only "${CANONICAL_SOURCE_NAMESPACE}" ` +
+    `and "${APPLICATION_SOURCE_NAMESPACE}" fixture identifiers can be compared. ` +
+    `Resolution used the fixture date and teams.`
+  );
+}
+
+/**
  * Resolve a reference whose only available key is an exact name, such as a
  * competition or a team.
  */
@@ -563,11 +588,14 @@ function resolveFixtureByNaturalKey(
   teamOutcomes: ReferenceOutcome[],
   candidateRows: FixtureByNaturalKeyRow[],
   seasonName: string | null,
+  ignoredNote: string | null = null,
 ): ReferenceOutcome {
   if (teamOutcomes.some((value) => value.state !== 'resolved')) {
     return outcome(referencePath, 'fixture', submitted, 'unresolved', {
-      reason:
+      reason: withNote(
+        ignoredNote,
         'The fixture natural key is expressed in terms of its teams, and at least one team reference did not resolve.',
+      ),
     });
   }
 
@@ -595,6 +623,7 @@ function resolveFixtureByNaturalKey(
     return outcome(referencePath, 'fixture', submitted, 'resolved', {
       canonicalId: matches[0]!.canonicalId,
       matchedBy: 'natural-key',
+      reason: ignoredNote,
     });
   }
 
@@ -606,13 +635,18 @@ function resolveFixtureByNaturalKey(
         canonicalId: row.canonicalId,
         label: fixtureLabel(row.startDate, row.season),
       })),
-      reason: `The competition, season, date and teams identify ${String(matches.length)} fixtures.`,
+      reason: withNote(
+        ignoredNote,
+        `The competition, season, date and teams identify ${String(matches.length)} fixtures.`,
+      ),
     });
   }
 
   return outcome(referencePath, 'fixture', submitted, 'unresolved', {
-    reason:
+    reason: withNote(
+      ignoredNote,
       'No fixture in the declared competition matches this date, season and pair of teams. A new fixture is a review decision, not a resolution.',
+    ),
   });
 }
 
@@ -1080,7 +1114,10 @@ export async function resolvePackageReferences(
         reason:
           'The competition reference did not resolve, so no fixture scope is available. Resolution is scoped from competition to fixture and is not attempted globally.',
       });
-    } else if (fixture.sourceId) {
+    } else if (
+      fixture.sourceId &&
+      !(fixture.context && isIncomparableFixtureSourceIdentifier(fixture.sourceId))
+    ) {
       resolvedFixture = resolveFixtureBySourceId(
         fixturePath,
         submitted,
@@ -1093,6 +1130,11 @@ export async function resolvePackageReferences(
         seasonName,
       );
     } else if (fixture.context) {
+      // Section 3.7 applied to the fixture (#500). An identifier from a namespace
+      // that is never compared can never resolve, so readable context is the
+      // supported key. The templates published before #500 carried such a
+      // placeholder, and copies already downloaded keep it. A comparable
+      // `cricsheet` or `app` (#480) identifier never reaches this arm.
       resolvedFixture = resolveFixtureByNaturalKey(
         fixturePath,
         submitted,
@@ -1100,6 +1142,7 @@ export async function resolvePackageReferences(
         fixtureTeamOutcomes,
         fixtureByNaturalKeyRows,
         seasonName,
+        fixture.sourceId ? ignoredFixtureSourceIdentifier(fixture.sourceId) : null,
       );
     } else {
       // The contract requires a sourceId or context. This arm keeps the resolver

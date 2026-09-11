@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { seasonUploadPackageSchema, type SeasonUploadPackage } from '@sport-analytics/contracts';
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -352,6 +354,36 @@ describe.sequential('batch reference resolution database integration', () => {
         ],
       },
     ]);
+  }
+
+  /**
+   * The shipped JSON template with only its readable placeholders replaced, which
+   * is what a submitter who knows the match but not the platform produces. Every
+   * identifier the template carries is left exactly as shipped. Each placeholder
+   * must be present, so a template change cannot quietly make this test vacuous.
+   */
+  function packageFromShippedTemplate(): SeasonUploadPackage {
+    let text = readFileSync(
+      new URL('../../../frontend/public/season-upload-template.json', import.meta.url),
+      'utf8',
+    );
+
+    const readableValues: [placeholder: string, value: string][] = [
+      ['"Competition name"', JSON.stringify(`${prefix}-competition`)],
+      ['"2026-03-14"', JSON.stringify('2026-01-01')],
+      ['"Home team"', JSON.stringify(`${prefix}-alpha`)],
+      ['"Away team"', JSON.stringify(`${prefix}-beta`)],
+      ['"Striker"', JSON.stringify(CURRENT_NAME)],
+      ['"Non-striker"', JSON.stringify(`${prefix} Alias Holder A`)],
+      ['"Bowler"', JSON.stringify(BOWLER_NAME)],
+    ];
+
+    for (const [placeholder, value] of readableValues) {
+      expect(text).toContain(placeholder);
+      text = text.replaceAll(placeholder, value);
+    }
+
+    return seasonUploadPackageSchema.parse(JSON.parse(text));
   }
 
   function outcomeAt(resolution: PackageResolution, referencePath: string): ReferenceOutcome {
@@ -803,8 +835,9 @@ describe.sequential('batch reference resolution database integration', () => {
 
   test('ignores an unsupported innings source identifier when readable context is also supplied', async () => {
     const seed = records();
-    // This is the shape the shipped season-upload templates produce: an innings
-    // carrying both a sourceId and readable context.
+    // An innings carrying both a sourceId and readable context, as the season
+    // templates published before #500 did. The fixture here is a known cricsheet
+    // reference; the template-derived fixture is covered separately below.
     const resolution = await resolvePackageReferences(
       databaseClient(),
       buildPackage(`${prefix}-competition`, [
@@ -1081,6 +1114,123 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(fixture.state).toBe('unresolved');
     expect(fixture.canonicalId).toBeNull();
     expect(fixture.reason).toContain('otherprovider');
+  });
+
+  /**
+   * Issue #500: the guided single-fixture path hands out the season template. A
+   * submitter who fills in only the readable names must not need to know any
+   * identifier for a record the platform already holds.
+   */
+  test('resolves a package made from the shipped template when only readable names are filled in', async () => {
+    const seed = records();
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      packageFromShippedTemplate(),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+    expect(fixture.state).toBe('resolved');
+    expect(fixture.canonicalId).toBe(seed.singleFixtureId);
+    expect(fixture.matchedBy).toBe('natural-key');
+
+    expect(outcomeAt(resolution, 'fixtures.0.innings.0').canonicalId).toBe(seed.firstInningsId);
+    expect(resolution.items).toHaveLength(1);
+    expect(resolution.items[0]?.state).toBe('resolved');
+  });
+
+  /**
+   * Templates downloaded before #500 carry this placeholder fixture identifier,
+   * and copies already on submitters' machines keep it. Only the cricsheet
+   * namespace is ever compared, so the placeholder can never resolve; section 3.7
+   * already treats such an identifier as ignored when a readable key is present.
+   */
+  test('ignores a fixture source identifier from another namespace when readable fixture context is supplied', async () => {
+    const seed = records();
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: 'replace-with-provider:fixture:stable-fixture-id',
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+    expect(fixture.state).toBe('resolved');
+    expect(fixture.canonicalId).toBe(seed.singleFixtureId);
+    expect(fixture.matchedBy).toBe('natural-key');
+    expect(fixture.reason).toContain('ignored');
+    expect(fixture.reason).toContain('replace-with-provider');
+    expect(resolution.items[0]?.state).toBe('resolved');
+  });
+
+  test('keeps resolving an application fixture identifier exactly when readable context is also supplied', async () => {
+    // #480 made `app:fixture:<id>` a compared namespace. The #500 rule for
+    // identifiers that can never resolve must not discard it in favour of the
+    // natural key, even though the date and teams would also match.
+    const seed = records();
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `app:fixture:${seed.singleFixtureId}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+    expect(fixture.state).toBe('resolved');
+    expect(fixture.canonicalId).toBe(seed.singleFixtureId);
+    expect(fixture.matchedBy).toBe('application-id');
+    expect(fixture.reason ?? '').not.toContain('ignored');
+  });
+
+  test('still stages an unknown cricsheet fixture identifier even when readable context is supplied', async () => {
+    // A comparable identifier that matches nothing is "not found this time", not
+    // "can never resolve". It stays staged rather than silently falling back.
+    const resolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        {
+          sourceId: `cricsheet:fixture:${prefix}-not-stored`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+        },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    const fixture = outcomeAt(resolution, 'fixtures.0');
+    expect(fixture.state).toBe('unresolved');
+    expect(fixture.canonicalId).toBeNull();
+    expect(fixture.reason).toContain('No fixture carries');
   });
 
   test('stages a participant whose source reference names someone outside the resolved squad', async () => {
