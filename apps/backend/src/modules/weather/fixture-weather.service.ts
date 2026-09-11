@@ -150,11 +150,7 @@ export function createFixtureWeatherService(
         latitude = resolved.latitude;
         longitude = resolved.longitude;
 
-        await persistVenueCoordinates(
-          context.venue.venueId,
-          latitude,
-          longitude,
-        );
+        await persistVenueCoordinates(context.venue.venueId, latitude, longitude);
       }
 
       const resolvedCoordinates = {

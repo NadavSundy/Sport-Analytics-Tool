@@ -32,7 +32,6 @@ export interface FixtureWeatherContextRecord {
   } | null;
 }
 
-
 export interface FixtureListOptions {
   limit: number;
   competitionId?: string;

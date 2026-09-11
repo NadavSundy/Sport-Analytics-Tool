@@ -180,22 +180,21 @@ describe('fixture weather API', () => {
     });
   });
 
-test.each([
-  [new WeatherUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
-  [new WeatherTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
-  [new LocationGeocodingUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
-  [new LocationGeocodingTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
-])('maps a weather or geocoding provider failure safely', async (error, status, code) => {
-  const app = createApp(
-    createService({
-      async getFixtureWeather() {
-        throw error;
-      },
-    }),
-  );
+  test.each([
+    [new WeatherUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
+    [new WeatherTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
+    [new LocationGeocodingUpstreamError('provider error'), 502, 'UPSTREAM_ERROR'],
+    [new LocationGeocodingTimeoutError(), 504, 'UPSTREAM_TIMEOUT'],
+  ])('maps a weather or geocoding provider failure safely', async (error, status, code) => {
+    const app = createApp(
+      createService({
+        async getFixtureWeather() {
+          throw error;
+        },
+      }),
+    );
 
-  const response = await request(app).get('/api/v1/fixtures/17/weather').expect(status);
-  expect(response.body.error.code).toBe(code);
-});
-
+    const response = await request(app).get('/api/v1/fixtures/17/weather').expect(status);
+    expect(response.body.error.code).toBe(code);
+  });
 });

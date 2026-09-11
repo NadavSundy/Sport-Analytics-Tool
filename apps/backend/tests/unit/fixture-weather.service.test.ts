@@ -113,22 +113,12 @@ describe('fixture weather service', () => {
       persistVenueCoordinates,
     ).getFixtureWeather('17');
 
-    expect(geocoding.resolve).toHaveBeenCalledWith(
-      'Wits Cricket Oval, Johannesburg',
-    );
+    expect(geocoding.resolve).toHaveBeenCalledWith('Wits Cricket Oval, Johannesburg');
     expect(geocoding.resolve).toHaveBeenCalledTimes(1);
 
-    expect(persistVenueCoordinates).toHaveBeenCalledWith(
-      '5',
-      -26.1929,
-      28.0305,
-    );
+    expect(persistVenueCoordinates).toHaveBeenCalledWith('5', -26.1929, 28.0305);
 
-    expect(getWeather).toHaveBeenCalledWith(
-      -26.1929,
-      28.0305,
-      '2026-08-19',
-    );
+    expect(getWeather).toHaveBeenCalledWith(-26.1929, 28.0305, '2026-08-19');
 
     expect(result).toMatchObject({
       availability: 'available',
@@ -150,12 +140,10 @@ describe('fixture weather service', () => {
 
     const geocoding = geocodingService();
 
-    vi.mocked(geocoding.resolve)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        latitude: -1.9501,
-        longitude: 30.0588,
-      });
+    vi.mocked(geocoding.resolve).mockResolvedValueOnce(null).mockResolvedValueOnce({
+      latitude: -1.9501,
+      longitude: 30.0588,
+    });
 
     const persistVenueCoordinates = vi.fn().mockResolvedValue(undefined);
 
@@ -185,11 +173,7 @@ describe('fixture weather service', () => {
       'Gahanga International Cricket Stadium, Rwanda',
     );
 
-    expect(persistVenueCoordinates).toHaveBeenCalledWith(
-      '5',
-      -1.9501,
-      30.0588,
-    );
+    expect(persistVenueCoordinates).toHaveBeenCalledWith('5', -1.9501, 30.0588);
 
     expect(result).toMatchObject({
       availability: 'available',
@@ -223,15 +207,9 @@ describe('fixture weather service', () => {
       reason: 'LOCATION_NOT_FOUND',
     });
 
-    expect(geocoding.resolve).toHaveBeenNthCalledWith(
-      1,
-      'Wits Cricket Oval, Johannesburg',
-    );
+    expect(geocoding.resolve).toHaveBeenNthCalledWith(1, 'Wits Cricket Oval, Johannesburg');
 
-    expect(geocoding.resolve).toHaveBeenNthCalledWith(
-      2,
-      'Wits Cricket Oval',
-    );
+    expect(geocoding.resolve).toHaveBeenNthCalledWith(2, 'Wits Cricket Oval');
 
     expect(persistVenueCoordinates).not.toHaveBeenCalled();
     expect(weather.getWeather).not.toHaveBeenCalled();
@@ -264,9 +242,7 @@ describe('fixture weather service', () => {
         persistVenueCoordinates,
       );
 
-      await expect(service.getFixtureWeather('17')).rejects.toThrow(
-        error.message,
-      );
+      await expect(service.getFixtureWeather('17')).rejects.toThrow(error.message);
 
       expect(persistVenueCoordinates).not.toHaveBeenCalled();
       expect(weather.getWeather).not.toHaveBeenCalled();
@@ -327,18 +303,11 @@ describe('fixture weather service', () => {
     const weather = weatherService();
     const findContext = vi.fn().mockResolvedValue(null);
 
-    const service = createFixtureWeatherService(
-      weather,
-      findContext,
-    );
+    const service = createFixtureWeatherService(weather, findContext);
 
-    await expect(
-      service.getFixtureWeather('not-an-id'),
-    ).resolves.toBeNull();
+    await expect(service.getFixtureWeather('not-an-id')).resolves.toBeNull();
 
-    await expect(
-      service.getFixtureWeather('999'),
-    ).resolves.toBeNull();
+    await expect(service.getFixtureWeather('999')).resolves.toBeNull();
 
     expect(findContext).toHaveBeenCalledTimes(1);
     expect(weather.getWeather).not.toHaveBeenCalled();
