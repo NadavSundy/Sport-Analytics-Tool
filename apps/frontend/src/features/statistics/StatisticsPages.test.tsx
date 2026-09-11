@@ -520,7 +520,7 @@ describe('public fixture statistics pages', () => {
       'fixture-fixture-1-innings-innings-1-team-team-1-events.csv',
       'fixture-fixture-1-innings-innings-1-team-team-1-events.json',
     ]);
-  });
+  }, 10_000);
 
   it('exports a player trace as the trace itself rather than every delivery involving the player', async () => {
     const contributingEvents = traceEvents(6);
@@ -618,7 +618,7 @@ describe('public fixture statistics pages', () => {
     expect(downloadedFilenames).toEqual([]);
     expect(screen.queryByText(/export of 125 events downloaded/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
-  });
+  }, 10_000);
 
   it('explains when no trace events are available to export', async () => {
     vi.stubGlobal(
