@@ -293,12 +293,9 @@ describe('direct event submission API', () => {
     expect(service.submit).not.toHaveBeenCalled();
   });
 
-  test('accepts and reports provenance for an in-scope submitter', async () => {
+  test('blocks an in-scope submitter from the legacy synchronous endpoint', async () => {
     const service = mockSubmissionService();
-    const account = createTestAccount({
-      role: 'submitter',
-      competitionIds: ['5'],
-    });
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
 
     const response = await request(
       createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
@@ -306,31 +303,15 @@ describe('direct event submission API', () => {
       .post('/api/v1/submissions')
       .set('Authorization', 'Bearer approved-token')
       .send(validPayload)
-      .expect(201);
+      .expect(403);
 
-    expect(service.submit).toHaveBeenCalledWith(
-      account,
-      expect.objectContaining({
-        fixtureId: '7',
-        schemaVersion: '1.0',
-      }),
-    );
-    expect(response.body).toEqual({
-      data: {
-        submissionId: '30',
-        fixtureId: '7',
-        submitterId: '1',
-        status: 'accepted',
-        receivedAt: '2026-08-13T16:00:00.000Z',
-        schemaVersion: '1.0',
-        eventCount: 1,
-      },
-    });
+    expect(response.body.error.code).toBe('FORBIDDEN');
+    expect(service.submit).not.toHaveBeenCalled();
   });
 
   test('normalises an uploaded JSON file through the direct submission contract', async () => {
     const service = mockSubmissionService();
-    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+    const account = createTestAccount({ role: 'admin' });
 
     await request(
       createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
@@ -355,7 +336,7 @@ describe('direct event submission API', () => {
 
   test('normalises an uploaded CSV file through the direct submission contract', async () => {
     const service = mockSubmissionService();
-    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+    const account = createTestAccount({ role: 'admin' });
 
     await request(
       createTestApp(acceptToken, undefined, synchronizeWith(account), undefined, service),
@@ -383,7 +364,7 @@ describe('direct event submission API', () => {
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        synchronizeWith(createTestAccount({ role: 'admin' })),
         undefined,
         service,
       ),
@@ -409,7 +390,7 @@ describe('direct event submission API', () => {
     const app = createTestApp(
       acceptToken,
       undefined,
-      synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      synchronizeWith(createTestAccount({ role: 'admin' })),
       undefined,
       service,
     );
@@ -447,7 +428,7 @@ describe('direct event submission API', () => {
     expect(service.submit).not.toHaveBeenCalled();
   });
 
-  test('enforces competition scope for an uploaded submission in the shared service', async () => {
+  test('blocks a submitter from the legacy synchronous upload endpoint', async () => {
     const storeAcceptedSubmission = vi.fn<SubmissionRepository['storeAcceptedSubmission']>();
     const service = createSubmissionService({
       async findFixtureScope() {
@@ -652,7 +633,7 @@ describe('direct event submission API', () => {
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(createTestAccount({ role: 'submitter' })),
+        synchronizeWith(createTestAccount({ role: 'admin' })),
         undefined,
         service,
       ),
@@ -687,7 +668,7 @@ describe('direct event submission API', () => {
     const app = createTestApp(
       acceptToken,
       undefined,
-      synchronizeWith(createTestAccount({ role: 'submitter' })),
+      synchronizeWith(createTestAccount({ role: 'admin' })),
       undefined,
       service,
     );
@@ -716,7 +697,7 @@ describe('direct event submission API', () => {
     const app = createTestApp(
       acceptToken,
       undefined,
-      synchronizeWith(createTestAccount({ role: 'submitter' })),
+      synchronizeWith(createTestAccount({ role: 'admin' })),
       undefined,
       service,
     );
@@ -770,8 +751,7 @@ describe('direct event submission API', () => {
         undefined,
         synchronizeWith(
           createTestAccount({
-            role: 'submitter',
-            competitionIds: ['5'],
+            role: 'admin',
           }),
         ),
         undefined,
@@ -832,7 +812,7 @@ describe('direct event submission API', () => {
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        synchronizeWith(createTestAccount({ role: 'admin' })),
         undefined,
         service,
       ),
@@ -858,7 +838,7 @@ describe('direct event submission API', () => {
       createTestApp(
         acceptToken,
         undefined,
-        synchronizeWith(createTestAccount({ role: 'submitter' })),
+        synchronizeWith(createTestAccount({ role: 'admin' })),
         undefined,
         service,
       ),

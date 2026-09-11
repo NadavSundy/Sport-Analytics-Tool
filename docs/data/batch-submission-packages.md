@@ -95,6 +95,30 @@ Resolution occurs after durable receipt and before shared per-event validation:
 These rules account for shared player names and historical aliases while keeping package creation
 usable for submitters who understand the source data but not the application database.
 
+## Correction items
+
+JSON, CSV and NDJSON event records use the same correction fields. Set
+`operation` to `correction`, give the replacement its own stable `eventId`, and
+set `correctsEventId` to the exact stable source identity of the published
+delivery being corrected. An ordinary event either omits `operation` or uses
+`upsert`, and must not include `correctsEventId`.
+
+The worker retains both fields on the staged item and resolves the target in a
+single bounded query per validation chunk. Exactly one current published
+delivery must carry the target source identity, and that delivery must belong to
+the item's declared fixture and the batch competition. Validation reports use
+`CORRECTION_TARGET_NOT_FOUND`, `CORRECTION_TARGET_AMBIGUOUS`,
+`CORRECTION_TARGET_WRONG_FIXTURE`, or
+`CORRECTION_TARGET_WRONG_COMPETITION` when those conditions are not met.
+
+Changed cricket content is expected for a valid correction. Reviewer approval
+creates a new immutable revision of the target event, retains its occurrence
+sequence and original source provenance, supersedes the previous current
+revision, records correction/reviewer history, and marks affected statistic
+scopes for refresh. Retried publication observes the already-published batch
+item and does not add another revision. Upsert duplicate/conflict semantics do
+not change.
+
 The receipt API resolves the batch's human-selected competition before it creates the database
 batch and verifies it against the submitter's server-owned scope. During worker expansion, only
 events with a resolved canonical innings become `batch_item` rows. Parse failures and unresolved
