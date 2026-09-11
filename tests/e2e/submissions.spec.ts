@@ -299,8 +299,8 @@ test('file validation identifies a rejected CSV row and returns focus to the res
           details: [
             {
               code: 'INVALID_FILE_ROW',
-              message: 'CSV row 2 is invalid.',
-              field: 'file',
+              message: 'Expected number, received string',
+              field: 'events.0.runs.total',
               eventIndex: 0,
             },
           ],
@@ -319,7 +319,9 @@ test('file validation identifies a rejected CSV row and returns focus to the res
   await page.getByRole('button', { name: 'Upload fixture package' }).click();
 
   await expect(page.getByRole('heading', { name: 'Submission rejected' })).toBeFocused();
-  await expect(page.getByText(/Row 1.*file/)).toBeVisible();
+  await expect(page.getByText('Row 1 — Total runs')).toBeVisible();
+  await expect(page.getByText('Use a number here instead of text.')).toBeVisible();
+  await expect(page.getByText('Technical details')).toBeVisible();
   await expect(fileInput).toHaveAttribute('aria-invalid', 'true');
 });
 
@@ -518,6 +520,13 @@ test(
     );
 
     await page.getByRole('link', { name: 'Track validation and errors' }).click();
+    await expect(page.getByText('More than one match was found (1)')).toBeVisible();
+    await expect(
+      page.getByText(
+        'More than one participant is named A. Smith. Choose the correct match before continuing.',
+      ),
+    ).toBeVisible();
+    await expect(page.getByText('Technical validation details')).toBeVisible();
     await expect(page.getByLabel('Choose the matching participant')).toHaveValue(
       '223e4567-e89b-42d3-a456-426614174000',
     );

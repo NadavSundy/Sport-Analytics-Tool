@@ -258,9 +258,81 @@ describe('batch report view', () => {
     expect(screen.getByText(/Correction target:/)).toHaveTextContent(
       'cricsheet:delivery:100-original (published delivery 88)',
     );
-    expect(screen.getByText(/Source: events.csv, row 3, striker/)).toBeInTheDocument();
+    expect(screen.getByText(/Source: events.csv, row 3, Striker/)).toBeInTheDocument();
     expect(screen.getByText(/Choose a known striker reference/)).toBeInTheDocument();
   });
+
+  test(
+    'presents validation failures in plain language while retaining technical details',
+    async () => {
+      const body = report(0, 1);
+      body.data.errorGroups = [{ ruleCode: 'EVENT_SCHEMA_INVALID', count: 1 }];
+      body.data.items = [
+        {
+          ordinal: 0,
+          outcome: 'rejected',
+          location: {
+            filePath: 'events.csv',
+            sheetName: null,
+            rowNumber: 2,
+            jsonPath: 'runs.total',
+            ordinal: 0,
+          },
+          context: {
+            eventReference: 'event-1',
+            fixtureId: '12',
+            fixtureLabel: 'Lions vs Bears · 2026-09-01',
+            inningsId: '8',
+            overNumber: 4,
+            positionInOver: 2,
+            description: 'Event event-1 at over 4, delivery 2.',
+          },
+          stagedRecordId: '41',
+          acceptedRecordId: null,
+          operation: 'upsert',
+          correctionTarget: null,
+          referenceResolutions: [],
+          errors: [
+            {
+              ruleCode: 'EVENT_SCHEMA_INVALID',
+              message: 'Runs total does not match its components.',
+              location: {
+                filePath: 'events.csv',
+                sheetName: null,
+                rowNumber: 2,
+                jsonPath: 'runs.total',
+                ordinal: 0,
+              },
+              context: {
+                eventReference: 'event-1',
+                fixtureId: '12',
+                fixtureLabel: 'Lions vs Bears · 2026-09-01',
+                inningsId: '8',
+                overNumber: 4,
+                positionInOver: 2,
+                description: 'Event event-1 at over 4, delivery 2.',
+              },
+            },
+          ],
+        },
+      ];
+
+      vi.stubGlobal('fetch', reportFetch(body));
+      await renderReport();
+
+      expect(await screen.findByText('Event data needs correction (1)')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Runs total does not match its components. Check this source value and correct it before resubmitting.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Source: events.csv, row 2, Total runs/)).toBeInTheDocument();
+      expect(screen.getAllByText('Technical details').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('EVENT_SCHEMA_INVALID', { selector: 'code' }).length,
+      ).toBeGreaterThan(0);
+    },
+  );
 
   test('maps an ambiguous reference through readable labeled controls', async () => {
     const body = report(0, 1);
@@ -348,7 +420,7 @@ describe('batch report view', () => {
       'Alex Smith — Wanderers, 2026/27',
     );
     expect(
-      screen.getByRole('link', { name: /Go to deliveries.csv, sheet Events, row 18, striker/ }),
+      screen.getByRole('link', { name: /Go to deliveries.csv, sheet Events, row 18, Striker/ }),
     ).toHaveAttribute('href', '#batch-item-4-source');
     fireEvent.click(screen.getByRole('button', { name: 'Use selected match' }));
 
