@@ -88,7 +88,7 @@ describe('versioned season-upload contract', () => {
         ],
       }).success,
     ).toBe(false);
-    for (const field of [
+    const requiredFields = [
       'endDate',
       'matchType',
       'teamType',
@@ -97,7 +97,8 @@ describe('versioned season-upload contract', () => {
       'outcome',
       'sourceVersion',
       'sourceRevision',
-    ]) {
+    ] as const satisfies readonly (keyof typeof fixtureProposal)[];
+    for (const field of requiredFields) {
       const { [field]: _missing, ...incompleteProposal } = fixtureProposal;
       expect(
         seasonUploadPackageSchema.safeParse({
