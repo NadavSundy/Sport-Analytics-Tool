@@ -1,9 +1,8 @@
 # Direct event submissions
 
-`POST /api/v1/submissions` accepts JSON from an authenticated account whose server-owned role is
-`submitter` or `admin`. The backend
-looks up the fixture's competition. An ordinary `submitter` must have that competition in its
-server-owned scope; an `admin` may submit for any eligible competition without a scope assignment.
+`POST /api/v1/submissions` is a privileged legacy/import endpoint restricted to authenticated
+`admin` accounts. Ordinary submitters cannot use this synchronous path because submitter-provided
+event data must pass through the staged batch validation and review lifecycle before publication.
 Client-supplied roles or scope values are ignored.
 
 The current schema version is `1.0`. A request contains one fixture and 1–1,000 ordered cricket
@@ -69,8 +68,7 @@ and zero-based event-array position. A globally unique event UUID protects again
 or replay. If any event is invalid or conflicts, the transaction rolls back and stores neither the
 submission nor any of its events.
 
-Responses are `401` for missing or invalid authentication, `403` for a viewer or an ordinary
-submitter outside its scope, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for
+Responses are `401` for missing or invalid authentication, `403` for any non-administrator, `409` for event conflicts, `413` above the 1 MB JSON limit, `422` for
 contract or reference validation, and `429` after 30 requests from one account in 60 seconds.
 Validation details include a field path and `eventIndex` where applicable.
 
@@ -87,13 +85,14 @@ required. The interface displays upload progress and the durable receipt, and li
 report where background validation, source-row errors and ambiguous-reference mapping remain
 available after navigation.
 
-The direct endpoint below remains available for integrations that already use the canonical
-identifier-based submission contract. It is exposed in the interface only through the advanced
-technical JSON editor; its canonical CSV shape is not the downloadable guided-workflow template.
+The advanced technical JSON editor preserves the canonical identifier-based input format. For an
+ordinary submitter, the browser converts that input to a batch package using explicit `app:*`
+application references and uploads it to `POST /api/v1/batches`, so it receives a durable receipt and
+must pass review before publication. Administrators retain the synchronous direct endpoint only as a
+clearly privileged import path.
 
-`POST /api/v1/submissions/uploads` accepts one multipart form-data field named `file` from an
-authenticated `submitter` or `admin`. A submitter must be in scope, while an administrator may upload
-for any eligible competition without a scope assignment. It accepts only a `.json` file with
+`POST /api/v1/submissions/uploads` is likewise restricted to authenticated administrators and exists
+only for legacy/internal imports. Normal submitter file uploads use `POST /api/v1/batches`. It accepts only a `.json` file with
 `application/json` media type or a `.csv` file with `text/csv` media type, and limits the file to
 1 MB (the `MAX_SUBMISSION_UPLOAD_BYTES` limit exported by `@sport-analytics/contracts`). Both formats are normalised into the same `fixtureId`, `schemaVersion`, and ordered `events`
 contract shown above before the existing scope, cricket-rule, reference, replay, and transaction

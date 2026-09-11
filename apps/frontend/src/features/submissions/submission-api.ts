@@ -9,13 +9,6 @@ import {
 import type { AuthenticatedApiClient } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
 
-class SubmissionInterfaceContractError extends Error {
-  constructor() {
-    super('The API returned an unexpected response. Please try again.');
-    this.name = 'SubmissionInterfaceContractError';
-  }
-}
-
 export class SubmissionInputError extends Error {
   constructor(message: string) {
     super(message);
@@ -90,7 +83,89 @@ export async function listScopedFixtures(
   );
 }
 
-export async function submitEvents(
+export function createTechnicalBatchFile(
+  fixture: Fixture,
+  eventJson: string,
+  packageKey: string,
+): File {
+  let events: unknown;
+
+  try {
+    events = JSON.parse(eventJson) as unknown;
+  } catch {
+    throw new SubmissionInputError('Enter valid JSON before submitting.');
+  }
+
+  const acceptedPayload = submissionRequestSchema.safeParse({
+    fixtureId: fixture.fixtureId,
+    schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+    events,
+  });
+
+  if (!acceptedPayload.success) {
+    const issue = acceptedPayload.error.issues[0];
+    throw new SubmissionInputError(issue?.message ?? 'The technical JSON is invalid.');
+  }
+
+  if (!fixture.competitionId || !fixture.competitionName) {
+    throw new SubmissionInputError('Select an available fixture before submitting.');
+  }
+
+  const innings = new Map<string, SubmissionEvent[]>();
+  for (const event of acceptedPayload.data.events) {
+    const group = innings.get(event.inningsId) ?? [];
+    group.push(event);
+    innings.set(event.inningsId, group);
+  }
+
+  const participant = (participantId: string) => ({
+    sourceId: `app:participant:${participantId}`,
+  });
+
+  const packagePayload = {
+    contractVersion: '1.0',
+    packageId: `app:package:${packageKey}`,
+    competition: { context: { name: fixture.competitionName } },
+    season: { context: { name: fixture.season } },
+    fixtures: [
+      {
+        sourceId: `app:fixture:${fixture.fixtureId}`,
+        innings: [...innings.entries()].map(([inningsId, inningsEvents]) => ({
+          sourceId: `app:innings:${inningsId}`,
+          events: inningsEvents.map((event) => ({
+            eventId: `app:delivery:${event.eventId}`,
+            occurrenceSequence: event.sequenceNumber,
+            overNumber: event.overNumber,
+            positionInOver: event.positionInOver,
+            ballLabel: event.ballNumber,
+            operation: 'upsert' as const,
+            striker: participant(event.strikerId),
+            nonStriker: participant(event.nonStrikerId),
+            bowler: participant(event.bowlerId),
+            runs: event.runs,
+            extras: event.extras,
+            wickets: event.wickets.map((wicket) => ({
+              kind: wicket.kind,
+              playerOut: participant(wicket.playerOutId),
+              fielders: wicket.fielders.map((fielder) => ({
+                ...(fielder.participantId
+                  ? { participant: participant(fielder.participantId) }
+                  : {}),
+                substitute: fielder.substitute,
+              })),
+            })),
+          })),
+        })),
+      },
+    ],
+  };
+
+  return new File([JSON.stringify(packagePayload)], `technical-${fixture.fixtureId}.json`, {
+    type: 'application/json',
+  });
+}
+
+export async function submitLegacyAdminEvents(
   client: AuthenticatedApiClient,
   fixtureId: string,
   eventJson: string,
@@ -103,25 +178,25 @@ export async function submitEvents(
     throw new SubmissionInputError('Enter valid JSON before submitting.');
   }
 
-  if (!Array.isArray(events)) {
-    throw new SubmissionInputError('The event JSON must be an array of delivery events.');
-  }
-
   const payload = {
     fixtureId,
     schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
-    events: events as SubmissionEvent[],
+    events,
   };
+  const acceptedPayload = submissionRequestSchema.safeParse(payload);
+  if (!acceptedPayload.success) {
+    const issue = acceptedPayload.error.issues[0];
+    throw new SubmissionInputError(issue?.message ?? 'The technical JSON is invalid.');
+  }
+
   const response = await client.request<unknown>('/submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(acceptedPayload.data),
   });
   const parsed = submissionResponseSchema.safeParse(response);
-  const acceptedPayload = submissionRequestSchema.safeParse(payload);
-
-  if (!parsed.success || !acceptedPayload.success) {
-    throw new SubmissionInterfaceContractError();
+  if (!parsed.success) {
+    throw new Error('The direct submission API returned an invalid response.');
   }
 
   return { response: parsed.data, events: acceptedPayload.data.events };
