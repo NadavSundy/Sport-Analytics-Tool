@@ -321,6 +321,20 @@ export interface BatchRepository {
     resumePublication: boolean;
   }>;
   queueReferenceMapping(input: QueueReferenceMappingInput): Promise<BatchReferenceMappingRecord>;
+  createCanonicalFixtureAndQueueMapping(input: {
+    batchId: string;
+    batchReference: string;
+    competitionId: string;
+    actorId: string;
+    itemOrdinal: number;
+    referencePath: string;
+    decisionKey: string;
+    sourceRef: string;
+    season: string;
+    startDate: string;
+    teamNames: string[];
+    proposal: Record<string, unknown>;
+  }): Promise<BatchReferenceMappingRecord>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
   publishAcceptedItems(batchId: string, workerId: string): Promise<BatchPublicationResult>;
@@ -1692,6 +1706,86 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         state: row.state,
         decidedAt: row.decidedAt.toISOString(),
       };
+    },
+
+    async createCanonicalFixtureAndQueueMapping(input) {
+      if (!executor)
+        return withTransaction(getDatabasePool(), (client) =>
+          createBatchRepository(client).createCanonicalFixtureAndQueueMapping(input),
+        );
+      const existing = await executeQuery<{ fixtureId: string }>(
+        executor,
+        `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1 FOR UPDATE`,
+        [input.sourceRef],
+      );
+      let fixtureId = existing.rows[0]?.fixtureId;
+      if (!fixtureId) {
+        const teams = await executeQuery<{ teamId: string }>(
+          executor,
+          `SELECT team_id::text AS "teamId" FROM team WHERE name = ANY($1::text[])`,
+          [input.teamNames],
+        );
+        if (teams.rows.length !== 2)
+          throw new BatchReferenceMappingConflictError(
+            'Both proposed fixture teams must already be canonical records.',
+          );
+        const proposal = input.proposal;
+        const inserted = await executeQuery<{ fixtureId: string }>(
+          executor,
+          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,source_version,source_revision)
+           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11,$12::int)
+           ON CONFLICT (source_ref) DO NOTHING RETURNING fixture_id::text AS "fixtureId"`,
+          [
+            input.sourceRef,
+            input.competitionId,
+            input.season,
+            proposal.matchType,
+            proposal.teamType,
+            proposal.gender,
+            proposal.ballsPerOver,
+            input.startDate,
+            proposal.endDate,
+            proposal.outcome,
+            proposal.sourceVersion,
+            proposal.sourceRevision,
+          ],
+        );
+        fixtureId = inserted.rows[0]?.fixtureId;
+        if (!fixtureId)
+          fixtureId = (
+            await executeQuery<{ fixtureId: string }>(
+              executor,
+              `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1`,
+              [input.sourceRef],
+            )
+          ).rows[0]?.fixtureId;
+        if (!fixtureId)
+          throw new BatchReferenceMappingConflictError('The fixture could not be created.');
+        await executeQuery(
+          executor,
+          `INSERT INTO fixture_team (fixture_id,team_id,ordinal)
+          SELECT $1::bigint, team_id, ordinal FROM unnest($2::text[]) WITH ORDINALITY AS proposed(name,ordinal)
+          JOIN team ON team.name=proposed.name ON CONFLICT DO NOTHING`,
+          [fixtureId, input.teamNames],
+        );
+      }
+      await executeQuery(
+        executor,
+        `INSERT INTO batch_canonical_fixture_decision (batch_id,reference_path,fixture_id,actor_id)
+        VALUES ($1::bigint,$2,$3::bigint,$4::bigint) ON CONFLICT (batch_id,reference_path) DO NOTHING`,
+        [input.batchId, input.referencePath, fixtureId, input.actorId],
+      );
+      return createBatchRepository(executor).queueReferenceMapping({
+        decisionReference: randomUUID(),
+        batchId: input.batchId,
+        actorId: input.actorId,
+        itemOrdinal: input.itemOrdinal,
+        referencePath: input.referencePath,
+        entityType: 'fixture',
+        candidateId: fixtureId,
+        candidateLabel: `Canonical fixture ${fixtureId}`,
+        decisionKey: input.decisionKey,
+      });
     },
 
     async applyReferenceResolution(updates) {

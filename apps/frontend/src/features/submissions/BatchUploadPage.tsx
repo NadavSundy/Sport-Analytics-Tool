@@ -2,7 +2,6 @@ import type {
   BatchReceiptResponse,
   Competition,
   CurrentUserProfile,
-  Season,
 } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -10,7 +9,12 @@ import { Link } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
+import {
+  batchUploadIdempotencyKey,
+  BatchUploadInputError,
+  MAX_BATCH_BYTES,
+  uploadBatch,
+} from './batch-api';
 
 type AccessState =
   | { kind: 'loading' }
@@ -49,23 +53,6 @@ async function competitionOptions(profile: CurrentUserProfile, signal: AbortSign
   return competitions.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-async function seasonOptions(competitionId: string, signal: AbortSignal): Promise<Season[]> {
-  const seasons: Season[] = [];
-  let cursor: string | null = null;
-  do {
-    const parameters = new URLSearchParams({ competitionId, limit: '100' });
-    if (cursor) parameters.set('cursor', cursor);
-    const response = await publicReadApi.listSeasons(`?${parameters.toString()}`, signal);
-    seasons.push(...response.data);
-    cursor = response.pagination.nextCursor;
-  } while (cursor);
-  return seasons.sort((left, right) => right.label.localeCompare(left.label));
-}
-
-function newDecisionKey() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-}
-
 export type PackageUploadScope = 'season' | 'catalogue';
 
 export function BatchUploadWorkflow({
@@ -78,13 +65,7 @@ export function BatchUploadWorkflow({
   const client = useAuthenticatedApiClient();
   const [access, setAccess] = useState<AccessState>({ kind: 'loading' });
   const [competitionId, setCompetitionId] = useState('');
-  const [seasons, setSeasons] = useState<Season[]>([]);
-  const [seasonState, setSeasonState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>(
-    'idle',
-  );
-  const [seasonId, setSeasonId] = useState('package');
   const [file, setFile] = useState<File | null>(null);
-  const [decisionKey, setDecisionKey] = useState(newDecisionKey);
   const [upload, setUpload] = useState<UploadState>({ kind: 'idle' });
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -105,30 +86,6 @@ export function BatchUploadWorkflow({
   }, [profile]);
 
   useEffect(() => {
-    if (!competitionId || scope === 'catalogue') {
-      setSeasons([]);
-      setSeasonState('idle');
-      setSeasonId('package');
-      return;
-    }
-    const controller = new AbortController();
-    setSeasonState('loading');
-    setSeasonId('package');
-    void seasonOptions(competitionId, controller.signal)
-      .then((options) => {
-        setSeasons(options);
-        setSeasonState('ready');
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setSeasons([]);
-          setSeasonState('unavailable');
-        }
-      });
-    return () => controller.abort();
-  }, [competitionId, scope]);
-
-  useEffect(() => {
     if (upload.kind === 'accepted' || upload.kind === 'error') {
       resultRef.current?.querySelector<HTMLElement>('[data-upload-result]')?.focus();
     }
@@ -146,18 +103,22 @@ export function BatchUploadWorkflow({
     }
     setUpload({ kind: 'uploading' });
     try {
-      const response = await uploadBatch(client, competitionId, file, decisionKey);
+      const response = await uploadBatch(
+        client,
+        competitionId,
+        file,
+        await batchUploadIdempotencyKey(competitionId, file),
+      );
       const competition =
         access.kind === 'ready'
           ? access.competitions.find((option) => option.competitionId === competitionId)
           : undefined;
-      const season = seasons.find((option) => option.seasonId === seasonId);
       setUpload({
         kind: 'accepted',
         receipt: response.data,
         context:
           scope === 'season'
-            ? `${competition?.name ?? 'Selected competition'} · ${season?.label ?? 'season named in package'}`
+            ? `${competition?.name ?? 'Selected competition'} · season named in package`
             : `${competition?.name ?? 'Selected competition'} · seasons named in package`,
       });
     } catch (error) {
@@ -248,29 +209,10 @@ export function BatchUploadWorkflow({
           </div>
 
           {scope === 'season' ? (
-            <div className="submission-field">
-              <label htmlFor="batch-season">Season context</label>
-              <select
-                id="batch-season"
-                value={seasonId}
-                disabled={busy || seasonState === 'loading'}
-                onChange={(event) => setSeasonId(event.target.value)}
-              >
-                <option value="package">New or historical season named in the package</option>
-                {seasons.map((season) => (
-                  <option value={season.seasonId} key={season.seasonId}>
-                    {season.label} — {season.competitionName}
-                  </option>
-                ))}
-              </select>
-              <p className="field-help" role={seasonState === 'unavailable' ? 'status' : undefined}>
-                {seasonState === 'loading'
-                  ? 'Loading known seasons…'
-                  : seasonState === 'unavailable'
-                    ? 'Known seasons are unavailable. You can still use the readable season name in your package.'
-                    : 'This label helps confirm context; the package season is validated during processing.'}
-              </p>
-            </div>
+            <p className="field-help">
+              The season name and reference inside the package are authoritative and are validated
+              during processing. Known seasons are not selected during upload.
+            </p>
           ) : (
             <p className="field-help">
               Each season is identified by its readable name inside the package.
@@ -290,14 +232,13 @@ export function BatchUploadWorkflow({
               aria-invalid={upload.kind === 'error'}
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);
-                setDecisionKey(newDecisionKey());
                 setUpload({ kind: 'idle' });
               }}
             />
             <p id="batch-file-help" className="field-help">
               JSON, CSV or NDJSON; maximum {MAX_BATCH_BYTES / 1024 / 1024} MB. Selecting a corrected
-              file starts a replacement upload. Retrying unchanged content safely reuses the same
-              request and receipt.
+              file starts a replacement upload. Retrying unchanged content, including after a page
+              refresh and reselecting the file, reuses the same request and receipt.
             </p>
             {file ? <p className="field-help">Selected: {file.name}</p> : null}
           </div>

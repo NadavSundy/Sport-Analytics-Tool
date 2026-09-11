@@ -221,6 +221,97 @@ describe('reviewer batch workspace', () => {
     vi.unstubAllGlobals();
   });
 
+  test('creates only a valid unresolved fixture proposal and refreshes the report', async () => {
+    const body = report(true);
+    body.data.items[0]!.referenceResolutions = [
+      {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'cricsheet:fixture:new-1',
+          season: { context: { name: '2026' } },
+          context: {
+            date: '2026-01-01',
+            teams: [{ context: { name: 'Wits' } }, { context: { name: 'UCT' } }],
+          },
+          proposal: {
+            endDate: '2026-01-01',
+            matchType: 'T20',
+            teamType: 'university',
+            gender: 'mixed',
+            ballsPerOver: 6,
+            outcome: 'tie',
+            sourceVersion: '1.1',
+            sourceRevision: 1,
+          },
+        },
+        reason: 'New fixture.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+    ];
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes('/auth/me')) return Promise.resolve(response(profile));
+        if (url.includes('/canonical-fixtures'))
+          return Promise.resolve(
+            response(
+              {
+                data: {
+                  batchReference: reference,
+                  decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+                  status: 'queued',
+                  statusUrl: `/api/v1/batches/${reference}`,
+                  submittedAt: '2026-09-11T12:00:00.000Z',
+                },
+              },
+              202,
+            ),
+          );
+        return Promise.resolve(response(body));
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create canonical fixture from proposal' }),
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).includes('/canonical-fixtures')),
+      ).toBe(true),
+    );
+    expect(screen.queryByText('Create canonical fixture from proposal')).toBeInTheDocument();
+  });
+
+  test('does not offer creation for an unresolved fixture without a proposal', async () => {
+    const body = report(true);
+    body.data.items[0]!.referenceResolutions = [
+      {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: { sourceId: 'cricsheet:fixture:legacy' },
+        reason: 'New fixture.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+    await screen.findByText(/New fixture\./);
+    expect(
+      screen.queryByRole('button', { name: 'Create canonical fixture from proposal' }),
+    ).not.toBeInTheDocument();
+  });
+
   test('shows the global awaiting-review queue to an administrator', async () => {
     const fetchMock = vi
       .fn()

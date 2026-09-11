@@ -551,6 +551,110 @@ describe('batch result reporting service', () => {
   });
 });
 
+describe('canonical fixture creation', () => {
+  const unresolvedFixture = {
+    batchItemId: '42',
+    batchId: persistedBatch.batchId,
+    ordinal: 1,
+    inningsId: null,
+    overNumber: 0,
+    positionInOver: 0,
+    payload: {},
+    sourceIdentity: null,
+    sourceLocation: null,
+    referenceResolutionState: 'unresolved' as const,
+    state: 'rejected' as const,
+    rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+    rejectionDetail: null,
+    publishedEventId: null,
+    errors: [],
+    resolvedReferences: {
+      fixture: {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        canonicalId: null,
+        candidates: [],
+        reason: 'New fixture.',
+        submittedReference: {
+          sourceId: 'cricsheet:fixture:new-1',
+          season: { context: { name: '2026' } },
+          context: {
+            date: '2026-01-01',
+            teams: [{ context: { name: 'Wits' } }, { context: { name: 'UCT' } }],
+          },
+          proposal: {
+            endDate: '2026-01-01',
+            matchType: 'T20',
+            teamType: 'university',
+            gender: 'mixed',
+            ballsPerOver: 6,
+            outcome: 'tie',
+            sourceVersion: '1.1',
+            sourceRevision: 1,
+          },
+        },
+      },
+    },
+  };
+
+  test('allows an administrator to create/reuse a proposed fixture and requeue validation without publication', async () => {
+    const createCanonicalFixtureAndQueueMapping = vi.fn().mockResolvedValue({
+      decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+      state: 'queued',
+      decidedAt: '2026-09-11T12:00:00.000Z',
+    });
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue({ ...persistedBatch, state: 'rejected' }),
+      listBatchItems: vi.fn().mockResolvedValue([unresolvedFixture]),
+      createCanonicalFixtureAndQueueMapping,
+    });
+    const result = await createBatchService(
+      {} as BatchPayloadStorageService,
+      batches,
+    ).createCanonicalFixture(createTestAccount({ role: 'admin' }), persistedBatch.batchReference, {
+      itemOrdinal: 1,
+      referencePath: 'fixtures.0',
+      decisionKey: 'create-fixture',
+    });
+    expect(result.data.status).toBe('queued');
+    expect(createCanonicalFixtureAndQueueMapping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        competitionId: persistedBatch.competitionId,
+        actorId: '1',
+        referencePath: 'fixtures.0',
+      }),
+    );
+    expect(batches.publishAcceptedItems).not.toHaveBeenCalled();
+  });
+
+  test('rejects non-administrators and incomplete proposals', async () => {
+    const service = createBatchService(
+      {} as BatchPayloadStorageService,
+      repository({
+        findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
+        listBatchItems: vi
+          .fn()
+          .mockResolvedValue([{ ...unresolvedFixture, resolvedReferences: {} }]),
+      }),
+    );
+    await expect(
+      service.createCanonicalFixture(
+        createTestAccount({ role: 'submitter' }),
+        persistedBatch.batchReference,
+        { itemOrdinal: 1, referencePath: 'fixtures.0', decisionKey: 'x' },
+      ),
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
+    await expect(
+      service.createCanonicalFixture(
+        createTestAccount({ role: 'admin' }),
+        persistedBatch.batchReference,
+        { itemOrdinal: 1, referencePath: 'fixtures.0', decisionKey: 'x' },
+      ),
+    ).rejects.toBeInstanceOf(BatchConflictError);
+  });
+});
+
 describe('batch review service', () => {
   const awaitingReview = { ...persistedBatch, state: 'awaiting_review' as const };
   const published = { ...persistedBatch, state: 'published' as const };

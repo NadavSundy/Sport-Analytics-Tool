@@ -9,6 +9,7 @@ import {
   type BatchListResponse,
   type BatchReceiptResponse,
   type BatchReferenceMappingRequest,
+  type BatchCanonicalFixtureRequest,
   type BatchReferenceMappingResponse,
   type BatchReportResponse,
   type BatchReviewRequest,
@@ -18,6 +19,21 @@ import {
 import type { AuthenticatedApiClient } from '../../api/client';
 
 export const MAX_BATCH_BYTES = 50 * 1024 * 1024;
+
+/** Stable for the same bytes and authorised competition, including after a page refresh. */
+export async function batchUploadIdempotencyKey(
+  competitionId: string,
+  file: File,
+): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    throw new BatchUploadInputError('This browser cannot securely identify the upload for retry.');
+  }
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  const checksum = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+  return `batch-upload:${competitionId}:${checksum}`;
+}
 
 const mediaTypesByExtension = {
   csv: 'text/csv',
@@ -63,6 +79,24 @@ export async function mapBatchReference(
   return parse(
     await client.request<unknown>(
       `/batches/${encodeURIComponent(batchReference)}/reference-mappings`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+    ),
+    batchReferenceMappingResponseSchema,
+  );
+}
+
+export async function createBatchCanonicalFixture(
+  client: AuthenticatedApiClient,
+  batchReference: string,
+  request: BatchCanonicalFixtureRequest,
+) {
+  return parse(
+    await client.request<unknown>(
+      `/batches/${encodeURIComponent(batchReference)}/canonical-fixtures`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -2013,4 +2013,78 @@ describe.sequential('batch repository database integration', () => {
       }),
     ]);
   });
+
+  test('reuses a concurrently visible canonical fixture, audits it, and only requeues validation', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-canonical`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 1 },
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 0,
+          payload: {},
+          referenceResolutionState: 'unresolved',
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+      const input = {
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'create',
+        sourceRef: `${sourcePrefix}-created`,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [`${sourcePrefix}-batting`, `${sourcePrefix}-bowling`],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie',
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+      };
+      await repository.createCanonicalFixtureAndQueueMapping(input);
+      await repository.createCanonicalFixtureAndQueueMapping(input);
+      const result = await client.query<{
+        fixtures: string;
+        batchId: string;
+        referencePath: string;
+        actorId: string;
+        state: string;
+        published: string;
+      }>(
+        `SELECT (SELECT count(*)::text FROM fixture WHERE source_ref=$1) AS fixtures, (SELECT batch_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "batchId", (SELECT reference_path FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "referencePath", (SELECT actor_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "actorId", (SELECT state::text FROM batch WHERE batch_id=$2) AS state, (SELECT count(*)::text FROM batch_item WHERE batch_id=$2 AND published_event_id IS NOT NULL) AS published`,
+        [input.sourceRef, batch.batchId],
+      );
+      expect(result.rows[0]).toEqual({
+        fixtures: '1',
+        batchId: batch.batchId,
+        referencePath: 'fixtures.0',
+        actorId: current.accountId,
+        state: 'stored',
+        published: '0',
+      });
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  FIXTURE_PROPOSAL_CONTRACT_VERSION,
   SEASON_UPLOAD_CONTRACT_VERSION,
   referenceResolutionRequirementSchema,
   seasonUploadManifestSchema,
@@ -48,6 +49,46 @@ function seasonPackage(overrides = {}) {
 }
 
 describe('versioned season-upload contract', () => {
+  test('requires a complete proposal for the canonical-creation package version', () => {
+    const fixtureProposal = {
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'university',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: 'cricsheet-1.1',
+      sourceRevision: 2,
+    };
+    const complete = seasonPackage({
+      contractVersion: FIXTURE_PROPOSAL_CONTRACT_VERSION,
+      fixtures: [
+        fixture({
+          sourceId: 'cricsheet:fixture:1412526',
+          proposal: fixtureProposal,
+        }),
+      ],
+    });
+
+    expect(seasonUploadPackageSchema.safeParse(complete).success).toBe(true);
+    expect(
+      seasonUploadPackageSchema.safeParse({
+        ...complete,
+        fixtures: [fixture({ sourceId: 'cricsheet:fixture:1412526' })],
+      }).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse({
+        ...complete,
+        fixtures: [
+          fixture({
+            sourceId: 'cricsheet:fixture:1412526',
+            proposal: { ...fixtureProposal, outcome: 'unknown' },
+          }),
+        ],
+      }).success,
+    ).toBe(false);
+  });
   test('accepts a fixture package using readable context without database keys', () => {
     const result = seasonUploadPackageSchema.safeParse(seasonPackage());
 

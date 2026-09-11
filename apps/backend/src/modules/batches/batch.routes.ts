@@ -9,6 +9,7 @@ import {
   createBatchListController,
   createBatchReceiptController,
   createBatchReferenceMappingController,
+  createBatchCanonicalFixtureController,
   createBatchReportController,
   createBatchReportDownloadController,
   createBatchReviewController,
@@ -22,6 +23,13 @@ export function createBatchRouter(
   service: BatchService,
 ): Router {
   const router = Router();
+  router.post(
+    '/batches/:batchReference/canonical-fixtures',
+    json({ limit: '16kb' }),
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireAdministrator(),
+    createBatchCanonicalFixtureController(service),
+  );
   router.post(
     '/batches',
     requireAuthentication(verifyAccessToken, synchronizeAccount),

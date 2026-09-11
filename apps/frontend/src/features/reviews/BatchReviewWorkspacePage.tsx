@@ -16,6 +16,7 @@ import {
   getBatchReport,
   listBatches,
   mapBatchReference,
+  createBatchCanonicalFixture,
   reviewBatch,
 } from '../submissions/batch-api';
 
@@ -35,6 +36,12 @@ const statusLabels: Record<BatchStatus['status'], string> = {
 
 type LoadState<T> =
   { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; value: T };
+
+function hasFixtureProposal(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as { sourceId?: unknown; proposal?: unknown };
+  return typeof record.sourceId === 'string' && !!record.proposal;
+}
 
 function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; children: ReactNode }) {
   return profile.role === 'admin' ? (
@@ -307,7 +314,34 @@ function ReferenceResolution({
             {resolution.reason ? ` · ${resolution.reason}` : ''}
           </p>
           {resolution.candidates.length === 0 ? (
-            <p>No proposed match is available. Contact a data administrator.</p>
+            <>
+              <p>No proposed match is available.</p>
+              {resolution.entityType === 'fixture' &&
+              hasFixtureProposal(resolution.submittedReference) ? (
+                <button
+                  className="button button--primary"
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setSaving(true);
+                    setFeedback(null);
+                    void createBatchCanonicalFixture(client, batchReference, {
+                      itemOrdinal: item.ordinal,
+                      referencePath: resolution.referencePath,
+                      decisionKey: `create-${batchReference}-${item.ordinal}-${resolution.referencePath}`,
+                    })
+                      .then(() => {
+                        setFeedback('Canonical fixture decision queued for validation.');
+                        return refresh();
+                      })
+                      .catch(() => setFeedback('The canonical fixture could not be created.'))
+                      .finally(() => setSaving(false));
+                  }}
+                >
+                  Create canonical fixture from proposal
+                </button>
+              ) : null}
+            </>
           ) : (
             <ul>
               {resolution.candidates.map((candidate) => (
