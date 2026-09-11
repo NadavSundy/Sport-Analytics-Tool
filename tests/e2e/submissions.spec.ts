@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { seasonUploadPackageSchema } from '@sport-analytics/contracts';
 
 const fixture = {
   fixtureId: '7',
@@ -39,6 +42,26 @@ const events = [
 ];
 
 const batchReference = '123e4567-e89b-42d3-a456-426614174000';
+
+/**
+ * The downloadable JSON template completed with readable names for the listed
+ * fixture only, as the guided page asks (#500). Every placeholder must exist, so
+ * a template change cannot quietly make the journey vacuous.
+ */
+function readableFixturePackage(): string {
+  let text = readFileSync('apps/frontend/public/season-upload-template.json', 'utf8');
+  const readableValues: [placeholder: string, value: string][] = [
+    ['"Competition name"', `"${fixture.competitionName}"`],
+    ['"2026-03-14"', `"${fixture.startDate}"`],
+    ['"Home team"', '"Wanderers"'],
+    ['"Away team"', '"Strikers"'],
+  ];
+  for (const [placeholder, value] of readableValues) {
+    expect(text).toContain(placeholder);
+    text = text.replaceAll(placeholder, value);
+  }
+  return text;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -103,6 +126,15 @@ test('the account Submit events action opens the unified submission workflow', a
   await expect(page.getByRole('radio', { name: /Back catalogue/ })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Upload a batch' })).toHaveCount(0);
+
+  // #500: the guided scopes and the identifier-based mode are separate groups,
+  // and the default guided path shows no JSON editor.
+  const guided = page.getByRole('group', { name: /Guided upload/ });
+  const advanced = page.getByRole('group', { name: /application identifiers required/ });
+  await expect(guided.getByRole('radio')).toHaveCount(3);
+  await expect(guided.getByRole('radio', { name: /Advanced technical JSON/ })).toHaveCount(0);
+  await expect(advanced.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
+  await expect(page.getByLabel('Delivery events JSON')).toHaveCount(0);
 });
 
 test('submitter completes the responsive workflow with a keyboard', async ({ page }) => {
@@ -198,11 +230,16 @@ test(
   'submitter uploads a readable fixture package and receives a durable receipt',
   { tag: '@mobile' },
   async ({ page }) => {
+    const uploadedPackage = readableFixturePackage();
     await page.route('**/api/v1/batches', async (route) => {
       expect(route.request().method()).toBe('POST');
       expect(route.request().headers().authorization).toBe('Bearer approved-e2e-token');
       expect(route.request().headers()['x-competition-id']).toBe('5');
       expect(route.request().headers()['x-file-name']).toBe('fixture-package.json');
+      // The receipt is mocked, so the body must satisfy the real package contract.
+      const body = route.request().postDataBuffer()?.toString('utf8') ?? '';
+      expect(body).toBe(uploadedPackage);
+      expect(seasonUploadPackageSchema.safeParse(JSON.parse(body)).success).toBe(true);
       await new Promise((resolve) => setTimeout(resolve, 100));
       await route.fulfill({
         status: 202,
@@ -226,26 +263,12 @@ test(
     await expect(
       page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
     ).toBeVisible();
+    await expect(page.getByText(/You never need a database ID/)).toBeVisible();
     const fileInput = page.getByLabel('Fixture package', { exact: true });
     await fileInput.setInputFiles({
       name: 'fixture-package.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(
-        JSON.stringify({
-          contractVersion: '1.0',
-          packageId: 'provider:package:fixture-2026-08-20',
-          fixtures: [
-            {
-              context: {
-                date: fixture.startDate,
-                teams: fixture.competitors.map((competitor) => ({
-                  context: { name: competitor.name },
-                })),
-              },
-            },
-          ],
-        }),
-      ),
+      buffer: Buffer.from(uploadedPackage),
     });
     await expect(page.getByText(/Selected: fixture-package.json/)).toBeVisible();
     await page.getByRole('button', { name: 'Upload fixture package' }).click();

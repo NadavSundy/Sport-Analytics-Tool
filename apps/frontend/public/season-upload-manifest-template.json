@@ -1,6 +1,6 @@
 {
   "contractVersion": "1.0",
-  "packageId": "replace-with-provider:package:stable-package-id",
+  "packageId": "my-club:package:choose-a-label-for-this-upload",
   "files": [
     {
       "path": "fixtures.json",

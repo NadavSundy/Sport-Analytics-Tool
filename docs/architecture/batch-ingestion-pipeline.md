@@ -156,9 +156,16 @@ platform has not seen yet, and the resolver reports it as such.
    that source identifiers are not supported for that entity type and naming the key that is. A bare
    "not found" would invite the submitter to resubmit the same package unchanged.
 3. The package schemas remain permissive and continue to accept `sourceId` for all three. The policy
-   is enforced in the resolver, not by forbidding the field, because the shipped season-upload
-   templates emit an innings carrying both a `sourceId` and readable context. Rejecting the field
-   would make a template-derived package unresolvable.
+   is enforced in the resolver, not by forbidding the field, because the season-upload templates
+   published before #500 emit an innings carrying both a `sourceId` and readable context, and copies
+   already downloaded keep it. Rejecting the field would make a template-derived package
+   unresolvable.
+4. Issue #500 applies the same rule to a fixture identifier outside the `cricsheet` namespace, the
+   only namespace compared with `fixture.source_ref`. Such an identifier can never resolve either, so
+   where readable fixture context is supplied the natural key is used and the ignored identifier is
+   recorded. Before this, the pre-#500 template placeholder `replace-with-provider:fixture:…` took
+   precedence over the readable context and left every delivery in a names-only package unresolved.
+   A `cricsheet` identifier that matches nothing remains a staged "not found", not a fallback.
 
 ## 3.8 Versioned cricket business-rule validation
 
