@@ -23,6 +23,10 @@ import {
   submitLegacyAdminEvents,
 } from './submission-api';
 import { SingleFixturePackageError, validateSingleFixturePackage } from './single-fixture-package';
+import {
+  formatApiValidationLocation,
+  formatApiValidationMessage,
+} from './submission-validation-copy';
 
 const EMPTY_EVENTS = '[]';
 
@@ -86,23 +90,6 @@ function readFileText(file: File): Promise<string> {
   });
 }
 
-function formatValidationLocation(detail: ApiErrorDetail, uploadedFile: boolean): string {
-  const eventLabel =
-    detail.eventIndex === undefined
-      ? uploadedFile
-        ? 'File'
-        : 'Submission'
-      : `${uploadedFile ? 'Row' : 'Event'} ${detail.eventIndex + 1}`;
-
-  let field = detail.field;
-
-  if (field && detail.eventIndex !== undefined) {
-    field = field.replace(new RegExp(`^events\\.${detail.eventIndex}\\.?`), '');
-  }
-
-  return field ? `${eventLabel} — ${field}` : eventLabel;
-}
-
 function AccessError({ message }: { message: string }) {
   return (
     <div className="state-message state-message--error" role="alert">
@@ -158,8 +145,23 @@ function ValidationResults({
             <li
               key={`${detail.code}-${detail.eventIndex ?? 'submission'}-${detail.field ?? index}`}
             >
-              <strong>{formatValidationLocation(detail, uploadedFile)}</strong>
-              <span>{detail.message}</span>
+              <strong>{formatApiValidationLocation(detail, uploadedFile)}</strong>
+              <span>{formatApiValidationMessage(detail)}</span>
+              <details className="validation-technical-details">
+                <summary>Technical details</summary>
+                <p>
+                  <code>{detail.code}</code>
+                  {detail.field ? (
+                    <>
+                      {' · '}
+                      <code>{detail.field}</code>
+                    </>
+                  ) : null}
+                </p>
+                {formatApiValidationMessage(detail) !== detail.message ? (
+                  <p>{detail.message}</p>
+                ) : null}
+              </details>
             </li>
           ))}
         </ol>

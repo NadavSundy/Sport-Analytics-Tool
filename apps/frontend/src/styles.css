@@ -1679,6 +1679,41 @@ main {
   line-height: 1.5;
 }
 
+.batch-validation-summary {
+  margin-block: 1.5rem;
+  padding: 1rem;
+  border-left: 3px solid var(--colour-error);
+  background: var(--colour-error-soft);
+}
+
+.batch-validation-summary h2 {
+  margin-top: 0;
+}
+
+.validation-technical-details {
+  margin-top: 0.5rem;
+  color: var(--colour-text-secondary);
+}
+
+.validation-technical-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.validation-technical-details summary:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 3px;
+}
+
+.validation-technical-details p,
+.validation-technical-details ul {
+  margin-block: 0.5rem 0;
+}
+
+.validation-technical-details code {
+  overflow-wrap: anywhere;
+}
+
 .correction-workspace {
   max-width: 62rem;
   margin-top: 3rem;
