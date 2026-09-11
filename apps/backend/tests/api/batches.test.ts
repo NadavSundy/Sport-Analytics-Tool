@@ -448,9 +448,10 @@ describe('batch receipt API', () => {
     },
   );
 
-  test('allows a scoped reviewer and requires a non-blank review reason', async () => {
+  test('restricts review decisions to administrators and validates the review reason', async () => {
     const batchService = service();
-    const reviewerApp = createTestApp(
+
+    const submitterApp = createTestApp(
       acceptToken,
       undefined,
       synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
@@ -463,11 +464,11 @@ describe('batch receipt API', () => {
       undefined,
       batchService,
     );
-    await request(reviewerApp)
+    await request(submitterApp)
       .post(`/api/v1/batches/${reference}/review`)
       .set('Authorization', 'Bearer batch-token')
       .send({ decision: 'approved', reason: 'Approve.' })
-      .expect(200);
+      .expect(403);
 
     const viewerApp = createTestApp(
       acceptToken,
@@ -506,7 +507,8 @@ describe('batch receipt API', () => {
       .set('Authorization', 'Bearer batch-token')
       .send({ decision: 'approved', reason: '   ' })
       .expect(422);
-    expect(batchService.review).toHaveBeenCalledTimes(1);
+
+    expect(batchService.review).not.toHaveBeenCalled();
   });
 
   test('returns a conflict for a competing or unsafe review decision', async () => {
