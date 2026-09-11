@@ -1142,11 +1142,13 @@ paths:
         - Weather
       summary: Get contextual weather for a fixture
       description: |
-        Resolves the fixture's start date and its stored venue coordinates, then
-        retrieves daily weather through the server-side Open-Meteo integration.
+        Resolves the fixture's start date and venue coordinates, reusing stored
+        coordinates or resolving the city first and raw venue name second when
+        coordinates are absent. Resolved coordinates are persisted before daily
+        weather is retrieved through the server-side Open-Meteo integration.
         Weather is contextual external information and is not authoritative
         fixture, event, or statistic data. If the fixture exists but cannot be
-        located with stored coordinates, or its date falls outside Open-Meteo's
+        located after those lookups, or its date falls outside Open-Meteo's
         supported forecast and archive ranges, a successful unavailable
         response is returned and Open-Meteo is not called.
       operationId: getFixtureWeather
@@ -1185,7 +1187,7 @@ paths:
                       fixtureId: '17'
                       date: '2026-08-19'
                       availability: unavailable
-                      reason: MISSING_COORDINATES
+                      reason: LOCATION_NOT_FOUND
                       venue:
                         name: Wits Cricket Oval
                         city: Johannesburg
@@ -2772,7 +2774,14 @@ components:
           enum: [unavailable]
         reason:
           type: string
-          enum: [MISSING_VENUE, MISSING_COORDINATES, UNSUPPORTED_LOCATION, UNSUPPORTED_DATE]
+          enum:
+            [
+              MISSING_VENUE,
+              MISSING_COORDINATES,
+              UNSUPPORTED_LOCATION,
+              LOCATION_NOT_FOUND,
+              UNSUPPORTED_DATE,
+            ]
         venue:
           oneOf:
             - $ref: '#/components/schemas/FixtureWeatherVenue'

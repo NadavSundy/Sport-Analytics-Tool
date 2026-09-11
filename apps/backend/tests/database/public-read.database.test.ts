@@ -8,6 +8,7 @@ import {
   findFixtureById,
   findFixtureWeatherContext,
   listFixtures,
+  updateVenueCoordinates,
 } from '../../src/modules/fixtures/fixture.repository';
 import { findSeason, listSeasons } from '../../src/modules/seasons/season.repository';
 
@@ -183,16 +184,11 @@ describe.sequential('public read relationship summaries database integration', (
     const executor = databaseClient();
     const currentFixtureId = ingestedFixtureId();
 
-    await executor.query(
-      `
-        UPDATE venue v
-        SET latitude = -43.4894, longitude = 172.5405
-        FROM fixture f
-        WHERE f.venue_id = v.venue_id
-          AND f.fixture_id = $1::bigint
-      `,
-      [currentFixtureId],
-    );
+    const initial = await findFixtureWeatherContext(currentFixtureId, executor);
+    const venueId = initial?.venue?.venueId;
+    expect(venueId).toBeDefined();
+
+    await updateVenueCoordinates(venueId!, -43.4894, 172.5405, executor);
 
     await expect(findFixtureWeatherContext(currentFixtureId, executor)).resolves.toMatchObject({
       fixtureId: currentFixtureId,
