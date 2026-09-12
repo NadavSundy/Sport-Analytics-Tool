@@ -538,7 +538,10 @@ describe.sequential('administrator user-management database integration', () => 
         expect.objectContaining({
           id: submitterId,
           role: 'submitter',
-          requestedCompetition: { competitionId: requested.competitionId },
+          requestedCompetition: {
+            competitionId: requested.competitionId,
+            name: requested.name,
+          },
           competitionScopes: [{ competitionId: existing.competitionId, name: existing.name }],
         }),
       ]),
