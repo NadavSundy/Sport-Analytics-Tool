@@ -292,8 +292,8 @@ describe('submitter access request and status interface', () => {
       screen.getByText((_, element) =>
         Boolean(
           element?.tagName === 'P' &&
-            element.textContent?.includes('Current competition scope:') &&
-            element.textContent.includes('Premier T20'),
+          element.textContent?.includes('Current competition scope:') &&
+          element.textContent.includes('Premier T20'),
         ),
       ),
     ).toBeInTheDocument();
@@ -332,8 +332,8 @@ describe('submitter access request and status interface', () => {
       await screen.findByText((_, element) =>
         Boolean(
           element?.tagName === 'P' &&
-            element.textContent?.includes('Current competition scope:') &&
-            element.textContent.includes('Premier T20'),
+          element.textContent?.includes('Current competition scope:') &&
+          element.textContent.includes('Premier T20'),
         ),
       ),
     ).toBeInTheDocument();
@@ -347,8 +347,8 @@ describe('submitter access request and status interface', () => {
       screen.getByText((_, element) =>
         Boolean(
           element?.tagName === 'P' &&
-            element.textContent?.includes('Current competition scope:') &&
-            element.textContent.includes('Premier T20'),
+          element.textContent?.includes('Current competition scope:') &&
+          element.textContent.includes('Premier T20'),
         ),
       ),
     ).toBeInTheDocument();
