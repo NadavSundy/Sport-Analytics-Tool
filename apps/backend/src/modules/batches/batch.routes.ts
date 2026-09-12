@@ -6,6 +6,7 @@ import { requireAdministrator, requireSubmitter } from '../../middleware/require
 import type { SynchronizeAccount } from '../accounts/account.service';
 import { createSubmissionRateLimit } from '../submissions/submission-rate-limit';
 import {
+  createAdminBatchListController,
   createBatchListController,
   createBatchReceiptController,
   createBatchReferenceMappingController,
@@ -23,6 +24,12 @@ export function createBatchRouter(
   service: BatchService,
 ): Router {
   const router = Router();
+  router.get(
+    '/admin/batches',
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireAdministrator(),
+    createAdminBatchListController(service),
+  );
   router.post(
     '/batches/:batchReference/canonical-fixtures',
     json({ limit: '16kb' }),

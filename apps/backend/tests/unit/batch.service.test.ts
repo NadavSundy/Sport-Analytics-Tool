@@ -464,6 +464,19 @@ describe('batch result reporting service', () => {
       expect(listBatches.mock.calls.at(-1)![0]).not.toHaveProperty('submitterId');
       expect(listBatches.mock.calls.at(-1)![0]).not.toHaveProperty('competitionIds');
     }
+
+    await service.listForAdmin(createTestAccount({ accountId: '7', role: 'admin' }), {
+      limit: 50,
+      status: 'published',
+    });
+    expect(listBatches).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'published', limit: 51 }),
+    );
+    expect(listBatches.mock.calls.at(-1)![0]).not.toHaveProperty('submitterId');
+
+    await expect(
+      service.listForAdmin(createTestAccount({ accountId: '7', role: 'submitter' }), { limit: 50 }),
+    ).rejects.toBeInstanceOf(BatchForbiddenError);
   });
 
   test('exposes opaque candidate labels and queues a currently valid mapping', async () => {

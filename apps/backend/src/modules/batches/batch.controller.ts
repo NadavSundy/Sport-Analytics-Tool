@@ -156,6 +156,32 @@ export function createBatchListController(service: BatchService): RequestHandler
   };
 }
 
+export function createAdminBatchListController(service: BatchService): RequestHandler {
+  return (request, response, next) => {
+    const query = batchListQuerySchema.safeParse(request.query);
+    if (!query.success) {
+      response
+        .status(400)
+        .json({ error: { code: 'INVALID_QUERY', message: 'The batch list query is invalid.' } });
+      return;
+    }
+    let authenticated: ApplicationAccount;
+    try {
+      authenticated = account(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+    void service
+      .listForAdmin(authenticated, query.data)
+      .then((result) => response.json(result))
+      .catch((error: unknown) => {
+        if (rejectReadError(response, error)) return;
+        next(error);
+      });
+  };
+}
+
 function reportRequest(service: BatchService, download: boolean): RequestHandler {
   return (request, response, next) => {
     const reference = batchReferenceSchema.safeParse(request.params.batchReference);
