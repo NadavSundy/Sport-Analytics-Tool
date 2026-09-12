@@ -183,10 +183,12 @@ describe('guided batch upload', () => {
       );
     });
 
-    expect(await screen.findByRole('heading', { name: 'Season received safely' })).toHaveFocus();
+    expect(await screen.findByRole('heading', { name: 'Season upload received' })).toHaveFocus();
     expect(screen.getByText(batchReference)).toBeInTheDocument();
-    expect(screen.getByText(/Processing continues after you leave/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+    expect(screen.getByText('Received — validation pending')).toBeInTheDocument();
+    expect(screen.getByText(/The platform is checking it in the background/)).toBeInTheDocument();
+    expect(screen.getByText(/Next: open the submission report/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View submission report' })).toHaveAttribute(
       'href',
       `/submissions/batches/${batchReference}`,
     );
@@ -281,7 +283,7 @@ describe('guided batch upload', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Upload back catalogue package' }));
     expect(
-      await screen.findByRole('heading', { name: 'Back catalogue received safely' }),
+      await screen.findByRole('heading', { name: 'Back catalogue upload received' }),
     ).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/seasons?'))).toBe(false);
   });

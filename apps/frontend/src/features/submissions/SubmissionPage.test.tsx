@@ -417,7 +417,7 @@ describe('role-gated event submission page', () => {
       );
     });
 
-    const heading = await screen.findByRole('heading', { name: 'Fixture package received safely' });
+    const heading = await screen.findByRole('heading', { name: 'Fixture upload received' });
     expect(heading).toHaveFocus();
     expect(screen.getByText(batchReference)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save correction' })).not.toBeInTheDocument();
@@ -850,6 +850,12 @@ describe('role-gated event submission page', () => {
     expect(screen.getByRole('radio', { name: /Season/ })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Back catalogue/ })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Advanced technical JSON/ })).toBeInTheDocument();
+    expect(screen.getByText(/One match only/i)).toBeVisible();
+    expect(screen.getByText(/Several fixtures from one competition season/i)).toBeVisible();
+    expect(screen.getByText(/Historical fixtures covering multiple seasons/i)).toBeVisible();
+    expect(
+      screen.getByText(/checks the file in the background before it can be published/i),
+    ).toBeVisible();
     expect(screen.queryByRole('link', { name: /Upload a season or back catalogue/ })).toBeNull();
     expect(fixtureSelect).toHaveAccessibleDescription(/never need to enter a database ID/i);
     expect(within(fixtureSelect).getByRole('option')).toHaveTextContent(
@@ -878,12 +884,12 @@ describe('role-gated event submission page', () => {
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Fixture package received safely' }),
-    ).toHaveFocus();
+    expect(await screen.findByRole('heading', { name: 'Fixture upload received' })).toHaveFocus();
     expect(screen.getByText(batchReference)).toBeInTheDocument();
-    expect(screen.getByText(/Processing continues after you leave this page/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+    expect(screen.getByText('Received — validation pending')).toBeInTheDocument();
+    expect(screen.getByText(/The platform is checking it in the background/)).toBeInTheDocument();
+    expect(screen.getByText(/Next: open the submission report/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View submission report' })).toHaveAttribute(
       'href',
       `/submissions/batches/${batchReference}`,
     );
