@@ -102,7 +102,7 @@ interface BatchItemRecord {
   rejectionCode: string | null;
   rejectionDetail: JsonValue | null;
   publishedEventId: string | null;
-  operation: 'upsert' | 'correction';
+  operation: 'upsert' | 'correction' | null;
   correctsSourceIdentity: string | null;
   correctionTargetDeliveryId: string | null;
 }

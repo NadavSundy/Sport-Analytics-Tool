@@ -350,7 +350,9 @@ describe('batch result reporting service', () => {
           state: 'rejected',
           rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
           publishedEventId: null,
-          operation: 'upsert',
+          // Validation can reject an item before a batch_item row is created, leaving the
+          // left-joined operation null in the report query.
+          operation: null,
           correctsSourceIdentity: null,
           correctionTargetDeliveryId: null,
           errors: [
@@ -389,6 +391,7 @@ describe('batch result reporting service', () => {
     });
     expect(response.data.items[1]).toMatchObject({
       outcome: 'unresolved',
+      operation: 'upsert',
       location: { filePath: 'events.json', rowNumber: 13, jsonPath: '$.events[1]' },
     });
     expect(response.data.items[1]!.errors).toHaveLength(2);
