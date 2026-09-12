@@ -560,6 +560,81 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(resolution.items[0]?.state).toBe('resolved');
   });
 
+  test('preserves a complete 1.1 fixture proposal in resolution evidence without exposing one for 1.0', async () => {
+    const seed = records();
+    const context = {
+      date: '2026-01-01',
+      teams: [{ context: { name: `${prefix}-alpha` } }, { context: { name: `${prefix}-beta` } }],
+    };
+    const proposal = {
+      endDate: '2026-01-01',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'male',
+      ballsPerOver: 6,
+      outcome: 'no result' as const,
+      sourceVersion: 'resolver-provenance-test',
+      sourceRevision: 7,
+    };
+    const sourceId = `cricsheet:fixture:${seed.singleFixtureSourceRef}`;
+    const version11Package = seasonUploadPackageSchema.parse({
+      contractVersion: '1.1',
+      packageId: `cricsheet:package:${prefix}-proposal`,
+      competition: { context: { name: `${prefix}-competition` } },
+      season: { context: { name: SEASON_NAME } },
+      fixtures: [
+        {
+          sourceId,
+          context,
+          proposal,
+          innings: [
+            {
+              context: {
+                ordinal: 0,
+                battingTeam: { context: { name: `${prefix}-alpha` } },
+              },
+              events: [
+                event(
+                  1,
+                  participantByName(CURRENT_NAME),
+                  participantByName(BOWLER_NAME),
+                  participantByName(BOWLER_NAME),
+                ),
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const version11Resolution = await resolvePackageReferences(databaseClient(), version11Package);
+    const version11Fixture = outcomeAt(version11Resolution, 'fixtures.0');
+
+    expect(version11Fixture.submittedReference).toEqual({
+      sourceId,
+      context,
+      proposal,
+      season: { context: { name: SEASON_NAME } },
+    });
+
+    const legacyResolution = await resolvePackageReferences(
+      databaseClient(),
+      singleEventPackage(
+        { sourceId, context },
+        participantByName(CURRENT_NAME),
+        participantByName(BOWLER_NAME),
+        participantByName(BOWLER_NAME),
+      ),
+    );
+
+    expect(outcomeAt(legacyResolution, 'fixtures.0').submittedReference).toEqual({
+      sourceId,
+      context,
+      proposal: undefined,
+      season: { context: { name: SEASON_NAME } },
+    });
+  });
+
   test('rejects conflicting fixture date metadata without changing the canonical fixture', async () => {
     const seed = records();
 

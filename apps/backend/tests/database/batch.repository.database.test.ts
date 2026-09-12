@@ -2196,4 +2196,111 @@ describe.sequential('batch repository database integration', () => {
       }),
     ]);
   });
+
+  test('reuses a concurrently visible canonical fixture, audits it, and only requeues validation', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-canonical`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 1 },
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 0,
+          payload: {},
+          referenceResolutionState: 'unresolved',
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+      const initialOutbox = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM outbox_message WHERE body->>'batchId'=$1::text`,
+        [batch.batchId],
+      );
+      const input = {
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'create',
+        sourceRef: `${sourcePrefix}-created`,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [`${sourcePrefix}-batting`, `${sourcePrefix}-bowling`],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+      };
+      await repository.createCanonicalFixtureAndQueueMapping(input);
+      await repository.createCanonicalFixtureAndQueueMapping(input);
+      const result = await client.query<{
+        fixtures: string;
+        batchId: string;
+        referencePath: string;
+        fixtureId: string;
+        actorId: string;
+        decidedAt: string;
+        state: string;
+        published: string;
+        validationJob: string;
+        outbox: string;
+        checkpoint: number | null;
+      }>(
+        `SELECT (SELECT count(*)::text FROM fixture WHERE source_ref=$1) AS fixtures, (SELECT batch_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "batchId", (SELECT reference_path FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "referencePath", (SELECT fixture_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "fixtureId", (SELECT actor_id::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "actorId", (SELECT decided_at::text FROM batch_canonical_fixture_decision WHERE batch_id=$2) AS "decidedAt", (SELECT state::text FROM batch WHERE batch_id=$2) AS state, (SELECT count(*)::text FROM batch_item WHERE batch_id=$2 AND published_event_id IS NOT NULL) AS published, (SELECT state::text FROM background_job WHERE batch_id=$2 AND job_type='batch.validate') AS "validationJob", (SELECT count(*)::text FROM outbox_message WHERE body->>'batchId'=$2::text) AS outbox, (SELECT last_ordinal FROM batch_checkpoint WHERE batch_id=$2 AND phase='validating') AS checkpoint`,
+        [input.sourceRef, batch.batchId],
+      );
+      expect(result.rows[0]).toEqual({
+        fixtures: '1',
+        batchId: batch.batchId,
+        referencePath: 'fixtures.0',
+        fixtureId: expect.any(String),
+        actorId: current.accountId,
+        decidedAt: expect.any(String),
+        state: 'stored',
+        published: '0',
+        validationJob: 'queued',
+        outbox: String(Number(initialOutbox.rows[0]!.count) + 1),
+        checkpoint: null,
+      });
+
+      const otherCompetition = await client.query<{ competitionId: string }>(
+        `INSERT INTO competition (name) VALUES ($1) RETURNING competition_id::text AS "competitionId"`,
+        [`${sourcePrefix}-other-competition`],
+      );
+      const crossCompetitionSourceRef = `${sourcePrefix}-other-competition-fixture`;
+      await client.query(
+        `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,source_version,source_revision)
+         VALUES ($1,$2::bigint,'2026','T20','club','mixed',6,'2026-01-01','2026-01-01','tie','1.1',1)`,
+        [crossCompetitionSourceRef, otherCompetition.rows[0]!.competitionId],
+      );
+      await expect(
+        repository.createCanonicalFixtureAndQueueMapping({
+          ...input,
+          sourceRef: crossCompetitionSourceRef,
+          referencePath: 'fixtures.1',
+          decisionKey: 'cross-competition',
+        }),
+      ).rejects.toBeInstanceOf(BatchReferenceMappingConflictError);
+    });
+  });
 });

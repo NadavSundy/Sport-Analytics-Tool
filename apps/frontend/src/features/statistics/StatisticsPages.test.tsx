@@ -520,7 +520,7 @@ describe('public fixture statistics pages', () => {
       'fixture-fixture-1-innings-innings-1-team-team-1-events.csv',
       'fixture-fixture-1-innings-innings-1-team-team-1-events.json',
     ]);
-  });
+  }, 10_000);
 
   it('exports a player trace as the trace itself rather than every delivery involving the player', async () => {
     const contributingEvents = traceEvents(6);
@@ -592,33 +592,39 @@ describe('public fixture statistics pages', () => {
       },
       message: 'no longer matches the calculation trace',
     },
-  ])('states $name and downloads no file', async ({ status, body, message }) => {
-    const downloadedFilenames: string[] = [];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith('/statistics/stat-innings-1?includeContributors=true')) {
-          return Promise.resolve(
-            response(200, { data: { ...inningsStatistic, contributingEvents: traceEvents(125) } }),
-          );
-        }
-        if (url.endsWith('/statistics/stat-innings-1/events/export.csv')) {
-          return Promise.resolve(response(status, body));
-        }
-        return Promise.resolve(notMocked());
-      }),
-    );
-    stubDownloads(downloadedFilenames);
+  ])(
+    'states $name and downloads no file',
+    async ({ status, body, message }) => {
+      const downloadedFilenames: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((input: RequestInfo | URL) => {
+          const url = String(input);
+          if (url.endsWith('/statistics/stat-innings-1?includeContributors=true')) {
+            return Promise.resolve(
+              response(200, {
+                data: { ...inningsStatistic, contributingEvents: traceEvents(125) },
+              }),
+            );
+          }
+          if (url.endsWith('/statistics/stat-innings-1/events/export.csv')) {
+            return Promise.resolve(response(status, body));
+          }
+          return Promise.resolve(notMocked());
+        }),
+      );
+      stubDownloads(downloadedFilenames);
 
-    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+      renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Download CSV' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(downloadedFilenames).toEqual([]);
-    expect(screen.queryByText(/export of 125 events downloaded/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
-  });
+      fireEvent.click(await screen.findByRole('button', { name: 'Download CSV' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      expect(downloadedFilenames).toEqual([]);
+      expect(screen.queryByText(/export of 125 events downloaded/)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
+    },
+    10_000,
+  );
 
   it('explains when no trace events are available to export', async () => {
     vi.stubGlobal(

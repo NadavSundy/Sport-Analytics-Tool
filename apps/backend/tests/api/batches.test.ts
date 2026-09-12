@@ -68,6 +68,15 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
         submittedAt: '2026-09-07T12:00:00.000Z',
       },
     }),
+    createCanonicalFixture: vi.fn<BatchService['createCanonicalFixture']>().mockResolvedValue({
+      data: {
+        batchReference: reference,
+        decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+        status: 'queued',
+        statusUrl: `/api/v1/batches/${reference}`,
+        submittedAt: '2026-09-11T12:00:00.000Z',
+      },
+    }),
     ...overrides,
   };
 }
@@ -535,5 +544,65 @@ describe('batch receipt API', () => {
       .send({ decision: 'rejected', reason: 'Conflicting retry.' })
       .expect(409);
     expect(response.body.error.code).toBe('BATCH_REVIEW_CONFLICT');
+  });
+
+  test('restricts canonical fixture creation to administrators and routes a valid decision', async () => {
+    const createCanonicalFixture = vi
+      .fn<BatchService['createCanonicalFixture']>()
+      .mockResolvedValue({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-11T12:00:00.000Z',
+        },
+      });
+    const requestBody = {
+      itemOrdinal: 1,
+      referencePath: 'fixtures.0',
+      decisionKey: 'create-fixture',
+    };
+    const submitterApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ createCanonicalFixture }),
+    );
+    await request(submitterApp)
+      .post(`/api/v1/batches/${reference}/canonical-fixtures`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(403);
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ createCanonicalFixture }),
+    );
+    await request(adminApp)
+      .post(`/api/v1/batches/${reference}/canonical-fixtures`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(202);
+    expect(createCanonicalFixture).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      reference,
+      requestBody,
+    );
   });
 });

@@ -9,7 +9,12 @@ import { Link } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
-import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
+import {
+  batchUploadIdempotencyKey,
+  BatchUploadInputError,
+  MAX_BATCH_BYTES,
+  uploadBatch,
+} from './batch-api';
 
 type AccessState =
   | { kind: 'loading' }
@@ -50,10 +55,6 @@ async function competitionOptions(profile: CurrentUserProfile, signal: AbortSign
 
 export type PackageUploadScope = 'season' | 'catalogue';
 
-function newDecisionKey() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-}
-
 export function BatchUploadWorkflow({
   profile,
   scope,
@@ -65,7 +66,6 @@ export function BatchUploadWorkflow({
   const [access, setAccess] = useState<AccessState>({ kind: 'loading' });
   const [competitionId, setCompetitionId] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [decisionKey, setDecisionKey] = useState(newDecisionKey);
   const [upload, setUpload] = useState<UploadState>({ kind: 'idle' });
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -103,7 +103,12 @@ export function BatchUploadWorkflow({
     }
     setUpload({ kind: 'uploading' });
     try {
-      const response = await uploadBatch(client, competitionId, file, decisionKey);
+      const response = await uploadBatch(
+        client,
+        competitionId,
+        file,
+        await batchUploadIdempotencyKey(competitionId, file),
+      );
       const competition =
         access.kind === 'ready'
           ? access.competitions.find((option) => option.competitionId === competitionId)
@@ -227,14 +232,13 @@ export function BatchUploadWorkflow({
               aria-invalid={upload.kind === 'error'}
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);
-                setDecisionKey(newDecisionKey());
                 setUpload({ kind: 'idle' });
               }}
             />
             <p id="batch-file-help" className="field-help">
               JSON, CSV or NDJSON; maximum {MAX_BATCH_BYTES / 1024 / 1024} MB. Selecting a corrected
-              file starts a replacement upload. Retrying unchanged content safely reuses the same
-              request and receipt.
+              file starts a replacement upload. Retrying unchanged content, including after a page
+              refresh and reselecting the file, reuses the same request and receipt.
             </p>
             {file ? <p className="field-help">Selected: {file.name}</p> : null}
           </div>

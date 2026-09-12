@@ -3,10 +3,13 @@ import type { Readable } from 'node:stream';
 
 import {
   API_BASE_PATH,
+  FIXTURE_PROPOSAL_CONTRACT_VERSION,
+  fixtureProposalSchema,
   type BatchListQuery,
   type BatchListResponse,
   type BatchMetadata,
   type BatchReferenceMappingRequest,
+  type BatchCanonicalFixtureRequest,
   type BatchReferenceMappingResponse,
   type BatchReferenceEntityType,
   type BatchReceiptResponse,
@@ -76,6 +79,11 @@ export interface BatchService {
     account: ApplicationAccount,
     reference: string,
     request: BatchReferenceMappingRequest,
+  ): Promise<BatchReferenceMappingResponse>;
+  createCanonicalFixture(
+    account: ApplicationAccount,
+    reference: string,
+    request: BatchCanonicalFixtureRequest,
   ): Promise<BatchReferenceMappingResponse>;
 }
 
@@ -666,6 +674,70 @@ export function createBatchService(
         if (error instanceof BatchReferenceMappingConflictError) {
           throw new BatchConflictError(error.message);
         }
+        throw error;
+      }
+    },
+
+    async createCanonicalFixture(account, reference, request) {
+      if (!canReviewBatch(account)) throw new BatchForbiddenError();
+      const batch = await repository.findBatchByReference(reference);
+      if (!batch) throw new BatchForbiddenError();
+      const items = await repository.listBatchItems(batch.batchId, { limit: 1000 });
+      const item = items.find((value) => value.ordinal === request.itemOrdinal);
+      const evidence =
+        item &&
+        storedOutcomes(item.resolvedReferences).find(
+          (value) =>
+            value.referencePath === request.referencePath && value.entityType === 'fixture',
+        );
+      const submitted = evidence?.submittedReference as
+        | {
+            sourceId?: string;
+            context?: { date?: string; teams?: { context?: { name?: string } }[] };
+            proposal?: Record<string, unknown>;
+            season?: { context?: { name?: string } };
+          }
+        | undefined;
+      const proposal = fixtureProposalSchema.safeParse(submitted?.proposal);
+      const teams = submitted?.context?.teams?.map((team) => team.context?.name).filter(Boolean);
+      if (
+        !item ||
+        batch.packageVersion !== FIXTURE_PROPOSAL_CONTRACT_VERSION ||
+        !submitted?.sourceId ||
+        !submitted.context?.date ||
+        !submitted.season?.context?.name ||
+        !proposal.success ||
+        teams?.length !== 2
+      ) {
+        throw new BatchConflictError('A complete version 1.1 fixture proposal is required.');
+      }
+      try {
+        const decision = await repository.createCanonicalFixtureAndQueueMapping({
+          batchId: batch.batchId,
+          batchReference: reference,
+          competitionId: batch.competitionId,
+          actorId: account.accountId,
+          itemOrdinal: item.ordinal,
+          referencePath: request.referencePath,
+          decisionKey: request.decisionKey,
+          sourceRef: submitted.sourceId.split(':', 3)[2]!,
+          season: submitted.season.context.name,
+          startDate: submitted.context.date,
+          teamNames: teams as string[],
+          proposal: proposal.data,
+        });
+        return {
+          data: {
+            batchReference: reference,
+            decisionReference: decision.decisionReference,
+            status: decision.state === 'applied' ? 'applied' : 'queued',
+            statusUrl: `${API_BASE_PATH}/batches/${reference}`,
+            submittedAt: decision.decidedAt,
+          },
+        };
+      } catch (error) {
+        if (error instanceof BatchReferenceMappingConflictError)
+          throw new BatchConflictError(error.message);
         throw error;
       }
     },

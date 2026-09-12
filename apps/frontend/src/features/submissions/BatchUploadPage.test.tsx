@@ -1,6 +1,6 @@
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -144,6 +144,17 @@ describe('guided batch upload', () => {
       'download',
     );
     expect(await screen.findByLabelText('Competition')).toHaveDisplayValue('Premier T20');
+    const season = screen.queryByLabelText('Season context');
+    if (season) {
+      await waitFor(() =>
+        expect(
+          within(season).getByRole('option', { name: '2026/27 — Premier T20' }),
+        ).toBeInTheDocument(),
+      );
+    }
+
+    const fileBytes = '{"contractVersion":"1.0"}';
+    // The package-authoritative path below constructs the selected file.
     expect(screen.queryByLabelText('Season context')).not.toBeInTheDocument();
     expect(
       screen.getByText(/season name and reference inside the package are authoritative/i),
@@ -151,10 +162,14 @@ describe('guided batch upload', () => {
     const file = new File(['{"contractVersion":"1.0"}'], 'season.json', {
       type: 'application/json',
     });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => new TextEncoder().encode(fileBytes).buffer,
+    });
     fireEvent.change(screen.getByLabelText('Season package'), { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload season package' }));
     expect(screen.getByRole('progressbar', { name: 'Upload progress' })).toBeInTheDocument();
 
+    await waitFor(() => expect(finishUpload).toEqual(expect.any(Function)));
     await act(async () => {
       finishUpload(
         response(202, {
@@ -254,8 +269,12 @@ describe('guided batch upload', () => {
     renderUpload('catalogue');
     expect(await screen.findByLabelText('Back catalogue package')).toBeEnabled();
     expect(screen.getByText(/Each season is identified by its readable name/i)).toBeInTheDocument();
-    const file = new File(['{"contractVersion":"1.0"}'], 'catalogue.json', {
+    const fileBytes = '{"contractVersion":"1.0"}';
+    const file = new File([fileBytes], 'catalogue.json', {
       type: 'application/json',
+    });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => new TextEncoder().encode(fileBytes).buffer,
     });
     fireEvent.change(screen.getByLabelText('Back catalogue package'), {
       target: { files: [file] },
