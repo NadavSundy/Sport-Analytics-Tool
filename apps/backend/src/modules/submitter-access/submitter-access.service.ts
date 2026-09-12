@@ -1,6 +1,7 @@
 import type {
   SubmitterAccessRequest,
   SubmitterAccessRequestResponse,
+  SubmitterScopeRequestResponse,
 } from '@sport-analytics/contracts';
 import type { ApplicationAccount } from '../accounts/account';
 import { SubmitterAccessConflictError } from './submitter-access.errors';
@@ -14,12 +15,21 @@ export interface SubmitterAccessService {
     account: ApplicationAccount,
     request: SubmitterAccessRequest,
   ): Promise<SubmitterAccessRequestResponse>;
+  requestAdditionalScope(
+    account: ApplicationAccount,
+    request: SubmitterAccessRequest,
+  ): Promise<SubmitterScopeRequestResponse>;
 }
 
 export function createSubmitterAccessService(
   repository?: SubmitterAccessRepository,
 ): SubmitterAccessService {
   let resolvedRepository = repository;
+
+  function getRepository(): SubmitterAccessRepository {
+    resolvedRepository ??= createSubmitterAccessRepository();
+    return resolvedRepository;
+  }
 
   return {
     async requestAccess(account, request) {
@@ -30,8 +40,7 @@ export function createSubmitterAccessService(
         );
       }
 
-      resolvedRepository ??= createSubmitterAccessRepository();
-      const persistedRequest = await resolvedRepository.requestAccess(
+      const persistedRequest = await getRepository().requestAccess(
         account.accountId,
         request.competitionId,
       );
@@ -39,6 +48,37 @@ export function createSubmitterAccessService(
       return {
         data: persistedRequest,
       };
+    },
+
+    async requestAdditionalScope(account, request) {
+      if (account.role !== 'submitter') {
+        throw new SubmitterAccessConflictError(
+          'ADDITIONAL_SCOPE_REQUIRES_APPROVED_SUBMITTER',
+          'Only an approved submitter can request an additional competition scope.',
+        );
+      }
+
+      if (account.competitionIds.includes(request.competitionId)) {
+        throw new SubmitterAccessConflictError(
+          'SCOPE_ALREADY_GRANTED',
+          'The authenticated account already has submission access for this competition.',
+        );
+      }
+
+      const pendingRequest = account.requestedCompetition;
+      if (pendingRequest && !account.competitionIds.includes(pendingRequest.competitionId)) {
+        throw new SubmitterAccessConflictError(
+          'ADDITIONAL_SCOPE_REQUEST_PENDING',
+          `A request for ${pendingRequest.name} is already awaiting administrator review.`,
+        );
+      }
+
+      const persistedRequest = await getRepository().requestAdditionalScope(
+        account.accountId,
+        request.competitionId,
+      );
+
+      return { data: persistedRequest };
     },
   };
 }

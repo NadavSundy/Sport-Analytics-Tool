@@ -78,6 +78,17 @@ export const submitterAccessRequestResponseSchema = z
   })
   .strict();
 
+export const submitterScopeRequestResponseSchema = z
+  .object({
+    data: z
+      .object({
+        accountId: apiIdentifierSchema,
+        requestedCompetition: competitionScopeSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
 export const administratorCompetitionScopeSchema = competitionScopeSchema;
 
 export const administratorAuditActorSchema = z
@@ -219,6 +230,7 @@ export type AccountDeletionResponse = z.infer<typeof accountDeletionResponseSche
 export type CompetitionScope = z.infer<typeof competitionScopeSchema>;
 export type SubmitterAccessRequest = z.infer<typeof submitterAccessRequestSchema>;
 export type SubmitterAccessRequestResponse = z.infer<typeof submitterAccessRequestResponseSchema>;
+export type SubmitterScopeRequestResponse = z.infer<typeof submitterScopeRequestResponseSchema>;
 export type AdministratorCompetitionScope = z.infer<typeof administratorCompetitionScopeSchema>;
 export type AdministratorManagedUser = z.infer<typeof administratorManagedUserSchema>;
 export type AdministratorUserManagementResponse = z.infer<

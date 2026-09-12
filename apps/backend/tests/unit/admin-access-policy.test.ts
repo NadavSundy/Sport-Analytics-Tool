@@ -7,6 +7,12 @@ describe('administrator submitter-access transition policy', () => {
     ['pending approval', { role: 'viewer', approvalState: 'pending' }, 'grant', 'approve'],
     ['pending rejection', { role: 'viewer', approvalState: 'pending' }, 'reject', 'reject'],
     ['approved scope update', { role: 'submitter', approvalState: 'approved' }, 'grant', 'scope'],
+    [
+      'approved scope-request rejection',
+      { role: 'submitter', approvalState: 'approved', hasPendingAdditionalScopeRequest: true },
+      'reject',
+      'reject_scope',
+    ],
     ['approved revocation', { role: 'submitter', approvalState: 'approved' }, 'revoke', 'revoke'],
   ] as const)('allows %s', (_label, target, action, expectedTransition) => {
     expect(resolveSubmitterAccessTransition(target, action)).toBe(expectedTransition);

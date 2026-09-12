@@ -129,3 +129,109 @@ test(
     expect(seriousOrCriticalViolations).toEqual([]);
   },
 );
+
+test(
+  'approved submitter requests an additional competition without changing current scope',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    let requestedCompetition: { competitionId: string; name: string } | null = null;
+
+    await page.route('**/api/v1/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          user: {
+            id: '17',
+            subject: 'requesting-user',
+            displayName: 'Approved Submitter',
+            role: 'submitter',
+            approvalState: 'approved',
+            requestedCompetition,
+            competitionIds: ['5'],
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/v1/competitions?*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { competitionId: '5', name: 'Premier T20' },
+            { competitionId: '8', name: 'University League' },
+          ],
+          pagination: { nextCursor: null },
+        }),
+      });
+    });
+
+    await page.route('**/api/v1/submitter-scope-requests', async (route) => {
+      expect(route.request().method()).toBe('POST');
+      expect(route.request().headers().authorization).toBe('Bearer requesting-e2e-token');
+      expect(route.request().postDataJSON()).toEqual({ competitionId: '8' });
+      requestedCompetition = { competitionId: '8', name: 'University League' };
+
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            accountId: '17',
+            requestedCompetition,
+          },
+        }),
+      });
+    });
+
+    await page.goto('/account');
+
+    const accessPanel = page.getByRole('region', { name: 'Submitter access' });
+    const currentScope = accessPanel.locator('p').filter({ hasText: 'Current competition scope:' });
+    await expect(currentScope).toContainText('Premier T20');
+
+    const competitionSelect = accessPanel.getByRole('combobox', { name: 'Additional competition' });
+    await expect(competitionSelect.locator('option')).toHaveText(['University League']);
+    await expect(competitionSelect.locator('option[value="5"]')).toHaveCount(0);
+
+    const requestButton = accessPanel.getByRole('button', {
+      name: 'Request additional competition',
+    });
+    await requestButton.focus();
+    await expect(requestButton).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(
+      accessPanel.getByText(/Additional scope request pending for University League/i),
+    ).toBeVisible();
+    await expect(accessPanel.getByText(/existing submission access is unchanged/i)).toBeVisible();
+    await expect(requestButton).toHaveCount(0);
+    await expect(currentScope).toContainText('Premier T20');
+
+    await page.reload();
+
+    await expect(
+      page
+        .getByRole('region', { name: 'Submitter access' })
+        .getByText(/Additional scope request pending for University League/i),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('region', { name: 'Submitter access' })
+        .getByRole('button', { name: 'Request additional competition' }),
+    ).toHaveCount(0);
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+
+    const results = await new AxeBuilder({ page }).analyze();
+    const seriousOrCriticalViolations = results.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    );
+    expect(seriousOrCriticalViolations).toEqual([]);
+  },
+);

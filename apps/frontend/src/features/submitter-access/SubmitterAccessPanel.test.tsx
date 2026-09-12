@@ -270,8 +270,14 @@ describe('submitter access request and status interface', () => {
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
   });
 
-  it('shows submitter access from the role without a request action', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('approved', 'submitter')));
+  it('shows submitter access from the role and offers additional competition scope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('approved', 'submitter'))
+        .mockResolvedValueOnce(competitionsResponse()),
+    );
 
     renderAccountPage();
 
@@ -282,6 +288,76 @@ describe('submitter access request and status interface', () => {
     );
     expect(screen.queryByRole('link', { name: 'Upload a batch' })).toBeNull();
     expect(screen.queryByRole('button', { name: /request submitter access/i })).toBeNull();
+    expect(
+      screen.getByText((_, element) =>
+        Boolean(
+          element?.tagName === 'P' &&
+            element.textContent?.includes('Current competition scope:') &&
+            element.textContent.includes('Premier T20'),
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Request additional competition' })).toBeEnabled();
+  });
+
+  it('submits an additional competition request without granting access client-side', async () => {
+    let requestedCompetition: { competitionId: string; name: string } | null = {
+      competitionId: '5',
+      name: 'Premier T20',
+    };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('approved', 'submitter', requestedCompetition));
+      }
+      if (path.endsWith('/competitions')) return Promise.resolve(competitionsResponse());
+      if (path.endsWith('/submitter-scope-requests')) {
+        requestedCompetition = { competitionId: '8', name: 'University League' };
+        return Promise.resolve(
+          jsonResponse(201, {
+            data: {
+              accountId: '17',
+              requestedCompetition,
+            },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText((_, element) =>
+        Boolean(
+          element?.tagName === 'P' &&
+            element.textContent?.includes('Current competition scope:') &&
+            element.textContent.includes('Premier T20'),
+        ),
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Request additional competition' }));
+
+    expect(await screen.findByText(/Additional scope request pending for/)).toHaveTextContent(
+      'University League',
+    );
+    expect(screen.getByText(/existing submission access is unchanged/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) =>
+        Boolean(
+          element?.tagName === 'P' &&
+            element.textContent?.includes('Current competition scope:') &&
+            element.textContent.includes('Premier T20'),
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Request additional competition' })).toBeNull();
+
+    const requestCall = fetchMock.mock.calls.find(([input]) =>
+      new URL(String(input)).pathname.endsWith('/submitter-scope-requests'),
+    ) as [string, RequestInit];
+    expect(requestCall[1].body).toBe(JSON.stringify({ competitionId: '8' }));
   });
 
   it('exposes submission access to an admin regardless of legacy approval state', async () => {
@@ -364,7 +440,8 @@ describe('submitter access request and status interface', () => {
           },
         }),
       )
-      .mockResolvedValueOnce(currentUser('approved', 'submitter'));
+      .mockResolvedValueOnce(currentUser('approved', 'submitter'))
+      .mockResolvedValueOnce(competitionsResponse());
     vi.stubGlobal('fetch', fetchMock);
 
     renderAccountPage();
@@ -379,7 +456,7 @@ describe('submitter access request and status interface', () => {
       'href',
       '/submissions/new',
     );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('communicates profile and request failures and leaves retry available', async () => {

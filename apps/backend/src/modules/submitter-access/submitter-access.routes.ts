@@ -3,7 +3,10 @@ import { Router } from 'express';
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
 import type { SynchronizeAccount } from '../accounts/account.service';
-import { createSubmitterAccessController } from './submitter-access.controller';
+import {
+  createSubmitterAccessController,
+  createSubmitterScopeRequestController,
+} from './submitter-access.controller';
 import type { SubmitterAccessService } from './submitter-access.service';
 
 export function createSubmitterAccessRouter(
@@ -17,6 +20,12 @@ export function createSubmitterAccessRouter(
     '/submitter-access-requests',
     requireAuthentication(verifyAccessToken, synchronizeAccount),
     createSubmitterAccessController(service),
+  );
+
+  router.post(
+    '/submitter-scope-requests',
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    createSubmitterScopeRequestController(service),
   );
 
   return router;
