@@ -130,8 +130,8 @@ export function BatchUploadWorkflow({
             : error instanceof ApiResponseError && error.status === 413
               ? 'The server rejected this package because it exceeds the 50 MB limit.'
               : error instanceof ApiResponseError && error.status === 503
-                ? 'Batch storage is temporarily unavailable. Retry this same file to reuse the upload request safely.'
-                : 'The batch could not be uploaded. Retry this same file safely.';
+                ? 'Upload storage is temporarily unavailable. Retry this same file to reuse the upload request safely.'
+                : 'The upload could not be completed. Retry this same file safely.';
       setUpload({ kind: 'error', message });
     }
   }
@@ -147,7 +147,8 @@ export function BatchUploadWorkflow({
         </h2>
         <p>
           Upload one JSON, CSV spreadsheet, or NDJSON file up to 50 MB and 50,000 delivery events.
-          At most three batches may be processing at once.
+          At most three uploads may be processing at once. Each upload is checked in the background
+          before it can be reviewed and published.
         </p>
         <p>Every package must include:</p>
         <ul>
@@ -265,16 +266,25 @@ export function BatchUploadWorkflow({
             ) : upload.kind === 'accepted' ? (
               <div className="submission-result" role="status">
                 <h2 tabIndex={-1} data-upload-result>
-                  {scope === 'season' ? 'Season' : 'Back catalogue'} received safely
+                  {scope === 'season' ? 'Season upload received' : 'Back catalogue upload received'}
                 </h2>
                 <p>
-                  Processing continues after you leave this page. The same unchanged upload request
-                  reuses this receipt instead of creating a duplicate batch.
+                  Your {scopeLabel} file has been received. The platform is checking it in the
+                  background; it is not published yet. You may leave this page safely.
+                </p>
+                <p>
+                  Next: open the submission report to see processing progress and any validation
+                  problems. If corrections are needed, update the file and submit it again. After
+                  validation succeeds, an administrator can review it for publication.
                 </p>
                 <dl className="submission-reference">
                   <div>
-                    <dt>Receipt</dt>
+                    <dt>Submission receipt</dt>
                     <dd>{upload.receipt.batchReference}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>Received — validation pending</dd>
                   </div>
                   <div>
                     <dt>Context</dt>
@@ -289,7 +299,7 @@ export function BatchUploadWorkflow({
                   className="button button--primary"
                   to={`/submissions/batches/${upload.receipt.batchReference}`}
                 >
-                  Track validation and errors
+                  View submission report
                 </Link>
               </div>
             ) : null}

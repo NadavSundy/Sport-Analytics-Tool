@@ -183,17 +183,19 @@ function SubmissionWorkflowSelector({
     {
       value: 'fixture',
       label: 'Single fixture',
-      description: 'Upload one fixture using readable team, competition, season and player names.',
+      description:
+        'One match only. Choose this when your file contains events for a single fixture.',
     },
     {
       value: 'season',
       label: 'Season',
-      description: 'Upload one season containing one or more fixtures.',
+      description:
+        'Several fixtures from one competition season. The season is named inside your upload file.',
     },
     {
       value: 'catalogue',
       label: 'Back catalogue',
-      description: 'Upload historical fixtures spanning one or more seasons.',
+      description: 'Historical fixtures covering multiple seasons.',
     },
   ];
 
@@ -228,7 +230,8 @@ function SubmissionWorkflowSelector({
     <fieldset className="submission-mode submission-workflow-selector">
       <legend>What are you submitting?</legend>
       <p className="field-help">
-        Choose a scope to see only the controls and guidance needed for that submission.
+        Choose how much match data your file contains. After upload, the platform checks the file in
+        the background before it can be published.
       </p>
       <div
         className="submission-workflow-group"
@@ -498,7 +501,8 @@ function SubmissionForm({
               </p>
               <p>
                 Before upload, the fixture date and team names are checked against your selection.
-                Choose Season or Back catalogue for a package containing multiple fixtures.
+                Choose Season when the file contains multiple fixtures from one season, or Back
+                catalogue when it contains historical fixtures from multiple seasons.
               </p>
               <div className="batch-guidance__actions">
                 <a
@@ -610,18 +614,28 @@ function SubmissionForm({
           {result.kind === 'acceptedBatch' ? (
             <div className="submission-result submission-result--success" role="status">
               <h2 tabIndex={-1} data-result-heading>
-                Fixture package received safely
+                Fixture upload received
               </h2>
 
               <p>
-                Processing continues after you leave this page. Use the durable receipt to follow
-                validation and resolve any readable-name ambiguity.
+                Your fixture file has been received. The platform is checking it in the background;
+                it is not published yet. You may leave this page safely.
+              </p>
+              <p>
+                Next: open the submission report to see processing progress and any validation
+                problems. If corrections are needed, update the file and submit it again. After
+                validation succeeds, an administrator can review it for publication.
               </p>
 
               <dl className="submission-reference">
                 <div>
-                  <dt>Receipt</dt>
+                  <dt>Submission receipt</dt>
                   <dd>{result.receipt.batchReference}</dd>
+                </div>
+
+                <div>
+                  <dt>Status</dt>
+                  <dd>Received — validation pending</dd>
                 </div>
 
                 <div>
@@ -639,7 +653,7 @@ function SubmissionForm({
                 className="button button--primary"
                 to={`/submissions/batches/${result.receipt.batchReference}`}
               >
-                Track validation and errors
+                View submission report
               </Link>
             </div>
           ) : result.kind === 'accepted' ? (
@@ -767,8 +781,9 @@ export function SubmissionPage() {
         <p className="eyebrow">Submitter workspace</p>
         <h1 id="submission-page-title">Submit Delivery Events</h1>
         <p>
-          Upload a single fixture, a season or a back catalogue from one guided workflow. Use
-          readable names and let the platform resolve application references.
+          Choose whether your file contains one fixture, one season, or historical data from
+          multiple seasons. Use readable names; after upload, the platform validates the file in the
+          background before administrator review and publication.
         </p>
         <div className="page-heading__actions">
           <Link to="/submissions/batches">View submission history</Link>

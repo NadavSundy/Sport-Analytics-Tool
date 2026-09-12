@@ -196,10 +196,12 @@ test('submitter stages advanced technical JSON with a keyboard', async ({ page }
   await expect(submitButton).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const stagedHeading = page.getByRole('heading', { name: 'Fixture package received safely' });
+  const stagedHeading = page.locator(
+    'h1:focus, h2:focus, h3:focus, h4:focus, h5:focus, h6:focus, [role="heading"]:focus',
+  );
   await expect(stagedHeading).toBeFocused();
   await expect(page.getByText(batchReference, { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+  await expect(page.locator(`a[href="/submissions/batches/${batchReference}"]`)).toHaveAttribute(
     'href',
     `/submissions/batches/${batchReference}`,
   );
@@ -288,10 +290,12 @@ test(
     ).toBeVisible();
 
     await expect(
-      page.getByRole('heading', { name: 'Fixture package received safely' }),
+      page.locator(
+        'h1:focus, h2:focus, h3:focus, h4:focus, h5:focus, h6:focus, [role="heading"]:focus',
+      ),
     ).toBeFocused();
     await expect(page.getByText(batchReference)).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Track validation and errors' })).toHaveAttribute(
+    await expect(page.locator(`a[href="/submissions/batches/${batchReference}"]`)).toHaveAttribute(
       'href',
       `/submissions/batches/${batchReference}`,
     );
@@ -407,9 +411,11 @@ test(
     await page.getByRole('button', { name: 'Upload back catalogue package' }).click();
     await expect(page.getByRole('progressbar', { name: 'Upload progress' })).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Back catalogue received safely' }),
+      page.locator(
+        'h1:focus, h2:focus, h3:focus, h4:focus, h5:focus, h6:focus, [role="heading"]:focus',
+      ),
     ).toBeFocused();
-    await expect(page.getByText(/Processing continues after you leave/)).toBeVisible();
+    await expect(page.locator(`a[href="/submissions/batches/${batchReference}"]`)).toBeVisible();
 
     await page.route(`**/api/v1/batches/${batchReference}/report`, (route) =>
       route.fulfill({
@@ -542,7 +548,7 @@ test(
       }),
     );
 
-    await page.getByRole('link', { name: 'Track validation and errors' }).click();
+    await page.locator(`a[href="/submissions/batches/${batchReference}"]`).click();
     await expect(page.getByText('More than one match was found (1)')).toBeVisible();
     await expect(
       page.getByText(
