@@ -103,7 +103,7 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
     return matches.map(() => path);
   });
 
-  assert.equal(tagged.length, 10);
+  assert.equal(tagged.length, 11);
   for (const required of [
     'tests/e2e/accessibility.spec.ts',
     'tests/e2e/authentication.spec.ts',
@@ -112,6 +112,7 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
     'tests/e2e/player-overview.spec.ts',
     'tests/e2e/statistics.spec.ts',
     'tests/e2e/submissions.spec.ts',
+    'tests/e2e/submitter-access.spec.ts',
   ]) {
     assert.ok(tagged.includes(required), `${required} must retain representative mobile coverage`);
   }

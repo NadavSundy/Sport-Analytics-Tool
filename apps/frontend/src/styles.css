@@ -36,7 +36,6 @@
   --colour-brand-text: #a83b13;
   --colour-error: #b42318;
   --colour-focus: #007f9e;
-  --colour-error: #d64251;
   --colour-error-soft: #fce8e8;
   --shadow-header: 0 8px 28px rgb(16 32 38 / 8%);
   --shadow-card: 0 8px 24px rgb(16 32 38 / 7%);
@@ -263,7 +262,6 @@
   --colour-brand-text: #ff8a5e;
   --colour-error: #ff8a7a;
   --colour-focus: #c7ff4a;
-  --colour-error: #ff5a67;
   --colour-error-soft: #361b24;
   --shadow-header: 0 8px 28px rgb(0 0 0 / 24%);
   --shadow-card: 0 10px 30px rgb(0 0 0 / 18%);

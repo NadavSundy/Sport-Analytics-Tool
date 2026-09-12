@@ -449,6 +449,51 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
 
+  /api/v1/submitter-scope-requests:
+    post:
+      tags:
+        - Submitter Access
+      summary: Request an additional competition scope
+      description: |
+        Creates one pending additional competition-scope request for an already-approved
+        submitter. The request does not modify the submitter's authoritative competition
+        grants. Existing scopes remain effective until an administrator approves the request
+        through the existing submitter-access management workflow.
+
+        A submitter cannot request a competition they already hold and cannot create a second
+        additional-scope request while one is awaiting administrator review.
+      operationId: requestAdditionalSubmitterScope
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitterAccessRequest'
+      responses:
+        '201':
+          description: Additional competition scope request created without granting access.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitterScopeRequestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The account is not an approved submitter, the scope is already granted, or another scope request is pending.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: The request body or requested competition is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
   /api/v1/admin/users:
     get:
       tags:
@@ -549,7 +594,9 @@ paths:
         Atomically approves a pending viewer request, re-scopes an approved
         submitter, or revokes approved submitter access. Approval requires the
         single competition stored on the pending request. Scope replacement for
-        an existing submitter requires at least one existing competition.
+        an existing submitter requires at least one existing competition. When an approved
+        submitter has a pending additional-scope request, an approval must include the requested
+        competition and the pending request is cleared only by the server-side decision.
         Revocation requires an empty scope and removes every existing grant while
         retaining the request's historical `approved` decision state.
 
@@ -611,16 +658,16 @@ paths:
     post:
       tags:
         - Administration
-      summary: Reject a pending submitter-access request
+      summary: Reject a pending submitter-access or additional-scope request
       description: |
-        Rejects only a genuine pending viewer request. The atomic decision keeps
-        the authoritative role as `viewer`, changes the request state to
-        `rejected`, removes any submitter competition scopes, and records the
-        acting administrator and decision time.
+        Rejects a genuine pending viewer request or an approved submitter's pending additional
+        competition-scope request. Initial-request rejection keeps the authoritative role as
+        `viewer` and changes the request state to `rejected`. Additional-scope rejection keeps
+        the existing `submitter` role and every current competition grant unchanged. Both paths
+        clear the pending requested competition and record the acting administrator and decision.
 
-        This operation is distinct from revocation, which removes access from an
-        existing approved submitter through the PATCH operation. A rejected viewer
-        may create a new request and return to `pending`.
+        This operation is distinct from revocation, which removes access from an existing
+        approved submitter through the PATCH operation.
       operationId: rejectAdministratorSubmitterAccessRequest
       x-implementation-status: implemented
       security:
@@ -2588,6 +2635,24 @@ components:
               type: string
               enum:
                 - pending
+            requestedCompetition:
+              $ref: '#/components/schemas/AdministratorCompetitionScope'
+
+    SubmitterScopeRequestResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - accountId
+            - requestedCompetition
+          properties:
+            accountId:
+              $ref: '#/components/schemas/ApiIdentifier'
             requestedCompetition:
               $ref: '#/components/schemas/AdministratorCompetitionScope'
 

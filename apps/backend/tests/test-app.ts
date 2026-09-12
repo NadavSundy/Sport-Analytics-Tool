@@ -56,6 +56,17 @@ const requestTestSubmitterAccess: SubmitterAccessService = {
       },
     };
   },
+  async requestAdditionalScope(account, accessRequest) {
+    return {
+      data: {
+        accountId: account.accountId,
+        requestedCompetition: {
+          competitionId: accessRequest.competitionId,
+          name: 'Test Competition',
+        },
+      },
+    };
+  },
 };
 
 const deleteTestAccount: AccountDeletionService = {

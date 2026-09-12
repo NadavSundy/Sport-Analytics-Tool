@@ -152,4 +152,70 @@ describe('submitter access repository', () => {
       'The requested competition does not exist.',
     );
   });
+
+  test('stores one additional scope request for an approved submitter', async () => {
+    const { executor, query } = createExecutor([
+      {
+        accountId: '42',
+        approvalState: 'approved',
+        disabledAt: null,
+        requestedCompetitionId: '8',
+        requestedCompetitionName: 'University League',
+      },
+    ]);
+    const repository = createSubmitterAccessRepository(executor);
+
+    await expect(repository.requestAdditionalScope('42', '8')).resolves.toEqual({
+      accountId: '42',
+      requestedCompetition: { competitionId: '8', name: 'University League' },
+    });
+    expect(query.mock.calls[0]?.[0]).toContain("account.application_role = 'submitter'");
+    expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO submitter_access_history');
+  });
+
+  test('rejects an additional scope that is already granted', async () => {
+    const { executor } = createExecutor(
+      [],
+      [
+        {
+          accountId: '42',
+          role: 'submitter',
+          approvalState: 'approved',
+          disabledAt: null,
+          competitionExists: true,
+          scopeAlreadyGranted: true,
+          requestedCompetitionId: null,
+          requestedCompetitionAlreadyGranted: false,
+        },
+      ],
+    );
+    const repository = createSubmitterAccessRepository(executor);
+
+    await expect(repository.requestAdditionalScope('42', '8')).rejects.toMatchObject({
+      code: 'SCOPE_ALREADY_GRANTED',
+    });
+  });
+
+  test('rejects a second active additional scope request', async () => {
+    const { executor } = createExecutor(
+      [],
+      [
+        {
+          accountId: '42',
+          role: 'submitter',
+          approvalState: 'approved',
+          disabledAt: null,
+          competitionExists: true,
+          scopeAlreadyGranted: false,
+          requestedCompetitionId: '8',
+          requestedCompetitionAlreadyGranted: false,
+        },
+      ],
+    );
+    const repository = createSubmitterAccessRepository(executor);
+
+    await expect(repository.requestAdditionalScope('42', '9')).rejects.toMatchObject({
+      code: 'ADDITIONAL_SCOPE_REQUEST_PENDING',
+    });
+  });
 });

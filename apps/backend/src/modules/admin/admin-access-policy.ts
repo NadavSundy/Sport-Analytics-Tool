@@ -4,9 +4,10 @@ import { AdminManagementConflictError } from './admin.errors';
 interface SubmitterAccessTarget {
   role: ApplicationRole;
   approvalState: SubmitterApprovalState;
+  hasPendingAdditionalScopeRequest?: boolean;
 }
 
-export type SubmitterAccessTransition = 'approve' | 'reject' | 'scope' | 'revoke';
+export type SubmitterAccessTransition = 'approve' | 'reject' | 'scope' | 'reject_scope' | 'revoke';
 export type SubmitterAccessAction = 'grant' | 'reject' | 'revoke';
 
 export function resolveSubmitterAccessTransition(
@@ -26,6 +27,10 @@ export function resolveSubmitterAccessTransition(
 
   if (action === 'reject' && hasPendingRequest) {
     return 'reject';
+  }
+
+  if (action === 'reject' && isApprovedSubmitter && target.hasPendingAdditionalScopeRequest) {
+    return 'reject_scope';
   }
 
   if (action === 'revoke' && isApprovedSubmitter) {

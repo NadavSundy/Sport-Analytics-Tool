@@ -402,7 +402,7 @@ describe.sequential('administrator user-management database integration', () => 
       id: pendingId,
       role: 'viewer',
       approvalState: 'rejected',
-      requestedCompetition: { competitionId },
+      requestedCompetition: null,
       competitionScopes: [],
       submitterAccessUpdatedBy: { id: administratorId },
     });
@@ -480,5 +480,107 @@ describe.sequential('administrator user-management database integration', () => 
       ).rejects.toMatchObject({ code });
       await expect(loadPersistedAccess(targetId)).resolves.toEqual(before);
     }
+  });
+
+  test('approves or rejects an additional scope request without granting it early', async () => {
+    const accounts = await executeQuery<{ accountId: string; subject: string }>(
+      databasePool(),
+      `
+        INSERT INTO app_user (
+          auth_provider, auth_subject, display_name, application_role, submitter_approval_state
+        )
+        VALUES
+          ('test', $1, 'Scope Request Administrator', 'admin', 'not_requested'),
+          ('test', $2, 'Scope Request Submitter', 'submitter', 'approved')
+        RETURNING app_user_id::text AS "accountId", auth_subject AS subject
+      `,
+      [`${sourcePrefix}-scope-request-admin`, `${sourcePrefix}-scope-request-submitter`],
+    );
+    const administratorId = accounts.rows.find((row) =>
+      row.subject.endsWith('-scope-request-admin'),
+    )!.accountId;
+    const submitterId = accounts.rows.find((row) =>
+      row.subject.endsWith('-scope-request-submitter'),
+    )!.accountId;
+    const competitions = await executeQuery<{ competitionId: string; name: string }>(
+      databasePool(),
+      `INSERT INTO competition (name) VALUES ($1), ($2)
+       RETURNING competition_id::text AS "competitionId", name`,
+      [`${sourcePrefix}-Existing Scope`, `${sourcePrefix}-Requested Scope`],
+    );
+    const existing = competitions.rows.find((row) => row.name.endsWith('Existing Scope'))!;
+    const requested = competitions.rows.find((row) => row.name.endsWith('Requested Scope'))!;
+    await executeQuery(
+      databasePool(),
+      'INSERT INTO submitter_competition_scope (app_user_id, competition_id) VALUES ($1, $2)',
+      [submitterId, existing.competitionId],
+    );
+
+    const requestRepository = createSubmitterAccessRepository(databasePool());
+    const adminRepository = createAdminRepository(databasePool());
+
+    await expect(
+      requestRepository.requestAdditionalScope(submitterId, requested.competitionId),
+    ).resolves.toMatchObject({
+      accountId: submitterId,
+      requestedCompetition: { competitionId: requested.competitionId },
+    });
+    await expect(loadPersistedAccess(submitterId)).resolves.toMatchObject({
+      role: 'submitter',
+      approvalState: 'approved',
+      competitionIds: [existing.competitionId],
+      requestedCompetitionId: requested.competitionId,
+    });
+
+    const listed = await adminRepository.listUserManagementData();
+    expect(listed.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: submitterId,
+          role: 'submitter',
+          requestedCompetition: {
+            competitionId: requested.competitionId,
+            name: requested.name,
+          },
+          competitionScopes: [{ competitionId: existing.competitionId, name: existing.name }],
+        }),
+      ]),
+    );
+
+    await expect(
+      adminRepository.updateSubmitterAccess(submitterId, administratorId, {
+        approved: true,
+        competitionIds: [existing.competitionId],
+      }),
+    ).rejects.toMatchObject({ code: 'REQUESTED_COMPETITION_SCOPE_MISMATCH' });
+
+    const approved = await adminRepository.updateSubmitterAccess(submitterId, administratorId, {
+      approved: true,
+      competitionIds: [existing.competitionId, requested.competitionId],
+    });
+    expect(approved.requestedCompetition).toBeNull();
+    expect(approved.competitionScopes.map((scope) => scope.competitionId).sort()).toEqual(
+      [existing.competitionId, requested.competitionId].sort(),
+    );
+
+    const thirdCompetition = await executeQuery<{ competitionId: string }>(
+      databasePool(),
+      'INSERT INTO competition (name) VALUES ($1) RETURNING competition_id::text AS "competitionId"',
+      [`${sourcePrefix}-Rejected Scope`],
+    );
+    const rejectedCompetitionId = thirdCompetition.rows[0]!.competitionId;
+    await requestRepository.requestAdditionalScope(submitterId, rejectedCompetitionId);
+    const rejected = await adminRepository.rejectSubmitterAccessRequest(
+      submitterId,
+      administratorId,
+    );
+    expect(rejected).toMatchObject({
+      role: 'submitter',
+      approvalState: 'approved',
+      requestedCompetition: null,
+    });
+    expect(rejected.competitionScopes.map((scope) => scope.competitionId).sort()).toEqual(
+      [existing.competitionId, requested.competitionId].sort(),
+    );
   });
 });

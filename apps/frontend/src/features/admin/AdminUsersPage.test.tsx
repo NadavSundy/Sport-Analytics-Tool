@@ -356,4 +356,42 @@ describe('administrator user management page', () => {
       body: JSON.stringify({ role: 'admin' }),
     });
   });
+
+  it('distinguishes and handles a pending additional competition request for a submitter', async () => {
+    const requestingSubmitter = managedUser({
+      ...submitter,
+      requestedCompetition: availableScopes[0]!,
+      competitionScopes: [availableScopes[1]!],
+    });
+    const approved = managedUser({
+      ...requestingSubmitter,
+      requestedCompetition: null,
+      competitionScopes: [availableScopes[0]!, availableScopes[1]!],
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(
+        managementResponse([administrator, managedUser(), requestingSubmitter]),
+      )
+      .mockResolvedValueOnce(updatedResponse(approved));
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage analyst@example.com' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Analyst' }));
+    expect(dialog.getByText('Pending additional scope request')).toBeInTheDocument();
+    expect(dialog.getAllByText('Premier T20').length).toBeGreaterThan(0);
+    expect(dialog.getByRole('button', { name: 'Approve additional scope' })).toBeEnabled();
+    expect(dialog.getByRole('button', { name: 'Reject scope request' })).toBeEnabled();
+
+    fireEvent.click(dialog.getByRole('button', { name: 'Approve additional scope' }));
+    expect(dialog.getByRole('alertdialog')).toHaveTextContent('Approve analyst@example.com');
+    fireEvent.click(dialog.getByRole('button', { name: 'Confirm change' }));
+    await dialog.findByText(/competition scope was updated/i);
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ approved: true, competitionIds: ['8', '7'] }),
+    });
+  });
 });

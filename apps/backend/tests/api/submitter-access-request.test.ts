@@ -18,6 +18,14 @@ function mockSubmitterAccessService(): SubmitterAccessService {
         requestedCompetition: { competitionId: '7', name: 'Premier T20' },
       },
     }),
+    requestAdditionalScope: vi
+      .fn<SubmitterAccessService['requestAdditionalScope']>()
+      .mockResolvedValue({
+        data: {
+          accountId: '1',
+          requestedCompetition: { competitionId: '8', name: 'University League' },
+        },
+      }),
   };
 }
 
@@ -158,5 +166,52 @@ describe('submitter access request API', () => {
       code: 'INVALID_COMPETITION_SCOPE',
       message: 'The requested competition does not exist.',
     });
+  });
+
+  test('creates a pending additional scope request without changing existing access', async () => {
+    const service = mockSubmitterAccessService();
+    const account = createTestAccount({
+      accountId: '42',
+      role: 'submitter',
+      approvalState: 'approved',
+      competitionIds: ['7'],
+      requestedCompetition: null,
+    });
+
+    const response = await request(
+      createTestApp(undefined, undefined, async () => account, undefined, undefined, service),
+    )
+      .post('/api/v1/submitter-scope-requests')
+      .set('Authorization', 'Bearer test-token')
+      .send({ competitionId: '8' })
+      .expect(201);
+
+    expect(service.requestAdditionalScope).toHaveBeenCalledWith(account, { competitionId: '8' });
+    expect(response.body).toEqual({
+      data: {
+        accountId: '1',
+        requestedCompetition: { competitionId: '8', name: 'University League' },
+      },
+    });
+  });
+
+  test('returns a conflict for a duplicate additional scope request', async () => {
+    const service = mockSubmitterAccessService();
+    vi.mocked(service.requestAdditionalScope).mockRejectedValue(
+      new SubmitterAccessConflictError(
+        'SCOPE_ALREADY_GRANTED',
+        'The authenticated account already has submission access for this competition.',
+      ),
+    );
+
+    const response = await request(
+      createTestApp(undefined, undefined, undefined, undefined, undefined, service),
+    )
+      .post('/api/v1/submitter-scope-requests')
+      .set('Authorization', 'Bearer test-token')
+      .send({ competitionId: '8' })
+      .expect(409);
+
+    expect(response.body.error.code).toBe('SCOPE_ALREADY_GRANTED');
   });
 });

@@ -106,6 +106,20 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
+  await page.route('**/api/v1/competitions?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          { competitionId: '5', name: 'Premier T20' },
+          { competitionId: '8', name: 'University League' },
+        ],
+        pagination: { nextCursor: null },
+      }),
+    });
+  });
+
   await page.route('**/api/v1/fixtures?**', async (route) => {
     await route.fulfill({
       status: 200,

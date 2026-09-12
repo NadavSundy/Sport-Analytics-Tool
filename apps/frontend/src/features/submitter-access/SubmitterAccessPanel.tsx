@@ -1,11 +1,12 @@
 import type { Competition, CurrentUserProfile } from '@sport-analytics/contracts';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { CurrentUserContractError, getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import {
   listRequestableCompetitions,
+  requestAdditionalCompetitionScope,
   requestSubmitterAccess,
   SubmitterAccessCompetitionOptionsError,
   SubmitterAccessContractError,
@@ -18,11 +19,7 @@ type ProfileState =
 
 type Feedback = { kind: 'success' | 'error'; message: string } | null;
 
-function hasSubmissionRole(profile: CurrentUserProfile): boolean {
-  return profile.role === 'submitter' || profile.role === 'admin';
-}
-
-function canRequestAccess(profile: CurrentUserProfile): boolean {
+function canRequestInitialAccess(profile: CurrentUserProfile): boolean {
   return (
     profile.role === 'viewer' &&
     (profile.approvalState === 'not_requested' ||
@@ -31,19 +28,24 @@ function canRequestAccess(profile: CurrentUserProfile): boolean {
   );
 }
 
+function hasPendingAdditionalScopeRequest(profile: CurrentUserProfile): boolean {
+  return Boolean(
+    profile.role === 'submitter' &&
+    profile.requestedCompetition &&
+    !profile.competitionIds.includes(profile.requestedCompetition.competitionId),
+  );
+}
+
+function shouldLoadCompetitionOptions(profile: CurrentUserProfile): boolean {
+  return canRequestInitialAccess(profile) || profile.role === 'submitter';
+}
+
 function profileErrorMessage(error: unknown): string {
   if (error instanceof ApiResponseError && error.kind === 'unauthenticated') {
     return 'Your session is no longer valid. Sign in again to check your submitter status.';
   }
-
-  if (error instanceof CurrentUserContractError) {
-    return error.message;
-  }
-
-  if (error instanceof SubmitterAccessCompetitionOptionsError) {
-    return error.message;
-  }
-
+  if (error instanceof CurrentUserContractError) return error.message;
+  if (error instanceof SubmitterAccessCompetitionOptionsError) return error.message;
   return 'Your submitter status could not be loaded. Please try again.';
 }
 
@@ -51,11 +53,9 @@ function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiResponseError && error.kind === 'unauthenticated') {
     return 'Your session is no longer valid. Sign in again before requesting access.';
   }
-
   if (error instanceof ApiResponseError || error instanceof SubmitterAccessContractError) {
     return error.message;
   }
-
   return 'Your request could not be submitted. Please try again.';
 }
 
@@ -69,27 +69,34 @@ export function SubmitterAccessPanel() {
   const loadProfile = useCallback(
     async (signal?: AbortSignal) => {
       setProfileState({ kind: 'loading' });
-
       try {
         const profile = await getCurrentUserProfile(client, signal);
-        const competitions = canRequestAccess(profile)
+        const competitions = shouldLoadCompetitionOptions(profile)
           ? await listRequestableCompetitions(signal)
           : [];
+        const pendingCompetitionId = hasPendingAdditionalScopeRequest(profile)
+          ? profile.requestedCompetition?.competitionId
+          : undefined;
+        const availableCompetition = competitions.find(
+          (competition) =>
+            !profile.competitionIds.includes(competition.competitionId) &&
+            competition.competitionId !== pendingCompetitionId,
+        );
         const requestedCompetitionId = profile.requestedCompetition?.competitionId;
         const initialCompetitionId =
-          competitions.find((competition) => competition.competitionId === requestedCompetitionId)
-            ?.competitionId ??
-          competitions[0]?.competitionId ??
-          '';
+          profile.role === 'submitter'
+            ? (availableCompetition?.competitionId ?? '')
+            : (competitions.find(
+                (competition) => competition.competitionId === requestedCompetitionId,
+              )?.competitionId ??
+              competitions[0]?.competitionId ??
+              '');
 
         setSelectedCompetitionId(initialCompetitionId);
         setProfileState({ kind: 'ready', profile, competitions });
       } catch (error) {
-        if (signal?.aborted) {
-          return;
-        }
-
-        setProfileState({ kind: 'error', message: profileErrorMessage(error) });
+        if (!signal?.aborted)
+          setProfileState({ kind: 'error', message: profileErrorMessage(error) });
       }
     },
     [client],
@@ -98,37 +105,65 @@ export function SubmitterAccessPanel() {
   useEffect(() => {
     const controller = new AbortController();
     void loadProfile(controller.signal);
-
     return () => controller.abort();
   }, [loadProfile]);
 
-  async function handleRequest(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (profileState.kind !== 'ready' || !selectedCompetitionId) {
-      return;
-    }
-
-    const existingProfile = profileState.profile;
-    const existingCompetitions = profileState.competitions;
-    setIsSubmitting(true);
-    setFeedback(null);
-
+  async function refreshAfterConflict(existingCompetitions: Competition[]) {
     try {
-      const result = await requestSubmitterAccess(client, selectedCompetitionId);
+      const persistedProfile = await getCurrentUserProfile(client);
       setProfileState({
         kind: 'ready',
-        profile: {
-          ...existingProfile,
-          approvalState: 'pending',
-          requestedCompetition: result.data.requestedCompetition,
-        },
+        profile: persistedProfile,
         competitions: existingCompetitions,
       });
       setFeedback({
         kind: 'success',
-        message: `Your request for ${result.data.requestedCompetition.name} was submitted and is now awaiting administrator approval.`,
+        message: 'Your submitter status changed and has been refreshed from your account.',
       });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleRequest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (profileState.kind !== 'ready' || !selectedCompetitionId) return;
+
+    const existingProfile = profileState.profile;
+    const existingCompetitions = profileState.competitions;
+    const additionalScope = existingProfile.role === 'submitter';
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      if (additionalScope) {
+        const result = await requestAdditionalCompetitionScope(client, selectedCompetitionId);
+        setProfileState({
+          kind: 'ready',
+          profile: { ...existingProfile, requestedCompetition: result.data.requestedCompetition },
+          competitions: existingCompetitions,
+        });
+        setFeedback({
+          kind: 'success',
+          message: `Your request for ${result.data.requestedCompetition.name} was submitted. Your current competition access is unchanged while an administrator reviews it.`,
+        });
+      } else {
+        const result = await requestSubmitterAccess(client, selectedCompetitionId);
+        setProfileState({
+          kind: 'ready',
+          profile: {
+            ...existingProfile,
+            approvalState: 'pending',
+            requestedCompetition: result.data.requestedCompetition,
+          },
+          competitions: existingCompetitions,
+        });
+        setFeedback({
+          kind: 'success',
+          message: `Your request for ${result.data.requestedCompetition.name} was submitted and is now awaiting administrator approval.`,
+        });
+      }
 
       try {
         const persistedProfile = await getCurrentUserProfile(client);
@@ -146,36 +181,33 @@ export function SubmitterAccessPanel() {
       }
     } catch (error) {
       if (error instanceof ApiResponseError && error.status === 409) {
-        try {
-          const persistedProfile = await getCurrentUserProfile(client);
-          setProfileState({
-            kind: 'ready',
-            profile: persistedProfile,
-            competitions: existingCompetitions,
-          });
-
-          if (
-            hasSubmissionRole(persistedProfile) ||
-            persistedProfile.approvalState === 'pending' ||
-            persistedProfile.approvalState === 'approved'
-          ) {
-            setFeedback({
-              kind: 'success',
-              message: 'Your submitter status changed and has been refreshed from your account.',
-            });
-            return;
-          }
-        } catch {
-          // Keep the original, safe conflict response when the latest profile
-          // cannot be loaded.
-        }
+        if (await refreshAfterConflict(existingCompetitions)) return;
       }
-
       setFeedback({ kind: 'error', message: requestErrorMessage(error) });
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  const scopeView = useMemo(() => {
+    if (profileState.kind !== 'ready') return null;
+    const names = new Map(
+      profileState.competitions.map((competition) => [competition.competitionId, competition.name]),
+    );
+    const currentScopes = profileState.profile.competitionIds.map(
+      (competitionId) => names.get(competitionId) ?? `Competition ${competitionId}`,
+    );
+    const pendingAdditional = hasPendingAdditionalScopeRequest(profileState.profile);
+    const pendingId = pendingAdditional
+      ? profileState.profile.requestedCompetition?.competitionId
+      : undefined;
+    const availableAdditional = profileState.competitions.filter(
+      (competition) =>
+        !profileState.profile.competitionIds.includes(competition.competitionId) &&
+        competition.competitionId !== pendingId,
+    );
+    return { currentScopes, pendingAdditional, availableAdditional };
+  }, [profileState]);
 
   return (
     <section className="submitter-access-panel" aria-labelledby="submitter-access-title">
@@ -222,29 +254,81 @@ export function SubmitterAccessPanel() {
             Retry status check
           </button>
         </div>
-      ) : hasSubmissionRole(profileState.profile) ? (
+      ) : profileState.profile.role === 'admin' ? (
         <div className="submitter-access-panel__message">
           <p>
-            Your account has submission access. Submissions remain limited to the competitions
-            assigned by an administrator.
+            Administrators can submit across the platform and manage submitter competition scopes.
           </p>
           <div className="submitter-access-panel__actions">
             <Link className="button button--primary" to="/submissions/new">
               Submit events
             </Link>
-            {profileState.profile.role === 'admin' ? (
-              <>
-                <Link className="button button--secondary" to="/reviews/batches">
-                  Review batches
-                </Link>
-                <Link className="button button--secondary" to="/admin/users">
-                  Manage users
-                </Link>
-                <Link className="button button--secondary" to="/admin/dataset-releases/new">
-                  Publish dataset release
-                </Link>
-              </>
-            ) : null}
+            <Link className="button button--secondary" to="/reviews/batches">
+              Review batches
+            </Link>
+            <Link className="button button--secondary" to="/admin/users">
+              Manage users
+            </Link>
+            <Link className="button button--secondary" to="/admin/dataset-releases/new">
+              Publish dataset release
+            </Link>
+          </div>
+        </div>
+      ) : profileState.profile.role === 'submitter' ? (
+        <div className="submitter-access-panel__message">
+          <p>
+            Your account has submission access. Access remains limited to administrator-approved
+            competitions.
+          </p>
+          <p>
+            <strong>Current competition scope:</strong>{' '}
+            {scopeView?.currentScopes.length ? scopeView.currentScopes.join(', ') : 'None assigned'}
+          </p>
+          {scopeView?.pendingAdditional ? (
+            <p role="status">
+              Additional scope request pending for{' '}
+              <strong>{profileState.profile.requestedCompetition?.name}</strong>. Your existing
+              submission access is unchanged until an administrator approves it.
+            </p>
+          ) : scopeView?.availableAdditional.length ? (
+            <form
+              className="submitter-access-request"
+              onSubmit={(event) => void handleRequest(event)}
+            >
+              <label htmlFor="submitter-access-competition">Additional competition</label>
+              <select
+                id="submitter-access-competition"
+                value={selectedCompetitionId}
+                onChange={(event) => setSelectedCompetitionId(event.target.value)}
+                disabled={isSubmitting}
+              >
+                {scopeView.availableAdditional.map((competition) => (
+                  <option key={competition.competitionId} value={competition.competitionId}>
+                    {competition.name}
+                  </option>
+                ))}
+              </select>
+              <p className="field-help">
+                Requesting another competition does not grant access immediately. An administrator
+                must approve it.
+              </p>
+              <button
+                className="button button--secondary"
+                type="submit"
+                disabled={isSubmitting || !selectedCompetitionId}
+              >
+                {isSubmitting ? 'Requesting scope…' : 'Request additional competition'}
+              </button>
+            </form>
+          ) : (
+            <p className="submitter-access-panel__empty" role="status">
+              No additional competitions are currently available to request.
+            </p>
+          )}
+          <div className="submitter-access-panel__actions">
+            <Link className="button button--primary" to="/submissions/new">
+              Submit events
+            </Link>
           </div>
         </div>
       ) : profileState.profile.approvalState === 'pending' ? (

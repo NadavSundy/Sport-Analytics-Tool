@@ -74,11 +74,25 @@ function scopeLabel(user: AdministratorManagedUser): string {
   return user.requestedCompetition?.name ?? 'None assigned';
 }
 
+function hasPendingAdditionalScopeRequest(user: AdministratorManagedUser): boolean {
+  return Boolean(
+    user.role === 'submitter' &&
+    user.approvalState === 'approved' &&
+    user.requestedCompetition &&
+    !user.competitionScopes.some(
+      (scope) => scope.competitionId === user.requestedCompetition?.competitionId,
+    ),
+  );
+}
+
 function StatusBadge({ user }: { user: AdministratorManagedUser }) {
+  const pendingAdditionalScope = hasPendingAdditionalScopeRequest(user);
   const relevant = user.role === 'submitter' || user.approvalState !== 'not_requested';
   return relevant ? (
-    <span className={`admin-status-badge admin-status-badge--${user.approvalState}`}>
-      {approvalLabels[user.approvalState]}
+    <span
+      className={`admin-status-badge admin-status-badge--${pendingAdditionalScope ? 'pending' : user.approvalState}`}
+    >
+      {pendingAdditionalScope ? 'Scope request pending' : approvalLabels[user.approvalState]}
     </span>
   ) : (
     <span className="admin-status-badge admin-status-badge--neutral">Not requested</span>
@@ -118,10 +132,18 @@ function ManageDialog({
   );
   const hasPendingRequest = user.role === 'viewer' && user.approvalState === 'pending';
   const isSubmitter = user.role === 'submitter' && user.approvalState === 'approved';
+  const hasPendingAdditionalScopeRequestValue = hasPendingAdditionalScopeRequest(user);
+  const requestedScopeIds = useMemo(
+    () =>
+      hasPendingAdditionalScopeRequestValue && user.requestedCompetition
+        ? [...assignedIds, user.requestedCompetition.competitionId]
+        : assignedIds,
+    [assignedIds, hasPendingAdditionalScopeRequestValue, user.requestedCompetition],
+  );
   const [selectedScopeIds, setSelectedScopeIds] = useState<string[]>(
     hasPendingRequest && user.requestedCompetition
       ? [user.requestedCompetition.competitionId]
-      : assignedIds,
+      : requestedScopeIds,
   );
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<ActionKind | null>(null);
@@ -138,11 +160,11 @@ function ManageDialog({
     setSelectedScopeIds(
       hasPendingRequest && user.requestedCompetition
         ? [user.requestedCompetition.competitionId]
-        : assignedIds,
+        : requestedScopeIds,
     );
     setSelectionError(null);
     setConfirmation(null);
-  }, [assignedIds, hasPendingRequest, user.requestedCompetition]);
+  }, [hasPendingRequest, requestedScopeIds, user.requestedCompetition]);
 
   useEffect(() => {
     if (confirmation) confirmRef.current?.focus();
@@ -217,11 +239,15 @@ function ManageDialog({
       : confirmation === 'approve'
         ? `Approve ${user.email} as a submitter for ${user.requestedCompetition?.name ?? 'the requested competition'}?`
         : confirmation === 'reject'
-          ? `Reject the pending submitter request from ${user.email}?`
+          ? hasPendingAdditionalScopeRequestValue
+            ? `Reject ${user.email}'s request for ${user.requestedCompetition?.name ?? 'the additional competition'} while keeping their existing competition access?`
+            : `Reject the pending submitter request from ${user.email}?`
           : confirmation === 'revoke'
             ? `Revoke all submitter access and competition scopes from ${user.email}?`
             : confirmation === 'scope'
-              ? `Replace ${user.email}'s competition permissions with the selected scopes?`
+              ? hasPendingAdditionalScopeRequestValue
+                ? `Approve ${user.email}'s additional scope request for ${user.requestedCompetition?.name ?? 'the requested competition'}?`
+                : `Replace ${user.email}'s competition permissions with the selected scopes?`
               : null;
 
   return (
@@ -284,6 +310,12 @@ function ManageDialog({
               <dt>Competition permissions</dt>
               <dd>{scopeLabel(user)}</dd>
             </div>
+            {hasPendingAdditionalScopeRequestValue ? (
+              <div>
+                <dt>Pending additional scope request</dt>
+                <dd>{user.requestedCompetition?.name}</dd>
+              </div>
+            ) : null}
             {user.submitterAccessUpdatedAt ? (
               <div className="admin-user-facts__audit">
                 <dt>Last access change</dt>
@@ -312,7 +344,9 @@ function ManageDialog({
                   <legend>{isSubmitter ? 'Competition scopes' : 'Requested competition'}</legend>
                   <p className="field-help">
                     {isSubmitter
-                      ? 'Select every competition this user may submit data for.'
+                      ? hasPendingAdditionalScopeRequestValue
+                        ? `The submitter requested ${user.requestedCompetition?.name}. Approval must include that competition and keeps access server-controlled.`
+                        : 'Select every competition this user may submit data for.'
                       : 'Approval grants the competition selected in the user request.'}
                   </p>
                   {isSubmitter ? (
@@ -351,17 +385,30 @@ function ManageDialog({
                       disabled={isBusy || (!isSubmitter && !user.requestedCompetition)}
                       onClick={(event) => requestScopeSave(event.currentTarget)}
                     >
-                      {isSubmitter ? 'Save scope changes' : 'Approve submitter'}
+                      {isSubmitter
+                        ? hasPendingAdditionalScopeRequestValue
+                          ? 'Approve additional scope'
+                          : 'Save scope changes'
+                        : 'Approve submitter'}
                     </button>
                     <button
                       className="button button--danger"
                       type="button"
                       disabled={isBusy}
                       onClick={(event) =>
-                        requestConfirmation(isSubmitter ? 'revoke' : 'reject', event.currentTarget)
+                        requestConfirmation(
+                          isSubmitter && !hasPendingAdditionalScopeRequestValue
+                            ? 'revoke'
+                            : 'reject',
+                          event.currentTarget,
+                        )
                       }
                     >
-                      {isSubmitter ? 'Revoke submitter access' : 'Reject request'}
+                      {isSubmitter
+                        ? hasPendingAdditionalScopeRequestValue
+                          ? 'Reject scope request'
+                          : 'Revoke submitter access'
+                        : 'Reject request'}
                     </button>
                   </div>
                 </fieldset>

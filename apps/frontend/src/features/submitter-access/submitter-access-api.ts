@@ -1,7 +1,9 @@
 import {
   submitterAccessRequestResponseSchema,
+  submitterScopeRequestResponseSchema,
   type Competition,
   type SubmitterAccessRequestResponse,
+  type SubmitterScopeRequestResponse,
 } from '@sport-analytics/contracts';
 import type { AuthenticatedApiClient } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
@@ -57,6 +59,26 @@ export async function requestSubmitterAccess(
     body: JSON.stringify({ competitionId }),
   });
   const parsed = submitterAccessRequestResponseSchema.safeParse(response);
+
+  if (!parsed.success) {
+    throw new SubmitterAccessContractError();
+  }
+
+  return parsed.data;
+}
+
+export async function requestAdditionalCompetitionScope(
+  client: AuthenticatedApiClient,
+  competitionId: string,
+): Promise<SubmitterScopeRequestResponse> {
+  const response = await client.request<unknown>('/submitter-scope-requests', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ competitionId }),
+  });
+  const parsed = submitterScopeRequestResponseSchema.safeParse(response);
 
   if (!parsed.success) {
     throw new SubmitterAccessContractError();

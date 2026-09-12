@@ -40,6 +40,7 @@ interface TargetAccountRow {
   role: string;
   approvalState: string;
   requestedCompetitionId: string | null;
+  requestedCompetitionAlreadyGranted: boolean;
   disabledAt: Date | null;
 }
 
@@ -234,12 +235,21 @@ async function applySubmitterAccessTransition(
       client,
       `
         SELECT
-          application_role AS role,
-          submitter_approval_state AS "approvalState",
-          submitter_requested_competition_id::text AS "requestedCompetitionId",
-          disabled_at AS "disabledAt"
-        FROM app_user
-        WHERE app_user_id = $1
+          account.application_role AS role,
+          account.submitter_approval_state AS "approvalState",
+          account.submitter_requested_competition_id::text AS "requestedCompetitionId",
+          CASE
+            WHEN account.submitter_requested_competition_id IS NULL THEN false
+            ELSE EXISTS (
+              SELECT 1
+              FROM submitter_competition_scope requested_scope
+              WHERE requested_scope.app_user_id = account.app_user_id
+                AND requested_scope.competition_id = account.submitter_requested_competition_id
+            )
+          END AS "requestedCompetitionAlreadyGranted",
+          account.disabled_at AS "disabledAt"
+        FROM app_user account
+        WHERE account.app_user_id = $1
         FOR UPDATE
       `,
       [targetAccountId],
@@ -272,8 +282,17 @@ async function applySubmitterAccessTransition(
       );
     }
 
+    const hasPendingAdditionalScopeRequest =
+      target.role === 'submitter' &&
+      target.approvalState === 'approved' &&
+      target.requestedCompetitionId !== null &&
+      !target.requestedCompetitionAlreadyGranted;
     const transition = resolveSubmitterAccessTransition(
-      { role: target.role, approvalState: target.approvalState },
+      {
+        role: target.role,
+        approvalState: target.approvalState,
+        hasPendingAdditionalScopeRequest,
+      },
       action,
     );
     const grantsAccess = transition === 'approve' || transition === 'scope';
@@ -298,6 +317,18 @@ async function applySubmitterAccessTransition(
       }
 
       requestedCompetitionIds = [target.requestedCompetitionId];
+    }
+
+    if (
+      transition === 'scope' &&
+      hasPendingAdditionalScopeRequest &&
+      target.requestedCompetitionId &&
+      !requestedCompetitionIds.includes(target.requestedCompetitionId)
+    ) {
+      throw new AdminManagementConflictError(
+        'REQUESTED_COMPETITION_SCOPE_MISMATCH',
+        'Approving the additional scope request must include the requested competition.',
+      );
     }
 
     if (grantsAccess && requestedCompetitionIds.length === 0) {
@@ -331,19 +362,26 @@ async function applySubmitterAccessTransition(
         SET
           application_role = $2,
           submitter_approval_state = $3,
+          submitter_requested_competition_id = NULL,
           submitter_access_updated_at = now(),
           submitter_access_updated_by = $4
         WHERE app_user_id = $1
       `,
       [
         targetAccountId,
-        grantsAccess ? 'submitter' : 'viewer',
+        transition === 'reject_scope' || grantsAccess ? 'submitter' : 'viewer',
         transition === 'reject' ? 'rejected' : 'approved',
         administratorAccountId,
       ],
     );
 
-    if (transition === 'approve' || transition === 'reject' || transition === 'revoke') {
+    if (
+      transition === 'approve' ||
+      transition === 'reject' ||
+      transition === 'reject_scope' ||
+      (transition === 'scope' && hasPendingAdditionalScopeRequest) ||
+      transition === 'revoke'
+    ) {
       await executeQuery(
         client,
         `
@@ -354,27 +392,33 @@ async function applySubmitterAccessTransition(
         `,
         [
           targetAccountId,
-          transition === 'approve' ? 'approved' : transition === 'reject' ? 'rejected' : 'revoked',
+          transition === 'approve' || (transition === 'scope' && hasPendingAdditionalScopeRequest)
+            ? 'approved'
+            : transition === 'reject' || transition === 'reject_scope'
+              ? 'rejected'
+              : 'revoked',
           target.requestedCompetitionId,
           administratorAccountId,
         ],
       );
     }
 
-    await executeQuery(client, 'DELETE FROM submitter_competition_scope WHERE app_user_id = $1', [
-      targetAccountId,
-    ]);
+    if (transition !== 'reject_scope') {
+      await executeQuery(client, 'DELETE FROM submitter_competition_scope WHERE app_user_id = $1', [
+        targetAccountId,
+      ]);
 
-    if (grantsAccess) {
-      await executeQuery(
-        client,
-        `
-          INSERT INTO submitter_competition_scope (app_user_id, competition_id)
-          SELECT $1, requested.competition_id
-          FROM unnest($2::bigint[]) AS requested(competition_id)
-        `,
-        [targetAccountId, requestedCompetitionIds],
-      );
+      if (grantsAccess) {
+        await executeQuery(
+          client,
+          `
+            INSERT INTO submitter_competition_scope (app_user_id, competition_id)
+            SELECT $1, requested.competition_id
+            FROM unnest($2::bigint[]) AS requested(competition_id)
+          `,
+          [targetAccountId, requestedCompetitionIds],
+        );
+      }
     }
 
     return findUserById(targetAccountId, client);
@@ -417,7 +461,8 @@ export function createAdminRepository(pool: Pool = getDatabasePool()): AdminRepo
           client,
           `
             SELECT application_role AS role, submitter_approval_state AS "approvalState",
-              submitter_requested_competition_id::text AS "requestedCompetitionId", disabled_at AS "disabledAt"
+              submitter_requested_competition_id::text AS "requestedCompetitionId",
+              false AS "requestedCompetitionAlreadyGranted", disabled_at AS "disabledAt"
             FROM app_user WHERE app_user_id = $1 FOR UPDATE
           `,
           [targetAccountId],
