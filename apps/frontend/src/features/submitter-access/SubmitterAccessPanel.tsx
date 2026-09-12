@@ -19,10 +19,6 @@ type ProfileState =
 
 type Feedback = { kind: 'success' | 'error'; message: string } | null;
 
-function hasSubmissionRole(profile: CurrentUserProfile): boolean {
-  return profile.role === 'submitter' || profile.role === 'admin';
-}
-
 function canRequestInitialAccess(profile: CurrentUserProfile): boolean {
   return (
     profile.role === 'viewer' &&
