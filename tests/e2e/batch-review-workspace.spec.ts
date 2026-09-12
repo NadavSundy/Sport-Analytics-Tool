@@ -177,12 +177,17 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
     },
   });
 
-  await page.route('**/api/v1/batches?**', async (route) => {
-    expect(route.request().url()).toContain('status=awaiting_review');
+  await page.route(/\/api\/v1\/admin\/batches(?:\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    const isReviewQueue = url.searchParams.get('status') === 'awaiting_review';
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [batch()], pagination: { nextCursor: null } }),
+      body: JSON.stringify({
+        data: isReviewQueue ? [batch()] : [],
+        pagination: { nextCursor: null },
+      }),
     });
   });
   await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
@@ -207,7 +212,7 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
   });
 
   await page.goto('/reviews/batches');
-  await expect(page).toHaveTitle(/Batch review queue/);
+  await expect(page).toHaveTitle(/Batch management/);
   await page.getByRole('link', { name: 'season.csv' }).click();
   await expect(page.getByRole('heading', { name: 'Review staged batch' })).toBeVisible();
   await expect(page.getByText('Data Submitter')).toBeVisible();
