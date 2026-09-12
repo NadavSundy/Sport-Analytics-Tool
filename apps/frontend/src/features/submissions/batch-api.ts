@@ -71,6 +71,22 @@ export async function listBatches(
   return parse(await client.request<unknown>(`/batches${query}`), batchListResponseSchema);
 }
 
+export async function listAdminBatches(
+  client: AuthenticatedApiClient,
+  cursor?: string,
+  status?: string,
+  signal?: AbortSignal,
+): Promise<BatchListResponse> {
+  const parameters = new URLSearchParams();
+  if (cursor) parameters.set('cursor', cursor);
+  if (status) parameters.set('status', status);
+  const query = parameters.size > 0 ? `?${parameters.toString()}` : '';
+  return parse(
+    await client.request<unknown>(`/admin/batches${query}`, signal ? { signal } : {}),
+    batchListResponseSchema,
+  );
+}
+
 export async function mapBatchReference(
   client: AuthenticatedApiClient,
   batchReference: string,

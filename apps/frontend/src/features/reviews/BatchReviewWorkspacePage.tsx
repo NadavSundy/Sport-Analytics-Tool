@@ -15,7 +15,7 @@ import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import {
   getBatchReport,
-  listBatches,
+  listAdminBatches,
   mapBatchReference,
   createBatchCanonicalFixture,
   reviewBatch,
@@ -57,92 +57,243 @@ function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; chil
   );
 }
 
+function batchSubmitterLabel(batch: BatchStatus): string {
+  return batch.source.submitter.displayName ?? `Account ${batch.source.submitter.accountId}`;
+}
+
+function BatchQueueItem({ batch }: { batch: BatchStatus }) {
+  return (
+    <li>
+      <div>
+        <Link to={`/reviews/batches/${batch.batchReference}`}>
+          {batch.source.fileName ?? batch.batchReference}
+        </Link>
+        <span>
+          {batchSubmitterLabel(batch)} · Competition {batch.competitionId}
+        </span>
+      </div>
+      <span>
+        {statusLabels[batch.status]} · {batch.progress.accepted} accepted ·{' '}
+        {batch.progress.rejected} rejected
+      </span>
+    </li>
+  );
+}
+
+type BatchCollection = {
+  batches: BatchStatus[];
+  cursor: string | null;
+};
+
+type ReviewQueueReady = {
+  profile: CurrentUserProfile;
+  pending: BatchCollection;
+  history: BatchCollection;
+};
+
+type HistoryStatus = BatchStatus['status'] | 'all';
+
 function ReviewQueue() {
   const client = useAuthenticatedApiClient();
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [state, setState] = useState<
-    LoadState<{ profile: CurrentUserProfile; batches: BatchStatus[]; cursor: string | null }>
-  >({ kind: 'loading' });
+  const [pendingLoadingMore, setPendingLoadingMore] = useState(false);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+  const [historyRefreshing, setHistoryRefreshing] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>('all');
+  const [state, setState] = useState<LoadState<ReviewQueueReady>>({ kind: 'loading' });
 
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.all([
-      getCurrentUserProfile(client, controller.signal),
-      listBatches(client, undefined, 'awaiting_review'),
-    ])
-      .then(([profile, response]) =>
-        setState({
-          kind: 'ready',
-          value: { profile, batches: response.data, cursor: response.pagination.nextCursor },
-        }),
-      )
+    void getCurrentUserProfile(client, controller.signal)
+      .then(async (profile) => {
+        if (profile.role !== 'admin') {
+          return {
+            profile,
+            pending: { batches: [], cursor: null },
+            history: { batches: [], cursor: null },
+          } satisfies ReviewQueueReady;
+        }
+        const [pending, history] = await Promise.all([
+          listAdminBatches(client, undefined, 'awaiting_review', controller.signal),
+          listAdminBatches(client, undefined, undefined, controller.signal),
+        ]);
+        return {
+          profile,
+          pending: { batches: pending.data, cursor: pending.pagination.nextCursor },
+          history: { batches: history.data, cursor: history.pagination.nextCursor },
+        } satisfies ReviewQueueReady;
+      })
+      .then((value) => {
+        if (!controller.signal.aborted) setState({ kind: 'ready', value });
+      })
       .catch(() => {
         if (!controller.signal.aborted)
-          setState({ kind: 'error', message: 'The review queue could not be loaded.' });
+          setState({
+            kind: 'error',
+            message: 'The administrator batch workspace could not be loaded.',
+          });
       });
     return () => controller.abort();
   }, [client]);
 
-  if (state.kind === 'loading') return <p role="status">Loading review queue…</p>;
+  if (state.kind === 'loading') return <p role="status">Loading batch management…</p>;
   if (state.kind === 'error') return <p role="alert">{state.message}</p>;
-  async function loadMore() {
-    if (state.kind !== 'ready' || !state.value.cursor) return;
-    setLoadingMore(true);
-    setLoadMoreError(null);
+
+  async function loadMorePending() {
+    if (state.kind !== 'ready' || !state.value.pending.cursor) return;
+    setPendingLoadingMore(true);
+    setPendingError(null);
     try {
-      const response = await listBatches(client, state.value.cursor, 'awaiting_review');
+      const response = await listAdminBatches(
+        client,
+        state.value.pending.cursor,
+        'awaiting_review',
+      );
       setState({
         kind: 'ready',
         value: {
           ...state.value,
-          batches: [...state.value.batches, ...response.data],
-          cursor: response.pagination.nextCursor,
+          pending: {
+            batches: [...state.value.pending.batches, ...response.data],
+            cursor: response.pagination.nextCursor,
+          },
         },
       });
     } catch {
-      setLoadMoreError('More queued batches could not be loaded.');
+      setPendingError('More pending batches could not be loaded.');
     } finally {
-      setLoadingMore(false);
+      setPendingLoadingMore(false);
     }
   }
+
+  async function loadMoreHistory() {
+    if (state.kind !== 'ready' || !state.value.history.cursor) return;
+    setHistoryLoadingMore(true);
+    setHistoryError(null);
+    try {
+      const response = await listAdminBatches(
+        client,
+        state.value.history.cursor,
+        historyStatus === 'all' ? undefined : historyStatus,
+      );
+      setState({
+        kind: 'ready',
+        value: {
+          ...state.value,
+          history: {
+            batches: [...state.value.history.batches, ...response.data],
+            cursor: response.pagination.nextCursor,
+          },
+        },
+      });
+    } catch {
+      setHistoryError('More batch history could not be loaded.');
+    } finally {
+      setHistoryLoadingMore(false);
+    }
+  }
+
+  async function changeHistoryStatus(nextStatus: HistoryStatus) {
+    if (state.kind !== 'ready') return;
+    setHistoryStatus(nextStatus);
+    setHistoryRefreshing(true);
+    setHistoryError(null);
+    try {
+      const response = await listAdminBatches(
+        client,
+        undefined,
+        nextStatus === 'all' ? undefined : nextStatus,
+      );
+      setState({
+        kind: 'ready',
+        value: {
+          ...state.value,
+          history: { batches: response.data, cursor: response.pagination.nextCursor },
+        },
+      });
+    } catch {
+      setHistoryError('The selected batch history could not be loaded.');
+    } finally {
+      setHistoryRefreshing(false);
+    }
+  }
+
   return (
     <ReviewerGate profile={state.value.profile}>
-      <p className="review-scope-note">Showing all awaiting-review batches.</p>
-      {state.value.batches.length === 0 ? (
-        <p role="status">No batches are awaiting your review.</p>
-      ) : (
-        <ul className="batch-list review-queue">
-          {state.value.batches.map((batch) => (
-            <li key={batch.batchReference}>
-              <div>
-                <Link to={`/reviews/batches/${batch.batchReference}`}>
-                  {batch.source.fileName ?? batch.batchReference}
-                </Link>
-                <span>
-                  {batch.source.submitter.displayName ??
-                    `Account ${batch.source.submitter.accountId}`}
-                </span>
-              </div>
-              <span>
-                {batch.progress.total} items · received{' '}
-                {new Date(batch.receivedAt).toLocaleString()}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {state.value.cursor ? (
-        <button
-          className="button button--secondary"
-          type="button"
-          disabled={loadingMore}
-          onClick={() => void loadMore()}
-        >
-          {loadingMore ? 'Loading…' : 'Load more batches'}
-        </button>
-      ) : null}
-      {loadMoreError ? <p role="alert">{loadMoreError}</p> : null}
+      <section className="review-batch-section" aria-labelledby="needs-review-title">
+        <div>
+          <h2 id="needs-review-title">Needs review</h2>
+          <p className="review-scope-note">
+            Showing every batch currently awaiting administrator review.
+          </p>
+        </div>
+        {state.value.pending.batches.length === 0 ? (
+          <p role="status">No batches are awaiting your review.</p>
+        ) : (
+          <ul className="batch-list review-queue">
+            {state.value.pending.batches.map((batch) => (
+              <BatchQueueItem key={batch.batchReference} batch={batch} />
+            ))}
+          </ul>
+        )}
+        {state.value.pending.cursor ? (
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={pendingLoadingMore}
+            onClick={() => void loadMorePending()}
+          >
+            {pendingLoadingMore ? 'Loading…' : 'Load more pending batches'}
+          </button>
+        ) : null}
+        {pendingError ? <p role="alert">{pendingError}</p> : null}
+      </section>
+
+      <section className="review-batch-section" aria-labelledby="batch-history-title">
+        <div className="review-history__heading">
+          <div>
+            <h2 id="batch-history-title">All batches</h2>
+            <p>Global batch history across every submitter and lifecycle state.</p>
+          </div>
+          <label className="review-history__filter">
+            Status
+            <select
+              value={historyStatus}
+              disabled={historyRefreshing}
+              onChange={(event) => void changeHistoryStatus(event.target.value as HistoryStatus)}
+            >
+              <option value="all">All statuses</option>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {historyRefreshing ? <p role="status">Refreshing batch history…</p> : null}
+        {!historyRefreshing && state.value.history.batches.length === 0 ? (
+          <p role="status">No batches match this status.</p>
+        ) : (
+          <ul className="batch-list review-queue">
+            {state.value.history.batches.map((batch) => (
+              <BatchQueueItem key={batch.batchReference} batch={batch} />
+            ))}
+          </ul>
+        )}
+        {state.value.history.cursor ? (
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={historyLoadingMore || historyRefreshing}
+            onClick={() => void loadMoreHistory()}
+          >
+            {historyLoadingMore ? 'Loading…' : 'Load more batch history'}
+          </button>
+        ) : null}
+        {historyError ? <p role="alert">{historyError}</p> : null}
+      </section>
     </ReviewerGate>
   );
 }
@@ -698,7 +849,7 @@ export function BatchReviewWorkspacePage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { batchReference } = useParams();
   useEffect(() => {
-    document.title = `${batchReference ? 'Review batch' : 'Batch review queue'} | Stat'sTheGame`;
+    document.title = `${batchReference ? 'Review batch' : 'Batch management'} | Stat'sTheGame`;
   }, [batchReference]);
   if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
   return (
@@ -706,12 +857,12 @@ export function BatchReviewWorkspacePage() {
       <header className="page-heading review-workspace__heading">
         <p className="eyebrow">Reviewer workspace</p>
         <h1 id="review-workspace-title">
-          {batchReference ? 'Review staged batch' : 'Batch review queue'}
+          {batchReference ? 'Review staged batch' : 'Batch management'}
         </h1>
         <p>
           {batchReference
             ? 'Evaluate a bounded, accessible summary before making a publication decision.'
-            : 'Find validated batches awaiting a decision.'}
+            : 'Review pending batches and inspect the complete ingestion history.'}
         </p>
       </header>
       {isLoading ? (

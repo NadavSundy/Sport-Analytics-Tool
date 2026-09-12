@@ -350,27 +350,43 @@ describe('reviewer batch workspace', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('shows the global awaiting-review queue to an administrator', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockImplementation((input: RequestInfo | URL) =>
-        Promise.resolve(
-          response(
-            String(input).includes('/auth/me')
-              ? profile
-              : { data: [report().data.batch], pagination: { nextCursor: null } },
-          ),
-        ),
-      );
+  test('shows pending review and complete global batch history to an administrator', async () => {
+    const pending = report().data.batch;
+    const published = {
+      ...pending,
+      batchReference: '223e4567-e89b-42d3-a456-426614174000',
+      status: 'published' as const,
+      source: { ...pending.source, fileName: 'published-season.csv' },
+    };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/auth/me')) return Promise.resolve(response(profile));
+      if (url.includes('/admin/batches?status=awaiting_review')) {
+        return Promise.resolve(response({ data: [pending], pagination: { nextCursor: null } }));
+      }
+      if (url.includes('/admin/batches')) {
+        return Promise.resolve(
+          response({ data: [pending, published], pagination: { nextCursor: null } }),
+        );
+      }
+      return Promise.resolve(response({}, 404));
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/reviews/batches');
-    expect(await screen.findByRole('heading', { name: 'Batch review queue' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'season.csv' })).toBeInTheDocument();
+
+    expect(await screen.findByRole('heading', { name: 'Batch management' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Needs review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'All batches' })).toBeInTheDocument();
+    expect(await screen.findAllByRole('link', { name: 'season.csv' })).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'published-season.csv' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('status=awaiting_review'),
+      expect.stringContaining('/admin/batches?status=awaiting_review'),
       expect.anything(),
     );
-    expect(screen.getByText('Showing all awaiting-review batches.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/admin/batches'),
+      expect.anything(),
+    );
   });
 
   test('blocks submitters from the reviewer queue', async () => {
@@ -396,6 +412,9 @@ describe('reviewer batch workspace', () => {
       screen.getByText('Batch review decisions are available only to administrators.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'season.csv' })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/admin/batches'))).toBe(
+      false,
+    );
   });
 
   test('does not expose review decision controls to a submitter on a direct batch URL', async () => {

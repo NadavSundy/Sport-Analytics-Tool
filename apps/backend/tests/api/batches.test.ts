@@ -46,6 +46,10 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
       data: [status.data],
       pagination: { nextCursor: null },
     }),
+    listForAdmin: vi.fn<BatchService['listForAdmin']>().mockResolvedValue({
+      data: [status.data],
+      pagination: { nextCursor: null },
+    }),
     getReport: vi.fn<BatchService['getReport']>().mockResolvedValue({
       data: {
         batch: status.data,
@@ -186,6 +190,51 @@ describe('batch receipt API', () => {
       limit: 25,
       status: 'awaiting_review',
     });
+  });
+
+  test('lists global batch history only through the administrator endpoint', async () => {
+    const batchService = service();
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin' })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      batchService,
+    );
+
+    await request(adminApp)
+      .get('/api/v1/admin/batches?limit=25&status=published')
+      .set('Authorization', 'Bearer batch-token')
+      .expect(200);
+
+    expect(batchService.listForAdmin).toHaveBeenCalledWith(expect.anything(), {
+      limit: 25,
+      status: 'published',
+    });
+
+    const submitterApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      batchService,
+    );
+    await request(submitterApp)
+      .get('/api/v1/admin/batches')
+      .set('Authorization', 'Bearer batch-token')
+      .expect(403);
   });
 
   test('returns a paginated report and machine-readable download', async () => {

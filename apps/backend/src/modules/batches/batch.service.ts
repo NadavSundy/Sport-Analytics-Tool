@@ -61,6 +61,7 @@ export interface BatchService {
   ): Promise<BatchReceiptResponse>;
   getStatus(account: ApplicationAccount, reference: string): Promise<BatchStatusResponse>;
   list(account: ApplicationAccount, query: BatchListQuery): Promise<BatchListResponse>;
+  listForAdmin(account: ApplicationAccount, query: BatchListQuery): Promise<BatchListResponse>;
   getReport(
     account: ApplicationAccount,
     reference: string,
@@ -376,6 +377,32 @@ export function createBatchService(
     };
   }
 
+  async function listPage(
+    query: BatchListQuery,
+    scope: { submitterId?: string } = {},
+  ): Promise<BatchListResponse> {
+    const cursor = decodeCursor(query.cursor, batchListCursorSchema);
+    const records = await repository.listBatches({
+      ...scope,
+      ...(query.status ? { status: query.status } : {}),
+      ...(cursor ? { beforeCreatedAt: cursor.createdAt, beforeBatchId: cursor.batchId } : {}),
+      limit: query.limit + 1,
+    });
+    const page = records.slice(0, query.limit);
+    return {
+      data: await Promise.all(page.map(status)),
+      pagination: {
+        nextCursor:
+          records.length > query.limit && page.length > 0
+            ? createCursor({
+                createdAt: page.at(-1)!.createdAt,
+                batchId: page.at(-1)!.batchId,
+              })
+            : null,
+      },
+    };
+  }
+
   return {
     async receive(account, metadata, source) {
       if (!canSubmitToCompetition(account, metadata.competitionId)) {
@@ -433,28 +460,17 @@ export function createBatchService(
     },
 
     async list(account, query) {
-      const cursor = decodeCursor(query.cursor, batchListCursorSchema);
-      const records = await repository.listBatches({
-        ...(account.role === 'admin' && query.status === 'awaiting_review'
+      return listPage(
+        query,
+        account.role === 'admin' && query.status === 'awaiting_review'
           ? {}
-          : { submitterId: account.accountId }),
-        ...(query.status ? { status: query.status } : {}),
-        ...(cursor ? { beforeCreatedAt: cursor.createdAt, beforeBatchId: cursor.batchId } : {}),
-        limit: query.limit + 1,
-      });
-      const page = records.slice(0, query.limit);
-      return {
-        data: await Promise.all(page.map(status)),
-        pagination: {
-          nextCursor:
-            records.length > query.limit && page.length > 0
-              ? createCursor({
-                  createdAt: page.at(-1)!.createdAt,
-                  batchId: page.at(-1)!.batchId,
-                })
-              : null,
-        },
-      };
+          : { submitterId: account.accountId },
+      );
+    },
+
+    async listForAdmin(account, query) {
+      if (!canReviewBatch(account)) throw new BatchForbiddenError();
+      return listPage(query);
     },
 
     async getReport(account, reference, query) {
