@@ -263,3 +263,167 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
     });
   }
 });
+
+test('reviewer reconciles a published delivery conflict as an immutable correction', async ({
+  page,
+}) => {
+  let resolved = false;
+  const batch = () => ({
+    batchReference: reference,
+    competitionId: '5',
+    status: 'awaiting_review',
+    statusUrl: `/api/v1/batches/${reference}`,
+    receivedAt: '2026-09-13T08:00:00.000Z',
+    updatedAt: '2026-09-13T08:05:00.000Z',
+    source: {
+      fileName: 'conflicting-season.json',
+      checksum: 'b'.repeat(64),
+      packageVersion: '1.0',
+      submitter: { accountId: '7', displayName: 'Data Submitter' },
+    },
+    progress: { total: 1, processed: 1, accepted: resolved ? 1 : 0, rejected: resolved ? 0 : 1 },
+    counts: {
+      accepted: resolved ? 1 : 0,
+      rejected: resolved ? 0 : 1,
+      unresolved: 0,
+      duplicate: 0,
+      conflicting: resolved ? 0 : 1,
+    },
+    review: null,
+  });
+  const report = () => ({
+    data: {
+      batch: batch(),
+      errorGroups: resolved ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
+      reviewSummary: {
+        validation: {
+          accepted: resolved ? 1 : 0,
+          rejected: resolved ? 0 : 1,
+          blockingErrors: resolved ? 0 : 1,
+          duplicate: 0,
+          conflicting: resolved ? 0 : 1,
+        },
+        resolution: { resolved: 1, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
+        approvalBlocked: !resolved,
+        blockingReasons: resolved
+          ? []
+          : ['Blocking validation errors remain.', 'Conflicting records remain.'],
+      },
+      fixtureSummaries: [
+        {
+          fixtureId: '22',
+          label: 'Lions vs Bears · 2026-09-01',
+          total: 1,
+          accepted: resolved ? 1 : 0,
+          rejected: resolved ? 0 : 1,
+          unresolved: 0,
+        },
+      ],
+      acceptedSamples: [],
+      items: [
+        {
+          ordinal: 0,
+          outcome: resolved ? 'accepted' : 'conflicting',
+          location: {
+            filePath: 'events.json',
+            sheetName: null,
+            rowNumber: null,
+            jsonPath: 'delivery',
+            ordinal: 0,
+          },
+          context: {
+            eventReference: 'cricsheet:delivery:fixture-1:0',
+            fixtureId: '22',
+            fixtureLabel: 'Lions vs Bears · 2026-09-01',
+            inningsId: '31',
+            overNumber: 1,
+            positionInOver: 1,
+            description: 'Event cricsheet:delivery:fixture-1:0 at over 1, delivery 1.',
+          },
+          stagedRecordId: '41',
+          acceptedRecordId: null,
+          operation: resolved ? 'correction' : 'upsert',
+          correctionTarget: resolved
+            ? {
+                sourceEventId: 'cricsheet:delivery:fixture-1:0',
+                resolvedDeliveryId: '88',
+              }
+            : null,
+          publishedConflict: resolved
+            ? null
+            : {
+                existingDeliveryId: '88',
+                existingSourceEventId: null,
+                correctionPermitted: true,
+                differences: [{ fieldPath: 'runs.offBat', submittedValue: 4, publishedValue: 0 }],
+              },
+          referenceResolutions: [],
+          errors: resolved
+            ? []
+            : [
+                {
+                  ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+                  message:
+                    'A published delivery or published source identity exists with different cricket content.',
+                  location: {
+                    filePath: 'events.json',
+                    sheetName: null,
+                    rowNumber: null,
+                    jsonPath: 'delivery',
+                    ordinal: 0,
+                  },
+                  context: {
+                    eventReference: 'cricsheet:delivery:fixture-1:0',
+                    fixtureId: '22',
+                    fixtureLabel: 'Lions vs Bears · 2026-09-01',
+                    inningsId: '31',
+                    overNumber: 1,
+                    positionInOver: 1,
+                    description: 'Event cricsheet:delivery:fixture-1:0 at over 1, delivery 1.',
+                  },
+                },
+              ],
+        },
+      ],
+      pagination: { nextCursor: null },
+      downloadUrl: `/api/v1/batches/${reference}/report/download`,
+    },
+  });
+
+  await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(report()),
+    });
+  });
+  await page.route(`**/api/v1/batches/${reference}/conflicts/resolve`, async (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      itemOrdinal: 0,
+      existingDeliveryId: '88',
+      decision: 'replace_published',
+      reason: 'Correct the published score from the verified source.',
+    });
+    resolved = true;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: batch() }),
+    });
+  });
+
+  await page.goto(`/reviews/batches/${reference}`);
+  await expect(page.getByRole('heading', { name: 'Published delivery conflicts' })).toBeVisible();
+  const conflictCard = page.locator('.published-conflict-resolution');
+  const differenceRow = conflictCard.getByRole('row', { name: /runs\.offBat/ });
+  await expect(differenceRow).toContainText('4');
+  await expect(differenceRow).toContainText('0');
+  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
+
+  await page
+    .getByLabel('Resolution reason')
+    .fill('Correct the published score from the verified source.');
+  await page.getByRole('button', { name: 'Approve submitted correction' }).click();
+
+  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
+});

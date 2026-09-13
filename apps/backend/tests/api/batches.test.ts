@@ -63,6 +63,9 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
       data: { batch: status.data, errorGroups: [], items: [] },
     }),
     review: vi.fn<BatchService['review']>().mockResolvedValue(status),
+    resolvePublishedConflict: vi
+      .fn<BatchService['resolvePublishedConflict']>()
+      .mockResolvedValue(status),
     mapReference: vi.fn<BatchService['mapReference']>().mockResolvedValue({
       data: {
         batchReference: reference,
@@ -593,6 +596,65 @@ describe('batch receipt API', () => {
       .send({ decision: 'rejected', reason: 'Conflicting retry.' })
       .expect(409);
     expect(response.body.error.code).toBe('BATCH_REVIEW_CONFLICT');
+  });
+
+  test('lets only administrators resolve a published-delivery conflict', async () => {
+    const resolvePublishedConflict = vi
+      .fn<BatchService['resolvePublishedConflict']>()
+      .mockResolvedValue(status);
+    const batchService = service({ resolvePublishedConflict });
+    const requestBody = {
+      itemOrdinal: 4,
+      existingDeliveryId: '88',
+      decision: 'replace_published' as const,
+      reason: 'The submitted scorecard corrects the published delivery.',
+    };
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .post(`/api/v1/batches/${reference}/conflicts/resolve`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(200);
+
+    expect(resolvePublishedConflict).toHaveBeenCalledWith(
+      expect.anything(),
+      reference,
+      requestBody,
+    );
+
+    await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'submitter', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .post(`/api/v1/batches/${reference}/conflicts/resolve`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(403);
   });
 
   test('restricts canonical fixture creation to administrators and routes a valid decision', async () => {

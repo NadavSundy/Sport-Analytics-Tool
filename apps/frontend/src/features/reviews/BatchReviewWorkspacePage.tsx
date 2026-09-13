@@ -18,6 +18,7 @@ import {
   listAdminBatches,
   mapBatchReference,
   createBatchCanonicalFixture,
+  resolvePublishedConflict,
   reviewBatch,
 } from '../submissions/batch-api';
 
@@ -546,6 +547,120 @@ function ReferenceResolution({
   );
 }
 
+function PublishedConflictResolution({
+  batchReference,
+  item,
+  refresh,
+}: {
+  batchReference: string;
+  item: BatchReportItem;
+  refresh(): Promise<void>;
+}) {
+  const client = useAuthenticatedApiClient();
+  const conflict = item.publishedConflict;
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  if (!conflict) return null;
+
+  const publishedDeliveryId = conflict.existingDeliveryId;
+  async function resolve(decision: 'use_existing' | 'replace_published') {
+    const trimmed = reason.trim();
+    if (trimmed.length < 10) {
+      setFeedback('Explain the conflict decision in at least 10 characters.');
+      return;
+    }
+    setSaving(true);
+    setFeedback(null);
+    try {
+      await resolvePublishedConflict(client, batchReference, {
+        itemOrdinal: item.ordinal,
+        existingDeliveryId: publishedDeliveryId,
+        decision,
+        reason: trimmed,
+      });
+      setFeedback(
+        decision === 'use_existing'
+          ? 'Conflict resolved by keeping the published delivery.'
+          : 'Conflict resolved as an immutable correction. Review the batch before publication.',
+      );
+      await refresh();
+    } catch (error) {
+      setFeedback(
+        error instanceof ApiResponseError && error.status === 409
+          ? error.message
+          : 'The published-delivery conflict could not be resolved.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="published-conflict-resolution">
+      <h3>{item.context.description}</h3>
+      <p>
+        Existing published delivery <code>{conflict.existingDeliveryId}</code> differs from the
+        submitted delivery.
+      </p>
+      <table>
+        <caption>Fields that differ</caption>
+        <thead>
+          <tr>
+            <th scope="col">Field</th>
+            <th scope="col">Submitted</th>
+            <th scope="col">Published</th>
+          </tr>
+        </thead>
+        <tbody>
+          {conflict.differences.map((difference) => (
+            <tr key={difference.fieldPath}>
+              <th scope="row">{difference.fieldPath}</th>
+              <td>
+                <code>{JSON.stringify(difference.submittedValue)}</code>
+              </td>
+              <td>
+                <code>{JSON.stringify(difference.publishedValue)}</code>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <label>
+        Resolution reason
+        <textarea
+          value={reason}
+          maxLength={2000}
+          disabled={saving}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </label>
+      <div className="batch-review__actions">
+        <button
+          className="button button--secondary"
+          type="button"
+          disabled={saving}
+          onClick={() => void resolve('use_existing')}
+        >
+          Keep published delivery
+        </button>
+        <button
+          className="button button--primary"
+          type="button"
+          disabled={saving || !conflict.correctionPermitted}
+          onClick={() => void resolve('replace_published')}
+        >
+          Approve submitted correction
+        </button>
+      </div>
+      {!conflict.correctionPermitted ? (
+        <p role="status">This conflict cannot be converted into an immutable correction.</p>
+      ) : null}
+      {feedback ? <p role="status">{feedback}</p> : null}
+    </article>
+  );
+}
+
 function ReviewDetail({ batchReference }: { batchReference: string }) {
   const client = useAuthenticatedApiClient();
   const [state, setState] = useState<
@@ -691,6 +806,21 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
         </dl>
       </section>
       <ErrorGroups report={report} />
+      <section aria-labelledby="published-conflicts-title">
+        <h2 id="published-conflicts-title">Published delivery conflicts</h2>
+        {report.items.some((item) => item.publishedConflict) ? (
+          report.items.map((item) => (
+            <PublishedConflictResolution
+              key={item.ordinal}
+              batchReference={batchReference}
+              item={item}
+              refresh={load}
+            />
+          ))
+        ) : (
+          <p>No unresolved published-delivery conflicts are shown.</p>
+        )}
+      </section>
       <section aria-labelledby="fixture-summary-title">
         <h2 id="fixture-summary-title">Fixture summaries</h2>
         {report.fixtureSummaries.length === 0 ? (

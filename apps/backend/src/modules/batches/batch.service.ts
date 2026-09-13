@@ -19,6 +19,7 @@ import {
   type BatchReportResponse,
   type BatchReviewRequest,
   type BatchReviewResponse,
+  type BatchConflictResolutionRequest,
   type BatchStatus,
   type BatchStatusResponse,
 } from '@sport-analytics/contracts';
@@ -31,6 +32,7 @@ import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/obje
 import {
   BatchLeaseBusyError,
   BatchReferenceMappingConflictError,
+  BatchPublishedConflictResolutionError,
   BatchReviewConflictError,
   BatchReviewResolutionError,
   createBatchRepository,
@@ -76,6 +78,11 @@ export interface BatchService {
     reference: string,
     request: BatchReviewRequest,
   ): Promise<BatchReviewResponse>;
+  resolvePublishedConflict(
+    account: ApplicationAccount,
+    reference: string,
+    request: BatchConflictResolutionRequest,
+  ): Promise<BatchStatusResponse>;
   mapReference(
     account: ApplicationAccount,
     reference: string,
@@ -280,6 +287,42 @@ function reportOutcome(record: BatchReportItemRecord): BatchReportItem['outcome'
   return 'accepted';
 }
 
+function reportPublishedConflict(
+  record: BatchReportItemRecord,
+): BatchReportItem['publishedConflict'] {
+  if (record.rejectionCode !== 'PUBLISHED_DELIVERY_CONFLICT') return null;
+  const detail = record.rejectionDetail;
+  if (!detail || Array.isArray(detail) || typeof detail !== 'object') return null;
+  const existingDeliveryId = detail.existingDeliveryId;
+  const differences = detail.differences;
+  if (
+    typeof existingDeliveryId !== 'string' ||
+    !Array.isArray(differences) ||
+    differences.length === 0
+  ) {
+    return null;
+  }
+  const safeDifferences = differences.flatMap((value) => {
+    if (!value || Array.isArray(value) || typeof value !== 'object') return [];
+    const fieldPath = value.fieldPath;
+    if (typeof fieldPath !== 'string' || fieldPath.length === 0) return [];
+    return [
+      {
+        fieldPath,
+        submittedValue: value.submittedValue,
+        publishedValue: value.publishedValue,
+      },
+    ];
+  });
+  if (safeDifferences.length === 0) return null;
+  return {
+    existingDeliveryId,
+    existingSourceEventId: null,
+    correctionPermitted: true,
+    differences: safeDifferences,
+  };
+}
+
 function mapReportItem(
   record: BatchReportItemRecord,
   batchReference: string,
@@ -301,6 +344,7 @@ function mapReportItem(
             resolvedDeliveryId: record.correctionTargetDeliveryId,
           }
         : null,
+    publishedConflict: reportPublishedConflict(record),
     referenceResolutions: reportReferenceResolutions(record, batchReference, competitionId),
     errors: record.errors.map((error) => ({
       ruleCode: error.ruleCode,
@@ -612,6 +656,30 @@ export function createBatchService(
       }
       const current = await repository.findBatchById(batch.batchId);
       if (!current) throw new Error('Reviewed batch could not be reloaded.');
+      return { data: await status(current) };
+    },
+
+    async resolvePublishedConflict(account, reference, request) {
+      if (!canReviewBatch(account)) throw new BatchForbiddenError();
+      const batch = await repository.findBatchByReference(reference);
+      if (!batch) throw new BatchForbiddenError();
+      try {
+        await repository.resolvePublishedConflict({
+          batchId: batch.batchId,
+          actorId: account.accountId,
+          itemOrdinal: request.itemOrdinal,
+          existingDeliveryId: request.existingDeliveryId,
+          decision: request.decision,
+          reason: request.reason,
+        });
+      } catch (error) {
+        if (error instanceof BatchPublishedConflictResolutionError) {
+          throw new BatchConflictError(error.message);
+        }
+        throw error;
+      }
+      const current = await repository.findBatchById(batch.batchId);
+      if (!current) throw new Error('Resolved batch could not be reloaded.');
       return { data: await status(current) };
     },
 

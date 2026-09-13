@@ -3,6 +3,7 @@ import {
   batchMetadataSchema,
   batchReferenceMappingRequestSchema,
   batchCanonicalFixtureRequestSchema,
+  batchConflictResolutionRequestSchema,
   batchReferenceSchema,
   batchReportQuerySchema,
   batchReviewRequestSchema,
@@ -273,6 +274,54 @@ export function createBatchReviewController(service: BatchService): RequestHandl
         if (error instanceof BatchConflictError) {
           response.status(409).json({
             error: { code: 'BATCH_REVIEW_CONFLICT', message: error.message },
+          });
+          return;
+        }
+        next(error);
+      });
+  };
+}
+
+export function createBatchConflictResolutionController(service: BatchService): RequestHandler {
+  return (request, response, next) => {
+    const reference = batchReferenceSchema.safeParse(request.params.batchReference);
+    const body = batchConflictResolutionRequestSchema.safeParse(request.body);
+    if (!reference.success) {
+      response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Batch not found.' } });
+      return;
+    }
+    if (!body.success) {
+      response.status(422).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'The published-delivery conflict decision is invalid.',
+          details: body.error.issues.map((issue) => ({
+            code: 'INVALID_FIELD',
+            message: issue.message,
+            field: issue.path.join('.'),
+          })),
+        },
+      });
+      return;
+    }
+    let authenticated: ApplicationAccount;
+    try {
+      authenticated = account(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+    void service
+      .resolvePublishedConflict(authenticated, reference.data, body.data)
+      .then((result) => response.json(result))
+      .catch((error: unknown) => {
+        if (error instanceof BatchForbiddenError) {
+          rejectAuthorization(response);
+          return;
+        }
+        if (error instanceof BatchConflictError) {
+          response.status(409).json({
+            error: { code: 'BATCH_CONFLICT_RESOLUTION_CONFLICT', message: error.message },
           });
           return;
         }
