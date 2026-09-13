@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { downloadBatchReport, getBatchReport, listBatches, mapBatchReference } from './batch-api';
+import { useBatchCollectionsRevision } from './batch-collection-state';
 import {
   formatBatchValidationMessage,
   formatValidationField,
@@ -312,6 +313,7 @@ function ReportItems({
 
 function BatchList() {
   const client = useAuthenticatedApiClient();
+  const collectionRevision = useBatchCollectionsRevision();
   const [state, setState] = useState<ListState>({ kind: 'loading' });
 
   useEffect(() => {
@@ -340,7 +342,7 @@ function BatchList() {
         }
       });
     return () => controller.abort();
-  }, [client]);
+  }, [client, collectionRevision]);
 
   async function loadMore(cursor: string) {
     const response = await listBatches(client, cursor);
