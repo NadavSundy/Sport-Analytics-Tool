@@ -119,6 +119,7 @@ export interface PublicReadService {
     data: Fixture[];
     pagination: {
       nextCursor: string | null;
+      totalPages?: number;
     };
   }>;
 
@@ -559,6 +560,7 @@ export function createPublicReadService(
             startDate: record.startDate,
             fixtureId: record.fixtureId,
           })),
+          totalPages: Math.ceil(page.totalRecords / query.limit),
         },
       };
     },

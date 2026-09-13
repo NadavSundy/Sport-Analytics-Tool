@@ -43,6 +43,18 @@ interface BrowseCollectionProps<Resource> {
 
 const paginationKeys = ['cursor', 'limit'];
 
+function currentPage(searchParams: URLSearchParams): number {
+  const page = Number(searchParams.get('page'));
+  return Number.isSafeInteger(page) && page > 0 ? page : 1;
+}
+
+function replacePreviousCursors(search: URLSearchParams, cursors: string[]): void {
+  search.delete('previousCursor');
+  for (const cursor of cursors) {
+    search.append('previousCursor', cursor);
+  }
+}
+
 function isComboboxField(field: FilterField): field is NameComboboxFilterField {
   return field.kind === 'combobox';
 }
@@ -382,6 +394,8 @@ export function BrowseCollection<Resource>({
   const search = normalizedSearch(searchParams, filters);
   const loadRecords = useCallback((signal: AbortSignal) => load(search, signal), [load, search]);
   const state = usePublicData(loadRecords, search);
+  const page = currentPage(searchParams);
+  const previousCursors = searchParams.getAll('previousCursor');
 
   return (
     <div className="browse-page">
@@ -432,20 +446,68 @@ export function BrowseCollection<Resource>({
           {state.status === 'ready' && state.data.data.length > 0 ? (
             <>
               <ul className="record-list">{state.data.data.map(renderItem)}</ul>
-              {state.data.pagination.nextCursor ? (
+              {state.data.pagination.totalPages !== undefined ||
+              state.data.pagination.nextCursor ||
+              previousCursors.length > 0 ? (
                 <nav aria-label={`${title} pagination`} className="pagination">
-                  <Link
-                    className="button button--secondary"
-                    to={{
-                      search: (() => {
-                        const nextSearch = new URLSearchParams(searchParams);
-                        nextSearch.set('cursor', state.data.pagination.nextCursor);
-                        return `?${nextSearch.toString()}`;
-                      })(),
-                    }}
-                  >
-                    Next page
-                  </Link>
+                  {page === 1 ? (
+                    <button className="button button--secondary" disabled type="button">
+                      Previous page
+                    </button>
+                  ) : (
+                    <Link
+                      className="button button--secondary"
+                      to={{
+                        search: (() => {
+                          const previousSearch = new URLSearchParams(searchParams);
+                          const cursor = previousCursors.at(-1);
+                          if (cursor) {
+                            previousSearch.set('cursor', cursor);
+                          } else {
+                            previousSearch.delete('cursor');
+                          }
+                          replacePreviousCursors(previousSearch, previousCursors.slice(0, -1));
+                          if (page === 2) {
+                            previousSearch.delete('page');
+                          } else {
+                            previousSearch.set('page', String(page - 1));
+                          }
+                          return `?${previousSearch.toString()}`;
+                        })(),
+                      }}
+                    >
+                      Previous page
+                    </Link>
+                  )}
+                  {state.data.pagination.totalPages !== undefined ? (
+                    <p aria-live="polite" className="pagination__status">
+                      Page {page} of {state.data.pagination.totalPages}
+                    </p>
+                  ) : null}
+                  {state.data.pagination.nextCursor ? (
+                    <Link
+                      className="button button--secondary"
+                      to={{
+                        search: (() => {
+                          const nextSearch = new URLSearchParams(searchParams);
+                          const cursor = nextSearch.get('cursor');
+                          replacePreviousCursors(
+                            nextSearch,
+                            cursor ? [...previousCursors, cursor] : previousCursors,
+                          );
+                          nextSearch.set('cursor', state.data.pagination.nextCursor);
+                          nextSearch.set('page', String(page + 1));
+                          return `?${nextSearch.toString()}`;
+                        })(),
+                      }}
+                    >
+                      Next page
+                    </Link>
+                  ) : (
+                    <button className="button button--secondary" disabled type="button">
+                      Next page
+                    </button>
+                  )}
                 </nav>
               ) : (
                 <p className="pagination__end">End of published results</p>

@@ -17,8 +17,8 @@ function response(status: number, body: unknown): Response {
   } as unknown as Response;
 }
 
-function collection(data: unknown[], nextCursor: string | null = null) {
-  return response(200, { data, pagination: { nextCursor } });
+function collection(data: unknown[], nextCursor: string | null = null, totalPages = 1) {
+  return response(200, { data, pagination: { nextCursor, totalPages } });
 }
 
 function playerMatch(
@@ -312,9 +312,36 @@ describe('public browsing pages', () => {
             },
           ],
           'next-fixture-cursor',
+          2,
         ),
       )
-      .mockResolvedValueOnce(collection([]))
+      .mockResolvedValueOnce(
+        collection(
+          [
+            {
+              fixtureId: 'fixture-2',
+              competitionId: 'competition-1',
+              competitionName: 'Premier Cricket League',
+              seasonId: 'season-1',
+              season: '2026',
+              seasonLabel: '2026',
+              competitors: [
+                { competitorId: 'team-1', name: 'Wanderers' },
+                { competitorId: 'team-2', name: 'Strikers' },
+              ],
+              matchType: 'T20',
+              teamType: 'international',
+              gender: 'female',
+              ballsPerOver: 6,
+              scheduledOvers: 20,
+              startDate: '2026-08-10',
+              endDate: '2026-08-10',
+            },
+          ],
+          null,
+          2,
+        ),
+      )
       .mockResolvedValueOnce(collection([]));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -324,16 +351,25 @@ describe('public browsing pages', () => {
     expect(screen.getByLabelText('Gender')).toHaveValue('female');
     expect(screen.getByLabelText('Records per page')).toHaveValue('25');
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/fixtures?gender=female&limit=25');
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('link', { name: 'Next page' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock.mock.calls[1]?.[0]).toContain('cursor=next-fixture-cursor');
+    expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Previous page' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(fetchMock.mock.calls[2]?.[0]).not.toContain('cursor=');
+    expect(await screen.findByText('No fixtures found')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'male' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(fetchMock.mock.calls[2]?.[0]).toContain('gender=male');
-    expect(fetchMock.mock.calls[2]?.[0]).not.toContain('cursor=');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    expect(fetchMock.mock.calls[3]?.[0]).toContain('gender=male');
+    expect(fetchMock.mock.calls[3]?.[0]).not.toContain('cursor=');
   });
 
   it('routes internal relationship filters while displaying only readable names', async () => {

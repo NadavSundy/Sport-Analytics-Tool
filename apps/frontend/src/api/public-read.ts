@@ -21,6 +21,7 @@ import {
   type Competitor,
   type DatasetRelease,
   type Fixture,
+  type FixtureCollectionResponse,
   type FixtureWeather,
   type FixtureStatistic,
   type FixtureStatistics,
@@ -69,7 +70,7 @@ interface ResponseSchema<ResponseBody> {
 
 export interface CollectionResponse<Resource> {
   data: Resource[];
-  pagination: PaginationMetadata;
+  pagination: PaginationMetadata & { totalPages?: number };
 }
 
 export class ApiContractError extends Error {
@@ -190,7 +191,7 @@ export const publicReadApi = {
     );
   },
   listFixtures(search: string, signal?: AbortSignal) {
-    return requestPublicApi<CollectionResponse<Fixture>>(
+    return requestPublicApi<FixtureCollectionResponse>(
       `/fixtures${search}`,
       fixtureCollectionResponseSchema,
       signal,
