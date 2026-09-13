@@ -44,4 +44,14 @@ test('worker image is Node 22, non-root and independently startable', () => {
   assert.match(dockerfile, /USER node/);
   assert.match(dockerfile, /HEALTHCHECK/);
   assert.match(dockerfile, /CMD \["node", "apps\/worker\/dist\/index\.js"\]/);
+
+  assert.match(
+    dockerfile,
+    /npm ci\s+\\\s+--workspace=@sport-analytics\/worker\s+\\\s+--no-audit\s+\\\s+--no-fund/,
+  );
+
+  assert.doesNotMatch(
+    dockerfile,
+    /--mount=type=cache,target=\/root\/\.npm/,
+  );
 });
