@@ -30,6 +30,15 @@ three expectations were corrected, but this environment still cannot start the d
 runner to re-execute them. The focused Playwright test
 used an isolated port after existing processes occupied the normal preview ports.
 
+After the initial work, the live issue page was inspected and its exact acceptance
+criteria were checked. A focused derivation regression now explicitly covers an ordinary
+delivery, separate and multi-run wides, a no-ball with bat runs, byes, leg-byes, a mixed
+extras innings, zero extras for a second bowler, correct attribution across bowlers, and
+the source delivery IDs and extras values in the calculation trace. The focused test,
+backend lint, and backend typecheck passed. The full disposable PostgreSQL suite was
+subsequently run externally and passed with 159 tests; its two opt-in query-plan tests
+remain intentionally skipped unless `RUN_PERFORMANCE_DATABASE_TESTS=1`.
+
 ## Commit
 
 - `f6c97bf` — `feat(statistics): add bowling extras breakdown`
