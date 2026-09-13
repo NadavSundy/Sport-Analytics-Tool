@@ -297,7 +297,11 @@ function SubmissionForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (result.kind === 'submitting' || result.kind === 'accepted' || result.kind === 'acceptedBatch') {
+    if (
+      result.kind === 'submitting' ||
+      result.kind === 'accepted' ||
+      result.kind === 'acceptedBatch'
+    ) {
       return;
     }
 

@@ -344,7 +344,10 @@ test(
       `/submissions/batches/${batchReference}`,
     );
     await expect(page.getByRole('button', { name: 'Upload fixture package' })).toHaveCount(0);
-    await page.locator('.submission-result').getByRole('link', { name: 'View submission history' }).click();
+    await page
+      .locator('.submission-result')
+      .getByRole('link', { name: 'View submission history' })
+      .click();
     await expect(page).toHaveURL(/\/submissions\/batches$/);
     await expect(page.getByRole('link', { name: batchReference })).toBeVisible();
     const hasHorizontalOverflow = await page.evaluate(

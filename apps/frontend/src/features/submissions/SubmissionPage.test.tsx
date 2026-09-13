@@ -919,7 +919,9 @@ describe('role-gated event submission page', () => {
       'href',
       `/submissions/batches/${batchReference}`,
     );
-    expect(screen.queryByRole('button', { name: 'Upload fixture package' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Upload fixture package' }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('link', { name: 'View submission history' }).at(-1)!);
     expect(await screen.findByRole('heading', { name: 'Your batch reports' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: batchReference })).toBeInTheDocument();
