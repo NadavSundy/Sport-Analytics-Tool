@@ -315,9 +315,12 @@ function reportPublishedConflict(
     ];
   });
   if (safeDifferences.length === 0) return null;
+  const existingSourceEventId = record.publishedConflictSourceEventId ?? null;
   return {
     existingDeliveryId,
-    existingSourceEventId: null,
+    existingSourceEventId,
+    // Legacy published deliveries can initialise immutable lineage lazily
+    // when a reviewer explicitly approves a correction.
     correctionPermitted: true,
     differences: safeDifferences,
   };
