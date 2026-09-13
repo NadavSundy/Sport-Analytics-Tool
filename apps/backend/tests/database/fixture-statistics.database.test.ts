@@ -190,7 +190,7 @@ describe.sequential('fixture statistics database integration', () => {
       competitorName: 'New Zealand',
       bowling: {
         runsConceded: 44,
-        wides: 0,
+        wides: 1,
         noBalls: 0,
         legalBallsBowled: 24,
         oversBowled: '4.0',
