@@ -21,6 +21,7 @@ import {
   resolvePublishedConflict,
   reviewBatch,
 } from '../submissions/batch-api';
+import { useBatchCollectionsRevision } from '../submissions/batch-collection-state';
 
 const statusLabels: Record<BatchStatus['status'], string> = {
   received: 'Received',
@@ -96,12 +97,15 @@ type HistoryStatus = BatchStatus['status'] | 'all';
 
 function ReviewQueue() {
   const client = useAuthenticatedApiClient();
+  const collectionRevision = useBatchCollectionsRevision();
   const [pendingLoadingMore, setPendingLoadingMore] = useState(false);
   const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
   const [historyRefreshing, setHistoryRefreshing] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>('all');
+  const historyStatusRef = useRef<HistoryStatus>(historyStatus);
+  historyStatusRef.current = historyStatus;
   const [state, setState] = useState<LoadState<ReviewQueueReady>>({ kind: 'loading' });
 
   useEffect(() => {
@@ -117,7 +121,12 @@ function ReviewQueue() {
         }
         const [pending, history] = await Promise.all([
           listAdminBatches(client, undefined, 'awaiting_review', controller.signal),
-          listAdminBatches(client, undefined, undefined, controller.signal),
+          listAdminBatches(
+            client,
+            undefined,
+            historyStatusRef.current === 'all' ? undefined : historyStatusRef.current,
+            controller.signal,
+          ),
         ]);
         return {
           profile,
@@ -136,7 +145,7 @@ function ReviewQueue() {
           });
       });
     return () => controller.abort();
-  }, [client]);
+  }, [client, collectionRevision]);
 
   if (state.kind === 'loading') return <p role="status">Loading batch management…</p>;
   if (state.kind === 'error') return <p role="alert">{state.message}</p>;

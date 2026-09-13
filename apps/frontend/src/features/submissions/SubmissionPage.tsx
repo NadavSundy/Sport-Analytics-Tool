@@ -14,6 +14,7 @@ import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
 import { BatchUploadWorkflow, type PackageUploadScope } from './BatchUploadPage';
+import { invalidateBatchCollections } from './batch-collection-state';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
 import {
   listAllFixtures,
@@ -296,6 +297,14 @@ function SubmissionForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (
+      result.kind === 'submitting' ||
+      result.kind === 'accepted' ||
+      result.kind === 'acceptedBatch'
+    ) {
+      return;
+    }
+
     if (mode === 'file' && !file) {
       setResult({
         kind: 'rejected',
@@ -322,6 +331,7 @@ function SubmissionForm({
         validateSingleFixturePackage(file.name, await readFileText(file), fixture);
         const response = await uploadBatch(client, fixture.competitionId, file, decisionKey);
 
+        invalidateBatchCollections();
         setResult({
           kind: 'acceptedBatch',
           receipt: response.data,
@@ -349,6 +359,7 @@ function SubmissionForm({
             decisionKey,
           );
 
+          invalidateBatchCollections();
           setResult({
             kind: 'acceptedBatch',
             receipt: response.data,
@@ -424,6 +435,7 @@ function SubmissionForm({
     result.kind === 'rejected' ? 'submission-validation-results' : undefined;
 
   const competitions = [...new Set(fixtures.map((fixture) => fixture.competitionName))];
+  const completed = result.kind === 'accepted' || result.kind === 'acceptedBatch';
 
   return (
     <>
@@ -457,7 +469,7 @@ function SubmissionForm({
               setDecisionKey(newDecisionKey());
               resetResult();
             }}
-            disabled={result.kind === 'submitting'}
+            disabled={result.kind === 'submitting' || completed}
           >
             {fixtures.map((fixture) => (
               <option key={fixture.fixtureId} value={fixture.fixtureId}>
@@ -541,7 +553,7 @@ function SubmissionForm({
                   undefined
                 }
                 aria-invalid={result.kind === 'rejected'}
-                disabled={result.kind === 'submitting'}
+                disabled={result.kind === 'submitting' || completed}
               />
 
               {file ? (
@@ -580,7 +592,7 @@ function SubmissionForm({
                   undefined
                 }
                 aria-invalid={result.kind === 'rejected'}
-                disabled={result.kind === 'submitting'}
+                disabled={result.kind === 'submitting' || completed}
                 spellCheck={false}
                 rows={18}
               />
@@ -588,17 +600,19 @@ function SubmissionForm({
           </>
         )}
 
-        <button
-          className="button button--primary"
-          type="submit"
-          disabled={result.kind === 'submitting'}
-        >
-          {result.kind === 'submitting'
-            ? 'Submitting…'
-            : mode === 'file'
-              ? 'Upload fixture package'
-              : 'Submit events'}
-        </button>
+        {!completed ? (
+          <button
+            className="button button--primary"
+            type="submit"
+            disabled={result.kind === 'submitting'}
+          >
+            {result.kind === 'submitting'
+              ? 'Submitting…'
+              : mode === 'file'
+                ? 'Upload fixture package'
+                : 'Submit events'}
+          </button>
+        ) : null}
 
         {result.kind === 'submitting' ? (
           <p className="submission-progress" role="status">
@@ -654,6 +668,9 @@ function SubmissionForm({
                 to={`/submissions/batches/${result.receipt.batchReference}`}
               >
                 View submission report
+              </Link>
+              <Link className="button button--secondary" to="/submissions/batches">
+                View submission history
               </Link>
             </div>
           ) : result.kind === 'accepted' ? (

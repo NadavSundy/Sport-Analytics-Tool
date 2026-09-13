@@ -282,6 +282,36 @@ test(
       });
     });
 
+    await page.route('**/api/v1/batches', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              batchReference,
+              competitionId: '5',
+              status: 'stored',
+              statusUrl: `/api/v1/batches/${batchReference}`,
+              receivedAt: '2026-08-16T09:30:00.000Z',
+              updatedAt: '2026-08-16T09:30:00.000Z',
+              source: {
+                fileName: 'fixture-package.json',
+                checksum: null,
+                packageVersion: '1.0',
+                submitter: { accountId: '17', displayName: 'Submitter User' },
+              },
+              progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
+              counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+              review: null,
+            },
+          ],
+          pagination: { nextCursor: null },
+        }),
+      });
+    });
+
     await page.goto('/submissions/new');
     await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue('7');
     await expect(page.getByLabel('Fixture', { exact: true }).locator('option')).toHaveText(
@@ -313,6 +343,13 @@ test(
       'href',
       `/submissions/batches/${batchReference}`,
     );
+    await expect(page.getByRole('button', { name: 'Upload fixture package' })).toHaveCount(0);
+    await page
+      .locator('.submission-result')
+      .getByRole('link', { name: 'View submission history' })
+      .click();
+    await expect(page).toHaveURL(/\/submissions\/batches$/);
+    await expect(page.getByRole('link', { name: batchReference })).toBeVisible();
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );

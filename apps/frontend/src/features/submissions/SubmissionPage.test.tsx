@@ -839,6 +839,32 @@ describe('role-gated event submission page', () => {
           }),
         );
       }
+      if (url.endsWith('/batches')) {
+        return Promise.resolve(
+          response(200, {
+            data: [
+              {
+                batchReference,
+                competitionId: '5',
+                status: 'stored',
+                statusUrl: `/api/v1/batches/${batchReference}`,
+                receivedAt: '2026-08-16T09:30:00.000Z',
+                updatedAt: '2026-08-16T09:30:00.000Z',
+                source: {
+                  fileName: 'fixture-package.json',
+                  checksum: null,
+                  packageVersion: '1.0',
+                  submitter: { accountId: '17', displayName: 'Submitter User' },
+                },
+                progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
+                counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+                review: null,
+              },
+            ],
+            pagination: { nextCursor: null },
+          }),
+        );
+      }
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -893,6 +919,12 @@ describe('role-gated event submission page', () => {
       'href',
       `/submissions/batches/${batchReference}`,
     );
+    expect(
+      screen.queryByRole('button', { name: 'Upload fixture package' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('link', { name: 'View submission history' }).at(-1)!);
+    expect(await screen.findByRole('heading', { name: 'Your batch reports' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: batchReference })).toBeInTheDocument();
     const uploadCall = fetchMock.mock.calls.find(([request]) =>
       String(request).endsWith('/batches'),
     );
@@ -979,6 +1011,8 @@ describe('role-gated event submission page', () => {
     expect(screen.getByText('Row 1 — File')).toBeInTheDocument();
     expect(screen.getByText('CSV row 2 is invalid.')).toBeInTheDocument();
     expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('button', { name: 'Upload fixture package' })).toBeEnabled();
+    expect(screen.getAllByRole('link', { name: 'View submission history' })).toHaveLength(1);
   });
 
   it('rejects unsupported single-fixture package formats before upload', async () => {

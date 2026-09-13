@@ -15,6 +15,7 @@ import {
   MAX_BATCH_BYTES,
   uploadBatch,
 } from './batch-api';
+import { invalidateBatchCollections } from './batch-collection-state';
 
 type AccessState =
   | { kind: 'loading' }
@@ -93,6 +94,7 @@ export function BatchUploadWorkflow({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (upload.kind === 'uploading' || upload.kind === 'accepted') return;
     if (!file) {
       setUpload({ kind: 'error', message: 'Choose a package before uploading.' });
       return;
@@ -109,6 +111,7 @@ export function BatchUploadWorkflow({
         file,
         await batchUploadIdempotencyKey(competitionId, file),
       );
+      invalidateBatchCollections();
       const competition =
         access.kind === 'ready'
           ? access.competitions.find((option) => option.competitionId === competitionId)
@@ -137,6 +140,7 @@ export function BatchUploadWorkflow({
   }
 
   const busy = upload.kind === 'uploading';
+  const completed = upload.kind === 'accepted';
   const scopeLabel = scope === 'season' ? 'season' : 'back catalogue';
 
   return (
@@ -194,7 +198,7 @@ export function BatchUploadWorkflow({
             <select
               id="batch-competition"
               value={competitionId}
-              disabled={busy}
+              disabled={busy || completed}
               onChange={(event) => {
                 setCompetitionId(event.target.value);
                 setUpload({ kind: 'idle' });
@@ -228,7 +232,7 @@ export function BatchUploadWorkflow({
               id="batch-file"
               type="file"
               accept=".json,application/json,.csv,text/csv,.ndjson,application/x-ndjson"
-              disabled={busy}
+              disabled={busy || completed}
               aria-describedby="batch-file-help"
               aria-invalid={upload.kind === 'error'}
               onChange={(event) => {
@@ -244,9 +248,11 @@ export function BatchUploadWorkflow({
             {file ? <p className="field-help">Selected: {file.name}</p> : null}
           </div>
 
-          <button className="button button--primary" type="submit" disabled={busy}>
-            {busy ? 'Uploading package…' : `Upload ${scopeLabel} package`}
-          </button>
+          {upload.kind !== 'accepted' ? (
+            <button className="button button--primary" type="submit" disabled={busy}>
+              {busy ? 'Uploading package…' : `Upload ${scopeLabel} package`}
+            </button>
+          ) : null}
 
           {busy ? (
             <div className="batch-upload-progress" role="status">
@@ -300,6 +306,9 @@ export function BatchUploadWorkflow({
                   to={`/submissions/batches/${upload.receipt.batchReference}`}
                 >
                   View submission report
+                </Link>
+                <Link className="button button--secondary" to="/submissions/batches">
+                  View submission history
                 </Link>
               </div>
             ) : null}
