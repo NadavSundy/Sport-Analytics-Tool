@@ -23,8 +23,11 @@ Focused contract, backend derivation/API and frontend tests passed. Full fronten
 backend (220 unit and 167 API tests), contracts (138 tests), lint, typecheck, OpenAPI validation,
 build and desktop/mobile focused Playwright coverage passed. The disposable PostgreSQL test runner
 could not start because Node reported `uv_os_get_passwd ENOMEM`; no database test executed in that
-environment. The focused Playwright test used an isolated port after existing processes occupied
-the normal preview ports.
+environment. A subsequent database-suite report exposed two test-oracle expectations omitted by
+the initial change: Tim Southee's published fixture contains one wide, and the retained history
+query oracle must project the new fields. Both expectations were corrected, but this environment
+still cannot start the disposable PostgreSQL runner to re-execute them. The focused Playwright test
+used an isolated port after existing processes occupied the normal preview ports.
 
 ## Commit
 
