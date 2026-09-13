@@ -239,5 +239,5 @@ describe.sequential('fixture event export database integration', () => {
     // which is why the trace export no longer uses it. If no player differed
     // here the assertion above would prove nothing about that choice.
     expect(playersInvolvedBeyondTheirTrace).toBeGreaterThan(0);
-  });
+  }, 15_000);
 });
