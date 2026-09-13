@@ -44,6 +44,7 @@ jobs:
             fi
           done
           exit "$missing"
+
       - name: Install Azure CLI
         run: |
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -68,6 +69,18 @@ jobs:
           keyVaultName="$KEY_VAULT_NAME"
           databaseSecretUri="$DATABASE_SECRET_URI"
           storageAccountName=statsthegameblobdev
+
+      - name: Verify Docker npm registry connectivity
+        run: |
+          echo "Checking DNS resolution inside Docker..."
+
+          docker run --rm node:22-bookworm-slim \
+            node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"
+
+          echo "Checking npm registry connectivity inside Docker..."
+
+          docker run --rm node:22-bookworm-slim \
+            npm ping --registry=https://registry.npmjs.org/
 
       - name: Build immutable worker image and push to Azure Container Registry
         env:
@@ -94,6 +107,7 @@ jobs:
           docker pull "$ACR_SERVER/sport-analytics-worker:buildcache" || true
 
           DOCKER_BUILDKIT=1 docker build \
+            --network=host \
             --file apps/worker/Dockerfile \
             --build-arg BUILDKIT_INLINE_CACHE=1 \
             --cache-from "$ACR_SERVER/sport-analytics-worker:buildcache" \
