@@ -70,7 +70,7 @@ milestone evidence runs.
 | Representative-scale throughput                                      | Record the actual season-scale run and approved threshold in `evidence/validation/issue-364-intermediate-ingestion-acceptance.md`. Historical throughput context is retained in `docs/architecture/batch-ingestion-pipeline.md`; do not substitute parser-only timing for the integrated result.               |
 | No payloads or credentials in logs                                   | Worker logger accepts deliberately safe scalar fields; the #364 verifier rejects sensitive ingestion field names in structured worker log calls. Security/retention boundaries remain documented.                                                                                                              |
 | Accessibility/responsiveness                                         | Focused Playwright submission/review/correction journeys plus normal `ci:local` accessibility coverage.                                                                                                                                                                                                        |
-| Formal user testing                                                  | Reuse #417 and #418 evidence. #364 must not claim completion until those records demonstrate representative users can complete the workflow without schema knowledge.                                                                                                                                          |
+| Formal user testing                                                  | Reuse #417 and #418 evidence. #418 is now represented by `evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md`, including an S1 finding fixed through #463 and a successful same-task retest. #417 remains the outstanding formal-user dependency.                                                       |
 | Documentation current                                                | Architecture, API, database, worker deployment, security, testing and user-facing submission/review docs are part of the #364 review and strict MkDocs build.                                                                                                                                                  |
 
 ## Intermediate project-brief traceability
@@ -106,9 +106,7 @@ This deployed evidence complements rather than replaces the representative-scale
 
 Two criteria cannot be honestly manufactured by this patch:
 
-1. **#417/#418 formal user testing.** The current repository snapshot contains the testing pipeline,
-   but the imported response store is empty. Link the completed generated/session evidence once those
-   issues are executed.
+1. **#417 formal submitter user testing.** #418 reviewer/admin testing is complete and retained at `evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md`; #417 remains the outstanding formal-user dependency.
 2. **Integrated season throughput.** Run a representative package through the real staged worker path,
    record fixture/event count, elapsed validation/publication time, environment and approved target,
    and retain the result in the Issue #364 validation record.
