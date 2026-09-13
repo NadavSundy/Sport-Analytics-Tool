@@ -49,10 +49,17 @@ The execution work remains split by workflow so findings can be attributed clean
 - #417 — submission / batch;
 - #418 — review / administration.
 
-| Date        | Session                                                                                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 23 Aug 2026 | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md) |
+| Date             | Session                                                                                                                                                                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 23 Aug 2026      | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md)                                                                                                                         |
+| 10 & 13 Sep 2026 | [Issue #418 — reviewer / administrator P04](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md) — initial `REV-01` failure exposed #463; same task succeeded after the fix, followed by `REV-02`, `REV-05` and `ADM-02`. |
 
 Further Sprint 2 formal user-testing sessions will be added to this table as they are produced. The retained repository evidence is authoritative; documentation deployment does not retrieve or regenerate feedback from an external service.
+
+### Reviewer / administration traceability
+
+Issue #418 exercises the reviewer/admin workflow implemented through #283 and #362 and supplies the representative-user evidence reused by #364. The initial P04 session exposed #463 when the prepared batch remained `Stored` and never appeared in the review queue. #463 restored the deployed worker/Service Bus path; P04 then repeated `REV-01` successfully and completed `REV-02`, `REV-05` and `ADM-02`.
+
+Related engineering defects from the same wider ingestion/review audit include #465, #471, #479, #480, #481, #482, #483, #484, #485, #486, #487 and #488. Those issues are retained as engineering context and are not attributed to P04 unless the participant independently observed them during a recorded task.
 
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5] and reviewed and edited with ChatGPT-Web[GPT-5.6 Sol], resolving issue #254 and the Sprint 2 user-testing process update.
