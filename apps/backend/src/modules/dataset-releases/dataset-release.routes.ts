@@ -3,6 +3,7 @@ import {
   datasetReleaseVersionSchema,
 } from '@sport-analytics/contracts';
 import { Router } from 'express';
+import { pipeline } from 'node:stream';
 
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
@@ -22,7 +23,7 @@ export function createDatasetReleaseRouter(
     '/admin/dataset-releases',
     authenticate,
     requireAdministrator(),
-    (request, response) => {
+    (request, response, next) => {
       const parsed = createDatasetReleaseSchema.safeParse(request.body);
       if (!parsed.success) {
         response
@@ -32,15 +33,19 @@ export function createDatasetReleaseRouter(
       }
       void service
         .createRelease(parsed.data)
-        .then((release) => response.status(201).json({ data: release }));
+        .then((release) => response.status(201).json({ data: release }))
+        .catch(next);
     },
   );
 
-  router.get('/dataset-releases', (_request, response) => {
-    void service.listReleases().then((releases) => response.status(200).json({ data: releases }));
+  router.get('/dataset-releases', (_request, response, next) => {
+    void service
+      .listReleases()
+      .then((releases) => response.status(200).json({ data: releases }))
+      .catch(next);
   });
 
-  router.get('/dataset-releases/:version', (request, response) => {
+  router.get('/dataset-releases/:version', (request, response, next) => {
     const version = datasetReleaseVersionSchema.safeParse(request.params.version);
     if (!version.success) {
       response
@@ -48,18 +53,21 @@ export function createDatasetReleaseRouter(
         .json({ error: { code: 'NOT_FOUND', message: 'Dataset release not found.' } });
       return;
     }
-    void service.getRelease(version.data).then((release) => {
-      if (!release) {
-        response
-          .status(404)
-          .json({ error: { code: 'NOT_FOUND', message: 'Dataset release not found.' } });
-        return;
-      }
-      response.status(200).json({ data: release });
-    });
+    void service
+      .getRelease(version.data)
+      .then((release) => {
+        if (!release) {
+          response
+            .status(404)
+            .json({ error: { code: 'NOT_FOUND', message: 'Dataset release not found.' } });
+          return;
+        }
+        response.status(200).json({ data: release });
+      })
+      .catch(next);
   });
 
-  router.get('/dataset-releases/:version/artifact.json', (request, response) => {
+  router.get('/dataset-releases/:version/artifact.json', (request, response, next) => {
     const version = datasetReleaseVersionSchema.safeParse(request.params.version);
     if (!version.success) {
       response
@@ -67,18 +75,23 @@ export function createDatasetReleaseRouter(
         .json({ error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' } });
       return;
     }
-    void service.getArtifact(version.data).then((artifact) => {
-      if (!artifact) {
-        response
-          .status(404)
-          .json({ error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' } });
-        return;
-      }
-      response
-        .type('application/json')
-        .attachment(`dataset-release-${version.data}.json`)
-        .send(artifact);
-    });
+    void service
+      .getArtifact(version.data)
+      .then((artifact) => {
+        if (!artifact) {
+          response
+            .status(404)
+            .json({ error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' } });
+          return;
+        }
+        response.type('application/json').attachment(`dataset-release-${version.data}.json`);
+        pipeline(artifact, response, (error) => {
+          if (error) {
+            next(error);
+          }
+        });
+      })
+      .catch(next);
   });
 
   return router;

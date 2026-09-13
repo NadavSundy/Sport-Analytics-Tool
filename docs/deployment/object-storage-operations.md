@@ -46,6 +46,25 @@ any of them to Gitea secrets, App Settings, source, tests, examples, or operatio
 Local and unit tests inject `FakeObjectStore` or constructor fakes and do not require an Azure
 account.
 
+## Immutable dataset release artifacts
+
+Dataset publication uses the same private `ObjectStore` boundary and managed identity. Each attempt
+writes to a server-generated `dataset-releases/<uuid>.json` key with the adapter's non-overwrite
+condition. PostgreSQL reads accepted current deliveries in 10,000-row deterministic keyset pages;
+the backend streams canonical JSON to Blob Storage and computes the event count and SHA-256 digest
+as the exact UTF-8 bytes pass through. Only after the upload succeeds does it insert immutable
+release metadata and the opaque storage key/provider version in PostgreSQL. The public artifact
+endpoint streams the resolved private Blob through the backend and never exposes a provider URL or
+credential.
+
+Release artifacts have no scheduled expiry because the public version and checksum are permanent.
+If paging, serialization, upload or metadata insertion fails, the attempt has no release row and the
+backend deletes the generated key. A concurrent same-version publisher keeps the first immutable
+row and deletes the losing attempt's unreferenced object. Reconciliation must also inspect the
+`dataset-releases/` prefix for keys absent from `dataset_release`, because an Azure outage can prevent
+request-time cleanup. It must never replace bytes referenced by an existing release; a missing or
+checksum-mismatched release artifact is an integrity incident.
+
 ## Runtime verification and diagnosis
 
 After deploying, verify through an authorised backend-only operational path that the runtime can:
@@ -119,4 +138,5 @@ failure and keep file-dependent operations failed closed.
 
 This operations guide was created with the assistance of Codex[GPT-5].
 The production managed-identity wiring and credential-safe operational guidance were updated with
+the assistance of Codex[GPT-5]. The immutable dataset-release storage lifecycle was documented with
 the assistance of Codex[GPT-5].

@@ -100,8 +100,21 @@ checksum and a direct JSON download without requiring sign-in.
 Each artifact is canonical JSON containing its format version, scope, field descriptions and ordered
 published accepted-delivery rows. It is generated only from the live, corrected `delivery_current`
 revision whose source submission is `accepted`; pending, rejected and superseded rows are excluded.
-The metadata response includes the SHA-256 checksum of the exact artifact bytes. Consumers should
-save the version and checksum with an analysis and verify the downloaded bytes before reuse.
+Release generation reads those rows in deterministic keyset pages ordered by fixture, innings,
+delivery sequence and delivery identifier. The backend writes the JSON header, individual event
+objects and closing bytes directly to private object storage while updating SHA-256 over those exact
+UTF-8 bytes. It therefore never constructs the complete event array or artifact string in
+application memory. PostgreSQL retains the immutable version, schema, event count, checksum and
+opaque artifact reference; public downloads resolve that reference and stream the stored bytes.
+
+Metadata is inserted only after object storage confirms the complete write. An interrupted database
+read, JSON stream or storage write fails the publication request and triggers deletion of the
+generated object key, leaving no visible release. If metadata insertion loses a concurrent race for
+the same version, the newly written unreferenced object is deleted and the original immutable
+release is returned. Operational reconciliation remains the fallback when storage is unavailable
+during cleanup. The metadata response includes the SHA-256 checksum of the exact artifact bytes.
+Consumers should save the version and checksum with an analysis and verify the downloaded bytes
+before reuse.
 
 Release rows cannot be updated or deleted. Later corrections can be captured only in a new version,
 so a prior version and checksum always resolve to the same retained artifact.
@@ -111,4 +124,5 @@ so a prior version and checksum always resolve to the same retained artifact.
 The dataset-release catalogue and download documentation was updated with the assistance of
 Codex[GPT-5]. The administrator publication workflow was documented with the assistance of
 Codex[GPT-5.6 Sol]. The complete-export and calculation-trace export documentation for issue #467 was
-updated with the assistance of Claude Code[Claude Opus 5].
+updated with the assistance of Claude Code[Claude Opus 5]. The streamed release-generation and
+storage lifecycle was documented with the assistance of Codex[GPT-5].

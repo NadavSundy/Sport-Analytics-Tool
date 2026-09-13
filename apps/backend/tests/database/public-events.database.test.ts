@@ -1,4 +1,6 @@
 import request from 'supertest';
+import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
@@ -6,6 +8,7 @@ import { executeQuery } from '../../src/database';
 import { createPublicEventRepository } from '../../src/modules/events/event.repository';
 import { createDatasetReleaseRepository } from '../../src/modules/dataset-releases/dataset-release.repository';
 import { createDatasetReleaseService } from '../../src/modules/dataset-releases/dataset-release.service';
+import { FakeObjectStore } from '../../src/modules/object-storage/fake-object-store';
 import { createPublicReadService } from '../../src/modules/public-read/public-read.service';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { createTestApp } from '../test-app';
@@ -25,6 +28,14 @@ interface TestRecords {
 }
 
 const sourcePrefix = `public-events-test-${process.pid}`;
+
+async function streamText(stream: Readable): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString();
+}
 
 describe.sequential('public events database API', () => {
   let pool: Pool | undefined;
@@ -430,22 +441,93 @@ describe.sequential('public events database API', () => {
     const client = await databasePool().connect();
     try {
       await client.query('BEGIN');
-      const service = createDatasetReleaseService(createDatasetReleaseRepository(client));
+      const objectStore = new FakeObjectStore();
+      const service = createDatasetReleaseService(
+        createDatasetReleaseRepository(client),
+        objectStore,
+        2,
+      );
       const version = `${sourcePrefix}-release`;
 
       const first = await service.createRelease({ version });
       const again = await service.createRelease({ version });
-      const artifact = await service.getArtifact(version);
+      const artifact = await streamText((await service.getArtifact(version))!);
 
-      const parsedArtifact = JSON.parse(artifact!);
+      const parsedArtifact = JSON.parse(artifact);
       expect(first.eventCount).toBe(parsedArtifact.events.length);
+      expect(first.checksum).toBe(createHash('sha256').update(artifact).digest('hex'));
       expect(first).toEqual(again);
       expect(artifact).toContain(`"eventId":"${testRecords().orderedEventIds[0]}"`);
+      expect(
+        parsedArtifact.events
+          .map((event: { eventId: string }) => event.eventId)
+          .filter((eventId: string) => testRecords().orderedEventIds.includes(eventId)),
+      ).toEqual(testRecords().orderedEventIds);
       expect(await service.getRelease(version)).toEqual(first);
       expect(await service.listReleases()).toContainEqual(first);
+      const persisted = await client.query<{
+        artifactStorageKey: string;
+        artifactProviderVersionId: string | null;
+        artifactText: string | null;
+      }>(
+        `
+          SELECT artifact_storage_key AS "artifactStorageKey",
+                 artifact_provider_version_id AS "artifactProviderVersionId",
+                 artifact_text AS "artifactText"
+          FROM dataset_release
+          WHERE version = $1
+        `,
+        [version],
+      );
+      expect(persisted.rows[0]).toMatchObject({
+        artifactStorageKey: expect.stringMatching(/^dataset-releases\/[0-9a-f-]+\.json$/),
+        artifactProviderVersionId: null,
+        artifactText: null,
+      });
+      expect(objectStore.deletedKeys).toHaveLength(0);
       await expect(
         client.query('UPDATE dataset_release SET event_count = 0 WHERE version = $1', [version]),
       ).rejects.toThrow('Dataset releases are immutable');
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+
+  test('does not retain metadata or partial bytes when paged release generation is interrupted', async () => {
+    const client = await databasePool().connect();
+    try {
+      await client.query('BEGIN');
+      const repository = createDatasetReleaseRepository(client);
+      let pagesRead = 0;
+      const interruptedRepository = {
+        ...repository,
+        async loadPublishedEventPage(
+          cursor: Parameters<typeof repository.loadPublishedEventPage>[0],
+          limit: number,
+        ) {
+          pagesRead += 1;
+          if (pagesRead === 2) {
+            throw new Error('simulated PostgreSQL cursor interruption');
+          }
+          return repository.loadPublishedEventPage(cursor, limit);
+        },
+      };
+      const objectStore = new FakeObjectStore();
+      const service = createDatasetReleaseService(interruptedRepository, objectStore, 2);
+      const version = `${sourcePrefix}-interrupted-release`;
+
+      await expect(service.createRelease({ version })).rejects.toThrow(
+        'simulated PostgreSQL cursor interruption',
+      );
+
+      const persisted = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM dataset_release WHERE version = $1',
+        [version],
+      );
+      expect(persisted.rows[0].count).toBe('0');
+      expect(objectStore.deletedKeys).toHaveLength(1);
+      expect(objectStore.has(objectStore.deletedKeys[0] ?? '')).toBe(false);
     } finally {
       await client.query('ROLLBACK');
       client.release();

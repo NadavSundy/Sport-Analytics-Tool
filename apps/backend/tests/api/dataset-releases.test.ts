@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { Readable } from 'node:stream';
 import { describe, expect, test, vi } from 'vitest';
 
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
@@ -23,7 +24,7 @@ function service(): DatasetReleaseService {
     createRelease: vi.fn(async () => release),
     listReleases: vi.fn(async () => [release]),
     getRelease: vi.fn(async () => release),
-    getArtifact: vi.fn(async () => '{"formatVersion":"1.0"}'),
+    getArtifact: vi.fn(async () => Readable.from('{"formatVersion":"1.0"}')),
   };
 }
 
@@ -66,6 +67,10 @@ describe('dataset release API', () => {
       .get('/api/v1/dataset-releases/2026.09.1/artifact.json')
       .expect(200);
     expect(artifact.headers['content-type']).toContain('application/json');
+    expect(artifact.headers['content-disposition']).toContain(
+      'attachment; filename="dataset-release-2026.09.1.json"',
+    );
+    expect(artifact.headers['content-length']).toBeUndefined();
     expect(artifact.text).toBe('{"formatVersion":"1.0"}');
   });
 
@@ -133,5 +138,42 @@ describe('dataset release API', () => {
       .expect(404, {
         error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' },
       });
+  });
+
+  test('returns a safe server error when publication fails without an unhandled rejection', async () => {
+    const releases = service();
+    vi.mocked(releases.createRelease).mockRejectedValue(new Error('object upload interrupted'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const app = createTestApp(
+      undefined,
+      undefined,
+      administrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      releases,
+    );
+
+    await request(app)
+      .post('/api/v1/admin/dataset-releases')
+      .set('Authorization', 'Bearer test')
+      .send({ version: '2026.09.2' })
+      .expect(500, {
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected server error occurred.',
+        },
+      });
+
+    expect(consoleError).toHaveBeenCalledWith('object upload interrupted');
+    consoleError.mockRestore();
   });
 });

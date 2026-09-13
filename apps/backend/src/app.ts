@@ -59,6 +59,7 @@ import { createAdminRouter } from './modules/admin/admin.routes';
 import { createAdminService, type AdminService } from './modules/admin/admin.service';
 import { createAzureObjectStorageComposition } from './modules/object-storage/azure-object-storage.composition';
 import type { BatchPayloadStorageService } from './modules/object-storage/batch-payload-storage.service';
+import type { ObjectStore } from './modules/object-storage/object-store';
 import { createBatchRouter } from './modules/batches/batch.routes';
 import { createBatchService, type BatchService } from './modules/batches/batch.service';
 import { createApiConsumerRouter } from './modules/api-consumers/api-consumer.routes';
@@ -95,6 +96,7 @@ export interface AppDependencies {
   adminService?: AdminService;
   weatherService?: WeatherService;
   fixtureWeatherService?: FixtureWeatherService;
+  objectStore?: ObjectStore;
   batchPayloadStorageService?: BatchPayloadStorageService;
   batchService?: BatchService;
   apiConsumerService?: ApiConsumerService;
@@ -140,17 +142,20 @@ export function createApp(dependencies: AppDependencies = {}) {
   const weatherService = dependencies.weatherService ?? new WeatherService();
   const fixtureWeatherService =
     dependencies.fixtureWeatherService ?? createFixtureWeatherService(weatherService);
+  const objectStorageComposition =
+    environment.NODE_ENV === 'production'
+      ? createAzureObjectStorageComposition(environment)
+      : undefined;
+  const objectStore = dependencies.objectStore ?? objectStorageComposition?.objectStore;
   const batchPayloadStorageService =
-    dependencies.batchPayloadStorageService ??
-    (environment.NODE_ENV === 'production'
-      ? createAzureObjectStorageComposition(environment).batchPayloadStorageService
-      : undefined);
+    dependencies.batchPayloadStorageService ?? objectStorageComposition?.batchPayloadStorageService;
   const batchService = dependencies.batchService ?? createBatchService(batchPayloadStorageService);
   const apiConsumerRepository =
     dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
-  const datasetReleaseService = dependencies.datasetReleaseService ?? createDatasetReleaseService();
+  const datasetReleaseService =
+    dependencies.datasetReleaseService ?? createDatasetReleaseService(undefined, objectStore);
   const provenanceService =
     dependencies.provenanceService ?? createProvenanceService(fixtureStatisticsService);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')

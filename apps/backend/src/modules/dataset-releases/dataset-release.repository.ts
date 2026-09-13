@@ -8,24 +8,50 @@ export interface DatasetReleaseSnapshot {
   checksum: string;
 }
 
+export interface DatasetReleaseEventCursor {
+  fixtureId: string;
+  inningsOrdinal: number;
+  sequenceNumber: number;
+  eventId: string;
+}
+
+interface DatasetReleaseEventPage {
+  events: unknown[];
+  nextCursor: DatasetReleaseEventCursor | null;
+}
+
+export interface DatasetReleaseArtifactReference {
+  storageKey: string | null;
+  legacyArtifactText: string | null;
+}
+
 interface DatasetReleaseRow extends DatasetReleaseSnapshot {
-  artifactText?: string;
+  artifactStorageKey?: string | null;
+  artifactText?: string | null;
+}
+
+interface DatasetReleaseEventRow extends DatasetReleaseEventCursor {
+  event: unknown;
 }
 
 export interface DatasetReleaseRepository {
-  loadPublishedEvents(): Promise<unknown[]>;
+  loadPublishedEventPage(
+    cursor: DatasetReleaseEventCursor | null,
+    limit: number,
+  ): Promise<DatasetReleaseEventPage>;
   createOrFind(input: {
     version: string;
     formatVersion: string;
     scope: string;
     eventCount: number;
     fields: readonly { name: string; description: string }[];
-    artifact: string;
+    artifactStorageKey: string;
+    artifactProviderVersionId: string | null;
     checksum: string;
-  }): Promise<DatasetReleaseSnapshot>;
+  }): Promise<{ snapshot: DatasetReleaseSnapshot; created: boolean }>;
   list(): Promise<DatasetReleaseSnapshot[]>;
   findByVersion(version: string): Promise<DatasetReleaseSnapshot | null>;
-  findArtifactByVersion(version: string): Promise<string | null>;
+  findArtifactReferenceByVersion(version: string): Promise<DatasetReleaseArtifactReference | null>;
 }
 
 const snapshotColumns = `
@@ -47,11 +73,11 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
   }
 
   return {
-    async loadPublishedEvents() {
-      const result = await executeQuery<{ event: unknown }>(
+    async loadPublishedEventPage(cursor, limit) {
+      const result = await executeQuery<DatasetReleaseEventRow>(
         database(),
         `
-          SELECT jsonb_build_object(
+          SELECT json_build_object(
             'eventId', d.delivery_id::text, 'fixtureId', i.fixture_id::text,
             'inningsId', i.innings_id::text, 'inningsOrdinal', i.ordinal,
             'sequenceNumber', d.innings_sequence, 'overNumber', d.over_number,
@@ -59,14 +85,38 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
             'strikerParticipantId', d.striker_id::text, 'nonStrikerParticipantId', d.non_striker_id::text,
             'bowlerParticipantId', d.bowler_id::text, 'runsOffBat', d.runs_off_bat,
             'runsExtras', d.runs_extras, 'runsTotal', d.runs_total
-          ) AS event
+          ) AS event,
+          i.fixture_id::text AS "fixtureId", i.ordinal AS "inningsOrdinal",
+          d.innings_sequence AS "sequenceNumber", d.delivery_id::text AS "eventId"
           FROM delivery_current d
           INNER JOIN innings i ON i.innings_id = d.innings_id
           INNER JOIN submission s ON s.submission_id = d.submission_id AND s.status = 'accepted'
+          WHERE $1::bigint IS NULL
+             OR (i.fixture_id, i.ordinal, d.innings_sequence, d.delivery_id)
+                > ($1::bigint, $2::integer, $3::integer, $4::bigint)
           ORDER BY i.fixture_id ASC, i.ordinal ASC, d.innings_sequence ASC, d.delivery_id ASC
+          LIMIT $5
         `,
+        [
+          cursor?.fixtureId ?? null,
+          cursor?.inningsOrdinal ?? null,
+          cursor?.sequenceNumber ?? null,
+          cursor?.eventId ?? null,
+          limit,
+        ],
       );
-      return result.rows.map((row) => row.event);
+      const last = result.rows.at(-1);
+      return {
+        events: result.rows.map((row) => row.event),
+        nextCursor: last
+          ? {
+              fixtureId: last.fixtureId,
+              inningsOrdinal: last.inningsOrdinal,
+              sequenceNumber: last.sequenceNumber,
+              eventId: last.eventId,
+            }
+          : null,
+      };
     },
 
     async createOrFind(input) {
@@ -74,8 +124,9 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
         database(),
         `
           INSERT INTO dataset_release
-            (version, format_version, scope, event_count, fields, artifact_text, checksum_sha256)
-          VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+            (version, format_version, scope, event_count, fields, artifact_storage_key,
+             artifact_provider_version_id, checksum_sha256)
+          VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)
           ON CONFLICT (version) DO NOTHING
           RETURNING ${snapshotColumns}
         `,
@@ -85,19 +136,20 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
           input.scope,
           input.eventCount,
           JSON.stringify(input.fields),
-          input.artifact,
+          input.artifactStorageKey,
+          input.artifactProviderVersionId,
           input.checksum,
         ],
       );
       if (result.rows[0]) {
-        return result.rows[0];
+        return { snapshot: result.rows[0], created: true };
       }
 
       const existing = await findByVersion(input.version);
       if (!existing) {
         throw new Error('Dataset release was not created or found.');
       }
-      return existing;
+      return { snapshot: existing, created: false };
     },
 
     async list() {
@@ -110,13 +162,23 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
 
     findByVersion,
 
-    async findArtifactByVersion(version) {
+    async findArtifactReferenceByVersion(version) {
       const result = await executeQuery<DatasetReleaseRow>(
         database(),
-        'SELECT artifact_text AS "artifactText" FROM dataset_release WHERE version = $1',
+        `
+          SELECT artifact_storage_key AS "artifactStorageKey", artifact_text AS "artifactText"
+          FROM dataset_release
+          WHERE version = $1
+        `,
         [version],
       );
-      return result.rows[0]?.artifactText ?? null;
+      const row = result.rows[0];
+      return row
+        ? {
+            storageKey: row.artifactStorageKey ?? null,
+            legacyArtifactText: row.artifactText ?? null,
+          }
+        : null;
     },
   };
 }
