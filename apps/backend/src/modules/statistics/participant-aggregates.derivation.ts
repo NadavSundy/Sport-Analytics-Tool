@@ -58,6 +58,8 @@ function bowlingOf(row: ParticipantAggregateRow): ParticipantAggregateBowling | 
 
   return {
     runsConceded: row.runsConceded,
+    wides: row.wides,
+    noBalls: row.noBalls,
     legalBallsBowled: row.legalBallsBowled,
     wicketsTaken: row.wicketsTaken,
     ballsPerOver,

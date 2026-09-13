@@ -24,6 +24,8 @@ interface BattingAccumulator {
 
 interface BowlingAccumulator {
   runsConceded: number;
+  wides: number;
+  noBalls: number;
   legalBallsBowled: number;
   wicketsTaken: number;
 }
@@ -258,11 +260,15 @@ export function deriveFixtureStatistics(
     }
     bowler.bowling ??= {
       runsConceded: 0,
+      wides: 0,
+      noBalls: 0,
       legalBallsBowled: 0,
       wicketsTaken: 0,
     };
     bowler.bowling.runsConceded +=
       event.runsOffBat + (event.extraWides ?? 0) + (event.extraNoBalls ?? 0);
+    bowler.bowling.wides += event.extraWides ?? 0;
+    bowler.bowling.noBalls += event.extraNoBalls ?? 0;
     if (event.extraWides === null && event.extraNoBalls === null) {
       bowler.bowling.legalBallsBowled += 1;
     }

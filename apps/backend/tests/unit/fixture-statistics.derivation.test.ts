@@ -192,6 +192,8 @@ describe('fixture statistics golden fixture', () => {
       },
       bowling: {
         runsConceded: 6,
+        wides: 0,
+        noBalls: 0,
         legalBallsBowled: 1,
         oversBowled: '0.1',
         economyRate: 36,
@@ -221,6 +223,8 @@ describe('fixture statistics golden fixture', () => {
       competitorName: 'Team Beta',
       bowling: {
         runsConceded: 16,
+        wides: 1,
+        noBalls: 1,
         legalBallsBowled: 4,
         oversBowled: '0.4',
         economyRate: 24,
@@ -241,6 +245,33 @@ describe('fixture statistics golden fixture', () => {
     const reversed = deriveFixtureStatistics(goldenSource([...goldenEvents].reverse()));
 
     expect(reversed).toEqual(forward);
+  });
+
+  test('keeps team extras out of a bowler extras breakdown', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: 'team-extras',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          runsExtras: 6,
+          runsTotal: 6,
+          extraByes: 2,
+          extraLegByes: 3,
+          extraPenalty: 1,
+        }),
+      ]),
+    );
+    const bowler = result.statistics.find(
+      (statistic) => statistic.scope === 'participant' && statistic.participantId === '201',
+    );
+
+    expect(bowler?.scope === 'participant' ? bowler.bowling : null).toMatchObject({
+      runsConceded: 0,
+      wides: 0,
+      noBalls: 0,
+    });
   });
 
   test('returns ordered trace records only when explicitly requested', () => {

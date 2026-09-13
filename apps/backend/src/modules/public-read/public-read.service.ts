@@ -339,6 +339,8 @@ function mapParticipantFixture(
         ? null
         : {
             runsConceded: record.runsConceded,
+            wides: requiredStatisticValue(record.wides, 'wides'),
+            noBalls: requiredStatisticValue(record.noBalls, 'noBalls'),
             legalBallsBowled: requiredStatisticValue(record.legalBallsBowled, 'legalBallsBowled'),
             oversBowled: formatOvers(
               requiredStatisticValue(record.legalBallsBowled, 'legalBallsBowled'),

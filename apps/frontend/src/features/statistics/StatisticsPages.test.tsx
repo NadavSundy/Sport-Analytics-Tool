@@ -129,6 +129,8 @@ const participantStatistic = {
   batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 4, sixes: 2 },
   bowling: {
     runsConceded: 24,
+    wides: 0,
+    noBalls: 0,
     legalBallsBowled: 18,
     oversBowled: '3.0',
     economyRate: 8,
@@ -249,6 +251,8 @@ describe('public fixture statistics pages', () => {
     }).parentElement?.parentElement?.parentElement;
     expect(participantSection).toBeTruthy();
     expect(within(participantSection as HTMLElement).getByText('42')).toBeInTheDocument();
+    expect(within(participantSection as HTMLElement).getByText('Wides')).toBeInTheDocument();
+    expect(within(participantSection as HTMLElement).getByText('No-balls')).toBeInTheDocument();
     expect(
       within(participantSection as HTMLElement).getByRole('link', {
         name: 'A Player',

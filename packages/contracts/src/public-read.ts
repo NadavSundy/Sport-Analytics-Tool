@@ -225,6 +225,8 @@ export const participantFixtureStatisticSchema = fixtureStatisticCommonSchema.ex
   bowling: z
     .object({
       runsConceded: z.number().int().nonnegative(),
+      wides: z.number().int().nonnegative(),
+      noBalls: z.number().int().nonnegative(),
       legalBallsBowled: z.number().int().nonnegative(),
       oversBowled: z.string().regex(/^\d+\.\d+$/),
       economyRate: z.number().nonnegative().nullable(),
@@ -375,6 +377,11 @@ export const participantFixtureBattingSchema = z.object({
 
 export const participantFixtureBowlingSchema = z.object({
   runsConceded: z.number().int().nonnegative(),
+  // These are the bowler-attributable extras included in runsConceded. Byes,
+  // leg-byes and innings-level penalty runs belong to the fielding team, not
+  // the bowler's analysis.
+  wides: z.number().int().nonnegative(),
+  noBalls: z.number().int().nonnegative(),
   legalBallsBowled: z.number().int().nonnegative(),
   oversBowled: z.string().regex(/^\d+\.\d+$/),
   wicketsTaken: z.number().int().nonnegative(),
@@ -433,6 +440,10 @@ export const participantAggregateBattingSchema = z.object({
 
 export const participantAggregateBowlingSchema = z.object({
   runsConceded: z.number().int().nonnegative(),
+  // Wides and no-balls are charged to the bowler. Other extras are deliberately
+  // not presented as a bowler figure.
+  wides: z.number().int().nonnegative(),
+  noBalls: z.number().int().nonnegative(),
   legalBallsBowled: z.number().int().nonnegative(),
   wicketsTaken: z.number().int().nonnegative(),
   // Legal balls are counted from delivery rows. Overs and economy rate need a

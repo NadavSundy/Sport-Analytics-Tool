@@ -1494,7 +1494,9 @@ paths:
         equals the sum of the participant's published fixture figures. Rates are
         recomputed over each group rather than averaged across fixtures, and are
         null where their denominator is zero or where the fixtures in a group do
-        not share one balls-per-over divisor.
+        not share one balls-per-over divisor. Bowling figures separately expose
+        bowler-attributable wide and no-ball runs; byes, leg-byes and innings
+        penalty runs remain team extras and are not charged to the bowler.
       operationId: getParticipantAggregates
       x-implementation-status: implemented
       security: []
@@ -3224,6 +3226,8 @@ components:
       additionalProperties: false
       required:
         - runsConceded
+        - wides
+        - noBalls
         - legalBallsBowled
         - oversBowled
         - wicketsTaken
@@ -3232,6 +3236,14 @@ components:
         runsConceded:
           type: integer
           minimum: 0
+        wides:
+          type: integer
+          minimum: 0
+          description: Bowler-attributable wide runs included in runsConceded.
+        noBalls:
+          type: integer
+          minimum: 0
+          description: Bowler-attributable no-ball runs included in runsConceded.
         legalBallsBowled:
           type: integer
           minimum: 0
@@ -3723,12 +3735,20 @@ components:
                   additionalProperties: false
                   required:
                     - runsConceded
+                    - wides
+                    - noBalls
                     - legalBallsBowled
                     - oversBowled
                     - economyRate
                     - wicketsTaken
                   properties:
                     runsConceded:
+                      type: integer
+                      minimum: 0
+                    wides:
+                      type: integer
+                      minimum: 0
+                    noBalls:
                       type: integer
                       minimum: 0
                     legalBallsBowled:
@@ -3932,6 +3952,8 @@ components:
       additionalProperties: false
       required:
         - runsConceded
+        - wides
+        - noBalls
         - legalBallsBowled
         - wicketsTaken
         - ballsPerOver
@@ -3941,6 +3963,14 @@ components:
         runsConceded:
           type: integer
           minimum: 0
+        wides:
+          type: integer
+          minimum: 0
+          description: Bowler-attributable wide runs included in runsConceded.
+        noBalls:
+          type: integer
+          minimum: 0
+          description: Bowler-attributable no-ball runs included in runsConceded.
         legalBallsBowled:
           type: integer
           minimum: 0

@@ -49,6 +49,8 @@ const playerStatistic = {
   batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 5, sixes: 1 },
   bowling: {
     runsConceded: 18,
+    wides: 1,
+    noBalls: 0,
     legalBallsBowled: 12,
     oversBowled: '2.0',
     economyRate: 9,
@@ -105,6 +107,8 @@ function matchHistoryEntry(
     };
     bowling: null | {
       runsConceded: number;
+      wides: number;
+      noBalls: number;
       legalBallsBowled: number;
       oversBowled: string;
       economyRate: number | null;
@@ -138,6 +142,8 @@ const matchHistory = [
     batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 5, sixes: 1 },
     bowling: {
       runsConceded: 18,
+      wides: 1,
+      noBalls: 0,
       legalBallsBowled: 12,
       oversBowled: '2.0',
       economyRate: 9,
@@ -188,6 +194,8 @@ const careerAggregates = {
       batting: { runsScored: 1234, ballsFaced: 987, fours: 101, sixes: 37, strikeRate: 125.03 },
       bowling: {
         runsConceded: 842,
+        wides: 24,
+        noBalls: 11,
         legalBallsBowled: 690,
         wicketsTaken: 41,
         ballsPerOver: 6,
@@ -322,6 +330,8 @@ test(
     await expect(page.getByRole('heading', { level: 2, name: 'Career totals' })).toBeVisible();
     await expect(page.getByText('1234', { exact: true })).toBeVisible();
     await expect(page.getByText('7.32', { exact: true })).toBeVisible();
+    await expect(page.getByText('Wides', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('No-balls', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Match history' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Wanderers vs Titans' })).toBeVisible();
