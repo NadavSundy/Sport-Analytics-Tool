@@ -46,6 +46,9 @@ const playerStatistic = {
   competitorId: 'team-1',
   competitorName: 'Wanderers',
   sourceEventCount: 8,
+  battingPosition: 1,
+  battingParticipation: 'batted',
+  dismissal: { status: 'not_out', kind: null, eventId: null },
   batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 5, sixes: 1 },
   bowling: {
     runsConceded: 18,
