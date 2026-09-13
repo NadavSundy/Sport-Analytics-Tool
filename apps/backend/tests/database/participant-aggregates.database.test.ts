@@ -58,6 +58,8 @@ const publishedMcCullum = {
 /** Published bowling figures for Tim Southee in this fixture. */
 const publishedSouthee = {
   runsConceded: 44,
+  wides: 1,
+  noBalls: 0,
   legalBallsBowled: 24,
   wicketsTaken: 0,
   ballsPerOver: 6,

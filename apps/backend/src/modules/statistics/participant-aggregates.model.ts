@@ -28,6 +28,10 @@ export interface ParticipantAggregateRow {
   /** Deliveries in this group where the participant was the bowler. */
   bowlingDeliveryCount: number;
   runsConceded: number;
+  /** Bowler-attributable wide runs, including multi-run wides. */
+  wides: number;
+  /** Bowler-attributable no-ball runs, including the no-ball penalty. */
+  noBalls: number;
   legalBallsBowled: number;
   wicketsTaken: number;
   /**

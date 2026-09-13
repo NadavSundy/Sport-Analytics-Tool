@@ -224,6 +224,8 @@ describe('fixture statistics golden fixture', () => {
       dismissal: { status: 'not_out', kind: null, eventId: null },
       bowling: {
         runsConceded: 6,
+        wides: 0,
+        noBalls: 0,
         legalBallsBowled: 1,
         oversBowled: '0.1',
         economyRate: 36,
@@ -254,6 +256,8 @@ describe('fixture statistics golden fixture', () => {
       competitorName: 'Team Beta',
       bowling: {
         runsConceded: 16,
+        wides: 1,
+        noBalls: 1,
         legalBallsBowled: 4,
         oversBowled: '0.4',
         economyRate: 24,
@@ -274,6 +278,148 @@ describe('fixture statistics golden fixture', () => {
     const reversed = deriveFixtureStatistics(goldenSource([...goldenEvents].reverse()));
 
     expect(reversed).toEqual(forward);
+  });
+
+  test('keeps team extras out of a bowler extras breakdown', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: 'team-extras',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          runsExtras: 6,
+          runsTotal: 6,
+          extraByes: 2,
+          extraLegByes: 3,
+          extraPenalty: 1,
+        }),
+      ]),
+    );
+    const bowler = result.statistics.find(
+      (statistic) => statistic.scope === 'participant' && statistic.participantId === '201',
+    );
+
+    expect(bowler?.scope === 'participant' ? bowler.bowling : null).toMatchObject({
+      runsConceded: 0,
+      wides: 0,
+      noBalls: 0,
+    });
+  });
+
+  test('attributes mixed delivery extras to their bowlers and preserves their trace', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: 'ordinary',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          runsOffBat: 2,
+          runsTotal: 2,
+        }),
+        event({
+          deliveryId: 'wide-one',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 2,
+          runsExtras: 1,
+          runsTotal: 1,
+          extraWides: 1,
+        }),
+        event({
+          deliveryId: 'wide-two',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 3,
+          runsExtras: 2,
+          runsTotal: 2,
+          extraWides: 2,
+        }),
+        event({
+          deliveryId: 'no-ball-with-bat-runs',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 4,
+          runsOffBat: 4,
+          runsExtras: 1,
+          runsTotal: 5,
+          extraNoBalls: 1,
+        }),
+        event({
+          deliveryId: 'bye',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 5,
+          runsExtras: 2,
+          runsTotal: 2,
+          extraByes: 2,
+        }),
+        event({
+          deliveryId: 'leg-bye',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 6,
+          runsExtras: 3,
+          runsTotal: 3,
+          extraLegByes: 3,
+        }),
+        event({
+          deliveryId: 'other-bowler-wide',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 7,
+          bowlerId: '202',
+          bowlerName: 'Player 202',
+          runsExtras: 2,
+          runsTotal: 2,
+          extraWides: 2,
+        }),
+      ]),
+      { includeContributors: true },
+    );
+
+    const firstBowler = result.statistics.find(
+      (statistic) => statistic.scope === 'participant' && statistic.participantId === '201',
+    );
+    const otherBowler = result.statistics.find(
+      (statistic) => statistic.scope === 'participant' && statistic.participantId === '202',
+    );
+    const innings = result.statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
+    );
+
+    expect(firstBowler?.scope === 'participant' ? firstBowler.bowling : null).toMatchObject({
+      // 2 off the bat + 3 wides + 4 off the bat + 1 no-ball. Byes and leg-byes
+      // remain innings/team extras and are not charged to this bowler.
+      runsConceded: 10,
+      wides: 3,
+      noBalls: 1,
+      legalBallsBowled: 3,
+    });
+    expect(otherBowler?.scope === 'participant' ? otherBowler.bowling : null).toMatchObject({
+      runsConceded: 2,
+      wides: 2,
+      noBalls: 0,
+      legalBallsBowled: 0,
+    });
+    expect(innings?.scope === 'innings' ? innings.metrics : null).toMatchObject({
+      deliveryRuns: 17,
+      penaltyRuns: 5,
+      totalRuns: 22,
+    });
+    expect(
+      firstBowler?.scope === 'participant'
+        ? firstBowler.contributingEvents?.map((contributingEvent) => contributingEvent.eventId)
+        : null,
+    ).toEqual(['ordinary', 'wide-one', 'wide-two', 'no-ball-with-bat-runs', 'bye', 'leg-bye']);
+    expect(
+      firstBowler?.scope === 'participant'
+        ? firstBowler.contributingEvents?.find(
+            (contributingEvent) => contributingEvent.eventId === 'leg-bye',
+          )?.extras
+        : null,
+    ).toEqual({ wides: null, noBalls: null, byes: null, legByes: 3, penalty: null });
   });
 
   test('returns ordered trace records only when explicitly requested', () => {

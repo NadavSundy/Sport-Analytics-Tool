@@ -190,6 +190,8 @@ describe('public read contracts', () => {
           batting: null,
           bowling: {
             runsConceded: 10,
+            wides: 0,
+            noBalls: 0,
             legalBallsBowled: 6,
             oversBowled: 'one over',
             wicketsTaken: 1,
@@ -363,6 +365,8 @@ describe('public read contracts', () => {
             batting: null,
             bowling: {
               runsConceded: 44,
+              wides: 2,
+              noBalls: 1,
               legalBallsBowled: 24,
               wicketsTaken: 0,
               ballsPerOver: 6,
@@ -383,6 +387,8 @@ describe('public read contracts', () => {
             // single divisor, so neither rate is invented.
             bowling: {
               runsConceded: 44,
+              wides: 2,
+              noBalls: 1,
               legalBallsBowled: 24,
               wicketsTaken: 0,
               ballsPerOver: null,
