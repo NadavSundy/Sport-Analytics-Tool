@@ -293,7 +293,7 @@ function mapReportItem(
     context,
     stagedRecordId: record.batchItemId,
     acceptedRecordId: record.publishedEventId,
-    operation: record.operation,
+    operation: record.operation ?? 'upsert',
     correctionTarget:
       record.operation === 'correction' && record.correctsSourceIdentity
         ? {
