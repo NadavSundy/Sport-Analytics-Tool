@@ -22,6 +22,8 @@ function row(overrides: Partial<ParticipantAggregateRow> = {}): ParticipantAggre
     sixes: 0,
     bowlingDeliveryCount: 0,
     runsConceded: 0,
+    wides: 0,
+    noBalls: 0,
     legalBallsBowled: 0,
     wicketsTaken: 0,
     ballsPerOver: 6,
@@ -115,6 +117,8 @@ describe('participant aggregate derivation', () => {
           sourceEventCount: 26,
           bowlingDeliveryCount: 26,
           runsConceded: 44,
+          wides: 3,
+          noBalls: 2,
           legalBallsBowled: 23,
           wicketsTaken: 2,
           ballsPerOver: 6,
@@ -127,6 +131,8 @@ describe('participant aggregate derivation', () => {
     // number of deliveries bowled to produce them.
     expect(result.statistics[0]?.bowling).toEqual({
       runsConceded: 44,
+      wides: 3,
+      noBalls: 2,
       legalBallsBowled: 23,
       wicketsTaken: 2,
       ballsPerOver: 6,

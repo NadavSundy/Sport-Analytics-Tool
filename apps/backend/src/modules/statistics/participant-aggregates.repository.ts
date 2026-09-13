@@ -145,6 +145,8 @@ export async function loadParticipantAggregatesSource(
           ) FILTER (WHERE pd.is_bowler),
           0
         )::int AS "runsConceded",
+        COALESCE(SUM(pd.extra_wides) FILTER (WHERE pd.is_bowler), 0)::int AS wides,
+        COALESCE(SUM(pd.extra_noballs) FILTER (WHERE pd.is_bowler), 0)::int AS "noBalls",
         COUNT(*) FILTER (
           WHERE pd.is_bowler AND pd.extra_wides IS NULL AND pd.extra_noballs IS NULL
         )::int AS "legalBallsBowled",

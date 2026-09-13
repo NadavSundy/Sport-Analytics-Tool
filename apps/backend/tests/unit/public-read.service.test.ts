@@ -51,6 +51,8 @@ function participantFixtureRecord(
     fours: 6,
     sixes: 3,
     runsConceded: 24,
+    wides: 0,
+    noBalls: 0,
     legalBallsBowled: 18,
     wicketsTaken: 2,
     ...overrides,
@@ -359,6 +361,8 @@ describe('public participant fixture history service', () => {
       },
       bowling: {
         runsConceded: 24,
+        wides: 0,
+        noBalls: 0,
         legalBallsBowled: 18,
         oversBowled: '3.0',
         wicketsTaken: 2,

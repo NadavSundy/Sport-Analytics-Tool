@@ -98,6 +98,8 @@ export function PlayerPerformance({
           <h4>Bowling</h4>
           <MetricList>
             <StatisticMetric label="Runs conceded" value={bowling.runsConceded} />
+            <StatisticMetric label="Wides" value={bowling.wides} />
+            <StatisticMetric label="No-balls" value={bowling.noBalls} />
             <StatisticMetric label="Legal balls" value={bowling.legalBallsBowled} />
             <StatisticMetric label="Overs" value={bowling.oversBowled ?? 'Not available'} />
             <StatisticMetric label="Economy rate" value={bowling.economyRate ?? 'Not available'} />

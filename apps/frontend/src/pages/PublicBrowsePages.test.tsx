@@ -69,6 +69,8 @@ function playerMatch(
       options.bowling === undefined
         ? {
             runsConceded: 18,
+            wides: 1,
+            noBalls: 0,
             legalBallsBowled: 12,
             oversBowled: '2.0',
             wicketsTaken: 2,
@@ -119,6 +121,8 @@ function careerAggregates(
               },
               bowling: {
                 runsConceded: 842,
+                wides: 24,
+                noBalls: 11,
                 legalBallsBowled: 690,
                 wicketsTaken: 41,
                 ballsPerOver: 6,
@@ -1259,6 +1263,8 @@ describe('public browsing pages', () => {
     expect(metricValue(career, 'Batting statistics', 'Fours')).toBe('101');
     expect(metricValue(career, 'Batting statistics', 'Sixes')).toBe('37');
     expect(metricValue(career, 'Bowling statistics', 'Runs conceded')).toBe('842');
+    expect(metricValue(career, 'Bowling statistics', 'Wides')).toBe('24');
+    expect(metricValue(career, 'Bowling statistics', 'No-balls')).toBe('11');
     expect(metricValue(career, 'Bowling statistics', 'Legal balls')).toBe('690');
     expect(metricValue(career, 'Bowling statistics', 'Overs')).toBe('115.0');
     expect(metricValue(career, 'Bowling statistics', 'Economy rate')).toBe('7.32');
@@ -1273,6 +1279,8 @@ describe('public browsing pages', () => {
       await within(history).findByRole('link', { name: 'Wanderers vs Strikers' }),
     ).toBeVisible();
     expect(metricValue(history, 'Batting statistics', 'Runs')).toBe('42');
+    expect(metricValue(history, 'Bowling statistics', 'Wides')).toBe('1');
+    expect(metricValue(history, 'Bowling statistics', 'No-balls')).toBe('0');
     expect(within(career).queryByText('42')).not.toBeInTheDocument();
 
     // One resource request at career scope. The endpoint does not page, so the

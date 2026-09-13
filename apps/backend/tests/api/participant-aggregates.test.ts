@@ -28,7 +28,16 @@ const careerAggregates: ParticipantAggregates = {
         sixes: 8,
         strikeRate: 207.14,
       },
-      bowling: null,
+      bowling: {
+        runsConceded: 24,
+        wides: 2,
+        noBalls: 1,
+        legalBallsBowled: 18,
+        wicketsTaken: 2,
+        ballsPerOver: 6,
+        oversBowled: '3.0',
+        economyRate: 8,
+      },
     },
   ],
 };
@@ -81,6 +90,10 @@ describe('public participant aggregate statistics API', () => {
     expect(getParticipantAggregates).toHaveBeenCalledWith('101', {});
     expect(response.body.data.participantId).toBe('101');
     expect(response.body.data.scope).toEqual({ superOversIncluded: false });
+    expect(response.body.data.statistics[0].bowling).toMatchObject({
+      wides: 2,
+      noBalls: 1,
+    });
   });
 
   test('passes a requested scope through to the service', async () => {
