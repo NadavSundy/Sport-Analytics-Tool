@@ -193,6 +193,32 @@ export const batchReportErrorSchema = z
   })
   .strict();
 
+export const batchPublishedConflictDifferenceSchema = z
+  .object({
+    fieldPath: z.string().min(1),
+    submittedValue: z.unknown(),
+    publishedValue: z.unknown(),
+  })
+  .strict();
+
+export const batchPublishedConflictSchema = z
+  .object({
+    existingDeliveryId: apiIdentifierSchema,
+    existingSourceEventId: z.string().uuid().nullable(),
+    correctionPermitted: z.boolean(),
+    differences: z.array(batchPublishedConflictDifferenceSchema).min(1),
+  })
+  .strict();
+
+export const batchConflictResolutionRequestSchema = z
+  .object({
+    itemOrdinal: z.number().int().nonnegative(),
+    existingDeliveryId: apiIdentifierSchema,
+    decision: z.enum(['use_existing', 'replace_published']),
+    reason: z.string().trim().min(10).max(2000),
+  })
+  .strict();
+
 export const batchReportItemSchema = z
   .object({
     ordinal: z.number().int().nonnegative(),
@@ -210,6 +236,7 @@ export const batchReportItemSchema = z
       .strict()
       .nullable()
       .default(null),
+    publishedConflict: batchPublishedConflictSchema.nullable().optional(),
     referenceResolutions: z.array(batchReferenceResolutionSchema),
     errors: z.array(batchReportErrorSchema),
   })
@@ -317,6 +344,7 @@ export type BatchStatusResponse = z.infer<typeof batchStatusResponseSchema>;
 export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
 export type BatchReviewRequest = z.infer<typeof batchReviewRequestSchema>;
 export type BatchReviewResponse = z.infer<typeof batchReviewResponseSchema>;
+export type BatchConflictResolutionRequest = z.infer<typeof batchConflictResolutionRequestSchema>;
 export type BatchStatus = z.infer<typeof batchStatusSchema>;
 export type BatchListQuery = z.infer<typeof batchListQuerySchema>;
 export type BatchListResponse = z.infer<typeof batchListResponseSchema>;

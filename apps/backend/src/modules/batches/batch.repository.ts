@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   classifyPublishedCricketDelivery,
+  diffPublishedCricketDelivery,
   type ComparableCricketDelivery,
   type FixtureProposal,
   type PublishedCricketDelivery,
@@ -144,6 +145,8 @@ export interface BatchReportItemRecord {
   resolvedReferences: JsonValue | null;
   state: BatchItemState | null;
   rejectionCode: string | null;
+  rejectionDetail?: JsonValue | null;
+  payload?: JsonValue | null;
   publishedEventId: string | null;
   operation: 'upsert' | 'correction';
   correctsSourceIdentity: string | null;
@@ -243,6 +246,15 @@ interface ApplyReviewDecisionInput extends ReviewDecisionInput {
   reason: string;
 }
 
+interface ResolvePublishedConflictInput {
+  batchId: string;
+  actorId: string;
+  itemOrdinal: number;
+  existingDeliveryId: string;
+  decision: 'use_existing' | 'replace_published';
+  reason: string;
+}
+
 interface QueueReferenceMappingInput {
   decisionReference: string;
   batchId: string;
@@ -270,6 +282,7 @@ interface BatchReferenceMappingRecord {
 export class BatchReviewConflictError extends Error {}
 export class BatchReviewResolutionError extends Error {}
 export class BatchReferenceMappingConflictError extends Error {}
+export class BatchPublishedConflictResolutionError extends Error {}
 
 /**
  * The outcome of resolving one staged item's references.
@@ -332,6 +345,7 @@ export interface BatchRepository {
     review: BatchReviewDecisionRecord;
     resumePublication: boolean;
   }>;
+  resolvePublishedConflict(input: ResolvePublishedConflictInput): Promise<BatchItemRecord>;
   queueReferenceMapping(input: QueueReferenceMappingInput): Promise<BatchReferenceMappingRecord>;
   createCanonicalFixtureAndQueueMapping(input: {
     batchId: string;
@@ -764,7 +778,7 @@ interface BatchCorrectionTarget {
   eventOrdinal: number;
   revision: number;
   sequenceNumber: number;
-  sourceBatchItemId: string;
+  sourceBatchItemId: string | null;
 }
 
 async function loadBatchCorrectionTarget(
@@ -786,13 +800,8 @@ async function loadBatchCorrectionTarget(
              current.innings_sequence AS "sequenceNumber",
              current.source_batch_item_id::text AS "sourceBatchItemId"
       FROM delivery validated
-      JOIN batch_item source_item
-        ON source_item.source_identity=$2::text
-      JOIN delivery linked
-        ON linked.delivery_id=source_item.published_event_id
       JOIN delivery current
         ON current.source_event_id=validated.source_event_id
-       AND current.source_event_id=linked.source_event_id
        AND current.superseded_at IS NULL
       JOIN innings ON innings.innings_id=current.innings_id
       JOIN fixture ON fixture.fixture_id=innings.fixture_id
@@ -801,7 +810,7 @@ async function loadBatchCorrectionTarget(
       WHERE validated.delivery_id=$1::bigint
       FOR UPDATE OF current
     `,
-    [item.correctionTargetDeliveryId, item.correctsSourceIdentity],
+    [item.correctionTargetDeliveryId],
   );
   return result.rows[0] ?? null;
 }
@@ -1410,6 +1419,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             i.resolved_references AS "resolvedReferences",
             i.state::text AS state,
             i.rejection_code AS "rejectionCode",
+            i.rejection_detail AS "rejectionDetail",
+            i.payload,
             i.published_event_id::text AS "publishedEventId",
             i.operation::text AS operation,
             i.corrects_source_identity AS "correctsSourceIdentity",
@@ -1854,6 +1865,133 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         },
         resumePublication: input.decision === 'approved',
       };
+    },
+
+    async resolvePublishedConflict(input) {
+      if (!executor) {
+        return withTransaction(getDatabasePool(), (client) =>
+          createBatchRepository(client).resolvePublishedConflict(input),
+        );
+      }
+
+      const lockedBatch = await executeQuery<BatchRow>(
+        executor,
+        `SELECT ${batchSelection} FROM batch WHERE batch_id=$1::bigint FOR UPDATE`,
+        [input.batchId],
+      );
+      const batch = mapBatch(requireRow(lockedBatch.rows[0], 'Batch conflict resolution lookup'));
+      if (batch.state !== 'awaiting_review') {
+        throw new BatchPublishedConflictResolutionError(
+          'Only a batch awaiting review can resolve published-delivery conflicts.',
+        );
+      }
+
+      const itemResult = await executeQuery<BatchItemRecord>(
+        executor,
+        `SELECT ${batchItemSelectionFor('batch_item')}
+         FROM batch_item
+         WHERE batch_id=$1::bigint AND ordinal=$2::integer
+         FOR UPDATE`,
+        [input.batchId, input.itemOrdinal],
+      );
+      const item = requireRow(itemResult.rows[0], 'Batch conflict item lookup');
+      if (item.rejectionCode !== 'PUBLISHED_DELIVERY_CONFLICT' || item.state !== 'rejected') {
+        throw new BatchPublishedConflictResolutionError(
+          'This staged item no longer has a published-delivery conflict to resolve.',
+        );
+      }
+
+      const submitted = comparableDeliveryForItem(item, payloadRecord(item.payload));
+      const currentMatches = await publishedDeliveryMatchesForItem(executor, item);
+      const conflicts = currentMatches.filter(
+        (match) => classifyPublishedCricketDelivery(submitted, match.delivery) === 'conflict',
+      );
+      const target = conflicts.find((match) => match.deliveryId === input.existingDeliveryId);
+      if (!target || conflicts.length !== 1) {
+        throw new BatchPublishedConflictResolutionError(
+          'The published conflict changed or is ambiguous. Refresh the report before deciding.',
+        );
+      }
+
+      const targetIdentity = await executeQuery<{ sourceEventId: string; sequenceNumber: number }>(
+        executor,
+        `SELECT source_event_id::text AS "sourceEventId",
+                innings_sequence AS "sequenceNumber"
+         FROM delivery_current
+         WHERE delivery_id=$1::bigint`,
+        [target.deliveryId],
+      );
+      const identity = targetIdentity.rows[0];
+      if (!identity?.sourceEventId) {
+        throw new BatchPublishedConflictResolutionError(
+          'The published delivery has no immutable lineage and cannot be corrected safely.',
+        );
+      }
+
+      await executeQuery(
+        executor,
+        `INSERT INTO batch_published_conflict_resolution (
+           batch_id,batch_item_id,existing_delivery_id,actor_id,decision,reason
+         ) VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5::batch_published_conflict_decision,$6)`,
+        [
+          input.batchId,
+          item.batchItemId,
+          target.deliveryId,
+          input.actorId,
+          input.decision,
+          input.reason,
+        ],
+      );
+
+      await executeQuery(
+        executor,
+        `UPDATE batch_validation_result
+         SET active=false
+         WHERE batch_id=$1::bigint
+           AND batch_item_id=$2::bigint
+           AND rule_code='PUBLISHED_DELIVERY_CONFLICT'
+           AND active`,
+        [input.batchId, item.batchItemId],
+      );
+
+      if (input.decision === 'use_existing') {
+        await executeQuery(
+          executor,
+          `UPDATE batch_item
+           SET state='duplicate_skipped',
+               rejection_code=NULL,
+               rejection_detail=NULL,
+               published_event_id=$2::bigint,
+               operation='upsert',
+               corrects_source_identity=NULL,
+               correction_target_delivery_id=NULL
+           WHERE batch_item_id=$1::bigint`,
+          [item.batchItemId, target.deliveryId],
+        );
+      } else {
+        await executeQuery(
+          executor,
+          `UPDATE batch_item
+           SET state='accepted',
+               rejection_code=NULL,
+               rejection_detail=NULL,
+               published_event_id=NULL,
+               operation='correction',
+               corrects_source_identity=$2,
+               correction_target_delivery_id=$3::bigint,
+               payload=jsonb_set(payload, '{sequenceNumber}', to_jsonb($4::integer), true)
+           WHERE batch_item_id=$1::bigint`,
+          [item.batchItemId, identity.sourceEventId, target.deliveryId, identity.sequenceNumber],
+        );
+      }
+
+      const updated = await executeQuery<BatchItemRecord>(
+        executor,
+        `SELECT ${batchItemSelectionFor('batch_item')}
+         FROM batch_item WHERE batch_item_id=$1::bigint`,
+        [item.batchItemId],
+      );
+      return requireRow(updated.rows[0], 'Resolved batch conflict reload');
     },
 
     async queueReferenceMapping(input) {
@@ -2301,16 +2439,17 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
               `
                 UPDATE batch_item
                 SET state='rejected',
-                    rejection_code=
-                      'PUBLISHED_DELIVERY_CONFLICT',
-                    rejection_detail=
-                      jsonb_build_object(
-                        'existingDeliveryId',
-                        $2::text
-                      )
+                    rejection_code='PUBLISHED_DELIVERY_CONFLICT',
+                    rejection_detail=$2::jsonb
                 WHERE batch_item_id=$1::bigint
               `,
-              [item.batchItemId, conflict.deliveryId],
+              [
+                item.batchItemId,
+                JSON.stringify({
+                  existingDeliveryId: conflict.deliveryId,
+                  differences: diffPublishedCricketDelivery(submitted, conflict.delivery),
+                }),
+              ],
             );
 
             await executeQuery(

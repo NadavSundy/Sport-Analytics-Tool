@@ -63,6 +63,7 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     listBatchFixtureSummaries: vi.fn().mockResolvedValue([]),
     getLatestReviewDecision: vi.fn().mockResolvedValue(null),
     applyReviewDecision: vi.fn(),
+    resolvePublishedConflict: vi.fn(),
     queueReferenceMapping: vi.fn(),
     insertBatchItems: vi.fn(),
     listBatchItems: vi.fn(),

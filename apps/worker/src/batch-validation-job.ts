@@ -16,6 +16,7 @@ import {
 } from '@sport-analytics/contracts';
 import {
   classifyPublishedCricketDelivery,
+  diffPublishedCricketDelivery,
   type PublishedCricketDelivery,
 } from '@sport-analytics/contracts';
 import type { Pool, PoolClient } from 'pg';
@@ -760,11 +761,13 @@ async function publishedValidationResults(
       continue;
     }
 
-    const classifications = comparablePublished.map(([, delivery]) =>
-      classifyPublishedCricketDelivery(submitted, delivery),
-    );
+    const classified = comparablePublished.map(([deliveryId, delivery]) => ({
+      deliveryId,
+      delivery,
+      classification: classifyPublishedCricketDelivery(submitted, delivery),
+    }));
 
-    const conflict = classifications.includes('conflict');
+    const conflict = classified.find((entry) => entry.classification === 'conflict');
 
     if (conflict) {
       item.state = 'rejected';
@@ -772,6 +775,8 @@ async function publishedValidationResults(
       item.rejectionMessage = 'Published delivery data conflicts with this staged event.';
       item.rejectionDetail = {
         existingDeliveryIds: [...published.keys()],
+        existingDeliveryId: conflict.deliveryId,
+        differences: diffPublishedCricketDelivery(submitted, conflict.delivery),
       };
 
       results.set(item.ordinal, [

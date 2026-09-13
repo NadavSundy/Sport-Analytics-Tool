@@ -40,6 +40,51 @@ export interface PublishedCricketDelivery {
 
 export type PublishedDeliveryClassification = 'new' | 'exact-duplicate' | 'conflict';
 
+export interface PublishedDeliveryDifference {
+  fieldPath: string;
+  submittedValue: unknown;
+  publishedValue: unknown;
+}
+
+export function diffPublishedCricketDelivery(
+  submitted: ComparableCricketDelivery,
+  published: PublishedCricketDelivery,
+): PublishedDeliveryDifference[] {
+  const differences: PublishedDeliveryDifference[] = [];
+  const push = (fieldPath: string, submittedValue: unknown, publishedValue: unknown) => {
+    if (JSON.stringify(submittedValue) !== JSON.stringify(publishedValue)) {
+      differences.push({ fieldPath, submittedValue, publishedValue });
+    }
+  };
+
+  push('inningsId', submitted.inningsId, published.inningsId);
+  push('sequenceNumber', submitted.sequenceNumber, published.sequenceNumber);
+  push('overNumber', submitted.overNumber, published.overNumber);
+  push('positionInOver', submitted.positionInOver, published.positionInOver);
+  push('ballNumber', submitted.ballNumber, published.ballNumber);
+  push('strikerId', submitted.strikerId, published.strikerId);
+  push('nonStrikerId', submitted.nonStrikerId, published.nonStrikerId);
+  push('bowlerId', submitted.bowlerId, published.bowlerId);
+  push('runs.offBat', submitted.runs.offBat, published.runs.offBat);
+  push('runs.extras', submitted.runs.extras, published.runs.extras);
+  push('runs.total', submitted.runs.total, published.runs.total);
+  push('runs.nonBoundary', submitted.runs.nonBoundary, published.runs.nonBoundary);
+  push('extras.wides', submitted.extras.wides ?? 0, published.extras.wides ?? 0);
+  push('extras.noBalls', submitted.extras.noBalls ?? 0, published.extras.noBalls ?? 0);
+  push('extras.byes', submitted.extras.byes ?? 0, published.extras.byes ?? 0);
+  push('extras.legByes', submitted.extras.legByes ?? 0, published.extras.legByes ?? 0);
+  push('extras.penalty', submitted.extras.penalty ?? 0, published.extras.penalty ?? 0);
+  if (!wicketsEqual(submitted.wickets, published.wickets)) {
+    differences.push({
+      fieldPath: 'wickets',
+      submittedValue: submitted.wickets,
+      publishedValue: published.wickets,
+    });
+  }
+
+  return differences;
+}
+
 function extrasEqual(
   submitted: ComparableCricketDelivery['extras'],
   published: PublishedCricketDelivery['extras'],

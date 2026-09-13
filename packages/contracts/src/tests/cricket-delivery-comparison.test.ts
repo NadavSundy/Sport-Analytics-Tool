@@ -2,6 +2,7 @@
 
 import {
   classifyPublishedCricketDelivery,
+  diffPublishedCricketDelivery,
   type PublishedCricketDelivery,
 } from '../cricket-delivery-comparison';
 import type { SubmissionEvent } from '../submissions';
@@ -121,6 +122,22 @@ describe('published cricket delivery comparison', () => {
         }),
       ),
     ).toBe('exact-duplicate');
+  });
+
+  test('returns the exact fields that differ for reviewer conflict inspection', () => {
+    const differences = diffPublishedCricketDelivery(
+      submitted({
+        runs: { offBat: 4, extras: 1, total: 5, nonBoundary: false },
+      }),
+      published(),
+    );
+
+    expect(differences).toEqual(
+      expect.arrayContaining([
+        { fieldPath: 'runs.offBat', submittedValue: 4, publishedValue: 0 },
+        { fieldPath: 'runs.total', submittedValue: 5, publishedValue: 1 },
+      ]),
+    );
   });
 
   test('detects changed delivery content as a conflict', () => {
