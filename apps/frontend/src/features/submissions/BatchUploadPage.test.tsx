@@ -192,6 +192,8 @@ describe('guided batch upload', () => {
       'href',
       `/submissions/batches/${batchReference}`,
     );
+    expect(screen.queryByRole('button', { name: 'Upload season package' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Season package')).toBeDisabled();
 
     const uploadCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/batches'))!;
     const headers = new Headers((uploadCall[1] as RequestInit).headers);
