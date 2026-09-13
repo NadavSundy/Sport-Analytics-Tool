@@ -151,6 +151,7 @@ export interface BatchReportItemRecord {
   operation: 'upsert' | 'correction';
   correctsSourceIdentity: string | null;
   correctionTargetDeliveryId: string | null;
+  publishedConflictSourceEventId?: string | null;
   errors: BatchReportErrorRecord[];
 }
 
@@ -1425,10 +1426,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             i.operation::text AS operation,
             i.corrects_source_identity AS "correctsSourceIdentity",
             i.correction_target_delivery_id::text AS "correctionTargetDeliveryId",
+            conflict_delivery.source_event_id::text AS "publishedConflictSourceEventId",
             COALESCE(errors.rows, '[]'::jsonb) AS errors
           FROM subjects
           LEFT JOIN batch_item i
             ON i.batch_id = $1::bigint AND i.ordinal = subjects.ordinal
+          LEFT JOIN delivery conflict_delivery
+            ON conflict_delivery.delivery_id = CASE
+              WHEN i.rejection_detail->>'existingDeliveryId' ~ '^[0-9]+$'
+                THEN (i.rejection_detail->>'existingDeliveryId')::bigint
+              ELSE NULL
+            END
+           AND conflict_delivery.superseded_at IS NULL
           LEFT JOIN innings ON innings.innings_id = i.innings_id
           LEFT JOIN fixture ON fixture.fixture_id = innings.fixture_id
           LEFT JOIN LATERAL (
@@ -1913,19 +1922,28 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
 
-      const targetIdentity = await executeQuery<{ sourceEventId: string; sequenceNumber: number }>(
-        executor,
-        `SELECT source_event_id::text AS "sourceEventId",
-                innings_sequence AS "sequenceNumber"
-         FROM delivery_current
-         WHERE delivery_id=$1::bigint`,
-        [target.deliveryId],
-      );
-      const identity = targetIdentity.rows[0];
-      if (!identity?.sourceEventId) {
-        throw new BatchPublishedConflictResolutionError(
-          'The published delivery has no immutable lineage and cannot be corrected safely.',
+      let correctionIdentity: { sourceEventId: string; sequenceNumber: number } | null = null;
+      if (input.decision === 'replace_published') {
+        const targetIdentity = await executeQuery<{
+          sourceEventId: string | null;
+          sequenceNumber: number;
+        }>(
+          executor,
+          `SELECT source_event_id::text AS "sourceEventId",
+                  innings_sequence AS "sequenceNumber"
+           FROM ensure_delivery_legacy_lineage($1::bigint)`,
+          [target.deliveryId],
         );
+        const identity = targetIdentity.rows[0];
+        if (!identity?.sourceEventId) {
+          throw new BatchPublishedConflictResolutionError(
+            'This published delivery predates immutable lineage. Keep the published delivery or migrate its provenance before approving a correction.',
+          );
+        }
+        correctionIdentity = {
+          sourceEventId: identity.sourceEventId,
+          sequenceNumber: identity.sequenceNumber,
+        };
       }
 
       await executeQuery(
@@ -1981,7 +1999,12 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
                correction_target_delivery_id=$3::bigint,
                payload=jsonb_set(payload, '{sequenceNumber}', to_jsonb($4::integer), true)
            WHERE batch_item_id=$1::bigint`,
-          [item.batchItemId, identity.sourceEventId, target.deliveryId, identity.sequenceNumber],
+          [
+            item.batchItemId,
+            correctionIdentity!.sourceEventId,
+            target.deliveryId,
+            correctionIdentity!.sequenceNumber,
+          ],
         );
       }
 

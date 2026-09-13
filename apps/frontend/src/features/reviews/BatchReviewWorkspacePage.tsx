@@ -560,10 +560,12 @@ function PublishedConflictResolution({
   batchReference,
   item,
   refresh,
+  resolutionAvailable,
 }: {
   batchReference: string;
   item: BatchReportItem;
   refresh(): Promise<void>;
+  resolutionAvailable: boolean;
 }) {
   const client = useAuthenticatedApiClient();
   const conflict = item.publishedConflict;
@@ -607,65 +609,106 @@ function PublishedConflictResolution({
 
   return (
     <article className="published-conflict-resolution">
-      <h3>{item.context.description}</h3>
-      <p>
-        Existing published delivery <code>{conflict.existingDeliveryId}</code> differs from the
-        submitted delivery.
-      </p>
-      <table>
-        <caption>Fields that differ</caption>
-        <thead>
-          <tr>
-            <th scope="col">Field</th>
-            <th scope="col">Submitted</th>
-            <th scope="col">Published</th>
-          </tr>
-        </thead>
-        <tbody>
-          {conflict.differences.map((difference) => (
-            <tr key={difference.fieldPath}>
-              <th scope="row">{difference.fieldPath}</th>
-              <td>
-                <code>{JSON.stringify(difference.submittedValue)}</code>
-              </td>
-              <td>
-                <code>{JSON.stringify(difference.publishedValue)}</code>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <label>
-        Resolution reason
-        <textarea
-          value={reason}
-          maxLength={2000}
-          disabled={saving}
-          onChange={(event) => setReason(event.target.value)}
-        />
-      </label>
-      <div className="batch-review__actions">
-        <button
-          className="button button--secondary"
-          type="button"
-          disabled={saving}
-          onClick={() => void resolve('use_existing')}
-        >
-          Keep published delivery
-        </button>
-        <button
-          className="button button--primary"
-          type="button"
-          disabled={saving || !conflict.correctionPermitted}
-          onClick={() => void resolve('replace_published')}
-        >
-          Approve submitted correction
-        </button>
+      <div className="published-conflict-resolution__header">
+        <div>
+          <span className="published-conflict-resolution__eyebrow">Published data conflict</span>
+          <h3>{item.context.description}</h3>
+        </div>
+        <span className="published-conflict-resolution__delivery-id">
+          Delivery <code>{conflict.existingDeliveryId}</code>
+        </span>
       </div>
-      {!conflict.correctionPermitted ? (
-        <p role="status">This conflict cannot be converted into an immutable correction.</p>
+
+      <p className="published-conflict-resolution__summary">
+        Compare the staged values with the currently published delivery, record a reason, then
+        choose which version should continue through review.
+      </p>
+
+      <div
+        className="published-conflict-resolution__table-wrap"
+        role="region"
+        aria-label={`Differences for ${item.context.description}`}
+        tabIndex={0}
+      >
+        <table className="published-conflict-resolution__table">
+          <caption>Fields that differ</caption>
+          <thead>
+            <tr>
+              <th scope="col">Field</th>
+              <th scope="col">Submitted</th>
+              <th scope="col">Published</th>
+            </tr>
+          </thead>
+          <tbody>
+            {conflict.differences.map((difference) => (
+              <tr key={difference.fieldPath}>
+                <th scope="row">{difference.fieldPath}</th>
+                <td>
+                  <code>{JSON.stringify(difference.submittedValue)}</code>
+                </td>
+                <td>
+                  <code>{JSON.stringify(difference.publishedValue)}</code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="published-conflict-resolution__decision">
+        <label className="published-conflict-resolution__reason">
+          <span>Resolution reason</span>
+          <textarea
+            value={reason}
+            maxLength={2000}
+            disabled={saving}
+            aria-describedby={`conflict-reason-help-${item.ordinal}`}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+        <p
+          className="published-conflict-resolution__help"
+          id={`conflict-reason-help-${item.ordinal}`}
+        >
+          Minimum 10 characters. The reason is retained as reviewer audit evidence.
+        </p>
+
+        {!resolutionAvailable ? (
+          <p className="published-conflict-resolution__notice" role="status">
+            Conflict decisions are available only while this batch is awaiting review.
+          </p>
+        ) : !conflict.correctionPermitted ? (
+          <p className="published-conflict-resolution__notice" role="status">
+            This legacy published delivery has no immutable lineage, so it cannot be replaced
+            safely. You can still keep the published delivery and resolve the conflict.
+          </p>
+        ) : null}
+
+        <div className="published-conflict-resolution__actions">
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={saving || !resolutionAvailable}
+            onClick={() => void resolve('use_existing')}
+          >
+            {saving ? 'Saving…' : 'Keep published delivery'}
+          </button>
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={saving || !resolutionAvailable || !conflict.correctionPermitted}
+            onClick={() => void resolve('replace_published')}
+          >
+            Approve submitted correction
+          </button>
+        </div>
+      </div>
+
+      {feedback ? (
+        <p className="published-conflict-resolution__feedback" role="status">
+          {feedback}
+        </p>
       ) : null}
-      {feedback ? <p role="status">{feedback}</p> : null}
     </article>
   );
 }
@@ -815,17 +858,26 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
         </dl>
       </section>
       <ErrorGroups report={report} />
-      <section aria-labelledby="published-conflicts-title">
-        <h2 id="published-conflicts-title">Published delivery conflicts</h2>
+      <section className="published-conflicts" aria-labelledby="published-conflicts-title">
+        <div className="published-conflicts__heading">
+          <div>
+            <h2 id="published-conflicts-title">Published delivery conflicts</h2>
+            <p>Resolve each conflict before the batch can be approved for publication.</p>
+          </div>
+          <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
+        </div>
         {report.items.some((item) => item.publishedConflict) ? (
-          report.items.map((item) => (
-            <PublishedConflictResolution
-              key={item.ordinal}
-              batchReference={batchReference}
-              item={item}
-              refresh={load}
-            />
-          ))
+          report.items
+            .filter((item) => item.publishedConflict)
+            .map((item) => (
+              <PublishedConflictResolution
+                key={item.ordinal}
+                batchReference={batchReference}
+                item={item}
+                refresh={load}
+                resolutionAvailable={report.batch.status === 'awaiting_review'}
+              />
+            ))
         ) : (
           <p>No unresolved published-delivery conflicts are shown.</p>
         )}

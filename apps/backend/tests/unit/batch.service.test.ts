@@ -261,6 +261,97 @@ describe('batch result reporting service', () => {
     expect(response.data.counts).toMatchObject(result);
   });
 
+  test('reports legacy published conflicts as correction-capable via lazy lineage bootstrap', async () => {
+    const baseItem = {
+      batchItemId: '41',
+      ordinal: 0,
+      inningsId: '8',
+      overNumber: 5,
+      positionInOver: 1,
+      sourceIdentity: 'cricsheet:delivery:fixture-0-innings-0-delivery-32',
+      sourceLocation: { filePath: 'batch.json', rowNumber: 32 },
+      referenceResolutionState: 'resolved' as const,
+      resolvedReferences: null,
+      state: 'rejected' as const,
+      rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+      rejectionDetail: {
+        existingDeliveryId: '88',
+        differences: [{ fieldPath: 'ballNumber', submittedValue: '5.2', publishedValue: '5.1' }],
+      },
+      payload: {},
+      publishedEventId: null,
+      operation: 'upsert' as const,
+      correctsSourceIdentity: null,
+      correctionTargetDeliveryId: null,
+      errors: [
+        {
+          ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          message: 'Published delivery differs.',
+          filePath: 'batch.json',
+          rowNumber: 32,
+          fieldPath: 'delivery',
+        },
+      ],
+    };
+    let reportRead = 0;
+    const listBatchReportItems = vi.fn().mockImplementation(
+      (
+        _batchId: string,
+        options: {
+          acceptedOnly?: boolean;
+        },
+      ) => {
+        if (options.acceptedOnly) {
+          return Promise.resolve([]);
+        }
+
+        reportRead += 1;
+        return Promise.resolve([
+          {
+            ...baseItem,
+            publishedConflictSourceEventId:
+              reportRead === 1 ? null : '123e4567-e89b-42d3-a456-426614174099',
+          },
+        ]);
+      },
+    );
+
+    const batches = repository({
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, state: 'awaiting_review' }),
+      getBatchProgress: vi
+        .fn()
+        .mockResolvedValue({ total: 1, processed: 1, accepted: 0, rejected: 1 }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        accepted: 0,
+        rejected: 1,
+        unresolved: 0,
+        duplicate: 0,
+        conflicting: 1,
+      }),
+      listBatchReportItems,
+    });
+    const service = createBatchService({} as BatchPayloadStorageService, batches);
+    const account = createTestAccount({ role: 'admin' });
+
+    const legacy = await service.getReport(account, persistedBatch.batchReference, { limit: 50 });
+    expect(legacy.data.items[0]!.publishedConflict).toMatchObject({
+      existingDeliveryId: '88',
+      existingSourceEventId: null,
+      correctionPermitted: true,
+    });
+
+    const attributable = await service.getReport(account, persistedBatch.batchReference, {
+      limit: 50,
+    });
+    expect(attributable.data.items[0]!.publishedConflict).toMatchObject({
+      existingDeliveryId: '88',
+      existingSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
+      correctionPermitted: true,
+    });
+  });
+
   test('reports ordinary rejected records without blocking approval of the accepted subset', async () => {
     const batches = repository({
       findBatchByReference: vi
