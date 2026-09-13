@@ -9,6 +9,7 @@ import type {
 
 import type {
   FixtureStatisticsEventSource,
+  FixtureStatisticsWicketSource,
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
 import { calculateRate, formatOvers } from './fixture-statistics.metrics';
@@ -37,6 +38,8 @@ interface ParticipantAccumulator {
   bowling: BowlingAccumulator | null;
   events: FixtureStatisticsEventSource[];
   eventIds: Set<string>;
+  battingPosition: number | null;
+  dismissal: FixtureStatisticsWicketSource | null;
 }
 
 export interface DeriveFixtureStatisticsOptions {
@@ -67,6 +70,8 @@ function mapContributingEvent(
     sequenceNumber: event.inningsSequence,
     strikerParticipantId: event.strikerId,
     strikerParticipantName: event.strikerName,
+    nonStrikerParticipantId: event.nonStrikerId,
+    nonStrikerParticipantName: event.nonStrikerName,
     bowlerParticipantId: event.bowlerId,
     bowlerParticipantName: event.bowlerName,
     runs: {
@@ -131,6 +136,8 @@ function participantAccumulator(
     bowling: null,
     events: [],
     eventIds: new Set<string>(),
+    battingPosition: null,
+    dismissal: null,
   };
 
   participants.set(participantId, created);
@@ -188,6 +195,16 @@ export function deriveFixtureStatistics(
   const statistics: FixtureStatistic[] = [];
   const participants = new Map<string, ParticipantAccumulator>();
 
+  for (const squadMember of source.squad ?? []) {
+    const participant = participantAccumulator(
+      participants,
+      squadMember.participantId,
+      squadMember.participantName,
+    );
+    participant.competitorIds.add(squadMember.competitorId);
+    participant.competitorNames.set(squadMember.competitorId, squadMember.competitorName);
+  }
+
   for (const innings of orderedInnings) {
     const events = orderedEvents.filter((event) => event.inningsId === innings.inningsId);
     if (events.length === 0) {
@@ -226,6 +243,7 @@ export function deriveFixtureStatistics(
     });
   }
 
+  const nextBattingPositionByInnings = new Map<string, number>();
   for (const event of orderedEvents) {
     const batter = participantAccumulator(participants, event.strikerId, event.strikerName);
     batter.competitorIds.add(event.battingCompetitorId);
@@ -236,6 +254,11 @@ export function deriveFixtureStatistics(
       fours: 0,
       sixes: 0,
     };
+    if (batter.battingPosition === null) {
+      const nextPosition = nextBattingPositionByInnings.get(event.inningsId) ?? 1;
+      batter.battingPosition = nextPosition;
+      nextBattingPositionByInnings.set(event.inningsId, nextPosition + 1);
+    }
     batter.batting.runsScored += event.runsOffBat;
     if (event.extraWides === null) {
       batter.batting.ballsFaced += 1;
@@ -247,6 +270,36 @@ export function deriveFixtureStatistics(
       batter.batting.sixes += 1;
     }
     addParticipantEvent(batter, event);
+
+    const nonStriker = participantAccumulator(
+      participants,
+      event.nonStrikerId,
+      event.nonStrikerName,
+    );
+    nonStriker.competitorIds.add(event.battingCompetitorId);
+    nonStriker.competitorNames.set(event.battingCompetitorId, event.battingCompetitorName);
+    nonStriker.batting ??= { runsScored: 0, ballsFaced: 0, fours: 0, sixes: 0 };
+    if (nonStriker.battingPosition === null) {
+      const nextPosition = nextBattingPositionByInnings.get(event.inningsId) ?? 1;
+      nonStriker.battingPosition = nextPosition;
+      nextBattingPositionByInnings.set(event.inningsId, nextPosition + 1);
+    }
+    addParticipantEvent(nonStriker, event);
+
+    for (const wicket of event.wickets) {
+      if (!wicket.isTerminal) {
+        continue;
+      }
+      const dismissed = participantAccumulator(
+        participants,
+        wicket.playerOutId,
+        wicket.playerOutId,
+      );
+      dismissed.competitorIds.add(event.battingCompetitorId);
+      dismissed.competitorNames.set(event.battingCompetitorId, event.battingCompetitorName);
+      dismissed.dismissal ??= wicket;
+      addParticipantEvent(dismissed, event);
+    }
 
     const bowler = participantAccumulator(participants, event.bowlerId, event.bowlerName);
     if (event.bowlingCompetitorId !== null) {
@@ -296,6 +349,17 @@ export function deriveFixtureStatistics(
         competitorId,
         competitorName,
         sourceEventCount: participant.events.length,
+        battingPosition: participant.battingPosition,
+        battingParticipation: participant.batting ? 'batted' : 'did_not_bat',
+        dismissal: participant.batting
+          ? participant.dismissal
+            ? {
+                status: 'dismissed',
+                kind: participant.dismissal.kind,
+                eventId: participant.dismissal.eventId,
+              }
+            : { status: 'not_out', kind: null, eventId: null }
+          : null,
         batting: participant.batting
           ? {
               ...participant.batting,

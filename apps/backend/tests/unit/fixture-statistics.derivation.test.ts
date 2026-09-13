@@ -20,6 +20,8 @@ function event(
     bowlingCompetitorName: 'Team Beta',
     strikerId: '101',
     strikerName: 'Player 101',
+    nonStrikerId: '102',
+    nonStrikerName: 'Player 102',
     bowlerId: '201',
     bowlerName: 'Player 201',
     runsOffBat: 0,
@@ -32,6 +34,7 @@ function event(
     extraLegByes: null,
     extraPenalty: null,
     creditedWickets: 0,
+    wickets: [],
     ...overrides,
   };
 }
@@ -143,6 +146,32 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
       },
     ],
     events,
+    squad: [
+      {
+        participantId: '101',
+        participantName: 'Player 101',
+        competitorId: '10',
+        competitorName: 'Team Alpha',
+      },
+      {
+        participantId: '102',
+        participantName: 'Player 102',
+        competitorId: '10',
+        competitorName: 'Team Alpha',
+      },
+      {
+        participantId: '103',
+        participantName: 'Player 103',
+        competitorId: '10',
+        competitorName: 'Team Alpha',
+      },
+      {
+        participantId: '201',
+        participantName: 'Player 201',
+        competitorId: '20',
+        competitorName: 'Team Beta',
+      },
+    ],
   };
 }
 
@@ -190,6 +219,9 @@ describe('fixture statistics golden fixture', () => {
         fours: 1,
         sixes: 1,
       },
+      battingPosition: 1,
+      battingParticipation: 'batted',
+      dismissal: { status: 'not_out', kind: null, eventId: null },
       bowling: {
         runsConceded: 6,
         legalBallsBowled: 1,
@@ -210,6 +242,7 @@ describe('fixture statistics golden fixture', () => {
         fours: 0,
         sixes: 0,
       },
+      battingPosition: 2,
     });
 
     const firstBowler = result.statistics.find(
@@ -266,6 +299,8 @@ describe('fixture statistics golden fixture', () => {
     expect(firstInnings?.contributingEvents?.[0]).toMatchObject({
       strikerParticipantId: '101',
       strikerParticipantName: 'Player 101',
+      nonStrikerParticipantId: '102',
+      nonStrikerParticipantName: 'Player 102',
       bowlerParticipantId: '201',
       bowlerParticipantName: 'Player 201',
     });
@@ -284,6 +319,87 @@ describe('fixture statistics golden fixture', () => {
       'INNINGS_WITHOUT_ACCEPTED_EVENTS',
       'INNINGS_WITHOUT_ACCEPTED_EVENTS',
     ]);
-    expect(result.statistics.filter((statistic) => statistic.scope === 'participant')).toEqual([]);
+    expect(result.statistics.filter((statistic) => statistic.scope === 'participant')).toHaveLength(
+      4,
+    );
+  });
+
+  test('represents positions, ducks, not outs, dismissals, and selected players who did not bat', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: '1',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          strikerId: '101',
+          nonStrikerId: '102',
+        }),
+        event({
+          deliveryId: '2',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 2,
+          strikerId: '103',
+          nonStrikerId: '102',
+          wickets: [
+            { wicketId: 'w-2', eventId: '2', playerOutId: '103', kind: 'bowled', isTerminal: true },
+          ],
+        }),
+        event({
+          deliveryId: '3',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 3,
+          strikerId: '102',
+          nonStrikerId: '104',
+          runsOffBat: 42,
+          runsTotal: 42,
+          wickets: [
+            {
+              wicketId: 'w-3',
+              eventId: '3',
+              playerOutId: '102',
+              kind: 'run out',
+              isTerminal: true,
+            },
+          ],
+        }),
+      ]),
+    );
+    const player = (participantId: string) =>
+      result.statistics.find(
+        (statistic) =>
+          statistic.scope === 'participant' && statistic.participantId === participantId,
+      );
+
+    expect(player('101')).toMatchObject({
+      battingPosition: 1,
+      battingParticipation: 'batted',
+      batting: { runsScored: 0 },
+      dismissal: { status: 'not_out' },
+    });
+    expect(player('102')).toMatchObject({
+      battingPosition: 2,
+      batting: { runsScored: 42 },
+      dismissal: { status: 'dismissed', kind: 'run out', eventId: '3' },
+    });
+    expect(player('103')).toMatchObject({
+      battingPosition: 3,
+      batting: { runsScored: 0 },
+      dismissal: { status: 'dismissed', kind: 'bowled' },
+    });
+    expect(player('104')).toMatchObject({
+      battingPosition: 4,
+      battingParticipation: 'batted',
+      batting: { runsScored: 0 },
+      dismissal: { status: 'not_out' },
+    });
+    expect(player('201')).toMatchObject({
+      battingPosition: null,
+      battingParticipation: 'did_not_bat',
+      batting: null,
+      dismissal: null,
+    });
   });
 });

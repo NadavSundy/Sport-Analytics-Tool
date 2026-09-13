@@ -2,6 +2,7 @@ import { executeQuery, getDatabasePool, type QueryExecutor } from '../../databas
 import type {
   FixtureStatisticsEventSource,
   FixtureStatisticsInningsSource,
+  FixtureStatisticsSquadMemberSource,
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
 import { standardInningsPredicate } from './super-over-scope';
@@ -125,6 +126,8 @@ export async function loadFixtureStatisticsSource(
       bowling_team.competitor_name AS "bowlingCompetitorName",
       d.striker_id::text AS "strikerId",
       striker_person.display_name AS "strikerName",
+      d.non_striker_id::text AS "nonStrikerId",
+      non_striker_person.display_name AS "nonStrikerName",
       d.bowler_id::text AS "bowlerId",
       bowler_person.display_name AS "bowlerName",
       d.runs_off_bat AS "runsOffBat",
@@ -143,6 +146,17 @@ export async function loadFixtureStatisticsSource(
         WHERE dw.delivery_id = d.delivery_id
           AND dk.credits_bowler = true
       ) AS "creditedWickets"
+      , COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'wicketId', dw.wicket_id::text,
+          'eventId', d.delivery_id::text,
+          'playerOutId', dw.player_out_id::text,
+          'kind', dw.kind,
+          'isTerminal', dw.kind NOT IN ('retired hurt', 'retired not out')
+        ) ORDER BY dw.ordinal ASC)
+        FROM delivery_wicket dw
+        WHERE dw.delivery_id = d.delivery_id
+      ), '[]'::jsonb) AS wickets
     FROM accepted_delivery d
     JOIN innings i
       ON i.innings_id = d.innings_id
@@ -150,6 +164,8 @@ export async function loadFixtureStatisticsSource(
       ON batting_team.team_id = i.batting_team_id
     JOIN person striker_person
       ON striker_person.person_id = d.striker_id
+    JOIN person non_striker_person
+      ON non_striker_person.person_id = d.non_striker_id
     JOIN person bowler_person
       ON bowler_person.person_id = d.bowler_id
     LEFT JOIN LATERAL (
@@ -169,6 +185,23 @@ export async function loadFixtureStatisticsSource(
     [standardInningsIds],
   );
 
+  const squadResult = await executeQuery<FixtureStatisticsSquadMemberSource>(
+    executor,
+    `
+      SELECT
+        fs.person_id::text AS "participantId",
+        p.display_name AS "participantName",
+        fs.team_id::text AS "competitorId",
+        t.name AS "competitorName"
+      FROM fixture_squad fs
+      JOIN person p ON p.person_id = fs.person_id
+      JOIN team t ON t.team_id = fs.team_id
+      WHERE fs.fixture_id = $1::bigint
+      ORDER BY fs.team_id ASC, fs.person_id ASC
+    `,
+    [fixtureId],
+  );
+
   return {
     fixtureId: fixtureRow.fixtureId,
     ballsPerOver: fixtureRow.ballsPerOver,
@@ -184,5 +217,6 @@ export async function loadFixtureStatisticsSource(
     decidedByBowlOut: fixtureRow.decidedByBowlOut,
     innings,
     events: deliveryResult.rows,
+    squad: squadResult.rows,
   };
 }

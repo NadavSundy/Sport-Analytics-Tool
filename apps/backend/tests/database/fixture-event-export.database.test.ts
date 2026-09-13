@@ -220,9 +220,11 @@ describe.sequential('fixture event export database integration', () => {
 
       expect(trace.rows.map((row) => row.eventId)).toEqual(tracedEventIds);
       for (const row of trace.rows) {
-        expect([row.strikerParticipantId, row.bowlerParticipantId]).toContain(
-          statistic.participantId,
-        );
+        expect([
+          row.strikerParticipantId,
+          row.nonStrikerParticipantId,
+          row.bowlerParticipantId,
+        ]).toContain(statistic.participantId);
       }
 
       const involvement = await exportCsv(

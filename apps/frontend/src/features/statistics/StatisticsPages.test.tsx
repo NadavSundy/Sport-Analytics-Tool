@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
+import { PlayerPerformance } from './StatisticsPages';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
@@ -42,6 +43,8 @@ function traceEvents(count: number) {
     sequenceNumber: index + 1,
     strikerParticipantId: 'player-1',
     strikerParticipantName: 'A Player',
+    nonStrikerParticipantId: 'non-striker-1',
+    nonStrikerParticipantName: 'Non-striker',
     bowlerParticipantId: 'bowler-1',
     bowlerParticipantName: 'Opening Bowler',
     runs: { offBat: 1, extras: 0, total: 1 },
@@ -126,6 +129,9 @@ const participantStatistic = {
   competitorId: 'team-1',
   competitorName: 'Wanderers',
   sourceEventCount: 38,
+  battingPosition: 3,
+  battingParticipation: 'batted' as const,
+  dismissal: { status: 'not_out' as const, kind: null, eventId: null },
   batting: { runsScored: 42, ballsFaced: 30, strikeRate: 140, fours: 4, sixes: 2 },
   bowling: {
     runsConceded: 24,
@@ -188,6 +194,66 @@ describe('public fixture statistics pages', () => {
     vi.unstubAllGlobals();
   });
 
+  it('distinguishes a dismissed duck, a not-out duck, dismissal types, and DNB', () => {
+    const batting = { runsScored: 0, ballsFaced: 1, strikeRate: 0, fours: 0, sixes: 0 };
+    const { rerender } = render(
+      <PlayerPerformance
+        batting={batting}
+        bowling={null}
+        battingPosition={3}
+        battingParticipation="batted"
+        dismissal={{ status: 'dismissed', kind: 'caught', eventId: 'event-1' }}
+      />,
+    );
+    expect(screen.getByText('caught')).toBeInTheDocument();
+    expect(screen.queryByLabelText('0 not out')).not.toBeInTheDocument();
+
+    rerender(
+      <PlayerPerformance
+        batting={batting}
+        bowling={null}
+        battingPosition={4}
+        battingParticipation="batted"
+        dismissal={{ status: 'not_out', kind: null, eventId: null }}
+      />,
+    );
+    expect(screen.getByLabelText('0 not out')).toBeInTheDocument();
+
+    rerender(
+      <PlayerPerformance
+        batting={{ ...batting, runsScored: 12 }}
+        bowling={null}
+        battingPosition={5}
+        battingParticipation="batted"
+        dismissal={{ status: 'dismissed', kind: 'bowled', eventId: 'event-2' }}
+      />,
+    );
+    expect(screen.getByText('bowled')).toBeInTheDocument();
+
+    rerender(
+      <PlayerPerformance
+        batting={{ ...batting, runsScored: 7 }}
+        bowling={null}
+        battingPosition={6}
+        battingParticipation="batted"
+        dismissal={{ status: 'dismissed', kind: 'run out', eventId: 'event-3' }}
+      />,
+    );
+    expect(screen.getByText('run out')).toBeInTheDocument();
+
+    rerender(
+      <PlayerPerformance
+        batting={null}
+        bowling={null}
+        battingPosition={null}
+        battingParticipation="did_not_bat"
+        dismissal={null}
+      />,
+    );
+    expect(screen.getByText('Did not bat')).toBeInTheDocument();
+    expect(screen.queryByText('Balls faced')).not.toBeInTheDocument();
+  });
+
   it('automatically loads the match overview, statistics, and participating players anonymously', async () => {
     let resolveStatistics!: (value: Response) => void;
     const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
@@ -248,7 +314,9 @@ describe('public fixture statistics pages', () => {
       name: 'Player statistics',
     }).parentElement?.parentElement?.parentElement;
     expect(participantSection).toBeTruthy();
-    expect(within(participantSection as HTMLElement).getByText('42')).toBeInTheDocument();
+    expect(
+      within(participantSection as HTMLElement).getByLabelText('42 not out'),
+    ).toBeInTheDocument();
     expect(
       within(participantSection as HTMLElement).getByRole('link', {
         name: 'A Player',
@@ -403,6 +471,8 @@ describe('public fixture statistics pages', () => {
                 sequenceNumber: 1,
                 strikerParticipantId: 'striker-1',
                 strikerParticipantName: 'Opening Batter',
+                nonStrikerParticipantId: 'non-striker-1',
+                nonStrikerParticipantName: 'Non-striker',
                 bowlerParticipantId: 'bowler-1',
                 bowlerParticipantName: 'Opening Bowler',
                 runs: { offBat: 4, extras: 1, total: 5 },

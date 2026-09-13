@@ -68,10 +68,20 @@ function MetricList({ children }: { children: ReactNode }) {
 export function PlayerPerformance({
   batting,
   bowling,
+  battingPosition,
+  battingParticipation,
+  dismissal,
   showUnavailable = false,
 }: {
   batting: ParticipantFixtureBatting | null;
   bowling: ParticipantFixtureBowling | ParticipantAggregateBowling | null;
+  battingPosition?: number | null;
+  battingParticipation?: 'did_not_bat' | 'batted';
+  dismissal?: {
+    status: 'not_out' | 'dismissed';
+    kind: string | null;
+    eventId: string | null;
+  } | null;
   showUnavailable?: boolean;
 }) {
   return (
@@ -80,12 +90,32 @@ export function PlayerPerformance({
         <section aria-label="Batting statistics">
           <h4>Batting</h4>
           <MetricList>
-            <StatisticMetric label="Runs" value={batting.runsScored} />
+            {battingPosition !== null && battingPosition !== undefined ? (
+              <StatisticMetric label="Batting position" value={battingPosition} />
+            ) : null}
+            <StatisticMetric
+              label="Runs"
+              value={
+                dismissal?.status === 'not_out' ? (
+                  <span aria-label={`${batting.runsScored} not out`}>{batting.runsScored}*</span>
+                ) : (
+                  batting.runsScored
+                )
+              }
+            />
             <StatisticMetric label="Balls faced" value={batting.ballsFaced} />
             <StatisticMetric label="Strike rate" value={batting.strikeRate ?? 'Not available'} />
             <StatisticMetric label="Fours" value={batting.fours} />
             <StatisticMetric label="Sixes" value={batting.sixes} />
+            {dismissal?.status === 'dismissed' ? (
+              <StatisticMetric label="Dismissal" value={dismissal.kind ?? 'Dismissed'} />
+            ) : null}
           </MetricList>
+        </section>
+      ) : battingParticipation === 'did_not_bat' ? (
+        <section aria-label="Batting statistics">
+          <h4>Batting</h4>
+          <p className="statistics-section__empty">Did not bat</p>
         </section>
       ) : showUnavailable ? (
         <section aria-label="Batting statistics">
@@ -125,7 +155,15 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
     );
   }
 
-  return <PlayerPerformance batting={statistic.batting} bowling={statistic.bowling} />;
+  return (
+    <PlayerPerformance
+      batting={statistic.batting}
+      bowling={statistic.bowling}
+      battingPosition={statistic.battingPosition}
+      battingParticipation={statistic.battingParticipation}
+      dismissal={statistic.dismissal}
+    />
+  );
 }
 
 function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {
