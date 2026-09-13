@@ -116,6 +116,8 @@ async function legacyListParticipantFixtures(
             + COALESCE(d.extra_wides, 0)
             + COALESCE(d.extra_noballs, 0)
           )::int AS runs_conceded,
+          COALESCE(SUM(d.extra_wides), 0)::int AS wides,
+          COALESCE(SUM(d.extra_noballs), 0)::int AS no_balls,
           COUNT(*) FILTER (
             WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
           )::int AS legal_balls_bowled,
@@ -180,6 +182,8 @@ async function legacyListParticipantFixtures(
         b.fours AS "fours",
         b.sixes AS "sixes",
         w.runs_conceded AS "runsConceded",
+        w.wides AS "wides",
+        w.no_balls AS "noBalls",
         w.legal_balls_bowled AS "legalBallsBowled",
         w.wickets_taken AS "wicketsTaken"
       FROM selected_fixture sf
