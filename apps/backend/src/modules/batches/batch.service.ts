@@ -30,7 +30,6 @@ import type { ApplicationAccount } from '../accounts/account';
 import type { BatchPayloadStorageService } from '../object-storage/batch-payload-storage.service';
 import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/object-store';
 import {
-  BatchLeaseBusyError,
   BatchReferenceMappingConflictError,
   BatchPublishedConflictResolutionError,
   BatchReviewConflictError,
@@ -643,31 +642,35 @@ export function createBatchService(
 
     async review(account, reference, request) {
       const batch = await repository.findBatchByReference(reference);
+
       if (!batch || !canReviewBatch(account)) {
         throw new BatchForbiddenError();
       }
+
       try {
-        const decision = await repository.applyReviewDecision({
+        await repository.applyReviewDecision({
           batchId: batch.batchId,
           actorId: account.accountId,
           decision: request.decision,
           reason: request.reason,
         });
-        if (decision.resumePublication) {
-          await repository.publishAcceptedItems(batch.batchId, `reviewer:${account.accountId}`);
-        }
       } catch (error) {
         if (
           error instanceof BatchReviewConflictError ||
-          error instanceof BatchReviewResolutionError ||
-          error instanceof BatchLeaseBusyError
+          error instanceof BatchReviewResolutionError
         ) {
           throw new BatchConflictError(error.message);
         }
+
         throw error;
       }
+
       const current = await repository.findBatchById(batch.batchId);
-      if (!current) throw new Error('Reviewed batch could not be reloaded.');
+
+      if (!current) {
+        throw new Error('Reviewed batch could not be reloaded.');
+      }
+
       return { data: await status(current) };
     },
 

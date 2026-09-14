@@ -817,15 +817,82 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   }
   async function confirm() {
     if (!pending) return;
+
+    const decision = pending;
+    const reviewReason = reason.trim();
+
     setSaving(true);
+
     try {
-      await reviewBatch(client, batchReference, { decision: pending, reason: reason.trim() });
+      await reviewBatch(client, batchReference, {
+        decision,
+        reason: reviewReason,
+      });
+
       setPending(null);
       setReason('');
-      setFeedback('Decision recorded. The current lifecycle state is shown below.');
+
+      setFeedback(
+        decision === 'approved'
+          ? 'Approval recorded. Publication is continuing in the background. You may leave this page safely.'
+          : 'Decision recorded. The current lifecycle state is shown below.',
+      );
+
       await load();
     } catch (error) {
       setPending(null);
+
+      /*
+       * Approval is not safe to treat like an ordinary failed request:
+       * the server may have committed the review decision before the
+       * browser/proxy connection failed. Re-read durable state before
+       * telling the reviewer that approval was not saved.
+       */
+      if (decision === 'approved') {
+        try {
+          const response = await getBatchReport(client, batchReference);
+          const durableReport = response.data;
+
+          if (
+            durableReport.batch.review?.decision === 'approved' &&
+            durableReport.batch.status !== 'awaiting_review'
+          ) {
+            if (state.kind === 'ready') {
+              setState({
+                kind: 'ready',
+                value: {
+                  profile: state.value.profile,
+                  report: durableReport,
+                },
+              });
+            }
+
+            setReason('');
+            setFeedback(
+              'Approval recorded. Publication is continuing in the background. You may leave this page safely.',
+            );
+
+            return;
+          }
+
+          setFeedback(
+            error instanceof ApiResponseError && error.status === 409
+              ? `This action was already completed or is no longer valid: ${error.message}`
+              : 'Approval could not be recorded. No review decision was saved.',
+          );
+        } catch {
+          /*
+           * If reconciliation itself cannot reach the backend, the result is
+           * ambiguous. Do not encourage a potentially duplicate approval.
+           */
+          setFeedback(
+            'The approval result could not be confirmed. Refresh the batch status before trying again.',
+          );
+        }
+
+        return;
+      }
+
       setFeedback(
         error instanceof ApiResponseError && error.status === 409
           ? `This action was already completed or is no longer valid: ${error.message}`
