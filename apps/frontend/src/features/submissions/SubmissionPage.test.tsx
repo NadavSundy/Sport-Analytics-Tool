@@ -149,7 +149,7 @@ function currentUser(
 }
 
 function fixtures(data: unknown[]) {
-  return response(200, { data, pagination: { nextCursor: null } });
+  return response(200, { data, pagination: { nextCursor: null, totalPages: 1 } });
 }
 
 /**
