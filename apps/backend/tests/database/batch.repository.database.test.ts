@@ -5,13 +5,13 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
 import {
-  BatchReviewConflictError,
   BatchReviewResolutionError,
   BatchReferenceMappingConflictError,
   createBatchRepository,
 } from '../../src/modules/batches/batch.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { randomUUID } from 'node:crypto';
+import type { QueryExecutor } from '@sport-analytics/batch-processing';
 
 interface TestRecords {
   accountId: string;
@@ -42,7 +42,22 @@ async function migrationSections(filename: string): Promise<{ down: string; up: 
     down: migration.slice(downMarkerIndex + downMarker.length),
   };
 }
+function countingExecutor(client: PoolClient): {
+  executor: QueryExecutor;
+  statements: string[];
+} {
+  const statements: string[] = [];
 
+  return {
+    statements,
+    executor: {
+      query(text, values) {
+        statements.push(text);
+        return client.query(text, values);
+      },
+    },
+  };
+}
 function batchMigrationSections(): Promise<{ down: string; up: string }> {
   return migrationSections('20260831100000000_batch-ingestion-models.sql');
 }
@@ -879,7 +894,89 @@ describe.sequential('batch repository database integration', () => {
       expect(decisions.rows[0]).toEqual({ count: '1' });
     });
   });
+  test('checks existing published deliveries once per chunk rather than once per accepted item', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
 
+      const source = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `SELECT
+         striker_id::text AS "strikerId",
+         non_striker_id::text AS "nonStrikerId",
+         bowler_id::text AS "bowlerId"
+       FROM delivery
+       WHERE delivery_id=$1::bigint`,
+        [current.deliveryId],
+      );
+
+      const players = source.rows[0]!;
+      const { executor, statements } = countingExecutor(client);
+      const repository = createBatchRepository(executor);
+
+      const batch = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-publication-query-bound`,
+        source: {
+          checksum,
+          uri: `stored-object:${randomUUID()}`,
+          sizeBytes: 64,
+        },
+        state: 'awaiting_review',
+      });
+
+      await repository.insertBatchItems(
+        batch.batchId,
+        [0, 1, 2].map((ordinal) => ({
+          ordinal,
+          inningsId: current.inningsId,
+          overNumber: 99,
+          positionInOver: ordinal + 1,
+          sourceIdentity: `test:delivery:query-bound:${ordinal}`,
+          referenceResolutionState: 'resolved' as const,
+          state: 'accepted' as const,
+          payload: {
+            sequenceNumber: 10_000 + ordinal,
+            ballNumber: `99.${ordinal + 1}`,
+            strikerId: players.strikerId,
+            nonStrikerId: players.nonStrikerId,
+            bowlerId: players.bowlerId,
+            runs: {
+              offBat: 1,
+              extras: 0,
+              total: 1,
+              nonBoundary: false,
+            },
+            extras: {},
+          },
+        })),
+      );
+
+      await repository.applyReviewDecision({
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decision: 'approved',
+        reason: 'Performance regression coverage.',
+      });
+
+      statements.length = 0;
+
+      await repository.publishAcceptedItems(batch.batchId, 'worker-query-bound');
+
+      const publishedLookupStatements = statements.filter(
+        (statement) =>
+          statement.includes('jsonb_to_recordset($1::jsonb)') &&
+          statement.includes('matched_ids AS') &&
+          statement.includes('JOIN delivery_current d'),
+      );
+
+      expect(publishedLookupStatements).toHaveLength(1);
+    });
+  });
   test('publishes an approved batch correction as one immutable, retry-safe revision', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
@@ -1457,37 +1554,111 @@ describe.sequential('batch repository database integration', () => {
     },
   );
 
-  test('makes same-decision retries idempotent and rejects a competing decision', async () => {
+  test('queues one durable publication job and outbox command when approval is recorded', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
       const repository = createBatchRepository(client);
+
       const batch = await repository.createBatch({
         batchReference: randomUUID(),
         submitterId: current.accountId,
         competitionId: current.competitionId,
-        idempotencyKey: `${sourcePrefix}-review-race`,
+        idempotencyKey: `${sourcePrefix}-queued-publication`,
         state: 'awaiting_review',
       });
+
       const input = {
         batchId: batch.batchId,
         actorId: current.accountId,
         decision: 'approved' as const,
-        reason: 'Approve once.',
+        reason: 'Ready for durable background publication.',
       };
-      await expect(repository.applyReviewDecision(input)).resolves.toMatchObject({
-        resumePublication: true,
-      });
-      await expect(repository.applyReviewDecision(input)).resolves.toMatchObject({
-        resumePublication: true,
-      });
-      await expect(
-        repository.applyReviewDecision({ ...input, decision: 'rejected' }),
-      ).rejects.toBeInstanceOf(BatchReviewConflictError);
-      const decisions = await client.query<{ count: string }>(
-        'SELECT count(*)::text AS count FROM batch_review_decision WHERE batch_id=$1::bigint',
+
+      await repository.applyReviewDecision(input);
+
+      const jobs = await client.query<{
+        jobId: string;
+        state: string;
+        jobType: string;
+        batchId: string;
+      }>(
+        `SELECT
+         job_id::text AS "jobId",
+         state::text AS state,
+         job_type AS "jobType",
+         batch_id::text AS "batchId"
+       FROM background_job
+       WHERE batch_id=$1::bigint
+         AND job_type='batch.publish'`,
         [batch.batchId],
       );
-      expect(decisions.rows[0]).toEqual({ count: '1' });
+
+      expect(jobs.rows).toHaveLength(1);
+      expect(jobs.rows[0]).toMatchObject({
+        state: 'queued',
+        jobType: 'batch.publish',
+        batchId: batch.batchId,
+      });
+
+      const outbox = await client.query<{
+        messageType: string;
+        contractVersion: number;
+        body: {
+          type: string;
+          version: number;
+          jobId: string;
+          batchId: string;
+        };
+        publishedAt: Date | null;
+      }>(
+        `SELECT
+         message_type AS "messageType",
+         contract_version AS "contractVersion",
+         body,
+         published_at AS "publishedAt"
+       FROM outbox_message
+       WHERE job_id=$1::uuid`,
+        [jobs.rows[0]!.jobId],
+      );
+
+      expect(outbox.rows).toHaveLength(1);
+      expect(outbox.rows[0]).toMatchObject({
+        messageType: 'batch.publish',
+        contractVersion: 1,
+        publishedAt: null,
+        body: {
+          type: 'batch.publish',
+          version: 1,
+          jobId: jobs.rows[0]!.jobId,
+          batchId: batch.batchId,
+        },
+      });
+
+      // A retry of the same approval must not queue a second publication.
+      await repository.applyReviewDecision(input);
+
+      const replay = await client.query<{ jobs: string; messages: string }>(
+        `SELECT
+         (
+           SELECT count(*)::text
+           FROM background_job
+           WHERE batch_id=$1::bigint
+             AND job_type='batch.publish'
+         ) AS jobs,
+         (
+           SELECT count(*)::text
+           FROM outbox_message o
+           JOIN background_job j ON j.job_id=o.job_id
+           WHERE j.batch_id=$1::bigint
+             AND j.job_type='batch.publish'
+         ) AS messages`,
+        [batch.batchId],
+      );
+
+      expect(replay.rows[0]).toEqual({
+        jobs: '1',
+        messages: '1',
+      });
     });
   });
 

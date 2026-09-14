@@ -10,6 +10,7 @@ import { OutboxRelay } from './outbox-relay';
 import { createProbeJobHandler } from './probe-job';
 import { createRuntimeDependencies } from './runtime-dependencies';
 import { createDatasetReleaseJobHandler } from './dataset-release-job';
+import { createBatchPublicationJobHandler } from './batch-publication-job';
 
 async function main(): Promise<void> {
   const environment = loadWorkerEnvironment();
@@ -31,6 +32,11 @@ async function main(): Promise<void> {
       leaseMs: environment.BATCH_LEASE_MS,
     },
   );
+  const batchPublication = createBatchPublicationJobHandler(dependencies.database, logger, {
+    workerId: environment.workerId,
+    chunkSize: environment.BATCH_CHUNK_SIZE,
+    leaseMs: environment.BATCH_LEASE_MS,
+  });
   const datasetRelease = createDatasetReleaseJobHandler(
     dependencies.database,
     dependencies.releaseObjectStorage,
@@ -47,6 +53,7 @@ async function main(): Promise<void> {
     createJobHandler({
       probe: createProbeJobHandler(dependencies.checks, logger, environment.WORKER_PROBE_DELAY_MS),
       batchValidation: batchValidation.handler,
+      batchPublication: batchPublication.handler,
       datasetRelease: datasetRelease.handler,
     }),
     logger,

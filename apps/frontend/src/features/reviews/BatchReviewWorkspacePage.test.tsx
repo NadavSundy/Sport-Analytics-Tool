@@ -488,7 +488,89 @@ describe('reviewer batch workspace', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
   });
+  test('reconciles an ambiguous approval request failure against durable backend state', async () => {
+    const initial = report(false);
+    const publishing = report(false);
+    const approvalReason = 'Ready for background publication.';
 
+    publishing.data.batch.status = 'publishing';
+    publishing.data.batch.updatedAt = '2026-09-14T14:00:00.000Z';
+    publishing.data.batch.review = {
+      decision: 'approved',
+      actor: {
+        accountId: profile.user.id,
+        displayName: profile.user.displayName,
+      },
+      decidedAt: '2026-09-14T14:00:00.000Z',
+      reason: approvalReason,
+    };
+
+    let reportReads = 0;
+
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.includes('/auth/me')) {
+        return Promise.resolve(response(profile));
+      }
+
+      if (init?.method === 'POST' && url.includes('/review')) {
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }
+
+      if (url.includes(`/batches/${reference}/report`)) {
+        reportReads += 1;
+
+        return Promise.resolve(response(reportReads === 1 ? initial : publishing));
+      }
+
+      return Promise.resolve(response({}, 404));
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage(`/reviews/batches/${reference}`);
+
+    const approve = await screen.findByRole('button', {
+      name: 'Approve and publish',
+    });
+
+    fireEvent.change(screen.getByLabelText(/Reason/), {
+      target: { value: approvalReason },
+    });
+
+    fireEvent.click(approve);
+
+    const dialog = screen.getByRole('dialog', {
+      name: /Confirm approve and publish/,
+    });
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'Confirm approve and publish',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Approval recorded. Publication is continuing in the background. You may leave this page safely.',
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Publishing');
+
+    expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText('The review decision could not be saved. Try again.'),
+    ).not.toBeInTheDocument();
+
+    expect(reportReads).toBeGreaterThanOrEqual(2);
+  });
   test('requires a meaningful reason and explicit confirmation before a decision', async () => {
     const body = report(false);
     const fetchMock = vi
