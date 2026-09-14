@@ -31,6 +31,7 @@ const status = {
     updatedAt: '2026-09-03T10:00:00.000Z',
     progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
     counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+    lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   },
 };
@@ -139,6 +140,34 @@ describe('batch receipt API', () => {
     expect(batchService.receive).toHaveBeenCalledWith(
       account,
       expect.objectContaining({ competitionId: '5', mediaType: 'application/x-ndjson' }),
+      expect.anything(),
+    );
+  });
+
+  test('passes an explicit correction replacement reference to the receipt service', async () => {
+    const receive = vi.fn<BatchService['receive']>().mockResolvedValue(receipt);
+    const batchService = service({ receive });
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+    await post(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(account),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .set('X-Replaces-Batch-Reference', reference)
+      .expect(202);
+    expect(receive).toHaveBeenCalledWith(
+      account,
+      expect.objectContaining({ replacesBatchReference: reference }),
       expect.anything(),
     );
   });

@@ -35,6 +35,7 @@ import {
   BatchPublishedConflictResolutionError,
   BatchReviewConflictError,
   BatchReviewResolutionError,
+  BatchReplacementConflictError,
   createBatchRepository,
   type BatchRepository,
 } from './batch.repository';
@@ -387,9 +388,10 @@ export function createBatchService(
   }
 
   async function status(batch: BatchRecord): Promise<BatchStatus> {
-    const [progress, counts, review] = await Promise.all([
+    const [progress, counts, lineage, review] = await Promise.all([
       repository.getBatchProgress(batch.batchId),
       repository.getBatchCounts(batch.batchId),
+      repository.getBatchLineage(batch.batchId),
       repository.getLatestReviewDecision(batch.batchId),
     ]);
     return {
@@ -410,6 +412,7 @@ export function createBatchService(
       },
       progress,
       counts,
+      lineage,
       review: review
         ? {
             decision: review.decision,
@@ -481,6 +484,9 @@ export function createBatchService(
             sizeBytes: object.byteSize,
           },
           state: 'stored',
+          ...(metadata.replacesBatchReference
+            ? { replacesBatchReference: metadata.replacesBatchReference }
+            : {}),
         });
         if (outcome.activeLimitReached) {
           throw new BatchConflictError('The submitter already has three active batches.');
@@ -497,6 +503,9 @@ export function createBatchService(
         // unless its source was completely stored and recorded.
         if (error instanceof ObjectSizeLimitError || error instanceof ObjectStorageError) {
           throw error;
+        }
+        if (error instanceof BatchReplacementConflictError) {
+          throw new BatchConflictError(error.message);
         }
         throw error;
       }

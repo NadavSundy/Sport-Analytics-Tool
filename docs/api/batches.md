@@ -2,11 +2,11 @@
 
 `POST /api/v1/batches` is a distinct asynchronous receipt route for whole-season and back-catalogue packages. It does not extend the synchronous Basic submission or file-upload routes, and it never publishes events merely because a package was accepted.
 
-The request body is streamed directly to the private object-store adapter. Supply `Authorization: Bearer <token>`, `Idempotency-Key`, `X-Competition-Id`, `X-Batch-Package-Version: 1.0`, and `X-File-Name` headers. Its `Content-Type` must be `application/json`, `text/csv`, or `application/x-ndjson`.
+The request body is streamed directly to the private object-store adapter. Supply `Authorization: Bearer <token>`, `Idempotency-Key`, `X-Competition-Id`, `X-Batch-Package-Version: 1.0`, and `X-File-Name` headers. Its `Content-Type` must be `application/json`, `text/csv`, or `application/x-ndjson`. A corrected upload made in response to a review decision also supplies the original batch's opaque UUID in `X-Replaces-Batch-Reference`.
 
 The endpoint returns `202 Accepted` with an opaque UUID `batchReference`, a relative `statusUrl`, and `stored` status. The reference is not a database ID. `GET /api/v1/batches/{batchReference}` lets the owning submitter or an administrator retrieve the receipt status.
 
-The server authenticates and checks the persisted submitter role and competition scope before receiving source bytes. Raw source is streamed with a 50 MB limit, retained privately for 90 days, and receives a SHA-256 checksum. The idempotency key is unique within the submitter scope: replaying it with the same checksum returns the original receipt, while changed bytes return `409 BATCH_CONFLICT`. Receipt creation serializes each submitter's key lookup, active-batch limit, and queue insertion, so concurrent equivalent requests cannot enqueue duplicate work. Up to three non-terminal batches are permitted per submitter. Unsupported metadata is `422`, size is `413`, storage failures are `503`, and the active-batch limit is `409`.
+The server authenticates and checks the persisted submitter role and competition scope before receiving source bytes. Raw source is streamed with a 50 MB limit, retained privately for 90 days, and receives a SHA-256 checksum. The idempotency key is unique within the submitter scope: replaying it with the same checksum returns the original receipt, while changed bytes return `409 BATCH_CONFLICT`. Receipt creation serializes each submitter's key lookup, active-batch limit, queue insertion, and correction linkage, so concurrent equivalent requests cannot enqueue duplicate work or claim the same correction request twice. A replacement must belong to the same submitter and competition and must identify a batch whose current state is `correction_requested`. The transaction retains that original, changes its state to `superseded`, populates `superseded_by`, and records the lifecycle transition. Invalid, stale, or competing relationships return `409 BATCH_CONFLICT`. Up to three non-terminal batches are permitted per submitter. Unsupported metadata is `422`, size is `413`, storage failures are `503`, and the active-batch limit is `409`.
 
 Package expansion, event validation, review, and publication remain asynchronous follow-on work. A stored batch is non-public and no staged item is included in public event or statistics reads.
 
@@ -15,8 +15,12 @@ back-catalogue choices. Season and back-catalogue modes obtain the competition i
 readable, server-scoped choice. The interface explains JSON, CSV and NDJSON support, the 50 MB,
 50,000-item and three-active-batch limits, and required human-readable package context before upload.
 It links the maintained JSON and spreadsheet templates, shows transfer progress, and presents the
-durable receipt with a link to the later report. Retrying the unchanged selection retains its
-idempotency key; selecting a corrected replacement generates a new key. The retired
+durable receipt with a link to the later report. A correction-requested report provides an
+`Upload corrected replacement` action that carries the original reference and fixed competition
+scope into the normal season upload. Retrying the unchanged selection retains its idempotency key;
+selecting corrected content generates a new key. Status, list, report, and reviewer responses expose
+both `lineage.replacesBatchReference` and `lineage.supersededByBatchReference`; submitter and reviewer
+interfaces render those UUIDs as navigation links. The retired
 `/submissions/batches/new` route redirects to `/submissions/new` for existing bookmarks.
 
 ## Reference mapping
@@ -84,3 +88,4 @@ The Issue #425 reference-mapping API was documented with the assistance of Codex
 The Issue #362 reviewer workspace documentation was produced with the assistance of Codex[GPT-5].
 The Issue #361 guided batch-upload interface was documented with the assistance of Codex[GPT-5].
 The Issue #437 unified submission route was documented with the assistance of Codex[GPT-5].
+The Issue #539 correction-resubmission lineage was documented with the assistance of Codex[GPT-5].

@@ -67,6 +67,7 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
     },
     progress: { total: 20_000, processed: 20_000, accepted: 19_999, rejected: 1 },
     counts: { accepted: 19_999, rejected: 1, unresolved: 0, duplicate: 0, conflicting: 0 },
+    lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
   const acceptedSample = {
@@ -289,6 +290,7 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
       duplicate: 0,
       conflicting: resolved ? 0 : 1,
     },
+    lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
   const report = () => ({
@@ -471,6 +473,7 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
       duplicate: kept ? 1 : 0,
       conflicting: kept ? 0 : 1,
     },
+    lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
   const report = () => ({

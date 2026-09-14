@@ -46,6 +46,7 @@ function metadataFromHeaders(request: Parameters<RequestHandler>[0]) {
     packageVersion: request.header('X-Batch-Package-Version'),
     fileName: request.header('X-File-Name'),
     mediaType: request.header('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase(),
+    replacesBatchReference: request.header('X-Replaces-Batch-Reference') ?? undefined,
   });
 }
 

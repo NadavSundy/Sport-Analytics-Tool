@@ -174,6 +174,9 @@ flowchart LR
   URL redirects here and no second upload action is presented.
 - Fixture, competition and season choices are only those returned for the account's backend-owned
   scope. Single-fixture packages are checked against the selected date and team names before upload.
+- When a reviewer returns a season batch for correction, its report and submission-history entry
+  provide the replacement action. The normal season form identifies the original batch, locks its
+  competition choice and preserves navigable original-to-replacement history after upload.
 - Final statistic totals are never entered directly; they are always derived from accepted
   events, consistent with the event-sourced design in the
   [system architecture](../architecture/system-architecture.md).
@@ -369,3 +372,4 @@ The issue #458 administrator dataset-release workflow was documented with the as
 Codex[GPT-5.6 Sol].
 The issue #499 plain-language submission validation guidance was documented with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The issue #539 correction-resubmission journey was documented with the assistance of Codex[GPT-5].

@@ -52,6 +52,15 @@ const stateDescriptions: Record<BatchStatus['status'], string> = {
   superseded: 'A corrected replacement now represents this source package.',
 };
 
+function correctedUploadPath(batch: BatchStatus): string {
+  const parameters = new URLSearchParams({
+    workflow: 'season',
+    replaces: batch.batchReference,
+    competitionId: batch.competitionId,
+  });
+  return `/submissions/new?${parameters.toString()}`;
+}
+
 function outcomeLabel(outcome: BatchReportItem['outcome']) {
   return outcome === 'conflicting'
     ? 'Conflict'
@@ -124,6 +133,31 @@ function Summary({ batch }: { batch: BatchStatus }) {
           <dd>{batch.source.packageVersion}</dd>
         </div>
       </dl>
+      {batch.lineage.replacesBatchReference ? (
+        <p>
+          Corrected replacement for{' '}
+          <Link to={`/submissions/batches/${batch.lineage.replacesBatchReference}`}>
+            {batch.lineage.replacesBatchReference}
+          </Link>
+          .
+        </p>
+      ) : null}
+      {batch.lineage.supersededByBatchReference ? (
+        <p>
+          Superseded by{' '}
+          <Link to={`/submissions/batches/${batch.lineage.supersededByBatchReference}`}>
+            {batch.lineage.supersededByBatchReference}
+          </Link>
+          .
+        </p>
+      ) : null}
+      {batch.status === 'correction_requested' ? (
+        <p>
+          <Link className="button button--primary" to={correctedUploadPath(batch)}>
+            Upload corrected replacement
+          </Link>
+        </p>
+      ) : null}
       {batch.counts.duplicate > 0 ? (
         <p>
           Duplicate items reuse the already known record; they are not published twice. Corrected
@@ -388,6 +422,25 @@ function BatchList() {
               {stateLabels[batch.status]} · {batch.counts.accepted} accepted ·{' '}
               {batch.counts.rejected} rejected
             </span>
+            {batch.lineage.replacesBatchReference ? (
+              <span>
+                Replaces{' '}
+                <Link to={`/submissions/batches/${batch.lineage.replacesBatchReference}`}>
+                  {batch.lineage.replacesBatchReference}
+                </Link>
+              </span>
+            ) : null}
+            {batch.lineage.supersededByBatchReference ? (
+              <span>
+                Superseded by{' '}
+                <Link to={`/submissions/batches/${batch.lineage.supersededByBatchReference}`}>
+                  {batch.lineage.supersededByBatchReference}
+                </Link>
+              </span>
+            ) : null}
+            {batch.status === 'correction_requested' ? (
+              <Link to={correctedUploadPath(batch)}>Upload corrected replacement</Link>
+            ) : null}
           </li>
         ))}
       </ul>
