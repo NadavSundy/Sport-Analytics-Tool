@@ -28,27 +28,32 @@ managed identity. Ingress is internal because worker health is an operator surfa
 
 ## Runtime configuration
 
-| Variable                                | Secret | Purpose                                                                           |
-| --------------------------------------- | ------ | --------------------------------------------------------------------------------- |
-| `DATABASE_URL`                          | Yes    | Supabase PostgreSQL session-pooler URL, supplied through Key Vault.               |
-| `DATABASE_SSL_MODE`                     | No     | Must be `verify-full` in production; local PostgreSQL may use `disable`.          |
-| `DATABASE_CA_CERT_PATH`                 | No     | Optional CA override; the image includes the Supabase root CA.                    |
-| `SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE` | No     | `<namespace>.servicebus.windows.net`.                                             |
-| `SERVICE_BUS_QUEUE_NAME`                | No     | Dedicated queue name, normally `batch-ingestion`.                                 |
-| `AZURE_STORAGE_ACCOUNT_NAME`            | No     | Existing Blob account containing staged payloads.                                 |
-| `AZURE_STORAGE_CONTAINER_NAME`          | No     | Existing private container, normally `staged-ingestion`.                          |
-| `AZURE_CLIENT_ID`                       | No     | User-assigned runtime identity client ID.                                         |
-| `WORKER_PORT`                           | No     | Internal health port; default `3001`.                                             |
-| `WORKER_CONCURRENCY`                    | No     | Per-replica Service Bus concurrency, bounded to 1–16; deployed value is 1.        |
-| `SERVICE_BUS_LOCK_RENEWAL_MS`           | No     | Automatic peek-lock renewal window; deployed value is four minutes.               |
-| `WORKER_SHUTDOWN_TIMEOUT_MS`            | No     | Drain deadline; deployed value is 25 seconds within the 30-second platform grace. |
-| `WORKER_PROBE_DELAY_MS`                 | No     | Recovery-test-only delay; keep `0` normally.                                      |
-| `OUTBOX_POLL_INTERVAL_MS`               | No     | Empty-poll delay for the transactional outbox relay; default `1000`.              |
-| `OUTBOX_CLAIM_TTL_MS`                   | No     | PostgreSQL claim lease for an outbox publish attempt; default `30000`.            |
-| `OUTBOX_BATCH_SIZE`                     | No     | Maximum outbox rows claimed in one set-based poll; default `20`.                  |
-| `BATCH_CHUNK_SIZE`                      | No     | Maximum staged items persisted per validation transaction; default `500`.         |
-| `BATCH_LEASE_MS`                        | No     | Durable validation lease before another worker may reclaim the batch; `120000`.   |
-| `LOG_LEVEL`                             | No     | `debug`, `info`, `warn` or `error`.                                               |
+| Variable                                 | Secret | Purpose                                                                           |
+| ---------------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| `DATABASE_URL`                           | Yes    | Supabase PostgreSQL session-pooler URL, supplied through Key Vault.               |
+| `DATABASE_SSL_MODE`                      | No     | Must be `verify-full` in production; local PostgreSQL may use `disable`.          |
+| `DATABASE_CA_CERT_PATH`                  | No     | Optional CA override; the image includes the Supabase root CA.                    |
+| `SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE`  | No     | `<namespace>.servicebus.windows.net`.                                             |
+| `SERVICE_BUS_QUEUE_NAME`                 | No     | Dedicated queue name, normally `batch-ingestion`.                                 |
+| `AZURE_STORAGE_ACCOUNT_NAME`             | No     | Existing Blob account containing staged payloads.                                 |
+| `AZURE_STORAGE_CONTAINER_NAME`           | No     | Existing private container, normally `staged-ingestion`.                          |
+| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | No     | Preferred explicit staged-ingestion container; old name remains an alias.         |
+| `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | No     | Existing private immutable-release container, normally `dataset-releases`.        |
+| `OBJECT_STORAGE_PROVIDER`                | No     | `azure` in production; filesystem is rejected there.                              |
+| `WORKER_TRANSPORT_PROVIDER`              | No     | `azure-service-bus` in production; `database` supports local work without Azure.  |
+| `DEPLOYMENT_ENVIRONMENT`                 | No     | Stable namespace shared with the backend, normally `dev`.                         |
+| `AZURE_CLIENT_ID`                        | No     | User-assigned runtime identity client ID.                                         |
+| `WORKER_PORT`                            | No     | Internal health port; default `3001`.                                             |
+| `WORKER_CONCURRENCY`                     | No     | Per-replica Service Bus concurrency, bounded to 1–16; deployed value is 1.        |
+| `SERVICE_BUS_LOCK_RENEWAL_MS`            | No     | Automatic peek-lock renewal window; deployed value is four minutes.               |
+| `WORKER_SHUTDOWN_TIMEOUT_MS`             | No     | Drain deadline; deployed value is 25 seconds within the 30-second platform grace. |
+| `WORKER_PROBE_DELAY_MS`                  | No     | Recovery-test-only delay; keep `0` normally.                                      |
+| `OUTBOX_POLL_INTERVAL_MS`                | No     | Empty-poll delay for the transactional outbox relay; default `1000`.              |
+| `OUTBOX_CLAIM_TTL_MS`                    | No     | PostgreSQL claim lease for an outbox publish attempt; default `30000`.            |
+| `OUTBOX_BATCH_SIZE`                      | No     | Maximum outbox rows claimed in one set-based poll; default `20`.                  |
+| `BATCH_CHUNK_SIZE`                       | No     | Maximum staged items persisted per validation transaction; default `500`.         |
+| `BATCH_LEASE_MS`                         | No     | Durable validation lease before another worker may reclaim the batch; `120000`.   |
+| `LOG_LEVEL`                              | No     | `debug`, `info`, `warn` or `error`.                                               |
 
 Do not create Service Bus connection strings, storage keys or SAS tokens for the worker. Do not use
 `VITE_` variables: every value above is server-side.
@@ -107,6 +112,11 @@ group and an isolated local database.
    SERVICE_BUS_QUEUE_NAME=batch-ingestion
    AZURE_STORAGE_ACCOUNT_NAME=<dev-storage-account>
    AZURE_STORAGE_CONTAINER_NAME=staged-ingestion
+   AZURE_STORAGE_INGESTION_CONTAINER_NAME=staged-ingestion
+   AZURE_STORAGE_RELEASE_CONTAINER_NAME=dataset-releases
+   OBJECT_STORAGE_PROVIDER=azure
+   WORKER_TRANSPORT_PROVIDER=azure-service-bus
+   DEPLOYMENT_ENVIRONMENT=dev
    WORKER_CONCURRENCY=1
    WORKER_PROBE_DELAY_MS=0
    OUTBOX_POLL_INTERVAL_MS=1000
