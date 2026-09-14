@@ -6,6 +6,7 @@ type JobHandler = (message: ReceivedJob, signal: AbortSignal) => Promise<void>;
 export function createJobHandler(handlers: {
   probe: JobHandler;
   batchValidation: JobHandler;
+  datasetRelease: JobHandler;
 }): JobHandler {
   return async (message, signal) => {
     const body = message.body;
@@ -22,6 +23,10 @@ export function createJobHandler(handlers: {
     }
     if (command.type === 'batch.validate' && command.version === 1) {
       await handlers.batchValidation(message, signal);
+      return;
+    }
+    if (command.type === 'dataset-release.generate' && command.version === 1) {
+      await handlers.datasetRelease(message, signal);
       return;
     }
     throw new PermanentJobError(
