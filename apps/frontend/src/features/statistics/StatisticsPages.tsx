@@ -543,7 +543,12 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
         <StatisticMetric label="Leg-byes" value={event.extras.legByes ?? 0} />
         <StatisticMetric label="Penalty extras" value={event.extras.penalty ?? 0} />
         <StatisticMetric label="Bowler wickets" value={event.bowlerWickets} />
-        <StatisticMetric label="Non-boundary" value={event.nonBoundary ? 'Yes' : 'No'} />
+        {event.nonBoundary ? (
+          <StatisticMetric
+            label="Boundary"
+            value="No — the runs were run, not hit to the boundary"
+          />
+        ) : null}
         <StatisticMetric
           label="Striker"
           value={

@@ -523,6 +523,54 @@ describe('public fixture statistics pages', () => {
     );
   });
 
+  // Issue #475 (P01-F12 / P02-F22): "Non-boundary: No" was shown on every delivery and
+  // neither participant could interpret it. The row now appears only on a delivery whose
+  // runs were run rather than hit to the boundary, and on no other delivery.
+  it('marks only the deliveries whose runs were run rather than hit to the boundary', async () => {
+    const [struck, run] = traceEvents(2);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (
+          url.endsWith('/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true')
+        ) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                ...inningsStatistic,
+                contributingEvents: [
+                  { ...struck, runs: { offBat: 4, extras: 0, total: 4 }, nonBoundary: false },
+                  { ...run, runs: { offBat: 4, extras: 0, total: 4 }, nonBoundary: true },
+                ],
+              },
+            }),
+          );
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+
+    const struckDelivery = (await screen.findByRole('heading', { name: 'Delivery 1' })).closest(
+      'li',
+    ) as HTMLElement;
+    const runDelivery = screen
+      .getByRole('heading', { name: 'Delivery 2' })
+      .closest('li') as HTMLElement;
+
+    expect(within(struckDelivery).queryByText('Boundary')).not.toBeInTheDocument();
+    expect(within(struckDelivery).queryByText(/not hit to the boundary/)).not.toBeInTheDocument();
+
+    const boundaryTerm = within(runDelivery).getByText('Boundary');
+    expect(boundaryTerm.tagName).toBe('DT');
+    expect(boundaryTerm.nextElementSibling).toHaveTextContent(
+      'No — the runs were run, not hit to the boundary',
+    );
+    expect(screen.queryByText('Non-boundary')).not.toBeInTheDocument();
+  });
+
   // Issue #467: the control exported a filtered slice read as one page of 100,
   // so a 125-event innings downloaded 100 rows while the trace showed 125, and
   // a player trace downloaded non-striker and fielding rows it did not show.
