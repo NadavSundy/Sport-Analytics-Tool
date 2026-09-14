@@ -517,6 +517,7 @@ test(
               },
             ],
             acceptedSamples: [],
+            blockingItems: [],
             items: [
               {
                 ordinal: 0,

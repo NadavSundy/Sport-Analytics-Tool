@@ -2469,6 +2469,22 @@ describe.sequential('batch repository database integration', () => {
           state: 'rejected',
           rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
         },
+        {
+          ordinal: 2,
+          inningsId: current.inningsId,
+          overNumber: 1,
+          positionInOver: 3,
+          payload: {},
+          sourceIdentity: `${sourcePrefix}-conflict`,
+          sourceLocation: { filePath: 'events.csv', rowNumber: 4 },
+          referenceResolutionState: 'resolved',
+          state: 'rejected',
+          rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          rejectionDetail: {
+            existingDeliveryId: current.deliveryId,
+            differences: [{ fieldPath: 'runs.batter', submittedValue: 4, publishedValue: 1 }],
+          },
+        },
       ]);
       await repository.recordValidationResult({
         batchId: batch.batchId,
@@ -2485,10 +2501,10 @@ describe.sequential('batch repository database integration', () => {
 
       await expect(repository.getBatchCounts(batch.batchId)).resolves.toEqual({
         accepted: 1,
-        rejected: 1,
+        rejected: 2,
         unresolved: 1,
         duplicate: 0,
-        conflicting: 0,
+        conflicting: 1,
       });
       await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
         { ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 },
@@ -2506,8 +2522,9 @@ describe.sequential('batch repository database integration', () => {
         expect.arrayContaining([
           expect.objectContaining({
             fixtureId: current.fixtureId,
-            total: 1,
+            total: 2,
             accepted: 1,
+            rejected: 1,
           }),
           expect.objectContaining({
             fixtureId: null,
@@ -2523,6 +2540,15 @@ describe.sequential('batch repository database integration', () => {
       });
       expect(firstPage).toHaveLength(1);
       expect(firstPage[0]).toMatchObject({ ordinal: 0, publishedEventId: current.deliveryId });
+      await expect(
+        repository.listBatchReportItems(batch.batchId, { blockingOnly: true, limit: 50_001 }),
+      ).resolves.toEqual([
+        expect.objectContaining({ ordinal: 1, referenceResolutionState: 'unresolved' }),
+        expect.objectContaining({
+          ordinal: 2,
+          rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+        }),
+      ]);
       await expect(
         repository.listBatchReportItems(batch.batchId, { acceptedOnly: true, limit: 15 }),
       ).resolves.toEqual([

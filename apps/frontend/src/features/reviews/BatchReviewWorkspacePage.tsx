@@ -900,8 +900,8 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
           </div>
           <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
         </div>
-        {report.items.some((item) => item.publishedConflict) ? (
-          report.items
+        {report.blockingItems.some((item) => item.publishedConflict) ? (
+          report.blockingItems
             .filter((item) => item.publishedConflict)
             .map((item) => (
               <PublishedConflictResolution
@@ -960,8 +960,8 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
       </section>
       <section aria-labelledby="reference-review-title">
         <h2 id="reference-review-title">References requiring attention</h2>
-        {report.items.some((item) => item.referenceResolutions.length > 0) ? (
-          report.items.map((item) => (
+        {report.blockingItems.some((item) => item.referenceResolutions.length > 0) ? (
+          report.blockingItems.map((item) => (
             <ReferenceResolution
               key={item.ordinal}
               batchReference={batchReference}
@@ -971,9 +971,19 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
             />
           ))
         ) : (
-          <p>All displayed references are resolved.</p>
+          <p>
+            {report.reviewSummary.resolution.ambiguous +
+              report.reviewSummary.resolution.unresolved +
+              report.reviewSummary.resolution.invalid >
+            0
+              ? 'Reference details are temporarily unavailable. Refresh this review before approval.'
+              : 'All references are resolved.'}
+          </p>
         )}
-        {report.pagination.nextCursor ? (
+      </section>
+      {report.pagination.nextCursor ? (
+        <section aria-labelledby="report-results-title">
+          <h2 id="report-results-title">Report results</h2>
           <button
             className="button button--secondary"
             type="button"
@@ -982,8 +992,8 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
           >
             {loadingMore ? 'Loading…' : 'Load more report results'}
           </button>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
       {report.batch.status === 'awaiting_review' ? (
         <section className="batch-review" aria-labelledby="decision-title">
           <h2 id="decision-title">Review decision</h2>

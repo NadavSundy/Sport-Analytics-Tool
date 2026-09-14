@@ -299,6 +299,7 @@ export const batchReportSchema = z
     reviewSummary: batchReviewSummarySchema,
     fixtureSummaries: z.array(batchFixtureSummarySchema),
     acceptedSamples: z.array(batchReportItemSchema).max(15),
+    blockingItems: z.array(batchReportItemSchema),
     items: z.array(batchReportItemSchema),
     pagination: z.object({ nextCursor: z.string().min(1).nullable() }).strict(),
     downloadUrl: z.string().startsWith('/api/v1/batches/'),
@@ -308,6 +309,7 @@ export const batchReportSchema = z
 export const batchReportResponseSchema = createResourceResponseSchema(batchReportSchema);
 
 export const batchReportDownloadSchema = batchReportSchema.omit({
+  blockingItems: true,
   pagination: true,
   downloadUrl: true,
 });

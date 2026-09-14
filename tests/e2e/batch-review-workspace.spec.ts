@@ -126,6 +126,7 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
         },
       ],
       acceptedSamples: [acceptedSample],
+      blockingItems: [],
       items: [
         {
           ordinal: 1,
@@ -293,7 +294,8 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
     lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
-  const report = () => ({
+  const report = () => {
+    const response = {
     data: {
       batch: batch(),
       errorGroups: resolved ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
@@ -390,7 +392,14 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
       pagination: { nextCursor: null },
       downloadUrl: `/api/v1/batches/${reference}/report/download`,
     },
-  });
+    };
+    return {
+      data: {
+        ...response.data,
+        blockingItems: resolved ? [] : response.data.items,
+      },
+    };
+  };
 
   await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
     await route.fulfill({
@@ -476,7 +485,8 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
     lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
-  const report = () => ({
+  const report = () => {
+    const response = {
     data: {
       batch: batch(),
       errorGroups: kept ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
@@ -542,7 +552,14 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
       pagination: { nextCursor: null },
       downloadUrl: `/api/v1/batches/${reference}/report/download`,
     },
-  });
+    };
+    return {
+      data: {
+        ...response.data,
+        blockingItems: kept ? [] : response.data.items,
+      },
+    };
+  };
 
   await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
     await route.fulfill({
