@@ -31,6 +31,35 @@ identities the contract requires, `packageId` and each `eventId`, are labels
 the submitter chooses and keeps unchanged, for example
 `my-club:delivery:innings-0-ball-1`; neither is a database identifier.
 
+### Dismissals
+
+The JSON template's second example event records a caught dismissal with one
+named fielder in its `wickets` array.
+
+Since issue #536 the CSV template ends with twelve dismissal columns, after
+`extraPenalty`:
+
+| Columns                                                  | Meaning                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wicketKind`                                             | The dismissal kind, for example `caught`. Leave every dismissal column blank when the delivery has no dismissal. A row that fills in the dismissed player or a fielder but leaves `wicketKind` blank is rejected with `CSV_WICKET_KIND_MISSING`, so the dismissal is reported rather than dropped. |
+| `playerOutSourceId`, `playerOutName`                     | The dismissed player, given the same way as the striker and bowler.                                                                                                                                                                                                                                |
+| `fielder1SourceId`, `fielder1Name`, `fielder1Substitute` | The first fielder. `fielder2…` and `fielder3…` follow the same pattern.                                                                                                                                                                                                                            |
+
+A fielder slot counts when it has a source identifier, a name, or `true` in its
+substitute column; a substitute with no name is an unidentified substitute.
+Empty slots are skipped, so the fielders that are filled keep their order with
+no gap. A substitute column accepts exactly `true` or `false`, as the
+direct-submission CSV does, and any other value is rejected. Which dismissal
+kinds require a fielder is checked by the delivery-event contract.
+
+The CSV has two limits the JSON package does not:
+
+- a row records at most **one dismissal** per delivery; and
+- a dismissal names at most **three fielders**.
+
+A delivery with more than one dismissal, or a dismissal involving more than
+three fielders, must be submitted in the JSON package.
+
 ## Canonical JSON format
 
 ```json
