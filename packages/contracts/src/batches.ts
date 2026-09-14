@@ -34,6 +34,7 @@ export const batchMetadataSchema = z
     packageVersion: z.enum(BATCH_PACKAGE_VERSIONS),
     fileName: z.string().trim().min(1).max(255),
     mediaType: z.enum(BATCH_MEDIA_TYPES),
+    replacesBatchReference: batchReferenceSchema.optional(),
   })
   .strict();
 
@@ -119,6 +120,12 @@ export const batchStatusSchema = z
         unresolved: z.number().int().nonnegative(),
         duplicate: z.number().int().nonnegative(),
         conflicting: z.number().int().nonnegative(),
+      })
+      .strict(),
+    lineage: z
+      .object({
+        replacesBatchReference: batchReferenceSchema.nullable(),
+        supersededByBatchReference: batchReferenceSchema.nullable(),
       })
       .strict(),
     review: batchReviewDecisionSchema.nullable(),

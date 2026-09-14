@@ -2,6 +2,7 @@ import { Readable } from 'node:stream';
 import { describe, expect, test, vi } from 'vitest';
 
 import {
+  BatchReplacementConflictError,
   BatchReviewResolutionError,
   type BatchRepository,
 } from '../../src/modules/batches/batch.repository';
@@ -50,6 +51,10 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     getBatchCounts: vi
       .fn()
       .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
+    getBatchLineage: vi.fn().mockResolvedValue({
+      replacesBatchReference: null,
+      supersededByBatchReference: null,
+    }),
     listBatchReportItems: vi.fn().mockResolvedValue([]),
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
     countBlockingValidationErrors: vi.fn().mockResolvedValue(0),
@@ -130,6 +135,34 @@ describe('batch receipt service', () => {
           uri: 'stored-object:123e4567-e89b-42d3-a456-426614174001',
           sizeBytes: 20,
         },
+      }),
+    );
+  });
+
+  test('passes correction provenance to atomic receipt creation and reports stale targets as conflicts', async () => {
+    const storage = {
+      upload: vi.fn().mockResolvedValue({
+        objectId: '123e4567-e89b-42d3-a456-426614174001',
+        sha256: 'b'.repeat(64),
+        byteSize: 21,
+      }),
+    } as unknown as BatchPayloadStorageService;
+    const createReplacement = vi
+      .fn<BatchRepository['createOrFindBatchAndQueueValidation']>()
+      .mockRejectedValue(new BatchReplacementConflictError('The correction request is stale.'));
+    const replacement = createBatchService(
+      storage,
+      repository({ createOrFindBatchAndQueueValidation: createReplacement }),
+    ).receive(
+      createTestAccount({ role: 'submitter', competitionIds: ['5'] }),
+      { ...metadata, replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000' },
+      Readable.from('corrected payload'),
+    );
+    await expect(replacement).rejects.toBeInstanceOf(BatchConflictError);
+    await expect(replacement).rejects.toThrow('The correction request is stale.');
+    expect(createReplacement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
       }),
     );
   });
@@ -259,6 +292,22 @@ describe('batch result reporting service', () => {
     );
     expect(response.data.progress).toMatchObject(result);
     expect(response.data.counts).toMatchObject(result);
+  });
+
+  test('reports both directions of correction replacement lineage', async () => {
+    const lineage = {
+      replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
+      supersededByBatchReference: '323e4567-e89b-42d3-a456-426614174000',
+    };
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
+      getBatchLineage: vi.fn().mockResolvedValue(lineage),
+    });
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getStatus(
+      createTestAccount({ role: 'submitter' }),
+      persistedBatch.batchReference,
+    );
+    expect(response.data.lineage).toEqual(lineage);
   });
 
   test('reports legacy published conflicts as correction-capable via lazy lineage bootstrap', async () => {

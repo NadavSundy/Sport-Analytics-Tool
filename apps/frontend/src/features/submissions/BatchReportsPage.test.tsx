@@ -99,6 +99,7 @@ function report(accepted: number, rejected: number): BatchReportResponse {
         },
         progress: { total: 3, processed: 3, accepted, rejected },
         counts: { accepted, rejected, unresolved: 0, duplicate: 0, conflicting: 0 },
+        lineage: { replacesBatchReference: null, supersededByBatchReference: null },
         review: null,
       },
       errorGroups: rejected > 0 ? [{ ruleCode: 'EVENT_SCHEMA_INVALID', count: rejected }] : [],
@@ -447,5 +448,40 @@ describe('batch report view', () => {
     expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
+  });
+
+  test('shows navigable correction lineage in the submitter report', async () => {
+    const replacement = report(3, 0);
+    replacement.data.batch.status = 'superseded';
+    replacement.data.batch.lineage = {
+      replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
+      supersededByBatchReference: '323e4567-e89b-42d3-a456-426614174000',
+    };
+    vi.stubGlobal('fetch', reportFetch(replacement));
+    await renderReport();
+    expect(
+      await screen.findByText('Corrected replacement for', { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: replacement.data.batch.lineage.replacesBatchReference! }),
+    ).toHaveAttribute('href', '/submissions/batches/223e4567-e89b-42d3-a456-426614174000');
+    expect(
+      screen.getByRole('link', {
+        name: replacement.data.batch.lineage.supersededByBatchReference!,
+      }),
+    ).toHaveAttribute('href', '/submissions/batches/323e4567-e89b-42d3-a456-426614174000');
+  });
+
+  test('starts a corrected season upload from a correction-requested report', async () => {
+    const returned = report(3, 0);
+    returned.data.batch.status = 'correction_requested';
+    vi.stubGlobal('fetch', reportFetch(returned));
+    await renderReport();
+    expect(
+      await screen.findByRole('link', { name: 'Upload corrected replacement' }),
+    ).toHaveAttribute(
+      'href',
+      `/submissions/new?workflow=season&replaces=${reference}&competitionId=5`,
+    );
   });
 });

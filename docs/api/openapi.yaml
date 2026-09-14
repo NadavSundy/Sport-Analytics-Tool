@@ -1779,6 +1779,11 @@ paths:
             required: true,
             schema: { type: string, minLength: 1, maxLength: 255 },
           }
+        - name: X-Replaces-Batch-Reference
+          in: header
+          required: false
+          description: Opaque reference of the correction-requested batch replaced by this upload.
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
@@ -1797,11 +1802,11 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409':
-          {
-            description: Active-batch concurrency limit reached.,
-            content:
-              { application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
-          }
+          description: >-
+            Active-batch concurrency limit reached; idempotency conflict; or invalid, unauthorised,
+            stale, or competing replacement relationship.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '413':
           {
             description: Payload exceeds 50 MB.,
@@ -4550,6 +4555,7 @@ components:
           progress,
           counts,
           source,
+          lineage,
           review,
         ]
       properties:
@@ -4591,6 +4597,13 @@ components:
               properties:
                 accountId: { $ref: '#/components/schemas/DatabaseIdentifier' }
                 displayName: { type: [string, 'null'] }
+        lineage:
+          type: object
+          additionalProperties: false
+          required: [replacesBatchReference, supersededByBatchReference]
+          properties:
+            replacesBatchReference: { type: [string, 'null'], format: uuid }
+            supersededByBatchReference: { type: [string, 'null'], format: uuid }
         review:
           oneOf:
             - { $ref: '#/components/schemas/BatchReviewDecision' }

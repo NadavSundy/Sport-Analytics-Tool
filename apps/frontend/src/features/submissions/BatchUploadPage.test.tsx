@@ -67,11 +67,12 @@ function response(status: number, body: unknown): Response {
 function renderUpload(
   scope: PackageUploadScope = 'season',
   profile: CurrentUserProfile = submitterProfile,
+  replacement?: { batchReference: string; competitionId: string },
 ) {
   return render(
     <AuthProvider client={authClient()}>
       <MemoryRouter>
-        <BatchUploadWorkflow profile={profile} scope={scope} />
+        <BatchUploadWorkflow profile={profile} scope={scope} replacement={replacement} />
       </MemoryRouter>
     </AuthProvider>,
   );
@@ -217,6 +218,26 @@ describe('guided batch upload', () => {
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(/ID/i)).not.toBeInTheDocument();
     await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
+  });
+
+  test('identifies and locks the selected correction request scope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(200, {
+          data: { competitionId: '5', name: 'Premier League' },
+        }),
+      ),
+    );
+    renderUpload('season', submitterProfile, {
+      batchReference: '223e4567-e89b-42d3-a456-426614174000',
+      competitionId: '5',
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'Corrected replacement upload' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('223e4567-e89b-42d3-a456-426614174000')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toBeDisabled();
   });
 
   test('does not load known seasons because package context is authoritative', async () => {

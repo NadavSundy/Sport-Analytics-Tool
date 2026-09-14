@@ -100,10 +100,13 @@ function createAuthClient(session: Session | null) {
   } as unknown as AuthClient;
 }
 
-function renderSubmissionPage(session: Session | null = createSession()) {
+function renderSubmissionPage(
+  session: Session | null = createSession(),
+  path = '/submissions/new',
+) {
   return render(
     <AuthProvider client={createAuthClient(session)}>
-      <MemoryRouter initialEntries={['/submissions/new']}>
+      <MemoryRouter initialEntries={[path]}>
         <PublicApp />
       </MemoryRouter>
     </AuthProvider>,
@@ -858,6 +861,7 @@ describe('role-gated event submission page', () => {
                 },
                 progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
                 counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+                lineage: { replacesBatchReference: null, supersededByBatchReference: null },
                 review: null,
               },
             ],
@@ -934,6 +938,32 @@ describe('role-gated event submission page', () => {
     expect(uploadHeaders.get('X-Batch-Package-Version')).toBe('1.0');
     expect(uploadHeaders.get('X-Competition-Id')).toBe('5');
     expect(uploadHeaders.get('X-File-Name')).toBe('fixture-package.json');
+  });
+
+  it('opens the linked season replacement workflow from submission history', async () => {
+    const originalReference = '223e4567-e89b-42d3-a456-426614174000';
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(response(200, { data: { competitionId: '5', name: 'Premier T20' } }));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage(
+      createSession(),
+      `/submissions/new?workflow=season&replaces=${originalReference}&competitionId=5`,
+    );
+    expect(await screen.findByRole('radio', { name: /Season/ })).toBeChecked();
+    expect(
+      await screen.findByRole('heading', { name: 'Corrected replacement upload' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(originalReference)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toBeDisabled();
   });
 
   it('keeps the guided single-fixture path free of identifiers and advanced mode set apart', async () => {

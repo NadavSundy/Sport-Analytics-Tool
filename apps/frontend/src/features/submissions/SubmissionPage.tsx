@@ -1,13 +1,14 @@
-import type {
-  ApiErrorDetail,
-  BatchReceiptResponse,
-  CurrentUserProfile,
-  Fixture,
-  SubmissionEvent,
-  SubmissionResponse,
+import {
+  batchReferenceSchema,
+  type ApiErrorDetail,
+  type BatchReceiptResponse,
+  type CurrentUserProfile,
+  type Fixture,
+  type SubmissionEvent,
+  type SubmissionResponse,
 } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
@@ -732,11 +733,19 @@ function SubmissionForm({
 export function SubmissionPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const client = useAuthenticatedApiClient();
+  const [searchParams] = useSearchParams();
+  const requestedWorkflow = searchParams.get('workflow');
+  const replacementReference = batchReferenceSchema.safeParse(searchParams.get('replaces'));
+  const replacementCompetitionId = searchParams.get('competitionId');
 
   const [accessState, setAccessState] = useState<AccessState>({
     kind: 'loading',
   });
-  const [workflow, setWorkflow] = useState<SubmissionWorkflow>('fixture');
+  const [workflow, setWorkflow] = useState<SubmissionWorkflow>(
+    requestedWorkflow === 'season' || requestedWorkflow === 'catalogue'
+      ? requestedWorkflow
+      : 'fixture',
+  );
 
   usePageTitle();
 
@@ -820,7 +829,19 @@ export function SubmissionPage() {
         <>
           <SubmissionWorkflowSelector value={workflow} onChange={setWorkflow} />
           {workflow === 'season' || workflow === 'catalogue' ? (
-            <BatchUploadWorkflow key={workflow} profile={accessState.profile} scope={workflow} />
+            <BatchUploadWorkflow
+              key={workflow}
+              profile={accessState.profile}
+              scope={workflow}
+              replacement={
+                replacementReference.success && replacementCompetitionId
+                  ? {
+                      batchReference: replacementReference.data,
+                      competitionId: replacementCompetitionId,
+                    }
+                  : undefined
+              }
+            />
           ) : (
             <SubmissionForm
               key={workflow}

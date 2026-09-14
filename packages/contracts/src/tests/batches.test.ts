@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 
 import {
   BATCH_STATES,
+  batchMetadataSchema,
   batchListResponseSchema,
   batchListQuerySchema,
   batchReferenceMappingRequestSchema,
@@ -31,11 +32,25 @@ function status(state: (typeof BATCH_STATES)[number]) {
     },
     progress: { total: 3, processed: 3, accepted: 2, rejected: 1 },
     counts: { accepted: 2, rejected: 1, unresolved: 1, duplicate: 0, conflicting: 0 },
+    lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   };
 }
 
 describe('batch reporting contracts', () => {
+  test('accepts an explicit correction replacement reference in upload metadata', () => {
+    expect(
+      batchMetadataSchema.parse({
+        competitionId: '5',
+        idempotencyKey: 'corrected-season',
+        packageVersion: '1.0',
+        fileName: 'season.json',
+        mediaType: 'application/json',
+        replacesBatchReference: reference,
+      }).replacesBatchReference,
+    ).toBe(reference);
+  });
+
   test.each(BATCH_STATES)('accepts the %s lifecycle state', (state) => {
     expect(batchStatusResponseSchema.safeParse({ data: status(state) }).success).toBe(true);
   });

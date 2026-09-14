@@ -514,7 +514,17 @@ The identifying columns of a delivery are `inningsId`, `overNumber` and `positio
 
 ### 8.4 Resubmission
 
-Where a submitter resubmits a corrected payload under the key of a batch already `rejected` or `published`, the earlier batch must be marked `superseded` with `superseded_by` populated. The earlier batch and its items must be retained. Supersession is a link, not a deletion.
+Where a submitter responds to a `correction_requested` review decision, the corrected payload uses a
+new content-derived idempotency key and explicitly identifies the earlier batch by its opaque
+reference. The repository locks the submitter and earlier batch, verifies the same submitter and
+competition, creates or reuses the replacement receipt, and changes the earlier batch to
+`superseded` with `superseded_by` populated in the same transaction. The earlier batch and its items
+remain retained. Supersession is a link, not a deletion.
+
+Following `superseded_by` forward, or its reverse relationship from a replacement, forms the ordered
+correction chain. Status and history representations expose both directions as opaque batch
+references. A stale or competing replacement request is rejected, and a superseded batch cannot
+re-enter review or publication.
 
 ---
 
@@ -765,3 +775,4 @@ The issue #283 review and publication implementation record was added with the a
 Codex[GPT-5].
 The Issue #364 implementation-status reconciliation was reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The Issue #539 correction-resubmission lifecycle was updated with the assistance of Codex[GPT-5].
