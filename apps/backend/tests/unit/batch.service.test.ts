@@ -944,7 +944,6 @@ describe('canonical fixture creation', () => {
 
 describe('batch review service', () => {
   const awaitingReview = { ...persistedBatch, state: 'awaiting_review' as const };
-  const published = { ...persistedBatch, state: 'published' as const };
   const decision = {
     decision: 'approved' as const,
     actorId: '1',
@@ -953,20 +952,23 @@ describe('batch review service', () => {
     reason: 'Validation report is acceptable.',
   };
 
-  test('allows a global administrator approval and resumes publication before responding', async () => {
+  test('returns publishing state after approval without running publication inside the review request', async () => {
     const applyReviewDecision = vi.fn().mockResolvedValue({
       batch: { ...awaitingReview, state: 'publishing' },
       review: decision,
       resumePublication: true,
     });
-    const publishAcceptedItems = vi.fn().mockResolvedValue({
-      published: 3,
-      duplicateSkipped: 0,
-      conflicts: 0,
-    });
+
+    const publishAcceptedItems = vi
+      .fn()
+      .mockRejectedValue(new Error('Publication must not run inside the reviewer HTTP request.'));
+
     const batches = repository({
       findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
-      findBatchById: vi.fn().mockResolvedValue(published),
+      findBatchById: vi.fn().mockResolvedValue({
+        ...awaitingReview,
+        state: 'publishing',
+      }),
       applyReviewDecision,
       publishAcceptedItems,
       getLatestReviewDecision: vi.fn().mockResolvedValue(decision),
@@ -984,8 +986,15 @@ describe('batch review service', () => {
       decision: 'approved',
       reason: decision.reason,
     });
-    expect(publishAcceptedItems).toHaveBeenCalledWith(awaitingReview.batchId, 'reviewer:1');
-    expect(response.data).toMatchObject({ status: 'published', review: { decision: 'approved' } });
+
+    expect(publishAcceptedItems).not.toHaveBeenCalled();
+
+    expect(response.data).toMatchObject({
+      status: 'publishing',
+      review: {
+        decision: 'approved',
+      },
+    });
   });
 
   test.each(['rejected', 'returned_for_correction'] as const)(
