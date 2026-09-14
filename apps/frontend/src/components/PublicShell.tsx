@@ -107,6 +107,9 @@ export function PublicShell({ children }: PublicShellProps) {
       <footer className="site-footer">
         <div className="site-footer__inner">
           <BrandWordmark />
+          <nav aria-label="Site" className="site-footer__navigation">
+            <a href="https://sports-analytics-tool.pages.dev/api/overview/">API</a>
+          </nav>
           <p>The game, measured ball by ball.</p>
         </div>
       </footer>

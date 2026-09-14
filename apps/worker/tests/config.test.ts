@@ -9,6 +9,10 @@ const validEnvironment = {
   SERVICE_BUS_QUEUE_NAME: 'batch-ingestion',
   AZURE_STORAGE_ACCOUNT_NAME: 'statsstorage',
   AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+  AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+  OBJECT_STORAGE_PROVIDER: 'azure',
+  WORKER_TRANSPORT_PROVIDER: 'azure-service-bus',
+  DEPLOYMENT_ENVIRONMENT: 'test',
 };
 
 describe('worker environment', () => {
@@ -45,8 +49,23 @@ describe('worker environment', () => {
       loadWorkerEnvironment({
         ...validEnvironment,
         NODE_ENV: 'production',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
         DATABASE_SSL_MODE: 'disable',
       }),
     ).toThrow(/Production database connections must use verify-full TLS/);
+  });
+
+  it('refuses local transport and filesystem storage in production', () => {
+    expect(() =>
+      loadWorkerEnvironment({
+        ...validEnvironment,
+        NODE_ENV: 'production',
+        DATABASE_SSL_MODE: 'verify-full',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
+        WORKER_TRANSPORT_PROVIDER: 'database',
+        OBJECT_STORAGE_PROVIDER: 'filesystem',
+        OBJECT_STORAGE_FILESYSTEM_ROOT: '../../.local/object-storage',
+      }),
+    ).toThrow(/Production worker transport must be azure-service-bus/);
   });
 });

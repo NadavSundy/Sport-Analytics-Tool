@@ -18,23 +18,26 @@ Development deployment
 
 ## Environment Variables
 
-| Variable                       | Current status              | Description                                                                 |
-| ------------------------------ | --------------------------- | --------------------------------------------------------------------------- |
-| `NODE_ENV`                     | Used                        | Set to `production` for the deployed runtime.                               |
-| `PORT`                         | Platform-provided/defaulted | HTTP listen port.                                                           |
-| `CORS_ORIGINS`                 | Used                        | Comma-separated allowed browser origins; include the deployed frontend URL. |
-| `SUPABASE_URL`                 | Used                        | Supabase Auth project URL.                                                  |
-| `SUPABASE_PUBLISHABLE_KEY`     | Used                        | Supabase publishable key used for backend token verification.               |
-| `SUPABASE_SECRET_KEY`          | Required for issue #66      | Server-only Supabase key used by Auth Admin account deletion.               |
-| `DATABASE_URL`                 | Used                        | PostgreSQL session-pooler connection string.                                |
-| `AZURE_STORAGE_ACCOUNT_NAME`   | Required in production      | Non-secret Blob account name; `statsthegameblobdev` in development.         |
-| `AZURE_STORAGE_CONTAINER_NAME` | Required in production      | Non-secret private container name; `staged-ingestion` in development.       |
+| Variable                                 | Current status                  | Description                                                                 |
+| ---------------------------------------- | ------------------------------- | --------------------------------------------------------------------------- |
+| `NODE_ENV`                               | Used                            | Set to `production` for the deployed runtime.                               |
+| `PORT`                                   | Platform-provided/defaulted     | HTTP listen port.                                                           |
+| `CORS_ORIGINS`                           | Used                            | Comma-separated allowed browser origins; include the deployed frontend URL. |
+| `SUPABASE_URL`                           | Used                            | Supabase Auth project URL.                                                  |
+| `SUPABASE_PUBLISHABLE_KEY`               | Used                            | Supabase publishable key used for backend token verification.               |
+| `SUPABASE_SECRET_KEY`                    | Required for issue #66          | Server-only Supabase key used by Auth Admin account deletion.               |
+| `DATABASE_URL`                           | Used                            | PostgreSQL session-pooler connection string.                                |
+| `AZURE_STORAGE_ACCOUNT_NAME`             | Required in production          | Non-secret Blob account name; `statsthegameblobdev` in development.         |
+| `AZURE_STORAGE_CONTAINER_NAME`           | Required in production          | Non-secret private container name; `staged-ingestion` in development.       |
+| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Preferred; old name is an alias | Private staged-ingestion container.                                         |
+| `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Required in production          | Separate private `dataset-releases` container.                              |
+| `DEPLOYMENT_ENVIRONMENT`                 | Required in production          | Stable namespace, currently `dev`, shared with the worker.                  |
 
 ## Approved Intermediate service boundary
 
 Batch ingestion will keep the Express API on Azure App Service. The API will stream source bytes to
 private Azure Blob Storage and commit batch/job metadata through PostgreSQL. A transactional outbox
-relay will deliver job identifiers to Azure Service Bus Standard, and a separately deployed Node.js
+relay will deliver batch-validation and dataset-release job identifiers to Azure Service Bus Standard, and a separately deployed Node.js
 worker in Azure Container Apps will process them.
 
 The API uses `DefaultAzureCredential` and the App Service managed identity for Blob Storage. Blob

@@ -3,16 +3,30 @@ import { expect, test } from '@playwright/test';
 
 const authStorageKey = 'sb-e2e-auth-token';
 const release = {
-  releaseId: '01234567-89ab-cdef-0123-456789abcdef',
-  version: '2026.09.2',
-  createdAt: '2026-09-10T10:00:00.000Z',
+  releaseId: 'ba756ad4-4b1e-4b80-81f2-09a66ed6c854',
+  version: '2026.09.14v1',
+  createdAt: '2026-09-14T10:18:37.161Z',
   formatVersion: '1.0',
   scope: 'published-accepted-deliveries',
-  eventCount: 1234,
-  checksum: 'a'.repeat(64),
+  eventCount: 3207110,
+  checksum: '46af530f0320361aec114769cb54cefd6bf4acd3fc8610c1567c3b7656d1fe25',
   fields: [
     { name: 'eventId', description: 'Stable identifier of the accepted delivery revision.' },
   ],
+};
+const job = {
+  jobId: '11111111-1111-4111-8111-111111111111',
+  version: release.version,
+  status: 'pending',
+  eventsProcessed: 0,
+  bytesWritten: 0,
+  pageNumber: 0,
+  createdAt: release.createdAt,
+  startedAt: null,
+  completedAt: null,
+  failureCode: null,
+  failureMessage: null,
+  release: null,
 };
 
 test.beforeEach(async ({ page }) => {
@@ -56,6 +70,7 @@ test('administrator publishes a snapshot that appears in the public catalogue @m
   page,
 }) => {
   let releaseRequests = 0;
+  let jobRequests = 0;
 
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
@@ -79,9 +94,29 @@ test('administrator publishes a snapshot that appears in the public catalogue @m
     expect(route.request().headers().authorization).toContain('Bearer ');
     expect(route.request().postDataJSON()).toEqual({ version: release.version });
     await route.fulfill({
-      status: 201,
+      status: 202,
       contentType: 'application/json',
-      body: JSON.stringify({ data: release }),
+      body: JSON.stringify({ data: job }),
+    });
+  });
+  await page.route(`**/api/v1/admin/dataset-release-jobs/${job.jobId}`, async (route) => {
+    jobRequests += 1;
+    const generating = jobRequests === 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          ...job,
+          status: generating ? 'generating' : 'completed',
+          eventsProcessed: generating ? 10000 : release.eventCount,
+          bytesWritten: generating ? 42000 : 123456,
+          pageNumber: 1,
+          startedAt: release.createdAt,
+          completedAt: generating ? null : release.createdAt,
+          release: generating ? null : release,
+        },
+      }),
     });
   });
   await page.route('**/api/v1/dataset-releases', async (route) => {
@@ -98,15 +133,18 @@ test('administrator publishes a snapshot that appears in the public catalogue @m
   await publishLink.click();
 
   await expect(page.getByRole('heading', { name: 'Publish dataset release' })).toBeVisible();
-  await expect(page.getByText(/immediately creates an immutable snapshot/i)).toBeVisible();
+  await expect(page.getByText(/queues generation outside this page/i)).toBeVisible();
   await page.getByRole('textbox', { name: 'Release version' }).fill(release.version);
   await page.getByRole('button', { name: 'Generate and publish snapshot' }).click();
 
   const status = page.getByRole('status');
   await expect(status.getByRole('heading', { name: `Dataset ${release.version}` })).toBeVisible();
+  await expect(status.getByText('10 000')).toBeVisible();
   expect(releaseRequests).toBe(1);
-  await status.getByRole('link', { name: 'Browse release catalogue' }).click();
+  await status.getByRole('link', { name: 'Browse release catalogue' }).click({ timeout: 4000 });
   await expect(page.getByRole('link', { name: `Dataset ${release.version}` })).toBeVisible();
+  await expect(page.getByText('3 207 110')).toBeVisible();
+  await expect(page.getByText(/unexpected response/i)).toHaveCount(0);
 
   expect(
     await page.evaluate(

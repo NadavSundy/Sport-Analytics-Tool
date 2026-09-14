@@ -16,28 +16,50 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 
 ## Backend application runtime
 
-| Variable                       | Required by current code                | Secret | Purpose                                                            |
-| ------------------------------ | --------------------------------------- | ------ | ------------------------------------------------------------------ |
-| `NODE_ENV`                     | No; defaults to `development`           | No     | Runtime mode: `development`, `test` or `production`.               |
-| `PORT`                         | No; defaults to `3000`                  | No     | Backend HTTP port. Hosting platforms may provide it.               |
-| `CORS_ORIGINS`                 | No; defaults to `http://localhost:5173` | No     | Comma-separated list of allowed browser origins.                   |
-| `SUPABASE_URL`                 | Yes                                     | No     | Supabase Auth project URL used for token verification.             |
-| `SUPABASE_PUBLISHABLE_KEY`     | Yes                                     | No     | Publishable key used for backend `getUser()` verification.         |
-| `SUPABASE_SECRET_KEY`          | No; required to enable account deletion | Yes    | Server-only key used by Supabase Auth Admin deletion.              |
-| `DATABASE_URL`                 | Required when database access is used   | Yes    | Hosted PostgreSQL session-pooler connection string.                |
-| `AZURE_STORAGE_ACCOUNT_NAME`   | Required when `NODE_ENV=production`     | No     | Azure account used to derive the HTTPS Blob endpoint.              |
-| `AZURE_STORAGE_CONTAINER_NAME` | Required when `NODE_ENV=production`     | No     | Private Blob container resolved by production storage composition. |
+| Variable                                 | Required by current code                            | Secret | Purpose                                                                                      |
+| ---------------------------------------- | --------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                               | No; defaults to `development`                       | No     | Runtime mode: `development`, `test` or `production`.                                         |
+| `PORT`                                   | No; defaults to `3000`                              | No     | Backend HTTP port. Hosting platforms may provide it.                                         |
+| `CORS_ORIGINS`                           | No; defaults to `http://localhost:5173`             | No     | Comma-separated list of allowed browser origins.                                             |
+| `SUPABASE_URL`                           | Yes                                                 | No     | Supabase Auth project URL used for token verification.                                       |
+| `SUPABASE_PUBLISHABLE_KEY`               | Yes                                                 | No     | Publishable key used for backend `getUser()` verification.                                   |
+| `SUPABASE_SECRET_KEY`                    | No; required to enable account deletion             | Yes    | Server-only key used by Supabase Auth Admin deletion.                                        |
+| `DATABASE_URL`                           | Required when database access is used               | Yes    | Hosted PostgreSQL session-pooler connection string.                                          |
+| `OBJECT_STORAGE_PROVIDER`                | Required in production; explicit for local releases | No     | `filesystem` for local development or `azure` for deployed production.                       |
+| `DEPLOYMENT_ENVIRONMENT`                 | Required as non-`local` in production               | No     | Release namespace such as `local` or `dev`; prevents cross-environment artifact references.  |
+| `OBJECT_STORAGE_FILESYSTEM_ROOT`         | Required when provider is `filesystem`              | No     | Local private-object root; the example resolves to repository-local `.local/object-storage`. |
+| `AZURE_STORAGE_ACCOUNT_NAME`             | Required when provider is `azure`                   | No     | Azure account used to derive the HTTPS Blob endpoint.                                        |
+| `AZURE_STORAGE_CONTAINER_NAME`           | Compatibility alias for the ingestion container     | No     | Existing staged-ingestion setting; remains supported unchanged.                              |
+| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Preferred when provider is `azure`                  | No     | Private staged-ingestion container.                                                          |
+| `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Required when provider is `azure`                   | No     | Separate private immutable-release container.                                                |
 
-Production Blob authentication uses `DefaultAzureCredential` with the Azure App Service managed
-identity. Azure Storage connection strings, account keys, SAS tokens, and shared-key credentials
-are not supported application configuration.
+The committed backend example selects `filesystem` and
+`OBJECT_STORAGE_FILESYSTEM_ROOT=../../.local/object-storage` for development. npm workspace commands
+run the backend from `apps/backend`, so this path resolves to `.local/object-storage` at the
+repository root. Generated objects remain private application files, expose no provider URL and are
+ignored by Git.
+
+Local development should use a development database and `DEPLOYMENT_ENVIRONMENT=local`; deployed
+services should use their deployment database and a shared non-local value such as `dev`. The
+namespace prevents a local filesystem-backed release from shadowing a deployed Azure release if a
+database is accidentally shared. It is a safety guard, not a recommendation to share production
+data with local processes.
+
+Production must explicitly set `OBJECT_STORAGE_PROVIDER=azure`, a non-local
+`DEPLOYMENT_ENVIRONMENT`, and both logical containers; a missing provider or `filesystem`
+selection fails configuration rather than falling back to the local disk. Blob authentication uses
+`DefaultAzureCredential` with the Azure App Service managed identity. Azure Storage connection
+strings, account keys, SAS tokens, and shared-key credentials are not supported application
+configuration.
 
 ## Asynchronous worker runtime
 
 The independently deployed worker reads its complete validated configuration from
-`apps/worker/.env.example`. Its required server-side settings are `DATABASE_URL`,
+`apps/worker/.env.example`. Local development selects `WORKER_TRANSPORT_PROVIDER=database` and the
+filesystem provider, so it requires no Azure resources. Its required production settings are `DATABASE_URL`,
 `SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE`, `SERVICE_BUS_QUEUE_NAME`,
-`AZURE_STORAGE_ACCOUNT_NAME` and `AZURE_STORAGE_CONTAINER_NAME`. Production also sets
+`AZURE_STORAGE_ACCOUNT_NAME`, `AZURE_STORAGE_INGESTION_CONTAINER_NAME` and
+`AZURE_STORAGE_RELEASE_CONTAINER_NAME`. Production also sets
 `DATABASE_SSL_MODE=verify-full` and `AZURE_CLIENT_ID` for its user-assigned managed identity.
 Concurrency, health intervals, lock renewal and shutdown drain time are bounded by the worker
 schema. `WORKER_PROBE_DELAY_MS` exists only for deliberate recovery testing and remains zero in the
@@ -88,3 +110,5 @@ The non-secret Azure Blob identifiers and managed-identity requirement were docu
 assistance of Codex[GPT-5].
 The asynchronous worker configuration and secret boundary were documented with the assistance of
 Codex[GPT-5].
+The explicit local-filesystem and production-Azure provider configuration was documented with the
+assistance of Codex[GPT-5].

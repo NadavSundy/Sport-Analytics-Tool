@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { Readable } from 'node:stream';
 import { describe, expect, test, vi } from 'vitest';
 
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
@@ -20,10 +21,27 @@ const release = {
 
 function service(): DatasetReleaseService {
   return {
-    createRelease: vi.fn(async () => release),
+    requestRelease: vi.fn(async () => ({
+      release: null,
+      job: {
+        jobId: '11111111-1111-4111-8111-111111111111',
+        version: release.version,
+        status: 'pending',
+        eventsProcessed: 0,
+        bytesWritten: 0,
+        pageNumber: 0,
+        createdAt: release.createdAt,
+        startedAt: null,
+        completedAt: null,
+        failureCode: null,
+        failureMessage: null,
+        release: null,
+      },
+    })),
+    getJob: vi.fn(async () => null),
     listReleases: vi.fn(async () => [release]),
     getRelease: vi.fn(async () => release),
-    getArtifact: vi.fn(async () => '{"formatVersion":"1.0"}'),
+    getArtifact: vi.fn(async () => Readable.from('{"formatVersion":"1.0"}')),
   };
 }
 
@@ -54,9 +72,9 @@ describe('dataset release API', () => {
       .post('/api/v1/admin/dataset-releases')
       .set('Authorization', 'Bearer test')
       .send({ version: '2026.09.1' })
-      .expect(201);
-    expect(created.body.data).toEqual(release);
-    expect(releases.createRelease).toHaveBeenCalledWith({ version: '2026.09.1' });
+      .expect(202);
+    expect(created.body.data).toMatchObject({ version: release.version, status: 'pending' });
+    expect(releases.requestRelease).toHaveBeenCalledWith({ version: '2026.09.1' }, '1');
 
     await request(app)
       .get('/api/v1/dataset-releases')
@@ -66,7 +84,68 @@ describe('dataset release API', () => {
       .get('/api/v1/dataset-releases/2026.09.1/artifact.json')
       .expect(200);
     expect(artifact.headers['content-type']).toContain('application/json');
+    expect(artifact.headers['content-disposition']).toContain(
+      'attachment; filename="dataset-release-2026.09.1.json"',
+    );
+    expect(artifact.headers['content-length']).toBeUndefined();
     expect(artifact.text).toBe('{"formatVersion":"1.0"}');
+  });
+
+  test('returns administrator-only generation progress', async () => {
+    const releases = service();
+    const queued = await releases.requestRelease({ version: release.version }, '1');
+    vi.mocked(releases.getJob).mockResolvedValue(queued.job);
+    const app = createTestApp(
+      undefined,
+      undefined,
+      administrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      releases,
+    );
+    await request(app)
+      .get('/api/v1/admin/dataset-release-jobs/11111111-1111-4111-8111-111111111111')
+      .set('Authorization', 'Bearer test')
+      .expect(200, { data: queued.job });
+    await request(app)
+      .get('/api/v1/admin/dataset-release-jobs/11111111-1111-4111-8111-111111111111')
+      .expect(401);
+  });
+
+  test('returns the existing immutable release without queueing another generation', async () => {
+    const releases = service();
+    vi.mocked(releases.requestRelease).mockResolvedValue({ release, job: null });
+    const app = createTestApp(
+      undefined,
+      undefined,
+      administrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      releases,
+    );
+    await request(app)
+      .post('/api/v1/admin/dataset-releases')
+      .set('Authorization', 'Bearer test')
+      .send({ version: release.version })
+      .expect(200, { data: release });
   });
 
   test('rejects invalid versions and requires an administrator to create a release', async () => {
@@ -133,5 +212,42 @@ describe('dataset release API', () => {
       .expect(404, {
         error: { code: 'NOT_FOUND', message: 'Dataset release artifact not found.' },
       });
+  });
+
+  test('returns a safe server error when publication fails without an unhandled rejection', async () => {
+    const releases = service();
+    vi.mocked(releases.requestRelease).mockRejectedValue(new Error('queue insertion interrupted'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const app = createTestApp(
+      undefined,
+      undefined,
+      administrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      releases,
+    );
+
+    await request(app)
+      .post('/api/v1/admin/dataset-releases')
+      .set('Authorization', 'Bearer test')
+      .send({ version: '2026.09.2' })
+      .expect(500, {
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected server error occurred.',
+        },
+      });
+
+    expect(consoleError).toHaveBeenCalledWith('queue insertion interrupted');
+    consoleError.mockRestore();
   });
 });

@@ -1,6 +1,11 @@
 import type { ErrorRequestHandler } from 'express';
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+  if (response.headersSent) {
+    _next(error);
+    return;
+  }
+
   if (
     typeof error === 'object' &&
     error !== null &&

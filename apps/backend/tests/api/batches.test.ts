@@ -657,6 +657,79 @@ describe('batch receipt API', () => {
       .expect(403);
   });
 
+  test('returns a generic error for an unexpected conflict-resolution failure and keeps 409 wording', async () => {
+    // #529: the deployed failure was a raw database error inside resolution. It must
+    // reach the reviewer as a generic 500 with no database or constraint detail,
+    // while a known conflict keeps its actionable 409 message.
+    const requestBody = {
+      itemOrdinal: 0,
+      existingDeliveryId: '2342246',
+      decision: 'use_existing' as const,
+      reason: 'The published delivery is the verified record.',
+    };
+    const app = (resolvePublishedConflict: BatchService['resolvePublishedConflict']) =>
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        service({ resolvePublishedConflict }),
+      );
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    try {
+      const failed = await request(
+        app(
+          vi
+            .fn<BatchService['resolvePublishedConflict']>()
+            .mockRejectedValue(
+              new Error('column "source_event_id" does not exist in delivery_current'),
+            ),
+        ),
+      )
+        .post(`/api/v1/batches/${reference}/conflicts/resolve`)
+        .set('Authorization', 'Bearer batch-token')
+        .send(requestBody)
+        .expect(500);
+      expect(failed.body).toEqual({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected server error occurred.',
+        },
+      });
+      expect(JSON.stringify(failed.body)).not.toMatch(/source_event_id|delivery_current|column/);
+
+      const conflicted = await request(
+        app(
+          vi
+            .fn<BatchService['resolvePublishedConflict']>()
+            .mockRejectedValue(
+              new BatchConflictError(
+                'The published conflict changed or is ambiguous. Refresh the report before deciding.',
+              ),
+            ),
+        ),
+      )
+        .post(`/api/v1/batches/${reference}/conflicts/resolve`)
+        .set('Authorization', 'Bearer batch-token')
+        .send(requestBody)
+        .expect(409);
+      expect(conflicted.body.error).toEqual({
+        code: 'BATCH_CONFLICT_RESOLUTION_CONFLICT',
+        message:
+          'The published conflict changed or is ambiguous. Refresh the report before deciding.',
+      });
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   test('restricts canonical fixture creation to administrators and routes a valid decision', async () => {
     const createCanonicalFixture = vi
       .fn<BatchService['createCanonicalFixture']>()

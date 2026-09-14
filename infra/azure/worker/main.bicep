@@ -22,6 +22,8 @@ param storageAccountName string
 
 @description('Existing private Blob container used for staged ingestion.')
 param storageContainerName string = 'staged-ingestion'
+@description('Existing private container for immutable dataset release artifacts.')
+param releaseStorageContainerName string = 'dataset-releases'
 
 @description('Existing Key Vault that stores the PostgreSQL connection string.')
 param keyVaultName string
@@ -221,6 +223,9 @@ resource worker 'Microsoft.App/containerApps@2025-02-02-preview' = if (deployWor
           image: containerImage
           env: [
             { name: 'NODE_ENV', value: 'production' }
+            { name: 'DEPLOYMENT_ENVIRONMENT', value: environmentName }
+            { name: 'WORKER_TRANSPORT_PROVIDER', value: 'azure-service-bus' }
+            { name: 'OBJECT_STORAGE_PROVIDER', value: 'azure' }
             { name: 'WORKER_PORT', value: '3001' }
             { name: 'WORKER_CONCURRENCY', value: '1' }
             { name: 'WORKER_SHUTDOWN_TIMEOUT_MS', value: '25000' }
@@ -238,6 +243,8 @@ resource worker 'Microsoft.App/containerApps@2025-02-02-preview' = if (deployWor
             { name: 'SERVICE_BUS_QUEUE_NAME', value: queue.name }
             { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: existingStorage.name }
             { name: 'AZURE_STORAGE_CONTAINER_NAME', value: storageContainerName }
+            { name: 'AZURE_STORAGE_INGESTION_CONTAINER_NAME', value: storageContainerName }
+            { name: 'AZURE_STORAGE_RELEASE_CONTAINER_NAME', value: releaseStorageContainerName }
           ]
           probes: [
             {

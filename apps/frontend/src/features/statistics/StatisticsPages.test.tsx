@@ -523,6 +523,54 @@ describe('public fixture statistics pages', () => {
     );
   });
 
+  // Issue #475 (P01-F12 / P02-F22): "Non-boundary: No" was shown on every delivery and
+  // neither participant could interpret it. The row now appears only on a delivery whose
+  // runs were run rather than hit to the boundary, and on no other delivery.
+  it('marks only the deliveries whose runs were run rather than hit to the boundary', async () => {
+    const [struck, run] = traceEvents(2);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (
+          url.endsWith('/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true')
+        ) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                ...inningsStatistic,
+                contributingEvents: [
+                  { ...struck, runs: { offBat: 4, extras: 0, total: 4 }, nonBoundary: false },
+                  { ...run, runs: { offBat: 4, extras: 0, total: 4 }, nonBoundary: true },
+                ],
+              },
+            }),
+          );
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+
+    const struckDelivery = (await screen.findByRole('heading', { name: 'Delivery 1' })).closest(
+      'li',
+    ) as HTMLElement;
+    const runDelivery = screen
+      .getByRole('heading', { name: 'Delivery 2' })
+      .closest('li') as HTMLElement;
+
+    expect(within(struckDelivery).queryByText('Boundary')).not.toBeInTheDocument();
+    expect(within(struckDelivery).queryByText(/not hit to the boundary/)).not.toBeInTheDocument();
+
+    const boundaryTerm = within(runDelivery).getByText('Boundary');
+    expect(boundaryTerm.tagName).toBe('DT');
+    expect(boundaryTerm.nextElementSibling).toHaveTextContent(
+      'No — the runs were run, not hit to the boundary',
+    );
+    expect(screen.queryByText('Non-boundary')).not.toBeInTheDocument();
+  });
+
   // Issue #467: the control exported a filtered slice read as one page of 100,
   // so a 125-event innings downloaded 100 rows while the trace showed 125, and
   // a player trace downloaded non-striker and fielding rows it did not show.
@@ -627,6 +675,55 @@ describe('public fixture statistics pages', () => {
       'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv',
     );
     expect(requestedUrls.some((url) => url.includes('participantId='))).toBe(false);
+    expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
+  });
+
+  // Issue #475 (P01-F24 / P02-F18): in Sprint 2 user testing neither participant could
+  // tell that a download had happened. The confirmation is asserted on the export
+  // section's own status region, so text elsewhere on the page cannot satisfy it, and
+  // it must be absent until the file has been produced.
+  it('confirms on screen that a completed CSV download produced a file', async () => {
+    let resolveCsv!: (value: unknown) => void;
+    const downloadedFilenames: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (
+          url.endsWith('/fixtures/fixture-1/statistics/stat-participant-1?includeContributors=true')
+        ) {
+          return Promise.resolve(
+            response(200, {
+              data: { ...participantStatistic, contributingEvents: traceEvents(6) },
+            }),
+          );
+        }
+        if (url.endsWith('/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv')) {
+          return new Promise((resolve) => {
+            resolveCsv = resolve;
+          });
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+    stubDownloads(downloadedFilenames);
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-participant-1');
+
+    const exportSection = (
+      await screen.findByRole('heading', { name: 'Export this trace' })
+    ).closest('section') as HTMLElement;
+    const status = within(exportSection).getByRole('status');
+    expect(status).toBeEmptyDOMElement();
+
+    fireEvent.click(within(exportSection).getByRole('button', { name: 'Download CSV' }));
+    await waitFor(() => expect(status).toHaveTextContent('Preparing the CSV export of 6 events…'));
+    expect(status).not.toHaveTextContent('downloaded');
+    expect(downloadedFilenames).toEqual([]);
+
+    resolveCsv(exportDownload('text/csv'));
+
+    await waitFor(() => expect(status).toHaveTextContent('CSV export of 6 events downloaded.'));
     expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
   });
 

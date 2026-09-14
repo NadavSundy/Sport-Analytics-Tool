@@ -2765,6 +2765,26 @@ h3 {
   font-size: 0.875rem;
 }
 
+.site-footer__navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.site-footer__navigation a {
+  padding: 0.75rem 0.625rem;
+  border-radius: 6px;
+  color: var(--colour-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.site-footer__navigation a:hover {
+  color: var(--colour-text);
+  text-decoration: underline;
+}
+
 .browse-page {
   min-height: 38rem;
   padding-bottom: 5rem;
