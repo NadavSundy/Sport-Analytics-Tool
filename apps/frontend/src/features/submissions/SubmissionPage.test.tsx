@@ -949,7 +949,9 @@ describe('role-gated event submission page', () => {
       }
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
-        return Promise.resolve(response(200, { data: { competitionId: '5', name: 'Premier T20' } }));
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+        );
       }
       throw new Error(`Unexpected request: ${url}`);
     });
