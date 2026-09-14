@@ -93,23 +93,25 @@ function shippedTemplateWithReadableNames(fileName: string): string {
 }
 
 describe('shipped guided templates (#500)', () => {
+  // The JSON template's second event demonstrates a caught dismissal (#536); the CSV
+  // template's example row leaves its dismissal columns blank.
   it.each([
-    ['season-upload-template.csv', 'text/csv'],
-    ['season-upload-template.json', 'application/json'],
+    ['season-upload-template.csv', 'text/csv', 1, 0],
+    ['season-upload-template.json', 'application/json', 2, 1],
   ])(
     'expands %s with only readable names filled in and carries no reference identifier',
-    async (fileName, mediaType) => {
+    async (fileName, mediaType, eventCount, wicketCount) => {
       const source = shippedTemplateWithReadableNames(fileName);
 
       const scan = await scanBatchReferences(async () => Readable.from(source), mediaType);
       expect(scan.fatal).toBe(false);
       expect(scan.sourceFaults).toEqual([]);
-      expect(scan.eventCount).toBe(1);
+      expect(scan.eventCount).toBe(eventCount);
 
       const { referencePackage } = await referenceChunkFor(source, mediaType);
       const fixture = referencePackage?.fixtures[0];
       const innings = fixture?.innings[0];
-      const event = innings?.events[0];
+      const events = innings?.events ?? [];
 
       // Competition, fixture, innings and participants must reach the resolver as
       // readable context alone. A placeholder identifier would be preferred over
@@ -122,11 +124,169 @@ describe('shipped guided templates (#500)', () => {
         { context: { name: 'Strikers' } },
       ]);
       expect(innings?.sourceId).toBeUndefined();
-      for (const role of ['striker', 'nonStriker', 'bowler'] as const) {
-        expect(event?.[role].sourceId).toBeUndefined();
+      expect(events).toHaveLength(eventCount);
+      expect(events.flatMap((event) => event.wickets)).toHaveLength(wicketCount);
+      for (const event of events) {
+        for (const role of ['striker', 'nonStriker', 'bowler'] as const) {
+          expect(event[role].sourceId).toBeUndefined();
+        }
+        for (const wicket of event.wickets) {
+          expect(wicket.playerOut.sourceId).toBeUndefined();
+          for (const fielder of wicket.fielders) {
+            expect(fielder.participant?.sourceId).toBeUndefined();
+          }
+        }
       }
     },
   );
+});
+
+/**
+ * The shipped CSV template's example row, with readable names filled in and the named
+ * columns set as a submitter recording a dismissal would complete them. Every column
+ * set must exist in the template header, so a template change cannot make a test vacuous.
+ */
+function shippedCsvTemplateWith(values: Record<string, string>): string {
+  const [headerLine = '', rowLine = ''] = shippedTemplateWithReadableNames(
+    'season-upload-template.csv',
+  ).split(/\r?\n/);
+  const columns = headerLine.split(',');
+  const cells = rowLine.split(',');
+  expect(cells).toHaveLength(columns.length);
+  for (const [column, value] of Object.entries(values)) {
+    const index = columns.indexOf(column);
+    expect(index, `template column ${column}`).toBeGreaterThanOrEqual(0);
+    cells[index] = value;
+  }
+  return `${headerLine}\n${cells.join(',')}\n`;
+}
+
+async function normalisedCsvEvents(source: string) {
+  const events = [];
+  for await (const candidate of normalisedBatchCandidates(
+    async () => Readable.from(source),
+    'text/csv',
+  )) {
+    events.push(candidate.event);
+  }
+  return events;
+}
+
+describe('CSV dismissal columns (#536)', () => {
+  it('carries a dismissal and its fielder from a template-shaped row', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'caught',
+      playerOutName: 'A. Batter',
+      fielder1Name: 'D. Fielder',
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([]);
+    const events = await normalisedCsvEvents(source);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.wickets).toEqual([
+      {
+        kind: 'caught',
+        playerOut: { context: { name: 'A. Batter' } },
+        fielders: [{ participant: { context: { name: 'D. Fielder' } }, substitute: false }],
+      },
+    ]);
+  });
+
+  it('produces no wicket when wicketKind is blank', async () => {
+    const source = shippedCsvTemplateWith({ wicketKind: '' });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([]);
+    const events = await normalisedCsvEvents(source);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.wickets).toEqual([]);
+  });
+
+  // A submitter who records a dismissal but forgets its kind is told, rather than the
+  // delivery quietly losing its wicket.
+  it.each([
+    ['playerOutSourceId', 'my-club:participant:dismissed-batter'],
+    ['playerOutName', 'A. Batter'],
+    ['fielder1SourceId', 'my-club:participant:fielder'],
+    ['fielder1Name', 'D. Fielder'],
+    ['fielder1Substitute', 'false'],
+    ['fielder2SourceId', 'my-club:participant:fielder'],
+    ['fielder2Name', 'D. Fielder'],
+    ['fielder2Substitute', 'true'],
+    ['fielder3SourceId', 'my-club:participant:fielder'],
+    ['fielder3Name', 'D. Fielder'],
+    ['fielder3Substitute', 'true'],
+  ])('reports %s filled in without a wicketKind instead of dropping it', async (column, value) => {
+    const source = shippedCsvTemplateWith({ wicketKind: '', [column]: value });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.eventCount).toBe(1);
+    expect(scan.sourceFaults).toEqual([
+      {
+        sourceOrdinal: 0,
+        ruleCode: 'CSV_WICKET_KIND_MISSING',
+        filePath: 'batch.csv',
+        rowNumber: 2,
+        fieldPath: 'wicketKind',
+        message: expect.stringContaining(column),
+        countsAsItem: true,
+      },
+    ]);
+    expect(await normalisedCsvEvents(source)).toEqual([]);
+  });
+
+  it('carries an unidentified substitute fielder who has no name', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'caught',
+      playerOutName: 'A. Batter',
+      fielder1Substitute: 'true',
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([]);
+    const events = await normalisedCsvEvents(source);
+    expect(events[0]?.wickets).toEqual([
+      {
+        kind: 'caught',
+        playerOut: { context: { name: 'A. Batter' } },
+        fielders: [{ substitute: true }],
+      },
+    ]);
+  });
+
+  it('moves filled fielder slots up past an empty slot', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'run out',
+      playerOutName: 'A. Batter',
+      fielder2Name: 'D. Fielder',
+      fielder3Name: 'E. Fielder',
+    });
+
+    const events = await normalisedCsvEvents(source);
+    expect(events[0]?.wickets[0]?.fielders).toEqual([
+      { participant: { context: { name: 'D. Fielder' } }, substitute: false },
+      { participant: { context: { name: 'E. Fielder' } }, substitute: false },
+    ]);
+  });
+
+  it('rejects a substitute value other than true or false instead of guessing', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'caught',
+      playerOutName: 'A. Batter',
+      fielder1Name: 'D. Fielder',
+      fielder1Substitute: 'yes',
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([
+      expect.objectContaining({
+        ruleCode: 'PACKAGE_ITEM_INVALID',
+        fieldPath: 'fixtures.0.innings.0.events.0.wickets.0.fielders.0.substitute',
+      }),
+    ]);
+    expect(await normalisedCsvEvents(source)).toEqual([]);
+  });
 });
 
 describe('batch package streaming expansion', () => {

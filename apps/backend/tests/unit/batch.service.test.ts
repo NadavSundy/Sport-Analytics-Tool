@@ -190,7 +190,7 @@ describe('batch receipt service', () => {
         metadata,
         Readable.from('payload'),
       ),
-    ).rejects.toBeInstanceOf(BatchConflictError);
+    ).rejects.toThrow('The submitter already has three active batches.');
   });
 
   test('returns the existing batch only when the idempotency key has the same checksum', async () => {
@@ -399,6 +399,109 @@ describe('batch result reporting service', () => {
       existingSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
       correctionPermitted: true,
     });
+  });
+
+  test('returns approval blockers independently of the bounded ordinary report page', async () => {
+    const ordinaryItem = {
+      batchItemId: '41',
+      ordinal: 0,
+      inningsId: '8',
+      overNumber: 1,
+      positionInOver: 1,
+      sourceIdentity: 'event-1',
+      sourceLocation: { filePath: 'season.csv', rowNumber: 2 },
+      referenceResolutionState: 'resolved' as const,
+      resolvedReferences: {},
+      state: 'accepted' as const,
+      rejectionCode: null,
+      publishedEventId: null,
+      operation: 'upsert' as const,
+      correctsSourceIdentity: null,
+      correctionTargetDeliveryId: null,
+      errors: [],
+    };
+    const laterBlocker = {
+      ...ordinaryItem,
+      batchItemId: '99',
+      ordinal: 99,
+      inningsId: null,
+      sourceIdentity: 'event-100',
+      referenceResolutionState: 'unresolved' as const,
+      resolvedReferences: {
+        fixture: {
+          referencePath: 'fixture',
+          entityType: 'fixture',
+          state: 'unresolved',
+          submittedReference: 'Unknown fixture',
+          candidates: [],
+          reason: 'No fixture matches.',
+        },
+      },
+      state: 'rejected' as const,
+      rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+    };
+    const laterConflict = {
+      ...ordinaryItem,
+      batchItemId: '100',
+      ordinal: 100,
+      state: 'rejected' as const,
+      rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+      rejectionDetail: {
+        existingDeliveryId: '88',
+        differences: [{ fieldPath: 'runs.batter', submittedValue: 4, publishedValue: 1 }],
+      },
+      publishedConflictSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
+    };
+    const listBatchReportItems = vi
+      .fn()
+      .mockImplementation(
+        (_batchId: string, options: { acceptedOnly?: boolean; blockingOnly?: boolean }) => {
+          if (options.blockingOnly) return Promise.resolve([laterBlocker, laterConflict]);
+          if (options.acceptedOnly) return Promise.resolve([ordinaryItem]);
+          return Promise.resolve([ordinaryItem]);
+        },
+      );
+    const batches = repository({
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, state: 'awaiting_review' }),
+      listBatchReportItems,
+      getBatchProgress: vi
+        .fn()
+        .mockResolvedValue({ total: 100, processed: 100, accepted: 99, rejected: 1 }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        accepted: 99,
+        rejected: 1,
+        unresolved: 1,
+        duplicate: 0,
+        conflicting: 0,
+      }),
+      getBatchResolutionCounts: vi.fn().mockResolvedValue({
+        resolved: 99,
+        ambiguous: 0,
+        unresolved: 1,
+        invalid: 0,
+        proposed: 0,
+      }),
+    });
+
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getReport(
+      createTestAccount({ role: 'admin' }),
+      persistedBatch.batchReference,
+      { limit: 1 },
+    );
+
+    expect(response.data.items.map((item) => item.ordinal)).toEqual([0]);
+    expect(response.data.blockingItems).toMatchObject([
+      { ordinal: 99, outcome: 'unresolved', referenceResolutions: [{ state: 'unresolved' }] },
+      {
+        ordinal: 100,
+        outcome: 'conflicting',
+        publishedConflict: { existingDeliveryId: '88', correctionPermitted: true },
+      },
+    ]);
+    expect(listBatchReportItems).toHaveBeenCalledWith('20', { limit: 2 });
+    expect(listBatchReportItems).toHaveBeenCalledWith('20', { blockingOnly: true, limit: 50_001 });
   });
 
   test('reports ordinary rejected records without blocking approval of the accepted subset', async () => {

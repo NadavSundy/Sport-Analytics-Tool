@@ -768,6 +768,137 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('does not count failed batches against the submitter active-batch limit', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      await Promise.all([
+        repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-failed-limit-publishing`,
+          state: 'publishing',
+        }),
+        repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-failed-limit-first`,
+          state: 'failed',
+        }),
+        repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-failed-limit-second`,
+          state: 'failed',
+        }),
+      ]);
+
+      await expect(repository.countNonTerminalBatches(current.accountId)).resolves.toBe(1);
+      const receipt = await repository.createOrFindBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-failed-limit-new`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'stored',
+      });
+
+      expect(receipt).toMatchObject({ created: true, activeLimitReached: false });
+      expect(receipt.batch).not.toBeNull();
+      await expect(repository.countNonTerminalBatches(current.accountId)).resolves.toBe(2);
+      await expect(
+        client.query(
+          `SELECT count(*)::text AS count
+           FROM background_job
+           WHERE batch_id = $1::bigint AND job_type = 'batch.validate'`,
+          [receipt.batch!.batchId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ count: '1' }] });
+    });
+  });
+
+  test('blocks a fourth active batch without creating batch or validation work', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      for (const suffix of ['first', 'second', 'third']) {
+        await repository.createBatchAndQueueValidation({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-active-limit-${suffix}`,
+          source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+          state: 'stored',
+        });
+      }
+
+      const idempotencyKey = `${sourcePrefix}-active-limit-blocked`;
+      await expect(repository.countNonTerminalBatches(current.accountId)).resolves.toBe(3);
+      await expect(
+        repository.createOrFindBatchAndQueueValidation({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey,
+          source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+          state: 'stored',
+        }),
+      ).resolves.toEqual({ batch: null, created: false, activeLimitReached: true });
+      await expect(
+        client.query(`SELECT count(*)::text AS count FROM batch WHERE idempotency_key = $1`, [
+          idempotencyKey,
+        ]),
+      ).resolves.toMatchObject({ rows: [{ count: '0' }] });
+      await expect(
+        client.query(`SELECT count(*)::text AS count FROM background_job`),
+      ).resolves.toMatchObject({ rows: [{ count: '3' }] });
+    });
+  });
+
+  test('replays an existing idempotency receipt without duplicate validation work at the active limit', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const input = {
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-active-limit-replay`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'stored' as const,
+      };
+      const first = await repository.createOrFindBatchAndQueueValidation(input);
+
+      for (const suffix of ['second', 'third']) {
+        await repository.createBatchAndQueueValidation({
+          ...input,
+          batchReference: randomUUID(),
+          idempotencyKey: `${sourcePrefix}-active-limit-replay-${suffix}`,
+        });
+      }
+
+      await expect(repository.countNonTerminalBatches(current.accountId)).resolves.toBe(3);
+      await expect(
+        repository.createOrFindBatchAndQueueValidation({ ...input, batchReference: randomUUID() }),
+      ).resolves.toMatchObject({
+        batch: { batchId: first.batch!.batchId, batchReference: first.batch!.batchReference },
+        created: false,
+        activeLimitReached: false,
+      });
+      await expect(
+        client.query(
+          `SELECT count(*)::text AS count FROM background_job WHERE batch_id = $1::bigint`,
+          [first.batch!.batchId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ count: '1' }] });
+    });
+  });
+
   test('publishes only the accepted subset of a mixed batch and makes replay a no-op', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
@@ -2640,6 +2771,22 @@ describe.sequential('batch repository database integration', () => {
           state: 'rejected',
           rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
         },
+        {
+          ordinal: 2,
+          inningsId: current.inningsId,
+          overNumber: 1,
+          positionInOver: 3,
+          payload: {},
+          sourceIdentity: `${sourcePrefix}-conflict`,
+          sourceLocation: { filePath: 'events.csv', rowNumber: 4 },
+          referenceResolutionState: 'resolved',
+          state: 'rejected',
+          rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+          rejectionDetail: {
+            existingDeliveryId: current.deliveryId,
+            differences: [{ fieldPath: 'runs.batter', submittedValue: 4, publishedValue: 1 }],
+          },
+        },
       ]);
       await repository.recordValidationResult({
         batchId: batch.batchId,
@@ -2654,18 +2801,18 @@ describe.sequential('batch repository database integration', () => {
         message: 'The striker reference is unknown.',
       });
 
-      await expect(repository.getBatchCounts(batch.batchId)).resolves.toEqual({
-        accepted: 1,
-        rejected: 1,
+      await expect(repository.getBatchResolutionCounts(batch.batchId)).resolves.toEqual({
+        resolved: 2,
+        ambiguous: 0,
         unresolved: 1,
-        duplicate: 0,
-        conflicting: 0,
+        invalid: 0,
+        proposed: 0,
       });
       await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
         { ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 },
       ]);
       await expect(repository.getBatchResolutionCounts(batch.batchId)).resolves.toEqual({
-        resolved: 1,
+        resolved: 2,
         ambiguous: 0,
         unresolved: 1,
         invalid: 0,
@@ -2677,8 +2824,9 @@ describe.sequential('batch repository database integration', () => {
         expect.arrayContaining([
           expect.objectContaining({
             fixtureId: current.fixtureId,
-            total: 1,
+            total: 2,
             accepted: 1,
+            rejected: 1,
           }),
           expect.objectContaining({
             fixtureId: null,
@@ -2694,6 +2842,15 @@ describe.sequential('batch repository database integration', () => {
       });
       expect(firstPage).toHaveLength(1);
       expect(firstPage[0]).toMatchObject({ ordinal: 0, publishedEventId: current.deliveryId });
+      await expect(
+        repository.listBatchReportItems(batch.batchId, { blockingOnly: true, limit: 50_001 }),
+      ).resolves.toEqual([
+        expect.objectContaining({ ordinal: 1, referenceResolutionState: 'unresolved' }),
+        expect.objectContaining({
+          ordinal: 2,
+          rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+        }),
+      ]);
       await expect(
         repository.listBatchReportItems(batch.batchId, { acceptedOnly: true, limit: 15 }),
       ).resolves.toEqual([

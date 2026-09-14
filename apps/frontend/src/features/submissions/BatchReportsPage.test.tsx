@@ -123,6 +123,7 @@ function report(accepted: number, rejected: number): BatchReportResponse {
       },
       fixtureSummaries: [],
       acceptedSamples: [],
+      blockingItems: [],
       items: [] as BatchReportItem[],
       pagination: { nextCursor: null },
       downloadUrl: `/api/v1/batches/${reference}/report/download`,

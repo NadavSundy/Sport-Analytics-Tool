@@ -139,6 +139,7 @@ describe('batch reporting contracts', () => {
           },
         ],
         acceptedSamples: [],
+        blockingItems: [],
         items: [
           {
             ordinal: 1,
