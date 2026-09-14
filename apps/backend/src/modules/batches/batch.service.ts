@@ -534,12 +534,13 @@ export function createBatchService(
       if (cursor && cursor.batchReference !== reference) {
         throw new BatchInputError('The pagination cursor is invalid for this batch.');
       }
-      const [records, acceptedRecords] = await Promise.all([
+      const [records, acceptedRecords, blockingRecords] = await Promise.all([
         repository.listBatchReportItems(batch.batchId, {
           ...(cursor ? { afterOrdinal: cursor.ordinal } : {}),
           limit: query.limit + 1,
         }),
         repository.listBatchReportItems(batch.batchId, { acceptedOnly: true, limit: 15 }),
+        repository.listBatchReportItems(batch.batchId, { blockingOnly: true, limit: 50_001 }),
       ]);
       const page = records.slice(0, query.limit);
       const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
@@ -577,6 +578,9 @@ export function createBatchService(
             .filter((record) => reportOutcome(record) === 'accepted')
             .slice(0, 15)
             .map((record) => mapReportItem(record, reference, batch.competitionId)),
+          blockingItems: blockingRecords.map((record) =>
+            mapReportItem(record, reference, batch.competitionId),
+          ),
           items: page.map((record) => mapReportItem(record, reference, batch.competitionId)),
           pagination: {
             nextCursor:

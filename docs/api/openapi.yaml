@@ -5123,6 +5123,7 @@ components:
           reviewSummary,
           fixtureSummaries,
           acceptedSamples,
+          blockingItems,
           items,
           pagination,
           downloadUrl,
@@ -5135,6 +5136,10 @@ components:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
+        blockingItems:
+          type: array
+          description: Approval-blocking reference and conflict items selected independently of ordinary report pagination.
+          items: { $ref: '#/components/schemas/BatchReportItem' }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
         pagination: { $ref: '#/components/schemas/PaginationMetadata' }
         downloadUrl: { type: string, pattern: '^/api/v1/batches/' }

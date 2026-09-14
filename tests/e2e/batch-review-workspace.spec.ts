@@ -126,6 +126,7 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
         },
       ],
       acceptedSamples: [acceptedSample],
+      blockingItems: [],
       items: [
         {
           ordinal: 1,
@@ -293,104 +294,112 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
     lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
-  const report = () => ({
-    data: {
-      batch: batch(),
-      errorGroups: resolved ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
-      reviewSummary: {
-        validation: {
-          accepted: resolved ? 1 : 0,
-          rejected: resolved ? 0 : 1,
-          blockingErrors: resolved ? 0 : 1,
-          duplicate: 0,
-          conflicting: resolved ? 0 : 1,
-        },
-        resolution: { resolved: 1, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
-        approvalBlocked: !resolved,
-        blockingReasons: resolved
-          ? []
-          : ['Blocking validation errors remain.', 'Conflicting records remain.'],
-      },
-      fixtureSummaries: [
-        {
-          fixtureId: '22',
-          label: 'Lions vs Bears · 2026-09-01',
-          total: 1,
-          accepted: resolved ? 1 : 0,
-          rejected: resolved ? 0 : 1,
-          unresolved: 0,
-        },
-      ],
-      acceptedSamples: [],
-      items: [
-        {
-          ordinal: 0,
-          outcome: resolved ? 'accepted' : 'conflicting',
-          location: {
-            filePath: 'events.json',
-            sheetName: null,
-            rowNumber: null,
-            jsonPath: 'delivery',
-            ordinal: 0,
+  const report = () => {
+    const response = {
+      data: {
+        batch: batch(),
+        errorGroups: resolved ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
+        reviewSummary: {
+          validation: {
+            accepted: resolved ? 1 : 0,
+            rejected: resolved ? 0 : 1,
+            blockingErrors: resolved ? 0 : 1,
+            duplicate: 0,
+            conflicting: resolved ? 0 : 1,
           },
-          context: {
-            eventReference: 'cricsheet:delivery:fixture-1:0',
-            fixtureId: '22',
-            fixtureLabel: 'Lions vs Bears · 2026-09-01',
-            inningsId: '31',
-            overNumber: 1,
-            positionInOver: 1,
-            description: 'Event cricsheet:delivery:fixture-1:0 at over 1, delivery 1.',
-          },
-          stagedRecordId: '41',
-          acceptedRecordId: null,
-          operation: resolved ? 'correction' : 'upsert',
-          correctionTarget: resolved
-            ? {
-                sourceEventId: 'cricsheet:delivery:fixture-1:0',
-                resolvedDeliveryId: '88',
-              }
-            : null,
-          publishedConflict: resolved
-            ? null
-            : {
-                existingDeliveryId: '88',
-                existingSourceEventId: null,
-                correctionPermitted: true,
-                differences: [{ fieldPath: 'runs.offBat', submittedValue: 4, publishedValue: 0 }],
-              },
-          referenceResolutions: [],
-          errors: resolved
+          resolution: { resolved: 1, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
+          approvalBlocked: !resolved,
+          blockingReasons: resolved
             ? []
-            : [
-                {
-                  ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
-                  message:
-                    'A published delivery or published source identity exists with different cricket content.',
-                  location: {
-                    filePath: 'events.json',
-                    sheetName: null,
-                    rowNumber: null,
-                    jsonPath: 'delivery',
-                    ordinal: 0,
-                  },
-                  context: {
-                    eventReference: 'cricsheet:delivery:fixture-1:0',
-                    fixtureId: '22',
-                    fixtureLabel: 'Lions vs Bears · 2026-09-01',
-                    inningsId: '31',
-                    overNumber: 1,
-                    positionInOver: 1,
-                    description: 'Event cricsheet:delivery:fixture-1:0 at over 1, delivery 1.',
-                  },
-                },
-              ],
+            : ['Blocking validation errors remain.', 'Conflicting records remain.'],
         },
-      ],
-      pagination: { nextCursor: null },
-      downloadUrl: `/api/v1/batches/${reference}/report/download`,
-    },
-  });
+        fixtureSummaries: [
+          {
+            fixtureId: '22',
+            label: 'Lions vs Bears · 2026-09-01',
+            total: 1,
+            accepted: resolved ? 1 : 0,
+            rejected: resolved ? 0 : 1,
+            unresolved: 0,
+          },
+        ],
+        acceptedSamples: [],
+        items: [
+          {
+            ordinal: 0,
+            outcome: resolved ? 'accepted' : 'conflicting',
+            location: {
+              filePath: 'events.json',
+              sheetName: null,
+              rowNumber: null,
+              jsonPath: 'delivery',
+              ordinal: 0,
+            },
+            context: {
+              eventReference: 'cricsheet:delivery:fixture-1:0',
+              fixtureId: '22',
+              fixtureLabel: 'Lions vs Bears · 2026-09-01',
+              inningsId: '31',
+              overNumber: 1,
+              positionInOver: 1,
+              description: 'Event cricsheet:delivery:fixture-1:0 at over 1, delivery 1.',
+            },
+            stagedRecordId: '41',
+            acceptedRecordId: null,
+            operation: resolved ? 'correction' : 'upsert',
+            correctionTarget: resolved
+              ? {
+                  sourceEventId: 'cricsheet:delivery:fixture-1:0',
+                  resolvedDeliveryId: '88',
+                }
+              : null,
+            publishedConflict: resolved
+              ? null
+              : {
+                  existingDeliveryId: '88',
+                  existingSourceEventId: null,
+                  correctionPermitted: true,
+                  differences: [{ fieldPath: 'runs.offBat', submittedValue: 4, publishedValue: 0 }],
+                },
+            referenceResolutions: [],
+            errors: resolved
+              ? []
+              : [
+                  {
+                    ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+                    message:
+                      'A published delivery or published source identity exists with different cricket content.',
+                    location: {
+                      filePath: 'events.json',
+                      sheetName: null,
+                      rowNumber: null,
+                      jsonPath: 'delivery',
+                      ordinal: 0,
+                    },
+                    context: {
+                      eventReference: 'cricsheet:delivery:fixture-1:0',
+                      fixtureId: '22',
+                      fixtureLabel: 'Lions vs Bears · 2026-09-01',
+                      inningsId: '31',
+                      overNumber: 1,
+                      positionInOver: 1,
+                      description: 'Event cricsheet:delivery:fixture-1:0 at over 1, delivery 1.',
+                    },
+                  },
+                ],
+          },
+        ],
+        pagination: { nextCursor: null },
+        downloadUrl: `/api/v1/batches/${reference}/report/download`,
+      },
+    };
+    return {
+      data: {
+        ...response.data,
+        blockingItems: resolved ? [] : response.data.items,
+      },
+    };
+  };
 
   await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
     await route.fulfill({
@@ -476,73 +485,81 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
     lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   });
-  const report = () => ({
-    data: {
-      batch: batch(),
-      errorGroups: kept ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
-      reviewSummary: {
-        validation: {
-          accepted: 0,
-          rejected: kept ? 0 : 1,
-          blockingErrors: kept ? 0 : 1,
-          duplicate: kept ? 1 : 0,
-          conflicting: kept ? 0 : 1,
-        },
-        resolution: { resolved: 1, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
-        approvalBlocked: !kept,
-        blockingReasons: kept
-          ? []
-          : ['Blocking validation errors remain.', 'Conflicting records remain.'],
-      },
-      fixtureSummaries: [
-        {
-          fixtureId: '22',
-          label: 'Lions vs Bears · 2026-09-01',
-          total: 1,
-          accepted: 0,
-          rejected: kept ? 0 : 1,
-          unresolved: 0,
-        },
-      ],
-      acceptedSamples: [],
-      items: [
-        {
-          ordinal: 0,
-          outcome: kept ? 'duplicate' : 'conflicting',
-          location,
-          context,
-          stagedRecordId: '41',
-          acceptedRecordId: kept ? '2342246' : null,
-          operation: 'upsert',
-          correctionTarget: null,
-          publishedConflict: kept
-            ? null
-            : {
-                existingDeliveryId: '2342246',
-                existingSourceEventId: null,
-                correctionPermitted: true,
-                differences: [
-                  { fieldPath: 'ballNumber', submittedValue: '5.2', publishedValue: '5.1' },
-                ],
-              },
-          referenceResolutions: [],
-          errors: kept
+  const report = () => {
+    const response = {
+      data: {
+        batch: batch(),
+        errorGroups: kept ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
+        reviewSummary: {
+          validation: {
+            accepted: 0,
+            rejected: kept ? 0 : 1,
+            blockingErrors: kept ? 0 : 1,
+            duplicate: kept ? 1 : 0,
+            conflicting: kept ? 0 : 1,
+          },
+          resolution: { resolved: 1, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
+          approvalBlocked: !kept,
+          blockingReasons: kept
             ? []
-            : [
-                {
-                  ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
-                  message:
-                    'A published delivery or published source identity exists with different cricket content.',
-                  location,
-                  context,
-                },
-              ],
+            : ['Blocking validation errors remain.', 'Conflicting records remain.'],
         },
-      ],
-      pagination: { nextCursor: null },
-      downloadUrl: `/api/v1/batches/${reference}/report/download`,
-    },
-  });
+        fixtureSummaries: [
+          {
+            fixtureId: '22',
+            label: 'Lions vs Bears · 2026-09-01',
+            total: 1,
+            accepted: 0,
+            rejected: kept ? 0 : 1,
+            unresolved: 0,
+          },
+        ],
+        acceptedSamples: [],
+        items: [
+          {
+            ordinal: 0,
+            outcome: kept ? 'duplicate' : 'conflicting',
+            location,
+            context,
+            stagedRecordId: '41',
+            acceptedRecordId: kept ? '2342246' : null,
+            operation: 'upsert',
+            correctionTarget: null,
+            publishedConflict: kept
+              ? null
+              : {
+                  existingDeliveryId: '2342246',
+                  existingSourceEventId: null,
+                  correctionPermitted: true,
+                  differences: [
+                    { fieldPath: 'ballNumber', submittedValue: '5.2', publishedValue: '5.1' },
+                  ],
+                },
+            referenceResolutions: [],
+            errors: kept
+              ? []
+              : [
+                  {
+                    ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+                    message:
+                      'A published delivery or published source identity exists with different cricket content.',
+                    location,
+                    context,
+                  },
+                ],
+          },
+        ],
+        pagination: { nextCursor: null },
+        downloadUrl: `/api/v1/batches/${reference}/report/download`,
+      },
+    };
+    return {
+      data: {
+        ...response.data,
+        blockingItems: kept ? [] : response.data.items,
+      },
+    };
+  };
 
   await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
     await route.fulfill({

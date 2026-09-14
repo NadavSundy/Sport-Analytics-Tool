@@ -199,8 +199,14 @@ class BatchLeaseBusyError extends Error {
 interface BatchItemPageOptions {
   afterOrdinal?: number;
   acceptedOnly?: boolean;
+  blockingOnly?: boolean;
   limit: number;
 }
+
+const BATCH_ITEM_APPROVAL_BLOCKER_SQL = `(
+  i.reference_resolution_state IS DISTINCT FROM 'resolved'
+  OR i.rejection_code LIKE '%CONFLICT%'
+)`;
 interface BatchCheckpointRecord {
   batchId: string;
   phase: BatchCheckpointPhase;
@@ -1384,10 +1390,22 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
                 AND jsonb_array_length(COALESCE(errors.rows, '[]'::jsonb)) = 0
               )
             )
+            AND (
+              NOT $5::boolean OR (
+                i.batch_item_id IS NOT NULL
+                AND ${BATCH_ITEM_APPROVAL_BLOCKER_SQL}
+              )
+            )
           ORDER BY subjects.ordinal
           LIMIT $3::integer
         `,
-        [batchId, options.afterOrdinal ?? -1, options.limit, options.acceptedOnly ?? false],
+        [
+          batchId,
+          options.afterOrdinal ?? -1,
+          options.limit,
+          options.acceptedOnly ?? false,
+          options.blockingOnly ?? false,
+        ],
       );
       return result.rows;
     },
@@ -1742,11 +1760,9 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         const otherBlockers = await executeQuery<{ count: string }>(
           executor,
           `SELECT (
-             (SELECT count(*) FROM batch_item
-              WHERE batch_id = $1::bigint
-                AND reference_resolution_state IS DISTINCT FROM 'resolved') +
-             (SELECT count(*) FROM batch_item
-              WHERE batch_id = $1::bigint AND rejection_code LIKE '%CONFLICT%')
+             (SELECT count(*) FROM batch_item i
+              WHERE i.batch_id = $1::bigint
+                AND ${BATCH_ITEM_APPROVAL_BLOCKER_SQL})
            )::text AS count`,
           [input.batchId],
         );

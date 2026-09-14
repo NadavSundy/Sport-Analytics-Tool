@@ -55,6 +55,11 @@ stable rule-code groups, fixture-level counts, and at most 15 accepted samples. 
 therefore never renders a season-scale accepted dataset. Candidate reference tokens remain opaque;
 reviewers act on their human-readable labels through the existing reference-mapping endpoint.
 
+The report response keeps ordinary `items` cursor-paginated and separately returns `blockingItems`.
+That action-required collection is selected server-side from the same active batch records used by
+approval checks, so unresolved references and published-delivery conflicts remain directly
+available to reviewers even when they occur beyond the current ordinary report page.
+
 Ordinary item-level validation rejections do not prevent approval: the accepted subset publishes and
 the rejected source records remain unpublished in the report. Approval is still rejected by both the
 interface and repository transaction while batch-level or accepted-item validation errors,
@@ -89,3 +94,4 @@ The Issue #362 reviewer workspace documentation was produced with the assistance
 The Issue #361 guided batch-upload interface was documented with the assistance of Codex[GPT-5].
 The Issue #437 unified submission route was documented with the assistance of Codex[GPT-5].
 The Issue #539 correction-resubmission lineage was documented with the assistance of Codex[GPT-5].
+The Issue #537 reviewer blocking-item response was documented with the assistance of Codex[GPT-5].

@@ -188,6 +188,7 @@ function report(blocked = true): BatchReportResponse {
         },
       ],
       acceptedSamples: blocked ? [] : [item],
+      blockingItems: blocked ? [item] : [],
       items: [item],
       pagination: { nextCursor: 'bounded-next-page' },
       downloadUrl: `/api/v1/batches/${reference}/report/download`,
@@ -466,6 +467,82 @@ describe('reviewer batch workspace', () => {
       screen.getByRole('button', { name: 'Use Lions vs Bears · 2026-09-01' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
+  });
+
+  test('shows a later unresolved reference from blocking items without loading ordinary results', async () => {
+    const body = report(true);
+    const blocker = body.data.blockingItems[0]!;
+    blocker.ordinal = 99;
+    blocker.location.ordinal = 99;
+    blocker.referenceResolutions[0]!.state = 'unresolved';
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 1;
+    body.data.items = report(false).data.items;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByRole('button', { name: /^Use Lions vs Bears/ })).toBeInTheDocument();
+    expect(screen.queryByText('All displayed references are resolved.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
+  });
+
+  test('shows and refreshes a later published conflict independently of ordinary results', async () => {
+    const initial = report(false);
+    const conflict = { ...initial.data.items[0]!, ordinal: 99, outcome: 'conflicting' as const };
+    conflict.location = { ...conflict.location, ordinal: 99 };
+    conflict.publishedConflict = {
+      existingDeliveryId: '88',
+      existingSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
+      correctionPermitted: true,
+      differences: [{ fieldPath: 'runs.batter', submittedValue: 4, publishedValue: 1 }],
+    };
+    initial.data.blockingItems = [conflict];
+    initial.data.reviewSummary.validation.conflicting = 1;
+    initial.data.reviewSummary.approvalBlocked = true;
+    initial.data.reviewSummary.blockingReasons = ['Conflicting records remain.'];
+    initial.data.batch.counts.conflicting = 1;
+    const refreshed = structuredClone(initial);
+    refreshed.data.blockingItems = [];
+    refreshed.data.reviewSummary.validation.conflicting = 0;
+    refreshed.data.batch.counts.conflicting = 0;
+    let resolved = false;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/auth/me')) return Promise.resolve(response(profile));
+      if (init?.method === 'POST') {
+        resolved = true;
+        return Promise.resolve(response({ data: initial.data.batch }));
+      }
+      return Promise.resolve(response(resolved ? refreshed : initial));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(
+      await screen.findByRole('button', { name: 'Keep published delivery' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Approve submitted correction' }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Resolution reason'), {
+      target: { value: 'Keep the verified published delivery.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Keep published delivery' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Keep published delivery' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/conflicts/resolve'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   test('allows approval of a mixed batch and explains that rejected records stay unpublished', async () => {
