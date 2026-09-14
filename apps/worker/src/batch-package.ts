@@ -437,6 +437,60 @@ function reference(sourceId: string | undefined, name: string | undefined): Json
   return result;
 }
 
+// The direct-submission CSV's boolean spelling (booleanValue in submission-upload.ts):
+// blank is absent, exactly "true" or "false" is a boolean, and any other spelling is
+// passed through so the package contract rejects it rather than the parser guessing.
+function csvBoolean(value: string | undefined): boolean | string | undefined {
+  const text = optional(value);
+  if (text === 'true') return true;
+  if (text === 'false') return false;
+  return text;
+}
+
+const CSV_FIELDER_SLOTS = [1, 2, 3] as const;
+
+/**
+ * The dismissal columns of one CSV row in the season-upload wicket shape. A row can
+ * express one dismissal with up to three fielders; anything more needs the JSON
+ * package. Which dismissal kinds need a fielder is the contract's rule, not this one.
+ */
+function csvWickets(row: Record<string, string>): JsonObject[] | undefined {
+  const kind = optional(row.wicketKind);
+  if (kind === undefined) return undefined;
+
+  const fielders: JsonObject[] = [];
+  for (const slot of CSV_FIELDER_SLOTS) {
+    const participant = reference(row[`fielder${slot}SourceId`], row[`fielder${slot}Name`]);
+    const substitute = csvBoolean(row[`fielder${slot}Substitute`]);
+    const identified = Object.keys(participant).length > 0;
+    // An empty slot is skipped, so a filled slot after an empty one moves up and the
+    // fielders keep their order without a gap.
+    if (!identified && (substitute === undefined || substitute === false)) continue;
+    fielders.push({
+      ...(identified ? { participant } : {}),
+      ...(substitute === undefined ? {} : { substitute }),
+    });
+  }
+
+  return [{ kind, playerOut: reference(row.playerOutSourceId, row.playerOutName), fielders }];
+}
+
+const CSV_DISMISSAL_DETAIL_COLUMNS = [
+  'playerOutSourceId',
+  'playerOutName',
+  ...CSV_FIELDER_SLOTS.flatMap((slot) => [
+    `fielder${slot}SourceId`,
+    `fielder${slot}Name`,
+    `fielder${slot}Substitute`,
+  ]),
+];
+
+/** The dismissal columns filled in on a row whose wicketKind is blank. */
+function csvDismissalColumnsWithoutKind(row: Record<string, string>): string[] {
+  if (optional(row.wicketKind) !== undefined) return [];
+  return CSV_DISMISSAL_DETAIL_COLUMNS.filter((column) => optional(row[column]) !== undefined);
+}
+
 const REQUIRED_CSV_COLUMNS = [
   'contractVersion',
   'packageId',
@@ -511,10 +565,29 @@ async function* csvCandidates(
     const row = Object.fromEntries(
       header.map((key, index) => [key, fields[index] ?? '']),
     ) as Record<string, string>;
+    const strayDismissalColumns = csvDismissalColumnsWithoutKind(row);
+    if (strayDismissalColumns.length > 0) {
+      // Reported rather than dropped: a dismissal whose kind was left out would
+      // otherwise reach publication as a delivery without its wicket.
+      faults.push({
+        sourceOrdinal: ordinal,
+        ruleCode: 'CSV_WICKET_KIND_MISSING',
+        filePath: 'batch.csv',
+        rowNumber,
+        fieldPath: 'wicketKind',
+        message: `wicketKind is blank but ${strayDismissalColumns.join(', ')} ${strayDismissalColumns.length === 1 ? 'is' : 'are'} filled in. Enter the dismissal kind, or clear the dismissal columns.`,
+        countsAsItem: true,
+      });
+      ordinal += 1;
+      if (ordinal > MAX_BATCH_ITEMS)
+        throw new Error(`Batch exceeds the ${String(MAX_BATCH_ITEMS)}-item limit.`);
+      continue;
+    }
     const fixtureKey =
       optional(row.fixtureSourceId) ?? `${row.fixtureDate}|${row.homeTeamName}|${row.awayTeamName}`;
     const inningsKey =
       optional(row.inningsSourceId) ?? `${fixtureKey}|${row.inningsOrdinal}|${row.battingTeamName}`;
+    const wickets = csvWickets(row);
     const event: JsonObject = {
       eventId: optional(row.eventId),
       occurrenceSequence: numeric(row.occurrenceSequence),
@@ -538,6 +611,7 @@ async function* csvCandidates(
         ...(optional(row.extraLegByes) ? { legByes: numeric(row.extraLegByes) } : {}),
         ...(optional(row.extraPenalty) ? { penalty: numeric(row.extraPenalty) } : {}),
       },
+      ...(wickets ? { wickets } : {}),
     };
     const currentOrdinal = ordinal++;
     if (ordinal > MAX_BATCH_ITEMS)

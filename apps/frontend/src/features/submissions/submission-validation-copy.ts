@@ -43,6 +43,7 @@ const validationRuleLabels: Record<string, string> = {
   PACKAGE_ENVELOPE_MISMATCH: 'Package details do not match',
   CSV_MALFORMED_ROW: 'CSV row could not be read',
   CSV_COLUMN_COUNT: 'CSV row has the wrong number of columns',
+  CSV_WICKET_KIND_MISSING: 'Dismissal kind is missing',
   NDJSON_MALFORMED_RECORD: 'NDJSON record could not be read',
   NDJSON_MANIFEST_INVALID: 'NDJSON manifest needs correction',
   NDJSON_FIXTURE_INVALID: 'Fixture data needs correction',
@@ -89,6 +90,8 @@ const validationRuleGuidance: Record<string, string> = {
   PACKAGE_ENVELOPE_MISMATCH: 'Check the package header and the selected submission context.',
   CSV_MALFORMED_ROW: 'Check the quoted values and separators on this row.',
   CSV_COLUMN_COUNT: 'Check that this row has the same columns as the CSV header.',
+  CSV_WICKET_KIND_MISSING:
+    'Enter the dismissal kind in wicketKind, or clear the dismissal columns on this row.',
   NDJSON_MALFORMED_RECORD: 'Check that this line contains one complete JSON object.',
   NDJSON_MANIFEST_INVALID: 'Check the manifest fields and try the upload again.',
   NDJSON_FIXTURE_INVALID: 'Check the fixture details on this record.',
