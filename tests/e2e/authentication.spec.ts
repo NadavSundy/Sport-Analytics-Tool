@@ -81,7 +81,8 @@ test(
 
     await page.keyboard.press('Enter');
 
-    expect((await oauthRequest).url()).toContain(encodeURIComponent('http://127.0.0.1:4173/'));
+    const port = process.env.PLAYWRIGHT_PORT ?? '4173';
+    expect((await oauthRequest).url()).toContain(encodeURIComponent(`http://127.0.0.1:${port}/`));
   },
 );
 

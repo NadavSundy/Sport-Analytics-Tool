@@ -96,8 +96,12 @@ describe('guided batch upload', () => {
   test('redirects signed-out visitors without loading upload data', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    renderLegacyRoute(null);
-    expect(await screen.findByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
+    // Flush session resolution and both legacy-route redirects before asserting.
+    // Polling alone races the scheduler under a busy CI worker.
+    await act(async () => {
+      renderLegacyRoute(null);
+    });
+    expect(screen.getByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

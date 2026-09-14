@@ -44,6 +44,9 @@ const participantStatistic = {
   competitorId: 'team-1',
   competitorName: 'Team One',
   sourceEventCount: 1,
+  battingPosition: 1,
+  battingParticipation: 'batted',
+  dismissal: { status: 'not_out', kind: null, eventId: null },
   batting: { runsScored: 4, ballsFaced: 1, strikeRate: 400, fours: 1, sixes: 0 },
   bowling: null,
 };
@@ -94,6 +97,8 @@ test(
                   sequenceNumber: 1,
                   strikerParticipantId: 'striker-1',
                   strikerParticipantName: 'Opening Batter',
+                  nonStrikerParticipantId: 'non-striker-1',
+                  nonStrikerParticipantName: 'Non-striker',
                   bowlerParticipantId: 'bowler-1',
                   bowlerParticipantName: 'Opening Bowler',
                   runs: { offBat: 4, extras: 1, total: 5 },
