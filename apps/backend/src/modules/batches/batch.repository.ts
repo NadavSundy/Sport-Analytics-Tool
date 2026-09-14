@@ -1075,7 +1075,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           `SELECT count(*)::text AS count FROM batch
            WHERE submitter_id = $1::bigint
              AND state NOT IN (
-               'rejected', 'correction_requested', 'published', 'partially_published', 'superseded'
+               'rejected', 'correction_requested', 'published', 'partially_published', 'superseded',
+               'failed'
              )`,
           [input.submitterId],
         );
@@ -1179,7 +1180,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         `SELECT count(*)::text AS count FROM batch
          WHERE submitter_id = $1::bigint
            AND state NOT IN (
-             'rejected', 'correction_requested', 'published', 'partially_published', 'superseded'
+             'rejected', 'correction_requested', 'published', 'partially_published', 'superseded',
+             'failed'
            )`,
         [submitterId],
       );
