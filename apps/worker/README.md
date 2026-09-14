@@ -5,11 +5,12 @@ It receives small commands from Azure Service Bus in peek-lock mode, relays dura
 messages to the queue, reads staged package bytes from the private Blob container, emits structured
 payload-free logs, and exposes separate liveness and readiness endpoints.
 
-The worker supports two versioned commands:
+The worker supports three versioned commands:
 
 - `worker.probe` version 1 for read-only deployment and recovery verification; and
 - `batch.validate` version 1 for issue #278 batch expansion, reference resolution and asynchronous
   validation.
+- `dataset-release.generate` version 1 for streamed immutable release generation.
 
 ## Batch processing lifecycle
 
@@ -33,8 +34,9 @@ records recoverable malformed-row faults without turning them into infrastructur
 
 ## Run locally
 
-Copy `.env.example` to `.env`, replace every placeholder, authenticate with Azure CLI, then run from
-the repository root:
+Copy `.env.example` to `.env`. The default local `database` transport consumes committed outbox rows
+directly and the filesystem provider uses `.local/object-storage`; neither Azure CLI nor Service Bus
+is required. Run from the repository root:
 
 ```text
 npm run dev:worker
