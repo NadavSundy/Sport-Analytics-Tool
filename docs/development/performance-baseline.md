@@ -50,18 +50,19 @@ optimisation for this issue. They are P95 of ten sequential successful requests
 and include the backend-to-database round trip but exclude browser and public
 internet latency.
 
-| Representative operation | Request shape                                                | Warm P95 target |
-| ------------------------ | ------------------------------------------------------------ | --------------: |
-| Public read              | `GET /api/v1/fixtures?limit=50`                              |          500 ms |
-| Event page               | `GET /api/v1/fixtures/{fixtureId}/events?limit=100`          |          750 ms |
-| Statistic                | `GET /api/v1/fixtures/{fixtureId}/statistics`                |        1,500 ms |
-| Aggregate                | `GET /api/v1/participants/{participantId}/fixtures?limit=50` |        1,500 ms |
-| Export                   | `GET /api/v1/fixtures/{fixtureId}/events/export.csv`         |        1,000 ms |
+| Representative operation | Request shape                                         | Warm P95 target |
+| ------------------------ | ----------------------------------------------------- | --------------: |
+| Public read              | `GET /api/v1/fixtures?limit=50`                       |          500 ms |
+| Event page               | `GET /api/v1/fixtures/{fixtureId}/events?limit=100`   |          750 ms |
+| Statistic                | `GET /api/v1/fixtures/{fixtureId}/statistics`         |        1,500 ms |
+| Aggregate                | `GET /api/v1/participants/{participantId}/statistics` |        1,500 ms |
+| Export                   | `GET /api/v1/fixtures/{fixtureId}/events/export.csv`  |        1,000 ms |
 
 The statistics endpoint derives fixture, innings, and participant values from
-accepted events. The participant-fixture endpoint is the currently implemented
-public cross-fixture aggregate; no unimplemented season aggregate is substituted
-for this baseline. Since issue #467 the export returns every matching event by
+accepted events. The participant-statistics endpoint derives the implemented season, competition and career
+aggregates from accepted current delivery revisions. The benchmark requests all aggregate scopes in
+one call so the measurement exercises the public Intermediate aggregate path rather than using
+fixture history as a substitute. Since issue #467 the export returns every matching event by
 following the event collection's cursor at 100 events per page, up to a
 5,000-event bound, so an unfiltered export of a fixture with more than 100
 events issues one database read per page. The target was set when the export
@@ -141,3 +142,4 @@ not substitute for a networked API measurement.
 This performance-baseline procedure, generator-command documentation and target
 table were created with the assistance of Codex[GPT-5]. The repeated fixture-statistics cache
 measurement procedure was updated with the assistance of Codex[GPT-5].
+The Issue #297 aggregate performance procedure was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].

@@ -8,7 +8,13 @@ The endpoint returns `202 Accepted` with an opaque UUID `batchReference`, a rela
 
 The server authenticates and checks the persisted submitter role and competition scope before receiving source bytes. Raw source is streamed with a 50 MB limit, retained privately for 90 days, and receives a SHA-256 checksum. The idempotency key is unique within the submitter scope: replaying it with the same checksum returns the original receipt, while changed bytes return `409 BATCH_CONFLICT`. Receipt creation serializes each submitter's key lookup, active-batch limit, queue insertion, and correction linkage, so concurrent equivalent requests cannot enqueue duplicate work or claim the same correction request twice. A replacement must belong to the same submitter and competition and must identify a batch whose current state is `correction_requested`. The transaction retains that original, changes its state to `superseded`, populates `superseded_by`, and records the lifecycle transition. Invalid, stale, or competing relationships return `409 BATCH_CONFLICT`. Up to three non-terminal batches are permitted per submitter. Unsupported metadata is `422`, size is `413`, storage failures are `503`, and the active-batch limit is `409`.
 
-Package expansion, event validation, review, and publication remain asynchronous follow-on work. A stored batch is non-public and no staged item is included in public event or statistics reads.
+Package expansion, event validation, review and publication are implemented as asynchronous
+follow-on stages. After receipt, the worker expands and validates the retained package, records
+resumable progress and produces the item-level report. Batches that satisfy the blocking validation
+rules can enter `awaiting_review`, where a competition-scoped administrator may approve, reject or
+return them for correction. Approval publishes the accepted subset through the resumable publication
+path. Stored or staged data remains non-public until publication, and rejected or invalid source
+items are never exposed as accepted events or statistics.
 
 The unified submitter interface at `/submissions/new` provides single-fixture, season and
 back-catalogue choices. Season and back-catalogue modes obtain the competition identifier from a
@@ -63,19 +69,18 @@ available to reviewers even when they occur beyond the current ordinary report p
 Ordinary item-level validation rejections do not prevent approval: the accepted subset publishes and
 the rejected source records remain unpublished in the report. Approval is still rejected by both the
 interface and repository transaction while batch-level or accepted-item validation errors,
-publication conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires
-a reason; rejection and return-for-correction reasons require at least 10 characters. The interface
+publication conflicts, ambiguous, unresolved, or invalid references remain.
+
 Each report item also identifies whether it is an ordinary upsert or a correction. Correction items
 show the submitted `correctsEventId` and, when resolution succeeded, the published delivery revision
 selected during validation. Submitter reports and the bounded reviewer sample both present this
 target before a publication decision.
 
-Approval is rejected by both the interface and repository transaction while active validation
-errors, conflicts, ambiguous, unresolved, or invalid references remain. Every decision requires a
-reason; rejection and return-for-correction reasons require at least 10 characters. The interface
-adds an explicit modal confirmation before approve, reject, or return-for-correction and clearly
-presents publishing, failure, partial-publication, correction-requested, rejection, and publication
-states. Repeated identical decisions remain idempotent; competing or stale decisions return `409`.
+Every decision requires a reason; rejection and return-for-correction reasons require at least 10
+characters. The interface adds an explicit modal confirmation before approve, reject, or
+return-for-correction and clearly presents publishing, failure, partial-publication,
+correction-requested, rejection, and publication states. Repeated identical decisions remain
+idempotent; competing or stale decisions return `409`.
 
 Approved correction items publish through immutable delivery revision and supersession history,
 including the submitting account, approving reviewer, review reason and affected-statistics
@@ -95,3 +100,4 @@ The Issue #361 guided batch-upload interface was documented with the assistance 
 The Issue #437 unified submission route was documented with the assistance of Codex[GPT-5].
 The Issue #539 correction-resubmission lineage was documented with the assistance of Codex[GPT-5].
 The Issue #537 reviewer blocking-item response was documented with the assistance of Codex[GPT-5].
+The Issue #297 Intermediate batch-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

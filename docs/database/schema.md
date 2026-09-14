@@ -247,35 +247,44 @@ expressible, and each is a place where a naive model would produce wrong figures
 
 ---
 
-## 6. Deferred entities
+## 6. Intermediate persistence added after the original model review
 
-`database/schema/event-model.md` identifies four further concerns that this
-iteration does not implement: validation and review state; statistic definitions
-and their versions; derived statistic results and their provenance; and dataset
-releases and export jobs.
+The original August event-model review intentionally deferred several concerns until the ingestion
+and derivation boundaries were known. The executable Sprint 2 migrations now implement most of that
+Intermediate persistence, so they are no longer future schema concepts.
 
-They are deferred deliberately, not overlooked. A derived result cannot be
-modelled before the events it derives from exist, and a statistic definition
-cannot be versioned before the derivation engine establishes what a definition
-contains. Their intended shape:
+### Implemented Intermediate structures
 
-- **Validation state** belongs on `submission`, which already carries a status.
-  A richer review workflow — who reviewed, when, against which rule — extends that
-  table rather than replacing it.
-- **Statistic definition and version** requires a definition identifier, a version,
-  and the expression or code reference that computes it, so that a published
-  figure can name the version that produced it. The super-over exclusion in rule 8
-  belongs here rather than in query code.
-- **Derived result** requires the definition version, the scope computed over, the
-  value, and the deliveries consumed, so that a correction can identify which
-  results are now stale.
-- **Dataset release** requires a release identifier, the scope, the point in time
-  represented, and a manifest, so that a consumer holding an older reference can
-  still resolve it.
+- **Batch validation and review.** `batch`, `batch_item`, checkpoints, validation results, lifecycle
+  transitions, reviewer decisions, reference mappings and publication state provide durable staged
+  ingestion and review.
+- **Private source retention.** `stored_object` records provider-independent metadata, checksum,
+  retention and expiry state for private uploaded source bytes.
+- **Immutable corrections.** `delivery_correction_history` and delivery revision links retain the
+  complete accepted correction chain while `delivery_current` exposes only the live revision.
+- **Aggregate refresh boundaries.** `statistics_refresh_dependency` records the season,
+  competition, career and fixture scopes affected by accepted corrections. Aggregate values
+  themselves continue to be derived from current accepted deliveries rather than stored as editable
+  totals.
+- **Fixture-statistics caching.** A versioned cache supports repeated fixture-statistics reads
+  without replacing accepted events as the source of truth.
+- **Dataset releases.** Immutable release metadata and mutable `dataset_release_job` state support
+  asynchronous generation of checksum-backed dataset artifacts in private object storage.
+- **External API consumers.** Consumer/key persistence and usage accounting support administrator
+  key management, per-minute rate limits and UTC daily quotas.
 
-What must be settled first: which statistics the client actually requires, which
-is the subject of #37, and how a release identifies the state of the data at a
-point in time.
+The migration history under `database/migrations/` is authoritative for the exact columns,
+constraints and indexes added after the original model approval.
+
+### Still deferred beyond the Intermediate tier
+
+The following remain later-tier concerns rather than missing Intermediate persistence:
+
+- analyst-defined statistic definitions and executable definition versions;
+- sandboxing and validation of user-defined calculations;
+- bitemporal/as-of event and statistic history beyond the retained correction/release model;
+- live late/out-of-order feed state and replay metadata; and
+- general Advanced-tier change-feed and release-diff structures.
 
 ---
 
@@ -393,3 +402,4 @@ The issue #358 stored-object schema was documented with the assistance of Codex[
 The issue #284 immutable correction audit schema was documented with the assistance of Codex[GPT-5].
 
 The issue #363 protected provenance API documentation was generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #297 Intermediate database-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

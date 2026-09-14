@@ -40,6 +40,7 @@ Related: [Sprint 1 requirements traceability](../planning/sprint-1-requirements-
 | 27 Aug 2026 | [Stand-up](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-2/2026-08-27-standup.md)                                                           |
 | 1 Sep 2026  | [Stakeholder meeting](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-2/2026-09-01-stakeholder-meeting.md)                                    |
 | 3 Sep 2026  | [Stand-up](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-2/2026-09-03-standup.md)                                                           |
+| 10 Sep 2026 | [Weekly stand-up](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-2/2026-09-10-weekly-standup.md)                                             |
 
 Raw meeting recordings/exports for Sprint 2 are kept in
 [`Teams Transcripts/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-2/Teams%20Transcripts).
@@ -54,3 +55,7 @@ single navigation point.
 
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5]
 and subsequently edited with the assistance of ChatGPT-Web[GPT-5.6 Sol], resolving issue #254.
+
+## AI Declaration
+
+The Issue #297 Sprint 2 evidence-link audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
