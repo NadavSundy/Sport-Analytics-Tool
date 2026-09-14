@@ -190,7 +190,7 @@ describe('batch receipt service', () => {
         metadata,
         Readable.from('payload'),
       ),
-    ).rejects.toBeInstanceOf(BatchConflictError);
+    ).rejects.toThrow('The submitter already has three active batches.');
   });
 
   test('returns the existing batch only when the idempotency key has the same checksum', async () => {
