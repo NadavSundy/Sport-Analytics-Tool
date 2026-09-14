@@ -41,6 +41,13 @@ describe('fixture statistics repository', () => {
         command: 'SELECT',
         oid: 0,
         fields: [],
+      })
+      .mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+        command: 'SELECT',
+        oid: 0,
+        fields: [],
       });
     const executor = { query } as unknown as QueryExecutor;
 
@@ -51,7 +58,7 @@ describe('fixture statistics repository', () => {
       battingCompetitorId: '2',
       battingCompetitorName: 'Team Alpha',
     });
-    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledTimes(3);
     expect(query.mock.calls[0]?.[0]).toContain('i.is_super_over = false');
 
     expect(query.mock.calls[1]?.[0]).toContain('d.innings_id = ANY($1::bigint[])');
@@ -61,6 +68,10 @@ describe('fixture statistics repository', () => {
     expect(query.mock.calls[0]?.[0]).toContain('batting_team.name AS "battingCompetitorName"');
     expect(query.mock.calls[1]?.[0]).toContain('striker_person.display_name AS "strikerName"');
     expect(query.mock.calls[1]?.[0]).toContain('bowler_person.display_name AS "bowlerName"');
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'non_striker_person.display_name AS "nonStrikerName"',
+    );
+    expect(query.mock.calls[1]?.[0]).toContain("'isTerminal'");
     expect(query.mock.calls[1]?.[1]).toEqual([['11']]);
     expect(query.mock.calls[0]?.[0]).toContain("publication.status = 'accepted'");
     expect(query.mock.calls[1]?.[0]).toContain("source_submission.status = 'accepted'");
@@ -69,5 +80,6 @@ describe('fixture statistics repository', () => {
     expect(query.mock.calls[1]?.[0]).toContain(
       'ORDER BY i.ordinal ASC, d.innings_sequence ASC, d.delivery_id ASC',
     );
+    expect(query.mock.calls[2]?.[0]).toContain('FROM fixture_squad fs');
   });
 });

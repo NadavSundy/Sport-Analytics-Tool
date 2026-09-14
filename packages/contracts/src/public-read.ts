@@ -167,6 +167,8 @@ export const statisticContributingEventSchema = z.object({
   sequenceNumber: z.number().int().positive(),
   strikerParticipantId: apiIdentifierSchema,
   strikerParticipantName: z.string().min(1),
+  nonStrikerParticipantId: apiIdentifierSchema,
+  nonStrikerParticipantName: z.string().min(1),
   bowlerParticipantId: apiIdentifierSchema,
   bowlerParticipantName: z.string().min(1),
   runs: z.object({
@@ -213,6 +215,15 @@ export const participantFixtureStatisticSchema = fixtureStatisticCommonSchema.ex
   participantName: z.string().min(1),
   competitorId: apiIdentifierSchema.nullable(),
   competitorName: z.string().min(1).nullable(),
+  battingPosition: z.number().int().positive().nullable(),
+  battingParticipation: z.enum(['did_not_bat', 'batted']),
+  dismissal: z
+    .object({
+      status: z.enum(['not_out', 'dismissed']),
+      kind: z.string().min(1).nullable(),
+      eventId: apiIdentifierSchema.nullable(),
+    })
+    .nullable(),
   batting: z
     .object({
       runsScored: z.number().int().nonnegative(),
