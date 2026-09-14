@@ -2670,18 +2670,18 @@ describe.sequential('batch repository database integration', () => {
         message: 'The striker reference is unknown.',
       });
 
-      await expect(repository.getBatchCounts(batch.batchId)).resolves.toEqual({
-        accepted: 1,
-        rejected: 2,
+      await expect(repository.getBatchResolutionCounts(batch.batchId)).resolves.toEqual({
+        resolved: 2,
+        ambiguous: 0,
         unresolved: 1,
-        duplicate: 0,
-        conflicting: 1,
+        invalid: 0,
+        proposed: 0,
       });
       await expect(repository.listBatchRuleGroups(batch.batchId)).resolves.toEqual([
         { ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 },
       ]);
       await expect(repository.getBatchResolutionCounts(batch.batchId)).resolves.toEqual({
-        resolved: 1,
+        resolved: 2,
         ambiguous: 0,
         unresolved: 1,
         invalid: 0,
