@@ -3,10 +3,44 @@ import { describe, expect, test, vi } from 'vitest';
 import type { QueryExecutor } from '../../src/database';
 import {
   findFixtureWeatherContext,
+  listFixtures,
   updateVenueCoordinates,
 } from '../../src/modules/fixtures/fixture.repository';
 
 describe('fixture repository', () => {
+  test('returns the filtered fixture count with each cursor page', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          fixtureId: '17',
+          competitionId: '5',
+          competitionName: 'Premier Cricket League',
+          season: '2026',
+          competitors: [],
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'female',
+          ballsPerOver: 6,
+          scheduledOvers: 20,
+          startDate: '2026-08-19',
+          endDate: '2026-08-19',
+          totalRecords: 51,
+        },
+      ],
+      rowCount: 1,
+      command: 'SELECT',
+      oid: 0,
+      fields: [],
+    });
+    const executor = { query } as unknown as QueryExecutor;
+
+    const page = await listFixtures({ limit: 50 }, executor);
+
+    expect(query.mock.calls[0]?.[0]).toContain('COUNT(*) OVER()::integer AS "totalRecords"');
+    expect(query.mock.calls[0]?.[0]).toContain('f."totalRecords"');
+    expect(page.totalRecords).toBe(51);
+  });
+
   test('persists resolved venue coordinates by venue id', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [],

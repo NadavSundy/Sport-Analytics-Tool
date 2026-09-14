@@ -214,7 +214,7 @@ test('competition, season, and team overviews embed readable related records', a
       await route.fulfill({
         json: {
           data: [{ ...fixture, seasonLabel: '2026 season' }],
-          pagination: { nextCursor: null },
+          pagination: { nextCursor: null, totalPages: 1 },
         },
       });
       return;
@@ -417,7 +417,7 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
       await route.fulfill({
         json: {
           data: url.searchParams.has('competitionId') ? [fixture] : [],
-          pagination: { nextCursor: null },
+          pagination: { nextCursor: null, totalPages: 1 },
         },
       });
       return;
@@ -541,6 +541,7 @@ test(
             data: url.searchParams.has('cursor') ? [] : [fixture],
             pagination: {
               nextCursor: url.searchParams.has('cursor') ? null : 'next-fixture-cursor',
+              totalPages: 2,
             },
           },
         });

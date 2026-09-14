@@ -142,7 +142,10 @@ test('administrator direct-import correction works by keyboard and refreshes sta
       return;
     }
     if (url.pathname.endsWith('/fixtures')) {
-      await fulfill(route, 200, { data: [fixture], pagination: { nextCursor: null } });
+      await fulfill(route, 200, {
+        data: [fixture],
+        pagination: { nextCursor: null, totalPages: 1 },
+      });
       return;
     }
     if (url.pathname.endsWith('/submissions') && request.method() === 'POST') {
@@ -243,7 +246,10 @@ test('administrator correction validation remains associated with the relevant i
     if (url.pathname.endsWith('/auth/me')) {
       await fulfill(route, 200, currentUser('admin'));
     } else if (url.pathname.endsWith('/fixtures')) {
-      await fulfill(route, 200, { data: [fixture], pagination: { nextCursor: null } });
+      await fulfill(route, 200, {
+        data: [fixture],
+        pagination: { nextCursor: null, totalPages: 1 },
+      });
     } else if (url.pathname.endsWith('/submissions') && request.method() === 'POST') {
       await fulfill(route, 201, {
         data: {

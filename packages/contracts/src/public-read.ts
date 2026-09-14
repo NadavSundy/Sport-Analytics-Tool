@@ -370,7 +370,13 @@ export const seasonCollectionResponseSchema = createCollectionResponseSchema(sea
 
 export const fixtureResponseSchema = createResourceResponseSchema(fixtureSchema);
 
-export const fixtureCollectionResponseSchema = createCollectionResponseSchema(fixtureSchema);
+export const fixtureCollectionResponseSchema = z.object({
+  data: z.array(fixtureSchema),
+  pagination: z.object({
+    nextCursor: z.string().min(1).nullable(),
+    totalPages: z.number().int().nonnegative(),
+  }),
+});
 
 export const competitorResponseSchema = createResourceResponseSchema(competitorSchema);
 
@@ -577,6 +583,8 @@ export type FixtureStatistics = z.infer<typeof fixtureStatisticsSchema>;
 export type CompetitionListQuery = z.infer<typeof competitionListQuerySchema>;
 export type SeasonListQuery = z.infer<typeof seasonListQuerySchema>;
 export type FixtureListQuery = z.infer<typeof fixtureListQuerySchema>;
+
+export type FixtureCollectionResponse = z.infer<typeof fixtureCollectionResponseSchema>;
 export type CompetitorListQuery = z.infer<typeof competitorListQuerySchema>;
 export type ParticipantListQuery = z.infer<typeof participantListQuerySchema>;
 export type FixtureEventListQuery = z.infer<typeof fixtureEventListQuerySchema>;

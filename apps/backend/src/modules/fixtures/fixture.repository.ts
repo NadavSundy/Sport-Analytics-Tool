@@ -49,28 +49,30 @@ export interface FixtureListOptions {
 export interface FixturePage {
   records: FixtureRecord[];
   hasMore: boolean;
+  totalRecords: number;
 }
 
 export async function listFixtures(
   options: FixtureListOptions,
   executor: QueryExecutor = getDatabasePool(),
 ): Promise<FixturePage> {
-  const conditions: string[] = [];
+  const filterConditions: string[] = [];
+  const cursorConditions: string[] = [];
   const values: unknown[] = [];
 
   if (options.competitionId) {
     values.push(options.competitionId);
-    conditions.push(`f.competition_id = $${values.length}::bigint`);
+    filterConditions.push(`f.competition_id = $${values.length}::bigint`);
   }
 
   if (options.season) {
     values.push(options.season);
-    conditions.push(`f.season = $${values.length}::text`);
+    filterConditions.push(`f.season = $${values.length}::text`);
   }
 
   if (options.competitorId) {
     values.push(options.competitorId);
-    conditions.push(`
+    filterConditions.push(`
       EXISTS (
         SELECT 1
         FROM fixture_team ft
@@ -82,17 +84,17 @@ export async function listFixtures(
 
   if (options.gender) {
     values.push(options.gender);
-    conditions.push(`f.gender = $${values.length}::text`);
+    filterConditions.push(`f.gender = $${values.length}::text`);
   }
 
   if (options.startDateFrom) {
     values.push(options.startDateFrom);
-    conditions.push(`f.start_date >= $${values.length}::date`);
+    filterConditions.push(`f.start_date >= $${values.length}::date`);
   }
 
   if (options.startDateTo) {
     values.push(options.startDateTo);
-    conditions.push(`f.start_date <= $${values.length}::date`);
+    filterConditions.push(`f.start_date <= $${values.length}::date`);
   }
 
   if (options.after) {
@@ -102,7 +104,7 @@ export async function listFixtures(
     values.push(options.after.fixtureId);
     const idParameter = values.length;
 
-    conditions.push(
+    cursorConditions.push(
       `(f.start_date, f.fixture_id) > ($${dateParameter}::date, $${idParameter}::bigint)`,
     );
   }
@@ -110,11 +112,17 @@ export async function listFixtures(
   values.push(options.limit + 1);
   const limitParameter = values.length;
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const filterWhere = filterConditions.length > 0 ? `WHERE ${filterConditions.join(' AND ')}` : '';
+  const cursorWhere = cursorConditions.length > 0 ? `WHERE ${cursorConditions.join(' AND ')}` : '';
 
-  const result = await executeQuery<FixtureRecord>(
+  const result = await executeQuery<FixtureRecord & { totalRecords: number }>(
     executor,
     `
+      WITH filtered_fixtures AS (
+        SELECT f.*, COUNT(*) OVER()::integer AS "totalRecords"
+        FROM fixture f
+        ${filterWhere}
+      )
       SELECT
         f.fixture_id::text AS "fixtureId",
         f.competition_id::text AS "competitionId",
@@ -142,11 +150,12 @@ export async function listFixtures(
         f.balls_per_over AS "ballsPerOver",
         f.scheduled_overs AS "scheduledOvers",
         f.start_date::text AS "startDate",
-        f.end_date::text AS "endDate"
-      FROM fixture f
+        f.end_date::text AS "endDate",
+        f."totalRecords"
+      FROM filtered_fixtures f
       LEFT JOIN competition c
         ON c.competition_id = f.competition_id
-      ${where}
+      ${cursorWhere}
       ORDER BY f.start_date ASC, f.fixture_id ASC
       LIMIT $${limitParameter}
     `,
@@ -156,6 +165,7 @@ export async function listFixtures(
   return {
     records: result.rows.slice(0, options.limit),
     hasMore: result.rows.length > options.limit,
+    totalRecords: result.rows[0]?.totalRecords ?? 0,
   };
 }
 

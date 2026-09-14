@@ -4368,6 +4368,22 @@ components:
         data:
           $ref: '#/components/schemas/Fixture'
 
+    FixturePaginationMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - nextCursor
+        - totalPages
+      properties:
+        nextCursor:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        totalPages:
+          type: integer
+          minimum: 0
+
     FixtureCollectionResponse:
       type: object
       additionalProperties: false
@@ -4380,7 +4396,7 @@ components:
           items:
             $ref: '#/components/schemas/Fixture'
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: '#/components/schemas/FixturePaginationMetadata'
 
     PublicEventResponse:
       type: object
