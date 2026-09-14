@@ -125,7 +125,7 @@ paths:
   /api/v1/admin/dataset-releases:
     post:
       tags: [Administration, Dataset Releases]
-      summary: Create an immutable dataset release
+      summary: Queue an immutable dataset release
       operationId: createDatasetRelease
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
@@ -141,18 +141,47 @@ paths:
                 version:
                   $ref: '#/components/schemas/DatasetReleaseVersion'
       responses:
-        '201':
-          description: Created release metadata, or the existing immutable release for that version.
+        '200':
+          description: Existing immutable release metadata when the version is already published.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetReleaseResponse'
+        '202':
+          description: Durable generation job accepted or reused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseJobResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/dataset-release-jobs/{jobId}:
+    get:
+      tags: [Administration, Dataset Releases]
+      summary: Get dataset release generation status
+      operationId: getDatasetReleaseJob
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Safe generation progress and completed release metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseJobResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/admin/api-consumers:
     get:
@@ -2454,6 +2483,45 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DatasetRelease'
+
+    DatasetReleaseJob:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          jobId,
+          version,
+          status,
+          eventsProcessed,
+          bytesWritten,
+          pageNumber,
+          createdAt,
+          startedAt,
+          completedAt,
+          failureCode,
+          failureMessage,
+          release,
+        ]
+      properties:
+        jobId: { type: string, format: uuid }
+        version: { $ref: '#/components/schemas/DatasetReleaseVersion' }
+        status: { type: string, enum: [pending, generating, completed, failed] }
+        eventsProcessed: { type: integer, minimum: 0 }
+        bytesWritten: { type: integer, minimum: 0 }
+        pageNumber: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        startedAt: { oneOf: [{ type: string, format: date-time }, { type: 'null' }] }
+        completedAt: { oneOf: [{ type: string, format: date-time }, { type: 'null' }] }
+        failureCode: { oneOf: [{ type: string, minLength: 1 }, { type: 'null' }] }
+        failureMessage: { oneOf: [{ type: string, minLength: 1 }, { type: 'null' }] }
+        release: { oneOf: [{ $ref: '#/components/schemas/DatasetRelease' }, { type: 'null' }] }
+
+    DatasetReleaseJobResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/DatasetReleaseJob' }
 
     DatasetReleaseArtifact:
       type: object

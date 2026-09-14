@@ -4,6 +4,7 @@ import {
 } from '@sport-analytics/contracts';
 import { Router } from 'express';
 import { pipeline } from 'node:stream';
+import { z } from 'zod';
 
 import type { VerifyAccessToken } from '../../auth/supabase-auth';
 import { requireAuthentication } from '../../middleware/require-authentication';
@@ -31,9 +32,43 @@ export function createDatasetReleaseRouter(
           .json({ error: { code: 'VALIDATION_FAILED', message: 'The request is invalid.' } });
         return;
       }
+      const account = response.locals.authenticatedAccount as { accountId: string };
       void service
-        .createRelease(parsed.data)
-        .then((release) => response.status(201).json({ data: release }))
+        .requestRelease(parsed.data, account.accountId)
+        .then((result) => {
+          if (result.release) {
+            response.status(200).json({ data: result.release });
+            return;
+          }
+          response.status(202).json({ data: result.job });
+        })
+        .catch(next);
+    },
+  );
+
+  router.get(
+    '/admin/dataset-release-jobs/:jobId',
+    authenticate,
+    requireAdministrator(),
+    (request, response, next) => {
+      const jobId = z.string().uuid().safeParse(request.params.jobId);
+      if (!jobId.success) {
+        response
+          .status(404)
+          .json({ error: { code: 'NOT_FOUND', message: 'Dataset release job not found.' } });
+        return;
+      }
+      void service
+        .getJob(jobId.data)
+        .then((job) => {
+          if (!job) {
+            response
+              .status(404)
+              .json({ error: { code: 'NOT_FOUND', message: 'Dataset release job not found.' } });
+            return;
+          }
+          response.status(200).json({ data: job });
+        })
         .catch(next);
     },
   );
