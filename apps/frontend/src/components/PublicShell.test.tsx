@@ -1,10 +1,9 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../features/auth/AuthProvider';
-import { HomePage } from '../features/home/HomePage';
 import { PublicShell } from './PublicShell';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
@@ -49,30 +48,17 @@ describe('public shell footer', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
   });
 
   // Issue #475 (P01-F27): in Sprint 2 user testing the participant searched the
-  // navigation and the footer for API information and found none. The link must lead
-  // to the API section itself, not merely to the top of the home page.
-  it('links from the footer to the API section of the home page and scrolls to it', async () => {
-    const scrolledTo: HTMLElement[] = [];
-    // jsdom does not implement scrollIntoView, so record which element was scrolled to.
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: function (this: HTMLElement) {
-        scrolledTo.push(this);
-      },
-    });
-
+  // navigation and the footer for API information and found none. The footer entry
+  // leads to the published documentation site, which documents the API.
+  it('links from the footer to the published API documentation in the same tab', () => {
     render(
       <AuthProvider client={createSignedOutAuthClient()}>
         <MemoryRouter initialEntries={['/fixtures']}>
           <PublicShell>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="*" element={<p>Another public page</p>} />
-            </Routes>
+            <p>Another public page</p>
           </PublicShell>
         </MemoryRouter>
       </AuthProvider>,
@@ -80,14 +66,10 @@ describe('public shell footer', () => {
 
     expect(screen.getByText('Another public page')).toBeInTheDocument();
     const apiLink = within(screen.getByRole('contentinfo')).getByRole('link', { name: 'API' });
-    expect(apiLink).toHaveAttribute('href', '/#api');
-
-    fireEvent.click(apiLink);
-
-    const apiSection = (
-      await screen.findByRole('heading', { name: 'The API is part of the product.' })
-    ).closest('section');
-    expect(apiSection).toHaveAttribute('id', 'api');
-    await waitFor(() => expect(scrolledTo).toEqual([apiSection]));
+    expect(apiLink).toHaveAttribute(
+      'href',
+      'https://sports-analytics-tool.pages.dev/api/overview/',
+    );
+    expect(apiLink).not.toHaveAttribute('target');
   });
 });
