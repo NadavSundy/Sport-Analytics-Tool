@@ -106,7 +106,11 @@ nav:
       - Project Methodology: project_methodology.md
       - Project Backlog and Milestone Plan: planning/project-backlog.md
       - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
+      - Sprint 2 Requirements & Rubric Traceability: planning/sprint-2-requirements-traceability.md
   - Testing:
+      - Automated Testing Strategy: development/testing.md
+      - CI/CD & Quality Gates: development/ci-cd.md
+      - Local CI: development/local-ci.md
       - User Testing Overview: testing/user-testing-overview.md
       - User Testing Protocol: testing/user-testing-protocol.md
       - User Testing Task Bank: testing/user-testing-task-bank.md

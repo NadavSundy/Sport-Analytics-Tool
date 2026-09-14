@@ -11,6 +11,7 @@ user-testing evidence. For testing **strategy and procedures**, see
 ## Requirements traceability
 
 - [Sprint 1 requirements traceability](../planning/sprint-1-requirements-traceability.md)
+- [Sprint 2 requirements and rubric traceability](../planning/sprint-2-requirements-traceability.md)
 - [Project backlog and milestone plan](../planning/project-backlog.md)
 
 ## Verification and validation evidence
@@ -52,6 +53,7 @@ The execution work remains split by workflow so findings can be attributed clean
 | Date             | Session                                                                                                                                                                                                                                                                                                      |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 23 Aug 2026      | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md)                                                                                                                         |
+| 11 Sep 2026      | [Issue #417 — P01 submitter evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-11-P01-submitter.md) — retained evidence; facilitator outcome fields and the second target submitter session still require close-out.              |
 | 10 & 13 Sep 2026 | [Issue #418 — reviewer / administrator P04](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md) — initial `REV-01` failure exposed #463; same task succeeded after the fix, followed by `REV-02`, `REV-05` and `ADM-02`. |
 
 Further Sprint 2 formal user-testing sessions will be added to this table as they are produced. The retained repository evidence is authoritative; documentation deployment does not retrieve or regenerate feedback from an external service.
