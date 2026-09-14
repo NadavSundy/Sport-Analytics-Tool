@@ -76,7 +76,7 @@ function currentUser(role: 'viewer' | 'admin' = 'admin') {
 }
 
 function renderPage(currentSession: Session | null = session()) {
-  render(
+  return render(
     <AuthProvider client={authClient(currentSession)}>
       <MemoryRouter initialEntries={['/admin/dataset-releases/new']}>
         <Routes>
@@ -135,11 +135,11 @@ describe('administrator dataset release page', () => {
     fireEvent.change(input, { target: { value: ' 2026.09.2 ' } });
     const submit = screen.getByRole('button', { name: 'Generate and publish snapshot' });
     fireEvent.click(submit);
-    expect(screen.getByRole('button', { name: 'Publishing release…' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Publishing release…' }));
+    expect(screen.getByRole('button', { name: 'Queueing release…' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Queueing release…' }));
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    resolveRelease(response(201, { data: release }));
+    resolveRelease(response(200, { data: release }));
     const status = await screen.findByRole('status');
     expect(status).toHaveFocus();
     expect(within(status).getByRole('heading', { name: 'Dataset 2026.09.2' })).toBeInTheDocument();
@@ -161,6 +161,153 @@ describe('administrator dataset release page', () => {
       body: JSON.stringify({ version: '2026.09.2' }),
     });
     expect((request?.headers as Headers).get('Authorization')).toBe('Bearer admin-access-token');
+    await new Promise((resolve) => window.setTimeout(resolve, 1100));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows durable job progress and polls until the release is complete', async () => {
+    const pending = {
+      jobId: '11111111-1111-4111-8111-111111111111',
+      version: release.version,
+      status: 'pending',
+      eventsProcessed: 0,
+      bytesWritten: 0,
+      pageNumber: 0,
+      createdAt: release.createdAt,
+      startedAt: null,
+      completedAt: null,
+      failureCode: null,
+      failureMessage: null,
+      release: null,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(response(202, { data: pending }))
+      .mockResolvedValueOnce(
+        response(200, {
+          data: {
+            ...pending,
+            status: 'generating',
+            eventsProcessed: 1000,
+            bytesWritten: 4000,
+            pageNumber: 1,
+            startedAt: release.createdAt,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        response(200, {
+          data: {
+            ...pending,
+            status: 'completed',
+            eventsProcessed: 1234,
+            bytesWritten: 5000,
+            pageNumber: 1,
+            completedAt: release.createdAt,
+            release,
+          },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage();
+    const input = await screen.findByRole('textbox', { name: 'Release version' });
+    fireEvent.change(input, { target: { value: release.version } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate and publish snapshot' }));
+    expect(
+      await screen.findByText(
+        'The worker is creating the immutable artifact. You can leave this page safely.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate and publish snapshot' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate and publish snapshot' }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('1 000', {}, { timeout: 2500 })).toBeInTheDocument();
+    expect(screen.getByText('4 000')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'View public release' }, { timeout: 3500 }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchMock.mock.calls[3]?.[0]).toContain(
+        `/admin/dataset-release-jobs/${pending.jobId}`,
+      ),
+    );
+  });
+
+  it('stops polling on failure and shows the safe worker failure message', async () => {
+    const generating = {
+      jobId: '11111111-1111-4111-8111-111111111111',
+      version: release.version,
+      status: 'generating',
+      eventsProcessed: 10000,
+      bytesWritten: 42000,
+      pageNumber: 1,
+      createdAt: release.createdAt,
+      startedAt: release.createdAt,
+      completedAt: null,
+      failureCode: null,
+      failureMessage: null,
+      release: null,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(response(202, { data: generating }))
+      .mockResolvedValueOnce(
+        response(200, {
+          data: {
+            ...generating,
+            status: 'failed',
+            failureCode: 'GenerationFailed',
+            failureMessage: 'Dataset release generation failed and can be retried.',
+          },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage();
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Release version' }), {
+      target: { value: release.version },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate and publish snapshot' }));
+
+    expect(await screen.findByRole('alert', {}, { timeout: 2500 })).toHaveTextContent(
+      'Dataset release generation failed and can be retried.',
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 1100));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole('button', { name: 'Generate and publish snapshot' })).toBeEnabled();
+  });
+
+  it('cancels pending polling when the page unmounts', async () => {
+    const pending = {
+      jobId: '11111111-1111-4111-8111-111111111111',
+      version: release.version,
+      status: 'pending',
+      eventsProcessed: 0,
+      bytesWritten: 0,
+      pageNumber: 0,
+      createdAt: release.createdAt,
+      startedAt: null,
+      completedAt: null,
+      failureCode: null,
+      failureMessage: null,
+      release: null,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(response(202, { data: pending }));
+    vi.stubGlobal('fetch', fetchMock);
+    const page = renderPage();
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Release version' }), {
+      target: { value: release.version },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate and publish snapshot' }));
+    await screen.findByText(/worker is creating the immutable artifact/i);
+    page.unmount();
+
+    await new Promise((resolve) => window.setTimeout(resolve, 1100));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('preserves the entered version and surfaces API and unexpected-response failures', async () => {
@@ -170,7 +317,7 @@ describe('administrator dataset release page', () => {
       .mockResolvedValueOnce(
         response(403, { error: { code: 'FORBIDDEN', message: 'Release permission was revoked.' } }),
       )
-      .mockResolvedValueOnce(response(201, { data: { version: 'malformed' } }));
+      .mockResolvedValueOnce(response(202, { data: { version: 'malformed' } }));
     vi.stubGlobal('fetch', fetchMock);
     renderPage();
     const input = await screen.findByRole('textbox', { name: 'Release version' });

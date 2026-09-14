@@ -46,20 +46,41 @@ cp apps/backend/.env.example apps/backend/.env
 
 Current runtime variables are:
 
-| Variable                   | Required by current runtime                                              | Secret  | Purpose                                                                                                                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`                 | No (defaults to `development`)                                           | No      | Runtime mode: `development`, `test` or `production`.                                                                                                                                       |
-| `PORT`                     | No (defaults to `3000`)                                                  | No      | HTTP listen port. Azure may provide this value.                                                                                                                                            |
-| `CORS_ORIGINS`             | No (defaults to `http://localhost:5173`)                                 | No      | Comma-separated browser origins allowed by Express CORS middleware.                                                                                                                        |
-| `SUPABASE_URL`             | Yes                                                                      | No      | Supabase project URL used by backend token verification.                                                                                                                                   |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes                                                                      | No      | Publishable key used with `supabase.auth.getUser(accessToken)`.                                                                                                                            |
-| `SUPABASE_SECRET_KEY`      | No at startup; yes to enable account deletion                            | Yes     | Server-only key used exclusively by the Supabase Auth Admin account-deletion client.                                                                                                       |
-| `DATABASE_URL`             | Required for database-backed routes/scripts                              | Yes     | PostgreSQL session-pooler connection string.                                                                                                                                               |
-| `DATABASE_URL_TEST`        | Optional for local tests; supplied by Docker/CI or for a managed test DB | Depends | Dedicated isolated test PostgreSQL connection. When absent, the normal database-test command provisions a disposable PostgreSQL 16 cluster. Must never point to development or production. |
+| Variable                                 | Required by current runtime                                              | Secret  | Purpose                                                                                                                                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                               | No (defaults to `development`)                                           | No      | Runtime mode: `development`, `test` or `production`.                                                                                                                                       |
+| `DEPLOYMENT_ENVIRONMENT`                 | Yes in production; `local` for local development                         | No      | Namespaces releases so filesystem metadata cannot shadow a deployed Azure artifact when a database is accidentally shared.                                                                 |
+| `PORT`                                   | No (defaults to `3000`)                                                  | No      | HTTP listen port. Azure may provide this value.                                                                                                                                            |
+| `CORS_ORIGINS`                           | No (defaults to `http://localhost:5173`)                                 | No      | Comma-separated browser origins allowed by Express CORS middleware.                                                                                                                        |
+| `SUPABASE_URL`                           | Yes                                                                      | No      | Supabase project URL used by backend token verification.                                                                                                                                   |
+| `SUPABASE_PUBLISHABLE_KEY`               | Yes                                                                      | No      | Publishable key used with `supabase.auth.getUser(accessToken)`.                                                                                                                            |
+| `SUPABASE_SECRET_KEY`                    | No at startup; yes to enable account deletion                            | Yes     | Server-only key used exclusively by the Supabase Auth Admin account-deletion client.                                                                                                       |
+| `DATABASE_URL`                           | Required for database-backed routes/scripts                              | Yes     | PostgreSQL session-pooler connection string.                                                                                                                                               |
+| `DATABASE_URL_TEST`                      | Optional for local tests; supplied by Docker/CI or for a managed test DB | Depends | Dedicated isolated test PostgreSQL connection. When absent, the normal database-test command provisions a disposable PostgreSQL 16 cluster. Must never point to development or production. |
+| `OBJECT_STORAGE_PROVIDER`                | Required in production; select `filesystem` for local releases           | No      | Chooses the provider behind the existing private `ObjectStore` boundary.                                                                                                                   |
+| `OBJECT_STORAGE_FILESYSTEM_ROOT`         | Required with the local filesystem provider                              | No      | Filesystem storage root. The example resolves to repository-local `.local/object-storage`, which is ignored by Git.                                                                        |
+| `AZURE_STORAGE_ACCOUNT_NAME`             | Required with the Azure provider                                         | No      | Non-secret Azure account identifier used by the production adapter.                                                                                                                        |
+| `AZURE_STORAGE_CONTAINER_NAME`           | Required with the Azure provider                                         | No      | Non-secret private Blob container identifier used by the production adapter.                                                                                                               |
+| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Preferred with Azure; old name remains an alias                          | No      | Private staged-ingestion container.                                                                                                                                                        |
+| `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Required with Azure                                                      | No      | Separate private immutable dataset-release container.                                                                                                                                      |
 
 The current `.env.example` also contains reserved placeholders (`EXTERNAL_API_KEY`, `API_VERSION`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`) that are not read by the current application runtime. Do not treat a reserved placeholder as an implemented configuration option. `CORS_ORIGINS` is the variable used by the code today.
 
 Never commit real `.env` files, database passwords, OAuth client secrets, bearer tokens or elevated Supabase keys.
+
+The example environment explicitly selects local filesystem storage:
+
+```env
+OBJECT_STORAGE_PROVIDER=filesystem
+OBJECT_STORAGE_FILESYSTEM_ROOT=../../.local/object-storage
+```
+
+Because npm runs the workspace from `apps/backend`, this writes beneath
+`.local/object-storage` at the repository root. Dataset artifacts are streamed to temporary files
+and promoted only after successful completion. They are private local development output, expose no
+public filesystem URL, are ignored by Git and must not be committed. Production instead requires
+`OBJECT_STORAGE_PROVIDER=azure` and continues to use the private Azure Blob adapter with managed
+identity; it rejects missing or filesystem provider configuration.
 
 ## Database connection
 
@@ -93,6 +114,38 @@ Default endpoints include:
 - Administrator users: [http://localhost:3000/api/v1/admin/users](http://localhost:3000/api/v1/admin/users) (administrator only)
 - Fixture event route template: `/api/v1/fixtures/{fixtureId}/events` (public accepted events)
 - Participant fixture-history route template: `/api/v1/participants/{participantId}/fixtures` (public player match history)
+
+### Publish a local dataset release
+
+After applying migrations, start both the backend and the local database-transport worker. Azure and
+Service Bus are not required:
+
+```bash
+npm run dev:backend
+npm run dev:worker
+```
+
+Then an administrator can queue publication:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/admin/dataset-releases \
+  -H "Authorization: Bearer <administrator-access-token>" \
+  -H "Content-Type: application/json" \
+  --data '{"version":"local-test"}'
+```
+
+The POST returns `202` and a job identifier. Poll
+`GET /api/v1/admin/dataset-release-jobs/{jobId}` with the administrator token until `completed`.
+The artifact appears as `.local/object-storage/dataset-releases/<uuid>.json`. Retrieve the same
+private stored bytes through the stable public backend endpoint:
+
+```bash
+curl http://localhost:3000/api/v1/dataset-releases/local-test/artifact.json \
+  --output local-test.json
+```
+
+Compare the downloaded file's SHA-256 with
+`GET /api/v1/dataset-releases/local-test`. Do not commit either generated file.
 
 ## Administrator user management
 
@@ -248,3 +301,5 @@ The root `npm run check` already performs that contracts build before repository
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5]. The issue #255 competition-scoped access behavior was
 documented with the assistance of Codex[GPT-5].
+The local filesystem object-storage configuration and dataset-release workflow were documented with
+the assistance of Codex[GPT-5].

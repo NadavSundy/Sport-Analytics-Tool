@@ -68,10 +68,10 @@ export class DeliveryPump {
       processMessage: async (message) => this.track(message),
       processError: async (error) => {
         this.metrics.deliveryErrors += 1;
-        this.logger.error('Service Bus delivery error.', { errorName: error.name });
+        this.logger.error('Job transport delivery error.', { errorName: error.name });
       },
     });
-    this.logger.info('Service Bus delivery pump started.');
+    this.logger.info('Job delivery pump started.');
   }
 
   private track(message: ReceivedJob): Promise<void> {
@@ -128,7 +128,7 @@ export class DeliveryPump {
   async stop(timeoutMs: number): Promise<boolean> {
     if (this.stopping) return this.activeTasks.size === 0;
     this.stopping = true;
-    this.logger.info('Stopping Service Bus delivery pump.', { active: this.activeTasks.size });
+    this.logger.info('Stopping job delivery pump.', { active: this.activeTasks.size });
     // Begin stopping deliveries immediately. Some SDK implementations wait for active
     // handlers in close(), so do not let that consume the worker's whole drain budget.
     const subscriptionClosed = this.subscription?.close() ?? Promise.resolve();

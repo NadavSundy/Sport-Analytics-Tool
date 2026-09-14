@@ -56,8 +56,13 @@ test('shared Azure backend deploy script retains ZIP creation, credential redact
 });
 
 test('backend deployment smoke configuration uses only non-secret Blob resource identifiers', () => {
+  assert.match(backendArtifactSmokeCheck, /OBJECT_STORAGE_PROVIDER: 'azure'/);
   assert.match(backendArtifactSmokeCheck, /AZURE_STORAGE_ACCOUNT_NAME: 'deploymentstorage'/);
   assert.match(backendArtifactSmokeCheck, /AZURE_STORAGE_CONTAINER_NAME: 'deployment-smoke-check'/);
+  assert.match(
+    backendArtifactSmokeCheck,
+    /AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases'/,
+  );
   assert.doesNotMatch(
     `${ciWorkflow}\n${manualBackendWorkflow}\n${backendArtifactSmokeCheck}`,
     /AZURE_STORAGE_(?:CONNECTION_STRING|ACCOUNT_KEY|SAS_TOKEN)/,

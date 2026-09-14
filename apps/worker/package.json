@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prepare:shared": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing",
+    "prepare:shared": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/object-storage",
     "predev": "npm run prepare:shared",
     "dev": "tsx watch --env-file=.env src/index.ts",
     "prebuild": "npm run prepare:shared",
@@ -23,6 +23,7 @@
     "@azure/storage-blob": "^12.27.0",
     "@sport-analytics/batch-processing": "0.1.0",
     "@sport-analytics/contracts": "0.1.0",
+    "@sport-analytics/object-storage": "0.1.0",
     "pg": "^8.22.0",
     "zod": "^3.23.8"
   },

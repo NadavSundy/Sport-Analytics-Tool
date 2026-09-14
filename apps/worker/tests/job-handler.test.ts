@@ -13,20 +13,24 @@ describe('worker job dispatcher', () => {
   it('routes probe and batch validation contracts independently', async () => {
     const probe = vi.fn().mockResolvedValue(undefined);
     const batchValidation = vi.fn().mockResolvedValue(undefined);
-    const handler = createJobHandler({ probe, batchValidation });
+    const datasetRelease = vi.fn().mockResolvedValue(undefined);
+    const handler = createJobHandler({ probe, batchValidation, datasetRelease });
     const signal = new AbortController().signal;
 
     await handler(message({ type: 'worker.probe', version: 1 }), signal);
     await handler(message({ type: 'batch.validate', version: 1 }), signal);
+    await handler(message({ type: 'dataset-release.generate', version: 1 }), signal);
 
     expect(probe).toHaveBeenCalledTimes(1);
     expect(batchValidation).toHaveBeenCalledTimes(1);
+    expect(datasetRelease).toHaveBeenCalledTimes(1);
   });
 
   it('dead-letters unknown command versions as permanent contract faults', async () => {
     const handler = createJobHandler({
       probe: vi.fn(),
       batchValidation: vi.fn(),
+      datasetRelease: vi.fn(),
     });
 
     await expect(
