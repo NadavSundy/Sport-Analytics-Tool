@@ -1,4 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
+import {
+  fixtureStatisticResponseSchema,
+  fixtureStatisticsResponseSchema,
+  participantAggregatesResponseSchema,
+  participantFixtureCollectionResponseSchema,
+} from '@sport-analytics/contracts';
 import { expect, test, type Page } from '@playwright/test';
 
 const competitors = [
@@ -221,13 +227,18 @@ test(
 
       if (url.pathname.endsWith('/participants/player-1/fixtures')) {
         await route.fulfill({
-          json: { data: matchHistory, pagination: { nextCursor: null } },
+          json: participantFixtureCollectionResponseSchema.parse({
+            data: matchHistory,
+            pagination: { nextCursor: null },
+          }),
         });
         return;
       }
 
       if (url.pathname.endsWith('/participants/player-1/statistics')) {
-        await route.fulfill({ json: { data: careerAggregates } });
+        await route.fulfill({
+          json: participantAggregatesResponseSchema.parse({ data: careerAggregates }),
+        });
         return;
       }
 
@@ -240,7 +251,7 @@ test(
 
       if (url.pathname.endsWith('/statistics/stat-innings-1')) {
         await route.fulfill({
-          json: {
+          json: fixtureStatisticResponseSchema.parse({
             data: {
               ...inningsStatistic,
               contributingEvents: [
@@ -252,6 +263,8 @@ test(
                   sequenceNumber: 1,
                   strikerParticipantId: 'player-1',
                   strikerParticipantName: 'A Player',
+                  nonStrikerParticipantId: 'player-2',
+                  nonStrikerParticipantName: 'B Player',
                   bowlerParticipantId: 'bowler-1',
                   bowlerParticipantName: 'Opening Bowler',
                   runs: { offBat: 4, extras: 0, total: 4 },
@@ -267,14 +280,14 @@ test(
                 },
               ],
             },
-          },
+          }),
         });
         return;
       }
 
       if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
         await route.fulfill({
-          json: {
+          json: fixtureStatisticsResponseSchema.parse({
             data: {
               fixtureId: 'fixture-1',
               status: 'complete',
@@ -292,7 +305,7 @@ test(
               warnings: [],
               statistics: [inningsStatistic, playerStatistic],
             },
-          },
+          }),
         });
         return;
       }
