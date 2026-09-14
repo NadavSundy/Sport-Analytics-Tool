@@ -153,6 +153,7 @@ function report(blocked = true): BatchReportResponse {
           duplicate: 0,
           conflicting: 0,
         },
+        lineage: { replacesBatchReference: null, supersededByBatchReference: null },
         review: null,
       },
       errorGroups: blocked ? [{ ruleCode: 'REFERENCE_AMBIGUOUS', count: 1 }] : [],
@@ -608,5 +609,29 @@ describe('reviewer batch workspace', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     );
+  });
+
+  test('lets reviewers navigate both directions of a correction chain', async () => {
+    const body = report(false);
+    body.data.batch.status = 'superseded';
+    body.data.batch.lineage = {
+      replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
+      supersededByBatchReference: '323e4567-e89b-42d3-a456-426614174000',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL) =>
+          Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+        ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+    expect(
+      await screen.findByRole('link', { name: body.data.batch.lineage.replacesBatchReference! }),
+    ).toHaveAttribute('href', '/reviews/batches/223e4567-e89b-42d3-a456-426614174000');
+    expect(
+      screen.getByRole('link', { name: body.data.batch.lineage.supersededByBatchReference! }),
+    ).toHaveAttribute('href', '/reviews/batches/323e4567-e89b-42d3-a456-426614174000');
   });
 });

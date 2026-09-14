@@ -66,6 +66,12 @@ interface CreateBatchInput {
   packageVersion?: string;
   source?: BatchSource;
   state?: BatchState;
+  replacesBatchReference?: string;
+}
+
+interface BatchLineageRecord {
+  replacesBatchReference: string | null;
+  supersededByBatchReference: string | null;
 }
 
 interface InsertBatchItemInput {
@@ -282,6 +288,7 @@ export class BatchReviewConflictError extends Error {}
 export class BatchReviewResolutionError extends Error {}
 export class BatchReferenceMappingConflictError extends Error {}
 export class BatchPublishedConflictResolutionError extends Error {}
+export class BatchReplacementConflictError extends Error {}
 
 /**
  * The outcome of resolving one staged item's references.
@@ -321,6 +328,7 @@ export interface BatchRepository {
   countNonTerminalBatches(submitterId: string): Promise<number>;
   getBatchProgress(batchId: string): Promise<BatchProgressRecord>;
   getBatchCounts(batchId: string): Promise<BatchCountsRecord>;
+  getBatchLineage(batchId: string): Promise<BatchLineageRecord>;
   listBatchReportItems(
     batchId: string,
     options: BatchItemPageOptions,
@@ -1003,7 +1011,59 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           input.submitterId,
           input.idempotencyKey,
         ]);
-        if (existing) return { batch: existing, created: false, activeLimitReached: false };
+        let replacementTarget: BatchRecord | null = null;
+        if (input.replacesBatchReference) {
+          const target = await executeQuery<BatchRow>(
+            executor,
+            `SELECT ${batchSelection} FROM batch
+             WHERE batch_reference = $1::uuid
+             FOR UPDATE`,
+            [input.replacesBatchReference],
+          );
+          replacementTarget = target.rows[0] ? mapBatch(target.rows[0]) : null;
+          if (
+            !replacementTarget ||
+            replacementTarget.submitterId !== input.submitterId ||
+            replacementTarget.competitionId !== input.competitionId
+          ) {
+            throw new BatchReplacementConflictError(
+              'The selected correction request cannot be replaced by this upload.',
+            );
+          }
+          if (existing && existing.source?.checksum !== input.source?.checksum) {
+            throw new BatchReplacementConflictError(
+              'The replacement upload key is already associated with different batch content.',
+            );
+          }
+          if (
+            replacementTarget.state === 'superseded' &&
+            replacementTarget.supersededBy === existing?.batchId
+          ) {
+            return { batch: existing, created: false, activeLimitReached: false };
+          }
+          if (replacementTarget.state !== 'correction_requested') {
+            throw new BatchReplacementConflictError(
+              'Only a batch returned for correction can receive a replacement upload.',
+            );
+          }
+          if (existing) {
+            const alreadyReplaces = await executeQuery<{ batchReference: string }>(
+              executor,
+              `SELECT batch_reference::text AS "batchReference" FROM batch
+               WHERE superseded_by = $1::bigint
+               LIMIT 1`,
+              [existing.batchId],
+            );
+            if (alreadyReplaces.rows[0]) {
+              throw new BatchReplacementConflictError(
+                'This replacement upload is already linked to another correction request.',
+              );
+            }
+          }
+        }
+        if (existing && !replacementTarget) {
+          return { batch: existing, created: false, activeLimitReached: false };
+        }
         const active = await executeQuery<{ count: string }>(
           executor,
           `SELECT count(*)::text AS count FROM batch
@@ -1016,9 +1076,40 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         if (Number(active.rows[0]?.count ?? 0) >= 3) {
           return { batch: null, created: false, activeLimitReached: true };
         }
+        const replacement = existing ?? (await insertBatchAndValidationJob(executor, input));
+        if (replacementTarget) {
+          const linked = await executeQuery(
+            executor,
+            `UPDATE batch
+             SET state = 'superseded', superseded_by = $2::bigint
+             WHERE batch_id = $1::bigint
+               AND state = 'correction_requested'
+               AND superseded_by IS NULL
+             RETURNING batch_id`,
+            [replacementTarget.batchId, replacement.batchId],
+          );
+          if (!linked.rows[0]) {
+            throw new BatchReplacementConflictError(
+              'The correction request was replaced by another upload.',
+            );
+          }
+          await executeQuery(
+            executor,
+            `INSERT INTO batch_state_transition (
+               batch_id, from_state, to_state, actor_kind, actor_identifier, reason
+             ) VALUES (
+               $1::bigint, 'correction_requested', 'superseded', 'api', $2, $3
+             )`,
+            [
+              replacementTarget.batchId,
+              input.submitterId,
+              `Corrected replacement batch ${replacement.batchReference} submitted.`,
+            ],
+          );
+        }
         return {
-          batch: await insertBatchAndValidationJob(executor, input),
-          created: true,
+          batch: replacement,
+          created: !existing,
           activeLimitReached: false,
         };
       }
@@ -1187,6 +1278,28 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         duplicate: Number(row.duplicate),
         conflicting: Number(row.conflicting),
       };
+    },
+
+    async getBatchLineage(batchId) {
+      const result = await executeQuery<BatchLineageRecord>(
+        database(),
+        `SELECT
+           predecessor.batch_reference::text AS "replacesBatchReference",
+           replacement.batch_reference::text AS "supersededByBatchReference"
+         FROM batch current_batch
+         LEFT JOIN batch predecessor ON predecessor.superseded_by = current_batch.batch_id
+         LEFT JOIN batch replacement ON replacement.batch_id = current_batch.superseded_by
+         WHERE current_batch.batch_id = $1::bigint
+         ORDER BY predecessor.batch_id DESC
+         LIMIT 1`,
+        [batchId],
+      );
+      return (
+        result.rows[0] ?? {
+          replacesBatchReference: null,
+          supersededByBatchReference: null,
+        }
+      );
     },
 
     async listBatchReportItems(batchId, options) {

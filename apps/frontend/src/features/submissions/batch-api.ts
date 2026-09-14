@@ -131,6 +131,7 @@ export async function uploadBatch(
   competitionId: string,
   file: File,
   idempotencyKey: string,
+  replacesBatchReference?: string,
 ): Promise<BatchReceiptResponse> {
   const extension = file.name.split('.').pop()?.toLowerCase() as
     keyof typeof mediaTypesByExtension | undefined;
@@ -152,6 +153,7 @@ export async function uploadBatch(
         'X-Batch-Package-Version': BATCH_PACKAGE_VERSION,
         'X-Competition-Id': competitionId,
         'X-File-Name': file.name,
+        ...(replacesBatchReference ? { 'X-Replaces-Batch-Reference': replacesBatchReference } : {}),
       },
       body: file,
     }),

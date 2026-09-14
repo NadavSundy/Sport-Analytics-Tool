@@ -78,6 +78,22 @@ function BatchQueueItem({ batch }: { batch: BatchStatus }) {
         {statusLabels[batch.status]} · {batch.progress.accepted} accepted ·{' '}
         {batch.progress.rejected} rejected
       </span>
+      {batch.lineage.replacesBatchReference ? (
+        <span>
+          Replaces{' '}
+          <Link to={`/reviews/batches/${batch.lineage.replacesBatchReference}`}>
+            {batch.lineage.replacesBatchReference}
+          </Link>
+        </span>
+      ) : null}
+      {batch.lineage.supersededByBatchReference ? (
+        <span>
+          Superseded by{' '}
+          <Link to={`/reviews/batches/${batch.lineage.supersededByBatchReference}`}>
+            {batch.lineage.supersededByBatchReference}
+          </Link>
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -414,6 +430,24 @@ function SourceMetadata({ batch }: { batch: BatchStatus }) {
           <dd>{batch.source.packageVersion}</dd>
         </div>
       </dl>
+      {batch.lineage.replacesBatchReference ? (
+        <p>
+          Corrected replacement for{' '}
+          <Link to={`/reviews/batches/${batch.lineage.replacesBatchReference}`}>
+            {batch.lineage.replacesBatchReference}
+          </Link>
+          .
+        </p>
+      ) : null}
+      {batch.lineage.supersededByBatchReference ? (
+        <p>
+          Superseded by{' '}
+          <Link to={`/reviews/batches/${batch.lineage.supersededByBatchReference}`}>
+            {batch.lineage.supersededByBatchReference}
+          </Link>
+          .
+        </p>
+      ) : null}
     </section>
   );
 }

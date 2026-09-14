@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { executeQuery } from '../../src/database';
 import {
   BatchReviewResolutionError,
+  BatchReplacementConflictError,
   BatchReferenceMappingConflictError,
   createBatchRepository,
 } from '../../src/modules/batches/batch.repository';
@@ -1513,6 +1514,111 @@ describe.sequential('batch repository database integration', () => {
       });
     },
   );
+
+  test('links a changed-content resubmission to its returned batch and preserves the correction chain', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const original = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-correction-original`,
+        state: 'awaiting_review',
+      });
+      await repository.applyReviewDecision({
+        batchId: original.batchId,
+        actorId: current.accountId,
+        decision: 'returned_for_correction',
+        reason: 'Correct the submitted season package.',
+      });
+
+      const firstInput = {
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-correction-replacement-1`,
+        packageVersion: '1.0',
+        source: { checksum: 'b'.repeat(64), uri: 'stored-object:replacement-1', sizeBytes: 20 },
+        state: 'stored' as const,
+        replacesBatchReference: original.batchReference,
+      };
+      const first = await repository.createOrFindBatchAndQueueValidation(firstInput);
+      expect(first).toMatchObject({ created: true, activeLimitReached: false });
+      expect(first.batch).not.toBeNull();
+      await expect(repository.findBatchById(original.batchId)).resolves.toMatchObject({
+        state: 'superseded',
+        supersededBy: first.batch!.batchId,
+      });
+      await expect(repository.getBatchLineage(original.batchId)).resolves.toEqual({
+        replacesBatchReference: null,
+        supersededByBatchReference: first.batch!.batchReference,
+      });
+      await expect(repository.getBatchLineage(first.batch!.batchId)).resolves.toEqual({
+        replacesBatchReference: original.batchReference,
+        supersededByBatchReference: null,
+      });
+      const transition = await client.query<{ fromState: string; toState: string; reason: string }>(
+        `SELECT from_state::text AS "fromState", to_state::text AS "toState", reason
+         FROM batch_state_transition
+         WHERE batch_id = $1::bigint AND to_state = 'superseded'`,
+        [original.batchId],
+      );
+      expect(transition.rows).toEqual([
+        {
+          fromState: 'correction_requested',
+          toState: 'superseded',
+          reason: `Corrected replacement batch ${first.batch!.batchReference} submitted.`,
+        },
+      ]);
+
+      await expect(
+        repository.createOrFindBatchAndQueueValidation({
+          ...firstInput,
+          batchReference: randomUUID(),
+        }),
+      ).resolves.toMatchObject({
+        batch: { batchReference: first.batch!.batchReference },
+        created: false,
+        activeLimitReached: false,
+      });
+
+      await executeQuery(client, `UPDATE batch SET state = 'awaiting_review' WHERE batch_id = $1`, [
+        first.batch!.batchId,
+      ]);
+      await repository.applyReviewDecision({
+        batchId: first.batch!.batchId,
+        actorId: current.accountId,
+        decision: 'returned_for_correction',
+        reason: 'A second correction is required.',
+      });
+      const second = await repository.createOrFindBatchAndQueueValidation({
+        ...firstInput,
+        batchReference: randomUUID(),
+        idempotencyKey: `${sourcePrefix}-correction-replacement-2`,
+        source: { checksum: 'c'.repeat(64), uri: 'stored-object:replacement-2', sizeBytes: 21 },
+        replacesBatchReference: first.batch!.batchReference,
+      });
+      expect(second.batch).not.toBeNull();
+      await expect(repository.getBatchLineage(first.batch!.batchId)).resolves.toEqual({
+        replacesBatchReference: original.batchReference,
+        supersededByBatchReference: second.batch!.batchReference,
+      });
+      await expect(repository.getBatchLineage(second.batch!.batchId)).resolves.toEqual({
+        replacesBatchReference: first.batch!.batchReference,
+        supersededByBatchReference: null,
+      });
+
+      await expect(
+        repository.createOrFindBatchAndQueueValidation({
+          ...firstInput,
+          batchReference: randomUUID(),
+          idempotencyKey: `${sourcePrefix}-competing-replacement`,
+          source: { checksum: 'd'.repeat(64), uri: 'stored-object:competing', sizeBytes: 22 },
+        }),
+      ).rejects.toBeInstanceOf(BatchReplacementConflictError);
+    });
+  });
 
   test.each([
     ['rejected', 'rejected'],

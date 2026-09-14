@@ -59,9 +59,11 @@ export type PackageUploadScope = 'season' | 'catalogue';
 export function BatchUploadWorkflow({
   profile,
   scope,
+  replacement,
 }: {
   profile: CurrentUserProfile;
   scope: PackageUploadScope;
+  replacement?: { batchReference: string; competitionId: string };
 }) {
   const client = useAuthenticatedApiClient();
   const [access, setAccess] = useState<AccessState>({ kind: 'loading' });
@@ -76,7 +78,15 @@ export function BatchUploadWorkflow({
     void competitionOptions(profile, controller.signal)
       .then((competitions) => {
         setAccess({ kind: 'ready', competitions });
-        setCompetitionId(competitions[0]?.competitionId ?? '');
+        setCompetitionId(
+          (replacement &&
+            competitions.some(
+              (competition) => competition.competitionId === replacement.competitionId,
+            ) &&
+            replacement.competitionId) ||
+            competitions[0]?.competitionId ||
+            '',
+        );
       })
       .catch(() => {
         if (!controller.signal.aborted) {
@@ -84,7 +94,7 @@ export function BatchUploadWorkflow({
         }
       });
     return () => controller.abort();
-  }, [profile]);
+  }, [profile, replacement]);
 
   useEffect(() => {
     if (upload.kind === 'accepted' || upload.kind === 'error') {
@@ -110,6 +120,7 @@ export function BatchUploadWorkflow({
         competitionId,
         file,
         await batchUploadIdempotencyKey(competitionId, file),
+        replacement?.batchReference,
       );
       invalidateBatchCollections();
       const competition =
@@ -129,7 +140,9 @@ export function BatchUploadWorkflow({
         error instanceof BatchUploadInputError
           ? error.message
           : error instanceof ApiResponseError && error.status === 409
-            ? `${error.message} If this is a corrected replacement, choose the corrected file again to start a new upload.`
+            ? replacement
+              ? `${error.message} Refresh submission history to check whether another replacement was submitted.`
+              : `${error.message} Start a requested correction from the original batch in submission history.`
             : error instanceof ApiResponseError && error.status === 413
               ? 'The server rejected this package because it exceeds the 50 MB limit.'
               : error instanceof ApiResponseError && error.status === 503
@@ -193,12 +206,22 @@ export function BatchUploadWorkflow({
         </div>
       ) : (
         <form className="submission-form batch-upload-form" onSubmit={submit}>
+          {replacement ? (
+            <div className="state-message" role="status">
+              <h2>Corrected replacement upload</h2>
+              <p>
+                This package will replace correction-requested batch{' '}
+                <code>{replacement.batchReference}</code>. The original remains in submission
+                history with a link to this replacement.
+              </p>
+            </div>
+          ) : null}
           <div className="submission-field">
             <label htmlFor="batch-competition">Competition</label>
             <select
               id="batch-competition"
               value={competitionId}
-              disabled={busy || completed}
+              disabled={busy || completed || Boolean(replacement)}
               onChange={(event) => {
                 setCompetitionId(event.target.value);
                 setUpload({ kind: 'idle' });
@@ -241,9 +264,12 @@ export function BatchUploadWorkflow({
               }}
             />
             <p id="batch-file-help" className="field-help">
-              JSON, CSV or NDJSON; maximum {MAX_BATCH_BYTES / 1024 / 1024} MB. Selecting a corrected
-              file starts a replacement upload. Retrying unchanged content, including after a page
-              refresh and reselecting the file, reuses the same request and receipt.
+              JSON, CSV or NDJSON; maximum {MAX_BATCH_BYTES / 1024 / 1024} MB.{' '}
+              {replacement
+                ? 'Selecting the corrected file creates the linked replacement. '
+                : 'Start a requested correction from the original batch in submission history. '}
+              Retrying unchanged content, including after a page refresh and reselecting the file,
+              reuses the same request and receipt.
             </p>
             {file ? <p className="field-help">Selected: {file.name}</p> : null}
           </div>
