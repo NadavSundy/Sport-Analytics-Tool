@@ -480,6 +480,8 @@ describe('public read contracts', () => {
                   sequenceNumber: 1,
                   strikerParticipantId: '50',
                   strikerParticipantName: 'Example Batter',
+                  nonStrikerParticipantId: '51',
+                  nonStrikerParticipantName: 'Example Non-striker',
                   bowlerParticipantId: '60',
                   bowlerParticipantName: 'Example Bowler',
                   runs: {
@@ -509,6 +511,9 @@ describe('public read contracts', () => {
               competitorId: '20',
               competitorName: 'Joburg Super Kings',
               sourceEventCount: 1,
+              battingPosition: 1,
+              battingParticipation: 'batted',
+              dismissal: { status: 'not_out', kind: null, eventId: null },
               batting: {
                 runsScored: 4,
                 ballsFaced: 1,

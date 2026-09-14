@@ -18,6 +18,8 @@ export interface FixtureStatisticsEventSource {
   bowlingCompetitorName: string | null;
   strikerId: string;
   strikerName: string;
+  nonStrikerId: string;
+  nonStrikerName: string;
   bowlerId: string;
   bowlerName: string;
   runsOffBat: number;
@@ -30,6 +32,22 @@ export interface FixtureStatisticsEventSource {
   extraLegByes: number | null;
   extraPenalty: number | null;
   creditedWickets: number;
+  wickets: FixtureStatisticsWicketSource[];
+}
+
+export interface FixtureStatisticsWicketSource {
+  wicketId: string;
+  eventId: string;
+  playerOutId: string;
+  kind: string;
+  isTerminal: boolean;
+}
+
+export interface FixtureStatisticsSquadMemberSource {
+  participantId: string;
+  participantName: string;
+  competitorId: string;
+  competitorName: string;
 }
 
 export interface FixtureStatisticsSource {
@@ -47,4 +65,5 @@ export interface FixtureStatisticsSource {
   decidedByBowlOut: boolean;
   innings: FixtureStatisticsInningsSource[];
   events: FixtureStatisticsEventSource[];
+  squad?: FixtureStatisticsSquadMemberSource[];
 }

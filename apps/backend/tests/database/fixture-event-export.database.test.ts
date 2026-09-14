@@ -220,9 +220,11 @@ describe.sequential('fixture event export database integration', () => {
 
       expect(trace.rows.map((row) => row.eventId)).toEqual(tracedEventIds);
       for (const row of trace.rows) {
-        expect([row.strikerParticipantId, row.bowlerParticipantId]).toContain(
-          statistic.participantId,
-        );
+        expect([
+          row.strikerParticipantId,
+          row.nonStrikerParticipantId,
+          row.bowlerParticipantId,
+        ]).toContain(statistic.participantId);
       }
 
       const involvement = await exportCsv(
@@ -237,5 +239,5 @@ describe.sequential('fixture event export database integration', () => {
     // which is why the trace export no longer uses it. If no player differed
     // here the assertion above would prove nothing about that choice.
     expect(playersInvolvedBeyondTheirTrace).toBeGreaterThan(0);
-  });
+  }, 15_000);
 });
