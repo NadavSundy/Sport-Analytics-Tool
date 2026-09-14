@@ -1063,6 +1063,273 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  /**
+   * Issue #529. The reported failure was a reviewer resolving a conflict with a
+   * delivery published before immutable lineage existed: an accepted submission,
+   * no source_event_id and no submission_event_ordinal, differing from the staged
+   * item only in its display ball number, as delivery 2342246 does. Nothing here
+   * mocks the repository, so the lineage function, the revision triggers and the
+   * refreshed delivery_current view all run as they do in a migrated database.
+   */
+  async function deliveryRow(client: PoolClient, deliveryId: string) {
+    const result = await client.query<{ row: Record<string, unknown> }>(
+      `SELECT to_jsonb(delivery) AS row FROM delivery WHERE delivery_id=$1::bigint`,
+      [deliveryId],
+    );
+    return result.rows[0]!.row;
+  }
+
+  function withoutKeys(row: Record<string, unknown>, keys: string[]) {
+    return Object.fromEntries(Object.entries(row).filter(([key]) => !keys.includes(key)));
+  }
+
+  async function seedLegacyPublishedConflict(client: PoolClient, key: string) {
+    const current = testRecords();
+    const repository = createBatchRepository(client);
+    const players = (
+      await client.query<{ strikerId: string; nonStrikerId: string; bowlerId: string }>(
+        `SELECT striker_id::text AS "strikerId",
+                non_striker_id::text AS "nonStrikerId",
+                bowler_id::text AS "bowlerId"
+         FROM delivery WHERE delivery_id=$1::bigint`,
+        [current.deliveryId],
+      )
+    ).rows[0]!;
+    const legacyDeliveryId = (
+      await client.query<{ deliveryId: string }>(
+        `INSERT INTO delivery (
+           innings_id, over_number, position_in_over, innings_sequence, ball_number,
+           striker_id, non_striker_id, bowler_id, runs_off_bat, runs_extras, runs_total,
+           submission_id
+         ) VALUES ($1::bigint, 126, 1, 760001, '126.1', $2::bigint, $3::bigint, $4::bigint,
+                   1, 0, 1, $5::bigint)
+         RETURNING delivery_id::text AS "deliveryId"`,
+        [
+          current.inningsId,
+          players.strikerId,
+          players.nonStrikerId,
+          players.bowlerId,
+          current.submissionId,
+        ],
+      )
+    ).rows[0]!.deliveryId;
+    const legacyBefore = await deliveryRow(client, legacyDeliveryId);
+    expect(legacyBefore).toMatchObject({ source_event_id: null, submission_event_ordinal: null });
+
+    const batch = await repository.createBatch({
+      batchReference: randomUUID(),
+      submitterId: current.accountId,
+      competitionId: current.competitionId,
+      idempotencyKey: `${sourcePrefix}-529-${key}`,
+      source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      state: 'awaiting_review',
+    });
+    const [item] = await repository.insertBatchItems(batch.batchId, [
+      {
+        ordinal: 0,
+        inningsId: current.inningsId,
+        overNumber: 126,
+        positionInOver: 1,
+        sourceIdentity: 'cricsheet:delivery:fixture-0-innings-0-delivery-32',
+        referenceResolutionState: 'resolved',
+        state: 'rejected',
+        rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+        rejectionDetail: {
+          existingDeliveryId: legacyDeliveryId,
+          differences: [
+            { fieldPath: 'ballNumber', submittedValue: '126.2', publishedValue: '126.1' },
+          ],
+        },
+        payload: {
+          eventId: randomUUID(),
+          sequenceNumber: 32,
+          ballNumber: '126.2',
+          strikerId: players.strikerId,
+          nonStrikerId: players.nonStrikerId,
+          bowlerId: players.bowlerId,
+          runs: { offBat: 1, extras: 0, total: 1, nonBoundary: false },
+          extras: {},
+          wickets: [],
+        },
+      },
+    ]);
+    // The same active blocking result the publication path records for a conflict.
+    await client.query(
+      `INSERT INTO batch_validation_result (
+         batch_id, batch_item_id, source_ordinal, rule_code, rule_version, severity, field_path, message
+       ) VALUES ($1::bigint, $2::bigint, 0, 'PUBLISHED_DELIVERY_CONFLICT', '1.0', 'error', 'delivery',
+                 'A published delivery or published source identity exists with different cricket content.')`,
+      [batch.batchId, item!.batchItemId],
+    );
+    return { current, repository, batch, legacyDeliveryId, legacyBefore };
+  }
+
+  async function revisionsAtLegacyPosition(client: PoolClient) {
+    return (
+      await client.query<{
+        deliveryId: string;
+        revision: number;
+        ballNumber: string;
+        superseded: boolean;
+        supersedesDeliveryId: string | null;
+      }>(
+        `SELECT delivery_id::text AS "deliveryId", revision, ball_number AS "ballNumber",
+                superseded_at IS NOT NULL AS superseded,
+                supersedes_delivery_id::text AS "supersedesDeliveryId"
+         FROM delivery
+         WHERE innings_id=$1::bigint AND over_number=126 AND position_in_over=1
+         ORDER BY revision`,
+        [testRecords().inningsId],
+      )
+    ).rows;
+  }
+
+  test('resolves a legacy published conflict with use_existing without touching the delivery', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const { current, repository, batch, legacyDeliveryId, legacyBefore } =
+        await seedLegacyPublishedConflict(client, 'use-existing');
+
+      await expect(
+        repository.resolvePublishedConflict({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          itemOrdinal: 0,
+          existingDeliveryId: legacyDeliveryId,
+          decision: 'use_existing',
+          reason: 'The published delivery is the verified record.',
+        }),
+      ).resolves.toMatchObject({
+        state: 'duplicate_skipped',
+        rejectionCode: null,
+        publishedEventId: legacyDeliveryId,
+        operation: 'upsert',
+      });
+      // use_existing must not initialise lineage or modify the published row at all.
+      expect(await deliveryRow(client, legacyDeliveryId)).toEqual(legacyBefore);
+
+      await repository.applyReviewDecision({
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decision: 'approved',
+        reason: 'Kept the verified published delivery.',
+      });
+      await expect(
+        repository.publishAcceptedItems(batch.batchId, 'worker-529-use-existing'),
+      ).resolves.toMatchObject({ published: 0, conflicts: 0 });
+
+      expect(await deliveryRow(client, legacyDeliveryId)).toEqual(legacyBefore);
+      expect(await revisionsAtLegacyPosition(client)).toEqual([
+        {
+          deliveryId: legacyDeliveryId,
+          revision: 1,
+          ballNumber: '126.1',
+          superseded: false,
+          supersedesDeliveryId: null,
+        },
+      ]);
+      const audit = await client.query<{ history: string; decisions: string[] }>(
+        `SELECT
+           (SELECT count(*)::text FROM delivery_correction_history
+            WHERE previous_delivery_id=$1::bigint) AS history,
+           ARRAY(SELECT decision::text FROM batch_published_conflict_resolution
+                 WHERE batch_id=$2::bigint) AS decisions`,
+        [legacyDeliveryId, batch.batchId],
+      );
+      expect(audit.rows[0]).toEqual({ history: '0', decisions: ['use_existing'] });
+    });
+  });
+
+  test('resolves a legacy published conflict with replace_published as a new revision', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const { current, repository, batch, legacyDeliveryId, legacyBefore } =
+        await seedLegacyPublishedConflict(client, 'replace-published');
+
+      await expect(
+        repository.resolvePublishedConflict({
+          batchId: batch.batchId,
+          actorId: current.accountId,
+          itemOrdinal: 0,
+          existingDeliveryId: legacyDeliveryId,
+          decision: 'replace_published',
+          reason: 'The submitted scorecard corrects the published delivery.',
+        }),
+      ).resolves.toMatchObject({
+        state: 'accepted',
+        rejectionCode: null,
+        operation: 'correction',
+        correctionTargetDeliveryId: legacyDeliveryId,
+      });
+
+      // Lazy lineage may initialise exactly the two provenance fields, once.
+      const lineageFields = ['source_event_id', 'submission_event_ordinal'];
+      const afterResolution = await deliveryRow(client, legacyDeliveryId);
+      expect(afterResolution.source_event_id).toEqual(expect.any(String));
+      expect(afterResolution.submission_event_ordinal).toEqual(expect.any(Number));
+      expect(withoutKeys(afterResolution, lineageFields)).toEqual(
+        withoutKeys(legacyBefore, lineageFields),
+      );
+
+      await repository.applyReviewDecision({
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decision: 'approved',
+        reason: 'Approved the verified correction.',
+      });
+      await expect(
+        repository.publishAcceptedItems(batch.batchId, 'worker-529-replace-published'),
+      ).resolves.toMatchObject({ published: 1, conflicts: 0 });
+
+      const revisions = await revisionsAtLegacyPosition(client);
+      expect(revisions).toEqual([
+        {
+          deliveryId: legacyDeliveryId,
+          revision: 1,
+          ballNumber: '126.1',
+          superseded: true,
+          supersedesDeliveryId: null,
+        },
+        {
+          deliveryId: expect.any(String),
+          revision: 2,
+          ballNumber: '126.2',
+          superseded: false,
+          supersedesDeliveryId: legacyDeliveryId,
+        },
+      ]);
+      // The published revision was superseded, never overwritten.
+      const supersessionFields = [...lineageFields, 'superseded_at', 'superseded_by'];
+      expect(withoutKeys(await deliveryRow(client, legacyDeliveryId), supersessionFields)).toEqual(
+        withoutKeys(legacyBefore, supersessionFields),
+      );
+      const audit = await client.query<{ history: string; decisions: string[] }>(
+        `SELECT
+           (SELECT count(*)::text FROM delivery_correction_history
+            WHERE previous_delivery_id=$1::bigint AND replacement_delivery_id=$2::bigint) AS history,
+           ARRAY(SELECT decision::text FROM batch_published_conflict_resolution
+                 WHERE batch_id=$3::bigint) AS decisions`,
+        [legacyDeliveryId, revisions[1]!.deliveryId, batch.batchId],
+      );
+      expect(audit.rows[0]).toEqual({ history: '1', decisions: ['replace_published'] });
+    });
+  });
+
+  test('exposes every delivery column through delivery_current', async () => {
+    // #529: delivery_current was created with SELECT * before the lineage columns
+    // existed, so it lacked source_event_id until 20260913170000000 refreshed it.
+    // A view that silently drops a column fails here rather than as a 500 in review.
+    const result = await executeQuery<{ tableColumns: string[]; viewColumns: string[] }>(
+      databasePool(),
+      `SELECT
+         ARRAY(SELECT column_name::text FROM information_schema.columns
+               WHERE table_schema=current_schema() AND table_name='delivery'
+               ORDER BY ordinal_position) AS "tableColumns",
+         ARRAY(SELECT column_name::text FROM information_schema.columns
+               WHERE table_schema=current_schema() AND table_name='delivery_current'
+               ORDER BY ordinal_position) AS "viewColumns"`,
+    );
+    expect(result.rows[0]!.viewColumns).toEqual(result.rows[0]!.tableColumns);
+  });
+
   test('blocks approval for unresolved items without persisting a decision', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();

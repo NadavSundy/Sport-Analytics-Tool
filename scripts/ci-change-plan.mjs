@@ -62,6 +62,7 @@ function emptyPlan() {
     coverage: false,
     deployFrontend: false,
     deployBackend: false,
+    deployWorker: false,
     deployDocs: false,
     needsNpm: false,
   };
@@ -187,6 +188,7 @@ function applyPath(plan, file) {
     if (file === 'package.json' || file === 'package-lock.json') {
       plan.deployFrontend = true;
       plan.deployBackend = true;
+      plan.deployWorker = true;
       plan.deployDocs = true;
     } else if (file === 'tsconfig.base.json') {
       plan.deployFrontend = true;
@@ -197,6 +199,12 @@ function applyPath(plan, file) {
 
   if (file === '.gitea/workflows/ci.yml') {
     markFull(plan);
+    return;
+  }
+
+  if (file === '.gitea/workflows/deploy-worker.yml') {
+    markFull(plan);
+    plan.deployWorker = true;
     return;
   }
 
@@ -224,6 +232,7 @@ function applyPath(plan, file) {
     plan.contracts = true;
     plan.deployFrontend = true;
     plan.deployBackend = true;
+    plan.deployWorker = true;
     plan.frontend = true;
     plan.backend = true;
     plan.e2e = true;
@@ -240,6 +249,7 @@ function applyPath(plan, file) {
     plan.database = true;
     plan.deployment = true;
     plan.deployBackend = true;
+    plan.deployWorker = true;
     plan.hygiene = true;
     plan.needsNpm = true;
     return;
@@ -300,6 +310,7 @@ function applyPath(plan, file) {
     plan.worker = true;
     plan.database = true;
     plan.deployment = true;
+    plan.deployWorker = true;
     plan.hygiene = true;
     plan.needsNpm = true;
     return;
@@ -370,6 +381,16 @@ function applyPath(plan, file) {
   if (file.startsWith('infra/ci/')) {
     // Local CI parity infrastructure can affect every validation lane.
     markFull(plan);
+    return;
+  }
+
+  if (file.startsWith('infra/azure/worker/')) {
+    plan.worker = true;
+    plan.database = true;
+    plan.deployment = true;
+    plan.deployWorker = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
     return;
   }
 

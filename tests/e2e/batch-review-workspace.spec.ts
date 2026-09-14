@@ -427,3 +427,170 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
 
   await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
 });
+
+test('reviewer sees a generic failure, then keeps the published delivery', async ({ page }) => {
+  // #529: the deployed resolution failed as an unexpected server error. The
+  // reviewer must see the generic message with no server detail, and a retry that
+  // keeps the published delivery must clear the conflict.
+  let kept = false;
+  const requests: unknown[] = [];
+  const context = {
+    eventReference: 'cricsheet:delivery:fixture-0-innings-0-delivery-32',
+    fixtureId: '22',
+    fixtureLabel: 'Lions vs Bears · 2026-09-01',
+    inningsId: '31',
+    overNumber: 5,
+    positionInOver: 1,
+    description: 'Event cricsheet:delivery:fixture-0-innings-0-delivery-32 at over 5, delivery 1.',
+  };
+  const location = {
+    filePath: 'conflicting-season.json',
+    sheetName: null,
+    rowNumber: null,
+    jsonPath: 'delivery',
+    ordinal: 0,
+  };
+  const batch = () => ({
+    batchReference: reference,
+    competitionId: '5',
+    status: 'awaiting_review',
+    statusUrl: `/api/v1/batches/${reference}`,
+    receivedAt: '2026-09-13T08:00:00.000Z',
+    updatedAt: '2026-09-13T08:05:00.000Z',
+    source: {
+      fileName: 'conflicting-season.json',
+      checksum: 'b'.repeat(64),
+      packageVersion: '1.0',
+      submitter: { accountId: '7', displayName: 'Data Submitter' },
+    },
+    progress: { total: 1, processed: 1, accepted: 0, rejected: kept ? 0 : 1 },
+    counts: {
+      accepted: 0,
+      rejected: kept ? 0 : 1,
+      unresolved: 0,
+      duplicate: kept ? 1 : 0,
+      conflicting: kept ? 0 : 1,
+    },
+    review: null,
+  });
+  const report = () => ({
+    data: {
+      batch: batch(),
+      errorGroups: kept ? [] : [{ ruleCode: 'PUBLISHED_DELIVERY_CONFLICT', count: 1 }],
+      reviewSummary: {
+        validation: {
+          accepted: 0,
+          rejected: kept ? 0 : 1,
+          blockingErrors: kept ? 0 : 1,
+          duplicate: kept ? 1 : 0,
+          conflicting: kept ? 0 : 1,
+        },
+        resolution: { resolved: 1, ambiguous: 0, unresolved: 0, invalid: 0, proposed: 0 },
+        approvalBlocked: !kept,
+        blockingReasons: kept
+          ? []
+          : ['Blocking validation errors remain.', 'Conflicting records remain.'],
+      },
+      fixtureSummaries: [
+        {
+          fixtureId: '22',
+          label: 'Lions vs Bears · 2026-09-01',
+          total: 1,
+          accepted: 0,
+          rejected: kept ? 0 : 1,
+          unresolved: 0,
+        },
+      ],
+      acceptedSamples: [],
+      items: [
+        {
+          ordinal: 0,
+          outcome: kept ? 'duplicate' : 'conflicting',
+          location,
+          context,
+          stagedRecordId: '41',
+          acceptedRecordId: kept ? '2342246' : null,
+          operation: 'upsert',
+          correctionTarget: null,
+          publishedConflict: kept
+            ? null
+            : {
+                existingDeliveryId: '2342246',
+                existingSourceEventId: null,
+                correctionPermitted: true,
+                differences: [
+                  { fieldPath: 'ballNumber', submittedValue: '5.2', publishedValue: '5.1' },
+                ],
+              },
+          referenceResolutions: [],
+          errors: kept
+            ? []
+            : [
+                {
+                  ruleCode: 'PUBLISHED_DELIVERY_CONFLICT',
+                  message:
+                    'A published delivery or published source identity exists with different cricket content.',
+                  location,
+                  context,
+                },
+              ],
+        },
+      ],
+      pagination: { nextCursor: null },
+      downloadUrl: `/api/v1/batches/${reference}/report/download`,
+    },
+  });
+
+  await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(report()),
+    });
+  });
+  await page.route(`**/api/v1/batches/${reference}/conflicts/resolve`, async (route) => {
+    requests.push(route.request().postDataJSON());
+    if (requests.length === 1) {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected server error occurred.' },
+        }),
+      });
+      return;
+    }
+    kept = true;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: batch() }),
+    });
+  });
+
+  await page.goto(`/reviews/batches/${reference}`);
+  const conflictCard = page.locator('.published-conflict-resolution');
+  await expect(conflictCard.getByRole('row', { name: /ballNumber/ })).toContainText('5.2');
+  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
+
+  await page.getByLabel('Resolution reason').fill('The published delivery is the verified record.');
+  await page.getByRole('button', { name: 'Keep published delivery' }).click();
+
+  await expect(conflictCard.getByRole('status')).toHaveText(
+    'The published-delivery conflict could not be resolved.',
+  );
+  await expect(page.getByText(/INTERNAL_SERVER_ERROR|unexpected server error/)).toHaveCount(0);
+  await expect(conflictCard).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Keep published delivery' }).click();
+
+  await expect(conflictCard).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
+  const expectedRequest = {
+    itemOrdinal: 0,
+    existingDeliveryId: '2342246',
+    decision: 'use_existing',
+    reason: 'The published delivery is the verified record.',
+  };
+  expect(requests).toEqual([expectedRequest, expectedRequest]);
+});

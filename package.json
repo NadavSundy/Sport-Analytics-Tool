@@ -32,7 +32,7 @@
     "test:database": "npm run test:database --workspace=@sport-analytics/backend",
     "test:contracts": "npm run test --workspace=@sport-analytics/contracts",
     "test:deployment": "node --test tests/deployment/*.test.mjs",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/run-playwright.mjs",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:ci": "npm run test && npm run test:database && npm run test:e2e",
     "format": "prettier --write .",

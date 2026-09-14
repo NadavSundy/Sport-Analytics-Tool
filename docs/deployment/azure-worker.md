@@ -222,7 +222,21 @@ relevant operational evidence.
 
 ## Deployment
 
-The manual worker deployment workflow provisions the supporting Azure resources, builds an immutable commit-tagged worker image on the Gitea runner, pushes the image to Azure Container Registry, deploys the Container App revision and waits for the active revision to become healthy.
+Worker deployment is automatic for worker-affecting changes merged to `main`. The change-aware `Sport Analytics CI` workflow selects the worker deployment path when the merged change affects the worker runtime, shared packages consumed by the worker, worker infrastructure or worker build dependencies.
+
+The automatic deployment:
+
+1. checks out the merged `main` commit;
+2. verifies and builds the worker;
+3. provisions the supporting Azure resources idempotently;
+4. builds an immutable worker image tagged with the exact Git commit SHA;
+5. pushes that image to Azure Container Registry;
+6. deploys the corresponding Azure Container Apps revision; and
+7. waits until an active healthy revision is using that exact commit-SHA image.
+
+Documentation-only and unrelated frontend/backend changes do not select worker deployment.
+
+The standalone `Sport Analytics - Provision and Deploy Batch Worker` workflow remains available through manual dispatch for recovery and deliberate operational redeployment. The manual path uses the same immutable commit-SHA image and active-revision verification requirements as the automatic path.
 
 - `AZURE_WORKER_CREDENTIALS`: Azure login JSON for a narrowly scoped deployment principal;
 - `AZURE_WORKER_RESOURCE_GROUP`: the development resource group;

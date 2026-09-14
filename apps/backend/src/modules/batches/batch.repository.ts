@@ -1961,10 +1961,12 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         ],
       );
 
+      // batch_validation_result_current_ck requires an inactive result to record
+      // when it was superseded; setting active alone rejects every resolution (#529).
       await executeQuery(
         executor,
         `UPDATE batch_validation_result
-         SET active=false
+         SET active=false, superseded_at=now()
          WHERE batch_id=$1::bigint
            AND batch_item_id=$2::bigint
            AND rule_code='PUBLISHED_DELIVERY_CONFLICT'

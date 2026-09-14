@@ -29,6 +29,7 @@ jobs:
       coverage: ${{ steps.plan.outputs.coverage }}
       deployFrontend: ${{ steps.plan.outputs.deployFrontend }}
       deployBackend: ${{ steps.plan.outputs.deployBackend }}
+      deployWorker: ${{ steps.plan.outputs.deployWorker }}
       deployDocs: ${{ steps.plan.outputs.deployDocs }}
       needsNpm: ${{ steps.plan.outputs.needsNpm }}
 
@@ -517,3 +518,177 @@ jobs:
           "deployed documentation site"
           "$DOCS_URL/"
           "Sport Analytics Tool"
+  deploy_worker:
+    needs:
+      - plan
+      - quality
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.deployWorker == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify worker
+        run: |
+          npm run lint --workspace=@sport-analytics/worker
+          npm run typecheck --workspace=@sport-analytics/worker
+          npm run test --workspace=@sport-analytics/worker
+          npm run build --workspace=@sport-analytics/worker
+
+      - name: Validate deployment secrets
+        env:
+          AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+          AZURE_WORKER_RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          AZURE_WORKER_KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          AZURE_WORKER_DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: |
+          missing=0
+          for name in AZURE_WORKER_CREDENTIALS AZURE_WORKER_RESOURCE_GROUP AZURE_WORKER_KEY_VAULT_NAME AZURE_WORKER_DATABASE_SECRET_URI; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+
+      - name: Provision worker infrastructure
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: >-
+          az deployment group create
+          --name worker-${{ github.sha }}-infra
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/worker/main.bicep
+          --parameters deployWorker=false
+          keyVaultName="$KEY_VAULT_NAME"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          storageAccountName=statsthegameblobdev
+
+      - name: Verify Docker npm registry connectivity
+        run: |
+          echo "Checking DNS resolution inside Docker..."
+
+          docker run --rm node:22-bookworm-slim \
+            node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"
+
+          echo "Checking npm registry connectivity inside Docker..."
+
+          docker run --rm node:22-bookworm-slim \
+            npm ping --registry=https://registry.npmjs.org/
+
+      - name: Build immutable worker image and push to Azure Container Registry
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+        run: |
+          INFRA_DEPLOYMENT_NAME="worker-${{ github.sha }}-infra"
+
+          ACR_NAME=$(az deployment group show \
+            --name "$INFRA_DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.outputs.containerRegistryName.value \
+            -o tsv)
+
+          ACR_SERVER=$(az deployment group show \
+            --name "$INFRA_DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.outputs.containerRegistryServer.value \
+            -o tsv)
+
+          echo "Building worker image for registry $ACR_NAME"
+
+          az acr login --name "$ACR_NAME"
+
+          docker pull "$ACR_SERVER/sport-analytics-worker:buildcache" || true
+
+          DOCKER_BUILDKIT=1 docker build \
+            --network=host \
+            --file apps/worker/Dockerfile \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from "$ACR_SERVER/sport-analytics-worker:buildcache" \
+            --tag "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}" \
+            --tag "$ACR_SERVER/sport-analytics-worker:buildcache" \
+            .
+
+          docker push "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+          docker push "$ACR_SERVER/sport-analytics-worker:buildcache"
+
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+          echo "ACR_SERVER=$ACR_SERVER" >> "$GITHUB_ENV"
+
+      - name: Deploy worker revision
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: >-
+          az deployment group create
+          --name worker-${{ github.sha }}
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/worker/main.bicep
+          --parameters deployWorker=true
+          containerImage="$ACR_NAME.azurecr.io/sport-analytics-worker:${{ github.sha }}"
+          keyVaultName="$KEY_VAULT_NAME"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          storageAccountName=statsthegameblobdev
+
+      - name: Verify active revision image and health
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+        run: |
+          EXPECTED_IMAGE="$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+
+          echo "Expected worker image: $EXPECTED_IMAGE"
+
+          for attempt in {1..12}; do
+            MATCHING_REVISION=$(az containerapp revision list \
+              --name statsthegame-dev-batch-worker \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active && properties.healthState=='Healthy' && properties.template.containers[0].image=='$EXPECTED_IMAGE'] | [0].name" \
+              -o tsv)
+
+            echo "Worker verification $attempt/12"
+
+            az containerapp revision list \
+              --name statsthegame-dev-batch-worker \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active].{Revision:name,Health:properties.healthState,Image:properties.template.containers[0].image}" \
+              -o table
+
+            if [ -n "$MATCHING_REVISION" ]; then
+              echo "Verified healthy active worker revision: $MATCHING_REVISION"
+              echo "Verified worker image: $EXPECTED_IMAGE"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Expected worker image $EXPECTED_IMAGE did not become active and healthy within 120 seconds."
+          exit 1
