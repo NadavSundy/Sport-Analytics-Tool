@@ -140,14 +140,11 @@ function RequestCompetitionDialog({
             ))}
           </select>
           <p className="field-help">
-            Requesting another competition does not grant access immediately. An administrator
-            must approve it.
+            Requesting another competition does not grant access immediately. An administrator must
+            approve it.
           </p>
           {error ? (
-            <p
-              className="submitter-access-feedback submitter-access-feedback--error"
-              role="alert"
-            >
+            <p className="submitter-access-feedback submitter-access-feedback--error" role="alert">
               {error}
             </p>
           ) : null}
