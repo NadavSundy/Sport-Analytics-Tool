@@ -630,6 +630,55 @@ describe('public fixture statistics pages', () => {
     expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
   });
 
+  // Issue #475 (P01-F24 / P02-F18): in Sprint 2 user testing neither participant could
+  // tell that a download had happened. The confirmation is asserted on the export
+  // section's own status region, so text elsewhere on the page cannot satisfy it, and
+  // it must be absent until the file has been produced.
+  it('confirms on screen that a completed CSV download produced a file', async () => {
+    let resolveCsv!: (value: unknown) => void;
+    const downloadedFilenames: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (
+          url.endsWith('/fixtures/fixture-1/statistics/stat-participant-1?includeContributors=true')
+        ) {
+          return Promise.resolve(
+            response(200, {
+              data: { ...participantStatistic, contributingEvents: traceEvents(6) },
+            }),
+          );
+        }
+        if (url.endsWith('/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv')) {
+          return new Promise((resolve) => {
+            resolveCsv = resolve;
+          });
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+    stubDownloads(downloadedFilenames);
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-participant-1');
+
+    const exportSection = (
+      await screen.findByRole('heading', { name: 'Export this trace' })
+    ).closest('section') as HTMLElement;
+    const status = within(exportSection).getByRole('status');
+    expect(status).toBeEmptyDOMElement();
+
+    fireEvent.click(within(exportSection).getByRole('button', { name: 'Download CSV' }));
+    await waitFor(() => expect(status).toHaveTextContent('Preparing the CSV export of 6 events…'));
+    expect(status).not.toHaveTextContent('downloaded');
+    expect(downloadedFilenames).toEqual([]);
+
+    resolveCsv(exportDownload('text/csv'));
+
+    await waitFor(() => expect(status).toHaveTextContent('CSV export of 6 events downloaded.'));
+    expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
+  });
+
   it.each([
     {
       name: 'a failure partway through paging',

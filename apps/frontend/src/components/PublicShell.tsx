@@ -107,6 +107,9 @@ export function PublicShell({ children }: PublicShellProps) {
       <footer className="site-footer">
         <div className="site-footer__inner">
           <BrandWordmark />
+          <nav aria-label="Site" className="site-footer__navigation">
+            <Link to="/#api">API</Link>
+          </nav>
           <p>The game, measured ball by ball.</p>
         </div>
       </footer>
