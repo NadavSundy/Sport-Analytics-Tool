@@ -833,14 +833,14 @@ export function SubmissionPage() {
               key={workflow}
               profile={accessState.profile}
               scope={workflow}
-              replacement={
-                replacementReference.success && replacementCompetitionId
-                  ? {
+              {...(replacementReference.success && replacementCompetitionId
+                ? {
+                    replacement: {
                       batchReference: replacementReference.data,
                       competitionId: replacementCompetitionId,
-                    }
-                  : undefined
-              }
+                    },
+                  }
+                : {})}
             />
           ) : (
             <SubmissionForm

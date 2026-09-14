@@ -72,7 +72,11 @@ function renderUpload(
   return render(
     <AuthProvider client={authClient()}>
       <MemoryRouter>
-        <BatchUploadWorkflow profile={profile} scope={scope} replacement={replacement} />
+        <BatchUploadWorkflow
+          profile={profile}
+          scope={scope}
+          {...(replacement === undefined ? {} : { replacement })}
+        />
       </MemoryRouter>
     </AuthProvider>,
   );
