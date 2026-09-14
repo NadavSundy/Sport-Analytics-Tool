@@ -137,30 +137,37 @@ jobs:
           databaseSecretUri="$DATABASE_SECRET_URI"
           storageAccountName=statsthegameblobdev
 
-      - name: Verify active revision and health
+      - name: Verify active revision image and health
         env:
           RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
         run: |
+          EXPECTED_IMAGE="$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+
+          echo "Expected worker image: $EXPECTED_IMAGE"
+
           for attempt in {1..12}; do
-            HEALTH=$(az containerapp revision list \
+            MATCHING_REVISION=$(az containerapp revision list \
               --name statsthegame-dev-batch-worker \
               --resource-group "$RESOURCE_GROUP" \
-              --query "[?properties.active] | [0].properties.healthState" \
+              --query "[?properties.active && properties.healthState=='Healthy' && properties.template.containers[0].image=='$EXPECTED_IMAGE'] | [0].name" \
               -o tsv)
 
-            echo "Health check $attempt/12: ${HEALTH:-pending}"
+            echo "Worker verification $attempt/12"
 
-            if [ "$HEALTH" = "Healthy" ]; then
-              az containerapp revision list \
-                --name statsthegame-dev-batch-worker \
-                --resource-group "$RESOURCE_GROUP" \
-                --query "[?properties.active].{Name:name,Health:properties.healthState,Running:properties.runningState,Replicas:properties.replicas}" \
-                -o table
+            az containerapp revision list \
+              --name statsthegame-dev-batch-worker \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active].{Revision:name,Health:properties.healthState,Image:properties.template.containers[0].image}" \
+              -o table
+
+            if [ -n "$MATCHING_REVISION" ]; then
+              echo "Verified healthy active worker revision: $MATCHING_REVISION"
+              echo "Verified worker image: $EXPECTED_IMAGE"
               exit 0
             fi
 
             sleep 10
           done
 
-          echo "::error::Worker did not become healthy within 120 seconds."
+          echo "::error::Expected worker image $EXPECTED_IMAGE did not become active and healthy within 120 seconds."
           exit 1
