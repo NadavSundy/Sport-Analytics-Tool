@@ -1,6 +1,6 @@
 import type { ApplicationRole, SubmitterApprovalState } from '@sport-analytics/contracts';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -298,9 +298,87 @@ describe('submitter access request and status interface', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Request additional competition' })).toBeEnabled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: 'Additional competition' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('submits an additional competition request without granting access client-side', async () => {
+  it('opens the additional competition dialog on demand and closes it on cancel', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('approved', 'submitter'))
+        .mockResolvedValueOnce(competitionsResponse()),
+    );
+
+    renderAccountPage();
+
+    const trigger = await screen.findByRole('button', { name: 'Request additional competition' });
+    fireEvent.click(trigger);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Request additional competition' });
+    expect(
+      within(dialog).getByRole('combobox', { name: 'Additional competition' }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('combobox')).toHaveFocus();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes the additional competition dialog on Escape', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('approved', 'submitter'))
+        .mockResolvedValueOnce(competitionsResponse()),
+    );
+
+    renderAccountPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Request additional competition' }));
+    const dialog = await screen.findByRole('dialog');
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('lets the user change the selected competition before confirming', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(currentUser('approved', 'submitter'))
+        .mockResolvedValueOnce(
+          competitionsResponse([
+            { competitionId: '5', name: 'Premier T20' },
+            { competitionId: '8', name: 'University League' },
+            { competitionId: '9', name: 'Regional Cup' },
+          ]),
+        ),
+    );
+
+    renderAccountPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Request additional competition' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirmButton = within(dialog).getByRole('button', { name: 'Request competition' });
+    const select = within(dialog).getByRole('combobox', { name: 'Additional competition' });
+
+    expect(confirmButton).toBeEnabled();
+
+    fireEvent.change(select, { target: { value: '9' } });
+    expect(select).toHaveValue('9');
+    expect(confirmButton).toBeEnabled();
+  });
+
+  it('submits an additional competition request from the dialog without granting access client-side', async () => {
     let requestedCompetition: { competitionId: string; name: string } | null = {
       competitionId: '5',
       name: 'Premier T20',
@@ -339,6 +417,10 @@ describe('submitter access request and status interface', () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Request additional competition' }));
 
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Request competition' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await screen.findByText(/Additional scope request pending for/)).toHaveTextContent(
       'University League',
     );
@@ -358,6 +440,39 @@ describe('submitter access request and status interface', () => {
       new URL(String(input)).pathname.endsWith('/submitter-scope-requests'),
     ) as [string, RequestInit];
     expect(requestCall[1].body).toBe(JSON.stringify({ competitionId: '8' }));
+  });
+
+  it('keeps the dialog open and shows the error when the additional competition request fails', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('approved', 'submitter'));
+      }
+      if (path.endsWith('/competitions')) return Promise.resolve(competitionsResponse());
+      if (path.endsWith('/submitter-scope-requests')) {
+        return Promise.resolve(
+          jsonResponse(500, {
+            error: { code: 'INTERNAL', message: 'The request could not be completed.' },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderAccountPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Request additional competition' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Request competition' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'The request could not be completed.',
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('combobox', { name: 'Additional competition' }),
+    ).toBeInTheDocument();
   });
 
   it('exposes submission access to an admin regardless of legacy approval state', async () => {
