@@ -42,6 +42,42 @@
               },
               "runs": { "offBat": 0, "extras": 0, "total": 0 },
               "extras": {}
+            },
+            {
+              "eventId": "my-club:delivery:innings-0-ball-2",
+              "occurrenceSequence": 2,
+              "overNumber": 0,
+              "positionInOver": 1,
+              "ballLabel": "0.2",
+              "striker": {
+                "context": { "name": "Striker", "team": { "context": { "name": "Home team" } } }
+              },
+              "nonStriker": {
+                "context": { "name": "Non-striker", "team": { "context": { "name": "Home team" } } }
+              },
+              "bowler": {
+                "context": { "name": "Bowler", "team": { "context": { "name": "Away team" } } }
+              },
+              "runs": { "offBat": 0, "extras": 0, "total": 0 },
+              "extras": {},
+              "wickets": [
+                {
+                  "kind": "caught",
+                  "playerOut": {
+                    "context": { "name": "Striker", "team": { "context": { "name": "Home team" } } }
+                  },
+                  "fielders": [
+                    {
+                      "participant": {
+                        "context": {
+                          "name": "Fielder",
+                          "team": { "context": { "name": "Away team" } }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

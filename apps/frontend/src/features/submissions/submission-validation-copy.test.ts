@@ -79,6 +79,7 @@ describe('submission validation copy', () => {
   it('gives batch rule codes readable labels and actionable next steps', () => {
     expect(validationRuleLabel('EVENT_SCHEMA_INVALID')).toBe('Event data needs correction');
     expect(validationRuleLabel('REFERENCE_AMBIGUOUS')).toBe('More than one match was found');
+    expect(validationRuleLabel('CSV_WICKET_KIND_MISSING')).toBe('Dismissal kind is missing');
     expect(validationRuleLabel('SOME_NEW_RULE')).toBe('Validation problem');
 
     expect(

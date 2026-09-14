@@ -267,7 +267,7 @@ describe.sequential('batch publication over a recorded dismissal', () => {
 
       // The canonical payload the worker stages for the example row of
       // season-upload-template.csv: occurrenceSequence 1, over 0, position 0, ball 0.1,
-      // no runs, blank extras columns, and no dismissal column, so wickets is empty.
+      // no runs, blank extras columns, and blank dismissal columns, so wickets is empty.
       await repository.insertBatchItems(batch.batchId, [
         {
           ordinal: 0,

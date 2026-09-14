@@ -10,6 +10,10 @@ Issue #356 approves three human-facing batch formats for Intermediate ingestion:
 | CSV    | `text/csv`             | Spreadsheet-oriented event rows carrying repeated human-readable match context.                        |
 | NDJSON | `application/x-ndjson` | A manifest record followed by independently parseable fixture, innings, participant and event records. |
 
+A CSV row records at most one dismissal per delivery, naming at most three fielders. A delivery with
+more than one dismissal, or a dismissal involving more than three fielders, must use the JSON
+package; see [dismissals in the templates](../api/season-upload-contract.md#dismissals).
+
 Each package declares a batch-envelope version separately from the shared delivery-event schema
 version. Archive formats are not accepted in the first implementation.
 

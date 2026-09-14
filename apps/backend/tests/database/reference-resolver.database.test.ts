@@ -376,6 +376,7 @@ describe.sequential('batch reference resolution database integration', () => {
       ['"Striker"', JSON.stringify(CURRENT_NAME)],
       ['"Non-striker"', JSON.stringify(`${prefix} Alias Holder A`)],
       ['"Bowler"', JSON.stringify(BOWLER_NAME)],
+      ['"Fielder"', JSON.stringify(`${prefix} Alias Holder B`)],
     ];
 
     for (const [placeholder, value] of readableValues) {
@@ -1209,8 +1210,15 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(fixture.matchedBy).toBe('natural-key');
 
     expect(outcomeAt(resolution, 'fixtures.0.innings.0').canonicalId).toBe(seed.firstInningsId);
-    expect(resolution.items).toHaveLength(1);
-    expect(resolution.items[0]?.state).toBe('resolved');
+    // The template's second event demonstrates a caught dismissal (#536), and its
+    // dismissed player and fielder resolve by name like every other participant.
+    expect(resolution.items.map((item) => item.state)).toEqual(['resolved', 'resolved']);
+    expect(outcomeAt(resolution, 'fixtures.0.innings.0.events.1.wickets.0.playerOut').state).toBe(
+      'resolved',
+    );
+    expect(
+      outcomeAt(resolution, 'fixtures.0.innings.0.events.1.wickets.0.fielders.0.participant').state,
+    ).toBe('resolved');
   });
 
   /**
