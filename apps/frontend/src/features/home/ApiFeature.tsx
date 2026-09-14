@@ -6,7 +6,7 @@ const endpoints = [
 
 export function ApiFeature() {
   return (
-    <section className="api-feature" aria-labelledby="api-title">
+    <section className="api-feature" id="api" aria-labelledby="api-title">
       <div className="content-boundary api-feature__layout">
         <header className="home-section-heading">
           <p className="eyebrow">The platform beneath the page</p>
