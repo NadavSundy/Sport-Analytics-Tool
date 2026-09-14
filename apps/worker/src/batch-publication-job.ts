@@ -528,7 +528,7 @@ export function createBatchPublicationJobHandler(
     });
 
     try {
-      while (true) {
+      for (;;) {
         if (signal.aborted) {
           throw new Error('Worker shutdown interrupted batch publication.');
         }
