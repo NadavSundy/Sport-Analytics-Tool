@@ -8,6 +8,7 @@ COPY apps/frontend/package.json apps/frontend/package.json
 COPY apps/worker/package.json apps/worker/tsconfig.json apps/worker/
 COPY packages/contracts/package.json packages/contracts/tsconfig.json packages/contracts/
 COPY packages/batch-processing/package.json packages/batch-processing/tsconfig.json packages/batch-processing/
+COPY packages/object-storage/package.json packages/object-storage/tsconfig.json packages/object-storage/
 
 RUN node --version && npm --version
 
@@ -18,6 +19,7 @@ RUN npm ci \
 
 COPY packages/contracts/src packages/contracts/src
 COPY packages/batch-processing/src packages/batch-processing/src
+COPY packages/object-storage/src packages/object-storage/src
 COPY apps/worker/src apps/worker/src
 COPY apps/worker/certs apps/worker/certs
 
@@ -39,6 +41,8 @@ COPY --from=build --chown=node:node /workspace/packages/contracts/package.json .
 COPY --from=build --chown=node:node /workspace/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build --chown=node:node /workspace/packages/batch-processing/package.json ./packages/batch-processing/package.json
 COPY --from=build --chown=node:node /workspace/packages/batch-processing/dist ./packages/batch-processing/dist
+COPY --from=build --chown=node:node /workspace/packages/object-storage/package.json ./packages/object-storage/package.json
+COPY --from=build --chown=node:node /workspace/packages/object-storage/dist ./packages/object-storage/dist
 
 USER node
 
