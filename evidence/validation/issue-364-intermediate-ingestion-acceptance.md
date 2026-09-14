@@ -1,6 +1,6 @@
 # Issue #364 - Intermediate ingestion integrated acceptance
 
-**Issue:** #364 - Verify the complete Intermediate ingestion pipeline, recovery behavior and usability  
+**Issue:** #364 - Verify the complete Intermediate ingestion pipeline, recovery behavior and usability
 **Acceptance exercise dates:** 9-14 September 2026
 **Environment:** deployed development environment
 **Status:** OPEN - representative validation passed; representative publication failed the approved performance target
