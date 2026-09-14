@@ -60,6 +60,13 @@ module.exports = {
         path: '^apps/',
       },
     },
+    {
+      name: 'object-storage-must-not-import-applications',
+      comment: 'The provider boundary is shared by independently deployable applications.',
+      severity: 'error',
+      from: { path: '^packages/object-storage/' },
+      to: { path: '^apps/' },
+    },
   ],
   options: {
     tsPreCompilationDeps: true,

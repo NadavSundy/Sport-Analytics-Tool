@@ -17,6 +17,8 @@ const artifactFiles = [
   'packages/contracts/dist',
   'packages/batch-processing/package.json',
   'packages/batch-processing/dist',
+  'packages/object-storage/package.json',
+  'packages/object-storage/dist',
 ];
 
 async function requireBuildOutput(relativePath) {
@@ -57,6 +59,7 @@ async function replaceWorkspaceLinkWithDirectory(workspaceName, sourceRelativePa
 await requireBuildOutput('apps/backend/dist/index.js');
 await requireBuildOutput('packages/contracts/dist/index.js');
 await requireBuildOutput('packages/batch-processing/dist/index.js');
+await requireBuildOutput('packages/object-storage/dist/index.js');
 
 await rm(artifactRoot, { recursive: true, force: true });
 await mkdir(artifactRoot, { recursive: true });
@@ -72,6 +75,7 @@ const installArguments = [
   '--workspace=@sport-analytics/backend',
   '--workspace=@sport-analytics/contracts',
   '--workspace=@sport-analytics/batch-processing',
+  '--workspace=@sport-analytics/object-storage',
 ];
 const npmCommand = process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : 'npm';
 const npmArguments =
@@ -94,6 +98,7 @@ if (install.status !== 0) {
 
 await replaceWorkspaceLinkWithDirectory('contracts', 'packages/contracts');
 await replaceWorkspaceLinkWithDirectory('batch-processing', 'packages/batch-processing');
+await replaceWorkspaceLinkWithDirectory('object-storage', 'packages/object-storage');
 await replaceWorkspaceLinkWithDirectory('backend');
 
 const installedContracts = path.join(artifactRoot, 'node_modules', '@sport-analytics', 'contracts');
@@ -118,6 +123,17 @@ if (
   throw new Error('The deployment artifact does not contain a physical batch-processing package.');
 }
 await access(path.join(installedBatchProcessing, 'dist', 'index.js'));
+const installedObjectStorage = path.join(
+  artifactRoot,
+  'node_modules',
+  '@sport-analytics',
+  'object-storage',
+);
+const installedObjectStorageStats = await lstat(installedObjectStorage);
+if (!installedObjectStorageStats.isDirectory() || installedObjectStorageStats.isSymbolicLink()) {
+  throw new Error('The deployment artifact does not contain a physical object-storage package.');
+}
+await access(path.join(installedObjectStorage, 'dist', 'index.js'));
 await access(path.join(artifactRoot, 'apps', 'backend', 'certs', 'supabase-ca.crt'));
 console.log(
   `Backend deployment artifact prepared at ${path.relative(repositoryRoot, artifactRoot)}.`,

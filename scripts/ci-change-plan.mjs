@@ -108,6 +108,7 @@ function isIntermediateIngestionPath(file) {
       'apps/backend/src/modules/submissions/',
       'apps/worker/',
       'packages/batch-processing/',
+      'packages/object-storage/',
       'apps/frontend/src/features/reviews/',
       'apps/frontend/src/features/submissions/',
     ].some((prefix) => file.startsWith(prefix))
@@ -249,6 +250,16 @@ function applyPath(plan, file) {
     plan.deployment = true;
     plan.deployBackend = true;
     plan.deployWorker = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
+  if (file.startsWith('packages/object-storage/')) {
+    plan.backend = true;
+    plan.worker = true;
+    plan.deployment = true;
+    plan.deployBackend = true;
     plan.hygiene = true;
     plan.needsNpm = true;
     return;

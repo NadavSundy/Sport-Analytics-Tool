@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { executeQuery } from '../../src/database';
 import { createPublicEventRepository } from '../../src/modules/events/event.repository';
 import { createDatasetReleaseRepository } from '../../src/modules/dataset-releases/dataset-release.repository';
-import { createDatasetReleaseService } from '../../src/modules/dataset-releases/dataset-release.service';
 import { createPublicReadService } from '../../src/modules/public-read/public-read.service';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { createTestApp } from '../test-app';
@@ -426,29 +425,44 @@ describe.sequential('public events database API', () => {
     expect(detail.body.data.eventId).toBe(current.orderedEventIds[1]);
   });
 
-  test('creates and retrieves an immutable checksum-backed published-data release', async () => {
-    const client = await databasePool().connect();
-    try {
-      await client.query('BEGIN');
-      const service = createDatasetReleaseService(createDatasetReleaseRepository(client));
-      const version = `${sourcePrefix}-release`;
+  test('uses deterministic keyset pages for the accepted event snapshot', async () => {
+    const repository = createDatasetReleaseRepository(databasePool());
+    const first = await repository.loadPublishedEventPage(null, 2);
+    const second = await repository.loadPublishedEventPage(first.nextCursor, 2);
+    expect(first.events).toHaveLength(2);
+    expect(second.events.length).toBeGreaterThan(0);
+    expect(first.nextCursor).not.toEqual(second.nextCursor);
+  });
 
-      const first = await service.createRelease({ version });
-      const again = await service.createRelease({ version });
-      const artifact = await service.getArtifact(version);
-
-      const parsedArtifact = JSON.parse(artifact!);
-      expect(first.eventCount).toBe(parsedArtifact.events.length);
-      expect(first).toEqual(again);
-      expect(artifact).toContain(`"eventId":"${testRecords().orderedEventIds[0]}"`);
-      expect(await service.getRelease(version)).toEqual(first);
-      expect(await service.listReleases()).toContainEqual(first);
-      await expect(
-        client.query('UPDATE dataset_release SET event_count = 0 WHERE version = $1', [version]),
-      ).rejects.toThrow('Dataset releases are immutable');
-    } finally {
-      await client.query('ROLLBACK');
-      client.release();
-    }
+  test('queues, reuses and retries one durable job for concurrent release requests', async () => {
+    const repository = createDatasetReleaseRepository(databasePool());
+    const owner = await databasePool().query<{ accountId: string }>(
+      `SELECT app_user_id::text AS "accountId" FROM app_user ORDER BY app_user_id LIMIT 1`,
+    );
+    const version = `${sourcePrefix}-async`;
+    const input = {
+      version,
+      requesterId: owner.rows[0]!.accountId,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem' as const,
+    };
+    const [first, concurrent] = await Promise.all([
+      repository.requestGeneration(input),
+      repository.requestGeneration(input),
+    ]);
+    expect(first.job?.jobId).toBe(concurrent.job?.jobId);
+    expect(first.job?.state).toBe('queued');
+    const jobId = first.job!.jobId;
+    await databasePool().query(
+      `UPDATE background_job SET state='failed',last_error_code='TestFailure',last_error_message='Safe test failure.' WHERE job_id=$1::uuid`,
+      [jobId],
+    );
+    const retried = await repository.requestGeneration(input);
+    expect(retried.job).toMatchObject({ jobId, state: 'queued', eventsProcessed: 0 });
+    const outbox = await databasePool().query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM outbox_message WHERE job_id=$1::uuid`,
+      [jobId],
+    );
+    expect(outbox.rows[0]!.count).toBe('2');
   });
 });

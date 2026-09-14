@@ -23,9 +23,11 @@ flowchart LR
     Docs -. documents .-> DB
 ```
 
-The independently deployable background-worker boundary is implemented for batch ingestion using a
+The independently deployable background-worker boundary is implemented for batch ingestion and
+full dataset-release generation using a
 PostgreSQL transactional outbox, Azure Service Bus Standard and the separate Node worker application;
-private Azure Blob Storage retains staged source bytes. The repository also contains the worker
+private Azure Blob Storage retains staged source bytes and immutable release artifacts in separate
+containers. The repository also contains the worker
 deployment workflow and recovery documentation. Caching retains a separate adoption boundary: the
 current fixture-statistics cache is PostgreSQL-backed, while external Redis remains optional.
 

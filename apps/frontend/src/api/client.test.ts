@@ -41,6 +41,19 @@ describe('authenticated API client', () => {
     expect(new Headers(requestInit.headers).has('Authorization')).toBe(false);
   });
 
+  it('exposes successful HTTP status when a caller needs it as a response discriminator', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response(202, { data: { status: 'pending' } })),
+    );
+    const client = createAuthenticatedApiClient(() => 'current-access-token');
+
+    await expect(client.requestWithStatus('/admin/dataset-releases')).resolves.toEqual({
+      status: 202,
+      body: { data: { status: 'pending' } },
+    });
+  });
+
   it.each([
     [401, 'unauthenticated'],
     [403, 'forbidden'],

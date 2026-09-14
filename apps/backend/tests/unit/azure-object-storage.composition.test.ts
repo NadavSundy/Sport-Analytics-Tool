@@ -14,14 +14,18 @@ import { BatchPayloadStorageService } from '../../src/modules/object-storage/bat
 const productionStorageEnvironment = {
   AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
   AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+  AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
 };
 
 describe('production Azure object-storage composition', () => {
   test('selects the configured HTTPS endpoint and container and injects the Azure adapter', () => {
     const credential = { getToken: vi.fn().mockResolvedValue(null) };
     const containerClient = {} as ContainerClient;
+    const releaseContainerClient = {} as ContainerClient;
     const payloadStorageService = {} as BatchPayloadStorageService;
-    const getContainerClient = vi.fn().mockReturnValue(containerClient);
+    const getContainerClient = vi.fn((name: string) =>
+      name === 'dataset-releases' ? releaseContainerClient : containerClient,
+    );
     const createCredential = vi.fn().mockReturnValue(credential);
     const createBlobServiceClient = vi.fn().mockReturnValue({ getContainerClient });
     const createObjectStore = vi
@@ -46,6 +50,7 @@ describe('production Azure object-storage composition', () => {
       credential,
     );
     expect(getContainerClient).toHaveBeenCalledWith('staged-ingestion');
+    expect(getContainerClient).toHaveBeenCalledWith('dataset-releases');
     expect(createObjectStore).toHaveBeenCalledWith(containerClient);
     expect(composition.objectStore).toBeInstanceOf(AzureBlobObjectStore);
     expect(createBatchPayloadStorageService).toHaveBeenCalledWith(composition.objectStore);
@@ -60,10 +65,12 @@ describe('production Azure object-storage composition', () => {
     const app = createApp({
       environment: {
         NODE_ENV: 'production',
+        OBJECT_STORAGE_PROVIDER: 'azure',
         PORT: 3000,
         CORS_ORIGINS: 'https://example.invalid',
         SUPABASE_URL: 'https://test-project.supabase.co',
         SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
         ...productionStorageEnvironment,
       },
     });
@@ -75,6 +82,7 @@ describe('production Azure object-storage composition', () => {
     expect(() =>
       createAzureObjectStorageComposition({
         AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+        AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
       }),
     ).toThrow('Azure storage account name is required for production object storage.');
   });
@@ -83,6 +91,7 @@ describe('production Azure object-storage composition', () => {
     expect(() =>
       createAzureObjectStorageComposition({
         AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+        AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
       }),
     ).toThrow('Azure storage container name is required for production object storage.');
   });
