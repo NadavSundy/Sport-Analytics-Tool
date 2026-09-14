@@ -11,6 +11,7 @@ coverage/
 .vscode/
 .idea/
 *.local
+/.local/object-storage/
 
 playwright-report/
 test-results/
