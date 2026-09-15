@@ -226,13 +226,14 @@ export function AuthenticationPage() {
           Supabase will securely handle your Google login or sign-up.
         </p>
         <button
+          aria-label={isProcessing ? 'Connecting to Google…' : 'Sign in with Google'}
           className="button google-sign-in-button"
           type="button"
           onClick={handleGoogleAuthentication}
           disabled={isProcessing}
         >
           <GoogleMark />
-          <span>{isProcessing ? 'Connecting to Google…' : 'Continue with Google'}</span>
+          <span aria-hidden="true">{isProcessing ? 'Connecting…' : 'Sign in'}</span>
         </button>
         {error ? (
           <p className="auth-error" role="alert">

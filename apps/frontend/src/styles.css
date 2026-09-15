@@ -621,11 +621,15 @@ main {
 
 .google-sign-in-button {
   gap: 0.625rem;
+  min-height: 2.5rem;
+  padding: 0.625rem 0.75rem;
   border-color: #747775;
+  border-radius: 999px;
   background: #fff;
   color: #1f1f1f;
   font-family: 'Google Sans', Arial, sans-serif;
   font-size: 0.875rem;
+  font-weight: 500;
   line-height: 1.25rem;
   box-shadow: 0 1px 2px rgb(60 64 67 / 0.2);
 }
@@ -643,6 +647,21 @@ main {
 
 .google-sign-in-button:disabled {
   color: #5f6368;
+}
+
+:root[data-theme='night'] .google-sign-in-button {
+  border-color: #8e918f;
+  background: #131314;
+  color: #e3e3e3;
+}
+
+:root[data-theme='night'] .google-sign-in-button:hover:not(:disabled) {
+  border-color: #a8c7fa;
+  background: #2d2f31;
+}
+
+:root[data-theme='night'] .google-sign-in-button:disabled {
+  color: #c4c7c5;
 }
 
 .google-sign-in-button__mark {
