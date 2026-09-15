@@ -81,7 +81,10 @@ export class WeatherTimeoutError extends Error {
 }
 
 export class WeatherUpstreamError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
     super(message);
     this.name = 'WeatherUpstreamError';
   }
@@ -119,10 +122,13 @@ export class WeatherService {
     );
     url.searchParams.set('timezone', 'auto');
 
-    const response = await this.fetchWithTimeout(url.toString());
+    const response = await this.fetchWithRetry(url.toString());
 
     if (!response.ok) {
-      throw new WeatherUpstreamError(`Open-Meteo request failed with status ${response.status}`);
+      throw new WeatherUpstreamError(
+        `Open-Meteo request failed with status ${response.status}`,
+        response.status,
+      );
     }
 
     let data: OpenMeteoResponse;
@@ -156,6 +162,29 @@ export class WeatherService {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private async fetchWithRetry(url: string): Promise<Response> {
+    try {
+      const firstResponse = await this.fetchWithTimeout(url);
+      if (!this.isRetryableStatus(firstResponse.status)) {
+        return firstResponse;
+      }
+    } catch (error) {
+      if (!this.isRetryableError(error)) {
+        throw error;
+      }
+    }
+
+    return this.fetchWithTimeout(url);
+  }
+
+  private isRetryableStatus(status: number): boolean {
+    return status === 408 || status >= 500;
+  }
+
+  private isRetryableError(error: unknown): boolean {
+    return error instanceof WeatherTimeoutError || error instanceof WeatherUpstreamError;
   }
 
   private parseWeatherResponse(
