@@ -66,7 +66,9 @@ test(
     await expect(page).toHaveURL(/\/sign-in$/);
     await expect(page.getByRole('heading', { name: 'Login or Sign up' })).toBeVisible();
 
-    const googleAction = page.getByRole('button', { name: 'Continue with Google' });
+    const googleAction = page.getByRole('button', { name: 'Sign in with Google' });
+    await expect(googleAction).toHaveText('Sign in');
+    await expect(googleAction.locator('svg[aria-hidden="true"]')).toBeVisible();
     await googleAction.focus();
     await expect(googleAction).toBeFocused();
 
