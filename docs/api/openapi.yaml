@@ -3749,6 +3749,9 @@ components:
             - participantName
             - competitorId
             - competitorName
+            - battingPosition
+            - battingParticipation
+            - dismissal
             - batting
             - bowling
           properties:
@@ -3771,6 +3774,40 @@ components:
               oneOf:
                 - type: string
                   minLength: 1
+                - type: 'null'
+            battingPosition:
+              oneOf:
+                - type: integer
+                  minimum: 1
+                - type: 'null'
+            battingParticipation:
+              type: string
+              enum:
+                - did_not_bat
+                - batted
+            dismissal:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - status
+                    - kind
+                    - eventId
+                  properties:
+                    status:
+                      type: string
+                      enum:
+                        - not_out
+                        - dismissed
+                    kind:
+                      oneOf:
+                        - type: string
+                          minLength: 1
+                        - type: 'null'
+                    eventId:
+                      oneOf:
+                        - $ref: '#/components/schemas/ApiIdentifier'
+                        - type: 'null'
                 - type: 'null'
 
             batting:
