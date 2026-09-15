@@ -360,31 +360,20 @@ decided by a bowl-out, which a nullable outcome column provides. This is recorde
 as a known exclusion rather than an oversight; if a bowl-out statistic is later
 required, the source data remains available for a subsequent migration.
 
-## 9. Outstanding
+## 9. Current limitations
 
-- Client confirmation of the super-over convention.
-- The storage benchmark: owner and date. The corpus is 3,193,996 deliveries,
-  which is two and a half times the subset the original projection was based on.
-- Whether the object-storage option changes the hosting decision in ADR-003.
-- The 320 matches classified `IT20` are not the international matches. Every match
-  in the T20 international archive carries `match_type: "T20"` with
-  `team_type: "international"`, and `match_type_number` is present on exactly
-  those 5,602 matches. Anything treating `IT20` as meaning international will
-  misclassify roughly 5,300 matches. Raised against the downloader.
+- Standard aggregates exclude super-over innings by default; client confirmation of that convention
+  remains open.
+- Bitemporal/as-of history, live late or out-of-order feed state, user-defined calculation
+  definitions and general change feeds remain beyond the implemented Intermediate model.
+- Cricsheet coverage and classifications can change when source data is refreshed. The supported
+  downloader scope and generated manifest are documented in [Cricsheet data source](../data/cricsheet.md).
 
-- Client confirmation of the super-over convention.
-- The storage benchmark: owner and date. The corpus is 3,193,996 deliveries,
-  which is 2.5 times the subset the original projection was based on.
-- Whether the object-storage option changes the hosting decision in ADR-003.
-- Three delivery-level fields require investigation before the migration is
-  written: an `over` key appearing on 3,068 deliveries, where the over number
-  should belong to the parent over object; `supersubs`, present on 42 matches; and
-  `bowl_out`, present on 2.
-- The 320 matches classified `IT20` are not the international matches. Every match
-  in the T20 international archive carries `match_type: "T20"` with
-  `team_type: "international"`, and `match_type_number` is present on exactly
-  those 5,602 matches. Anything treating `IT20` as meaning international will
-  misclassify roughly 5,300 matches.
+The source-field questions described in section 8 were resolved before the baseline migration. The
+storage benchmark and private-object-storage decision are also no longer open: their measured and
+accepted records are [ADR-003](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-003-database-host-connection-and-migrations.md),
+[ADR-005](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-005-database-host-migration.md) and
+[ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md).
 
 ---
 

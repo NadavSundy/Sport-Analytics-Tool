@@ -1,10 +1,10 @@
 # Entity relationship diagram
 
-The relationships below were read from the database with
-`apps/backend/scripts/queries/erd.sql`, which lists every foreign key in the
-`public` schema. The diagram is therefore a description of the schema as
-migrated, not a separate design document. Column detail is in
-[the event model](schema.md).
+The diagrams show the core sport, identity and provenance relationships from the migrated schema.
+`apps/backend/scripts/queries/erd.sql` is the repeatable query for the complete live foreign-key
+inventory; the ordered SQL under `database/migrations/` remains authoritative for exact tables,
+columns, constraints and indexes. Column and event-identity detail is in [the event model](schema.md),
+and the [Database architecture guide](guide.md) explains how the detailed pages fit together.
 
 ## Provenance and identity
 
@@ -53,8 +53,8 @@ store, not a public Azure location.
 `stored_object` permanently records the owner, sanitised original filename, media type, byte count,
 SHA-256 checksum, server-generated provider key, provider version and retention state for private
 payload bytes. Expiry changes its lifecycle state and deletes only the provider bytes; the metadata
-row cannot be deleted. A future batch receipt created by #277 stores the opaque application object
-identity in `batch.source_uri`, not the provider key.
+row cannot be deleted. Batch receipts store the opaque application object identity in
+`batch.source_uri`, not the provider key.
 
 ## Match structure
 
