@@ -270,9 +270,14 @@ describe('fixture weather service', () => {
       'Gahanga International Cricket Stadium, Rwanda, Kigali City',
     );
 
-    expect(geocoding.resolve).toHaveBeenNthCalledWith(2, 'Gahanga International Cricket Stadium, Rwanda');
+    expect(geocoding.resolve).toHaveBeenNthCalledWith(
+      2,
+      'Gahanga International Cricket Stadium, Rwanda',
+    );
     expect(geocoding.resolve).toHaveBeenNthCalledWith(3, 'Kigali City');
-    expect(poiGeocoding.resolve).toHaveBeenCalledWith('Gahanga International Cricket Stadium, Rwanda');
+    expect(poiGeocoding.resolve).toHaveBeenCalledWith(
+      'Gahanga International Cricket Stadium, Rwanda',
+    );
 
     expect(persistVenueCoordinates).toHaveBeenCalledWith('5', -1.9501, 30.0588);
 

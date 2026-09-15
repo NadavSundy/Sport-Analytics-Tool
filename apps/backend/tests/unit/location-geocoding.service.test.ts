@@ -67,11 +67,13 @@ describe('NominatimPoiGeocodingService', () => {
   });
 
   test('requests a single JSON POI result with an application user agent', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify([{ lat: '-37.8199', lon: '144.9834' }])),
-    );
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify([{ lat: '-37.8199', lon: '144.9834' }])));
 
-    await expect(new NominatimPoiGeocodingService().resolve('Example Cricket Ground')).resolves.toEqual({
+    await expect(
+      new NominatimPoiGeocodingService().resolve('Example Cricket Ground'),
+    ).resolves.toEqual({
       latitude: -37.8199,
       longitude: 144.9834,
     });
@@ -93,6 +95,8 @@ describe('NominatimPoiGeocodingService', () => {
       new Response(JSON.stringify([{ lat: '91', lon: '144.9834' }])),
     );
 
-    await expect(new NominatimPoiGeocodingService().resolve('Example Cricket Ground')).resolves.toBeNull();
+    await expect(
+      new NominatimPoiGeocodingService().resolve('Example Cricket Ground'),
+    ).resolves.toBeNull();
   });
 });

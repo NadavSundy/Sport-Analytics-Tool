@@ -65,9 +65,7 @@ interface NullableCoordinates {
   longitude: number | null;
 }
 
-function hasUsableCoordinates(
-  coordinates: NullableCoordinates,
-): coordinates is Coordinates {
+function hasUsableCoordinates(coordinates: NullableCoordinates): coordinates is Coordinates {
   return (
     coordinates.latitude !== null &&
     coordinates.longitude !== null &&
