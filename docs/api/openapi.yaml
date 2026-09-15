@@ -1302,9 +1302,10 @@ paths:
       summary: Get contextual weather for a fixture
       description: |
         Resolves the fixture's start date and venue coordinates, reusing stored
-        coordinates or resolving the city first and raw venue name second when
-        coordinates are absent. Resolved coordinates are persisted before daily
-        weather is retrieved through the server-side Open-Meteo integration.
+        coordinates or resolving the canonical venue and city first and raw venue
+        name second when coordinates are absent. Resolved coordinates are persisted before daily
+        weather is retrieved through the server-side
+        Open-Meteo integration; a changed venue name or city invalidates them.
         Weather is contextual external information and is not authoritative
         fixture, event, or statistic data. If the fixture exists but cannot be
         located after those lookups, or its date falls outside Open-Meteo's

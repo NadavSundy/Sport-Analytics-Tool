@@ -56,6 +56,7 @@ describe('fixture repository', () => {
     expect(query).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0]?.[0]).toContain('UPDATE venue');
     expect(query.mock.calls[0]?.[0]).toContain('WHERE venue_id = $1::bigint');
+    expect(query.mock.calls[0]?.[0]).toContain('AND latitude IS NULL');
     expect(query.mock.calls[0]?.[1]).toEqual(['5', -26.1929, 28.0305]);
   });
 
