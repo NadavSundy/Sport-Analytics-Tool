@@ -71,6 +71,27 @@ Related:
 - [User testing protocol](../testing/user-testing-protocol.md)
 - [Testing and validation evidence](validation-and-user-testing.md)
 
+## Sprint 3
+
+| Date        | Record                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 15 Sep 2026 | [Sprint planning](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md) |
+
+The Sprint 3 planning record captures:
+
+- the refined Sprint 3 goal;
+- Sprint 2 carry-over;
+- accepted Sprint 2 stakeholder / marker feedback;
+- the post-review internal technical audit;
+- the feature-level user-feedback gate model;
+- the Basic/Intermediate acceptance gate;
+- selected Advanced API stretch work;
+- execution order, ownership status and risks; and
+- the initial Sprint 3 rubric traceability baseline.
+
+Gitea remains authoritative for current issue state, assignees, dependencies and
+completion evidence.
+
 ## Future Sprints
 
 As each further Sprint is created under `evidence/sprints/sprint-<n>/`, add a
@@ -88,3 +109,5 @@ the assistance of ChatGPT-Web[GPT-5.6 Sol].
 
 The Issue #298 Sprint 2 close-out navigation update was reviewed and edited
 with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #577 Sprint 3 planning navigation update was reviewed and edited with
+the assistance of ChatGPT-Web[GPT-5.6 Sol].
