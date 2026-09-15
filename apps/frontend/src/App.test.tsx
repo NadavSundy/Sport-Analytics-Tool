@@ -183,7 +183,7 @@ describe('public application and authentication interface', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
   });
 
   it('renders the unified Google authentication page without registration alternatives', async () => {
@@ -192,13 +192,28 @@ describe('public application and authentication interface', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Login or Sign up' })).toHaveAttribute(
       'aria-current',
       'page',
     );
     expect(screen.queryByRole('link', { name: 'Create Account' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
+  });
+
+  it('presents Google sign-in with an official mark and managed-auth explanation', async () => {
+    renderApp('/sign-in');
+
+    const googleAction = await screen.findByRole('button', { name: 'Sign in with Google' });
+    const googleMark = googleAction.querySelector('svg');
+
+    expect(googleAction).toHaveClass('google-sign-in-button');
+    expect(googleAction).toHaveTextContent('Sign in');
+    expect(googleMark).toHaveAttribute('aria-hidden', 'true');
+    expect(googleMark).toHaveAttribute('focusable', 'false');
+    expect(
+      screen.getByText('Supabase will securely handle your Google login or sign-up.'),
+    ).toBeInTheDocument();
   });
 
   it('starts managed Google OAuth with the callback return URL and shows progress', async () => {
@@ -210,7 +225,7 @@ describe('public application and authentication interface', () => {
     const auth = renderApp('/sign-in');
     vi.mocked(auth.client.signInWithOAuth).mockReturnValue(pendingAuthentication);
 
-    const button = await screen.findByRole('button', { name: 'Continue with Google' });
+    const button = await screen.findByRole('button', { name: 'Sign in with Google' });
     fireEvent.click(button);
 
     expect(screen.getByRole('button', { name: 'Connecting to Google…' })).toBeDisabled();
@@ -234,7 +249,7 @@ describe('public application and authentication interface', () => {
       error: new Error('provider secret response') as never,
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue with Google' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in with Google' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'We could not connect to Google. Please try again.',

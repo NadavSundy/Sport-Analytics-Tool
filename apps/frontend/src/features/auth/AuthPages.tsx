@@ -42,6 +42,34 @@ function CallbackRecoveryLinks() {
   );
 }
 
+function GoogleMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="google-sign-in-button__mark"
+      focusable="false"
+      viewBox="0 0 48 48"
+    >
+      <path
+        fill="#FFC107"
+        d="M43.6 20H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 5.9 29.2 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-4z"
+      />
+      <path
+        fill="#FF3D00"
+        d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 5.9 29.2 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.1 0 9.9-2 13.4-5.2l-6.2-5.2C29.1 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.2-7.9l-6.6 5.1C9.5 39.5 16.2 44 24 44z"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.6 20H42V20H24v8h11.3c-1.1 3-3.1 5.4-5.8 7l.1-.1 6.2 5.2C35.4 40.5 44 34 44 24c0-1.3-.1-2.7-.4-4z"
+      />
+    </svg>
+  );
+}
+
 function deletionErrorMessage(error: unknown): string {
   if (error instanceof ApiResponseError) {
     if (error.code === 'RECENT_AUTHENTICATION_REQUIRED') {
@@ -195,15 +223,17 @@ export function AuthenticationPage() {
         <p className="eyebrow">Supabase managed authentication</p>
         <h1 id="auth-page-title">{title}</h1>
         <p className="auth-card__introduction">
-          Continue with your Google identity. Supabase will securely handle your login or sign-up.
+          Supabase will securely handle your Google login or sign-up.
         </p>
         <button
-          className="button button--primary"
+          aria-label={isProcessing ? 'Connecting to Google…' : 'Sign in with Google'}
+          className="button google-sign-in-button"
           type="button"
           onClick={handleGoogleAuthentication}
           disabled={isProcessing}
         >
-          {isProcessing ? 'Connecting to Google…' : 'Continue with Google'}
+          <GoogleMark />
+          <span aria-hidden="true">{isProcessing ? 'Connecting…' : 'Sign in'}</span>
         </button>
         {error ? (
           <p className="auth-error" role="alert">
