@@ -102,3 +102,7 @@ The Cloudflare API token should be limited to the permissions required to deploy
 User-testing evidence is retained through the normal repository workflow under `evidence/user-testing/`. Documentation deployment does not retrieve feedback from OneDrive or generate user-testing evidence dynamically, so a given repository commit builds the same documentation source regardless of external feedback storage state.
 
 Manual Wrangler deployment using the commands above remains a local/fallback option when required.
+
+## AI Declaration
+
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
