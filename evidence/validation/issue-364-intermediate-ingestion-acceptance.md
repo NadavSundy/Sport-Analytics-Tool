@@ -3,7 +3,7 @@
 **Issue:** #364 - Verify the complete Intermediate ingestion pipeline, recovery behavior and usability
 **Acceptance exercise dates:** 9-14 September 2026
 **Environment:** deployed development environment
-**Status:** OPEN - representative validation passed; representative publication failed the approved performance target
+**Status:** PRE-CLOSE - representative validation and publication targets pass after #540 remediation; #417/#418 formal testing is complete; final current-main verification remains
 
 ## Purpose
 
@@ -58,26 +58,26 @@ A follow-up #364 CI-routing change integrates future Intermediate ingestion chan
 
 ## Acceptance evidence matrix
 
-| Acceptance criterion                                                          | Evidence / observation                                                                                                                                                                                                   | Status                                                     |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| Authorized submitter uploads representative whole season without database IDs | Guided season package used readable cricket context only; representative IPL 2013 package contained 70 fixtures / 16,713 events and zero application reference source IDs.                                               | **PASS**                                                   |
-| Back catalogue with proposed fixtures can be staged                           | Resolver stages unknown fixture/reference context rather than silently creating canonical rows; automated coverage retained.                                                                                             | automated coverage present                                 |
-| Invalid events produce a complete actionable report                           | Paginated report and full JSON download contain rule code, message, source context and rejected-item detail. Live representative run produced 781 retained rejected events.                                              | **PASS**                                                   |
-| Ambiguous participants require explicit mapping                               | Ambiguous/unresolved references remain blocking until explicitly resolved. Live run exposed two unresolved substitute references and prevented approval.                                                                 | **PASS**                                                   |
-| Equivalent re-upload does not duplicate batch/event/statistic                 | Same key/checksum and publication replay idempotency are covered by automated/database tests; #463 live acceptance confirmed duplicate-safe canonical publication.                                                       | automated + live evidence                                  |
-| Reused key with changed content is rejected                                   | Same key/different checksum returns conflict in batch service tests.                                                                                                                                                     | automated coverage present                                 |
-| Validation/publication resume after worker termination                        | Worker redelivery, durable validation checkpoints, publication lease reclaim and Azure worker recovery procedures are covered. #463 demonstrated recovery of stored/pending work after runtime repair.                   | automated + operational evidence                           |
-| Concurrent workers do not duplicate work                                      | Live leases exclude competing worker ownership and completed publication replay is a deterministic no-op.                                                                                                                | automated coverage present                                 |
-| Staged data is never public before approval                                   | Database tests observe zero canonical delivery rows while staged and reject premature publication.                                                                                                                       | automated coverage present                                 |
-| Approval publishes intended accepted items; rejection publishes nothing       | Review/publication tests cover accepted-only writes. Live #364 UI correctly identified 15,932 publishable records while retaining 781 rejected records unpublished. Publication itself did not finish within the target. | **PARTIAL - selection PASS, publication performance FAIL** |
-| Corrections retain history and update dependent statistics                    | Correction database/API/browser tests retained. Live season exercise also exercised return-for-correction and corrected resubmission, exposing separate linkage defect #539.                                             | automated + live workflow evidence                         |
-| Statistic-to-submitter provenance demonstrated                                | Protected provenance API from #363 and `evidence/validation/issue-363-provenance.md`.                                                                                                                                    | automated coverage present                                 |
-| Representative season-scale throughput meets approved target                  | Deployed IPL 2013 exercise: 70 fixtures / 16,713 events. Validation completed in 4m27s against <=15m target. Publication remained `publishing` beyond 15m.                                                               | **FAIL - validation PASS; publication FAIL**               |
-| Payloads/credentials absent from logs                                         | Safe-scalar worker logger, structured-log audit and security documentation. No credentials were included in retained acceptance evidence.                                                                                | automated coverage present                                 |
-| Accessibility/responsive checks pass                                          | Focused ingestion/review/correction Playwright plus normal CI accessibility coverage.                                                                                                                                    | local and hosted browser validation passed                 |
-| #417/#418 representative-user evidence                                        | #418 reviewer/admin evidence: `evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md`. #417 submitter evidence remains to be consolidated unless completed separately.                                               | **#418 complete; #417 pending**                            |
-| Architecture/API/database/deployment/testing/user docs current                | `docs/testing/intermediate-ingestion-acceptance.md` indexes current source documentation; strict MkDocs remains in change-aware CI.                                                                                      | verifier/local/hosted quality evidence present             |
-| Every Intermediate brief requirement maps to evidence                         | Intermediate requirements remain mapped through the acceptance guide and evidence records.                                                                                                                               | mapped                                                     |
+| Acceptance criterion                                                          | Evidence / observation                                                                                                                                                                                                                                        | Status                                         |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Authorized submitter uploads representative whole season without database IDs | Guided season package used readable cricket context only; representative IPL 2013 package contained 70 fixtures / 16,713 events and zero application reference source IDs.                                                                                    | **PASS**                                       |
+| Back catalogue with proposed fixtures can be staged                           | Resolver stages unknown fixture/reference context rather than silently creating canonical rows; automated coverage retained.                                                                                                                                  | automated coverage present                     |
+| Invalid events produce a complete actionable report                           | Paginated report and full JSON download contain rule code, message, source context and rejected-item detail. Live representative run produced 781 retained rejected events.                                                                                   | **PASS**                                       |
+| Ambiguous participants require explicit mapping                               | Ambiguous/unresolved references remain blocking until explicitly resolved. Live run exposed two unresolved substitute references and prevented approval.                                                                                                      | **PASS**                                       |
+| Equivalent re-upload does not duplicate batch/event/statistic                 | Same key/checksum and publication replay idempotency are covered by automated/database tests; #463 live acceptance confirmed duplicate-safe canonical publication.                                                                                            | automated + live evidence                      |
+| Reused key with changed content is rejected                                   | Same key/different checksum returns conflict in batch service tests.                                                                                                                                                                                          | automated coverage present                     |
+| Validation/publication resume after worker termination                        | Worker redelivery and durable validation checkpoints remain covered; #463 demonstrated worker recovery, and #540 recovered the original stranded approved season-scale batch through one durable `batch.publish` job without restarting the workload.         | **PASS - automated + live recovery evidence**  |
+| Concurrent workers do not duplicate work                                      | Live leases exclude competing worker ownership and completed publication replay is a deterministic no-op.                                                                                                                                                     | automated coverage present                     |
+| Staged data is never public before approval                                   | Database tests observe zero canonical delivery rows while staged and reject premature publication.                                                                                                                                                            | automated coverage present                     |
+| Approval publishes intended accepted items; rejection publishes nothing       | The original #364 run proved accepted/rejected selection. After #540, approval dispatches durable asynchronous publication; the final representative batch reached `published` with 15,932 `duplicate_skipped`, 781 rejected and 0 accepted records stranded. | **PASS**                                       |
+| Corrections retain history and update dependent statistics                    | Correction database/API/browser tests remain in place. #539 added explicit replacement lineage (`replacesBatchReference` / `supersededByBatchReference`) with backend/frontend coverage after the live #364 run exposed the gap.                              | **PASS - follow-up fix merged**                |
+| Statistic-to-submitter provenance demonstrated                                | Protected provenance API from #363 and `evidence/validation/issue-363-provenance.md`.                                                                                                                                                                         | automated coverage present                     |
+| Representative season-scale throughput meets approved target                  | Deployed IPL 2013 workload: 70 fixtures / 16,713 events. Validation completed in 4m27s. After #540 remediation, final deployed publication completed in 3m37.235s. Both are within the approved <=15m target.                                                 | **PASS**                                       |
+| Payloads/credentials absent from logs                                         | Safe-scalar worker logger, structured-log audit and security documentation. No credentials were included in retained acceptance evidence.                                                                                                                     | automated coverage present                     |
+| Accessibility/responsive checks pass                                          | Focused ingestion/review/correction Playwright plus normal CI accessibility coverage.                                                                                                                                                                         | local and hosted browser validation passed     |
+| #417/#418 representative-user evidence                                        | #418 reviewer/admin testing is complete. #417 formal submitter testing is also complete with two external sessions, P05 and P06; pending P06 findings remain visible for team triage/carry-over rather than being treated as missing test evidence.           | **PASS - formal evidence complete**            |
+| Architecture/API/database/deployment/testing/user docs current                | `docs/testing/intermediate-ingestion-acceptance.md` indexes current source documentation; strict MkDocs remains in change-aware CI.                                                                                                                           | verifier/local/hosted quality evidence present |
+| Every Intermediate brief requirement maps to evidence                         | Intermediate requirements remain mapped through the acceptance guide and evidence records.                                                                                                                                                                    | mapped                                         |
 
 ## Intermediate brief cross-check
 
@@ -546,7 +546,7 @@ The UI also explicitly stated that the 781 rejected records would remain unpubli
 
 This is useful evidence that the review workflow correctly distinguishes publishable and rejected records before canonical publication.
 
-## Publication acceptance run
+## Original publication acceptance run - historical failure
 
 Reviewer reason:
 
@@ -652,7 +652,7 @@ The review endpoint should return once the approval and durable `publishing` tra
 
 However, asynchronous dispatch alone is not sufficient to close #364: the actual publication operation must also satisfy the representative performance target.
 
-## Representative publication throughput result
+## Original representative publication throughput result - historical failure
 
 Approved publication start:
 
@@ -694,7 +694,7 @@ No duplicate approval was attempted.
 
 No restart or destructive recovery action was performed during the acceptance measurement.
 
-## Azure investigation
+## Original failure investigation
 
 Historical App Service application-console logs were not available in Log Analytics for the publication window.
 
@@ -710,9 +710,118 @@ The precise reason publication remained beyond the <=15-minute target requires f
 
 Possible causes must be investigated from evidence rather than assumed, including database round trips, transaction behaviour, checkpoint/lease behaviour or other publication-path scaling costs.
 
+## Post-failure remediation and final deployed retest - 15 September 2026
+
+The 14 September failure above is retained as historical evidence. It was subsequently remediated and retested under Issue #540.
+
+### Durable recovery of the original stranded batch
+
+Original stranded batch:
+
+`486d496e-8abd-47d7-9988-cebd8fd01095`
+
+After the durable asynchronous publication fix was deployed, the existing approved decision was replayed idempotently. Exactly one durable publication job was created for the batch and the stranded workload completed instead of restarting or remaining indefinitely in `publishing`.
+
+Final recovered batch state:
+
+`published`
+
+Final recovered item states:
+
+```text
+duplicate_skipped: 15,932
+rejected:          781
+accepted:          0
+```
+
+This live recovery demonstrates resume/idempotency for the same season-scale workload that originally failed.
+
+### #540 throughput remediation
+
+Investigation under #540 identified an N+1 publication pattern: duplicate and published-conflict outcomes were persisted with sequential per-item database operations inside each publication chunk.
+
+The publication path was changed to persist duplicate/conflict outcome classes using set-based PostgreSQL statements while preserving the existing checkpoint, lease, retry and resume semantics. The worker regression suite and local CI passed after the optimisation.
+
+Approval/publication was also decoupled from the reviewer HTTP request through a durable asynchronous `batch.publish` job, removing the original synchronous `await publishAcceptedItems(...)` failure mode.
+
+### Final representative deployed acceptance
+
+Final acceptance batch:
+
+`a8718ca6-848e-4e06-b07b-fc7a67ee670c`
+
+Source package:
+
+`issue-540-throughput-replay.json`
+
+Representative workload before approval:
+
+```text
+total events:          16,713
+accepted:              15,932
+rejected:              781
+blocking errors:       0
+unresolved references: 0
+published conflicts:   0
+```
+
+The two published-delivery conflicts were resolved by retaining the existing canonical deliveries, matching the earlier #364 review decision.
+
+Durable publication job:
+
+`49144373-b401-467d-9bcc-c97c65216f3f`
+
+Observed final job state:
+
+```text
+job state:      succeeded
+attempt count:  1
+worker progress: 15,930 / 15,930
+```
+
+Two items had already been resolved as duplicate outcomes before publication began, hence the 15,930 worker-progress total.
+
+Final batch state:
+
+`published`
+
+Final item states:
+
+```text
+duplicate_skipped: 15,932
+rejected:          781
+accepted:          0
+```
+
+Acceptance timer:
+
+```text
+start:      2026-09-15T09:40:16.9410651+02:00
+complete:   2026-09-15T09:43:54.1767767+02:00
+elapsed:    3 minutes 37.235 seconds
+target:     <= 15 minutes
+result:     PASS
+```
+
+The final deployed publication completed in approximately 24% of the maximum permitted acceptance time.
+
+The retained source record is:
+
+`evidence/acceptance/issue-540-season-scale-publication.md`
+
+### Follow-up defect status
+
+- **#537:** fixed. The current review workspace renders approval-blocking reference/conflict controls from `report.blockingItems`, independently of the ordinary paginated `report.items` slice, with frontend regression coverage.
+- **#539:** fixed. Batch correction lineage is explicit through `replacesBatchReference` and `supersededByBatchReference`, is returned by the backend, rendered in submitter/reviewer views and covered by API/database/frontend tests.
+- **#540:** fixed and deployed. Approval uses durable asynchronous publication; the originally stranded batch recovered; the final representative season-scale publication passed in 3m37.235s.
+
+The original defects remain documented below because they are part of the acceptance trail; their presence in the historical section is not a statement that they remain unresolved.
+
 ## Defects discovered during the representative run
 
 ### #537 - Admin batch review hides approval-blocking items outside the initially loaded report slice
+
+**Resolution:** Fixed after discovery. Current review rendering uses `report.blockingItems` for blocking references/conflicts independently of the ordinary report page, with regression coverage.
 
 Reproduced for:
 
@@ -728,6 +837,8 @@ Impact:
 - repeated generic pagination or manual API use becomes necessary.
 
 ### #539 - Correction resubmission creates an unlinked batch instead of superseding the returned batch
+
+**Resolution:** Fixed after discovery. Replacement lineage is now explicit through `replacesBatchReference` / `supersededByBatchReference` and is exposed in backend and frontend batch views with automated coverage.
 
 Observed sequence:
 
@@ -750,6 +861,8 @@ Impact:
 - multiple correction attempts could become ambiguous.
 
 ### Season-scale review/publication defect
+
+**Resolution:** Fixed and deployed under #540. Approval now hands publication to a durable asynchronous job, stranded work can resume, and set-based duplicate/conflict persistence removed the identified N+1 bottleneck. The final representative deployed retest completed in 3m37.235s.
 
 A separate publication defect was logged from this acceptance run.
 
@@ -775,29 +888,32 @@ The exact internal performance cause inside `publishAcceptedItems()` remains to 
 
 ## Live acceptance summary
 
-| Stage                                      | Result                                    | Evidence                                       |
-| ------------------------------------------ | ----------------------------------------- | ---------------------------------------------- |
-| Representative package construction        | PASS                                      | 70 fixtures / 16,713 events / 6.52 MB          |
-| No application DB reference IDs in package | PASS                                      | contract inspection: 0 reference source IDs    |
-| Contract validation                        | PASS                                      | `seasonUploadPackageSchema`                    |
-| Deployed upload through submitter UI       | PASS                                      | durable batch receipt                          |
-| V1 deployed validation                     | PASS                                      | 2m38s                                          |
-| Unresolved-reference blocking              | PASS                                      | 2 unresolved prevented approval                |
-| Admin unresolved-item usability            | FAIL                                      | defect #537                                    |
-| Return for correction                      | PASS                                      | reviewer reason persisted                      |
-| Corrected package contract validation      | PASS                                      | exactly 2 substitute references changed        |
-| Correction linkage                         | FAIL                                      | defect #539                                    |
-| V2 deployed validation                     | PASS                                      | 4m27s                                          |
-| Unresolved references after correction     | PASS                                      | 0                                              |
-| Published-data conflict detection          | PASS                                      | 2 conflicts                                    |
-| Admin conflict usability                   | FAIL                                      | defect #537                                    |
-| Explicit conflict resolution               | PASS via supported authenticated endpoint | both `use_existing`                            |
-| Final review blockers                      | PASS                                      | 0 conflicts / 0 unresolved / 0 blocking errors |
-| Accepted/rejected subset separation        | PASS                                      | 15,932 accepted / 781 rejected                 |
-| Reviewer approval persistence              | PASS                                      | backend decision `approved`                    |
-| Admin approval-response UX                 | FAIL                                      | false "decision could not be saved" state      |
-| Representative validation <=15m            | **PASS**                                  | 4m27s                                          |
-| Representative publication <=15m           | **FAIL**                                  | still `publishing` after cutoff                |
+| Stage                                      | Result                      | Evidence                                                                              |
+| ------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------- |
+| Representative package construction        | PASS                        | 70 fixtures / 16,713 events / 6.52 MB                                                 |
+| No application DB reference IDs in package | PASS                        | contract inspection: 0 reference source IDs                                           |
+| Contract validation                        | PASS                        | `seasonUploadPackageSchema`                                                           |
+| Deployed upload through submitter UI       | PASS                        | durable batch receipt                                                                 |
+| V1 deployed validation                     | PASS                        | 2m38s                                                                                 |
+| Unresolved-reference blocking              | PASS                        | 2 unresolved prevented approval                                                       |
+| Admin unresolved-item usability            | PASS after #537 remediation | blockers are sourced from `report.blockingItems` independently of ordinary pagination |
+| Return for correction                      | PASS                        | reviewer reason persisted                                                             |
+| Corrected package contract validation      | PASS                        | exactly 2 substitute references changed                                               |
+| Correction linkage                         | PASS after #539 remediation | explicit predecessor/replacement lineage with backend/frontend coverage               |
+| V2 deployed validation                     | PASS                        | 4m27s                                                                                 |
+| Unresolved references after correction     | PASS                        | 0                                                                                     |
+| Published-data conflict detection          | PASS                        | 2 conflicts                                                                           |
+| Admin conflict usability                   | PASS after #537 remediation | conflict controls no longer depend on the current general report slice                |
+| Explicit conflict resolution               | PASS                        | both conflicts retained existing canonical deliveries                                 |
+| Final review blockers                      | PASS                        | 0 conflicts / 0 unresolved / 0 blocking errors                                        |
+| Accepted/rejected subset separation        | PASS                        | 15,932 accepted / 781 rejected before publication                                     |
+| Reviewer approval persistence              | PASS                        | durable approved review decision                                                      |
+| Admin approval/publication UX              | PASS after #540 remediation | review returns after durable dispatch; publication runs through background job        |
+| Original stranded publication recovery     | PASS                        | original batch recovered to `published`; 15,932 duplicate-skipped / 781 rejected      |
+| Representative validation <=15m            | **PASS**                    | 4m27s                                                                                 |
+| Representative publication <=15m           | **PASS**                    | final deployed retest 3m37.235s                                                       |
+| #417 formal submitter testing              | **PASS**                    | two external submitter sessions (P05/P06) retained; pending findings remain explicit  |
+| #418 reviewer/admin testing                | **PASS**                    | P04 failure/fix/retest evidence retained                                              |
 
 ## Relationship to #463
 
@@ -810,36 +926,41 @@ The #463 live deployment exercise remains valid evidence that the deployed pipel
 - publish a small approved batch; and
 - safely skip an already-published equivalent delivery.
 
-The #364 season-scale run extends that evidence to a realistic workload.
+The #364 season-scale run extended that evidence to a realistic workload, exposed the scale failure, and #540 then supplied the remediation, recovery and successful representative retest.
 
-The two results are not contradictory:
+The evidence sequence is cumulative:
 
 - #463 proved functional deployed publication on a small controlled batch;
-- #364 exposed a scale problem in the review/publication path when publishing approximately 15.9k accepted records.
+- the original #364 run exposed a season-scale review/publication failure;
+- #540 recovered the stranded workload and proved the corrected season-scale path reaches `published` within the <=15-minute target.
 
-## Remaining close-out gates
+## Final close-out gate
 
-Issue #364 is **not ready to close**.
+The substantive #364 acceptance gates are now evidenced:
 
-The representative season-scale throughput exercise has now been performed and documented.
+- representative validation completed within target;
+- representative publication completed within target after #540 remediation;
+- the original stranded publication recovered through the durable worker path;
+- #537 blocking-item discoverability is repaired;
+- #539 correction lineage is repaired;
+- #417 formal submitter testing is complete with P05/P06;
+- #418 reviewer/admin testing is complete.
 
-Validation throughput passed.
+Pending P06 findings remain visible in the Sprint 2 user-testing summary and must be triaged/carried forward honestly, but they do not represent missing formal #417 test evidence.
 
-Publication throughput failed.
+Before closing #364, run a fresh current-`main`:
 
-Before #364 can close:
+```text
+npm run verify:intermediate-ingestion
+```
 
-1. the season-scale review/publication defect must be remediated;
-2. the representative publication run must be repeated successfully against the approved <=15-minute target;
-3. any required #417 submitter formal-user evidence must be consolidated if it remains outstanding;
-4. the acceptance record must be updated with the successful publication retest; and
-5. normal verification/CI must pass for the remediation.
+and confirm it exits successfully after the final evidence updates are merged. This final command is the remaining verification gate; no additional 70-fixture deployed publication rerun is required unless code affecting the accepted publication path changes before closure.
 
 ## Final decision
 
-**FAIL / OPEN - Issue #364 is not ready to close.**
+**PRE-CLOSE / ACCEPTANCE EVIDENCE PASS - close #364 after one fresh current-main verifier run.**
 
-The representative season-scale validation requirement is now proven in the deployed environment:
+Representative season-scale validation:
 
 ```text
 70 fixtures
@@ -849,33 +970,22 @@ target <=15m
 PASS
 ```
 
-The representative publication requirement is not yet satisfied:
+Final representative season-scale publication after #540:
 
 ```text
-15,932 accepted records selected for publication
-publication still active beyond 15 minutes
-FAIL
+batch:   a8718ca6-848e-4e06-b07b-fc7a67ee670c
+result:  published
+elapsed: 3m37.235s
+target:  <=15m
+PASS
 ```
 
-This run nevertheless provides substantial live Intermediate acceptance evidence for:
+The original stranded season-scale batch also recovered to `published`, demonstrating durable resume behaviour.
 
-- guided whole-season upload without application database IDs;
-- durable batch receipt;
-- season-scale asynchronous validation;
-- complete rejected-item reporting;
-- blocking unresolved references;
-- return-for-correction workflow;
-- corrected season resubmission;
-- conflict detection;
-- explicit conflict resolution;
-- duplicate-safe use of richer canonical deliveries;
-- reviewer approval of only the accepted subset;
-- retained rejected records;
-- durable reviewer provenance; and
-- direct representative-scale validation/publication measurement.
+Formal user-testing evidence required by #364 is present for both #417 and #418. The formal-session gate is complete even though several P06 findings remain pending team disposition and must remain visible as carry-over/product work.
 
-The defects discovered during the exercise are intentionally tracked separately rather than hidden inside #364.
+The historical failure and defect-discovery material above is intentionally retained to preserve the audit trail. It is superseded by the later remediation and deployed retest evidence, not deleted.
 
-Issue #364 should remain open until publication remediation and the successful representative retest are complete.
+Once the fresh current-main `npm run verify:intermediate-ingestion` run is green and this evidence is merged, #364 can be closed without another representative deployed season run unless publication-path code changes again.
 
 AI Declaration: The preceding validation plan, live acceptance investigation and evidence record were generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]. All browser, PowerShell, Azure and deployed-system observations recorded as live evidence were executed and reviewed by the student.
