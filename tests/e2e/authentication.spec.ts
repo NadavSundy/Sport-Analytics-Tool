@@ -67,6 +67,7 @@ test(
     await expect(page.getByRole('heading', { name: 'Login or Sign up' })).toBeVisible();
 
     const googleAction = page.getByRole('button', { name: 'Continue with Google' });
+    await expect(googleAction.locator('svg[aria-hidden="true"]')).toBeVisible();
     await googleAction.focus();
     await expect(googleAction).toBeFocused();
 

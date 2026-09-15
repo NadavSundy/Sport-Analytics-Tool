@@ -201,6 +201,20 @@ describe('public application and authentication interface', () => {
     expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
   });
 
+  it('presents Google sign-in with an official mark and managed-auth explanation', async () => {
+    renderApp('/sign-in');
+
+    const googleAction = await screen.findByRole('button', { name: 'Continue with Google' });
+    const googleMark = googleAction.querySelector('svg');
+
+    expect(googleAction).toHaveClass('google-sign-in-button');
+    expect(googleMark).toHaveAttribute('aria-hidden', 'true');
+    expect(googleMark).toHaveAttribute('focusable', 'false');
+    expect(
+      screen.getByText('Supabase will securely handle your Google login or sign-up.'),
+    ).toBeInTheDocument();
+  });
+
   it('starts managed Google OAuth with the callback return URL and shows progress', async () => {
     type OAuthResult = Awaited<ReturnType<AuthClient['signInWithOAuth']>>;
     let resolveAuthentication!: (value: OAuthResult) => void;
