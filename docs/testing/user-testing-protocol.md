@@ -8,7 +8,7 @@ This document defines the canonical formal user-testing process used by the Spor
 
 The purpose of user testing is to observe whether representative users can complete important workflows without being coached through the interface, identify usability and functional problems, record those findings consistently, and ensure important findings are either acted on or consciously rejected with a documented reason.
 
-Sprint 2 testing uses the task-based process established for Issue #264 / PR #317 and accepted in ADR-013. User-testing evidence is retained in the repository after facilitator review; Microsoft Forms, Power Automate, OneDrive retrieval and generated evidence pages are not required parts of the process.
+Sprint 2 established the task-based process through Issue #264 / PR #317 and ADR-013. Sprint 3 continues the same authoritative process; feature-level feedback gates add a closure convention, not a replacement feedback workflow. User-testing evidence is retained in the repository after facilitator review; Microsoft Forms, Power Automate, OneDrive retrieval and generated evidence pages are not required parts of the process.
 
 ---
 
@@ -63,6 +63,37 @@ The task bank is deliberately reusable across the existing Sprint 2 execution is
 A session does not need to test every task in a group. Select a small set of related tasks that answers the question being investigated.
 
 ---
+
+## Sprint 3 Feature-Level Feedback Gates
+
+Sprint 3 uses dedicated user-feedback issues as **closure gates** for groups of implementation issues that collectively deliver one user goal.
+
+The rule is:
+
+1. Implementation work may proceed while the linked feedback-gate issue is open.
+2. When an implementation issue is technically complete, deploy it to the intended test environment and move it to **In Review / awaiting user validation**.
+3. Keep the implementation issue open until its linked feedback gate closes.
+4. The implementation issue may depend on the feedback gate as a **closure gate**.
+5. The feedback-gate issue must **not** hard-depend on those implementation issues. Instead, its `Cannot Begin Until` section lists the implementation work that must be deployed and in Review before the formal session starts.
+6. A feedback gate may begin only when the required build, facilitator account/state and safe scenario data are ready.
+7. A feedback gate closes only after the retained session evidence has been evaluated, every S1/S2 or otherwise actionable finding has an explicit outcome, and every accepted S1/S2 change has the required retest evidence.
+
+This direction avoids circular Gitea dependencies while preventing technically complete implementation issues from skipping representative-user validation.
+
+### Sprint 3 gate map
+
+| Feedback gate | User goal                                                | Primary task coverage                                                  |
+| ------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| #601          | Navigation, authentication and overall frontend flow     | `AUTH-*` plus representative cross-feature navigation                  |
+| #602          | Public statistics and fixture analytics                  | `PUB-01` to `PUB-06`                                                   |
+| #603          | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |
+| #604          | Season and multi-season back-catalogue ingestion         | `BAT-01` to `BAT-05`                                                   |
+| #605          | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*` validation                        |
+| #606          | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |
+| #607          | API consumer keys, quotas and rate-limit experience      | `PUB-05`, `API-01`                                                     |
+| #612          | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |
+
+The table is a starting map, not a requirement that one participant attempt every listed task. Each session still records only the Task IDs actually attempted.
 
 ## Participant Selection
 
@@ -352,11 +383,12 @@ S3 and S4 findings may also be retested where appropriate.
 
 ## Evidence Storage
 
-Reviewed Sprint 2 evidence is stored in Git under:
+Reviewed evidence is stored by Sprint:
 
-`evidence/user-testing/sprint-2/`
+- Sprint 2: `evidence/user-testing/sprint-2/`
+- Sprint 3: `evidence/user-testing/sprint-3/`
 
-Session evidence uses:
+Session evidence uses the same naming convention in both Sprints:
 
 `YYYY-MM-DD-PXX-ROLE.md`
 
@@ -365,14 +397,17 @@ Examples:
 - `2026-09-10-P01-public.md`
 - `2026-09-10-P02-submitter.md`
 - `2026-09-10-P03-reviewer.md`
+- `2026-09-20-P07-api-consumer.md`
 
 Supporting screenshots use the same prefix:
 
 - `2026-09-10-P01-public-PUB-02.png`
+- `2026-09-20-P07-api-consumer-API-01.png`
 
-The overall Sprint 2 summary is:
+The consolidated summaries are:
 
-`evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md`
+- `evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md`
+- `evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md`
 
 Before committing session evidence, the facilitator must review it for credentials, personal information and unnecessary identifying detail.
 

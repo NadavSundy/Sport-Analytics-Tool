@@ -44,6 +44,10 @@ and the [session template](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analyti
 
 Facilitators prepare environment-specific accounts, fixtures, batches and reusable validation/reference inputs from `testing/user-testing/`. The pack deliberately keeps credentials out of Git and separates safe fixture-5 validation/reference data from writable success/correction scenarios that require disposable test state.
 
+Sprint 3 continues the same protocol and evidence model through feature-level feedback gates #601–#607 and #612. A group of implementation issues that collectively delivers one user goal stays open in **In Review / awaiting user validation** until its gate closes. The implementation issues use the gate as a closure dependency; the gate itself avoids a hard dependency cycle by listing deployed/in-Review implementation work under `Cannot Begin Until`.
+
+Sprint 3 session evidence is retained under [`evidence/user-testing/sprint-3/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3) and consolidated in `sprint-3-user-testing-summary.md`. Facilitator scenarios are prepared from `testing/user-testing/SPRINT3_SCENARIOS.md`; credentials and API keys remain outside Git.
+
 The execution work remains split by workflow so findings can be attributed cleanly:
 
 - #416 — public / analyst;

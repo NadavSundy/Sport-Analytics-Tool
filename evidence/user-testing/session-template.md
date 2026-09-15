@@ -2,21 +2,23 @@
 
 ## Session Metadata
 
-| Field               | Value                                         |
-| ------------------- | --------------------------------------------- |
-| Date                |                                               |
-| Participant ID      | PXX                                           |
-| Participant Role    | Public / Submitter / Reviewer / Administrator |
-| Workflow focus      | #416 / #417 / #418 / other                    |
-| Relevant Experience |                                               |
-| Facilitator         |                                               |
-| Observer            |                                               |
-| Environment         | Local / Staging / Production                  |
-| URL                 |                                               |
-| Commit / Release    |                                               |
-| Browser             |                                               |
-| Device              |                                               |
-| Prepared data/files |                                               |
+| Field                        | Value                                                       |
+| ---------------------------- | ----------------------------------------------------------- |
+| Date                         |                                                             |
+| Participant ID               | PXX                                                         |
+| Participant Role             | Public / Submitter / Reviewer / Administrator               |
+| Workflow focus               | Sprint 2 #416/#417/#418 / Sprint 3 #601–#607/#612 / other   |
+| Relevant Experience          |                                                             |
+| Facilitator                  |                                                             |
+| Observer                     |                                                             |
+| Environment                  | Local / Staging / Production                                |
+| URL                          |                                                             |
+| Commit / Release             |                                                             |
+| Browser                      |                                                             |
+| Device                       |                                                             |
+| Prepared data/files          |                                                             |
+| Feedback gate                | N/A / #601 / #602 / #603 / #604 / #605 / #606 / #607 / #612 |
+| Linked implementation issues | N/A / issue numbers in Review                               |
 
 ---
 
@@ -129,6 +131,8 @@ Complete a row after an accepted finding requiring retest has been addressed.
 - [ ] Every finding links to the Task ID that produced it.
 - [ ] Actionable findings have a decision or are explicitly marked pending.
 - [ ] Issue/PR/retest links have been added where available.
+- [ ] Participant names are absent from Gitea issue text.
+- [ ] Every accepted S1/S2 change has a retest requirement/result recorded before the related feature gate closes.
 
 ---
 
