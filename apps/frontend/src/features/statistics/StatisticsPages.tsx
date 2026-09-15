@@ -2,11 +2,13 @@ import type {
   FixtureOutcome,
   FixtureStatistic,
   FixtureStatistics,
+  InningsTeamStatistic,
   ParticipantAggregateBowling,
   ParticipantAggregates,
   ParticipantCareerAggregate,
   ParticipantFixtureBatting,
   ParticipantFixtureBowling,
+  ParticipantFixtureStatistic,
   StatisticContributingEvent,
 } from '@sport-analytics/contracts';
 import { useCallback, useId, type ElementType, type ReactNode } from 'react';
@@ -216,6 +218,101 @@ function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {
   );
 }
 
+interface ParticipantGroup {
+  competitorId: string | null;
+  competitorName: string | null;
+  statistics: ParticipantFixtureStatistic[];
+}
+
+// Numbered batters come first, in batting order. A player with no position was
+// selected but did not bat, has no place in that order, and follows by name.
+function compareBattingOrder(
+  left: ParticipantFixtureStatistic,
+  right: ParticipantFixtureStatistic,
+): number {
+  if (left.battingPosition !== null && right.battingPosition !== null) {
+    return left.battingPosition - right.battingPosition;
+  }
+  if (left.battingPosition !== null) {
+    return -1;
+  }
+  if (right.battingPosition !== null) {
+    return 1;
+  }
+  return left.participantName.localeCompare(right.participantName);
+}
+
+/**
+ * Issue #475 (P01-F09 / P02-F06): the endpoint lists participants in person-ID
+ * order, and rendering them in that order interleaved the two sides.
+ *
+ * Cards are grouped by competitor and each group is in batting order. Groups
+ * follow the innings their competitor batted in, read from the innings statistics
+ * in the same response; a competitor that batted more than once is placed by its
+ * first innings. A group with no innings statistic, including players whose
+ * competitor is unknown, follows every group that has one, in the order the
+ * response first names it.
+ */
+function groupParticipantStatistics(
+  inningsStatistics: InningsTeamStatistic[],
+  participantStatistics: ParticipantFixtureStatistic[],
+): ParticipantGroup[] {
+  const firstInningsByCompetitor = new Map<string, number>();
+  for (const innings of inningsStatistics) {
+    const earlier = firstInningsByCompetitor.get(innings.competitorId);
+    if (earlier === undefined || innings.inningsOrdinal < earlier) {
+      firstInningsByCompetitor.set(innings.competitorId, innings.inningsOrdinal);
+    }
+  }
+
+  const groups = new Map<string | null, ParticipantGroup>();
+  for (const statistic of participantStatistics) {
+    const group = groups.get(statistic.competitorId) ?? {
+      competitorId: statistic.competitorId,
+      competitorName: null,
+      statistics: [],
+    };
+    group.competitorName ??= statistic.competitorName;
+    group.statistics.push(statistic);
+    groups.set(statistic.competitorId, group);
+  }
+
+  const battingInnings = (group: ParticipantGroup) =>
+    group.competitorId === null ? undefined : firstInningsByCompetitor.get(group.competitorId);
+
+  // Array.prototype.sort is stable, so groups without innings keep the order in
+  // which the response first named them.
+  return [...groups.values()]
+    .sort((left, right) => {
+      const leftInnings = battingInnings(left);
+      const rightInnings = battingInnings(right);
+      if (leftInnings === undefined || rightInnings === undefined) {
+        return Number(leftInnings === undefined) - Number(rightInnings === undefined);
+      }
+      return leftInnings - rightInnings;
+    })
+    .map((group) => ({ ...group, statistics: [...group.statistics].sort(compareBattingOrder) }));
+}
+
+function ParticipantGroupSection({ group }: { group: ParticipantGroup }) {
+  const headingId = useId();
+
+  // An h3 under either section heading level: the player cards below it are h3,
+  // and h3 is the level the section-heading style sizes below h2.
+  return (
+    <section aria-labelledby={headingId} className="statistics-section">
+      <div className="statistics-section-heading">
+        <h3 id={headingId}>{group.competitorName ?? 'Team name unavailable'}</h3>
+      </div>
+      <ul className="statistics-list">
+        {group.statistics.map((statistic) => (
+          <StatisticCard key={statistic.statisticId} statistic={statistic} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function StatisticsResults({
   headingLevel = 'h2',
   statistics,
@@ -225,11 +322,12 @@ function StatisticsResults({
 }) {
   const Heading: ElementType = headingLevel;
   const inningsStatistics = statistics.statistics.filter(
-    (statistic) => statistic.scope === 'innings',
+    (statistic): statistic is InningsTeamStatistic => statistic.scope === 'innings',
   );
   const participantStatistics = statistics.statistics.filter(
-    (statistic) => statistic.scope === 'participant',
+    (statistic): statistic is ParticipantFixtureStatistic => statistic.scope === 'participant',
   );
+  const participantGroups = groupParticipantStatistics(inningsStatistics, participantStatistics);
 
   return (
     <>
@@ -291,12 +389,10 @@ function StatisticsResults({
               </div>
               <p>{participantStatistics.length} published</p>
             </div>
-            {participantStatistics.length > 0 ? (
-              <ul className="statistics-list">
-                {participantStatistics.map((statistic) => (
-                  <StatisticCard key={statistic.statisticId} statistic={statistic} />
-                ))}
-              </ul>
+            {participantGroups.length > 0 ? (
+              participantGroups.map((group) => (
+                <ParticipantGroupSection group={group} key={group.competitorId ?? ''} />
+              ))
             ) : (
               <p className="statistics-section__empty">No player statistics are available.</p>
             )}

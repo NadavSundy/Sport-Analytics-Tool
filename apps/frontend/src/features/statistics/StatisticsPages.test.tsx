@@ -173,6 +173,92 @@ const fixture = {
   endDate: '2026-08-09',
 };
 
+const teamNames: Record<string, string> = { 'team-1': 'Wanderers', 'team-2': 'Strikers' };
+
+function inningsFor(competitorId: string, inningsOrdinal: number) {
+  return {
+    ...inningsStatistic,
+    statisticId: `stat-innings-${inningsOrdinal}`,
+    inningsId: `innings-${inningsOrdinal}`,
+    inningsOrdinal,
+    competitorId,
+    competitorName: teamNames[competitorId],
+  };
+}
+
+// A player statistic as the endpoint returns it. A null batting position is a
+// player who was selected but did not bat.
+function playerStatistic(
+  participantId: string,
+  participantName: string,
+  competitorId: string | null,
+  battingPosition: number | null,
+) {
+  return {
+    ...participantStatistic,
+    statisticId: `stat-participant-${participantId}`,
+    participantId,
+    participantName,
+    competitorId,
+    competitorName: competitorId === null ? null : teamNames[competitorId],
+    battingPosition,
+    ...(battingPosition === null
+      ? { battingParticipation: 'did_not_bat' as const, dismissal: null, batting: null }
+      : {}),
+  };
+}
+
+function renderFixtureStatistics(statistics: unknown[]) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/fixtures/fixture-1')) {
+        return Promise.resolve(response(200, { data: fixture }));
+      }
+      if (url.endsWith('/fixtures/fixture-1/weather')) {
+        return Promise.resolve(response(200, { data: unavailableWeather }));
+      }
+      if (url.includes('/participants?')) {
+        return Promise.resolve(collection([]));
+      }
+      if (url.endsWith('/fixtures/fixture-1/statistics')) {
+        return Promise.resolve(
+          response(200, {
+            data: {
+              fixtureId: 'fixture-1',
+              status: 'complete',
+              scope: { superOversIncluded: false },
+              outcome,
+              warnings: [],
+              statistics,
+            },
+          }),
+        );
+      }
+      return Promise.resolve(notMocked());
+    }),
+  );
+  renderRoute('/fixtures/fixture-1');
+}
+
+// Every team group in the order it is rendered, with the player named on each of
+// its cards in the order those cards are rendered.
+async function renderedPlayerGroups() {
+  const playerSection = (await screen.findByRole('heading', { name: 'Player statistics' })).closest(
+    'section',
+  ) as HTMLElement;
+  return within(playerSection)
+    .getAllByRole('region')
+    .filter((region) => region.parentElement === playerSection)
+    .map((group) => ({
+      team: within(group).getAllByRole('heading', { level: 3 })[0]?.textContent,
+      players: within(group)
+        .getAllByRole('listitem')
+        .map((card) => within(card).getByRole('heading', { level: 3 }).textContent),
+    }));
+}
+
 describe('public fixture statistics pages', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -899,5 +985,50 @@ describe('public fixture statistics pages', () => {
       screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Premier Cricket League')).toBeInTheDocument();
+  });
+
+  // Issue #475 (P01-F09 / P02-F06): the endpoint returns player statistics in person-ID
+  // order and the cards were rendered in that order, so the two sides interleaved and
+  // neither was in batting order. The players below are listed as the endpoint lists
+  // them: Strikers are named first although Wanderers batted first. The assertion reads
+  // every group heading and card in rendered order, so cards that are merely present,
+  // or grouped but misordered, cannot pass.
+  it('groups player cards by team in innings order, each team in batting order', async () => {
+    renderFixtureStatistics([
+      inningsFor('team-1', 0),
+      inningsFor('team-2', 1),
+      playerStatistic('9', 'Ravi Dean', 'team-2', 1),
+      playerStatistic('12', 'Kai Moss', 'team-1', 2),
+      playerStatistic('14', 'Owen Hart', 'team-2', 2),
+      playerStatistic('15', 'Ben Ash', 'team-1', 1),
+      playerStatistic('21', 'Zed Park', 'team-1', null),
+      playerStatistic('27', 'Lee Grant', 'team-2', 3),
+      playerStatistic('30', 'Carl Bell', 'team-2', null),
+      playerStatistic('33', 'Adam Cole', 'team-1', null),
+    ]);
+
+    expect(await renderedPlayerGroups()).toEqual([
+      { team: 'Wanderers', players: ['Ben Ash', 'Kai Moss', 'Adam Cole', 'Zed Park'] },
+      { team: 'Strikers', players: ['Ravi Dean', 'Owen Hart', 'Lee Grant', 'Carl Bell'] },
+    ]);
+  });
+
+  // A team with no innings statistic has no innings to be placed by: here Strikers never
+  // batted, and one player could not be associated with a team. Those groups follow the
+  // team that batted, in the order the response first names them.
+  it('places teams with no innings after the teams that batted, in response order', async () => {
+    renderFixtureStatistics([
+      inningsFor('team-1', 0),
+      playerStatistic('5', 'Nia Ford', null, null),
+      playerStatistic('8', 'Tom Reid', 'team-2', null),
+      playerStatistic('10', 'Ann Lowe', 'team-1', 1),
+      playerStatistic('11', 'Jo Marsh', 'team-1', 2),
+    ]);
+
+    expect(await renderedPlayerGroups()).toEqual([
+      { team: 'Wanderers', players: ['Ann Lowe', 'Jo Marsh'] },
+      { team: 'Team name unavailable', players: ['Nia Ford'] },
+      { team: 'Strikers', players: ['Tom Reid'] },
+    ]);
   });
 });
