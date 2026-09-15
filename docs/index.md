@@ -69,19 +69,30 @@ data and decisions behind them:
 - [Consumer API keys and limits](api/consumer-keys.md) — key management, rate limits and quotas
 - [Database overview](database/overview.md) — implemented PostgreSQL/Supabase architecture and migrations
 - [Representative-scale performance baseline](development/performance-baseline.md)
-- [Sprint evidence](process/sprint-evidence.md) and [testing & validation evidence](process/validation-and-user-testing.md) and immutable corrections
-- [Batch ingestion and review](api/batches.md) — asynchronous receipt, validation, review, correction and publication
-- [Participant aggregate calculations](statistics/participant-aggregates.md) — season, competition and career statistics
-- [Dataset exports and releases](data/dataset-exports.md) — filtered exports and immutable checksum-backed releases
-- [Consumer API keys and limits](api/consumer-keys.md) — key management, rate limits and quotas
-- [Database overview](database/overview.md) — implemented PostgreSQL/Supabase architecture and migrations
-- [Representative-scale performance baseline](development/performance-baseline.md)
 - [Sprint evidence](process/sprint-evidence.md) and [testing & validation evidence](process/validation-and-user-testing.md)
 - [Weather API](api/weather.md) — runtime Open-Meteo external API integration
 - [Azure deployment recovery](deployment/azure-app-service-recovery.md) — the 10–13 August
   deployment incident and how it was resolved
 - [Testing strategy](development/testing.md)
 - [CI/CD and quality gates](development/ci-cd.md) — hosted runner routing, required checks and deployment relationship
+
+## Sprint 2 marker quick links
+
+The Sprint 2 evidence is indexed rather than duplicated across the site. For milestone review, the
+fastest route through the evidence is:
+
+- [Sprint 2 requirements & rubric traceability](planning/sprint-2-requirements-traceability.md) —
+  requirement-by-requirement and rubric-by-rubric evidence map
+- [Sprint evidence](process/sprint-evidence.md) — planning, stand-ups, stakeholder interactions and
+  close-out/retrospective evidence
+- [Testing & validation evidence](process/validation-and-user-testing.md) — automated/integrated
+  verification and formal user-testing records
+- [Automated testing strategy](development/testing.md) and [bug tracking](testing/bug-tracking.md) —
+  testing procedure and continuous defect workflow
+- [API overview](api/overview.md) — handwritten API surface and live development endpoint
+- [Database overview](database/overview.md) — schema/deployment rationale and migration ownership
+- [Technology stack](development/technology-stack.md) — third-party technologies, versions and
+  motivations
 
 ## Core project boundary
 

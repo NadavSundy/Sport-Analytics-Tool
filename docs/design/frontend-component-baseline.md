@@ -36,3 +36,7 @@ All components work at desktop and mobile widths. Tables retain their meaningful
 ```
 
 Keep labels visible, never use placeholders as labels, and give destructive controls an explicit confirmation interaction. Test both themes, keyboard navigation, browser zoom and mobile table overflow when adding a component or route.
+
+## AI Declaration
+
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

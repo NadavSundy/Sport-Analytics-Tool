@@ -59,3 +59,7 @@ Cons
 ## Consequences
 
 Azure App Service provides a simple deployment model for Sprint 1 while supporting future CI/CD automation.
+
+## AI Declaration
+
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
