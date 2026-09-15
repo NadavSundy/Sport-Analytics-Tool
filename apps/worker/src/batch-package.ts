@@ -3,6 +3,7 @@ import type { Readable } from 'node:stream';
 
 import {
   competitionReferenceSchema,
+  FIXTURE_PROPOSAL_CONTRACT_VERSION,
   participantReferenceSchema,
   seasonReferenceSchema,
   seasonUploadPackageSchema,
@@ -40,7 +41,7 @@ interface BatchCandidate {
     competition: unknown;
     season: unknown;
   };
-  fixture: { sourceId?: unknown; context?: unknown };
+  fixture: { sourceId?: unknown; context?: unknown; proposal?: unknown };
   innings: { sourceId?: unknown; context?: unknown };
   event: unknown;
 }
@@ -55,7 +56,7 @@ export interface NormalisedCandidate {
     SeasonUploadPackage,
     'contractVersion' | 'packageId' | 'competition' | 'season'
   >;
-  fixture: Pick<SeasonUploadPackage['fixtures'][number], 'sourceId' | 'context'>;
+  fixture: Pick<SeasonUploadPackage['fixtures'][number], 'sourceId' | 'context' | 'proposal'>;
   innings: Pick<SeasonUploadPackage['fixtures'][number]['innings'][number], 'sourceId' | 'context'>;
   event: SeasonUploadEvent;
 }
@@ -315,7 +316,11 @@ async function* jsonCandidates(
               competition: envelope.competition,
               season: envelope.season,
             },
-            fixture: { sourceId: fixture.sourceId, context: fixture.context },
+            fixture: {
+              sourceId: fixture.sourceId,
+              context: fixture.context,
+              proposal: fixture.proposal,
+            },
             innings: { sourceId: innings.sourceId, context: innings.context },
             event,
           };
@@ -637,6 +642,20 @@ async function* csvCandidates(
             reference(row.awayTeamSourceId, row.awayTeamName),
           ],
         },
+        ...(optional(row.contractVersion) === FIXTURE_PROPOSAL_CONTRACT_VERSION
+          ? {
+              proposal: {
+                endDate: optional(row.fixtureEndDate),
+                matchType: optional(row.fixtureMatchType),
+                teamType: optional(row.fixtureTeamType),
+                gender: optional(row.fixtureGender),
+                ballsPerOver: numeric(row.fixtureBallsPerOver),
+                outcome: optional(row.fixtureOutcome),
+                sourceVersion: optional(row.fixtureSourceVersion),
+                sourceRevision: numeric(row.fixtureSourceRevision),
+              },
+            }
+          : {}),
       },
       innings: {
         sourceId: optional(row.inningsSourceId),
@@ -859,7 +878,11 @@ async function* ndjsonCandidates(
           competition: manifest.competition,
           season: manifest.season,
         },
-        fixture: { sourceId: fixture.sourceId, context: fixture.context },
+        fixture: {
+          sourceId: fixture.sourceId,
+          context: fixture.context,
+          proposal: fixture.proposal,
+        },
         innings: { sourceId: inningsRecord.sourceId, context: inningsRecord.context },
         event,
       };
@@ -939,7 +962,11 @@ function normaliseCandidate(candidate: BatchCandidate): {
         competition: parsed.competition,
         season: parsed.season,
       },
-      fixture: { sourceId: parsed.fixtures[0]!.sourceId, context: parsed.fixtures[0]!.context },
+      fixture: {
+        sourceId: parsed.fixtures[0]!.sourceId,
+        context: parsed.fixtures[0]!.context,
+        proposal: parsed.fixtures[0]!.proposal,
+      },
       innings: {
         sourceId: parsed.fixtures[0]!.innings[0]!.sourceId,
         context: parsed.fixtures[0]!.innings[0]!.context,

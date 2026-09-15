@@ -1,5 +1,6 @@
 import {
   BATCH_PACKAGE_VERSION,
+  BATCH_PACKAGE_VERSIONS,
   batchReceiptResponseSchema,
   batchReferenceMappingResponseSchema,
   batchListResponseSchema,
@@ -132,6 +133,7 @@ export async function uploadBatch(
   file: File,
   idempotencyKey: string,
   replacesBatchReference?: string,
+  packageVersion: (typeof BATCH_PACKAGE_VERSIONS)[number] = BATCH_PACKAGE_VERSION,
 ): Promise<BatchReceiptResponse> {
   const extension = file.name.split('.').pop()?.toLowerCase() as
     keyof typeof mediaTypesByExtension | undefined;
@@ -150,7 +152,7 @@ export async function uploadBatch(
       headers: {
         'Content-Type': mediaType,
         'Idempotency-Key': idempotencyKey,
-        'X-Batch-Package-Version': BATCH_PACKAGE_VERSION,
+        'X-Batch-Package-Version': packageVersion,
         'X-Competition-Id': competitionId,
         'X-File-Name': file.name,
         ...(replacesBatchReference ? { 'X-Replaces-Batch-Reference': replacesBatchReference } : {}),

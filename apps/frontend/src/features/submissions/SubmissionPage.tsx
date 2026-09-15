@@ -1,7 +1,9 @@
 import {
   batchReferenceSchema,
+  FIXTURE_PROPOSAL_CONTRACT_VERSION,
   type ApiErrorDetail,
   type BatchReceiptResponse,
+  type Competition,
   type CurrentUserProfile,
   type Fixture,
   type SubmissionEvent,
@@ -14,17 +16,27 @@ import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { BatchUploadInputError, MAX_BATCH_BYTES, uploadBatch } from './batch-api';
-import { BatchUploadWorkflow, type PackageUploadScope } from './BatchUploadPage';
+import {
+  BatchUploadWorkflow,
+  competitionOptions,
+  type PackageUploadScope,
+} from './BatchUploadPage';
 import { invalidateBatchCollections } from './batch-collection-state';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
 import {
   listAllFixtures,
   listScopedFixtures,
   SubmissionInputError,
+  createFixtureProposalBatchFile,
   createTechnicalBatchFile,
   submitLegacyAdminEvents,
 } from './submission-api';
-import { SingleFixturePackageError, validateSingleFixturePackage } from './single-fixture-package';
+import {
+  SingleFixturePackageError,
+  readSingleFixturePackageContext,
+  validateSingleFixturePackage,
+  validateSingleFixturePackageContext,
+} from './single-fixture-package';
 import {
   formatApiValidationLocation,
   formatApiValidationMessage,
@@ -48,6 +60,34 @@ type AccessState =
 
 type SubmissionWorkflow = 'fixture' | PackageUploadScope | 'technical';
 
+const NEW_FIXTURE_VALUE = 'new';
+const NEW_FIXTURE_MATCH_TYPES = ['T20'] as const;
+const NEW_FIXTURE_TEAM_TYPES = ['club', 'international'] as const;
+const NEW_FIXTURE_GENDERS = ['female', 'male'] as const;
+
+type CompetitionState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'ready'; competitions: Competition[] }
+  | { kind: 'error' };
+
+type NewFixtureDraft = {
+  competitionId: string;
+  submittedCompetitionName: string;
+  seasonName: string;
+  startDate: string;
+  endDate: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  matchType: string;
+  teamType: string;
+  gender: string;
+  ballsPerOver: string;
+  outcome: 'won' | 'tie' | 'draw' | 'no result';
+  sourceVersion: string;
+  sourceRevision: string;
+};
+
 type ResultState =
   | { kind: 'idle' }
   | { kind: 'submitting' }
@@ -59,7 +99,12 @@ type ResultState =
         fixture: Fixture;
       };
     }
-  | { kind: 'acceptedBatch'; receipt: BatchReceiptResponse['data']; fixture: Fixture }
+  | {
+      kind: 'acceptedBatch';
+      receipt: BatchReceiptResponse['data'];
+      fixtureLabel: string;
+      fixtureProposal?: boolean;
+    }
   | { kind: 'rejected'; message: string; details: ApiErrorDetail[] }
   | { kind: 'error'; message: string };
 
@@ -261,22 +306,72 @@ function SubmissionWorkflowSelector({
 
 function SubmissionForm({
   fixtures,
+  profile,
   role,
   mode,
 }: {
   fixtures: Fixture[];
+  profile: CurrentUserProfile;
   role: 'submitter' | 'admin';
   mode: 'file' | 'json';
 }) {
   const client = useAuthenticatedApiClient();
 
-  const [fixtureId, setFixtureId] = useState(fixtures[0]?.fixtureId ?? '');
+  const [fixtureId, setFixtureId] = useState(
+    fixtures[0]?.fixtureId ?? (mode === 'file' ? NEW_FIXTURE_VALUE : ''),
+  );
+  const [competitionState, setCompetitionState] = useState<CompetitionState>({ kind: 'idle' });
+  const [newFixture, setNewFixture] = useState<NewFixtureDraft>({
+    competitionId: '',
+    submittedCompetitionName: '',
+    seasonName: '',
+    startDate: '',
+    endDate: '',
+    homeTeamName: '',
+    awayTeamName: '',
+    matchType: 'T20',
+    teamType: '',
+    gender: '',
+    ballsPerOver: '6',
+    outcome: 'no result',
+    sourceVersion: '1',
+    sourceRevision: '0',
+  });
   const [eventJson, setEventJson] = useState(EMPTY_EVENTS);
   const [file, setFile] = useState<File | null>(null);
   const [decisionKey, setDecisionKey] = useState(newDecisionKey);
   const [result, setResult] = useState<ResultState>({ kind: 'idle' });
 
   const resultRegionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mode !== 'file' || fixtureId !== NEW_FIXTURE_VALUE) return;
+    const controller = new AbortController();
+    setCompetitionState({ kind: 'loading' });
+    void competitionOptions(profile, controller.signal)
+      .then((competitions) => {
+        setCompetitionState({ kind: 'ready', competitions });
+        setNewFixture((draft) => {
+          const submittedCompetition = competitions.find(
+            (competition) =>
+              competition.name.trim().toLocaleLowerCase() ===
+              draft.submittedCompetitionName.trim().toLocaleLowerCase(),
+          );
+          return {
+            ...draft,
+            competitionId:
+              submittedCompetition?.competitionId ??
+              (competitions.some((competition) => competition.competitionId === draft.competitionId)
+                ? draft.competitionId
+                : (competitions[0]?.competitionId ?? '')),
+          };
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setCompetitionState({ kind: 'error' });
+      });
+    return () => controller.abort();
+  }, [fixtureId, mode, profile]);
 
   useEffect(() => {
     if (
@@ -292,6 +387,47 @@ function SubmissionForm({
   function resetResult() {
     if (result.kind !== 'idle' && result.kind !== 'submitting') {
       setResult({ kind: 'idle' });
+    }
+  }
+
+  async function selectFile(selectedFile: File | null) {
+    setFile(selectedFile);
+    setDecisionKey(newDecisionKey());
+    resetResult();
+    if (!selectedFile || fixtureId !== NEW_FIXTURE_VALUE) return;
+
+    try {
+      const context = readSingleFixturePackageContext(
+        selectedFile.name,
+        await readFileText(selectedFile),
+      );
+      const matchingCompetition =
+        competitionState.kind === 'ready'
+          ? competitionState.competitions.find(
+              (competition) =>
+                competition.name.trim().toLocaleLowerCase() ===
+                context.competitionName.trim().toLocaleLowerCase(),
+            )
+          : undefined;
+      setNewFixture((draft) => ({
+        ...draft,
+        competitionId: matchingCompetition?.competitionId ?? draft.competitionId,
+        submittedCompetitionName: context.competitionName,
+        seasonName: context.seasonName,
+        startDate: context.date,
+        endDate: draft.endDate || context.date,
+        homeTeamName: context.teams[0] ?? '',
+        awayTeamName: context.teams[1] ?? '',
+      }));
+    } catch (error) {
+      setResult({
+        kind: 'rejected',
+        message:
+          error instanceof SingleFixturePackageError
+            ? error.message
+            : 'The selected fixture package could not be read.',
+        details: [],
+      });
     }
   }
 
@@ -325,6 +461,57 @@ function SubmissionForm({
         if (file.size > MAX_BATCH_BYTES) {
           throw new BatchUploadInputError('The package is larger than the 50 MB upload limit.');
         }
+        if (fixtureId === NEW_FIXTURE_VALUE) {
+          const competition =
+            competitionState.kind === 'ready'
+              ? competitionState.competitions.find(
+                  (candidate) => candidate.competitionId === newFixture.competitionId,
+                )
+              : undefined;
+          if (!competition) {
+            throw new SubmissionInputError('Choose an authorised competition for the new fixture.');
+          }
+          const contents = await readFileText(file);
+          validateSingleFixturePackageContext(file.name, contents, {
+            date: newFixture.startDate,
+            teams: [newFixture.homeTeamName, newFixture.awayTeamName],
+          });
+          const proposalFile = createFixtureProposalBatchFile(file.name, contents, {
+            competitionName: competition.name,
+            seasonName: newFixture.seasonName,
+            startDate: newFixture.startDate,
+            homeTeamName: newFixture.homeTeamName,
+            awayTeamName: newFixture.awayTeamName,
+            proposal: {
+              endDate: newFixture.endDate,
+              matchType: newFixture.matchType,
+              teamType: newFixture.teamType,
+              gender: newFixture.gender,
+              ballsPerOver: Number(newFixture.ballsPerOver),
+              outcome: newFixture.outcome,
+              sourceVersion: newFixture.sourceVersion,
+              sourceRevision: Number(newFixture.sourceRevision),
+            },
+          });
+          const response = await uploadBatch(
+            client,
+            competition.competitionId,
+            proposalFile,
+            decisionKey,
+            undefined,
+            FIXTURE_PROPOSAL_CONTRACT_VERSION,
+          );
+
+          invalidateBatchCollections();
+          setResult({
+            kind: 'acceptedBatch',
+            receipt: response.data,
+            fixtureLabel: `${newFixture.startDate} — ${newFixture.homeTeamName} v ${newFixture.awayTeamName} — ${competition.name}, ${newFixture.seasonName} (${newFixture.matchType})`,
+            fixtureProposal: true,
+          });
+          return;
+        }
+
         const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
         if (!fixture?.competitionId) {
           throw new SubmissionInputError('Select an available fixture before uploading.');
@@ -336,7 +523,7 @@ function SubmissionForm({
         setResult({
           kind: 'acceptedBatch',
           receipt: response.data,
-          fixture,
+          fixtureLabel: formatFixtureOption(fixture),
         });
       } else {
         const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
@@ -364,7 +551,7 @@ function SubmissionForm({
           setResult({
             kind: 'acceptedBatch',
             receipt: response.data,
-            fixture,
+            fixtureLabel: formatFixtureOption(fixture),
           });
         }
       }
@@ -420,7 +607,7 @@ function SubmissionForm({
     }
   }
 
-  if (fixtures.length === 0) {
+  if (fixtures.length === 0 && mode === 'json') {
     return (
       <div className="state-message" role="status">
         <h2>No in-scope fixtures</h2>
@@ -437,6 +624,41 @@ function SubmissionForm({
 
   const competitions = [...new Set(fixtures.map((fixture) => fixture.competitionName))];
   const completed = result.kind === 'accepted' || result.kind === 'acceptedBatch';
+  const fixturePackageInput = (
+    <div className="submission-field">
+      <label htmlFor="submission-file">Fixture package</label>
+      <p id="submission-file-help" className="field-help">
+        {fixtureId === NEW_FIXTURE_VALUE ? (
+          <>
+            Choose your completed <code>.json</code> or <code>.csv</code> template first. Its
+            competition, season, date and teams will fill the new-fixture fields below.
+          </>
+        ) : (
+          <>
+            Choose a completed <code>.json</code> or <code>.csv</code> template.
+          </>
+        )}{' '}
+        Processing continues after you leave, and retrying the unchanged file safely reuses the same
+        request.
+      </p>
+      <input
+        id="submission-file"
+        type="file"
+        accept=".json,application/json,.csv,text/csv"
+        onChange={(event) => void selectFile(event.target.files?.[0] ?? null)}
+        aria-describedby={
+          ['submission-file-help', resultDescriptionId].filter(Boolean).join(' ') || undefined
+        }
+        aria-invalid={result.kind === 'rejected'}
+        disabled={result.kind === 'submitting' || completed}
+      />
+      {file ? (
+        <p className="field-help">
+          Selected: {file.name} ({Math.ceil(file.size / 1024)} KB)
+        </p>
+      ) : null}
+    </div>
+  );
 
   return (
     <>
@@ -477,13 +699,251 @@ function SubmissionForm({
                 {formatFixtureOption(fixture)}
               </option>
             ))}
+            {mode === 'file' ? <option value={NEW_FIXTURE_VALUE}>New fixture</option> : null}
           </select>
 
           <p id="submission-fixture-help" className="field-help">
-            Choose by date, teams, competition and season. The application uses the underlying
-            reference; you never need to enter a database ID.
+            Choose an existing match by date and teams, or choose New fixture to propose a match for
+            administrator review. You never need to enter a database ID.
           </p>
         </div>
+
+        {mode === 'file' && fixtureId === NEW_FIXTURE_VALUE ? fixturePackageInput : null}
+
+        {mode === 'file' && fixtureId === NEW_FIXTURE_VALUE ? (
+          <fieldset className="submission-scope">
+            <legend>New fixture metadata</legend>
+            <p className="field-help">
+              These details create a version 1.1 fixture proposal. The fixture remains unresolved
+              until an administrator creates the canonical fixture from the proposal.
+            </p>
+
+            {competitionState.kind === 'loading' || competitionState.kind === 'idle' ? (
+              <p role="status">Loading authorised competitions…</p>
+            ) : competitionState.kind === 'error' ? (
+              <p className="field-error" role="alert">
+                Authorised competitions could not be loaded. Choose Existing fixture and try again,
+                or reload this page.
+              </p>
+            ) : competitionState.competitions.length === 0 ? (
+              <p role="status">No authorised competitions are available for a fixture proposal.</p>
+            ) : (
+              <div className="submission-field">
+                <label htmlFor="new-fixture-competition">Competition</label>
+                <select
+                  id="new-fixture-competition"
+                  value={newFixture.competitionId}
+                  required
+                  disabled={result.kind === 'submitting' || completed}
+                  onChange={(event) => {
+                    setNewFixture((draft) => ({ ...draft, competitionId: event.target.value }));
+                    setDecisionKey(newDecisionKey());
+                    resetResult();
+                  }}
+                >
+                  {competitionState.competitions.map((competition) => (
+                    <option key={competition.competitionId} value={competition.competitionId}>
+                      {competition.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-season">Season name</label>
+              <input
+                id="new-fixture-season"
+                value={newFixture.seasonName}
+                required
+                maxLength={200}
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, seasonName: event.target.value }));
+                  resetResult();
+                }}
+              />
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-start-date">Fixture date</label>
+              <input
+                id="new-fixture-start-date"
+                type="date"
+                value={newFixture.startDate}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  const startDate = event.target.value;
+                  setNewFixture((draft) => ({
+                    ...draft,
+                    startDate,
+                    endDate: draft.endDate || startDate,
+                  }));
+                  resetResult();
+                }}
+              />
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-end-date">End date</label>
+              <input
+                id="new-fixture-end-date"
+                type="date"
+                value={newFixture.endDate}
+                min={newFixture.startDate || undefined}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, endDate: event.target.value }));
+                  resetResult();
+                }}
+              />
+            </div>
+
+            {(
+              [
+                ['new-fixture-home-team', 'Home team name', 'homeTeamName'],
+                ['new-fixture-away-team', 'Away team name', 'awayTeamName'],
+                ['new-fixture-source-version', 'Source version', 'sourceVersion'],
+              ] as const
+            ).map(([id, label, field]) => (
+              <div className="submission-field" key={id}>
+                <label htmlFor={id}>{label}</label>
+                <input
+                  id={id}
+                  value={newFixture[field]}
+                  required
+                  maxLength={200}
+                  disabled={result.kind === 'submitting' || completed}
+                  onChange={(event) => {
+                    setNewFixture((draft) => ({ ...draft, [field]: event.target.value }));
+                    resetResult();
+                  }}
+                />
+              </div>
+            ))}
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-match-type">Match type</label>
+              <select
+                id="new-fixture-match-type"
+                value={newFixture.matchType}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, matchType: event.target.value }));
+                  resetResult();
+                }}
+              >
+                {NEW_FIXTURE_MATCH_TYPES.map((matchType) => (
+                  <option key={matchType} value={matchType}>
+                    {matchType}
+                  </option>
+                ))}
+              </select>
+              <p className="field-hint">This platform currently supports T20 fixtures only.</p>
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-team-type">Team type</label>
+              <select
+                id="new-fixture-team-type"
+                value={newFixture.teamType}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, teamType: event.target.value }));
+                  resetResult();
+                }}
+              >
+                <option value="">Select team type</option>
+                {NEW_FIXTURE_TEAM_TYPES.map((teamType) => (
+                  <option key={teamType} value={teamType}>
+                    {teamType === 'club' ? 'Club / domestic' : 'International'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-gender">Gender</label>
+              <select
+                id="new-fixture-gender"
+                value={newFixture.gender}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, gender: event.target.value }));
+                  resetResult();
+                }}
+              >
+                <option value="">Select gender</option>
+                {NEW_FIXTURE_GENDERS.map((gender) => (
+                  <option key={gender} value={gender}>
+                    {gender === 'female' ? 'Women' : 'Men'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-balls-per-over">Balls per over</label>
+              <input
+                id="new-fixture-balls-per-over"
+                type="number"
+                min="1"
+                max="36"
+                step="1"
+                value={newFixture.ballsPerOver}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, ballsPerOver: event.target.value }));
+                  resetResult();
+                }}
+              />
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-outcome">Outcome</label>
+              <select
+                id="new-fixture-outcome"
+                value={newFixture.outcome}
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({
+                    ...draft,
+                    outcome: event.target.value as NewFixtureDraft['outcome'],
+                  }));
+                  resetResult();
+                }}
+              >
+                <option value="no result">No result</option>
+                <option value="won">Won</option>
+                <option value="tie">Tie</option>
+                <option value="draw">Draw</option>
+              </select>
+            </div>
+
+            <div className="submission-field">
+              <label htmlFor="new-fixture-source-revision">Source revision</label>
+              <input
+                id="new-fixture-source-revision"
+                type="number"
+                min="0"
+                step="1"
+                value={newFixture.sourceRevision}
+                required
+                disabled={result.kind === 'submitting' || completed}
+                onChange={(event) => {
+                  setNewFixture((draft) => ({ ...draft, sourceRevision: event.target.value }));
+                  resetResult();
+                }}
+              />
+            </div>
+          </fieldset>
+        ) : null}
 
         {mode === 'file' ? (
           <>
@@ -531,38 +991,7 @@ function SubmissionForm({
               </div>
             </section>
 
-            <div className="submission-field">
-              <label htmlFor="submission-file">Fixture package</label>
-
-              <p id="submission-file-help" className="field-help">
-                Choose a completed <code>.json</code> or <code>.csv</code> template. Processing
-                continues after you leave, and retrying the unchanged file safely reuses the same
-                request.
-              </p>
-
-              <input
-                id="submission-file"
-                type="file"
-                accept=".json,application/json,.csv,text/csv"
-                onChange={(event) => {
-                  setFile(event.target.files?.[0] ?? null);
-                  setDecisionKey(newDecisionKey());
-                  resetResult();
-                }}
-                aria-describedby={
-                  ['submission-file-help', resultDescriptionId].filter(Boolean).join(' ') ||
-                  undefined
-                }
-                aria-invalid={result.kind === 'rejected'}
-                disabled={result.kind === 'submitting' || completed}
-              />
-
-              {file ? (
-                <p className="field-help">
-                  Selected: {file.name} ({Math.ceil(file.size / 1024)} KB)
-                </p>
-              ) : null}
-            </div>
+            {fixtureId !== NEW_FIXTURE_VALUE ? fixturePackageInput : null}
           </>
         ) : (
           <>
@@ -637,9 +1066,9 @@ function SubmissionForm({
                 it is not published yet. You may leave this page safely.
               </p>
               <p>
-                Next: open the submission report to see processing progress and any validation
-                problems. If corrections are needed, update the file and submit it again. After
-                validation succeeds, an administrator can review it for publication.
+                {result.fixtureProposal
+                  ? 'Next: open the submission report to follow reference resolution. An administrator can create the canonical fixture from your proposal; the submission is then revalidated before publication review.'
+                  : 'Next: open the submission report to see processing progress and any validation problems. If corrections are needed, update the file and submit it again. After validation succeeds, an administrator can review it for publication.'}
               </p>
 
               <dl className="submission-reference">
@@ -655,7 +1084,7 @@ function SubmissionForm({
 
                 <div>
                   <dt>Fixture</dt>
-                  <dd>{formatFixtureOption(result.fixture)}</dd>
+                  <dd>{result.fixtureLabel}</dd>
                 </div>
 
                 <div>
@@ -846,6 +1275,7 @@ export function SubmissionPage() {
             <SubmissionForm
               key={workflow}
               fixtures={accessState.fixtures}
+              profile={accessState.profile}
               role={accessState.profile.role}
               mode={workflow === 'fixture' ? 'file' : 'json'}
             />

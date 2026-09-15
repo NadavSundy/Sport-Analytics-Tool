@@ -120,6 +120,14 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
+  await page.route('**/api/v1/competitions/5', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { competitionId: '5', name: 'Example Competition' } }),
+    });
+  });
+
   await page.route('**/api/v1/fixtures?**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -149,6 +157,73 @@ test('the account Submit events action opens the unified submission workflow', a
   await expect(guided.getByRole('radio', { name: /Advanced technical JSON/ })).toHaveCount(0);
   await expect(advanced.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
   await expect(page.getByLabel('Delivery events JSON')).toHaveCount(0);
+});
+
+test('submitter originates a new fixture proposal for reviewer resolution', async ({ page }) => {
+  await page.route('**/api/v1/batches', async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe('POST');
+    expect(request.headers()['x-batch-package-version']).toBe('1.1');
+    expect(request.headers()['x-competition-id']).toBe('5');
+    expect(request.postDataJSON()).toMatchObject({
+      contractVersion: '1.1',
+      competition: { context: { name: 'Example Competition' } },
+      season: { context: { name: '2026' } },
+      fixtures: [
+        {
+          sourceId: expect.stringMatching(/^submitter:fixture:/),
+          context: {
+            date: fixture.startDate,
+            teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+          },
+          proposal: {
+            endDate: fixture.startDate,
+            matchType: 'T20',
+            teamType: 'club',
+            gender: 'female',
+            ballsPerOver: 6,
+            outcome: 'no result',
+            sourceVersion: '1',
+            sourceRevision: 0,
+          },
+        },
+      ],
+    });
+    expect(seasonUploadPackageSchema.safeParse(request.postDataJSON()).success).toBe(true);
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          batchReference,
+          status: 'stored',
+          statusUrl: `/api/v1/batches/${batchReference}`,
+          receivedAt: '2026-09-15T09:30:00.000Z',
+        },
+      }),
+    });
+  });
+
+  await page.goto('/submissions/new');
+  await page.getByLabel('Fixture', { exact: true }).selectOption('new');
+  await expect(page.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
+  await page.getByLabel('Season name').fill('2026');
+  await page.getByLabel('Fixture date').fill(fixture.startDate);
+  await page.getByLabel('Home team name').fill('Wanderers');
+  await page.getByLabel('Away team name').fill('Strikers');
+  await expect(page.getByLabel('Match type')).toHaveValue('T20');
+  await page.getByLabel('Team type').selectOption('club');
+  await page.getByLabel('Gender').selectOption('female');
+  await page.getByLabel('Fixture package').setInputFiles({
+    name: 'new-fixture.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(readableFixturePackage()),
+  });
+  await page.getByRole('button', { name: 'Upload fixture package' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Fixture upload received' })).toBeFocused();
+  await expect(page.getByText(batchReference, { exact: true })).toBeVisible();
+  await expect(page.getByText(/administrator can create the canonical fixture/i)).toBeVisible();
 });
 
 test('submitter stages advanced technical JSON with a keyboard', async ({ page }) => {
@@ -315,8 +390,11 @@ test(
 
     await page.goto('/submissions/new');
     await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue('7');
-    await expect(page.getByLabel('Fixture', { exact: true }).locator('option')).toHaveText(
+    await expect(page.getByLabel('Fixture', { exact: true }).locator('option').first()).toHaveText(
       '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+    );
+    await expect(page.getByLabel('Fixture', { exact: true }).locator('option').last()).toHaveText(
+      'New fixture',
     );
     await expect(
       page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
