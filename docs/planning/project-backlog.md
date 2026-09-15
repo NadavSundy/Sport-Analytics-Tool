@@ -1,14 +1,14 @@
 # Project Backlog and Milestone Plan
 
-| Document Information    | Details                                                   |
-| ----------------------- | --------------------------------------------------------- |
-| Project                 | Sport Analytics Tool                                      |
-| Related Issue           | #36                                                       |
-| Methodology             | Lightweight Scrumban                                      |
-| Planning Target         | Advanced-tier feature completeness by the end of Sprint 3 |
-| Final Submission Target | Hardening, evidence, documentation and release packaging  |
-| Last Updated            | 7 August 2026                                             |
-| Status                  | Active planning document                                  |
+| Document Information    | Details                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| Project                 | Sport Analytics Tool                                                                               |
+| Related Issue           | #36                                                                                                |
+| Methodology             | Lightweight Scrumban                                                                               |
+| Planning Target         | Sprint 3 near-complete Basic/Intermediate product with selected Advanced API work after acceptance |
+| Final Submission Target | Hardening, evidence, documentation and release packaging                                           |
+| Last Updated            | 15 September 2026                                                                                  |
+| Status                  | Active planning document                                                                           |
 
 ---
 
@@ -149,6 +149,31 @@ Intermediate functionality is planned for completion by Sprint 2.
 Advanced functionality is the Sprint 3 target.
 
 Advanced architecture and technical risks should be considered before Sprint 3 where delaying them would create avoidable rework.
+
+### Sprint 3 refinement at Sprint 2 close-out
+
+The Sprint 1 roadmap remains the historical planning baseline.
+
+At Sprint 2 close-out, the Sprint 3 target was refined through the progressive
+backlog-refinement process already defined in this document.
+
+Sprint 2 stakeholder / marker feedback, the team retrospective, deployed
+acceptance evidence and the post-review Basic/Intermediate correctness audit
+showed that known core correctness and usability gaps must be resolved before
+the team commits capacity to the complete Advanced feature tier.
+
+The active Sprint 3 priority is therefore:
+
+1. complete and stabilise remaining Basic/Intermediate behaviour;
+2. address accepted Sprint 2 review feedback;
+3. complete feature-level user-feedback and Intermediate acceptance gates;
+4. revalidate deployment, performance and supporting evidence; and
+5. only after the Intermediate acceptance gate passes, implement the selected
+   Advanced API capabilities represented by #608-#611.
+
+The remaining original Advanced backlog remains documented below as the
+historical Sprint 1 roadmap. It is not being represented as completed and is
+not automatically committed Sprint 3 work.
 
 ---
 
@@ -985,6 +1010,64 @@ By the end of Sprint 3:
 
 ---
 
+### Refined Active Sprint 3 Plan — 15 September 2026
+
+The original Sprint 3 catalogue above was created during Sprint 1 as the complete
+future roadmap.
+
+As required by this document's refinement process, that catalogue was reviewed
+at Sprint 2 close-out against:
+
+- actual implementation evidence;
+- stakeholder / marker feedback;
+- formal user-testing findings;
+- representative-scale performance and deployment evidence;
+- unresolved Basic/Intermediate correctness risks;
+- the team retrospective; and
+- available Sprint 3 capacity.
+
+The detailed active Sprint 3 plan is recorded in:
+
+[`evidence/sprints/sprint-3/2026-09-15-planning.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-15-planning.md)
+
+and is tracked through Issue #577 and the Sprint 3 Gitea milestone.
+
+#### Active priorities
+
+The active Sprint 3 backlog prioritises:
+
+- Sprint 2 carry-over #329, #513, #562-#566 and #571;
+- accepted Sprint 2 review improvements #579-#582;
+- repository-wide code coverage #578;
+- Basic/Intermediate correctness #583-#597;
+- feature-level user-feedback gates #600-#607;
+- the Intermediate acceptance gate #598;
+- representative-scale performance re-validation #599;
+- selected Advanced API work #608-#611 only after #598 passes;
+- Advanced user validation #612; and
+- Sprint 3 close-out #613.
+
+#### Selected Advanced mapping
+
+The four selected Advanced candidates map directly to the original Sprint 1
+roadmap:
+
+| Active issue | Original Sprint 3 item | Capability                                               |
+| ------------ | ---------------------- | -------------------------------------------------------- |
+| #611         | S3-13                  | Aggregate query endpoints beyond record retrieval        |
+| #608         | S3-16                  | API deprecation path and safe version retirement         |
+| #609         | S3-17                  | Automated API contract / backwards-compatibility testing |
+| #610         | S3-18                  | Per-consumer API usage metering                          |
+
+These four issues are selected Advanced stretch work.
+
+They remain blocked by the Basic/Intermediate acceptance gate #598 and therefore
+must not displace unfinished core correctness work.
+
+The remaining Advanced catalogue is not being silently removed or represented
+as completed. It remains future backlog to be reconsidered against actual
+capacity and the state of the product.
+
 ## 13. Final Submission Planned Backlog
 
 ### Final Submission Goal
@@ -1249,3 +1332,6 @@ The project roadmap should retain enough history to demonstrate how the developm
 The preceding document was planned, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol] for backlog structuring, roadmap planning and documentation editing.
 
 The project team remains responsible for verifying all issue mappings, requirements, milestone allocations, priorities, dependencies and planning decisions recorded in this document.
+
+The Issue #577 Sprint 3 backlog refinement was reviewed and edited with the
+assistance of ChatGPT-Web[GPT-5.6 Sol].
