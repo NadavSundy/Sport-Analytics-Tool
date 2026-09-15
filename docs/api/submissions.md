@@ -85,6 +85,18 @@ required. The interface displays upload progress and the durable receipt, and li
 report where background validation, source-row errors and ambiguous-reference mapping remain
 available after navigation.
 
+Single-fixture mode also offers **New fixture**. The submitter selects an authorised competition,
+enters the fixture date, season, teams and the complete canonical-fixture metadata, then uploads a
+matching JSON or CSV fixture package. The browser generates the existing version `1.1` fixture-proposal
+contract and sends it through the batch pipeline; it never inserts canonical fixture data directly.
+Selecting the package first prefills its competition, season, fixture date and team names in the
+proposal form, leaving the submitter to confirm that context and enter the proposal-only metadata.
+Match type is retained because version `1.1` and the canonical fixture require it, but the UI fixes
+the available value to `T20`, matching the platform scope. Team type is selected as `club` or
+`international`, and gender as `female` or `male`.
+An administrator can use the batch report's **Create canonical fixture from proposal** action, after
+which normal reference resolution and validation run again for the affected submission.
+
 The advanced technical JSON editor preserves the canonical identifier-based input format. For an
 ordinary submitter, the browser converts that input to a batch package using explicit `app:*`
 application references and uploads it to `POST /api/v1/batches`, so it receives a durable receipt and
@@ -238,3 +250,4 @@ Codex[GPT-5].
 The Issue #435 guided single-fixture upload behavior was documented with the assistance of
 Codex[GPT-5].
 The Issue #437 unified submission workflow was documented with the assistance of Codex[GPT-5].
+The Issue #571 new-fixture proposal workflow was documented with the assistance of Codex[GPT-5].

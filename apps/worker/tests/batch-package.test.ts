@@ -139,6 +139,79 @@ describe('shipped guided templates (#500)', () => {
       }
     },
   );
+
+  it('preserves a version 1.1 fixture proposal for reviewer resolution', async () => {
+    const value = JSON.parse(
+      shippedTemplateWithReadableNames('season-upload-template.json'),
+    ) as Record<string, unknown> & { fixtures: Array<Record<string, unknown>> };
+    const proposal = {
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    };
+    value.contractVersion = '1.1';
+    value.fixtures[0] = {
+      ...value.fixtures[0],
+      sourceId: 'app:fixture:test-package-fixture',
+      proposal,
+    };
+    const source = JSON.stringify(value);
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+    const referenceChunk = await referenceChunkFor(source, 'application/json');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(referenceChunk.referencePackage?.contractVersion).toBe('1.1');
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual(proposal);
+  });
+
+  it('preserves a version 1.1 fixture proposal from CSV', async () => {
+    const [headerLine = '', rowLine = ''] = shippedTemplateWithReadableNames(
+      'season-upload-template.csv',
+    ).split(/\r?\n/);
+    const columns = headerLine.split(',');
+    const cells = rowLine.split(',');
+    cells[columns.indexOf('contractVersion')] = '1.1';
+    cells[columns.indexOf('fixtureSourceId')] = 'submitter:fixture:csv-package';
+    const proposalColumns: Record<string, string> = {
+      fixtureEndDate: '2026-03-14',
+      fixtureMatchType: 'T20',
+      fixtureTeamType: 'club',
+      fixtureGender: 'female',
+      fixtureBallsPerOver: '6',
+      fixtureOutcome: 'no result',
+      fixtureSourceVersion: '1',
+      fixtureSourceRevision: '0',
+    };
+    for (const [column, value] of Object.entries(proposalColumns)) {
+      columns.push(column);
+      cells.push(value);
+    }
+    const source = `${columns.join(',')}\n${cells.join(',')}\n`;
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    const referenceChunk = await referenceChunkFor(source, 'text/csv');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(referenceChunk.referencePackage?.contractVersion).toBe('1.1');
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual({
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    });
+  });
 });
 
 /**

@@ -1752,6 +1752,7 @@ main {
 }
 
 .submission-mode legend,
+.submission-scope legend,
 .submission-scope h2 {
   padding: 0;
   margin: 0;

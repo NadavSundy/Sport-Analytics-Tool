@@ -41,7 +41,7 @@ async function listAllCompetitions(signal: AbortSignal): Promise<Competition[]> 
   return competitions;
 }
 
-async function competitionOptions(profile: CurrentUserProfile, signal: AbortSignal) {
+export async function competitionOptions(profile: CurrentUserProfile, signal: AbortSignal) {
   const competitions =
     profile.role === 'admin'
       ? await listAllCompetitions(signal)
