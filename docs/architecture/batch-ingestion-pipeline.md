@@ -570,6 +570,36 @@ business rules inside persistence helpers.
 
 ---
 
+## Durable asynchronous publication
+
+An approved batch is not published inside the reviewer HTTP request. Approval persists the review decision and durable `batch.publish` work before the request returns.
+
+Publication is executed by the asynchronous worker in bounded chunks. The publication checkpoint records progress and uses a lease so interrupted work can be reclaimed and resumed safely.
+
+Each chunk:
+
+1. claims or renews the publication checkpoint lease;
+2. loads the next accepted items after the persisted checkpoint;
+3. performs published-delivery matching once for the chunk;
+4. classifies events as new publications, exact duplicates or published-content conflicts;
+5. persists duplicate and conflict outcomes using set-based PostgreSQL operations;
+6. bulk-publishes new canonical deliveries;
+7. advances the checkpoint only after the chunk transaction succeeds.
+
+Exact duplicate and published-conflict outcome writes use `jsonb_to_recordset` so a chunk does not issue an update and validation-result insert for every individual event.
+
+The durable background job records attempts and progress independently of the reviewer request. Transient worker failure requeues publication work and permits the worker to resume from the stored checkpoint. Terminal publication leaves the batch as `published` or `partially_published`.
+
+### Season-scale acceptance
+
+Deployed acceptance on 15 September 2026 used a representative 16,713-event IPL season package.
+
+The final publication job processed the remaining 15,930 publication items and completed successfully in 3 minutes 37 seconds, below the required 15-minute season-scale target.
+
+The final batch state was `published`, with no accepted items remaining.
+
+A separate pre-fix batch that had been stranded in `publishing` was also recovered through the durable worker path and completed successfully after multiple attempts, demonstrating resumable publication.
+
 ## 10. Review Before Publication
 
 _Satisfies acceptance criterion 7._
@@ -776,3 +806,4 @@ Codex[GPT-5].
 The Issue #364 implementation-status reconciliation was reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
 The Issue #539 correction-resubmission lifecycle was updated with the assistance of Codex[GPT-5].
+The Issue #540 durable asynchronous publication and final season-scale acceptance update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
