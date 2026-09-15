@@ -16,6 +16,21 @@ Tasks describe user goals rather than interface instructions.
 | #417            | `AUTH-01`, `AUTH-02`, `SUB-*`, `BAT-*`, `COR-*`          | Authentication, submission, batch ingestion, failure recovery and correction           |
 | #418            | `AUTH-01`, `AUTH-02`, `REV-*`, `ADM-*`, selected `COR-*` | Authentication, review, reference resolution, publication decisions and administration |
 
+## Suggested Sprint 3 feature-gate task sets
+
+| Feedback gate | Primary task groups                                                    | Purpose                                                                                         |
+| ------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| #601          | `AUTH-*` plus representative cross-feature navigation                  | Navigation, authentication, account state and overall frontend flow                             |
+| #602          | `PUB-01` to `PUB-06`                                                   | Public discovery, fixture/statistics understanding, filtering, export and meaningful comparison |
+| #603          | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` | Propose a fixture that does not yet exist and review/onboard it safely                          |
+| #604          | `BAT-01` to `BAT-05`                                                   | Season and multi-season back-catalogue ingestion, progress, recovery and reporting              |
+| #605          | `COR-01`, `ADM-02`, selected `PUB-*`                                   | Correction, provenance and the visible effect on derived statistics                             |
+| #606          | `DATA-01`, `DATA-02`                                                   | Versioned dataset release discovery and reproducibility                                         |
+| #607          | `PUB-05`, `API-01`                                                     | API discovery, consumer-key state, quota and rate-limit understanding                           |
+| #612          | `API-02`, `API-03`, `API-04`                                           | Aggregate API use, deprecation/replacement and per-consumer usage visibility                    |
+
+A gate begins only after the linked implementation work is deployed and in Review and the facilitator has prepared the safe scenario described in `testing/user-testing/SPRINT3_SCENARIOS.md`.
+
 Do not make one participant complete every task. A focused session of related tasks is preferable to one long end-to-end session where individual usability problems become difficult to attribute.
 
 Before running a prepared-data task, use `testing/user-testing/FACILITATOR_SETUP.md`. Reusable reference and validation inputs are documented under `testing/user-testing/`, but environment-specific successful submissions, publication decisions and corrections must use disposable or explicitly approved test data.
@@ -156,6 +171,22 @@ Find enough information to determine how you would begin accessing the API.
 
 ---
 
+## PUB-06 — Compare Meaningful Performance
+
+You want to compare the performance of two players or two fixtures for a real analysis question.
+
+Find the relevant statistics, make the comparison and explain which performance appears stronger and why.
+
+### Observe
+
+- Whether the comparison route is discoverable without coaching.
+- Whether the participant can tell which fixture/season/career scope is being compared.
+- Whether labels and units support a meaningful comparison.
+- Whether the participant can move between the two subjects without losing context.
+- Whether the participant trusts that the values are comparable rather than unrelated totals.
+
+---
+
 # Submitter — Direct Submission
 
 ## SUB-01 — Access Submitter Functionality
@@ -242,6 +273,23 @@ Attempt the submission and explain what would need to change before you tried ag
 - Whether multiple independent problems can be distinguished where supplied.
 - Whether the participant knows which event needs correction.
 - Whether the participant understands how to retry after editing the data.
+
+---
+
+## SUB-07 — Submit a Genuinely New Fixture
+
+You have a valid package for a fixture that does not yet exist in the platform, within a competition you are approved to submit for.
+
+Work out how to submit or propose the new fixture and determine what state it is in and what should happen next.
+
+### Observe
+
+- Whether the participant can distinguish selecting an existing fixture from proposing a new one.
+- Whether readable fixture metadata can be supplied without internal database identifiers.
+- Whether competition scope and permission boundaries are understandable.
+- Whether the participant understands that the new fixture must pass validation/review before publication.
+- Whether receipt/status and the next reviewer step are clear.
+- Whether duplicate-fixture protection is understandable if the proposed fixture resembles existing data.
 
 ---
 
@@ -411,6 +459,22 @@ Choose the appropriate action and explain why you selected it.
 
 ---
 
+## REV-06 — Review and Onboard a Genuinely New Fixture
+
+The facilitator will provide a staged submission proposing a fixture that is not yet present in the platform.
+
+Review the proposal, determine whether the fixture information is sufficient and safe to onboard, and take the appropriate action so the submission can proceed or be returned.
+
+### Observe
+
+- Whether a new-fixture proposal is distinguishable from an ordinary existing-fixture submission.
+- Whether competition, date, teams/participants and source/provenance information are sufficient for the decision.
+- Whether the reviewer can recognise possible duplicate fixtures before creating/onboarding one.
+- Whether create/link/return decisions and their consequences are clear.
+- Whether the participant understands the resulting review/publication state.
+
+---
+
 # Administrator Journey
 
 ## ADM-01 — Review Submitter Access
@@ -438,6 +502,104 @@ Find a submitted fixture or batch and determine who supplied it and what informa
 - Discoverability of provenance/audit information available to the role.
 - Whether the relationship between submission, events and statistics is understandable.
 - Navigation or permission problems.
+
+---
+
+# Dataset Release Journey
+
+## DATA-01 — Find and Understand a Versioned Dataset Release
+
+You want a stable dataset snapshot for an analysis that must be repeatable later.
+
+Find an available dataset release and determine its version, scope, schema/documentation, checksum and how to obtain it.
+
+### Observe
+
+- Discoverability of dataset releases.
+- Whether version and release scope are clear.
+- Whether schema, field descriptions and checksum are easy to find.
+- Whether the participant can distinguish a versioned release from an ad-hoc export.
+- Whether download/use instructions are sufficient.
+
+---
+
+## DATA-02 — Judge Whether a Release Is Reproducible
+
+Using the supplied analysis question and a versioned release, determine whether the release contains enough documented information to reproduce the requested statistic later.
+
+Explain which release artefacts or fields you would rely on.
+
+### Observe
+
+- Whether schema and field documentation answer the participant's questions.
+- Whether the participant can identify the event data needed for the statistic.
+- Whether version/checksum information gives confidence that the same snapshot can be reused.
+- Whether any hidden assumptions or undocumented fields block reproducibility.
+- Whether provenance or calculation documentation is discoverable where relevant.
+
+---
+
+# API Consumer Journey
+
+## API-01 — Use a Consumer Key and Understand Quota State
+
+You are an external API consumer. Using the test consumer credentials supplied separately by the facilitator, determine how to make an authenticated API request and work out the consumer's current quota/rate-limit state.
+
+Do not copy the key into retained notes or screenshots.
+
+### Observe
+
+- Whether API-key placement and authentication instructions are understandable.
+- Whether success/failure responses distinguish invalid credentials from quota/rate-limit problems.
+- Whether remaining quota, reset timing or retry guidance is understandable where exposed.
+- Whether the participant knows how to avoid exposing the key.
+- Whether API documentation and the actual response headers/body agree.
+
+---
+
+## API-02 — Retrieve and Understand Aggregate Data
+
+You want an aggregate answer rather than a list of raw records.
+
+Use the API documentation and supplied consumer key to retrieve an aggregate cricket result and explain what the response means.
+
+### Observe
+
+- Discoverability of aggregate operations.
+- Whether filtering/grouping inputs are understandable.
+- Whether response fields, scope and units are clear.
+- Whether pagination/job behaviour is understandable if the request is too large for an immediate response.
+- Whether the participant can relate the aggregate to the underlying public data.
+
+---
+
+## API-03 — Follow a Deprecation Path
+
+You are maintaining an API client and discover that an operation you use is deprecated.
+
+Determine what is being retired, when or how the deprecation applies, and which replacement operation your client should use.
+
+### Observe
+
+- Whether deprecation is visible in API documentation and/or responses.
+- Whether a replacement is named unambiguously.
+- Whether migration guidance is actionable.
+- Whether the participant can distinguish a deprecated operation from one that has already been removed.
+- Whether version compatibility expectations are clear.
+
+---
+
+## API-04 — Find a Consumer's API Usage
+
+Using the administrator/reviewer scenario supplied by the facilitator, find what a particular test API consumer has used and explain the usage information shown.
+
+### Observe
+
+- Discoverability of per-consumer usage/audit information.
+- Whether operation, time window, request counts and quota relationship are understandable.
+- Whether the participant can distinguish consumer identity from secret key material.
+- Whether usage information is sufficient to investigate a quota/support question.
+- Whether sensitive credential material is appropriately absent.
 
 ---
 

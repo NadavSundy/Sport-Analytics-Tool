@@ -1,6 +1,6 @@
 # Formal User-Testing Facilitator Pack
 
-This folder supports the task-based Sprint 2 process defined in `docs/testing/user-testing-protocol.md`. It contains reusable, non-secret reference/validation inputs plus the setup checklist needed before #416, #417 and #418 sessions.
+This folder supports the canonical task-based process defined in `docs/testing/user-testing-protocol.md`. Sprint 2 uses the #416–#418 execution streams; Sprint 3 keeps the same process and adds feature-level feedback gates #601–#607 and #612. The folder contains reusable, non-secret reference/validation inputs plus facilitator setup and scenario records.
 
 ## Rules
 
@@ -10,6 +10,19 @@ This folder supports the task-based Sprint 2 process defined in `docs/testing/us
 - Prepare all environment state before the participant arrives; do not manufacture a reviewer state while the participant waits.
 - Do not mutate published production data unless the team has explicitly approved a disposable/restorable target.
 - Fixture 5 below is a **reference and validation/conflict target**, not a safe successful-write target.
+
+## Sprint 3 scenario preparation
+
+Before a Sprint 3 feature-gate session:
+
+1. Select the gate and task IDs from the task bank.
+2. Select a safe scenario from `SPRINT3_SCENARIOS.md`.
+3. Copy `sprint-3-scenario-record.md` and fill in environment-specific IDs, package paths/checksums, expected state and reset method.
+4. Supply account credentials/API keys separately from Git.
+5. Complete `FACILITATOR_SETUP.md`.
+6. Do not start the gate until all implementation work listed in its `Cannot Begin Until` section is deployed and in Review.
+
+The scenario record is intentionally metadata-only. It makes an environment-specific setup reproducible without committing secrets or pretending mutable database identifiers are portable between environments.
 
 ## Reusable fixture-5 reference
 
