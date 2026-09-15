@@ -219,10 +219,8 @@ export async function findFixtureById(
  * Persists resolved geocoding coordinates against a venue so future lookups
  * reuse the stored value instead of geocoding the same venue again.
  *
- * The `venue` table enforces `latitude`/`longitude` are both null or both
- * within their valid ranges (see the `add-venue-coordinates` migration), so
- * an out-of-range value here fails at the database level rather than
- * silently persisting bad data.
+ * The update is conditional so concurrent first lookups preserve the first
+ * valid result instead of repeatedly overwriting canonical venue metadata.
  */
 export async function updateVenueCoordinates(
   venueId: string,
@@ -237,6 +235,8 @@ export async function updateVenueCoordinates(
       SET latitude = $2::double precision,
           longitude = $3::double precision
       WHERE venue_id = $1::bigint
+        AND latitude IS NULL
+        AND longitude IS NULL
     `,
     [venueId, latitude, longitude],
   );

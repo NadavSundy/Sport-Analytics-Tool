@@ -752,10 +752,27 @@ describe('public browsing pages', () => {
       },
       message: 'Weather could not be loaded. The match overview is still available.',
       retry: true,
+      retryWeather: {
+        data: {
+          fixtureId: 'fixture-1',
+          date: '2026-08-09',
+          availability: 'available',
+          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+          weather: {
+            date: '2026-08-09',
+            latitude: -26.1929,
+            longitude: 28.0305,
+            temperatureMax: 24,
+            temperatureMin: 11,
+            precipitationSum: 0,
+            windSpeedMax: 17,
+          },
+        },
+      },
     },
   ])(
     'keeps the fixture overview usable during $name',
-    async ({ weatherStatus, weatherBody, message, retry }) => {
+    async ({ weatherStatus, weatherBody, message, retry, retryWeather }) => {
       const fixture = {
         fixtureId: 'fixture-1',
         competitionId: 'competition-1',
@@ -775,11 +792,16 @@ describe('public browsing pages', () => {
         startDate: '2026-08-09',
         endDate: '2026-08-09',
       };
+      let weatherRequests = 0;
       vi.stubGlobal(
         'fetch',
         vi.fn().mockImplementation((input: string) => {
           const url = new URL(input);
           if (url.pathname.endsWith('/fixtures/fixture-1/weather')) {
+            weatherRequests += 1;
+            if (weatherRequests === 2 && retryWeather) {
+              return Promise.resolve(response(200, retryWeather));
+            }
             return Promise.resolve(response(weatherStatus, weatherBody));
           }
           if (url.pathname.endsWith('/fixtures/fixture-1')) {
@@ -821,6 +843,9 @@ describe('public browsing pages', () => {
       expect(screen.getByText('Premier Cricket League')).toBeVisible();
       if (retry) {
         expect(screen.getByRole('button', { name: 'Try weather again' })).toBeEnabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Try weather again' }));
+        expect(await screen.findByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
+        expect(weatherRequests).toBe(2);
       } else {
         expect(screen.queryByRole('button', { name: 'Try weather again' })).not.toBeInTheDocument();
       }
