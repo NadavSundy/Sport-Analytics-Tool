@@ -5,9 +5,36 @@
 **Team:** Git Push Pray
 **Related Issue:** #298
 **Retrospective Format:** Asynchronous team reflection via WhatsApp
-**Milestone Status:** Close-out in progress
+**Milestone Status:** Sprint 2 closed and milestone tagged
 
 ## Stakeholder Review
+
+The Sprint 2 stakeholder review was completed in person with the project tutor / marking reviewer.
+
+The meeting was not formally recorded and contemporaneous minutes were not taken. A retrospective record was therefore prepared immediately after the review to preserve the team's shared recollection of the feedback and the resulting Sprint 3 actions.
+
+The review considered the implemented Sprint 2 product, supporting documentation and the overall user experience.
+
+The main improvement areas raised were:
+
+- clearer Google authentication presentation and appropriate Google branding;
+- stronger and more consolidated database documentation, including schema, deployment and design motivation;
+- more meaningful cricket statistics and analytical context rather than primarily presenting collections of calculated values; and
+- improved frontend organisation, navigation and flow.
+
+These findings were evaluated and converted into explicit Sprint 3 work:
+
+- #579 — database documentation and design motivation;
+- #580 — Google OAuth branding and sign-in presentation;
+- #581 — frontend navigation and role journeys;
+- #582 — meaningful cricket analytics; and
+- existing #513 — fixture overview and cricket match context.
+
+User-facing improvements will be validated through the Sprint 3 feature-level user-feedback gates #601 and #602.
+
+A fuller retrospective record of the stakeholder feedback is retained later in this close-out record.
+
+The separate post-review technical audit identified additional ingestion, correctness and reproducibility issues. Those findings were produced internally and are deliberately not attributed to the stakeholder review.
 
 The final Sprint 2 stakeholder close-out review is still pending at the time
 this record is being prepared.
@@ -34,48 +61,32 @@ completed.
 
 ## Incomplete / Carried-Over Work
 
-Work that is not complete at the end of Sprint 2 is not being represented as
-completed Sprint 2 work.
+Work that was not complete at the Sprint 2 boundary is not being represented as completed Sprint 2 work.
 
-Remaining work is retained in Gitea and is either explicitly carried into
-Sprint 3, remains in the Sprint 2 milestone pending final disposition, or is
-tracked separately as an active defect.
+The remaining work has been explicitly retained in Gitea and classified as Sprint 3 carry-over or Sprint 3 follow-up work.
 
-At the time of close-out preparation, the following open and currently
-unassigned work remains visible:
+### Existing work carried into Sprint 3
 
-### Remaining Sprint 2 work
+The following existing issues remain open and have been incorporated into the Sprint 3 plan:
 
-- **#513 — Improve fixture overview with cricket match context and useful
-  summary information**
-
-  This issue remains open in the Sprint 2 milestone and is not represented as
-  completed Sprint 2 work.
-
-- **#329 — Upgrade Vite/Vitest toolchain to resolve remaining esbuild
-  development-server advisory**
-
-  This issue remains open in the Sprint 2 milestone and is not represented as
-  completed Sprint 2 work.
-
-### Work carried into Sprint 3
-
-- **#566 — Document hosting capacity, Azure quota recovery and deployment
-  strategy**
-- **#565 — Add production-scale deployment and dataset release acceptance
-  testing**
-- **#564 — Move frontend from Azure App Service to static hosting**
-- **#563 — Migrate backend API from Azure App Service to Azure Container Apps**
+- **#329 — Upgrade Vite/Vitest toolchain to resolve remaining esbuild development-server advisory**
+- **#513 — Improve fixture overview with cricket match context and useful summary information**
 - **#562 — Move dataset release publication to asynchronous worker processing**
+- **#563 — Migrate backend API from Azure App Service to Azure Container Apps**
+- **#564 — Move frontend from Azure App Service to static hosting**
+- **#565 — Add production-scale deployment and dataset release acceptance testing**
+- **#566 — Document hosting capacity, Azure quota recovery and deployment strategy**
+- **#571 — bug(submissions): approved submitters cannot submit a new fixture that does not already exist**
 
-These issues remain explicitly tracked rather than being represented as
-completed Sprint 2 functionality.
+These issues remain explicitly visible rather than being represented as completed Sprint 2 functionality.
 
-Additional active defects that already have owners remain tracked in the bug
-tracker and are not duplicated here as unowned carry-over.
+### Additional Sprint 3 work identified during close-out
 
-The carry-over list will be checked again immediately before the final Sprint 2
-milestone state is agreed and tagged.
+The final internal audit also identified additional Basic / Intermediate correctness and reproducibility work.
+
+These findings are represented by the dedicated Sprint 3 issues created after the audit, including #583–#597.
+
+They were identified after the Sprint 2 stakeholder review and therefore form part of the Sprint 3 technical plan rather than retrospectively changing the stakeholder feedback record.
 
 ## Known Defects and Limitations
 
@@ -572,6 +583,149 @@ team WhatsApp group on 15 September 2026.
 The responses were consolidated into this repository record so that the Sprint
 2 retrospective forms part of the project's authoritative methodology
 evidence.
+
+## Sprint 2 Stakeholder / Review Feedback
+
+The Sprint 2 review was used not only to demonstrate implemented functionality,
+but also to identify areas where the product and its supporting documentation
+needed to be improved before Sprint 3.
+
+The feedback was evaluated after the review and converted into explicit Sprint 3
+work rather than being left as informal notes.
+
+### Google authentication presentation
+
+The Google authentication flow functioned, but the sign-in presentation did not
+make appropriate use of official Google branding and the managed OAuth experience
+was not presented as clearly as it could be.
+
+**Response**
+
+Sprint 3 issue:
+
+- #580 — `enhancement(auth): use official Google branding and clear managed OAuth sign-in`
+
+This work will also be validated as part of:
+
+- #601 — `test(user): validate navigation, authentication and overall frontend flow`
+
+---
+
+### Database documentation and design motivation
+
+The database documentation required further consolidation and explanation.
+
+Although schema and database documentation existed, the review highlighted the
+need for a clearer marker-facing account of:
+
+- the implemented database architecture;
+- the deployed PostgreSQL/Supabase setup;
+- the schema and important relationships;
+- deployment information;
+- how the schema supports the cricket event model;
+- why the chosen schema was selected;
+- the evidence and trade-offs that motivated those design decisions.
+
+The Sprint 3 response is therefore not simply to add another schema diagram, but
+to consolidate the existing documentation into a coherent explanation of both
+**what was implemented and why it was designed that way**.
+
+**Response**
+
+Sprint 3 issue:
+
+- #579 — `docs(database): consolidate schema, deployment and database design motivation`
+
+---
+
+### Statistics and cricket insight
+
+The review also highlighted a distinction between exposing calculated values and
+presenting useful analytics.
+
+The platform already exposed a substantial amount of statistical data, but the
+frontend experience could still feel like a collection of numbers rather than a
+clear cricket-analysis product.
+
+Sprint 3 will therefore improve the way fixture and participant statistics are
+presented, with stronger cricket context, useful summaries and clearer analytical
+value for the user.
+
+**Response**
+
+Sprint 3 issues:
+
+- #513 — `Improve fixture overview with cricket match context and useful summary information`
+- #582 — `feat(statistics): turn public statistics into meaningful cricket analytics`
+
+User validation:
+
+- #602 — `test(user): validate public statistics and fixture analytics experience`
+
+---
+
+### Frontend navigation and user flow
+
+The Sprint 2 review identified opportunities to improve the overall structure and
+flow of the frontend.
+
+As the number of features increased during Sprint 2, navigation and tabs were
+added incrementally. Sprint 3 will review the information architecture as a
+complete product so that public, submitter, reviewer and administrator journeys
+flow logically rather than reflecting the order in which features happened to be
+implemented.
+
+**Response**
+
+Sprint 3 issue:
+
+- #581 — `enhancement(frontend): restructure navigation, tabs and role journeys for coherent flow`
+
+User validation:
+
+- #601 — `test(user): validate navigation, authentication and overall frontend flow`
+
+---
+
+## Evaluation of Stakeholder Feedback
+
+The review feedback was accepted as Sprint 3 improvement work.
+
+None of the above findings invalidates the Sprint 2 milestone. They identify areas
+where an implemented product foundation should be improved as the project moves
+towards the near-complete Sprint 3 standard.
+
+Each accepted finding has therefore been converted into a traceable Sprint 3
+issue rather than remaining as informal review notes.
+
+## Post-Sprint Internal Technical Audit
+
+Following the Sprint 2 stakeholder review, the team performed an additional internal audit of the implementation against the Basic and Intermediate Sport Analytics requirements.
+
+This audit was separate from the stakeholder review.
+
+It identified additional correctness and completeness risks that were not raised during the Sprint 2 demonstration. These findings were deliberately converted into Sprint 3 issues rather than being attributed retrospectively to stakeholder feedback.
+
+The main areas identified were:
+
+- genuinely new fixture ingestion and canonical onboarding;
+- competition-scope enforcement;
+- consistency between public package and worker validation;
+- canonical reference resolution;
+- event ordering;
+- multi-season back-catalogue ingestion;
+- cricket-statistics edge cases;
+- stable logical event identity across corrections;
+- selective aggregate recomputation;
+- aggregate provenance;
+- consistent API consumer quota/rate-limit enforcement;
+- shared rate-limit state across backend replicas;
+- point-in-time consistency of dataset releases; and
+- completeness of released event data for statistical reproducibility.
+
+These findings are represented by Sprint 3 issues #583–#597.
+
+The audit therefore acts as an engineering input to Sprint 3 planning rather than as retrospective stakeholder feedback.
 
 ## AI Declaration
 
