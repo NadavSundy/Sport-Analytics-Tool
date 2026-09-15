@@ -1,6 +1,6 @@
 name: User feedback closure guard
 
-"on":
+'on':
   issues:
     types: [closed]
 

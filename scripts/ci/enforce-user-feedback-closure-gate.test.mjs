@@ -12,15 +12,16 @@ test('collectIssueLikeObjects accepts a direct dependency array', () => {
     { number: 603, state: 'open', labels: [{ name: 'gate: user-feedback' }] },
     { number: 600, state: 'open', labels: [{ name: 'area: testing' }] },
   ];
-  assert.deepEqual(collectIssueLikeObjects(input).map((x) => x.number), [603, 600]);
+  assert.deepEqual(
+    collectIssueLikeObjects(input).map((x) => x.number),
+    [603, 600],
+  );
 });
 
 test('collectIssueLikeObjects accepts common wrapper response shapes', () => {
   const input = {
     dependencies: {
-      items: [
-        { index: 603, state: 'open', labels: [{ name: 'gate: user-feedback' }] },
-      ],
+      items: [{ index: 603, state: 'open', labels: [{ name: 'gate: user-feedback' }] }],
     },
   };
   const result = collectIssueLikeObjects(input);
@@ -30,16 +31,28 @@ test('collectIssueLikeObjects accepts common wrapper response shapes', () => {
 
 test('findOpenUserFeedbackGates returns only open gate:user-feedback dependencies', () => {
   const deps = [
-    { number: 603, title: 'UF new fixture', state: 'open', labels: [{ name: 'gate: user-feedback' }] },
+    {
+      number: 603,
+      title: 'UF new fixture',
+      state: 'open',
+      labels: [{ name: 'gate: user-feedback' }],
+    },
     { number: 607, title: 'UF API', state: 'closed', labels: [{ name: 'gate: user-feedback' }] },
     { number: 598, title: 'Acceptance', state: 'open', labels: [{ name: 'gate: acceptance' }] },
   ];
-  assert.deepEqual(findOpenUserFeedbackGates(deps).map((x) => x.number), [603]);
+  assert.deepEqual(
+    findOpenUserFeedbackGates(deps).map((x) => x.number),
+    [603],
+  );
 });
 
 test('makeReopenComment clearly states which user-feedback gate blocks closure', () => {
   const text = makeReopenComment(571, [
-    { number: 603, title: 'test(user): validate genuinely new fixture submission and reviewer onboarding workflow' },
+    {
+      number: 603,
+      title:
+        'test(user): validate genuinely new fixture submission and reviewer onboarding workflow',
+    },
   ]);
   assert.match(text, /Closure blocked/i);
   assert.match(text, /#603/);
@@ -53,9 +66,17 @@ test('enforceClosedIssue reopens and comments when an open user-feedback gate bl
   globalThis.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), method: options.method ?? 'GET', body: options.body });
     if (String(url).endsWith('/issues/571/dependencies')) {
-      return new Response(JSON.stringify([
-        { number: 603, title: 'UF new fixture', state: 'open', labels: [{ name: 'gate: user-feedback' }] },
-      ]), { status: 200, headers: { 'content-type': 'application/json' } });
+      return new Response(
+        JSON.stringify([
+          {
+            number: 603,
+            title: 'UF new fixture',
+            state: 'open',
+            labels: [{ name: 'gate: user-feedback' }],
+          },
+        ]),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
     }
     if (String(url).endsWith('/issues/571') && options.method === 'PATCH') {
       return new Response(JSON.stringify({ number: 571, state: 'open' }), { status: 200 });
@@ -69,7 +90,11 @@ test('enforceClosedIssue reopens and comments when an open user-feedback gate bl
   try {
     const { enforceClosedIssue } = await import('./enforce-user-feedback-closure-gate.mjs');
     const result = await enforceClosedIssue({
-      event: { action: 'closed', number: 571, repository: { full_name: 'git-push-pray/Sport-Analytics-Tool' } },
+      event: {
+        action: 'closed',
+        number: 571,
+        repository: { full_name: 'git-push-pray/Sport-Analytics-Tool' },
+      },
       apiUrl: 'https://example.test/api/v1',
       token: 'test-token',
     });
@@ -87,21 +112,39 @@ test('enforceClosedIssue allows closure after the user-feedback gate is closed',
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), method: options.method ?? 'GET' });
-    return new Response(JSON.stringify([
-      { number: 603, title: 'UF new fixture', state: 'closed', labels: [{ name: 'gate: user-feedback' }] },
-    ]), { status: 200 });
+    return new Response(
+      JSON.stringify([
+        {
+          number: 603,
+          title: 'UF new fixture',
+          state: 'closed',
+          labels: [{ name: 'gate: user-feedback' }],
+        },
+      ]),
+      { status: 200 },
+    );
   };
 
   try {
     const { enforceClosedIssue } = await import('./enforce-user-feedback-closure-gate.mjs');
     const result = await enforceClosedIssue({
-      event: { action: 'closed', number: 571, repository: { full_name: 'git-push-pray/Sport-Analytics-Tool' } },
+      event: {
+        action: 'closed',
+        number: 571,
+        repository: { full_name: 'git-push-pray/Sport-Analytics-Tool' },
+      },
       apiUrl: 'https://example.test/api/v1',
       token: 'test-token',
     });
     assert.equal(result.action, 'allowed');
-    assert.equal(calls.some((c) => c.method === 'PATCH'), false);
-    assert.equal(calls.some((c) => c.method === 'POST'), false);
+    assert.equal(
+      calls.some((c) => c.method === 'PATCH'),
+      false,
+    );
+    assert.equal(
+      calls.some((c) => c.method === 'POST'),
+      false,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

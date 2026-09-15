@@ -27,8 +27,12 @@ export function collectIssueLikeObjects(value, seen = new Set()) {
 }
 
 function hasLabel(issue, labelName) {
-  return Array.isArray(issue?.labels)
-    && issue.labels.some((label) => String(label?.name ?? '').toLowerCase() === labelName.toLowerCase());
+  return (
+    Array.isArray(issue?.labels) &&
+    issue.labels.some(
+      (label) => String(label?.name ?? '').toLowerCase() === labelName.toLowerCase(),
+    )
+  );
 }
 
 export function findOpenUserFeedbackGates(dependencies) {
@@ -47,13 +51,15 @@ export function makeReopenComment(issueNumber, gates) {
     })
     .join('\n');
 
-  return `${COMMENT_MARKER}\n` +
+  return (
+    `${COMMENT_MARKER}\n` +
     `**Closure blocked: required user feedback has not finished.**\n\n` +
     `Issue #${issueNumber} was automatically reopened because the following required user-feedback gate ` +
     `(\`${USER_FEEDBACK_LABEL}\`) is still open:\n\n${gateLines}\n\n` +
     `Complete the linked feature-level user-testing gate, record findings, resolve or formally ` +
     `disposition actionable findings, and retest accepted S1/S2 fixes before closing this issue again.\n\n` +
-    `_This is enforced automatically by the Sprint 3 user-feedback closure guard._`;
+    `_This is enforced automatically by the Sprint 3 user-feedback closure guard._`
+  );
 }
 
 async function apiRequest({ apiUrl, token, method = 'GET', path, body }) {
@@ -73,7 +79,11 @@ async function apiRequest({ apiUrl, token, method = 'GET', path, body }) {
   const text = await response.text();
   let payload = null;
   if (text) {
-    try { payload = JSON.parse(text); } catch { payload = text; }
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
+    }
   }
 
   if (!response.ok) {
@@ -124,21 +134,31 @@ export async function enforceClosedIssue({ event, apiUrl, token, repository }) {
   });
 
   const dependencyStubs = collectIssueLikeObjects(rawDependencies);
-  const dependencies = (await Promise.all(
-    dependencyStubs.map((dependency) => hydrateDependency({
-      apiUrl, token, owner, repo, dependency,
-    })),
-  )).filter(Boolean);
+  const dependencies = (
+    await Promise.all(
+      dependencyStubs.map((dependency) =>
+        hydrateDependency({
+          apiUrl,
+          token,
+          owner,
+          repo,
+          dependency,
+        }),
+      ),
+    )
+  ).filter(Boolean);
 
   const openGates = findOpenUserFeedbackGates(dependencies);
   if (openGates.length === 0) {
-    console.log(`Issue #${issueNumber}: no open ${USER_FEEDBACK_LABEL} dependency. Closure allowed.`);
+    console.log(
+      `Issue #${issueNumber}: no open ${USER_FEEDBACK_LABEL} dependency. Closure allowed.`,
+    );
     return { action: 'allowed', issueNumber, openGates: [] };
   }
 
   console.log(
     `Issue #${issueNumber}: closure blocked by open user-feedback gate(s): ` +
-    openGates.map((gate) => `#${gate.number ?? gate.index}`).join(', '),
+      openGates.map((gate) => `#${gate.number ?? gate.index}`).join(', '),
   );
 
   await apiRequest({
@@ -179,8 +199,8 @@ async function main() {
   console.log(`Closure guard result: ${result.action}.`);
 }
 
-const isDirectExecution = process.argv[1]
-  && import.meta.url === new URL(`file://${process.argv[1]}`).href;
+const isDirectExecution =
+  process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 
 if (isDirectExecution) {
   main().catch((error) => {
