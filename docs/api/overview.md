@@ -264,22 +264,76 @@ Administrators can issue, rotate and revoke external-consumer API keys. The keye
 currently provides competition and fixture reads and applies consumer-wide request-rate and UTC daily
 quota controls. See [Consumer API keys, rate limits and quotas](consumer-keys.md).
 
-## Required future API areas
+## Intermediate API areas
 
-- submission review, correction, and correction-history workflows;
-- derived season, competition, and career statistics;
-- versioned dataset releases and larger asynchronous exports;
-- staged and resumable batch ingestion;
-- statistic definitions and versions for the advanced tier;
-- asynchronous jobs for large requests;
-- change feeds and release differences for the advanced tier.
+The Intermediate tier is implemented through the same handwritten `/api/v1` boundary and is included
+in the version-controlled OpenAPI contract.
 
-The OpenAPI specification is maintained alongside the implementation, with shared request and
-response contracts covered by automated contract tests. Backend behaviour is implemented through
-the handwritten Express API rather than generated database endpoints.
+### Batch ingestion, review and publication
+
+Whole-season and back-catalogue packages use the asynchronous batch API. The implemented surface
+covers receipt, status, reports, report downloads, reference mapping, published-delivery conflict
+resolution, reviewer decisions, correction resubmission and publication.
+
+See [Batch ingestion receipt API](batches.md) for the lifecycle and authorisation rules.
+
+### Corrections and audit history
+
+Accepted delivery corrections create immutable revisions rather than overwriting published data.
+Authorised users can submit a correction and retrieve the retained revision history.
+
+See [Direct Event Submissions](submissions.md#correct-an-accepted-event) and
+[Protected provenance and audit API](provenance.md).
+
+### Participant aggregates
+
+The public API derives season, competition and career aggregates from current accepted delivery
+revisions:
+
+```http
+GET /api/v1/participants/{participantId}/statistics
+GET /api/v1/participants/{participantId}/statistics/{statisticId}
+```
+
+See [Participant aggregate calculations](../statistics/participant-aggregates.md).
+
+### Dataset releases
+
+Administrators can queue immutable versioned dataset releases. Public consumers can discover release
+metadata and download the exact checksum-backed JSON artifact.
+
+See [Dataset exports](../data/dataset-exports.md).
+
+### API consumer protections
+
+Administrators can issue, rotate and revoke consumer API keys. Keyed consumer requests are protected
+by configurable per-minute rate limits and durable UTC daily quotas.
+
+See [Consumer API keys, rate limits and quotas](consumer-keys.md).
+
+### Caching and response-time behaviour
+
+Repeated fixture-statistics reads use a versioned 60-second server-side cache-aside path. Contributor
+traces bypass the cache, and accepted changes advance the fixture version so stale cached statistics
+are no longer reachable.
+
+The reproducible workload, response-time targets and measurement commands are documented in
+[Representative-scale API performance baseline](../development/performance-baseline.md).
+
+The [OpenAPI specification](openapi.md) remains the authoritative request/response contract for all
+implemented endpoints.
+
+## Remaining future API areas
+
+The following belong to later Advanced-tier work rather than the implemented Intermediate surface:
+
+- analyst-defined statistic definitions, validation, sandboxing and versioning;
+- late and out-of-order live-feed replay;
+- bitemporal/as-of statistic queries and release comparisons;
+- larger asynchronous analytical jobs and change-feed functionality where not already implemented
+  for dataset-release generation.
 
 ## AI Declaration
 
-The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]
-and Codex[GPT-5]. The competition-scoped submitter access behavior was updated with the assistance
-of Codex[GPT-5].
+The preceding API overview was reviewed and updated for the Intermediate implementation with the
+assistance of ChatGPT-Web[GPT-5.6 Sol].

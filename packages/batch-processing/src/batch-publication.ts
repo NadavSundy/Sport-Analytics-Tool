@@ -874,6 +874,19 @@ export async function publishAcceptedBatchChunk(
     item: BatchItemRecord & { fixtureId: string };
     delivery: ComparableCricketDelivery;
   }> = [];
+  const duplicatePublications: Array<{
+    batchItemId: string;
+    sourceOrdinal: number;
+    deliveryId: string;
+  }> = [];
+  const conflictPublications: Array<{
+    batchItemId: string;
+    sourceOrdinal: number;
+    detail: {
+      existingDeliveryId: string;
+      differences: ReturnType<typeof diffPublishedCricketDelivery>;
+    };
+  }> = [];
 
   for (const item of items.rows) {
     const payload = payloadRecord(item.payload);
@@ -901,52 +914,14 @@ export async function publishAcceptedBatchChunk(
     const conflict = classified.find((match) => match.classification === 'conflict');
 
     if (conflict) {
-      await executeQuery(
-        target,
-        `
-          UPDATE batch_item
-          SET state='rejected',
-              rejection_code='PUBLISHED_DELIVERY_CONFLICT',
-              rejection_detail=$2::jsonb
-          WHERE batch_item_id=$1::bigint
-        `,
-        [
-          item.batchItemId,
-          JSON.stringify({
-            existingDeliveryId: conflict.deliveryId,
-            differences: diffPublishedCricketDelivery(submitted, conflict.delivery),
-          }),
-        ],
-      );
-
-      await executeQuery(
-        target,
-        `
-          INSERT INTO batch_validation_result (
-            batch_id,
-            batch_item_id,
-            source_ordinal,
-            rule_code,
-            rule_version,
-            severity,
-            field_path,
-            message
-          )
-          VALUES (
-            $1::bigint,
-            $2::bigint,
-            $3::integer,
-            'PUBLISHED_DELIVERY_CONFLICT',
-            '1.0',
-            'error',
-            'delivery',
-            'A published delivery or published source identity exists with different cricket content.'
-          )
-          ON CONFLICT DO NOTHING
-        `,
-        [batchId, item.batchItemId, item.ordinal],
-      );
-
+      conflictPublications.push({
+        batchItemId: item.batchItemId,
+        sourceOrdinal: item.ordinal,
+        detail: {
+          existingDeliveryId: conflict.deliveryId,
+          differences: diffPublishedCricketDelivery(submitted, conflict.delivery),
+        },
+      });
       result.conflicts += 1;
       continue;
     }
@@ -954,50 +929,111 @@ export async function publishAcceptedBatchChunk(
     const duplicate = classified.find((match) => match.classification === 'exact-duplicate');
 
     if (duplicate) {
-      await executeQuery(
-        target,
-        `
-          UPDATE batch_item
-          SET state='duplicate_skipped',
-              published_event_id=$2::bigint
-          WHERE batch_item_id=$1::bigint
-        `,
-        [item.batchItemId, duplicate.deliveryId],
-      );
-
-      await executeQuery(
-        target,
-        `
-          INSERT INTO batch_validation_result (
-            batch_id,
-            batch_item_id,
-            source_ordinal,
-            rule_code,
-            rule_version,
-            severity,
-            field_path,
-            message
-          )
-          VALUES (
-            $1::bigint,
-            $2::bigint,
-            $3::integer,
-            'EXACT_PUBLISHED_DUPLICATE',
-            '1.0',
-            'warning',
-            'delivery',
-            'The staged event exactly matches an already-published delivery.'
-          )
-          ON CONFLICT DO NOTHING
-        `,
-        [batchId, item.batchItemId, item.ordinal],
-      );
-
+      duplicatePublications.push({
+        batchItemId: item.batchItemId,
+        sourceOrdinal: item.ordinal,
+        deliveryId: duplicate.deliveryId,
+      });
       result.duplicateSkipped += 1;
       continue;
     }
 
     newPublications.push({ item, delivery: submitted });
+  }
+
+  if (conflictPublications.length > 0) {
+    await executeQuery(
+      target,
+      `
+        WITH source AS (
+          SELECT *
+          FROM jsonb_to_recordset($2::jsonb) AS item(
+            "batchItemId" bigint,
+            "sourceOrdinal" integer,
+            detail jsonb
+          )
+        ),
+        updated AS (
+          UPDATE batch_item AS batch_item
+          SET state='rejected',
+              rejection_code='PUBLISHED_DELIVERY_CONFLICT',
+              rejection_detail=source.detail
+          FROM source
+          WHERE batch_item.batch_item_id=source."batchItemId"
+          RETURNING batch_item.batch_item_id
+        )
+        INSERT INTO batch_validation_result (
+          batch_id,
+          batch_item_id,
+          source_ordinal,
+          rule_code,
+          rule_version,
+          severity,
+          field_path,
+          message
+        )
+        SELECT
+          $1::bigint,
+          updated.batch_item_id,
+          source."sourceOrdinal",
+          'PUBLISHED_DELIVERY_CONFLICT',
+          '1.0',
+          'error',
+          'delivery',
+          'A published delivery or published source identity exists with different cricket content.'
+        FROM updated
+        JOIN source ON source."batchItemId"=updated.batch_item_id
+        ON CONFLICT DO NOTHING
+      `,
+      [batchId, JSON.stringify(conflictPublications)],
+    );
+  }
+
+  if (duplicatePublications.length > 0) {
+    await executeQuery(
+      target,
+      `
+        WITH source AS (
+          SELECT *
+          FROM jsonb_to_recordset($2::jsonb) AS item(
+            "batchItemId" bigint,
+            "sourceOrdinal" integer,
+            "deliveryId" bigint
+          )
+        ),
+        updated AS (
+          UPDATE batch_item AS batch_item
+          SET state='duplicate_skipped',
+              published_event_id=source."deliveryId"
+          FROM source
+          WHERE batch_item.batch_item_id=source."batchItemId"
+          RETURNING batch_item.batch_item_id
+        )
+        INSERT INTO batch_validation_result (
+          batch_id,
+          batch_item_id,
+          source_ordinal,
+          rule_code,
+          rule_version,
+          severity,
+          field_path,
+          message
+        )
+        SELECT
+          $1::bigint,
+          updated.batch_item_id,
+          source."sourceOrdinal",
+          'EXACT_PUBLISHED_DUPLICATE',
+          '1.0',
+          'warning',
+          'delivery',
+          'The staged event exactly matches an already-published delivery.'
+        FROM updated
+        JOIN source ON source."batchItemId"=updated.batch_item_id
+        ON CONFLICT DO NOTHING
+      `,
+      [batchId, JSON.stringify(duplicatePublications)],
+    );
   }
 
   if (newPublications.length > 0) {

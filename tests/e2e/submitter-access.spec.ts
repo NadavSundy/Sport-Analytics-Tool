@@ -192,17 +192,33 @@ test(
     const currentScope = accessPanel.locator('p').filter({ hasText: 'Current competition scope:' });
     await expect(currentScope).toContainText('Premier T20');
 
-    const competitionSelect = accessPanel.getByRole('combobox', { name: 'Additional competition' });
-    await expect(competitionSelect.locator('option')).toHaveText(['University League']);
-    await expect(competitionSelect.locator('option[value="5"]')).toHaveCount(0);
-
     const requestButton = accessPanel.getByRole('button', {
       name: 'Request additional competition',
     });
+    await expect(accessPanel.getByRole('combobox', { name: 'Additional competition' })).toHaveCount(
+      0,
+    );
     await requestButton.focus();
     await expect(requestButton).toBeFocused();
     await page.keyboard.press('Enter');
 
+    const dialog = page.getByRole('dialog', { name: 'Request additional competition' });
+    await expect(dialog).toBeVisible();
+    const competitionSelect = dialog.getByRole('combobox', { name: 'Additional competition' });
+    await expect(competitionSelect).toBeFocused();
+    await expect(competitionSelect.locator('option')).toHaveText(['University League']);
+    await expect(competitionSelect.locator('option[value="5"]')).toHaveCount(0);
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(requestButton).toBeFocused();
+
+    await requestButton.click();
+    await expect(dialog).toBeVisible();
+    const confirmButton = dialog.getByRole('button', { name: 'Request competition' });
+    await confirmButton.click();
+
+    await expect(dialog).toHaveCount(0);
     await expect(
       accessPanel.getByText(/Additional scope request pending for University League/i),
     ).toBeVisible();
