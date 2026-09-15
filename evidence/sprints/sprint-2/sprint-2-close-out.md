@@ -1,10 +1,10 @@
 # Sprint 2 Close-Out
 
-**Sprint:** Sprint 2  
-**Date:** 15 September 2026  
-**Team:** Git Push Pray  
-**Related Issue:** #298  
-**Retrospective Format:** Asynchronous team reflection via WhatsApp  
+**Sprint:** Sprint 2
+**Date:** 15 September 2026
+**Team:** Git Push Pray
+**Related Issue:** #298
+**Retrospective Format:** Asynchronous team reflection via WhatsApp
 **Milestone Status:** Close-out in progress
 
 ## Stakeholder Review
@@ -540,8 +540,8 @@ Before creating the `sprint-2` tag:
 
 ## Milestone Tag
 
-**Tag:** `sprint-2`  
-**Commit:** Pending final merge and verification  
+**Tag:** `sprint-2`
+**Commit:** Pending final merge and verification
 **Tag Status:** Pending
 
 The annotated milestone tag will identify the exact reviewed Sprint 2
