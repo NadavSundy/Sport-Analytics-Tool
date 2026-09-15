@@ -57,7 +57,7 @@ async function main() {
     'public fixture page': `${baseUrl}/api/v1/fixtures?limit=50`,
     'fixture event page': `${baseUrl}/api/v1/fixtures/${fixtureId}/events?limit=100`,
     'fixture statistics': `${baseUrl}/api/v1/fixtures/${fixtureId}/statistics`,
-    'participant aggregate': `${baseUrl}/api/v1/participants/${participantId}/fixtures?limit=50`,
+    'participant aggregate': `${baseUrl}/api/v1/participants/${participantId}/statistics`,
     'CSV event export': `${baseUrl}/api/v1/fixtures/${fixtureId}/events/export.csv`,
   };
 
