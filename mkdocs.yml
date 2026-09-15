@@ -78,6 +78,7 @@ nav:
       - Sport Domain Definition: requirements/sport-domain-definition.md
       - Cricsheet Data Source: data/cricsheet.md
       - Database:
+          - Database Architecture Guide: database/guide.md
           - Overview: database/overview.md
           - Access and Transactions: database/access.md
           - Batch Persistence Extensions: database/batch-persistence.md
