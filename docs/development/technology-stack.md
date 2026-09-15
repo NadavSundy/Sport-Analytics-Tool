@@ -175,6 +175,7 @@ The following direct packages provide TypeScript declarations for JavaScript lib
 - `@types/express ^4.17.21`
 - `@types/node ^22.9.0`
 - `@types/pg ^8.20.4`
+- `@types/multer ^2.0.0`
 - `@types/supertest ^6.0.2`
 
 ## Version policy
