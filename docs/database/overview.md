@@ -1,5 +1,9 @@
 # Database overview
 
+For a marker-facing explanation of the implemented schema, its design motivation, deployment and
+migration ownership, start with the [Database architecture guide](guide.md). This page remains the
+detailed overview of the current PostgreSQL/Supabase implementation.
+
 The implemented application database is PostgreSQL hosted by Supabase. The Express backend and the
 asynchronous worker connect to PostgreSQL directly through the `pg` driver and the configured
 Supavisor session-pooler connection. The React frontend never uses generated Supabase database

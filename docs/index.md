@@ -67,7 +67,7 @@ data and decisions behind them:
 - [Participant aggregate calculations](statistics/participant-aggregates.md) — season, competition and career statistics
 - [Dataset exports and releases](data/dataset-exports.md) — filtered exports and immutable checksum-backed releases
 - [Consumer API keys and limits](api/consumer-keys.md) — key management, rate limits and quotas
-- [Database overview](database/overview.md) — implemented PostgreSQL/Supabase architecture and migrations
+- [Database architecture guide](database/guide.md) — marker-facing schema, design and deployment route
 - [Representative-scale performance baseline](development/performance-baseline.md)
 - [Sprint evidence](process/sprint-evidence.md) and [testing & validation evidence](process/validation-and-user-testing.md)
 - [Weather API](api/weather.md) — runtime Open-Meteo external API integration
@@ -90,7 +90,7 @@ fastest route through the evidence is:
 - [Automated testing strategy](development/testing.md) and [bug tracking](testing/bug-tracking.md) —
   testing procedure and continuous defect workflow
 - [API overview](api/overview.md) — handwritten API surface and live development endpoint
-- [Database overview](database/overview.md) — schema/deployment rationale and migration ownership
+- [Database architecture guide](database/guide.md) — schema/deployment rationale and migration ownership
 - [Technology stack](development/technology-stack.md) — third-party technologies, versions and
   motivations
 
