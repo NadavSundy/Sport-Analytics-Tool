@@ -21,6 +21,16 @@ The API is a primary product. It must be designed and implemented by the team as
 The version-controlled API contract is published in the
 [OpenAPI specification](openapi.md).
 
+## Live development API
+
+The deployed Sprint 2 development backend is documented at:
+
+- **Base URL:** <https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net>
+- **Health check:** <https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/api/v1/health>
+
+The deployment guides and Sprint evidence retain the deployment/acceptance trail. Availability is
+verified as part of milestone close-out rather than inferred from this documentation page.
+
 See [API versioning and deprecation](versioning.md) for compatibility,
 deprecation and retirement rules.
 
