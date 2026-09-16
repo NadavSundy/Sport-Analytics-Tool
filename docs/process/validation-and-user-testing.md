@@ -28,6 +28,7 @@ screenshots); they are not duplicated here. Notable examples include:
 - [Issue #257 — dependency-cruiser verification](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-257-dependency-cruiser-verification.md)
 - [Issue #273 — accessibility and responsive-design audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-273-accessibility-responsive-audit.md)
 - [Issue #274 — security/privacy/dependency audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md)
+- [Issue #329 — Vite/Vitest toolchain migration](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-329-vite-vitest-toolchain-migration.md)
 
 Browse the [full validation folder](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation)
 for a record tied to a specific issue number.

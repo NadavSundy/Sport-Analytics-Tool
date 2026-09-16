@@ -25,7 +25,7 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 20.19+ (20.x) or Node.js 22.12+; hosted CI/deployment use Node.js 22 LTS
 - npm 10 or later
 - Python 3.10 or later and MkDocs Material for the documentation site
 - Access to the current Supabase-hosted PostgreSQL development database

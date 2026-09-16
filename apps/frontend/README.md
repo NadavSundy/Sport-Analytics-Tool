@@ -15,7 +15,7 @@ The frontend is the React/Vite web application for Stat'sTheGame. It is a separa
 
 From the repository root:
 
-- Node.js 20 or later;
+- Node.js 20.19+ (20.x) or Node.js 22.12+;
 - npm 10 or later; and
 - access to the shared development Supabase Auth configuration.
 

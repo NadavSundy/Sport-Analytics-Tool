@@ -72,6 +72,34 @@ Before each milestone:
 
 Do not run `npm audit fix --force` without reviewing the proposed breaking changes.
 
+## Vite/Vitest toolchain policy
+
+Issue #329 deliberately migrates the frontend/test toolchain from Vite 5 / Vitest 2 to
+Vite 7 / Vitest 4 rather than running `npm audit fix --force`. The selected path is intentionally
+conservative:
+
+- Vite 7 is the maintained previous major and requires Node.js 20.19+ or 22.12+;
+- Vitest 4 supports Vite 6+ and Node.js 20+, so it keeps the repository's supported Node 20 line;
+- `@vitest/coverage-v8` stays version-aligned with Vitest;
+- the backend/worker `tsx` floor is refreshed with the migration so an old nested esbuild does not
+  preserve the same advisory through a second development-tool path; and
+- Vite 8 is not required for this remediation and changes the bundler architecture to Rolldown, so
+  that larger migration is not coupled to the security follow-up.
+- the root `overrides.vite` range keeps Vitest and its Vite-powered tooling on the same Vite 7 line as
+  the frontend; it is a package-resolution constraint rather than an imported root dependency; and
+- the contracts test script explicitly runs `src/tests` because Vitest 4 otherwise discovers generated
+  CommonJS test copies under `dist/tests`.
+
+The migration references the official
+[Vite 7 migration guide](https://v7.vite.dev/guide/migration),
+[Vitest 4 migration guide](https://vitest.dev/guide/migration.html), and the
+[esbuild GHSA-67mh-4wv8-2f99 advisory](https://github.com/advisories/GHSA-67mh-4wv8-2f99).
+
+After changing this toolchain, regenerate the lock file with normal npm install commands and verify
+frontend unit tests, Playwright E2E, `npm run check`, repository hygiene, strict documentation and both
+production/full dependency audits. Do not treat a package-major migration as complete based only on
+a successful install.
+
 ## TypeScript compatibility
 
 TypeScript is pinned to `5.5.4` because the selected `@typescript-eslint` line supports TypeScript versions below `5.6.0`. TypeScript and `@typescript-eslint` must be reviewed together when upgraded.

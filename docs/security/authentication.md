@@ -597,12 +597,15 @@ npm.cmd audit --omit=dev
 found 0 vulnerabilities
 ```
 
-The remaining Vite/esbuild advisory is limited to development tooling and npm currently requires a
-breaking Vite 8 migration to remove it. That upgrade was explicitly deferred rather than applying
-`npm audit fix --force` during Sprint 2 hardening.
+Issue #274 deferred the remaining Vite/esbuild development-tool advisory rather than applying
+`npm audit fix --force`. Issue #329 is the controlled Sprint 3 Vite/Vitest migration that addresses
+that follow-up; its final dependency-audit result is recorded only after the upgraded lock file and
+full verification have been reviewed.
 
-The complete review, findings, decisions and verification results are retained in
-[the Issue #274 security/privacy audit evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md).
+The original finding remains in
+[the Issue #274 security/privacy audit evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md),
+and the migration record is retained in
+[the Issue #329 Vite/Vitest evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-329-vite-vitest-toolchain-migration.md).
 
 ## AI Declaration
 
