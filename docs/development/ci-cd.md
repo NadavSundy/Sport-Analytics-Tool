@@ -148,8 +148,8 @@ the same suites in a separate workflow:
 
 ```text
 unrelated Pull Request -> normal change-aware lanes only
-Intermediate ingestion  -> validation + focused browser -> Sport Analytics CI / quality
-Intermediate + broad UI  -> validation + full browser    -> Sport Analytics CI / quality
+Intermediate ingestion -> validation + focused browser -> Sport Analytics CI / quality
+Intermediate + broad UI -> validation + full browser    -> Sport Analytics CI / quality
 main push                -> affected deployment only after required Pull Request quality
 ```
 
@@ -254,23 +254,30 @@ A hygiene failure is a required validation failure and therefore makes `quality`
 
 ## Coverage policy
 
-`npm run test:coverage` currently duplicates unit suites and does not enforce a repository-wide
-coverage threshold. Running it on every Pull Request would consume runner time without changing the
-merge decision.
+Issue #578 gives coverage a dedicated CI lane rather than hiding it inside the normal validation job.
+The authoritative command is `npm run test:coverage`; it runs the five required workspace coverage
+passes and aggregates their covered/coverable counters into one repository summary.
 
-The policy is therefore:
+The change-aware policy avoids duplicating expensive Vitest suites on every ordinary Pull Request:
 
-- Pull Requests: run the relevant functional/unit/browser/database checks, but do not duplicate them
-  solely for coverage;
-- pushes to `main`: do not repeat coverage or application test suites after the required Pull Request
-  quality gate has already passed;
-- `workflow_dispatch` of **Sport Analytics CI**: generate coverage as part of deliberate full validation.
+- ordinary application Pull Requests rely on their existing functional/unit/browser/database gates;
+- Pull Requests that change the coverage pipeline/configuration run the dedicated coverage lane so the
+  reporting mechanism validates itself before merge;
+- every push to `main` generates a repository-wide baseline for the merged commit; and
+- `workflow_dispatch` of **Sport Analytics CI** always generates the repository-wide report.
 
-The Intermediate ingestion merge gate does not generate a second coverage run; it reuses the same
-change-aware validation/browser ownership described above.
+The coverage job uploads the complete `coverage/` directory through `actions/upload-artifact@v4`,
+including per-workspace HTML/LCOV/JSON reports and the combined summary. `quality` requires the coverage
+job whenever the planner marks it as required.
 
-If a repository-wide coverage threshold is introduced later, this policy must be reviewed because
-coverage may then become a merge-affecting gate.
+Repository thresholds are centralised through `COVERAGE_THRESHOLD_LINES`,
+`COVERAGE_THRESHOLD_STATEMENTS`, `COVERAGE_THRESHOLD_FUNCTIONS`, and
+`COVERAGE_THRESHOLD_BRANCHES`. They are intentionally unset by default until an approved Sprint 3
+threshold is confirmed; no percentage is invented from the rubric. Once configured as Gitea repository
+variables, a below-threshold combined result makes the coverage job, and therefore `quality`, fail.
+
+See [Repository-wide Code Coverage](../testing/code-coverage.md) for the exact source scope, aggregation
+formula, outputs and verification procedure.
 
 ## Optional local CI parity before a push
 
@@ -437,12 +444,14 @@ The job graph should be read as follows:
 - `validation` skipped on `main`: expected because the application quality suite already passed in the
   required up-to-date Pull Request;
 - `validation` failure: one or more required formatting, hygiene, lint/typecheck, workspace
-  tests/builds, PostgreSQL integration, documentation, deployment-helper, OpenAPI or manual coverage
-  checks failed;
+  tests/builds, PostgreSQL integration, documentation, deployment-helper or OpenAPI checks failed;
+- `coverage` skipped: expected when the change plan does not require repository-wide reporting;
+- `coverage` failure: a required workspace coverage run/report failed or a configured combined threshold
+  was not met;
 - `browser` skipped on a Pull Request: expected when browser validation is not required;
 - `browser` skipped on `main`: expected on the deployment-only post-merge path;
 - `browser` failure: the production browser build, Playwright journey or accessibility validation failed;
-- `quality` failure: planning failed or a required Pull Request validation lane did not complete
+- `quality` failure: planning failed or a required validation, browser or coverage lane did not complete
   successfully;
 - deployment failure after merge: source quality has already passed, but the target environment,
   deployment artifact or live smoke check needs investigation.

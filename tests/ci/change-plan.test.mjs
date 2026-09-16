@@ -118,7 +118,7 @@ test('root dependency changes select full CI', () => {
   assert.equal(plan.database, true);
   assert.equal(plan.e2e, true);
   assert.equal(plan.hygiene, true);
-  assert.equal(plan.coverage, false);
+  assert.equal(plan.coverage, true);
   assert.equal(plan.deployFrontend, true);
   assert.equal(plan.deployBackend, true);
   assert.equal(plan.deployDocs, true);
@@ -187,12 +187,25 @@ test('unknown files fail safely to full CI', () => {
   assert.equal(plan.full, true);
 });
 
-test('main pushes preserve deployment routing without repeating coverage suites', () => {
+test('main pushes preserve deployment routing and record repository-wide coverage', () => {
   const plan = classifyChangedFiles(['apps/frontend/src/App.tsx'], { eventName: 'push' });
 
   assert.equal(plan.frontend, true);
   assert.equal(plan.deployFrontend, true);
-  assert.equal(plan.coverage, false);
+  assert.equal(plan.coverage, true);
+});
+
+test('every main push records a repository-wide coverage baseline', () => {
+  const plan = classifyChangedFiles(['evidence/ai/registers/example.csv'], { eventName: 'push' });
+
+  assert.equal(plan.coverage, true);
+});
+
+test('coverage infrastructure changes request the dedicated coverage lane on Pull Requests', () => {
+  const plan = classifyChangedFiles(['scripts/coverage/run-coverage.mjs']);
+
+  assert.equal(plan.coverage, true);
+  assert.equal(plan.needsNpm, true);
 });
 
 test('manual workflow dispatch always selects full CI', () => {
