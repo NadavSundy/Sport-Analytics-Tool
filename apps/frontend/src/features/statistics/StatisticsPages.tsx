@@ -1,4 +1,5 @@
 import type {
+  FixtureHighestScorer,
   FixtureOutcome,
   FixtureStatistic,
   FixtureStatistics,
@@ -152,9 +153,10 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
   if (statistic.scope === 'innings') {
     return (
       <MetricList>
-        <StatisticMetric label="Total runs" value={statistic.metrics.totalRuns} />
-        <StatisticMetric label="Delivery runs" value={statistic.metrics.deliveryRuns} />
-        <StatisticMetric label="Penalty runs" value={statistic.metrics.penaltyRuns} />
+        <StatisticMetric label="Runs" value={statistic.metrics.totalRuns} />
+        {statistic.metrics.penaltyRuns > 0 ? (
+          <StatisticMetric label="Penalty runs" value={statistic.metrics.penaltyRuns} />
+        ) : null}
       </MetricList>
     );
   }
@@ -166,6 +168,36 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
       battingPosition={statistic.battingPosition}
       battingParticipation={statistic.battingParticipation}
       dismissal={statistic.dismissal}
+    />
+  );
+}
+
+function highestScorerValue(scorer: FixtureHighestScorer): string {
+  return `${scorer.runsScored}${scorer.notOut ? '*' : ''} runs · innings ${scorer.inningsOrdinal + 1}`;
+}
+
+function HighestScorers({ scorers }: { scorers: FixtureHighestScorer[] }) {
+  if (scorers.length === 0) {
+    return null;
+  }
+
+  return (
+    <RecordFact
+      label={
+        scorers.length === 1 ? 'Highest individual innings score' : 'Joint highest innings scores'
+      }
+      value={
+        <span className="record-fact-links">
+          {scorers.map((scorer) => (
+            <span key={`${scorer.inningsId}-${scorer.participantId}`}>
+              <Link to={recordPath('participants', scorer.participantId)}>
+                {scorer.participantName}
+              </Link>{' '}
+              — <span>{highestScorerValue(scorer)}</span>
+            </span>
+          ))}
+        </span>
+      }
     />
   );
 }
@@ -340,6 +372,7 @@ function StatisticsResults({
         </div>
         <RecordFacts>
           <RecordFact label="Outcome" value={formatOutcome(statistics.outcome)} />
+          <HighestScorers scorers={statistics.highestScorers} />
           <RecordFact label="Super overs included" value="No" />
         </RecordFacts>
       </section>

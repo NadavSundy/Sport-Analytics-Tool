@@ -17,6 +17,12 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+  toss: {
+    winnerCompetitorId: 'competitor-1',
+    winnerCompetitorName: 'Wanderers',
+    decision: 'field',
+  },
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
@@ -140,6 +146,18 @@ test('competition, season, and team overviews embed readable related records', a
               method: null,
               decidedByBowlOut: false,
             },
+            highestScorers: [
+              {
+                participantId: 'participant-1',
+                participantName: 'A Player',
+                competitorId: 'competitor-1',
+                competitorName: 'Wanderers',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                runsScored: 42,
+                notOut: true,
+              },
+            ],
             warnings: [],
             statistics: [inningsStatistic, playerStatistic],
           },
@@ -287,6 +305,9 @@ test('competition, season, and team overviews embed readable related records', a
   await expect(page.getByText('0 mm')).toBeVisible();
   await expect(page.getByText('17 km/h')).toBeVisible();
   await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
+  await expect(page.getByText('Wanderers won the toss and chose to field.')).toBeVisible();
+  await expect(page.getByText('Highest individual innings score')).toBeVisible();
+  await expect(page.getByText('42* runs · innings 1')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Innings totals' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'A Player' }).first()).toBeVisible();
@@ -355,6 +376,18 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
               method: null,
               decidedByBowlOut: false,
             },
+            highestScorers: [
+              {
+                participantId: 'participant-1',
+                participantName: 'A Player',
+                competitorId: 'competitor-1',
+                competitorName: 'Wanderers',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                runsScored: 42,
+                notOut: true,
+              },
+            ],
             warnings: [],
             statistics: [inningsStatistic, playerStatistic],
           },

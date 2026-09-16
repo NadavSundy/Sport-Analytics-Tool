@@ -40,6 +40,17 @@ export const fixtureCompetitorSummarySchema = z.object({
   name: z.string().min(1),
 });
 
+export const fixtureVenueSchema = z.object({
+  name: z.string().min(1),
+  city: z.string().min(1).nullable(),
+});
+
+export const fixtureTossSchema = z.object({
+  winnerCompetitorId: apiIdentifierSchema.nullable(),
+  winnerCompetitorName: z.string().min(1).nullable(),
+  decision: z.enum(['bat', 'field']).nullable(),
+});
+
 export const fixtureSchema = z.object({
   fixtureId: apiIdentifierSchema,
   competitionId: apiIdentifierSchema.nullable(),
@@ -53,14 +64,13 @@ export const fixtureSchema = z.object({
   gender: z.string().min(1),
   ballsPerOver: z.number().int().positive(),
   scheduledOvers: z.number().int().positive().nullable(),
+  venue: fixtureVenueSchema.nullable(),
+  toss: fixtureTossSchema.nullable(),
   startDate: apiDateSchema,
   endDate: apiDateSchema,
 });
 
-export const fixtureWeatherVenueSchema = z.object({
-  name: z.string().min(1),
-  city: z.string().min(1).nullable(),
-});
+const fixtureWeatherVenueSchema = fixtureVenueSchema;
 
 export const weatherDataSchema = z.object({
   date: apiDateSchema,
@@ -281,6 +291,17 @@ export const fixtureOutcomeSchema = z.object({
   decidedByBowlOut: z.boolean(),
 });
 
+export const fixtureHighestScorerSchema = z.object({
+  participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
+  competitorId: apiIdentifierSchema,
+  competitorName: z.string().min(1),
+  inningsId: apiIdentifierSchema,
+  inningsOrdinal: z.number().int().nonnegative(),
+  runsScored: z.number().int().nonnegative(),
+  notOut: z.boolean(),
+});
+
 export const fixtureStatisticsSchema = z.object({
   fixtureId: apiIdentifierSchema,
   status: z.enum(['complete', 'partial']),
@@ -288,6 +309,7 @@ export const fixtureStatisticsSchema = z.object({
     superOversIncluded: z.literal(false),
   }),
   outcome: fixtureOutcomeSchema,
+  highestScorers: z.array(fixtureHighestScorerSchema),
   warnings: z.array(fixtureStatisticsWarningSchema),
   statistics: z.array(fixtureStatisticSchema),
 });
@@ -580,6 +602,7 @@ export type ParticipantFixtureStatistic = z.infer<typeof participantFixtureStati
 export type FixtureStatistic = z.infer<typeof fixtureStatisticSchema>;
 export type FixtureStatisticsWarning = z.infer<typeof fixtureStatisticsWarningSchema>;
 export type FixtureOutcome = z.infer<typeof fixtureOutcomeSchema>;
+export type FixtureHighestScorer = z.infer<typeof fixtureHighestScorerSchema>;
 export type FixtureStatistics = z.infer<typeof fixtureStatisticsSchema>;
 
 export type CompetitionListQuery = z.infer<typeof competitionListQuerySchema>;
