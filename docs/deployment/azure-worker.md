@@ -238,6 +238,10 @@ Documentation-only and unrelated frontend/backend changes do not select worker d
 
 The standalone `Sport Analytics - Provision and Deploy Batch Worker` workflow remains available through manual dispatch for recovery and deliberate operational redeployment. The manual path uses the same immutable commit-SHA image and active-revision verification requirements as the automatic path.
 
+### Docker registry preflight resilience
+
+Before building the worker image, both the automatic and manual deployment paths verify DNS resolution and npm-registry reachability from inside Docker. The preflight makes at most four attempts. Failed attempts back off for 5, 10 and 20 seconds before the final attempt. A transient DNS or registry failure therefore does not immediately fail an otherwise valid deployment, while a persistent failure stops before image build with an explicit connectivity diagnostic. The image build/push and Azure revision deployment remain separate workflow stages, so failures stay distinguishable in the deployment log.
+
 - `AZURE_WORKER_CREDENTIALS`: Azure login JSON for a narrowly scoped deployment principal;
 - `AZURE_WORKER_RESOURCE_GROUP`: the development resource group;
 - `AZURE_WORKER_KEY_VAULT_NAME`: existing RBAC-enabled vault name; and
