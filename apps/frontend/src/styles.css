@@ -1880,6 +1880,7 @@ main {
   font-weight: 700;
 }
 
+.submission-field input:not([type='file']),
 .submission-field select,
 .submission-field textarea {
   width: 100%;
@@ -1890,9 +1891,14 @@ main {
   color: var(--colour-text);
 }
 
+.submission-field input:not([type='file']),
 .submission-field select {
   min-height: 3rem;
   padding: 0.625rem 0.75rem;
+}
+
+:root[data-theme='night'] .submission-field input:not([type='file']) {
+  color-scheme: dark;
 }
 
 .submission-field textarea {
