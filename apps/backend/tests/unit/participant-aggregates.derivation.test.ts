@@ -13,6 +13,7 @@ function row(overrides: Partial<ParticipantAggregateRow> = {}): ParticipantAggre
     competitionId: '10',
     competitionName: 'Test League',
     season: '2016/17',
+    appearances: 1,
     fixtureCount: 1,
     sourceEventCount: 0,
     battingDeliveryCount: 0,
@@ -20,12 +21,26 @@ function row(overrides: Partial<ParticipantAggregateRow> = {}): ParticipantAggre
     ballsFaced: 0,
     fours: 0,
     sixes: 0,
+    battingInnings: 0,
+    battingDismissals: 0,
+    fifties: 0,
+    hundreds: 0,
+    highestScore: null,
+    highestScoreNotOut: null,
     bowlingDeliveryCount: 0,
     runsConceded: 0,
     wides: 0,
     noBalls: 0,
     legalBallsBowled: 0,
     wicketsTaken: 0,
+    bowlingInnings: 0,
+    fourWicketHauls: 0,
+    fiveWicketHauls: 0,
+    bestBowlingWickets: null,
+    bestBowlingRuns: null,
+    catches: 0,
+    stumpings: 0,
+    runOutInvolvements: 0,
     ballsPerOver: 6,
     ...overrides,
   };
@@ -48,6 +63,11 @@ const seasonRow = row({
   ballsFaced: 56,
   fours: 12,
   sixes: 8,
+  battingInnings: 1,
+  battingDismissals: 0,
+  hundreds: 1,
+  highestScore: 116,
+  highestScoreNotOut: true,
 });
 
 const competitionRow = row({
@@ -102,11 +122,51 @@ describe('participant aggregate derivation', () => {
 
     // 116 / 56 * 100, not the mean of the per-fixture rates that produced it.
     expect(statistic?.batting).toEqual({
+      innings: 1,
       runsScored: 116,
       ballsFaced: 56,
+      dismissals: 0,
+      notOuts: 1,
+      battingAverage: null,
       fours: 12,
       sixes: 8,
+      fifties: 0,
+      hundreds: 1,
+      highestScore: 116,
+      highestScoreNotOut: true,
       strikeRate: 207.14,
+    });
+  });
+
+  test('derives batting records from aggregate numerators and innings facts', () => {
+    const result = deriveParticipantAggregates(
+      source([
+        row({
+          sourceEventCount: 90,
+          battingDeliveryCount: 90,
+          battingInnings: 3,
+          runsScored: 180,
+          ballsFaced: 120,
+          battingDismissals: 2,
+          fifties: 2,
+          hundreds: 1,
+          highestScore: 100,
+          highestScoreNotOut: true,
+        }),
+      ]),
+      {},
+    );
+
+    expect(result.statistics[0]?.batting).toMatchObject({
+      innings: 3,
+      dismissals: 2,
+      notOuts: 1,
+      battingAverage: 90,
+      strikeRate: 150,
+      highestScore: 100,
+      highestScoreNotOut: true,
+      fifties: 2,
+      hundreds: 1,
     });
   });
 
@@ -121,6 +181,11 @@ describe('participant aggregate derivation', () => {
           noBalls: 2,
           legalBallsBowled: 23,
           wicketsTaken: 2,
+          bowlingInnings: 2,
+          fourWicketHauls: 1,
+          fiveWicketHauls: 1,
+          bestBowlingWickets: 5,
+          bestBowlingRuns: 18,
           ballsPerOver: 6,
         }),
       ]),
@@ -130,14 +195,85 @@ describe('participant aggregate derivation', () => {
     // Twenty-three legal balls is three overs and five balls, whatever the
     // number of deliveries bowled to produce them.
     expect(result.statistics[0]?.bowling).toEqual({
+      innings: 2,
       runsConceded: 44,
       wides: 3,
       noBalls: 2,
       legalBallsBowled: 23,
       wicketsTaken: 2,
+      bowlingAverage: 22,
+      bowlingStrikeRate: 11.5,
+      bestBowling: { wicketsTaken: 5, runsConceded: 18 },
+      fourWicketHauls: 1,
+      fiveWicketHauls: 1,
       ballsPerOver: 6,
       oversBowled: '3.5',
       economyRate: 11.48,
+    });
+  });
+
+  test('returns undefined bowling rates when no wicket has been credited', () => {
+    const result = deriveParticipantAggregates(
+      source([
+        row({
+          sourceEventCount: 12,
+          bowlingDeliveryCount: 12,
+          bowlingInnings: 1,
+          runsConceded: 20,
+          legalBallsBowled: 12,
+          bestBowlingWickets: 0,
+          bestBowlingRuns: 20,
+        }),
+      ]),
+      {},
+    );
+
+    expect(result.statistics[0]?.bowling).toMatchObject({
+      bowlingAverage: null,
+      bowlingStrikeRate: null,
+      bestBowling: { wicketsTaken: 0, runsConceded: 20 },
+    });
+  });
+
+  test('publishes squad appearances independently of delivery activity and zero fielding totals', () => {
+    const result = deriveParticipantAggregates(
+      source([
+        row({
+          appearances: 3,
+          fixtureCount: 0,
+          sourceEventCount: 0,
+        }),
+      ]),
+      {},
+    );
+
+    expect(result.statistics[0]).toMatchObject({
+      appearances: 3,
+      fixtureCount: 0,
+      batting: null,
+      bowling: null,
+      fielding: { catches: 0, stumpings: 0, runOutInvolvements: 0 },
+    });
+    expect(result.warnings).toEqual([]);
+  });
+
+  test('exposes catches, stumpings, and every credited run-out involvement', () => {
+    const result = deriveParticipantAggregates(
+      source([
+        row({
+          sourceEventCount: 5,
+          catches: 2,
+          stumpings: 1,
+          runOutInvolvements: 3,
+        }),
+      ]),
+      {},
+    );
+
+    expect(result.statistics[0]?.fielding).toEqual({
+      catches: 2,
+      stumpings: 1,
+      runOutInvolvements: 3,
     });
   });
 
@@ -176,7 +312,16 @@ describe('participant aggregate derivation', () => {
       {},
     );
     const scoredNothing = deriveParticipantAggregates(
-      source([row({ sourceEventCount: 3, battingDeliveryCount: 3, ballsFaced: 3 })]),
+      source([
+        row({
+          sourceEventCount: 3,
+          battingDeliveryCount: 3,
+          battingInnings: 1,
+          ballsFaced: 3,
+          highestScore: 0,
+          highestScoreNotOut: true,
+        }),
+      ]),
       {},
     );
 
@@ -191,7 +336,16 @@ describe('participant aggregate derivation', () => {
 
   test('leaves a rate undefined rather than reporting zero when nothing was faced', () => {
     const result = deriveParticipantAggregates(
-      source([row({ sourceEventCount: 2, battingDeliveryCount: 2, ballsFaced: 0 })]),
+      source([
+        row({
+          sourceEventCount: 2,
+          battingDeliveryCount: 2,
+          battingInnings: 1,
+          ballsFaced: 0,
+          highestScore: 0,
+          highestScoreNotOut: true,
+        }),
+      ]),
       {},
     );
 
@@ -256,6 +410,7 @@ describe('participant aggregate derivation', () => {
           competitionId: null,
           competitionName: null,
           season: null,
+          appearances: 0,
           fixtureCount: 0,
           sourceEventCount: 0,
         }),
