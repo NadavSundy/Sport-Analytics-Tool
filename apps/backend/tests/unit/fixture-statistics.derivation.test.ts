@@ -549,3 +549,134 @@ describe('fixture statistics golden fixture', () => {
     });
   });
 });
+
+describe('fixture statistics with zero-valued extras (issue #590)', () => {
+  const extraFields = [
+    'extraWides',
+    'extraNoBalls',
+    'extraByes',
+    'extraLegByes',
+    'extraPenalty',
+  ] as const;
+
+  function withExplicitZeros(
+    events: FixtureStatisticsEventSource[],
+    fields: readonly (typeof extraFields)[number][] = extraFields,
+  ): FixtureStatisticsEventSource[] {
+    return events.map((source) => {
+      const copy = { ...source };
+      for (const field of fields) {
+        copy[field] ??= 0;
+      }
+      return copy;
+    });
+  }
+
+  function overEvent(
+    inningsSequence: number,
+    overrides: Partial<FixtureStatisticsEventSource>,
+  ): FixtureStatisticsEventSource {
+    return event({
+      deliveryId: `over-${inningsSequence}`,
+      inningsId: '501',
+      inningsOrdinal: 0,
+      inningsSequence,
+      ...overrides,
+    });
+  }
+
+  // One over from bowler 201 holding nine deliveries, six of them legal.
+  const overWithWideAndNoBalls: FixtureStatisticsEventSource[] = [
+    overEvent(1, { runsOffBat: 1, runsTotal: 1 }),
+    overEvent(2, { strikerId: '102', runsExtras: 1, runsTotal: 1, extraWides: 1 }),
+    overEvent(3, {
+      strikerId: '102',
+      runsOffBat: 4,
+      runsExtras: 1,
+      runsTotal: 5,
+      extraNoBalls: 1,
+    }),
+    overEvent(4, { strikerId: '102' }),
+    overEvent(5, { strikerId: '102', runsExtras: 1, runsTotal: 1, extraLegByes: 1 }),
+    overEvent(6, { runsExtras: 2, runsTotal: 2, extraByes: 2 }),
+    overEvent(7, { runsExtras: 3, runsTotal: 3, extraNoBalls: 1, extraByes: 2 }),
+    overEvent(8, { runsExtras: 5, runsTotal: 5, extraPenalty: 5 }),
+    overEvent(9, { runsOffBat: 6, runsTotal: 6 }),
+  ];
+
+  function participant(result: ReturnType<typeof deriveFixtureStatistics>, participantId: string) {
+    const statistic = result.statistics.find(
+      (candidate) => candidate.scope === 'participant' && candidate.participantId === participantId,
+    );
+    return statistic?.scope === 'participant' ? statistic : undefined;
+  }
+
+  test('derives identical statistics whether zero extras are omitted or explicit', () => {
+    for (const events of [goldenEvents, overWithWideAndNoBalls]) {
+      const omitted = deriveFixtureStatistics(goldenSource(events));
+
+      expect(deriveFixtureStatistics(goldenSource(withExplicitZeros(events)))).toEqual(omitted);
+      expect(
+        deriveFixtureStatistics(
+          goldenSource(withExplicitZeros(events, ['extraWides', 'extraNoBalls'])),
+        ),
+      ).toEqual(omitted);
+    }
+  });
+
+  test.each([
+    ['omitted', overWithWideAndNoBalls],
+    ['explicitly zero', withExplicitZeros(overWithWideAndNoBalls)],
+  ])(
+    'derives an over containing a wide and no-balls when other extras are %s',
+    (_label, events) => {
+      const result = deriveFixtureStatistics(goldenSource(events), { includeContributors: true });
+
+      expect(participant(result, '201')?.bowling).toEqual({
+        // 11 off the bat + 1 wide + 2 no-balls. The byes, leg bye and penalty
+        // runs are team extras and are not charged to the bowler.
+        runsConceded: 14,
+        wides: 1,
+        noBalls: 2,
+        legalBallsBowled: 6,
+        oversBowled: '1.0',
+        economyRate: 14,
+        wicketsTaken: 0,
+      });
+
+      // The no-ball at sequence 7 is faced; the wide at sequence 2 is not.
+      expect(participant(result, '101')?.batting).toEqual({
+        runsScored: 7,
+        ballsFaced: 5,
+        strikeRate: 140,
+        fours: 0,
+        sixes: 1,
+      });
+      expect(participant(result, '102')?.batting).toEqual({
+        runsScored: 4,
+        ballsFaced: 3,
+        strikeRate: 133.33,
+        fours: 1,
+        sixes: 0,
+      });
+
+      const innings = result.statistics.find(
+        (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
+      );
+      expect(innings?.scope === 'innings' ? innings.metrics : null).toEqual({
+        deliveryRuns: 24,
+        penaltyRuns: 5,
+        totalRuns: 29,
+      });
+
+      const teamExtras =
+        innings?.scope === 'innings'
+          ? innings.contributingEvents?.reduce(
+              (total, contributingEvent) => total + contributingEvent.runs.extras,
+              0,
+            )
+          : null;
+      expect(teamExtras).toBe(13);
+    },
+  );
+});
