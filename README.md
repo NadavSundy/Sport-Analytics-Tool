@@ -2,6 +2,8 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
+[![Repository coverage](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/raw/branch/coverage-badge/badge.svg)](https://sports-analytics-tool.pages.dev/testing/code-coverage/)
+
 > **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and manage submitter access. Approved submitters use the staged batch workflow for season and back-catalogue packages, with asynchronous validation, reference resolution, reviewer decisions, correction resubmission, and publication; administrators retain privileged direct/import routes. Public competition, season, fixture, event, competitor, participant, derived fixture-statistics, and participant season/competition/career aggregate reads are available without authentication. Filtered fixture-event and calculation-trace exports are available as JSON and CSV, and immutable versioned dataset releases can be generated and downloaded. External consumers can use administrator-issued API keys with per-minute rate limits and UTC daily quotas. The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Advanced analyst-defined statistics, live-feed and bitemporal processing, change feeds, and other Advanced-tier functionality remain future work.
 
 ## Repository structure
