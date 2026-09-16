@@ -36,6 +36,15 @@ The stored value is kept as submitted. A zero and NULL are classified identicall
 wide only when `extra_wides > 0` and a no-ball only when `extra_noballs > 0`. Queries must therefore
 never classify a delivery with `IS NULL` or `IS NOT NULL` on these columns (issue #590).
 
+Extras are run counts, so none may be negative. Each extras column carries a check that allows NULL
+or a value of zero or more: `delivery_extra_wides_nonnegative_ck`,
+`delivery_extra_noballs_nonnegative_ck`, `delivery_extra_byes_nonnegative_ck`,
+`delivery_extra_legbyes_nonnegative_ck` and `delivery_extra_penalty_nonnegative_ck`. The submission
+contract applies the same rule, and the Cricsheet ingest validates every delivery's extras against
+that contract before writing anything, so a file with an invalid extra leaves no partial data
+(issue #623). Byes or leg byes recorded on a wide are still accepted as O3 describes; how they should
+be treated awaits a team decision.
+
 ### 1.1 The case that decides delivery identity
 
 In match `1402765`, innings 0, over 5, seven consecutive deliveries carry the same
@@ -84,7 +93,7 @@ A delivery is identified by:
 idempotency key: two submitted deliveries are the same delivery when these four
 values agree, which is what allows a feed to be replayed without double-counting.
 
-TThe printed ball number is stored for display only, and never used to join. It is
+The printed ball number is stored for display only, and never used to join. It is
 derived at ingestion from a count of legal deliveries within the over: wides and
 no-balls do not advance it, which is why it repeats. Storing the array position
 here instead would produce a value that never repeats, and the column would no
@@ -398,3 +407,4 @@ The issue #284 immutable correction audit schema was documented with the assista
 
 The issue #363 protected provenance API documentation was generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #297 Intermediate database-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #623 extras constraints were documented with the assistance of Claude-Code[Claude Opus 5].
