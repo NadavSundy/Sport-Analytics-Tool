@@ -10,19 +10,25 @@
  *   - Wides and no-balls are not legal deliveries: they do not count towards
  *     the balls of an over or towards overs bowled.
  *   - A wide is not a ball faced by the batter. A no-ball is.
- *   - Wide and no-ball runs are charged to the bowler. Byes, leg byes and
- *     penalty runs are team extras and are never charged to the bowler, so
- *     they play no part in classification.
+ *   - Wide and no-ball runs are charged to the bowler. Under Law 22.6 every run
+ *     completed off a wide is a wide run, so byes or leg byes recorded on a wide
+ *     are wide runs and are charged to the bowler too: `{ wides: 1, byes: 4 }`
+ *     is charged exactly as `{ wides: 5 }`, the form Cricsheet records
+ *     (ADR-014, issue #623).
+ *   - Byes and leg byes on any other delivery, including a no-ball, and all
+ *     penalty runs are team extras and are never charged to the bowler.
  *
- * Stored events keep the values exactly as submitted, including explicit zeros.
- * Every derivation classifies through these functions instead, in TypeScript,
- * or through the SQL fragments below, which must agree with them. A database
- * test runs both over the same table of cases.
+ * Stored events keep the values exactly as submitted, including explicit zeros
+ * and byes recorded on a wide. Every derivation classifies through these
+ * functions instead, in TypeScript, or through the SQL fragments below, which
+ * must agree with them. A database test runs both over the same table of cases.
  */
 
 export interface CricketDeliveryExtrasValues {
   wides?: number | null | undefined;
   noBalls?: number | null | undefined;
+  byes?: number | null | undefined;
+  legByes?: number | null | undefined;
 }
 
 function positive(value: number | null | undefined): number {
@@ -45,20 +51,32 @@ export function countsAsBallFaced(extras: CricketDeliveryExtrasValues): boolean 
   return !isWide(extras);
 }
 
+/** Wide runs charged to the bowler, including byes and leg byes run off a wide. */
+export function bowlerWideRuns(extras: CricketDeliveryExtrasValues): number {
+  return isWide(extras)
+    ? positive(extras.wides) + positive(extras.byes) + positive(extras.legByes)
+    : 0;
+}
+
 /** Wide and no-ball runs, which are charged to the bowler as well as the team. */
 export function bowlerChargedExtras(extras: CricketDeliveryExtrasValues): number {
-  return positive(extras.wides) + positive(extras.noBalls);
+  return bowlerWideRuns(extras) + positive(extras.noBalls);
 }
 
 const SQL_ALIAS_PATTERN = /^[a-z_][a-z0-9_]*$/;
 
 /**
- * `alias` names a row carrying the `delivery` table's `extra_wides` and
- * `extra_noballs` columns. Callers embed the result in a query rather than
- * binding it as a parameter, so the alias must be a literal written at the call
- * site and never request input.
+ * `alias` names a row carrying the `delivery` table's `extra_wides`,
+ * `extra_noballs`, `extra_byes` and `extra_legbyes` columns. Callers embed the
+ * result in a query rather than binding it as a parameter, so the alias must be
+ * a literal written at the call site and never request input.
  */
-function extrasColumns(alias: string): { wides: string; noBalls: string } {
+function extrasColumns(alias: string): {
+  wides: string;
+  noBalls: string;
+  byes: string;
+  legByes: string;
+} {
   if (!SQL_ALIAS_PATTERN.test(alias)) {
     throw new Error(`Invalid SQL alias for delivery classification: ${alias}`);
   }
@@ -66,6 +84,8 @@ function extrasColumns(alias: string): { wides: string; noBalls: string } {
   return {
     wides: `COALESCE(${alias}.extra_wides, 0)`,
     noBalls: `COALESCE(${alias}.extra_noballs, 0)`,
+    byes: `COALESCE(${alias}.extra_byes, 0)`,
+    legByes: `COALESCE(${alias}.extra_legbyes, 0)`,
   };
 }
 
@@ -86,7 +106,16 @@ export function countsAsBallFacedSql(alias: string): string {
   return `(${extrasColumns(alias).wides} <= 0)`;
 }
 
+export function bowlerWideRunsSql(alias: string): string {
+  const columns = extrasColumns(alias);
+  return (
+    `(CASE WHEN ${columns.wides} > 0 ` +
+    `THEN ${columns.wides} + GREATEST(${columns.byes}, 0) + GREATEST(${columns.legByes}, 0) ` +
+    `ELSE 0 END)`
+  );
+}
+
 export function bowlerChargedExtrasSql(alias: string): string {
   const columns = extrasColumns(alias);
-  return `(GREATEST(${columns.wides}, 0) + GREATEST(${columns.noBalls}, 0))`;
+  return `(${bowlerWideRunsSql(alias)} + GREATEST(${columns.noBalls}, 0))`;
 }

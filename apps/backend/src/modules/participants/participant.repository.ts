@@ -1,5 +1,6 @@
 import {
   bowlerChargedExtrasSql,
+  bowlerWideRunsSql,
   countsAsBallFacedSql,
   isLegalDeliverySql,
 } from '@sport-analytics/contracts';
@@ -181,7 +182,8 @@ export interface ParticipantFixturePage {
  *   - super-over innings are excluded;
  *   - a wide is not a ball faced, but a no-ball is;
  *   - a wide and a no-ball are not legal balls bowled;
- *   - byes and leg byes are not conceded by the bowler;
+ *   - byes and leg byes are not conceded by the bowler, except when run off a
+ *     wide, where Law 22.6 makes them wide runs;
  *   - only dismissal kinds crediting the bowler count as wickets.
  *
  * A fixture the participant was selected for but did not bat or bowl in returns
@@ -280,7 +282,7 @@ export async function listParticipantFixtures(
           SUM(
             d.runs_off_bat + ${bowlerChargedExtrasSql('d')}
           )::int AS runs_conceded,
-          COALESCE(SUM(d.extra_wides), 0)::int AS wides,
+          COALESCE(SUM(${bowlerWideRunsSql('d')}), 0)::int AS wides,
           COALESCE(SUM(d.extra_noballs), 0)::int AS no_balls,
           COUNT(*) FILTER (
             WHERE ${isLegalDeliverySql('d')}
