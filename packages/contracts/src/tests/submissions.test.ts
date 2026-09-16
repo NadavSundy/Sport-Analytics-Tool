@@ -5,6 +5,7 @@ import {
   correctionRequestSchema,
   DIRECT_SUBMISSION_SCHEMA_VERSION,
   MAX_SUBMISSION_UPLOAD_BYTES,
+  submissionExtrasSchema,
   submissionRequestSchema,
   submissionResponseSchema,
 } from '../submissions';
@@ -166,6 +167,36 @@ describe('direct submission contract', () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  test('exports the extras breakdown rules used by every delivery event', () => {
+    expect(submissionExtrasSchema.safeParse({}).success).toBe(true);
+    expect(
+      submissionExtrasSchema.safeParse({ wides: 0, noBalls: 1, byes: 4, legByes: 0, penalty: 5 })
+        .success,
+    ).toBe(true);
+
+    for (const extras of [
+      { wides: -1 },
+      { noBalls: -1 },
+      { byes: -1 },
+      { legByes: -1 },
+      { penalty: -1 },
+      { wides: 1.5 },
+      { byes: 32_768 },
+      { noballs: 1 },
+    ]) {
+      expect(submissionExtrasSchema.safeParse(extras).success, JSON.stringify(extras)).toBe(false);
+    }
+
+    const negative = submissionRequestSchema.safeParse({
+      fixtureId: '7',
+      schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+      events: [
+        { ...validEvent(), runs: { offBat: 0, extras: 0, total: 0 }, extras: { wides: -1 } },
+      ],
+    });
+    expect(negative.success).toBe(false);
   });
 
   test('accepts a wicket naming several fielders and one unnamed substitute', () => {
