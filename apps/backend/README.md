@@ -16,7 +16,7 @@ The backend is the handwritten Express HTTP API for Stat'sTheGame. It is the aut
 
 From the repository root:
 
-- Node.js 20 or later;
+- Node.js 20.19+ (20.x) or Node.js 22.12+;
 - npm 10 or later;
 - access to the shared Supabase Auth configuration; and
 - access to the selected hosted PostgreSQL development database; and
