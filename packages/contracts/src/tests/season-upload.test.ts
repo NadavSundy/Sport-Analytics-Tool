@@ -8,7 +8,7 @@ import {
   seasonUploadPackageSchema,
 } from '../season-upload';
 
-const homeTeam = { sourceId: 'cricsheet:team:wits' };
+const homeTeam = { context: { name: 'Wits University' } };
 const awayTeam = { context: { name: 'University of Cape Town' } };
 
 function event(overrides = {}) {
@@ -149,6 +149,10 @@ describe('versioned season-upload contract', () => {
           innings: [
             {
               sourceId: `cricsheet:innings:season-${fixtureIndex + 1}-1`,
+              context: {
+                ordinal: 0,
+                battingTeam: homeTeam,
+              },
               events: [
                 event({
                   eventId: `cricsheet:delivery:season-${fixtureIndex + 1}-1`,
@@ -188,6 +192,7 @@ describe('versioned season-upload contract', () => {
           innings: [
             {
               sourceId: 'cricsheet:innings:1412526-1',
+              context: { ordinal: 0, battingTeam: homeTeam },
               events: [laterEvent, event()],
             },
           ],
@@ -198,6 +203,7 @@ describe('versioned season-upload contract', () => {
           innings: [
             {
               sourceId: 'cricsheet:innings:1412527-1',
+              context: { ordinal: 0, battingTeam: awayTeam },
               events: [
                 event({
                   eventId: 'cricsheet:delivery:1412527-1-1',
@@ -367,6 +373,97 @@ describe('versioned season-upload contract', () => {
         fixtures: [fixture({ sourceId: 'cricsheet:team:1412526' })],
       }).success,
     ).toBe(false);
+  });
+
+  test('rejects source-only references without a durable canonical resolver', () => {
+    const sourceOnly = (sourceId: string) => ({ sourceId });
+
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({ competition: sourceOnly('cricsheet:competition:varsity-cup') }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({ season: sourceOnly('cricsheet:season:2026') }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              context: { date: '2026-03-14', teams: [sourceOnly('cricsheet:team:wits'), awayTeam] },
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [fixture({ sourceId: 'other:fixture:1412526', context: undefined })],
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [
+                {
+                  sourceId: 'cricsheet:innings:1412526-1',
+                  events: [event()],
+                },
+              ],
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [
+                {
+                  context: { ordinal: 1, battingTeam: homeTeam },
+                  events: [event({ striker: sourceOnly('other:participant:player-1') })],
+                },
+              ],
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  test('accepts source-only references backed by durable canonical mappings', () => {
+    const result = seasonUploadPackageSchema.safeParse(
+      seasonPackage({
+        fixtures: [
+          {
+            sourceId: 'app:fixture:101',
+            innings: [
+              {
+                sourceId: 'app:innings:201',
+                events: [
+                  event({
+                    striker: { sourceId: 'cricsheet:participant:player-1' },
+                    nonStriker: { sourceId: 'app:participant:301' },
+                    bowler: { sourceId: 'app:participant:302' },
+                  }),
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(result.success).toBe(true);
   });
 
   test('defines an explicit resolution requirement for ambiguous participants', () => {
