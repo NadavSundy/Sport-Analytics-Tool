@@ -108,8 +108,6 @@ Local change-aware CI invokes the same root command when coverage is selected.
 
 ## Verification record
 
-## Verification record
-
 The following results were observed during local verification on 2026-09-16:
 
 | Gate                         | Command                                           | Result                                                                                                                    |
@@ -132,5 +130,5 @@ They are not the Sprint 3 policy threshold; no repository policy threshold is co
 
 The coverage architecture, implementation scaffold, CI routing, aggregation/regression-test design,
 documentation and this evidence record were produced with the assistance of
-ChatGPT-Web[GPT-5.6 Sol]. The student must review the generated work and replace the pending entries
-above with locally observed results before merge/closure.
+ChatGPT-Web[GPT-5.6 Sol]. The student reviewed the generated work and completed the local verification
+record above before merge/closure.

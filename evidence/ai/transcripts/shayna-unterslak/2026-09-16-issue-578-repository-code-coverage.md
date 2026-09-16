@@ -29,17 +29,17 @@ ChatGPT-Web[GPT-5.6 Sol] was used to:
 - draft coverage documentation and Issue #578 validation evidence; and
 - provide local verification and Git guidance.
 
-## Human review required
+## Human review completed
 
-The generated implementation must be reviewed in the student repository. The student must regenerate
-the npm lockfile, run the coverage pipeline locally, inspect the baseline and reports, test temporary
-above/below-baseline threshold values, run the repository quality/hygiene/docs/local-CI gates, and
-update the Issue #578 evidence with the observed results before merge or closure.
+The generated implementation was reviewed in the student repository. The npm lockfile was regenerated,
+the five-workspace coverage pipeline was run locally, the baseline and reports were inspected, temporary
+above/below-baseline threshold values were tested, and the repository quality/hygiene/docs/local-CI
+gates were run before finalising the Issue #578 evidence.
 
 The temporary verification thresholds are not a recommendation for the Sprint 3 threshold. The final
 policy value remains unset until an approved requirement is available.
 
-## Planned verification
+## Verification commands used
 
 ```text
 npm install

@@ -84,7 +84,10 @@ test('every required workspace explicitly covers production source and emits mac
   for (const workspace of expectedWorkspaces) {
     const packageJson = JSON.parse(readFileSync(workspace.packagePath, 'utf8'));
     const config = readFileSync(workspace.configPath, 'utf8');
-
+    assert.equal(
+      rootPackage.scripts['pretest:coverage'],
+      'npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/object-storage',
+    );
     assert.match(
       packageJson.scripts['test:coverage'],
       /vitest run.*--coverage/,
