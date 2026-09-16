@@ -1,5 +1,6 @@
 import {
   bowlerChargedExtrasSql,
+  bowlerWideRunsSql,
   countsAsBallFacedSql,
   isLegalDeliverySql,
 } from '@sport-analytics/contracts';
@@ -42,7 +43,8 @@ interface ParticipantRow {
  *   - super-over innings are excluded, through `standardInningsPredicate`;
  *   - a wide is not a ball faced, but a no-ball is;
  *   - neither a wide nor a no-ball is a legal ball bowled;
- *   - byes and leg byes are not conceded by the bowler;
+ *   - byes and leg byes are not conceded by the bowler, except when run off a
+ *     wide, where Law 22.6 makes them wide runs;
  *   - a boundary excludes deliveries flagged `non_boundary`; and
  *   - only dismissal kinds crediting the bowler count as wickets, so a run out
  *     is not the bowler's.
@@ -151,7 +153,7 @@ export async function loadParticipantAggregatesSource(
           ) FILTER (WHERE pd.is_bowler),
           0
         )::int AS "runsConceded",
-        COALESCE(SUM(pd.extra_wides) FILTER (WHERE pd.is_bowler), 0)::int AS wides,
+        COALESCE(SUM(${bowlerWideRunsSql('pd')}) FILTER (WHERE pd.is_bowler), 0)::int AS wides,
         COALESCE(SUM(pd.extra_noballs) FILTER (WHERE pd.is_bowler), 0)::int AS "noBalls",
         COUNT(*) FILTER (
           WHERE pd.is_bowler AND ${isLegalDeliverySql('pd')}
