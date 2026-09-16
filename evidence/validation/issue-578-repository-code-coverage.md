@@ -107,25 +107,27 @@ Local change-aware CI invokes the same root command when coverage is selected.
 - dedicated CI routing, artifact upload and quality-gate wiring.
 
 ## Verification record
+
 ## Verification record
 
 The following results were observed during local verification on 2026-09-16:
 
-| Gate | Command | Result |
-| --- | --- | --- |
-| Coverage strategy regression | `node --test tests/ci/coverage-strategy.test.mjs` | PASS |
-| Change-aware CI routing | `npm run test:ci-routing` | PASS |
-| Repository coverage baseline | `npm run test:coverage` | PASS — lines 5466/8566 (63.81%); statements 5628/8999 (62.54%); functions 1385/2013 (68.80%); branches 3790/6627 (57.19%) |
-| Below-threshold proof | temporary `COVERAGE_THRESHOLD_LINES=63.82` | PASS — command correctly rejected 63.81% line coverage and exited non-zero |
-| Passing-threshold proof | temporary `COVERAGE_THRESHOLD_LINES=63.80` | PASS — command accepted 63.81% line coverage and exited zero |
-| Repository quality | `npm run check` | PASS |
-| Monorepo hygiene | `npm run hygiene` | PASS |
-| Strict documentation | `python -m mkdocs build --strict` | PASS |
-| Patch whitespace | `git diff --check` | PASS |
-| Change-aware local CI | `npm run ci:local` | PASS |
+| Gate                         | Command                                           | Result                                                                                                                    |
+| ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Coverage strategy regression | `node --test tests/ci/coverage-strategy.test.mjs` | PASS                                                                                                                      |
+| Change-aware CI routing      | `npm run test:ci-routing`                         | PASS                                                                                                                      |
+| Repository coverage baseline | `npm run test:coverage`                           | PASS — lines 5466/8566 (63.81%); statements 5628/8999 (62.54%); functions 1385/2013 (68.80%); branches 3790/6627 (57.19%) |
+| Below-threshold proof        | temporary `COVERAGE_THRESHOLD_LINES=63.82`        | PASS — command correctly rejected 63.81% line coverage and exited non-zero                                                |
+| Passing-threshold proof      | temporary `COVERAGE_THRESHOLD_LINES=63.80`        | PASS — command accepted 63.81% line coverage and exited zero                                                              |
+| Repository quality           | `npm run check`                                   | PASS                                                                                                                      |
+| Monorepo hygiene             | `npm run hygiene`                                 | PASS                                                                                                                      |
+| Strict documentation         | `python -m mkdocs build --strict`                 | PASS                                                                                                                      |
+| Patch whitespace             | `git diff --check`                                | PASS                                                                                                                      |
+| Change-aware local CI        | `npm run ci:local`                                | PASS                                                                                                                      |
 
 The temporary 63.80% and 63.82% line-threshold values were used only to prove pass/fail enforcement.
 They are not the Sprint 3 policy threshold; no repository policy threshold is configured by this change.
+
 ## AI Declaration
 
 The coverage architecture, implementation scaffold, CI routing, aggregation/regression-test design,
