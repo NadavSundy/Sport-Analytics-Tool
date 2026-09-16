@@ -44,13 +44,18 @@ interface DismissalCountRow {
   credited: number;
 }
 
+interface BowlingCandidateRow {
+  personId: string;
+  wickets: number;
+}
+
 const seedPath = withExplicitZeroExtras(
   resolve(__dirname, '../../../../database/seeds/matches/423788.json'),
 );
 const sourceRef = `issue-285-423788-${process.pid}`;
 
 /** Published scorecard figures for Brendon McCullum in this fixture. */
-const publishedMcCullum = {
+const publishedMcCullumFixture = {
   runsScored: 116,
   ballsFaced: 56,
   fours: 12,
@@ -58,13 +63,31 @@ const publishedMcCullum = {
   strikeRate: 207.14,
 };
 
+const publishedMcCullum = {
+  innings: 1,
+  ...publishedMcCullumFixture,
+  dismissals: 0,
+  notOuts: 1,
+  battingAverage: null,
+  fifties: 0,
+  hundreds: 1,
+  highestScore: 116,
+  highestScoreNotOut: true,
+};
+
 /** Published bowling figures for Tim Southee in this fixture. */
 const publishedSouthee = {
+  innings: 1,
   runsConceded: 44,
   wides: 1,
   noBalls: 0,
   legalBallsBowled: 24,
   wicketsTaken: 0,
+  bowlingAverage: null,
+  bowlingStrikeRate: null,
+  bestBowling: { wicketsTaken: 0, runsConceded: 44 },
+  fourWicketHauls: 0,
+  fiveWicketHauls: 0,
   ballsPerOver: 6,
   oversBowled: '4.0',
   economyRate: 11,
@@ -199,10 +222,16 @@ describe.sequential('participant aggregate statistics database integration', () 
 
     for (const statistic of aggregates.statistics) {
       expect(statistic.participantId).toBe(mccullum.personId);
+      expect(statistic.appearances).toBe(1);
       expect(statistic.fixtureCount).toBe(1);
       expect(statistic.batting).toEqual(publishedMcCullum);
       // He did not bowl. A zero would misrepresent that as an economy of none.
       expect(statistic.bowling).toBeNull();
+      expect(statistic.fielding).toEqual({
+        catches: 0,
+        stumpings: 0,
+        runOutInvolvements: 0,
+      });
     }
 
     const season = aggregates.statistics.find((statistic) => statistic.scope === 'season');
@@ -282,7 +311,7 @@ describe.sequential('participant aggregate statistics database integration', () 
 
     // Three independent paths through the same events must not disagree.
     expect(fixtureStatistic?.scope === 'participant' ? fixtureStatistic.batting : null).toEqual(
-      publishedMcCullum,
+      publishedMcCullumFixture,
     );
     expect({
       runsScored: historyRecord?.runsScored,
@@ -304,6 +333,11 @@ describe.sequential('participant aggregate statistics database integration', () 
 
     for (const statistic of aggregates.statistics) {
       expect(statistic.bowling).toEqual(publishedSouthee);
+      expect(statistic.fielding).toEqual({
+        catches: 1,
+        stumpings: 0,
+        runOutInvolvements: 1,
+      });
     }
 
     // The eliminator would otherwise add 6 runs, six legal balls and a wicket.
@@ -376,6 +410,235 @@ describe.sequential('participant aggregate statistics database integration', () 
     expect(creditedAcrossCareers).toBe(8);
   });
 
+  test('derives batting dismissals, not-outs, averages, milestones, and ducks by innings', async () => {
+    const guptill = await person('2be41edb');
+    const ingram = await person('5bd3bb5d');
+    const mccullum = await person('b8a55852');
+
+    const guptillCareer = (await aggregatesFor(guptill.personId)).statistics.find(
+      (statistic) => statistic.scope === 'career',
+    );
+    expect(guptillCareer?.batting).toMatchObject({
+      innings: 1,
+      runsScored: 17,
+      dismissals: 1,
+      notOuts: 0,
+      battingAverage: 17,
+      highestScore: 17,
+      highestScoreNotOut: false,
+      fifties: 0,
+      hundreds: 0,
+    });
+
+    const duck = (await aggregatesFor(ingram.personId)).statistics.find(
+      (statistic) => statistic.scope === 'career',
+    );
+    expect(duck?.batting).toMatchObject({
+      innings: 1,
+      runsScored: 0,
+      dismissals: 1,
+      notOuts: 0,
+      battingAverage: 0,
+      highestScore: 0,
+      highestScoreNotOut: false,
+    });
+
+    const notOut = (await aggregatesFor(mccullum.personId)).statistics.find(
+      (statistic) => statistic.scope === 'career',
+    );
+    expect(notOut?.batting).toMatchObject({
+      dismissals: 0,
+      notOuts: 1,
+      battingAverage: null,
+      highestScore: 116,
+      highestScoreNotOut: true,
+      hundreds: 1,
+    });
+  });
+
+  test('recomputes bowling rates from aggregate totals and credits every run-out fielder', async () => {
+    const bowlerRows = await executeQuery<BowlerRow>(
+      databaseClient(),
+      `
+        SELECT DISTINCT d.bowler_id::text AS "personId"
+        FROM delivery_current d
+        JOIN innings i ON i.innings_id = d.innings_id
+        WHERE i.fixture_id = $1 AND i.is_super_over = false
+      `,
+      [ingestedFixtureId()],
+    );
+    let checkedWicketBowler = false;
+    for (const bowler of bowlerRows.rows) {
+      const career = (await aggregatesFor(bowler.personId)).statistics.find(
+        (statistic) => statistic.scope === 'career',
+      );
+      const bowling = career?.bowling;
+      if (bowling && bowling.wicketsTaken > 0) {
+        expect(bowling.bowlingAverage).toBe(
+          Number((bowling.runsConceded / bowling.wicketsTaken).toFixed(2)),
+        );
+        expect(bowling.bowlingStrikeRate).toBe(
+          Number((bowling.legalBallsBowled / bowling.wicketsTaken).toFixed(2)),
+        );
+        checkedWicketBowler = true;
+      }
+    }
+    expect(checkedWicketBowler).toBe(true);
+
+    for (const sourceReference of ['d0513f63', 'b0c772ee']) {
+      const contributor = await person(sourceReference);
+      const career = (await aggregatesFor(contributor.personId)).statistics.find(
+        (statistic) => statistic.scope === 'career',
+      );
+      expect(career?.fielding.runOutInvolvements).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  test('derives four- and five-wicket hauls and best bowling from complete innings figures', async () => {
+    const executor = databaseClient();
+    await executor.query('SAVEPOINT issue_632_bowling_hauls');
+
+    try {
+      const candidates = await executeQuery<BowlingCandidateRow>(
+        executor,
+        `
+          SELECT
+            d.bowler_id::text AS "personId",
+            COALESCE(SUM((
+              SELECT COUNT(*)
+              FROM delivery_wicket wicket
+              JOIN dismissal_kind kind ON kind.code = wicket.kind
+              WHERE wicket.delivery_id = d.delivery_id AND kind.credits_bowler
+            )), 0)::int AS wickets
+          FROM delivery_current d
+          JOIN innings i ON i.innings_id = d.innings_id
+          WHERE i.fixture_id = $1 AND i.is_super_over = false
+          GROUP BY d.bowler_id
+          HAVING COUNT(*) >= 5
+          ORDER BY wickets ASC, d.bowler_id ASC
+          LIMIT 2
+        `,
+        [ingestedFixtureId()],
+      );
+      const fourWicketBowler = candidates.rows[0];
+      const fiveWicketBowler = candidates.rows[1];
+      if (!fourWicketBowler || !fiveWicketBowler) {
+        throw new Error('Expected two reference-fixture bowlers for haul derivation.');
+      }
+
+      for (const [candidate, target] of [
+        [fourWicketBowler, 4],
+        [fiveWicketBowler, 5],
+      ] as const) {
+        const additions = target - candidate.wickets;
+        expect(additions).toBeGreaterThan(0);
+        await executeQuery(
+          executor,
+          `
+            INSERT INTO delivery_wicket (
+              delivery_id,
+              ordinal,
+              kind,
+              source_kind,
+              player_out_id
+            )
+            SELECT
+              delivery.delivery_id,
+              99,
+              'bowled',
+              'bowled',
+              delivery.striker_id
+            FROM delivery_current delivery
+            JOIN innings i ON i.innings_id = delivery.innings_id
+            WHERE i.fixture_id = $1
+              AND i.is_super_over = false
+              AND delivery.bowler_id = $2::bigint
+            ORDER BY delivery.innings_sequence
+            LIMIT $3
+          `,
+          [ingestedFixtureId(), candidate.personId, additions],
+        );
+      }
+
+      const fourCareer = (await aggregatesFor(fourWicketBowler.personId)).statistics.find(
+        (statistic) => statistic.scope === 'career',
+      );
+      expect(fourCareer?.bowling).toMatchObject({
+        wicketsTaken: 4,
+        bestBowling: { wicketsTaken: 4 },
+        fourWicketHauls: 1,
+        fiveWicketHauls: 0,
+      });
+
+      const fiveCareer = (await aggregatesFor(fiveWicketBowler.personId)).statistics.find(
+        (statistic) => statistic.scope === 'career',
+      );
+      expect(fiveCareer?.bowling).toMatchObject({
+        wicketsTaken: 5,
+        bestBowling: { wicketsTaken: 5 },
+        fourWicketHauls: 0,
+        fiveWicketHauls: 1,
+      });
+    } finally {
+      await executor.query('ROLLBACK TO SAVEPOINT issue_632_bowling_hauls');
+      await executor.query('RELEASE SAVEPOINT issue_632_bowling_hauls');
+    }
+  });
+
+  test('derives stumpings from the identified fielder on a stumped dismissal', async () => {
+    const executor = databaseClient();
+    const keeper = await person('b8a55852');
+    await executor.query('SAVEPOINT issue_632_stumping');
+
+    try {
+      const wicket = await executeQuery<{ wicketId: string }>(
+        executor,
+        `
+          INSERT INTO delivery_wicket (
+            delivery_id,
+            ordinal,
+            kind,
+            source_kind,
+            player_out_id
+          )
+          SELECT
+            delivery.delivery_id,
+            99,
+            'stumped',
+            'stumped',
+            delivery.striker_id
+          FROM delivery_current delivery
+          JOIN innings i ON i.innings_id = delivery.innings_id
+          WHERE i.fixture_id = $1 AND i.is_super_over = false
+          ORDER BY delivery.innings_sequence
+          LIMIT 1
+          RETURNING wicket_id::text AS "wicketId"
+        `,
+        [ingestedFixtureId()],
+      );
+      const wicketId = wicket.rows[0]?.wicketId;
+      if (!wicketId) {
+        throw new Error('Expected the representative stumping wicket to be inserted.');
+      }
+      await executeQuery(
+        executor,
+        `
+          INSERT INTO delivery_wicket_fielder (wicket_id, ordinal, person_id)
+          VALUES ($1::bigint, 0, $2::bigint)
+        `,
+        [wicketId, keeper.personId],
+      );
+
+      const career = (await aggregatesFor(keeper.personId)).statistics.find(
+        (statistic) => statistic.scope === 'career',
+      );
+      expect(career?.fielding).toMatchObject({ stumpings: 1 });
+    } finally {
+      await executor.query('ROLLBACK TO SAVEPOINT issue_632_stumping');
+      await executor.query('RELEASE SAVEPOINT issue_632_stumping');
+    }
+  });
+
   test('reconciles every batter career against the innings run totals', async () => {
     const strikers = await executeQuery<BowlerRow>(
       databaseClient(),
@@ -434,6 +697,49 @@ describe.sequential('participant aggregate statistics database integration', () 
     expect(
       original.statistics.find((statistic) => statistic.scope === 'career')?.batting?.runsScored,
     ).toBe(116);
+  });
+
+  test('counts a selected player with no delivery activity as an appearance', async () => {
+    const selected = await executeQuery<PersonRow>(
+      databaseClient(),
+      `
+        INSERT INTO person (source_ref, display_name)
+        VALUES ($1, 'Selected Reserve')
+        RETURNING person_id::text AS "personId", display_name AS "displayName"
+      `,
+      [`${sourceRef}-selected-reserve`],
+    );
+    const reserve = selected.rows[0];
+    if (!reserve) {
+      throw new Error('Expected the selected reserve person row to be inserted.');
+    }
+
+    await executeQuery(
+      databaseClient(),
+      `
+        INSERT INTO fixture_squad (fixture_id, person_id, team_id)
+        SELECT $1::bigint, $2::bigint, team_id
+        FROM fixture_team
+        WHERE fixture_id = $1::bigint
+        ORDER BY ordinal
+        LIMIT 1
+      `,
+      [ingestedFixtureId(), reserve.personId],
+    );
+
+    const aggregates = await aggregatesFor(reserve.personId);
+    expect(aggregates.statistics).toHaveLength(3);
+    for (const statistic of aggregates.statistics) {
+      expect(statistic).toMatchObject({
+        appearances: 1,
+        fixtureCount: 0,
+        sourceEventCount: 0,
+        batting: null,
+        bowling: null,
+        fielding: { catches: 0, stumpings: 0, runOutInvolvements: 0 },
+      });
+    }
+    expect(aggregates.status).toBe('complete');
   });
 
   test('derives every level in a bounded number of statements', async () => {

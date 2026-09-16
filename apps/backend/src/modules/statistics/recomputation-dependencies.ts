@@ -2,9 +2,10 @@
  * The exact derived-statistic scopes whose inputs include a corrected delivery.
  *
  * Fixture statistics depend on every delivery in that fixture. Participant
- * aggregate statistics depend only on a delivery's striker and bowler; both the
- * previous and replacement roles are included because a correction may change
- * either identifier. This is intentionally a dependency map, not a cache: the
+ * aggregate statistics depend on every participant relationship represented by
+ * a delivery: batters, bowler, dismissed players and identified fielders. Both
+ * the previous and replacement roles are included because a correction may
+ * change any of them. This is intentionally a dependency map, not a cache: the
  * current API derives authoritative values from `delivery_current`.
  */
 type StatisticsRefreshScope = 'fixture' | 'season' | 'competition' | 'career';
@@ -23,6 +24,33 @@ export interface CorrectionStatisticsDependencyInput {
   season: string | null;
   previousParticipantIds: readonly string[];
   resultingParticipantIds: readonly string[];
+}
+
+interface AggregateParticipantEvent {
+  strikerId: string;
+  nonStrikerId: string;
+  bowlerId: string;
+  wickets: ReadonlyArray<{
+    playerOutId: string;
+    fielders: ReadonlyArray<{ participantId?: string | undefined }>;
+  }>;
+}
+
+/** Stable participant identifiers whose aggregates consume one delivery. */
+export function aggregateParticipantIds(event: AggregateParticipantEvent): string[] {
+  return [
+    ...new Set([
+      event.strikerId,
+      event.nonStrikerId,
+      event.bowlerId,
+      ...event.wickets.flatMap((wicket) => [
+        wicket.playerOutId,
+        ...wicket.fielders.flatMap((fielder) =>
+          fielder.participantId === undefined ? [] : [fielder.participantId],
+        ),
+      ]),
+    ]),
+  ].sort();
 }
 
 export function deriveCorrectionStatisticsDependencies(

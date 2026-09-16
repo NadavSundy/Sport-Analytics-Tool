@@ -79,15 +79,32 @@ const over: OverDelivery[] = [
 ];
 
 const expectedBatter = { runsScored: 5, ballsFaced: 7, fours: 1, sixes: 0, strikeRate: 71.43 };
+const expectedAggregateBatter = {
+  innings: 1,
+  ...expectedBatter,
+  dismissals: 0,
+  notOuts: 1,
+  battingAverage: null,
+  fifties: 0,
+  hundreds: 0,
+  highestScore: 5,
+  highestScoreNotOut: true,
+};
 
 // 5 off the bat + 8 wide runs + 1 no-ball. The 2 byes off the no-ball are team
 // extras.
 const expectedBowler = {
+  innings: 1,
   runsConceded: 14,
   wides: 8,
   noBalls: 1,
   legalBallsBowled: 6,
   wicketsTaken: 0,
+  bowlingAverage: null,
+  bowlingStrikeRate: null,
+  bestBowling: { wicketsTaken: 0, runsConceded: 14 },
+  fourWicketHauls: 0,
+  fiveWicketHauls: 0,
   ballsPerOver: 6,
   oversBowled: '1.0',
   economyRate: 14,
@@ -403,7 +420,7 @@ describe.sequential('byes and leg byes recorded on a wide across statistics path
     expect(withByes.aggregates.batter).toEqual(
       ['season', 'competition', 'career'].map((scope) => ({
         scope,
-        batting: expectedBatter,
+        batting: expectedAggregateBatter,
         bowling: null,
       })),
     );

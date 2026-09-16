@@ -24,6 +24,7 @@ import {
   SubmissionValidationError,
 } from './submission.errors';
 import {
+  aggregateParticipantIds,
   deriveCorrectionStatisticsDependencies,
   type StatisticsRefreshDependency,
 } from '../statistics/recomputation-dependencies';
@@ -900,8 +901,8 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           fixtureId: target.fixtureId,
           competitionId: target.competitionId,
           season: target.season,
-          previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
-          resultingParticipantIds: [event.strikerId, event.bowlerId],
+          previousParticipantIds: aggregateParticipantIds(previousState),
+          resultingParticipantIds: aggregateParticipantIds(event),
         });
         await recordStatisticsRefreshDependencies(
           client,

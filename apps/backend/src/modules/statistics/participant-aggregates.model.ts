@@ -13,6 +13,9 @@ export interface ParticipantAggregateRow {
   competitionId: string | null;
   competitionName: string | null;
   season: string | null;
+  /** Fixtures for which authoritative squad data selects the participant. */
+  appearances: number;
+  /** Fixtures with striker or bowler activity; retained separately from appearances. */
   fixtureCount: number;
   sourceEventCount: number;
   /**
@@ -25,6 +28,12 @@ export interface ParticipantAggregateRow {
   ballsFaced: number;
   fours: number;
   sixes: number;
+  battingInnings: number;
+  battingDismissals: number;
+  fifties: number;
+  hundreds: number;
+  highestScore: number | null;
+  highestScoreNotOut: boolean | null;
   /** Deliveries in this group where the participant was the bowler. */
   bowlingDeliveryCount: number;
   runsConceded: number;
@@ -34,6 +43,14 @@ export interface ParticipantAggregateRow {
   noBalls: number;
   legalBallsBowled: number;
   wicketsTaken: number;
+  bowlingInnings: number;
+  fourWicketHauls: number;
+  fiveWicketHauls: number;
+  bestBowlingWickets: number | null;
+  bestBowlingRuns: number | null;
+  catches: number;
+  stumpings: number;
+  runOutInvolvements: number;
   /**
    * The balls-per-over of the fixtures in this group, or null where they do not
    * agree. Overs bowled and economy rate need a divisor and
