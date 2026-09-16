@@ -38,6 +38,7 @@ describe('public fixture statistics API', () => {
           method: null,
           decidedByBowlOut: false,
         },
+        highestScorers: [],
         warnings: [],
         statistics: [],
       });

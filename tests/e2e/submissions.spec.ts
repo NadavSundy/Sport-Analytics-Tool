@@ -20,6 +20,8 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-20',
   endDate: '2026-08-20',
 };

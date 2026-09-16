@@ -252,6 +252,8 @@ function mapFixture(record: FixtureRecord): Fixture {
     gender: record.gender,
     ballsPerOver: record.ballsPerOver,
     scheduledOvers: record.scheduledOvers,
+    venue: record.venue,
+    toss: record.toss,
     startDate: record.startDate,
     endDate: record.endDate,
   };
@@ -311,6 +313,8 @@ function mapParticipantFixture(
     fixture: mapFixture({
       ...record,
       competitors,
+      venue: null,
+      toss: null,
     }),
     competitionName: record.competitionName,
     competitors: competitors.map(({ competitorId, name }) => ({ competitorId, name })),

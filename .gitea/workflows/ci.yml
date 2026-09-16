@@ -180,10 +180,6 @@ jobs:
         if: needs.plan.outputs.docs == 'true'
         run: python -m mkdocs build --strict
 
-      - name: Generate coverage on deliberate full validation
-        if: needs.plan.outputs.coverage == 'true'
-        run: npm run test:coverage
-
   browser:
     needs: plan
     if: >-
@@ -257,11 +253,83 @@ jobs:
           NODE_ENV: production
         run: npm run test:e2e
 
+  coverage:
+    needs: plan
+    if: needs.plan.outputs.coverage == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      NODE_ENV: test
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+      COVERAGE_THRESHOLD_LINES: ${{ vars.COVERAGE_THRESHOLD_LINES }}
+      COVERAGE_THRESHOLD_STATEMENTS: ${{ vars.COVERAGE_THRESHOLD_STATEMENTS }}
+      COVERAGE_THRESHOLD_FUNCTIONS: ${{ vars.COVERAGE_THRESHOLD_FUNCTIONS }}
+      COVERAGE_THRESHOLD_BRANCHES: ${{ vars.COVERAGE_THRESHOLD_BRANCHES }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate repository-wide coverage
+        run: npm run test:coverage
+
+      - name: Upload repository coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-coverage-${{ github.sha }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish live coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          cp coverage/combined/badge.svg "$RUNNER_TEMP/coverage-badge.svg"
+
+          git config user.name "gitea-actions"
+          git config user.email "actions@users.noreply.sdp.ms.wits.ac.za"
+
+          git fetch origin coverage-badge || true
+          if git show-ref --verify --quiet refs/remotes/origin/coverage-badge; then
+            git switch -C coverage-badge origin/coverage-badge
+          else
+            git switch --orphan coverage-badge
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          cp "$RUNNER_TEMP/coverage-badge.svg" badge.svg
+          git add badge.svg
+          if git diff --cached --quiet; then
+            echo "Coverage badge is already current."
+            exit 0
+          fi
+
+          git commit -m "chore(coverage): update live badge"
+          git push origin coverage-badge
+
   quality:
     needs:
       - plan
       - validation
       - browser
+      - coverage
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -275,6 +343,8 @@ jobs:
           VALIDATION_RESULT: ${{ needs.validation.result }}
           BROWSER_REQUIRED: ${{ needs.plan.outputs.e2e }}
           BROWSER_RESULT: ${{ needs.browser.result }}
+          COVERAGE_REQUIRED: ${{ needs.plan.outputs.coverage }}
+          COVERAGE_RESULT: ${{ needs.coverage.result }}
           INTERMEDIATE_INGESTION_REQUIRED: ${{ needs.plan.outputs.intermediateIngestion }}
         run: |
           if [ "$PLAN_RESULT" != "success" ]; then
@@ -293,13 +363,23 @@ jobs:
               exit 1
             fi
 
+            if [ "$COVERAGE_REQUIRED" = "true" ] && [ "$COVERAGE_RESULT" != "success" ]; then
+              echo "::error::Required repository coverage did not complete successfully ($COVERAGE_RESULT)."
+              exit 1
+            fi
+
             if [ "$INTERMEDIATE_INGESTION_REQUIRED" = "true" ]; then
               echo "Intermediate ingestion merge-gated acceptance passed through the existing validation and browser lanes."
             fi
 
             echo "Required change-aware Pull Request validation passed."
           else
-            echo "Main push planning passed; full application quality was enforced before merge."
+            if [ "$COVERAGE_REQUIRED" = "true" ] && [ "$COVERAGE_RESULT" != "success" ]; then
+              echo "::error::Required repository coverage did not complete successfully ($COVERAGE_RESULT)."
+              exit 1
+            fi
+
+            echo "Main push planning and required repository coverage passed; full application quality was enforced before merge."
           fi
 
   deploy_frontend:
@@ -600,12 +680,12 @@ jobs:
             echo "Docker npm registry connectivity attempt $attempt/$MAX_CONNECTIVITY_ATTEMPTS"
 
             echo "Checking DNS resolution inside Docker..."
-            if ! docker run --rm node:22-bookworm-slim \
+            if ! docker run --rm --network=host node:22-bookworm-slim \
               node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"; then
               failure_stage="DNS resolution"
             else
               echo "Checking npm registry connectivity inside Docker..."
-              if docker run --rm node:22-bookworm-slim \
+              if docker run --rm --network=host node:22-bookworm-slim \
                 npm ping --registry=https://registry.npmjs.org/; then
                 echo "Docker npm registry connectivity verified."
                 exit 0
