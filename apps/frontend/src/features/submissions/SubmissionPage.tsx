@@ -769,6 +769,7 @@ function SubmissionForm({
                   {formatFixtureOption(fixture)}
                 </option>
               ))}
+              {mode === 'file' ? <option value={NEW_FIXTURE_VALUE}>New fixture</option> : null}
             </select>
 
             <p id="submission-fixture-help" className="field-help">
