@@ -316,3 +316,44 @@ test('worker deployment workflows verify the active healthy image matches the va
     );
   }
 });
+
+test('worker deployment npm connectivity checks use the same host network as worker builds', () => {
+  const workflowPaths = ['.gitea/workflows/ci.yml', '.gitea/workflows/deploy-worker.yml'];
+
+  for (const workflowPath of workflowPaths) {
+    const workflow = readFileSync(workflowPath, 'utf8');
+    const probeStart = workflow.indexOf('- name: Verify Docker npm registry connectivity');
+    const buildStart = workflow.indexOf(
+      '- name: Build immutable worker image and push to Azure Container Registry',
+      probeStart,
+    );
+
+    assert.notEqual(
+      probeStart,
+      -1,
+      `${workflowPath} must retain the Docker npm connectivity guard`,
+    );
+    assert.notEqual(buildStart, -1, `${workflowPath} must retain the immutable worker image build`);
+
+    const probe = workflow.slice(probeStart, buildStart);
+
+    assert.doesNotMatch(
+      probe,
+      /docker run --rm node:22-bookworm-slim/,
+      `${workflowPath} must not test npm through the broken default Docker bridge`,
+    );
+
+    const hostNetworkRuns = probe.match(/docker run --rm --network=host node:22-bookworm-slim/g);
+
+    assert.ok(
+      hostNetworkRuns && hostNetworkRuns.length >= 2,
+      `${workflowPath} must run both Docker DNS and npm probes with --network=host`,
+    );
+
+    assert.match(
+      workflow.slice(buildStart),
+      /docker build[\s\S]*?--network=host/,
+      `${workflowPath} worker image build must continue using host networking`,
+    );
+  }
+});
