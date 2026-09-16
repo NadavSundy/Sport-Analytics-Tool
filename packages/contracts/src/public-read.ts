@@ -185,6 +185,7 @@ export const statisticContributingEventSchema = z.object({
   }),
   nonBoundary: z.boolean(),
   bowlerWickets: z.number().int().nonnegative(),
+  wicketsLost: z.number().int().nonnegative(),
 });
 
 const fixtureStatisticCommonSchema = z.object({
@@ -205,6 +206,18 @@ export const inningsTeamStatisticSchema = fixtureStatisticCommonSchema.extend({
     deliveryRuns: z.number().int().nonnegative(),
     penaltyRuns: z.number().int().nonnegative(),
     totalRuns: z.number().int().nonnegative(),
+    wicketsLost: z.number().int().nonnegative(),
+    legalBalls: z.number().int().nonnegative(),
+    overs: z.string().regex(/^\d+\.\d+$/),
+    runRate: z.number().nonnegative().nullable(),
+    extras: z.object({
+      total: z.number().int().nonnegative(),
+      wides: z.number().int().nonnegative(),
+      noBalls: z.number().int().nonnegative(),
+      byes: z.number().int().nonnegative(),
+      legByes: z.number().int().nonnegative(),
+      penaltyRuns: z.number().int().nonnegative(),
+    }),
   }),
 });
 

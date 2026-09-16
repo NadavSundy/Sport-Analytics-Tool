@@ -39,7 +39,16 @@ const inningsStatistic = {
   competitorId: 'team-1',
   competitorName: 'Wanderers',
   sourceEventCount: 12,
-  metrics: { deliveryRuns: 103, penaltyRuns: 1, totalRuns: 104 },
+  metrics: {
+    deliveryRuns: 103,
+    penaltyRuns: 1,
+    totalRuns: 104,
+    wicketsLost: 3,
+    legalBalls: 72,
+    overs: '12.0',
+    runRate: 8.67,
+    extras: { total: 8, wides: 3, noBalls: 1, byes: 0, legByes: 3, penaltyRuns: 1 },
+  },
 };
 
 const playerStatistic = {
@@ -277,6 +286,7 @@ test(
                   },
                   nonBoundary: false,
                   bowlerWickets: 0,
+                  wicketsLost: 0,
                 },
               ],
             },

@@ -31,7 +31,16 @@ const inningsStatistic = {
   competitorId: 'team-1',
   competitorName: 'Team One',
   sourceEventCount: 1,
-  metrics: { deliveryRuns: 5, penaltyRuns: 0, totalRuns: 5 },
+  metrics: {
+    deliveryRuns: 5,
+    penaltyRuns: 0,
+    totalRuns: 5,
+    wicketsLost: 0,
+    legalBalls: 0,
+    overs: '0.0',
+    runRate: null,
+    extras: { total: 1, wides: 1, noBalls: 0, byes: 0, legByes: 0, penaltyRuns: 0 },
+  },
 };
 
 const participantStatistic = {
@@ -111,6 +120,7 @@ test(
                   },
                   nonBoundary: false,
                   bowlerWickets: 0,
+                  wicketsLost: 0,
                 },
               ],
             },

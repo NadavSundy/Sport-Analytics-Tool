@@ -51,6 +51,7 @@ function traceEvents(count: number) {
     extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
     nonBoundary: false,
     bowlerWickets: 0,
+    wicketsLost: 0,
   }));
 }
 
@@ -116,7 +117,16 @@ const inningsStatistic = {
   competitorId: 'team-1',
   competitorName: 'Wanderers',
   sourceEventCount: 120,
-  metrics: { deliveryRuns: 154, penaltyRuns: 5, totalRuns: 159 },
+  metrics: {
+    deliveryRuns: 154,
+    penaltyRuns: 5,
+    totalRuns: 159,
+    wicketsLost: 6,
+    legalBalls: 120,
+    overs: '20.0',
+    runRate: 7.95,
+    extras: { total: 9, wides: 2, noBalls: 1, byes: 0, legByes: 1, penaltyRuns: 5 },
+  },
 };
 
 const participantStatistic = {
@@ -575,6 +585,7 @@ describe('public fixture statistics pages', () => {
                 },
                 nonBoundary: false,
                 bowlerWickets: 0,
+                wicketsLost: 0,
               },
             ],
           },

@@ -135,6 +135,7 @@ function contributingEvent(eventId: string, sequenceNumber: number) {
     extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
     nonBoundary: false,
     bowlerWickets: 0,
+    wicketsLost: 0,
   };
 }
 
