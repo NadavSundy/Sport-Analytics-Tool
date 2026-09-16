@@ -903,6 +903,7 @@ describe('canonical fixture creation', () => {
         competitionId: persistedBatch.competitionId,
         actorId: '1',
         referencePath: 'fixtures.0',
+        proposal: unresolvedFixture.resolvedReferences.fixture.submittedReference.proposal,
       }),
     );
     expect(batches.publishAcceptedItems).not.toHaveBeenCalled();

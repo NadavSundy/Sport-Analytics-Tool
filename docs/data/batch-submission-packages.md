@@ -25,6 +25,21 @@ The approved limits are:
 
 Changing these limits requires representative measurement and a recorded follow-up decision.
 
+## Version 1.1 fixture proposals
+
+A version `1.1` package can introduce a fixture that is not yet canonical. Every proposed fixture
+must retain all of the following metadata through staging and reviewer resolution: `endDate`,
+`matchType`, `teamType`, `gender`, `ballsPerOver`, `outcome`, `sourceVersion`, and
+`sourceRevision`. The reviewer receives that exact validated proposal before choosing **Create
+canonical fixture from proposal**; the upload never creates a canonical fixture directly.
+
+JSON uses `fixtures[].proposal`. CSV uses the eight `fixture*` columns included in the maintained
+template (`fixtureEndDate` through `fixtureSourceRevision`) on every row for that fixture. NDJSON
+uses `proposal` on its `fixture` record. A version `1.1` source that omits or invalidly represents
+any required proposal field is rejected as a package-item validation error; the worker never drops
+proposal metadata or substitutes defaults. Version `1.0` packages remain unchanged and leave these
+CSV columns blank.
+
 ## NDJSON record contract
 
 NDJSON is line-oriented and every non-empty line is an independently valid JSON object. Records must
@@ -154,3 +169,5 @@ resolves that reference to Azure storage coordinates.
 
 The issue #356 package, identity and resolution decisions were documented or edited with the
 assistance of Codex[GPT-5] and ChatGPT-Web[GPT-5.6 Sol].
+The Issue #583 fixture-proposal representation rules were documented with the assistance of
+Codex[GPT-5].

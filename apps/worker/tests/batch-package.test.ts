@@ -190,8 +190,9 @@ describe('shipped guided templates (#500)', () => {
       fixtureSourceRevision: '0',
     };
     for (const [column, value] of Object.entries(proposalColumns)) {
-      columns.push(column);
-      cells.push(value);
+      const index = columns.indexOf(column);
+      expect(index, `template column ${column}`).toBeGreaterThanOrEqual(0);
+      cells[index] = value;
     }
     const source = `${columns.join(',')}\n${cells.join(',')}\n`;
 
@@ -211,6 +212,71 @@ describe('shipped guided templates (#500)', () => {
       sourceVersion: '1',
       sourceRevision: 0,
     });
+  });
+
+  it('preserves a version 1.1 fixture proposal from NDJSON', async () => {
+    const proposal = {
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    };
+    const source = [
+      JSON.stringify({
+        recordType: 'manifest',
+        contractVersion: '1.1',
+        packageId: 'submitter:package:ndjson-package',
+        competition: { context: { name: 'Premier T20' } },
+        season: { context: { name: '2026' } },
+      }),
+      JSON.stringify({
+        recordType: 'fixture',
+        fixtureKey: 'fixture-1',
+        sourceId: 'submitter:fixture:ndjson-package',
+        context: {
+          date: '2026-03-14',
+          teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+        },
+        proposal,
+      }),
+      JSON.stringify({
+        recordType: 'innings',
+        fixtureKey: 'fixture-1',
+        inningsKey: 'innings-1',
+        context: { ordinal: 0, battingTeam: { context: { name: 'Wanderers' } } },
+      }),
+      JSON.stringify({
+        recordType: 'event',
+        fixtureKey: 'fixture-1',
+        inningsKey: 'innings-1',
+        event: {
+          eventId: 'submitter:delivery:ndjson-package-1',
+          occurrenceSequence: 1,
+          overNumber: 0,
+          positionInOver: 0,
+          ballLabel: '0.1',
+          striker: { context: { name: 'A. Batter' } },
+          nonStriker: { context: { name: 'B. Batter' } },
+          bowler: { context: { name: 'C. Bowler' } },
+          runs: { offBat: 0, extras: 0, total: 0 },
+          extras: {},
+        },
+      }),
+    ].join('\n');
+
+    const scan = await scanBatchReferences(
+      async () => Readable.from(source),
+      'application/x-ndjson',
+    );
+    const referenceChunk = await referenceChunkFor(source, 'application/x-ndjson');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual(proposal);
   });
 });
 
