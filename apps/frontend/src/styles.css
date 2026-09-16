@@ -1782,7 +1782,7 @@ main {
 .submission-form {
   display: grid;
   gap: 2rem;
-  max-width: 62rem;
+  max-width: 75rem;
   padding-top: 2rem;
 }
 
@@ -1820,7 +1820,7 @@ main {
 }
 
 .submission-workflow-selector {
-  max-width: 62rem;
+  max-width: 75rem;
   margin-top: 2rem;
 }
 
