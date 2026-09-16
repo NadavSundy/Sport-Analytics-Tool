@@ -1,5 +1,7 @@
 # Issue #274 Basic security, privacy and dependency audit
 
+> **Follow-up (2026-09-16):** Issue #329 is the dedicated Sprint 3 remediation for the deferred Vite/esbuild development-tool finding (SEC-274-04). This file intentionally preserves the state and decisions at the time of Issue #274; current migration and verification evidence is recorded in `evidence/validation/issue-329-vite-vitest-toolchain-migration.md`.
+
 **Date:** 2026-08-30  
 **Branch:** `test/274-security-privacy-dependency-audit`
 
@@ -266,7 +268,7 @@ cleanup work under Issue #274.
 | SEC-274-03 | Cloudflare tooling          | Wrangler/Miniflare resolved affected `undici@7.28.0`.                                          | High/tooling         | Fixed in scope through Wrangler/Undici refresh.                                         |
 | SEC-274-04 | Vite development server     | Vite 5 resolves an affected esbuild version; npm remediation requires breaking Vite 8 upgrade. | Moderate/dev tooling | Deferred with rationale. Production audit is clean; do not use `npm audit fix --force`. |
 | SEC-274-05 | Knip hygiene                | Existing unused-file/export reports unrelated to security/privacy.                             | Low                  | Reviewed; no security action required under #274.                                       |
-| SEC-274-04 | Vite development server     | Vite 5 resolves an affected esbuild version; npm remediation requires breaking Vite 8 upgrade. | Moderate/dev tooling | Deferred to #325. Production audit is clean; do not use `npm audit fix --force`.        |
+| SEC-274-04 | Vite development server     | Vite 5 resolves an affected esbuild version; npm remediation requires breaking Vite 8 upgrade. | Moderate/dev tooling | Deferred to #329. Production audit is clean; do not use `npm audit fix --force`.        |
 
 Follow-up issue #329 tracks the supported Vite/Vitest migration required to resolve the remaining development-tool advisory.
 
