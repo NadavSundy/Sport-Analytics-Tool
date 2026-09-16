@@ -26,5 +26,19 @@ export default defineConfig({
     // environment, so disable Node's implementation in test workers and let
     // jsdom provide the browser Storage API.
     execArgv: nodeMajorVersion >= 25 ? ['--no-experimental-webstorage'] : [],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.{test,spec}.{ts,tsx}',
+        'src/**/{test,tests}/**',
+        'src/**/{fixtures,mocks}/**',
+        'src/**/generated/**',
+        'src/**/*.generated.{ts,tsx}',
+        'src/**/*.d.ts',
+      ],
+      reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
+      reportsDirectory: '../../coverage/frontend',
+    },
   },
 });
