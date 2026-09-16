@@ -102,37 +102,37 @@ npm ls vite vitest @vitejs/plugin-react @vitest/coverage-v8 tsx esbuild
 
 Verification was completed on 2026-09-16 from the repository root.
 
-| Gate | Command | Result |
-| --- | --- | --- |
-| Lock/install | `npm install` / `npm ci` | **PASS** — clean install completed; 677 packages audited with 0 vulnerabilities |
-| Dependency tree | `npm ls vite vitest @vitejs/plugin-react @vitest/coverage-v8 tsx esbuild` | **PASS** — Vite 7.3.6 is deduplicated across the frontend and Vitest; Vitest 4.1.11; plugin-react 5.0.4; coverage-v8 4.1.11; tsx 4.23.13; esbuild 0.28.1 |
-| Frontend unit tests | `npm run test:frontend` | **PASS** — 23 files, 196 tests |
-| Contracts tests | `npm run test:contracts` | **PASS** — 12 files, 168 tests |
-| Browser E2E | `npm run test:e2e` | **PASS** — 51 Playwright tests |
-| Repository quality | `npm run check` | **PASS** |
-| Monorepo hygiene | `npm run hygiene` | **PASS** as part of the final successful local-CI run; Knip, Syncpack and architecture checks cleared |
-| Production audit | `npm audit --omit=dev` | **PASS** — 0 vulnerabilities |
-| Full audit | `npm audit` | **PASS** — 0 vulnerabilities |
-| Strict docs | `python -m mkdocs build --strict` | **PASS** — strict build completed successfully |
-| Local CI | `npm run ci:local` | **PASS** — includes lint/typecheck/build, unit/API/frontend/deployment checks, strict MkDocs, 51 Playwright tests and PostgreSQL 16 integration tests |
-| Database integration | local-CI PostgreSQL 16 stage | **PASS** — 22 files passed, 1 skipped; 178 tests passed, 2 skipped |
-| Patch whitespace | `git diff --check` | **PASS** before final evidence-only update; rerun once after this evidence update before commit |
+| Gate                 | Command                                                                   | Result                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lock/install         | `npm install` / `npm ci`                                                  | **PASS** — clean install completed; 677 packages audited with 0 vulnerabilities                                                                          |
+| Dependency tree      | `npm ls vite vitest @vitejs/plugin-react @vitest/coverage-v8 tsx esbuild` | **PASS** — Vite 7.3.6 is deduplicated across the frontend and Vitest; Vitest 4.1.11; plugin-react 5.0.4; coverage-v8 4.1.11; tsx 4.23.13; esbuild 0.28.1 |
+| Frontend unit tests  | `npm run test:frontend`                                                   | **PASS** — 23 files, 196 tests                                                                                                                           |
+| Contracts tests      | `npm run test:contracts`                                                  | **PASS** — 12 files, 168 tests                                                                                                                           |
+| Browser E2E          | `npm run test:e2e`                                                        | **PASS** — 51 Playwright tests                                                                                                                           |
+| Repository quality   | `npm run check`                                                           | **PASS**                                                                                                                                                 |
+| Monorepo hygiene     | `npm run hygiene`                                                         | **PASS** as part of the final successful local-CI run; Knip, Syncpack and architecture checks cleared                                                    |
+| Production audit     | `npm audit --omit=dev`                                                    | **PASS** — 0 vulnerabilities                                                                                                                             |
+| Full audit           | `npm audit`                                                               | **PASS** — 0 vulnerabilities                                                                                                                             |
+| Strict docs          | `python -m mkdocs build --strict`                                         | **PASS** — strict build completed successfully                                                                                                           |
+| Local CI             | `npm run ci:local`                                                        | **PASS** — includes lint/typecheck/build, unit/API/frontend/deployment checks, strict MkDocs, 51 Playwright tests and PostgreSQL 16 integration tests    |
+| Database integration | local-CI PostgreSQL 16 stage                                              | **PASS** — 22 files passed, 1 skipped; 178 tests passed, 2 skipped                                                                                       |
+| Patch whitespace     | `git diff --check`                                                        | **PASS** before final evidence-only update; rerun once after this evidence update before commit                                                          |
 
 The final `npm audit` results contain no remaining advisory, so no residual security exception is required.
 
 ## Acceptance-criteria traceability
 
-| Acceptance criterion | Evidence status |
-| --- | --- |
-| Supported Vite/Vitest path identified | **VERIFIED** — Vite 7.3.6 / Vitest 4.1.11 path documented and resolved consistently |
-| Upgrade without `npm audit fix --force` | **VERIFIED** — migration was performed deliberately without `--force`; a normal `npm audit fix` was later used only for separately reported fixable transitive advisories |
-| React/Vite/Vitest configuration changes applied deliberately | **VERIFIED** — Vitest 4 `execArgv` migration, contracts source-test scoping, plugin-react 5.0.4 and root Vite 7 override are documented |
-| Frontend unit tests pass | **VERIFIED** — 196/196 |
-| Playwright E2E tests pass | **VERIFIED** — 51/51 |
-| `npm run check` passes | **VERIFIED** |
-| Audit rerun and advisory resolved/justified | **VERIFIED** — production and full npm audits report 0 vulnerabilities |
-| Affected documentation updated | **VERIFIED** — setup, stack, dependency policy, validation index and migration evidence updated |
-| Full local CI passes | **VERIFIED** — `LOCAL CI: PASS` |
+| Acceptance criterion                                         | Evidence status                                                                                                                                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supported Vite/Vitest path identified                        | **VERIFIED** — Vite 7.3.6 / Vitest 4.1.11 path documented and resolved consistently                                                                                       |
+| Upgrade without `npm audit fix --force`                      | **VERIFIED** — migration was performed deliberately without `--force`; a normal `npm audit fix` was later used only for separately reported fixable transitive advisories |
+| React/Vite/Vitest configuration changes applied deliberately | **VERIFIED** — Vitest 4 `execArgv` migration, contracts source-test scoping, plugin-react 5.0.4 and root Vite 7 override are documented                                   |
+| Frontend unit tests pass                                     | **VERIFIED** — 196/196                                                                                                                                                    |
+| Playwright E2E tests pass                                    | **VERIFIED** — 51/51                                                                                                                                                      |
+| `npm run check` passes                                       | **VERIFIED**                                                                                                                                                              |
+| Audit rerun and advisory resolved/justified                  | **VERIFIED** — production and full npm audits report 0 vulnerabilities                                                                                                    |
+| Affected documentation updated                               | **VERIFIED** — setup, stack, dependency policy, validation index and migration evidence updated                                                                           |
+| Full local CI passes                                         | **VERIFIED** — `LOCAL CI: PASS`                                                                                                                                           |
 
 ## AI Declaration
 
