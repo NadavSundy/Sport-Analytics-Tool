@@ -72,15 +72,35 @@ jobs:
 
       - name: Verify Docker npm registry connectivity
         run: |
-          echo "Checking DNS resolution inside Docker..."
+          MAX_CONNECTIVITY_ATTEMPTS=4
+          CONNECTIVITY_RETRY_BASE_SECONDS=5
 
-          docker run --rm node:22-bookworm-slim \
-            node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"
+          for attempt in $(seq 1 "$MAX_CONNECTIVITY_ATTEMPTS"); do
+            echo "Docker npm registry connectivity attempt $attempt/$MAX_CONNECTIVITY_ATTEMPTS"
 
-          echo "Checking npm registry connectivity inside Docker..."
+            echo "Checking DNS resolution inside Docker..."
+            if ! docker run --rm node:22-bookworm-slim \
+              node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"; then
+              failure_stage="DNS resolution"
+            else
+              echo "Checking npm registry connectivity inside Docker..."
+              if docker run --rm node:22-bookworm-slim \
+                npm ping --registry=https://registry.npmjs.org/; then
+                echo "Docker npm registry connectivity verified."
+                exit 0
+              fi
+              failure_stage="npm registry connectivity"
+            fi
 
-          docker run --rm node:22-bookworm-slim \
-            npm ping --registry=https://registry.npmjs.org/
+            if [ "$attempt" -eq "$MAX_CONNECTIVITY_ATTEMPTS" ]; then
+              echo "::error::Docker npm registry connectivity failed after $MAX_CONNECTIVITY_ATTEMPTS attempts; last failure: $failure_stage."
+              exit 1
+            fi
+
+            retry_delay=$((CONNECTIVITY_RETRY_BASE_SECONDS * (2 ** (attempt - 1))))
+            echo "::warning::Docker npm registry connectivity attempt $attempt/$MAX_CONNECTIVITY_ATTEMPTS failed during $failure_stage; retrying in ${retry_delay}s."
+            sleep "$retry_delay"
+          done
 
       - name: Build immutable worker image and push to Azure Container Registry
         env:
