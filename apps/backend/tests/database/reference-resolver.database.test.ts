@@ -842,8 +842,8 @@ describe.sequential('batch reference resolution database integration', () => {
     ).toThrow();
   });
 
-  test('says a competition source identifier is unsupported rather than merely not found', async () => {
-    const uploadPackage = seasonUploadPackageSchema.parse({
+  test('rejects a source-only competition identifier before resolution', () => {
+    const result = seasonUploadPackageSchema.safeParse({
       contractVersion: '1.0',
       packageId: `cricsheet:package:${prefix}`,
       // A source identifier only, with no readable competition name.
@@ -869,18 +869,11 @@ describe.sequential('batch reference resolution database integration', () => {
       ],
     });
 
-    const resolution = await resolvePackageReferences(databaseClient(), uploadPackage);
-
-    const competition = outcomeAt(resolution, 'competition');
-    expect(competition.state).toBe('unresolved');
-    expect(competition.reason).toContain('not supported');
-    expect(competition.reason).toContain('can never resolve');
-    expect(competition.reason).toContain('the competition name');
+    expect(result.success).toBe(false);
   });
 
-  test('says a team source identifier is unsupported and names the key that works', async () => {
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+  test('rejects a source-only team identifier before resolution', () => {
+    expect(() =>
       singleEventPackage(
         {
           context: {
@@ -895,21 +888,11 @@ describe.sequential('batch reference resolution database integration', () => {
         participantByName(CURRENT_NAME),
         participantByName(BOWLER_NAME),
       ),
-    );
-
-    const team = outcomeAt(resolution, 'fixtures.0.context.teams.0');
-    expect(team.state).toBe('unresolved');
-    expect(team.reason).toContain('not supported');
-    expect(team.reason).toContain('the team name');
-
-    // The team it could not resolve is part of the fixture natural key, so the
-    // fixture stages too rather than resolving on one team.
-    expect(outcomeAt(resolution, 'fixtures.0').state).toBe('unresolved');
+    ).toThrow('team sourceId cannot resolve without readable context');
   });
 
-  test('says an innings source identifier alone is unsupported', async () => {
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+  test('rejects a source-only innings identifier without a durable mapping', () => {
+    expect(() =>
       buildPackage(`${prefix}-competition`, [
         {
           sourceId: `cricsheet:fixture:${records().singleFixtureSourceRef}`,
@@ -928,12 +911,7 @@ describe.sequential('batch reference resolution database integration', () => {
           ],
         },
       ]),
-    );
-
-    const innings = outcomeAt(resolution, 'fixtures.0.innings.0');
-    expect(innings.state).toBe('unresolved');
-    expect(innings.reason).toContain('not supported');
-    expect(innings.reason).toContain('the innings ordinal and batting team');
+    ).toThrow('innings sourceId without context must use a supported durable mapping');
   });
 
   test('ignores an unsupported innings source identifier when readable context is also supplied', async () => {
@@ -1203,24 +1181,19 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(striker.canonicalId).toBeNull();
   });
 
-  test('never matches a source identifier from another namespace against a stored reference', async () => {
+  test('rejects a source-only fixture identifier from another namespace before resolution', () => {
     const seed = records();
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+
+    expect(() =>
       singleEventPackage(
-        // The value is exactly the stored source reference; only the namespace
-        // differs.
+        // The identifier matches a stored source-reference value, but the
+        // unsupported namespace has no deterministic canonical mapping.
         { sourceId: `otherprovider:fixture:${seed.singleFixtureSourceRef}` },
         participantByName(BOWLER_NAME),
         participantByName(CURRENT_NAME),
         participantByName(DUPLICATE_NAME),
       ),
-    );
-
-    const fixture = outcomeAt(resolution, 'fixtures.0');
-    expect(fixture.state).toBe('unresolved');
-    expect(fixture.canonicalId).toBeNull();
-    expect(fixture.reason).toContain('otherprovider');
+    ).toThrowError(/fixture sourceId without context must use a supported durable mapping/i);
   });
 
   /**
