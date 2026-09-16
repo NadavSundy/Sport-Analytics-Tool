@@ -70,7 +70,7 @@ export const fixtureSchema = z.object({
   endDate: apiDateSchema,
 });
 
-export const fixtureWeatherVenueSchema = fixtureVenueSchema;
+const fixtureWeatherVenueSchema = fixtureVenueSchema;
 
 export const weatherDataSchema = z.object({
   date: apiDateSchema,
