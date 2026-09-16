@@ -3,7 +3,7 @@ import type { FixtureStatistics } from '@sport-analytics/contracts';
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 
 const fixtureStatisticsCacheTtlSeconds = 60;
-const cacheContractVersion = 'v1';
+const cacheContractVersion = 'v2';
 const cacheResource = 'fixture-statistics';
 
 export interface FixtureStatisticsCacheRead {
@@ -18,6 +18,10 @@ export interface FixtureStatisticsCache {
 
 function cacheKey(fixtureId: string, dataVersion: number): string {
   return `sat:${cacheContractVersion}:${cacheResource}:fixture:${fixtureId}:v${dataVersion}`;
+}
+
+function cacheKeyPrefix(fixtureId: string): string {
+  return `sat:${cacheContractVersion}:${cacheResource}:fixture:${fixtureId}:v`;
 }
 
 interface CacheRow {
@@ -68,10 +72,11 @@ export function createFixtureStatisticsCache(
           LEFT JOIN fixture_statistics_cache cache
             ON cache.fixture_id = fixture.fixture_id
            AND cache.data_version = COALESCE(version.data_version, 0)
+           AND cache.cache_key = $2::text || COALESCE(version.data_version, 0)::text
            AND cache.expires_at > now()
           WHERE fixture.fixture_id = $1::bigint
         `,
-        [fixtureId],
+        [fixtureId, cacheKeyPrefix(fixtureId)],
       );
       const row = result.rows[0];
       return row ? { dataVersion: row.dataVersion, value: row.payload } : null;

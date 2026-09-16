@@ -28,6 +28,7 @@ describe('fixture statistics repository', () => {
             battingCompetitorName: 'Team Alpha',
             penaltyPre: null,
             penaltyPost: null,
+            miscountedOvers: [{ overNumber: 4, balls: 5 }],
           },
         ],
         rowCount: 1,
@@ -57,6 +58,7 @@ describe('fixture statistics repository', () => {
     expect(source?.innings[0]).toMatchObject({
       battingCompetitorId: '2',
       battingCompetitorName: 'Team Alpha',
+      miscountedOvers: [{ overNumber: 4, balls: 5 }],
     });
     expect(query).toHaveBeenCalledTimes(3);
     expect(query.mock.calls[0]?.[0]).toContain('i.is_super_over = false');
@@ -66,8 +68,10 @@ describe('fixture statistics repository', () => {
     expect(query.mock.calls[1]?.[0]).not.toContain('is_super_over');
     expect(query.mock.calls[0]?.[0]).toContain('winner_team.name AS "winnerCompetitorName"');
     expect(query.mock.calls[0]?.[0]).toContain('batting_team.name AS "battingCompetitorName"');
+    expect(query.mock.calls[0]?.[0]).toContain('FROM innings_miscounted_over miscount');
     expect(query.mock.calls[1]?.[0]).toContain('striker_person.display_name AS "strikerName"');
     expect(query.mock.calls[1]?.[0]).toContain('bowler_person.display_name AS "bowlerName"');
+    expect(query.mock.calls[1]?.[0]).toContain('d.over_number AS "overNumber"');
     expect(query.mock.calls[1]?.[0]).toContain(
       'non_striker_person.display_name AS "nonStrikerName"',
     );

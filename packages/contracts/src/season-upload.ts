@@ -29,6 +29,30 @@ function sourceIdentifierFor(entityType: string) {
   );
 }
 
+function hasDurableSourceOnlyResolver(entityType: string, sourceId: string): boolean {
+  const [namespace, sourceEntityType, value] = sourceId.split(':', 3);
+
+  if (sourceEntityType !== entityType) {
+    return false;
+  }
+
+  if (namespace === 'cricsheet') {
+    return entityType === 'fixture' || entityType === 'participant';
+  }
+
+  return (
+    namespace === 'app' &&
+    (entityType === 'fixture' || entityType === 'innings' || entityType === 'participant') &&
+    /^[1-9]\d*$/.test(value ?? '')
+  );
+}
+
+function sourceOnlyResolutionMessage(entityType: string): string {
+  return entityType === 'competition' || entityType === 'season' || entityType === 'team'
+    ? `A ${entityType} sourceId cannot resolve without readable context because no durable source mapping exists. Supply context instead.`
+    : `A ${entityType} sourceId without context must use a supported durable mapping: cricsheet for fixtures or participants, or app with a positive canonical identifier.`;
+}
+
 function referenceSchema<T extends z.ZodTypeAny>(entityType: string, context: T) {
   return z
     .object({
@@ -42,6 +66,18 @@ function referenceSchema<T extends z.ZodTypeAny>(entityType: string, context: T)
           code: z.ZodIssueCode.custom,
           message:
             'A reference needs a sourceId or sufficient readable context for later resolution.',
+        });
+      }
+
+      if (
+        reference.sourceId &&
+        !reference.context &&
+        !hasDurableSourceOnlyResolver(entityType, reference.sourceId)
+      ) {
+        issueContext.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['sourceId'],
+          message: sourceOnlyResolutionMessage(entityType),
         });
       }
     });
@@ -222,6 +258,18 @@ const inningsSchema = z
       });
     }
 
+    if (
+      innings.sourceId &&
+      !innings.context &&
+      !hasDurableSourceOnlyResolver('innings', innings.sourceId)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sourceId'],
+        message: sourceOnlyResolutionMessage('innings'),
+      });
+    }
+
     const eventIds = new Set<string>();
     const occurrenceSequences = new Set<number>();
     for (const [index, event] of innings.events.entries()) {
@@ -258,6 +306,18 @@ const fixtureSchema = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'A fixture needs a sourceId or readable fixture context.',
+      });
+    }
+
+    if (
+      fixture.sourceId &&
+      !fixture.context &&
+      !hasDurableSourceOnlyResolver('fixture', fixture.sourceId)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sourceId'],
+        message: sourceOnlyResolutionMessage('fixture'),
       });
     }
   });

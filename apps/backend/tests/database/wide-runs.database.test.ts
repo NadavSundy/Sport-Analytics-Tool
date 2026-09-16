@@ -398,7 +398,7 @@ describe.sequential('byes and leg byes recorded on a wide across statistics path
     expect(withByes).toEqual(asWides);
 
     // Team figures are unchanged by where the runs off a wide are recorded.
-    expect(withByes.team).toEqual({ deliveryRuns: 16, penaltyRuns: 0, totalRuns: 16 });
+    expect(withByes.team).toMatchObject({ deliveryRuns: 16, penaltyRuns: 0, totalRuns: 16 });
     expect(withByes.fixture.batter).toEqual(expectedBatter);
     expect(withByes.fixture.bowler).toEqual({
       runsConceded: expectedBowler.runsConceded,

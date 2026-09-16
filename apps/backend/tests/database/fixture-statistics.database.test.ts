@@ -42,12 +42,17 @@ interface BowlingDeltaRow {
 const seedPath = withExplicitZeroExtras(
   resolve(__dirname, '../../../../database/seeds/matches/423788.json'),
 );
+const miscountedSeedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/1462921.json'),
+);
 const sourceRef = `issue-104-423788-${process.pid}`;
+const miscountedSourceRef = `issue-631-1462921-${process.pid}`;
 
 describe.sequential('fixture statistics database integration', () => {
   let pool: Pool | undefined;
   let client: PoolClient | undefined;
   let fixtureId: string | undefined;
+  let miscountedFixtureId: string | undefined;
 
   function databaseClient(): PoolClient {
     if (!client) {
@@ -76,6 +81,10 @@ describe.sequential('fixture statistics database integration', () => {
     try {
       const ingestion = await ingestMatchData(client, seedPath, { sourceRef });
       fixtureId = ingestion.fixtureId;
+      const miscountedIngestion = await ingestMatchData(client, miscountedSeedPath, {
+        sourceRef: miscountedSourceRef,
+      });
+      miscountedFixtureId = miscountedIngestion.fixtureId;
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
       client.release();
@@ -144,13 +153,48 @@ describe.sequential('fixture statistics database integration', () => {
               {
                 inningsOrdinal: statistic.inningsOrdinal,
                 totalRuns: statistic.metrics.totalRuns,
+                wicketsLost: statistic.metrics.wicketsLost,
+                legalBalls: statistic.metrics.legalBalls,
+                overs: statistic.metrics.overs,
+                runRate: statistic.metrics.runRate,
+                extras: statistic.metrics.extras,
               },
             ]
           : [],
       ),
     ).toEqual([
-      { inningsOrdinal: 0, totalRuns: 214 },
-      { inningsOrdinal: 1, totalRuns: 214 },
+      {
+        inningsOrdinal: 0,
+        totalRuns: 214,
+        wicketsLost: 6,
+        legalBalls: 120,
+        overs: '20.0',
+        runRate: 10.7,
+        extras: {
+          total: 18,
+          wides: 5,
+          noBalls: 1,
+          byes: 0,
+          legByes: 12,
+          penaltyRuns: 0,
+        },
+      },
+      {
+        inningsOrdinal: 1,
+        totalRuns: 214,
+        wicketsLost: 4,
+        legalBalls: 120,
+        overs: '20.0',
+        runRate: 10.7,
+        extras: {
+          total: 6,
+          wides: 2,
+          noBalls: 3,
+          byes: 0,
+          legByes: 1,
+          penaltyRuns: 0,
+        },
+      },
     ]);
 
     const people = await executeQuery<PersonRow>(
@@ -313,6 +357,23 @@ describe.sequential('fixture statistics database integration', () => {
       expect(event.strikerParticipantName.length).toBeGreaterThan(0);
       expect(event.bowlerParticipantName.length).toBeGreaterThan(0);
     }
+  });
+
+  test('preserves a reference five-ball miscount when presenting innings progress', async () => {
+    if (!miscountedFixtureId) {
+      throw new Error('Expected the miscounted-over reference fixture to be ingested.');
+    }
+    const source = await loadFixtureStatisticsSource(miscountedFixtureId, databaseClient());
+    expect(source).not.toBeNull();
+    expect(source?.innings[0]?.miscountedOvers).toEqual([{ overNumber: 16, balls: 5 }]);
+
+    const firstInnings = deriveFixtureStatistics(source!).statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsOrdinal === 0,
+    );
+    expect(firstInnings?.scope === 'innings' ? firstInnings.metrics : null).toMatchObject({
+      legalBalls: 107,
+      overs: '18.0',
+    });
   });
 
   // The cache-aside path was previously only exercised through an injected

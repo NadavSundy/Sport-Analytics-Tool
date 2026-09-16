@@ -55,33 +55,37 @@ Computed per participant per fixture.
 
 ## 5. Team statistics
 
-| Statistic  | Derived from                                                                       | Rule                                                                                                                   |
-| ---------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Team total | `runs.total` of every delivery in the innings, **plus** innings-level penalty runs | The one statistic that cannot be derived from deliveries alone. Penalty runs belong to the innings and to no delivery. |
+| Statistic        | Derived from                                                                       | Rule                                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Team total       | `runs.total` of every delivery in the innings, **plus** innings-level penalty runs | Penalty runs belong to the innings and to no delivery.                                                                                |
+| Wickets lost     | Terminal `wickets[]` records                                                       | Includes run outs and other terminal dismissals whether or not they credit the bowler; excludes `retired hurt` and `retired not out`. |
+| Legal balls      | Deliveries with neither wides nor no-balls                                         | Counted directly rather than inferred from event count.                                                                               |
+| Overs            | Legal balls, delivery `overNumber`, fixture balls per over, and miscount metadata  | A miscounted five- or seven-ball over advances progress at its authoritative recorded size.                                           |
+| Run rate         | Team total and legal balls                                                         | Runs per fixture over; undefined until a legal ball is bowled.                                                                        |
+| Total extras     | Delivery `runs.extras` plus innings pre/post penalties                             | Always returned, including zero.                                                                                                      |
+| Extras breakdown | Delivery extras plus innings pre/post penalties                                    | Wides normalize byes/leg-byes recorded on a wide under Law 22.6; penalty runs include delivery and innings penalties.                 |
 
 ## 6. Field-level summary
-
-| Submission field               | Feeds                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------- |
-| `runs.offBat`                  | Runs scored, strike rate, runs conceded                                               |
-| `runs.extras`                  | Team total                                                                            |
-| `runs.total`                   | Team total                                                                            |
-| `extras.wides`                 | Runs conceded; excludes the delivery from balls faced and from legal balls bowled     |
-| `extras.noBalls`               | Runs conceded; excludes the delivery from legal balls bowled but not from balls faced |
-| `extras.byes`                  | Team total. Runs conceded and bowler wides only when recorded on a wide.              |
-| `extras.legByes`               | Team total. Runs conceded and bowler wides only when recorded on a wide.              |
-| `extras.penalty`               | Team total only                                                                       |
-| `strikerId`                    | Attribution of runs scored, balls faced, strike rate                                  |
-| `bowlerId`                     | Attribution of runs conceded, legal balls, overs, wickets, economy rate               |
-| `nonStrikerId`                 | Batting innings and not-out attribution                                               |
-| `wickets[].kind`               | Bowler wickets, batter dismissals, catches, stumpings and run-out involvements        |
-| `wickets[].playerOutId`        | Dismissals, not-outs and batting average                                              |
-| `wickets[].fielders[]`         | Catches, stumpings and every identified run-out involvement                           |
-| `overNumber`, `positionInOver` | Delivery identity and ordering. Not a statistic.                                      |
-| `sequenceNumber`               | Ordering within the innings. Not a statistic.                                         |
-| `ballNumber`                   | Nothing. Display only.                                                                |
-| `eventId`                      | Retry and replay detection. Not a statistic.                                          |
-
+| Submission field                 | Feeds                                                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `runs.offBat`                    | Runs scored, strike rate, runs conceded                                                                                 |
+| `runs.extras`                    | Team total and total extras                                                                                             |
+| `runs.total`                     | Team total                                                                                                              |
+| `extras.wides`                   | Wides breakdown and runs conceded; excludes the delivery from balls faced and legal balls                              |
+| `extras.noBalls`                 | No-balls breakdown and runs conceded; excludes the delivery from legal balls but not balls faced                       |
+| `extras.byes`                    | Byes breakdown and team total; normalized to wides when recorded on a wide                                              |
+| `extras.legByes`                 | Leg-byes breakdown and team total; normalized to wides when recorded on a wide                                          |
+| `extras.penalty`                 | Penalty-runs breakdown and team total                                                                                   |
+| `strikerId`                      | Attribution of runs scored, balls faced, strike rate, batting innings and highest-score records                        |
+| `bowlerId`                       | Attribution of runs conceded, legal balls, overs, wickets, economy rate and bowling aggregate records                 |
+| `nonStrikerId`                   | Batting innings and not-out attribution                                                                                 |
+| `wickets[].kind`                 | Wickets lost under terminal-dismissal semantics; bowler wickets when `credits_bowler`; batter and fielding dismissal semantics |
+| `wickets[].playerOutId`          | Dismissals, not-outs and batting average                                                                                |
+| `wickets[].fielders[]`           | Catches, stumpings and every identified run-out involvement                                                            |
+| `overNumber`, `positionInOver`   | Delivery identity, ordering and innings-progress presentation                                                          |
+| `sequenceNumber`                 | Ordering within the innings. Not a statistic.                                                                          |
+| `ballNumber`                     | Nothing. Display only.                                                                                                  |
+| `eventId`                        | Retry and replay detection. Not a statistic.                                                                           |
 A delivery is a wide only when `extras.wides` is greater than zero, and a no-ball only when
 `extras.noBalls` is greater than zero. An omitted field, `null` and an explicit `0` are
 equivalent: none of them makes a delivery a wide or a no-ball, so none changes balls faced, legal
@@ -114,4 +118,8 @@ Client confirmation of this convention is recorded as pending in
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
 The issue #623 wide-run rule was documented with the assistance of Claude-Code[Claude Opus 5].
+<<<<<<< HEAD
 The issue #632 participant aggregate mappings were updated with the assistance of Codex[GPT-5].
+=======
+The innings scorecard mapping for issue #631 was documented with the assistance of Codex[GPT-5].
+>>>>>>> origin/main
