@@ -1479,6 +1479,74 @@ describe.sequential('batch reference resolution database integration', () => {
     );
   });
 
+  test('persists complete version 1.1 fixture-proposal evidence for reviewer creation', async () => {
+    const seed = records();
+    const repository = createBatchRepository(databaseClient());
+    const batchId = await insertBatch(`${prefix}-proposal-persistence`);
+    const proposal = {
+      endDate: '2026-01-01',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'male',
+      ballsPerOver: 6,
+      outcome: 'draw',
+      sourceVersion: 'source-v1',
+      sourceRevision: 7,
+    };
+    const uploadPackage = seasonUploadPackageSchema.parse({
+      contractVersion: '1.1',
+      packageId: `cricsheet:package:${prefix}-proposal-persistence`,
+      competition: { context: { name: `${prefix}-competition` } },
+      season: { context: { name: SEASON_NAME } },
+      fixtures: [
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+          proposal,
+          innings: [
+            {
+              context: {
+                ordinal: 0,
+                battingTeam: { context: { name: `${prefix}-alpha` } },
+              },
+              events: [
+                event(
+                  1,
+                  participantByName(CURRENT_NAME),
+                  participantByName(BOWLER_NAME),
+                  participantByName(`${prefix} Alias Holder A`),
+                ),
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const [staged] = await repository.insertBatchItems(batchId, [
+      { ordinal: 0, overNumber: 0, positionInOver: 0, payload: { note: 'staged' } },
+    ]);
+    const [resolved] = await repository.applyReferenceResolution(
+      (await resolvePackageReferences(databaseClient(), uploadPackage)).items.map((item) => ({
+        batchItemId: staged!.batchItemId,
+        inningsId: item.inningsId,
+        sourceIdentity: item.sourceIdentity,
+        referenceResolutionState: item.state,
+        resolvedReferences: item.resolvedReferences as never,
+      })),
+    );
+
+    const persisted = resolved?.resolvedReferences as {
+      fixture: { submittedReference: { proposal: unknown } };
+    };
+    expect(persisted.fixture.submittedReference.proposal).toEqual(proposal);
+  });
+
   test('resolves a resolvable item to a canonical innings when nothing is ambiguous', async () => {
     const seed = records();
     const repository = createBatchRepository(databaseClient());
