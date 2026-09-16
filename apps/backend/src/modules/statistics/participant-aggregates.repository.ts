@@ -89,6 +89,8 @@ export async function loadParticipantAggregatesSource(
           d.non_boundary,
           d.extra_wides,
           d.extra_noballs,
+          d.extra_byes,
+          d.extra_legbyes,
           CASE
             WHEN d.bowler_id = $1::bigint THEN (
               SELECT COUNT(*)
