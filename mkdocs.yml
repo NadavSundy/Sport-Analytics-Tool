@@ -110,6 +110,7 @@ nav:
       - Sprint 2 Requirements & Rubric Traceability: planning/sprint-2-requirements-traceability.md
   - Testing:
       - Automated Testing Strategy: development/testing.md
+      - Repository-wide Code Coverage: testing/code-coverage.md
       - CI/CD & Quality Gates: development/ci-cd.md
       - Local CI: development/local-ci.md
       - User Testing Overview: testing/user-testing-overview.md

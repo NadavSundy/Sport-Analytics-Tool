@@ -99,6 +99,29 @@ function isEvidenceLightweight(file) {
   return file.startsWith('evidence/') && EVIDENCE_LIGHTWEIGHT_EXTENSIONS.has(path.extname(file));
 }
 
+function isCoverageInfrastructurePath(file) {
+  return (
+    new Set([
+      'package.json',
+      'package-lock.json',
+      '.gitea/workflows/ci.yml',
+      'apps/frontend/package.json',
+      'apps/frontend/vite.config.ts',
+      'apps/backend/package.json',
+      'apps/backend/vitest.config.ts',
+      'apps/worker/package.json',
+      'apps/worker/vitest.config.ts',
+      'packages/contracts/package.json',
+      'packages/contracts/vitest.config.ts',
+      'packages/batch-processing/package.json',
+      'packages/batch-processing/vitest.config.ts',
+      'scripts/ci-change-plan.mjs',
+      'scripts/ci-local.mjs',
+      'tests/ci/coverage-strategy.test.mjs',
+    ]).has(file) || file.startsWith('scripts/coverage/')
+  );
+}
+
 function isIntermediateIngestionPath(file) {
   if (
     [
@@ -155,6 +178,8 @@ function isIntermediateIngestionPath(file) {
 
 function applyPath(plan, file) {
   if (!file) return;
+
+  if (isCoverageInfrastructurePath(file)) plan.coverage = true;
 
   const intermediateIngestion = isIntermediateIngestionPath(file);
   if (intermediateIngestion) plan.intermediateIngestion = true;
@@ -445,11 +470,18 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     plan.needsNpm = true;
   }
 
-  // Coverage duplicates unit suites and currently enforces no repository-wide
-  // threshold. Pull Requests remain the authoritative automated quality gate,
-  // and main pushes are deployment-only after that gate. Generate coverage only
-  // for an explicit full workflow dispatch until a threshold makes it merge-affecting.
-  plan.coverage = eventName === 'workflow_dispatch';
+  // Coverage is deliberately routed rather than duplicated on every ordinary PR.
+  // Coverage-infrastructure changes validate the pipeline itself, manual runs always
+  // produce a complete report, and application-affecting main pushes record the
+  // repository-wide baseline for the commit that can be deployed.
+  if (eventName === 'workflow_dispatch') {
+    plan.coverage = true;
+  } else if (eventName === 'push') {
+    // Every merged main commit receives a reproducible repository baseline.
+    // Main pushes already skip the normal application validation lanes, so this
+    // does not duplicate the pre-merge unit suites in hosted CI.
+    plan.coverage = true;
+  }
 
   return plan;
 }

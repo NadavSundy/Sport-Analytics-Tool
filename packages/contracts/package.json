@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run src/tests"
+    "test": "vitest run src/tests",
+    "test:coverage": "vitest run src/tests --coverage"
   },
   "dependencies": {
     "zod": "^3.23.8"
