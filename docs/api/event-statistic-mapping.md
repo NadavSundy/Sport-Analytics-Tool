@@ -66,32 +66,33 @@ Computed per participant per fixture.
 | Extras breakdown | Delivery extras plus innings pre/post penalties                                    | Wides normalize byes/leg-byes recorded on a wide under Law 22.6; penalty runs include delivery and innings penalties.                 |
 
 ## 6. Field-level summary
-| Submission field                 | Feeds                                                                                                                   |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `runs.offBat`                    | Runs scored, strike rate, runs conceded                                                                                 |
-| `runs.extras`                    | Team total and total extras                                                                                             |
-| `runs.total`                     | Team total                                                                                                              |
-| `extras.wides`                   | Wides breakdown and runs conceded; excludes the delivery from balls faced and legal balls                              |
-| `extras.noBalls`                 | No-balls breakdown and runs conceded; excludes the delivery from legal balls but not balls faced                       |
-| `extras.byes`                    | Byes breakdown and team total; normalized to wides when recorded on a wide                                              |
-| `extras.legByes`                 | Leg-byes breakdown and team total; normalized to wides when recorded on a wide                                          |
-| `extras.penalty`                 | Penalty-runs breakdown and team total                                                                                   |
-| `strikerId`                      | Attribution of runs scored, balls faced, strike rate, batting innings and highest-score records                        |
-| `bowlerId`                       | Attribution of runs conceded, legal balls, overs, wickets, economy rate and bowling aggregate records                 |
-| `nonStrikerId`                   | Batting innings and not-out attribution                                                                                 |
-| `wickets[].kind`                 | Wickets lost under terminal-dismissal semantics; bowler wickets when `credits_bowler`; batter and fielding dismissal semantics |
-| `wickets[].playerOutId`          | Dismissals, not-outs and batting average                                                                                |
-| `wickets[].fielders[]`           | Catches, stumpings and every identified run-out involvement                                                            |
-| `overNumber`, `positionInOver`   | Delivery identity, ordering and innings-progress presentation                                                          |
-| `sequenceNumber`                 | Ordering within the innings. Not a statistic.                                                                          |
-| `ballNumber`                     | Nothing. Display only.                                                                                                  |
-| `eventId`                        | Retry and replay detection. Not a statistic.                                                                           |
-A delivery is a wide only when `extras.wides` is greater than zero, and a no-ball only when
-`extras.noBalls` is greater than zero. An omitted field, `null` and an explicit `0` are
-equivalent: none of them makes a delivery a wide or a no-ball, so none changes balls faced, legal
-balls bowled, overs or economy. Stored events and the public events API keep the value exactly as
-submitted, including an explicit `0`. Every derivation applies this rule through the shared
-classification in `packages/contracts/src/cricket-delivery-classification.ts` (issue #590).
+
+| Submission field                                                                                  | Feeds                                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `runs.offBat`                                                                                     | Runs scored, strike rate, runs conceded                                                                                        |
+| `runs.extras`                                                                                     | Team total and total extras                                                                                                    |
+| `runs.total`                                                                                      | Team total                                                                                                                     |
+| `extras.wides`                                                                                    | Wides breakdown and runs conceded; excludes the delivery from balls faced and legal balls                                      |
+| `extras.noBalls`                                                                                  | No-balls breakdown and runs conceded; excludes the delivery from legal balls but not balls faced                               |
+| `extras.byes`                                                                                     | Byes breakdown and team total; normalized to wides when recorded on a wide                                                     |
+| `extras.legByes`                                                                                  | Leg-byes breakdown and team total; normalized to wides when recorded on a wide                                                 |
+| `extras.penalty`                                                                                  | Penalty-runs breakdown and team total                                                                                          |
+| `strikerId`                                                                                       | Attribution of runs scored, balls faced, strike rate, batting innings and highest-score records                                |
+| `bowlerId`                                                                                        | Attribution of runs conceded, legal balls, overs, wickets, economy rate and bowling aggregate records                          |
+| `nonStrikerId`                                                                                    | Batting innings and not-out attribution                                                                                        |
+| `wickets[].kind`                                                                                  | Wickets lost under terminal-dismissal semantics; bowler wickets when `credits_bowler`; batter and fielding dismissal semantics |
+| `wickets[].playerOutId`                                                                           | Dismissals, not-outs and batting average                                                                                       |
+| `wickets[].fielders[]`                                                                            | Catches, stumpings and every identified run-out involvement                                                                    |
+| `overNumber`, `positionInOver`                                                                    | Delivery identity, ordering and innings-progress presentation                                                                  |
+| `sequenceNumber`                                                                                  | Ordering within the innings. Not a statistic.                                                                                  |
+| `ballNumber`                                                                                      | Nothing. Display only.                                                                                                         |
+| `eventId`                                                                                         | Retry and replay detection. Not a statistic.                                                                                   |
+| A delivery is a wide only when `extras.wides` is greater than zero, and a no-ball only when       |
+| `extras.noBalls` is greater than zero. An omitted field, `null` and an explicit `0` are           |
+| equivalent: none of them makes a delivery a wide or a no-ball, so none changes balls faced, legal |
+| balls bowled, overs or economy. Stored events and the public events API keep the value exactly as |
+| submitted, including an explicit `0`. Every derivation applies this rule through the shared       |
+| classification in `packages/contracts/src/cricket-delivery-classification.ts` (issue #590).       |
 
 ## 7. Scope exclusions
 
@@ -121,5 +122,7 @@ The issue #623 wide-run rule was documented with the assistance of Claude-Code[C
 <<<<<<< HEAD
 The issue #632 participant aggregate mappings were updated with the assistance of Codex[GPT-5].
 =======
+
 The innings scorecard mapping for issue #631 was documented with the assistance of Codex[GPT-5].
->>>>>>> origin/main
+
+> > > > > > > origin/main
