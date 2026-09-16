@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DatasetReleaseCataloguePage, DatasetReleaseDetailPage } from './DatasetReleasePages';
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 const release = {
   releaseId: 'ba756ad4-4b1e-4b80-81f2-09a66ed6c854',
   version: '2026.09.14v1',
@@ -91,11 +93,11 @@ describe('dataset release pages', () => {
     const download = screen.getByRole('link', { name: 'Download JSON artefact' });
     expect(download).toHaveAttribute(
       'href',
-      'http://localhost:3000/api/v1/dataset-releases/2026.09.14v1/artifact.json',
+      `${testApiBaseUrl}/dataset-releases/2026.09.14v1/artifact.json`,
     );
     expect(download).toHaveAttribute('download', 'dataset-release-2026.09.14v1.json');
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/v1/dataset-releases/2026.09.14v1',
+      `${testApiBaseUrl}/dataset-releases/2026.09.14v1`,
       expect.objectContaining({ headers: { Accept: 'application/json' } }),
     );
   });

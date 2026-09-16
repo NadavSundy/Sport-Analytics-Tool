@@ -10,6 +10,8 @@ import { PlayerPerformance } from './StatisticsPages';
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 function response(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -169,6 +171,8 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
@@ -230,6 +234,18 @@ function renderFixtureStatistics(statistics: unknown[]) {
               status: 'complete',
               scope: { superOversIncluded: false },
               outcome,
+              highestScorers: [
+                {
+                  participantId: 'player-1',
+                  participantName: 'A Player',
+                  competitorId: 'team-1',
+                  competitorName: 'Wanderers',
+                  inningsId: 'innings-1',
+                  inningsOrdinal: 0,
+                  runsScored: 42,
+                  notOut: true,
+                },
+              ],
               warnings: [],
               statistics,
             },
@@ -369,7 +385,7 @@ describe('public fixture statistics pages', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+        `${testApiBaseUrl}/fixtures/fixture-1/statistics`,
         expect.objectContaining({ headers: { Accept: 'application/json' } }),
       ),
     );
@@ -381,6 +397,18 @@ describe('public fixture statistics pages', () => {
           status: 'complete',
           scope: { superOversIncluded: false },
           outcome,
+          highestScorers: [
+            {
+              participantId: 'player-1',
+              participantName: 'A Player',
+              competitorId: 'team-1',
+              competitorName: 'Wanderers',
+              inningsId: 'innings-1',
+              inningsOrdinal: 0,
+              runsScored: 42,
+              notOut: true,
+            },
+          ],
           warnings: [],
           statistics: [inningsStatistic, participantStatistic],
         },
@@ -389,11 +417,14 @@ describe('public fixture statistics pages', () => {
 
     expect(await screen.findByText('Complete data')).toBeInTheDocument();
     expect(screen.getByText('Wanderers won by 5 wickets.')).toBeInTheDocument();
+    expect(screen.getByText('Highest individual innings score')).toBeInTheDocument();
+    expect(screen.getByText('42* runs · innings 1')).toBeInTheDocument();
 
     const teamSection = screen.getByRole('heading', { name: 'Innings totals' }).parentElement
       ?.parentElement?.parentElement;
     expect(teamSection).toBeTruthy();
     expect(within(teamSection as HTMLElement).getByText('159')).toBeInTheDocument();
+    expect(within(teamSection as HTMLElement).queryByText('Delivery runs')).not.toBeInTheDocument();
     expect(
       within(teamSection as HTMLElement).getByRole('link', { name: 'Wanderers' }),
     ).toHaveAttribute('href', '/competitors/team-1');
@@ -416,7 +447,7 @@ describe('public fixture statistics pages', () => {
     expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
 
     const statisticsCall = fetchMock.mock.calls.find(
-      ([url]) => String(url) === 'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+      ([url]) => String(url) === `${testApiBaseUrl}/fixtures/fixture-1/statistics`,
     );
     const request = statisticsCall?.[1] as RequestInit;
     expect(new Headers(request.headers).has('Authorization')).toBe(false);
@@ -448,6 +479,7 @@ describe('public fixture statistics pages', () => {
                 winnerCompetitorName: null,
                 margin: null,
               },
+              highestScorers: [],
               warnings: [
                 {
                   code: 'NO_ACCEPTED_EVENTS',
@@ -501,6 +533,7 @@ describe('public fixture statistics pages', () => {
                   status: 'complete',
                   scope: { superOversIncluded: false },
                   outcome,
+                  highestScorers: [],
                   warnings: [],
                   statistics: [],
                 },
@@ -603,7 +636,7 @@ describe('public fixture statistics pages', () => {
     );
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true',
+        `${testApiBaseUrl}/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true`,
         expect.any(Object),
       ),
     );
@@ -715,7 +748,7 @@ describe('public fixture statistics pages', () => {
 
     const requestedUrls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(requestedUrls).toContain(
-      'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-innings-1/events/export.csv',
+      `${testApiBaseUrl}/fixtures/fixture-1/statistics/stat-innings-1/events/export.csv`,
     );
     // Neither the filtered slice nor a client-chosen page is requested.
     expect(requestedUrls.some((url) => url.includes('/fixtures/fixture-1/events/export'))).toBe(
@@ -758,7 +791,7 @@ describe('public fixture statistics pages', () => {
     expect(await screen.findByText('CSV export of 6 events downloaded.')).toBeInTheDocument();
     const requestedUrls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(requestedUrls).toContain(
-      'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv',
+      `${testApiBaseUrl}/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv`,
     );
     expect(requestedUrls.some((url) => url.includes('participantId='))).toBe(false);
     expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
@@ -963,6 +996,7 @@ describe('public fixture statistics pages', () => {
               status: 'complete',
               scope: { superOversIncluded: false },
               outcome,
+              highestScorers: [],
               warnings: [],
               // The published contract accepts any non-empty identifier, so a
               // value the record links cannot encode is a contract-valid

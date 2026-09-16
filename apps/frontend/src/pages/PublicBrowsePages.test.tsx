@@ -52,6 +52,8 @@ function playerMatch(
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate,
       endDate: startDate,
     },
@@ -307,6 +309,8 @@ describe('public browsing pages', () => {
               gender: 'female',
               ballsPerOver: 6,
               scheduledOvers: 20,
+              venue: null,
+              toss: null,
               startDate: '2026-08-09',
               endDate: '2026-08-09',
             },
@@ -334,6 +338,8 @@ describe('public browsing pages', () => {
               gender: 'female',
               ballsPerOver: 6,
               scheduledOvers: 20,
+              venue: null,
+              toss: null,
               startDate: '2026-08-10',
               endDate: '2026-08-10',
             },
@@ -554,6 +560,12 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: 'team-1',
+        winnerCompetitorName: 'Wanderers',
+        decision: 'field',
+      },
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -626,6 +638,12 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: 'team-1',
+        winnerCompetitorName: 'Wanderers',
+        decision: 'field',
+      },
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -659,6 +677,7 @@ describe('public browsing pages', () => {
                   method: null,
                   decidedByBowlOut: false,
                 },
+                highestScorers: [],
                 warnings: [],
                 statistics: [],
               },
@@ -700,12 +719,13 @@ describe('public browsing pages', () => {
         },
       }),
     );
-    await screen.findByText('Wits Cricket Oval, Johannesburg');
     const weatherSection = screen
       .getByRole('heading', { name: 'Match weather' })
       .closest('section');
     expect(weatherSection).not.toBeNull();
-    expect(within(weatherSection!).getByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
+    expect(
+      await within(weatherSection!).findByText('Wits Cricket Oval, Johannesburg'),
+    ).toBeVisible();
     expect(within(weatherSection!).getByText('24 °C')).toBeVisible();
     expect(within(weatherSection!).getByText('11 °C')).toBeVisible();
     expect(within(weatherSection!).getByText('0 mm')).toBeVisible();
@@ -715,6 +735,10 @@ describe('public browsing pages', () => {
       'href',
       '/competitions/competition-1',
     );
+    const venueFact = screen.getByText('Venue', { selector: 'dt' }).closest('div');
+    expect(venueFact).not.toBeNull();
+    expect(within(venueFact!).getByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
+    expect(screen.getByText('Wanderers won the toss and chose to field.')).toBeVisible();
     expect(await screen.findByText('Wanderers won by 12 runs.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'A Player' })).toHaveAttribute(
       'href',
@@ -739,6 +763,14 @@ describe('public browsing pages', () => {
         },
       },
       message: 'Weather is unavailable for this fixture’s venue.',
+      fixtureVenue: null,
+      fixtureToss: {
+        winnerCompetitorId: 'team-1',
+        winnerCompetitorName: 'Wanderers',
+        decision: 'field',
+      },
+      expectedVenue: 'Venue unavailable',
+      expectedToss: 'Wanderers won the toss and chose to field.',
       retry: false,
     },
     {
@@ -751,6 +783,10 @@ describe('public browsing pages', () => {
         },
       },
       message: 'Weather could not be loaded. The match overview is still available.',
+      fixtureVenue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      fixtureToss: null,
+      expectedVenue: 'Wits Cricket Oval, Johannesburg',
+      expectedToss: 'Toss information unavailable',
       retry: true,
       retryWeather: {
         data: {
@@ -772,7 +808,17 @@ describe('public browsing pages', () => {
     },
   ])(
     'keeps the fixture overview usable during $name',
-    async ({ weatherStatus, weatherBody, message, retry, retryWeather }) => {
+    async ({
+      weatherStatus,
+      weatherBody,
+      message,
+      fixtureVenue,
+      fixtureToss,
+      expectedVenue,
+      expectedToss,
+      retry,
+      retryWeather,
+    }) => {
       const fixture = {
         fixtureId: 'fixture-1',
         competitionId: 'competition-1',
@@ -789,6 +835,8 @@ describe('public browsing pages', () => {
         gender: 'female',
         ballsPerOver: 6,
         scheduledOvers: 20,
+        venue: fixtureVenue,
+        toss: fixtureToss,
         startDate: '2026-08-09',
         endDate: '2026-08-09',
       };
@@ -824,6 +872,7 @@ describe('public browsing pages', () => {
                     method: null,
                     decidedByBowlOut: false,
                   },
+                  highestScorers: [],
                   warnings: [],
                   statistics: [],
                 },
@@ -841,11 +890,15 @@ describe('public browsing pages', () => {
       ).toBeVisible();
       expect(await screen.findByText(message)).toBeVisible();
       expect(screen.getByText('Premier Cricket League')).toBeVisible();
+      expect(screen.getByText(expectedVenue)).toBeVisible();
+      expect(screen.getByText(expectedToss)).toBeVisible();
       if (retry) {
         expect(screen.getByRole('button', { name: 'Try weather again' })).toBeEnabled();
         fireEvent.click(screen.getByRole('button', { name: 'Try weather again' }));
-        expect(await screen.findByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
-        expect(weatherRequests).toBe(2);
+        await waitFor(() => expect(weatherRequests).toBe(2));
+        expect(
+          screen.getAllByText('Wits Cricket Oval, Johannesburg').length,
+        ).toBeGreaterThanOrEqual(2);
       } else {
         expect(screen.queryByRole('button', { name: 'Try weather again' })).not.toBeInTheDocument();
       }
@@ -870,6 +923,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -948,6 +1003,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -1011,6 +1068,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -1064,6 +1123,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     });

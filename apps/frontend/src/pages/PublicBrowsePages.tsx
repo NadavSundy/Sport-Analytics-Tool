@@ -279,6 +279,32 @@ function fixtureTitle(fixture: Fixture): string {
   return teamNames.length > 0 ? teamNames.join(' vs ') : 'Fixture teams unavailable';
 }
 
+function fixtureVenueLabel(venue: Fixture['venue']): string {
+  if (!venue) {
+    return 'Venue unavailable';
+  }
+
+  return [venue.name, venue.city].filter(Boolean).join(', ');
+}
+
+function fixtureTossLabel(toss: Fixture['toss']): string {
+  if (!toss) {
+    return 'Toss information unavailable';
+  }
+
+  if (toss.winnerCompetitorName && toss.decision) {
+    return `${toss.winnerCompetitorName} won the toss and chose to ${toss.decision}.`;
+  }
+  if (toss.winnerCompetitorName) {
+    return `${toss.winnerCompetitorName} won the toss.`;
+  }
+  if (toss.decision) {
+    return `Toss decision: chose to ${toss.decision}.`;
+  }
+
+  return 'Toss information unavailable';
+}
+
 function relatedFilters(name: string, value: string): URLSearchParams {
   return new URLSearchParams({ [name]: value });
 }
@@ -949,6 +975,8 @@ export function FixtureDetailPage() {
               <RecordFact label="Match type" value={fixture.matchType} />
               <RecordFact label="Gender" value={labelValue(fixture.gender)} />
               <RecordFact label="Team type" value={labelValue(fixture.teamType)} />
+              <RecordFact label="Venue" value={fixtureVenueLabel(fixture.venue)} />
+              <RecordFact label="Toss" value={fixtureTossLabel(fixture.toss)} />
               <RecordFact label="Start date" value={formatDate(fixture.startDate)} />
               <RecordFact label="End date" value={formatDate(fixture.endDate)} />
               <RecordFact label="Balls per over" value={fixture.ballsPerOver} />

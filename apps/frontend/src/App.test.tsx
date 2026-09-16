@@ -7,6 +7,8 @@ import App from './App';
 import { AuthProvider } from './features/auth/AuthProvider';
 import { THEME_STORAGE_KEY } from './theme';
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
 
@@ -394,7 +396,7 @@ describe('public application and authentication interface', () => {
     expect(screen.getByText('Deleting your account…')).toHaveAttribute('role', 'status');
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/v1/account',
+      `${testApiBaseUrl}/account`,
       expect.objectContaining({ method: 'DELETE' }),
     );
 

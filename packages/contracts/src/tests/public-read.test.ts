@@ -53,6 +53,35 @@ describe('public read contracts', () => {
         gender: 'male',
         ballsPerOver: 6,
         scheduledOvers: 20,
+        venue: { name: 'Wanderers Stadium', city: 'Johannesburg' },
+        toss: {
+          winnerCompetitorId: '20',
+          winnerCompetitorName: 'Joburg Super Kings',
+          decision: 'bat',
+        },
+        startDate: '2026-01-10',
+        endDate: '2026-01-10',
+      }).success,
+    ).toBe(true);
+  });
+
+  test('validates a fixture with unavailable venue and toss metadata', () => {
+    expect(
+      fixtureSchema.safeParse({
+        fixtureId: '100',
+        competitionId: '12',
+        competitionName: 'SA20',
+        seasonId: 'season_opaque-value',
+        season: '2025/26',
+        seasonLabel: '2025/26',
+        competitors: [],
+        matchType: 'T20',
+        teamType: 'club',
+        gender: 'male',
+        ballsPerOver: 6,
+        scheduledOvers: 20,
+        venue: null,
+        toss: null,
         startDate: '2026-01-10',
         endDate: '2026-01-10',
       }).success,
@@ -132,6 +161,8 @@ describe('public read contracts', () => {
             gender: 'male',
             ballsPerOver: 6,
             scheduledOvers: 20,
+            venue: null,
+            toss: null,
             startDate: '2026-08-09',
             endDate: '2026-08-09',
           },
@@ -178,6 +209,8 @@ describe('public read contracts', () => {
             gender: 'mixed',
             ballsPerOver: 6,
             scheduledOvers: null,
+            venue: null,
+            toss: null,
             startDate: '2026-08-09',
             endDate: '2026-08-09',
           },
@@ -454,6 +487,18 @@ describe('public read contracts', () => {
             method: null,
             decidedByBowlOut: false,
           },
+          highestScorers: [
+            {
+              participantId: '50',
+              participantName: 'Example Batter',
+              competitorId: '20',
+              competitorName: 'Joburg Super Kings',
+              inningsId: '30',
+              inningsOrdinal: 0,
+              runsScored: 4,
+              notOut: true,
+            },
+          ],
           warnings: [],
           statistics: [
             {
