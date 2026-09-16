@@ -1,0 +1,56 @@
+name: Debug worker Docker network
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - debug/620-worker-docker-dns
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Host networking
+        run: |
+          echo "=== host DNS ==="
+          getent hosts registry.npmjs.org || true
+
+          echo "=== host HTTPS ==="
+          curl -fsSI --max-time 15 https://registry.npmjs.org/ || true
+
+      - name: Docker default bridge networking
+        run: |
+          echo "=== Docker default DNS ==="
+          docker run --rm node:22-bookworm-slim \
+            node -e "require('dns').lookup('registry.npmjs.org',(e,a)=>{console.log(e || a);process.exit(e?1:0)})" \
+            || true
+
+          echo "=== Docker default npm ==="
+          docker run --rm node:22-bookworm-slim \
+            npm ping --registry=https://registry.npmjs.org/ \
+            || true
+
+      - name: Docker host networking
+        run: |
+          echo "=== Docker host-network DNS ==="
+          docker run --rm --network=host node:22-bookworm-slim \
+            node -e "require('dns').lookup('registry.npmjs.org',(e,a)=>{console.log(e || a);process.exit(e?1:0)})" \
+            || true
+
+          echo "=== Docker host-network npm ==="
+          docker run --rm --network=host node:22-bookworm-slim \
+            npm ping --registry=https://registry.npmjs.org/ \
+            || true
+
+      - name: Docker DNS configuration
+        run: |
+          echo "=== host resolv.conf ==="
+          cat /etc/resolv.conf || true
+
+          echo "=== Docker resolv.conf ==="
+          docker run --rm node:22-bookworm-slim cat /etc/resolv.conf || true
+
+          echo "=== Docker host-network resolv.conf ==="
+          docker run --rm --network=host node:22-bookworm-slim cat /etc/resolv.conf || true
