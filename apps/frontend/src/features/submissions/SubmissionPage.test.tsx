@@ -893,7 +893,9 @@ describe('role-gated event submission page', () => {
         name: '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
       }),
     ).toBeInTheDocument();
-    expect(within(fixtureSelect).queryByRole('option', { name: 'New fixture' })).toBeInTheDocument();
+    expect(
+      within(fixtureSelect).queryByRole('option', { name: 'New fixture' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     expect(
       screen.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
