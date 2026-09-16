@@ -2,6 +2,7 @@
 export * from './auth';
 export * from './batches';
 export * from './health';
+export * from './cricket-delivery-classification';
 export * from './cricket-validation';
 export * from './public-read';
 export * from './submissions';
