@@ -471,14 +471,28 @@ export const participantFixtureCollectionResponseSchema =
 // ---------------------------------------------------------------------------
 
 export const participantAggregateBattingSchema = z.object({
+  innings: z.number().int().nonnegative(),
   runsScored: z.number().int().nonnegative(),
   ballsFaced: z.number().int().nonnegative(),
+  dismissals: z.number().int().nonnegative(),
+  notOuts: z.number().int().nonnegative(),
+  battingAverage: z.number().nonnegative().nullable(),
   fours: z.number().int().nonnegative(),
   sixes: z.number().int().nonnegative(),
+  fifties: z.number().int().nonnegative(),
+  hundreds: z.number().int().nonnegative(),
+  highestScore: z.number().int().nonnegative(),
+  highestScoreNotOut: z.boolean(),
   strikeRate: z.number().nonnegative().nullable(),
 });
 
+export const participantAggregateBestBowlingSchema = z.object({
+  wicketsTaken: z.number().int().nonnegative(),
+  runsConceded: z.number().int().nonnegative(),
+});
+
 export const participantAggregateBowlingSchema = z.object({
+  innings: z.number().int().nonnegative(),
   runsConceded: z.number().int().nonnegative(),
   // Wides and no-balls are charged to the bowler, including byes and leg-byes
   // run off a wide (Law 22.6). Other extras are deliberately not presented as a
@@ -487,6 +501,11 @@ export const participantAggregateBowlingSchema = z.object({
   noBalls: z.number().int().nonnegative(),
   legalBallsBowled: z.number().int().nonnegative(),
   wicketsTaken: z.number().int().nonnegative(),
+  bowlingAverage: z.number().nonnegative().nullable(),
+  bowlingStrikeRate: z.number().nonnegative().nullable(),
+  bestBowling: participantAggregateBestBowlingSchema,
+  fourWicketHauls: z.number().int().nonnegative(),
+  fiveWicketHauls: z.number().int().nonnegative(),
   // Legal balls are counted from delivery rows. Overs and economy rate need a
   // balls-per-over divisor, which is a fixture-level fact: §10 forbids assuming
   // six. Where a group spans fixtures with different values there is no single
@@ -499,10 +518,17 @@ export const participantAggregateBowlingSchema = z.object({
   economyRate: z.number().nonnegative().nullable(),
 });
 
+export const participantAggregateFieldingSchema = z.object({
+  catches: z.number().int().nonnegative(),
+  stumpings: z.number().int().nonnegative(),
+  runOutInvolvements: z.number().int().nonnegative(),
+});
+
 const participantAggregateCommonSchema = z.object({
   statisticId: apiIdentifierSchema,
   participantId: apiIdentifierSchema,
   participantName: z.string().min(1),
+  appearances: z.number().int().nonnegative(),
   // Fixtures the participant actually appeared in as striker or bowler. This is
   // deliberately narrower than the fixture history at
   // /participants/{id}/fixtures, where participation is squad selection and a
@@ -514,6 +540,7 @@ const participantAggregateCommonSchema = z.object({
   // used to stand in for an absent one.
   batting: participantAggregateBattingSchema.nullable(),
   bowling: participantAggregateBowlingSchema.nullable(),
+  fielding: participantAggregateFieldingSchema,
 });
 
 export const participantSeasonAggregateSchema = participantAggregateCommonSchema.extend({
@@ -624,7 +651,9 @@ export type ParticipantFixtureCollectionResponse = z.infer<
 >;
 
 export type ParticipantAggregateBatting = z.infer<typeof participantAggregateBattingSchema>;
+export type ParticipantAggregateBestBowling = z.infer<typeof participantAggregateBestBowlingSchema>;
 export type ParticipantAggregateBowling = z.infer<typeof participantAggregateBowlingSchema>;
+export type ParticipantAggregateFielding = z.infer<typeof participantAggregateFieldingSchema>;
 export type ParticipantSeasonAggregate = z.infer<typeof participantSeasonAggregateSchema>;
 export type ParticipantCompetitionAggregate = z.infer<typeof participantCompetitionAggregateSchema>;
 export type ParticipantCareerAggregate = z.infer<typeof participantCareerAggregateSchema>;

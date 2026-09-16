@@ -640,7 +640,9 @@ describe.sequential('direct submission database integration', () => {
         },
       ]),
     });
-    expect(response.body.data.refreshedScopes).toHaveLength(7);
+    // The non-striker now contributes a batting innings even without facing a
+    // ball, so all three aggregate levels are refreshed for that participant.
+    expect(response.body.data.refreshedScopes).toHaveLength(10);
 
     const refreshDependencies = await executeQuery<{
       scope: string;
@@ -662,9 +664,12 @@ describe.sequential('direct submission database integration', () => {
       `,
       [correctedEventId],
     );
-    expect(refreshDependencies.rows).toHaveLength(7);
-    expect(refreshDependencies.rows).not.toContainEqual(
-      expect.objectContaining({ participantId: testRecords().nonStrikerId }),
+    expect(refreshDependencies.rows).toHaveLength(10);
+    expect(refreshDependencies.rows).toContainEqual(
+      expect.objectContaining({
+        scope: 'career',
+        participantId: testRecords().nonStrikerId,
+      }),
     );
     const revisions = await executeQuery<{
       deliveryId: string;

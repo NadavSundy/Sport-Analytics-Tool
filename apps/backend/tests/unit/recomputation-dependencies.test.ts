@@ -1,8 +1,31 @@
 import { describe, expect, test } from 'vitest';
 
-import { deriveCorrectionStatisticsDependencies } from '../../src/modules/statistics/recomputation-dependencies';
+import {
+  aggregateParticipantIds,
+  deriveCorrectionStatisticsDependencies,
+} from '../../src/modules/statistics/recomputation-dependencies';
 
 describe('correction statistics dependencies', () => {
+  test('includes batters, bowler, dismissed players, and every identified fielder', () => {
+    expect(
+      aggregateParticipantIds({
+        strikerId: '100',
+        nonStrikerId: '200',
+        bowlerId: '300',
+        wickets: [
+          {
+            playerOutId: '100',
+            fielders: [
+              { participantId: '400' },
+              { participantId: '500' },
+              { participantId: '400' },
+              {},
+            ],
+          },
+        ],
+      }),
+    ).toEqual(['100', '200', '300', '400', '500']);
+  });
   test('targets only the fixture and the previous or resulting player aggregates', () => {
     expect(
       deriveCorrectionStatisticsDependencies({

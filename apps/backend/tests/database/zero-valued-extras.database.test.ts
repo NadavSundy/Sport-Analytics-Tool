@@ -75,6 +75,17 @@ const expectedFirstBatter = {
   sixes: 1,
   strikeRate: 140,
 };
+const expectedFirstAggregateBatter = {
+  innings: 1,
+  ...expectedFirstBatter,
+  dismissals: 0,
+  notOuts: 1,
+  battingAverage: null,
+  fifties: 0,
+  hundreds: 0,
+  highestScore: 7,
+  highestScoreNotOut: true,
+};
 
 const expectedSecondBatter = {
   runsScored: 4,
@@ -83,15 +94,32 @@ const expectedSecondBatter = {
   sixes: 0,
   strikeRate: 133.33,
 };
+const expectedSecondAggregateBatter = {
+  innings: 1,
+  ...expectedSecondBatter,
+  dismissals: 0,
+  notOuts: 1,
+  battingAverage: null,
+  fifties: 0,
+  hundreds: 0,
+  highestScore: 4,
+  highestScoreNotOut: true,
+};
 
 // 11 off the bat + 1 wide + 2 no-balls. Byes, the leg bye and the penalty runs
 // are team extras and are not charged to the bowler.
 const expectedBowler = {
+  innings: 1,
   runsConceded: 14,
   wides: 1,
   noBalls: 2,
   legalBallsBowled: 6,
   wicketsTaken: 0,
+  bowlingAverage: null,
+  bowlingStrikeRate: null,
+  bestBowling: { wicketsTaken: 0, runsConceded: 14 },
+  fourWicketHauls: 0,
+  fiveWicketHauls: 0,
   ballsPerOver: 6,
   oversBowled: '1.0',
   economyRate: 14,
@@ -428,8 +456,8 @@ describe.sequential('zero-valued extras across statistics paths', () => {
     });
 
     for (const [participant, batting, bowling] of [
-      ['firstBatter', expectedFirstBatter, null],
-      ['secondBatter', expectedSecondBatter, null],
+      ['firstBatter', expectedFirstAggregateBatter, null],
+      ['secondBatter', expectedSecondAggregateBatter, null],
       ['bowler', null, expectedBowler],
     ] as const) {
       expect(omitted.aggregates[participant]).toEqual(
@@ -508,6 +536,17 @@ describe.sequential('zero-valued extras across statistics paths', () => {
       sixes: 0,
       strikeRate: 25,
     };
+    const correctedFirstAggregateBatter = {
+      innings: 1,
+      ...correctedFirstBatter,
+      dismissals: 0,
+      notOuts: 1,
+      battingAverage: null,
+      fifties: 0,
+      hundreds: 0,
+      highestScore: 1,
+      highestScoreNotOut: true,
+    };
     const correctedBowler = {
       ...expectedBowler,
       runsConceded: 9,
@@ -515,6 +554,7 @@ describe.sequential('zero-valued extras across statistics paths', () => {
       legalBallsBowled: 5,
       oversBowled: '0.5',
       economyRate: 10.8,
+      bestBowling: { wicketsTaken: 0, runsConceded: 9 },
     };
     const figures = await figuresFor('explicit');
 
@@ -530,7 +570,7 @@ describe.sequential('zero-valued extras across statistics paths', () => {
     for (const scope of ['season', 'competition', 'career']) {
       expect(figures.aggregates.firstBatter).toContainEqual({
         scope,
-        batting: correctedFirstBatter,
+        batting: correctedFirstAggregateBatter,
         bowling: null,
       });
       expect(figures.aggregates.bowler).toContainEqual({

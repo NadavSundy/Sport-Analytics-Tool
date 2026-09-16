@@ -3349,6 +3349,20 @@ components:
               minimum: 0
             - type: 'null'
 
+    ParticipantAggregateBestBowling:
+      type: object
+      additionalProperties: false
+      required:
+        - wicketsTaken
+        - runsConceded
+      properties:
+        wicketsTaken:
+          type: integer
+          minimum: 0
+        runsConceded:
+          type: integer
+          minimum: 0
+
     ParticipantFixtureBowling:
       type: object
       additionalProperties: false
@@ -3386,6 +3400,24 @@ components:
             - type: number
               minimum: 0
             - type: 'null'
+
+    ParticipantAggregateFielding:
+      type: object
+      additionalProperties: false
+      required:
+        - catches
+        - stumpings
+        - runOutInvolvements
+      properties:
+        catches:
+          type: integer
+          minimum: 0
+        stumpings:
+          type: integer
+          minimum: 0
+        runOutInvolvements:
+          type: integer
+          minimum: 0
 
     ParticipantFixture:
       type: object
@@ -4131,24 +4163,57 @@ components:
       type: object
       additionalProperties: false
       required:
+        - innings
         - runsScored
         - ballsFaced
+        - dismissals
+        - notOuts
+        - battingAverage
         - fours
         - sixes
+        - fifties
+        - hundreds
+        - highestScore
+        - highestScoreNotOut
         - strikeRate
       properties:
+        innings:
+          type: integer
+          minimum: 0
         runsScored:
           type: integer
           minimum: 0
         ballsFaced:
           type: integer
           minimum: 0
+        dismissals:
+          type: integer
+          minimum: 0
+        notOuts:
+          type: integer
+          minimum: 0
+        battingAverage:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
         fours:
           type: integer
           minimum: 0
         sixes:
           type: integer
           minimum: 0
+        fifties:
+          type: integer
+          minimum: 0
+        hundreds:
+          type: integer
+          minimum: 0
+        highestScore:
+          type: integer
+          minimum: 0
+        highestScoreNotOut:
+          type: boolean
         strikeRate:
           oneOf:
             - type: number
@@ -4159,15 +4224,24 @@ components:
       type: object
       additionalProperties: false
       required:
+        - innings
         - runsConceded
         - wides
         - noBalls
         - legalBallsBowled
         - wicketsTaken
+        - bowlingAverage
+        - bowlingStrikeRate
+        - bestBowling
+        - fourWicketHauls
+        - fiveWicketHauls
         - ballsPerOver
         - oversBowled
         - economyRate
       properties:
+        innings:
+          type: integer
+          minimum: 0
         runsConceded:
           type: integer
           minimum: 0
@@ -4183,6 +4257,24 @@ components:
           type: integer
           minimum: 0
         wicketsTaken:
+          type: integer
+          minimum: 0
+        bowlingAverage:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+        bowlingStrikeRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+        bestBowling:
+          $ref: '#/components/schemas/ParticipantAggregateBestBowling'
+        fourWicketHauls:
+          type: integer
+          minimum: 0
+        fiveWicketHauls:
           type: integer
           minimum: 0
         ballsPerOver:
@@ -4218,10 +4310,12 @@ components:
         - competitionName
         - seasonId
         - season
+        - appearances
         - fixtureCount
         - sourceEventCount
         - batting
         - bowling
+        - fielding
       properties:
         statisticId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -4252,6 +4346,9 @@ components:
         season:
           type: string
           minLength: 1
+        appearances:
+          type: integer
+          minimum: 0
         fixtureCount:
           type: integer
           minimum: 0
@@ -4266,6 +4363,8 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParticipantAggregateBowling'
             - type: 'null'
+        fielding:
+          $ref: '#/components/schemas/ParticipantAggregateFielding'
 
     ParticipantCompetitionAggregate:
       type: object
@@ -4278,10 +4377,12 @@ components:
         - statisticCode
         - competitionId
         - competitionName
+        - appearances
         - fixtureCount
         - sourceEventCount
         - batting
         - bowling
+        - fielding
       properties:
         statisticId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -4305,6 +4406,9 @@ components:
             - type: string
               minLength: 1
             - type: 'null'
+        appearances:
+          type: integer
+          minimum: 0
         fixtureCount:
           type: integer
           minimum: 0
@@ -4319,6 +4423,8 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParticipantAggregateBowling'
             - type: 'null'
+        fielding:
+          $ref: '#/components/schemas/ParticipantAggregateFielding'
 
     ParticipantCareerAggregate:
       type: object
@@ -4329,10 +4435,12 @@ components:
         - participantName
         - scope
         - statisticCode
+        - appearances
         - fixtureCount
         - sourceEventCount
         - batting
         - bowling
+        - fielding
       properties:
         statisticId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -4347,6 +4455,9 @@ components:
         statisticCode:
           type: string
           const: participant_career
+        appearances:
+          type: integer
+          minimum: 0
         fixtureCount:
           type: integer
           minimum: 0
@@ -4361,6 +4472,8 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParticipantAggregateBowling'
             - type: 'null'
+        fielding:
+          $ref: '#/components/schemas/ParticipantAggregateFielding'
 
     ParticipantAggregate:
       oneOf:

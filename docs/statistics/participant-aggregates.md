@@ -4,9 +4,10 @@ Season, competition-wide and career aggregates are deterministic projections of 
 events, calculated when requested. As with fixture statistics there is no manually editable total
 and no persisted cache; the difference is only the set of fixtures a projection spans.
 
-When a correction changes a delivery, Issue #286 records refresh dependencies only for the delivery's
-previous and resulting striker and bowler. Each of those participants receives at most one refresh
-target at each applicable season, competition, and career level. The correction response and the
+When a correction changes a delivery, refresh dependencies include every previous and resulting
+participant relationship consumed here: striker, non-striker, bowler, dismissed player, and every
+identified fielder. Each participant receives at most one refresh target at each applicable season,
+competition, and career level. The correction response and the
 durable `statistics_refresh_dependency` journal make this selective boundary observable; unrelated
 participants and competition/season groups have no dependency record and no recalculation target.
 
@@ -33,8 +34,8 @@ is null where the fixture has no competition.
 
 ## Publication input
 
-The derivation applies the same rules as the fixture statistics module, so that a career figure
-equals the sum of the participant's published fixture figures:
+The derivation applies the same delivery-classification rules as the fixture statistics module,
+then adds authoritative squad, innings, dismissal and fielding context:
 
 1. The fixture's originating submission and each delivery's submission must have `status = accepted`.
 2. Only the accepted, live delivery revision is counted for each natural key
@@ -57,44 +58,31 @@ it does not.
 
 ## Calculations
 
-| Result             | Calculation                                                                       |
-| ------------------ | --------------------------------------------------------------------------------- |
-| Runs scored        | Sum `runs_off_bat` over deliveries in the group where the participant is striker  |
-| Balls faced        | Count striker deliveries with no wide; a no-ball still counts as faced            |
-| Strike rate        | Runs scored / balls faced × 100, recomputed over the group                        |
-| Fours and sixes    | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries                  |
-| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes count only off a wide        |
-| Legal balls bowled | Count deliveries with neither wides nor no-balls                                  |
-| Overs bowled       | `completeOvers.remainingBalls`, from the counted legal balls                      |
-| Economy rate       | Runs conceded / legal balls × balls-per-over, recomputed over the group           |
-| Wickets taken      | Count wickets whose `dismissal_kind.credits_bowler` is true; a run out is not one |
-| Fixture count      | Distinct fixtures the participant appeared in within the group                    |
+| Result                    | Calculation                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| Appearances               | Distinct accepted fixtures whose authoritative squad selects the participant                     |
+| Activity fixture count    | Distinct fixtures where the participant is striker or bowler                                     |
+| Batting innings           | Standard innings naming the participant as striker, non-striker, or dismissed player             |
+| Runs / balls / boundaries | Existing delivery rules: wides are not faced; no-balls are; `non_boundary` excludes a boundary   |
+| Dismissals / not-outs     | All kinds except `retired hurt` and `retired not out`; not-outs = innings - dismissals           |
+| Batting average           | Runs / dismissals over the complete group; null with no dismissal                                |
+| Strike rate               | Runs / balls faced × 100 over the complete group; null with no ball faced                        |
+| Highest score             | Maximum innings score; tied not-out beats out, then earliest innings identifier                  |
+| Fifties / hundreds        | Per-innings scores from 50–99 / at least 100                                                     |
+| Bowling innings           | Standard innings containing a delivery bowled by the participant                                 |
+| Bowling average / SR      | Runs / credited wickets and legal balls / credited wickets; null with no credited wicket         |
+| Overs / economy           | Counted legal balls with the one valid scope divisor; rates are recomputed from aggregate totals |
+| Best bowling              | Most wickets, then fewest runs, then earliest innings identifier                                 |
+| Four/five-wicket hauls    | Innings with exactly four wickets / at least five wickets                                        |
+| Catches / stumpings       | Matching identified fielder rows; caught-and-bowled is attributed to the bowler                  |
+| Run-out involvements      | One per identified participant per wicket; every contributor to a multi-fielder run-out counts   |
 
-Both rates are recomputed over the whole group rather than averaged across fixtures: a career strike
-rate is total runs over total balls faced, not the mean of per-innings rates.
+All rates are recomputed from aggregate numerators and denominators, never averaged from fixture
+rates. A zero denominator produces `null`, not a misleading zero.
 
-`fixtureCount` counts fixtures the participant appeared in as striker or bowler. It is deliberately
-narrower than the fixture history at `/api/v1/participants/{participantId}/fixtures`, where
-participation is squad selection and a player selected but never called upon still played in the
-fixture. A player with 629 squad selections may have a smaller `fixtureCount` here.
-
-A rate is `null` when its denominator is zero, which distinguishes an undefined rate from a real
-rate of zero. `batting` or `bowling` is `null` when the participant never took that role in the
-group, which distinguishes a player who did not bat from one who was dismissed for nought.
-
-### Figures not derived
-
-Batting average, highest score and bowling average are **not** derived at any level, and §7 does
-not name them. A batting average needs the number of times the participant was dismissed as a
-batter, but the grouped statement counts only wickets credited to the participant as bowler. A
-highest score needs a per-innings maximum, but the statement groups by competition, season and
-career and never by innings. Neither figure can be recovered from the published fields, and a client
-must not reconstruct one from the paginated fixture history, which would give a maximum over the page
-it holds rather than over the career.
-
-Issue #476 asked for the career totals on the player page to include an average or highest score.
-The player page presents the career level of this endpoint as published and omits both figures
-until they are derived here.
+`appearances` is the true selected-match count from `fixture_squad`. `fixtureCount` remains the
+narrower striker/bowler activity count. A selected reserve can therefore have `appearances: 1`,
+`fixtureCount: 0`, and null batting and bowling records.
 
 ### Balls per over is never assumed
 
@@ -114,10 +102,10 @@ sequential queries over a 173 ms link, for a single fixture. A career spans ever
 appeared in, so a per-fixture approach was not an option.
 
 The derivation issues **two statements** for any participant — one participant lookup and one
-grouped derivation — regardless of how many fixtures they have played. All three levels come from a
-single pass using `GROUP BY GROUPING SETS`, and the participant's deliveries are found through the
-partial indexes `delivery_striker_idx` and `delivery_bowler_idx`, which already carry the
-live-revision predicate. The plan contains no sequential scan of the delivery table.
+grouped derivation — regardless of how many fixtures they have played. All three levels use
+set-based `GROUP BY GROUPING SETS` rollups. Partial indexes cover striker, non-striker and bowler
+relationships; dismissed-player and identified-fielder lookups have person indexes. There is no
+fixture loop or per-statistic query.
 
 Measured against the imported corpus (3,207,110 deliveries, 14,011 fixtures, 173 ms median link
 round trip):
@@ -144,20 +132,53 @@ projection is addressable at `/api/v1/participants/{participantId}/statistics/{s
 
 Unlike fixture statistics, aggregates do not offer a contributing-event expansion. A career spans
 thousands of deliveries, and the per-delivery trace belongs to the fixture endpoints, which remain
-the place to reproduce a figure event by event. `sourceEventCount` and `fixtureCount` report the
-size of the set each figure was derived from.
+the place to reproduce a figure event by event. `sourceEventCount`, `fixtureCount`, and `appearances`
+report the event, activity-fixture, and selected-fixture sizes represented by each resource.
+
+## Representative career response
+
+```json
+{
+  "scope": "career",
+  "appearances": 62,
+  "fixtureCount": 58,
+  "batting": {
+    "innings": 54,
+    "runsScored": 1234,
+    "dismissals": 49,
+    "notOuts": 5,
+    "battingAverage": 25.18,
+    "highestScore": 112,
+    "highestScoreNotOut": true,
+    "fifties": 7,
+    "hundreds": 2
+  },
+  "bowling": {
+    "innings": 31,
+    "wicketsTaken": 41,
+    "bowlingAverage": 20.54,
+    "bowlingStrikeRate": 16.83,
+    "bestBowling": { "wicketsTaken": 5, "runsConceded": 22 },
+    "fourWicketHauls": 2,
+    "fiveWicketHauls": 1
+  },
+  "fielding": { "catches": 18, "stumpings": 2, "runOutInvolvements": 4 }
+}
+```
+
+Season and competition resources use the same record objects with their existing scope identity.
 
 ## Incomplete data
 
 An accepted but incomplete record returns HTTP `200` with `status: partial`. Warning codes cover:
 
-- a participant with no accepted standard delivery events;
+- a participant with neither accepted squad appearances nor accepted standard delivery events;
 - fixtures published without a competition; and
 - a group whose fixtures do not share one balls-per-over divisor.
 
-A participant with no accepted events returns no statistics rather than an all-zero career, because
-zero runs from zero fixtures is an absence rather than a figure. An unknown participant returns
-`404`.
+A selected participant with no delivery activity still returns appearance resources. A participant
+with neither squad selection nor accepted events returns no statistics rather than an all-zero
+career. An unknown participant returns `404`.
 
 ## AI Declaration
 
@@ -167,3 +188,5 @@ reproduced in the issue #285 validation record. The selective correction-refresh
 was documented with the assistance of Codex[GPT-5]. The record of figures not derived, under issue
 #476, was documented with the assistance of Claude Code[Claude Opus 5]. The issue #623 wide-run rule
 was documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #632 appearance, batting, bowling and fielding aggregate rules and example were updated
+with the assistance of Codex[GPT-5].
