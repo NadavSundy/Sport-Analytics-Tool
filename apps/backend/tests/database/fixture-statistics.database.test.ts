@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { withExplicitZeroExtras } from './explicit-zero-extras';
 import { executeQuery } from '../../src/database';
 import {
   listCompetitorsForFixtures,
@@ -38,7 +39,9 @@ interface BowlingDeltaRow {
   wickets: number;
 }
 
-const seedPath = resolve(__dirname, '../../../../database/seeds/matches/423788.json');
+const seedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/423788.json'),
+);
 const sourceRef = `issue-104-423788-${process.pid}`;
 
 describe.sequential('fixture statistics database integration', () => {
@@ -238,7 +241,7 @@ describe.sequential('fixture statistics database integration', () => {
       `
         SELECT
           COALESCE(SUM(d.runs_off_bat), 0)::int AS runs,
-          COUNT(*) FILTER (WHERE d.extra_wides IS NULL)::int AS balls
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) = 0)::int AS balls
         FROM delivery d
         JOIN innings i ON i.innings_id = d.innings_id
         WHERE i.fixture_id = $1
@@ -274,7 +277,7 @@ describe.sequential('fixture statistics database integration', () => {
             0
           )::int AS "runsConceded",
           COUNT(*) FILTER (
-            WHERE extra_wides IS NULL AND extra_noballs IS NULL
+            WHERE COALESCE(extra_wides, 0) = 0 AND COALESCE(extra_noballs, 0) = 0
           )::int AS "legalBalls",
           COALESCE(SUM(credited_wickets), 0)::int AS wickets
         FROM super_over_delivery

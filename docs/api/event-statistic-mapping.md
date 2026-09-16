@@ -68,6 +68,13 @@ Computed per participant per fixture.
 | `ballNumber`                   | Nothing. Display only.                                                                |
 | `eventId`                      | Retry and replay detection. Not a statistic.                                          |
 
+A delivery is a wide only when `extras.wides` is greater than zero, and a no-ball only when
+`extras.noBalls` is greater than zero. An omitted field, `null` and an explicit `0` are
+equivalent: none of them makes a delivery a wide or a no-ball, so none changes balls faced, legal
+balls bowled, overs or economy. Stored events and the public events API keep the value exactly as
+submitted, including an explicit `0`. Every derivation applies this rule through the shared
+classification in `packages/contracts/src/cricket-delivery-classification.ts` (issue #590).
+
 ## 6. Scope exclusions
 
 Super-over innings are excluded from batting and bowling aggregates. Super-over

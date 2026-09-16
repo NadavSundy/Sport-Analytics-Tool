@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { withExplicitZeroExtras } from './explicit-zero-extras';
 import { executeQuery, type QueryExecutor } from '../../src/database';
 import { listParticipantFixtures } from '../../src/modules/participants/participant.repository';
 import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
@@ -43,7 +44,9 @@ interface DismissalCountRow {
   credited: number;
 }
 
-const seedPath = resolve(__dirname, '../../../../database/seeds/matches/423788.json');
+const seedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/423788.json'),
+);
 const sourceRef = `issue-285-423788-${process.pid}`;
 
 /** Published scorecard figures for Brendon McCullum in this fixture. */
@@ -234,7 +237,7 @@ describe.sequential('participant aggregate statistics database integration', () 
       `
         SELECT
           COALESCE(SUM(d.runs_off_bat), 0)::int AS runs,
-          COUNT(*) FILTER (WHERE d.extra_wides IS NULL)::int AS balls
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) = 0)::int AS balls
         FROM delivery d
         JOIN innings i ON i.innings_id = d.innings_id
         WHERE i.fixture_id = $1
@@ -309,7 +312,7 @@ describe.sequential('participant aggregate statistics database integration', () 
       `
         SELECT
           COUNT(*) FILTER (
-            WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+            WHERE COALESCE(d.extra_wides, 0) = 0 AND COALESCE(d.extra_noballs, 0) = 0
           )::int AS "legalBalls",
           COALESCE(SUM((
             SELECT COUNT(*)

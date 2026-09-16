@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { withExplicitZeroExtras } from './explicit-zero-extras';
 import { executeQuery, type QueryExecutor } from '../../src/database';
 import {
   listParticipantFixtures,
@@ -20,7 +21,9 @@ interface IdRow {
   id: string;
 }
 
-const seedPath = resolve(__dirname, '../../../../database/seeds/matches/423788.json');
+const seedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/423788.json'),
+);
 const sourceRef = `issue-410-423788-${process.pid}`;
 
 /**
@@ -101,7 +104,7 @@ async function legacyListParticipantFixtures(
         SELECT
           d.fixture_id,
           SUM(d.runs_off_bat)::int AS runs_scored,
-          COUNT(*) FILTER (WHERE d.extra_wides IS NULL)::int AS balls_faced,
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) = 0)::int AS balls_faced,
           COUNT(*) FILTER (WHERE d.runs_off_bat = 4 AND NOT d.non_boundary)::int AS fours,
           COUNT(*) FILTER (WHERE d.runs_off_bat = 6 AND NOT d.non_boundary)::int AS sixes
         FROM accepted_delivery d
@@ -119,7 +122,7 @@ async function legacyListParticipantFixtures(
           COALESCE(SUM(d.extra_wides), 0)::int AS wides,
           COALESCE(SUM(d.extra_noballs), 0)::int AS no_balls,
           COUNT(*) FILTER (
-            WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+            WHERE COALESCE(d.extra_wides, 0) = 0 AND COALESCE(d.extra_noballs, 0) = 0
           )::int AS legal_balls_bowled,
           COALESCE(SUM((
             SELECT COUNT(*)

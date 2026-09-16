@@ -30,6 +30,12 @@ and checked rather than taken on trust.
 | O7  | Penalty runs appear at innings level, belonging to no delivery.                                                                                        | A team total cannot be derived from deliveries alone.                                |
 | O8  | `outcome` takes seven distinct shapes, including a result with no winner, an eliminator and a bowl-out.                                                | Outcome is not winner plus margin.                                                   |
 
+Cricsheet omits an extras type that did not occur, but the submission contract also accepts an
+explicit zero such as `wides: 0`, and the extras columns of O3 store it as `0` rather than NULL.
+The stored value is kept as submitted. A zero and NULL are classified identically: a delivery is a
+wide only when `extra_wides > 0` and a no-ball only when `extra_noballs > 0`. Queries must therefore
+never classify a delivery with `IS NULL` or `IS NOT NULL` on these columns (issue #590).
+
 ### 1.1 The case that decides delivery identity
 
 In match `1402765`, innings 0, over 5, seven consecutive deliveries carry the same

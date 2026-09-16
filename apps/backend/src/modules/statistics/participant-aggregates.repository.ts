@@ -1,3 +1,9 @@
+import {
+  bowlerChargedExtrasSql,
+  countsAsBallFacedSql,
+  isLegalDeliverySql,
+} from '@sport-analytics/contracts';
+
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 import type {
   ParticipantAggregateRow,
@@ -128,7 +134,7 @@ export async function loadParticipantAggregatesSource(
         COUNT(*) FILTER (WHERE pd.is_striker)::int AS "battingDeliveryCount",
         COALESCE(SUM(pd.runs_off_bat) FILTER (WHERE pd.is_striker), 0)::int AS "runsScored",
         COUNT(*) FILTER (
-          WHERE pd.is_striker AND pd.extra_wides IS NULL
+          WHERE pd.is_striker AND ${countsAsBallFacedSql('pd')}
         )::int AS "ballsFaced",
         COUNT(*) FILTER (
           WHERE pd.is_striker AND pd.runs_off_bat = 4 AND NOT pd.non_boundary
@@ -139,16 +145,14 @@ export async function loadParticipantAggregatesSource(
         COUNT(*) FILTER (WHERE pd.is_bowler)::int AS "bowlingDeliveryCount",
         COALESCE(
           SUM(
-            pd.runs_off_bat
-            + COALESCE(pd.extra_wides, 0)
-            + COALESCE(pd.extra_noballs, 0)
+            pd.runs_off_bat + ${bowlerChargedExtrasSql('pd')}
           ) FILTER (WHERE pd.is_bowler),
           0
         )::int AS "runsConceded",
         COALESCE(SUM(pd.extra_wides) FILTER (WHERE pd.is_bowler), 0)::int AS wides,
         COALESCE(SUM(pd.extra_noballs) FILTER (WHERE pd.is_bowler), 0)::int AS "noBalls",
         COUNT(*) FILTER (
-          WHERE pd.is_bowler AND pd.extra_wides IS NULL AND pd.extra_noballs IS NULL
+          WHERE pd.is_bowler AND ${isLegalDeliverySql('pd')}
         )::int AS "legalBallsBowled",
         COALESCE(SUM(pd.credited_wickets) FILTER (WHERE pd.is_bowler), 0)::int AS "wicketsTaken",
         CASE

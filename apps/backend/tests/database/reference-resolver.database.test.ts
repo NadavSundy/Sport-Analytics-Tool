@@ -416,10 +416,37 @@ describe.sequential('batch reference resolution database integration', () => {
     );
   }
 
-  async function countRows(table: string): Promise<number> {
-    const result = await databaseClient().query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM ${table}`,
-    );
+  /**
+   * Counts only rows this suite could have created. Every name and source
+   * reference it submits carries `prefix`, so a row the resolver wrongly created
+   * from one of its packages would carry it too, or belong to one of its
+   * competitions or teams. A whole-table count would also see rows committed in
+   * the meantime by database test files running in parallel.
+   */
+  async function countTestOwnedRows(table: 'fixture' | 'team' | 'person'): Promise<number> {
+    const ownedRows = {
+      fixture: `
+        SELECT count(*)::text AS count
+        FROM fixture f
+        WHERE starts_with(f.source_ref, $1)
+           OR f.competition_id IN (
+             SELECT competition_id FROM competition WHERE starts_with(name, $1)
+           )
+           OR EXISTS (
+             SELECT 1
+             FROM fixture_team ft
+             JOIN team t ON t.team_id = ft.team_id
+             WHERE ft.fixture_id = f.fixture_id AND starts_with(t.name, $1)
+           )
+      `,
+      team: 'SELECT count(*)::text AS count FROM team WHERE starts_with(name, $1)',
+      person: `
+        SELECT count(*)::text AS count
+        FROM person
+        WHERE starts_with(display_name, $1) OR starts_with(source_ref, $1)
+      `,
+    }[table];
+    const result = await databaseClient().query<{ count: string }>(ownedRows, [prefix]);
     return Number(result.rows[0]?.count ?? '0');
   }
 
@@ -1094,9 +1121,13 @@ describe.sequential('batch reference resolution database integration', () => {
   });
 
   test('stages a new fixture as unresolved with no candidates, and creates nothing', async () => {
-    const fixturesBefore = await countRows('fixture');
-    const teamsBefore = await countRows('team');
-    const peopleBefore = await countRows('person');
+    const fixturesBefore = await countTestOwnedRows('fixture');
+    const teamsBefore = await countTestOwnedRows('team');
+    const peopleBefore = await countTestOwnedRows('person');
+    // The seeded suite rows must be visible, or an unchanged count proves nothing.
+    for (const count of [fixturesBefore, teamsBefore, peopleBefore]) {
+      expect(count).toBeGreaterThan(0);
+    }
 
     const resolution = await resolvePackageReferences(
       databaseClient(),
@@ -1122,9 +1153,9 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(fixture.candidates).toHaveLength(0);
     expect(fixture.reason).toContain('review decision');
 
-    expect(await countRows('fixture')).toBe(fixturesBefore);
-    expect(await countRows('team')).toBe(teamsBefore);
-    expect(await countRows('person')).toBe(peopleBefore);
+    expect(await countTestOwnedRows('fixture')).toBe(fixturesBefore);
+    expect(await countTestOwnedRows('team')).toBe(teamsBefore);
+    expect(await countTestOwnedRows('person')).toBe(peopleBefore);
   });
 
   test('treats a fixture in another competition as invalid rather than resolving across the declared scope', async () => {

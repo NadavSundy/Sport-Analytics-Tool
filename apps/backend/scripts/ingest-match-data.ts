@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
+import { isLegalDelivery } from '@sport-analytics/contracts';
 import type { QueryExecutor } from '../src/database';
 
 interface Delivery {
@@ -476,9 +477,8 @@ export async function ingestMatchData(
 
         // The printed ball number counts legal deliveries only. Wides and
         // no-balls do not advance it, so it repeats within an over. It is a
-        // label, never an identifier.
-        const isLegal = extras.wides === undefined && extras.noballs === undefined;
-        if (isLegal) legalBalls += 1;
+        // label, never an identifier. Cricsheet spells the no-ball key `noballs`.
+        if (isLegalDelivery({ wides: extras.wides, noBalls: extras.noballs })) legalBalls += 1;
 
         pending.push({
           inningsId,

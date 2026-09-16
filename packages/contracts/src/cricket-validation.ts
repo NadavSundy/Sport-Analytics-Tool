@@ -1,4 +1,6 @@
-﻿export const CRICKET_VALIDATION_RULE_VERSION = '1.0' as const;
+﻿import { isLegalDelivery } from './cricket-delivery-classification';
+
+export const CRICKET_VALIDATION_RULE_VERSION = '1.0' as const;
 
 export const CRICKET_VALIDATION_RULE_CODES = [
   'STRIKER_TEAM_INVALID',
@@ -129,10 +131,6 @@ function participantTeam(
   return context.participantTeamById[participantId];
 }
 
-function isLegalDelivery(event: CricketValidationEvent): boolean {
-  return (event.extras.wides ?? 0) === 0 && (event.extras.noBalls ?? 0) === 0;
-}
-
 export function validateCricketBusinessRules(
   events: readonly CricketValidationEvent[],
   context: CricketValidationContext,
@@ -250,7 +248,7 @@ export function validateCricketBusinessRules(
 
         state.previousBallByInningsOver.set(ballKey, {
           printedBall,
-          legal: isLegalDelivery(event),
+          legal: isLegalDelivery(event.extras),
           eventIndex,
         });
       }
