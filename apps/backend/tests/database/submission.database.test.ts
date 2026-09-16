@@ -599,6 +599,13 @@ describe.sequential('direct submission database integration', () => {
     void _eventId;
     void _sequenceNumber;
     event.runs = { offBat: 4, extras: 0, total: 4 };
+    event.wickets = [
+      {
+        kind: 'run out',
+        playerOutId: testRecords().strikerId,
+        fielders: [{ participantId: testRecords().bowlerId }],
+      },
+    ];
     const response = await request(app())
       .put(`/api/v1/submissions/events/${correctedEventId}`)
       .set('Authorization', 'Bearer database-test-token')
@@ -730,6 +737,8 @@ describe.sequential('direct submission database integration', () => {
     );
     expect(beforeInnings?.metrics.totalRuns).toBe(3);
     expect(afterInnings?.metrics.totalRuns).toBe(6);
+    expect(beforeInnings?.metrics.wicketsLost).toBe(0);
+    expect(afterInnings?.metrics.wicketsLost).toBe(1);
 
     const history = await request(app())
       .get(`/api/v1/submissions/events/${correctedEventId}/history`)

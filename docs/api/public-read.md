@@ -385,7 +385,19 @@ Example compact response:
         "metrics": {
           "deliveryRuns": 154,
           "penaltyRuns": 5,
-          "totalRuns": 159
+          "totalRuns": 159,
+          "wicketsLost": 6,
+          "legalBalls": 120,
+          "overs": "20.0",
+          "runRate": 7.95,
+          "extras": {
+            "total": 9,
+            "wides": 2,
+            "noBalls": 1,
+            "byes": 0,
+            "legByes": 1,
+            "penaltyRuns": 5
+          }
         }
       }
     ]
@@ -400,6 +412,9 @@ include the readable winning-team name where applicable.
 When `includeContributors=true` is requested, each contributing event retains the striker and bowler
 participant identifiers and also includes `strikerParticipantName` and `bowlerParticipantName`.
 This allows user-facing calculation traces to identify the players without extra lookup requests.
+The innings metrics directly support a scorecard summary such as `Team One 159/6 (20.0 overs) · RR
+7.95`; clients do not need to page through delivery events or reproduce dismissal, extras, or
+miscounted-over rules.
 
 `status` is `partial` rather than failing the request when accepted source data is incomplete. The
 `warnings` array then gives stable warning codes, and rate metrics with a zero denominator are

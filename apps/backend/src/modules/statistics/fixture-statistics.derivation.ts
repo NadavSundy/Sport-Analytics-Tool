@@ -14,6 +14,7 @@ import {
 
 import type {
   FixtureStatisticsEventSource,
+  FixtureStatisticsInningsSource,
   FixtureStatisticsWicketSource,
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
@@ -76,6 +77,29 @@ function statisticId(fixtureId: string, scope: string, scopeId: string): string 
   return createStatisticId([fixtureId, scope, scopeId]);
 }
 
+function inningsOvers(
+  events: FixtureStatisticsEventSource[],
+  innings: FixtureStatisticsInningsSource,
+  ballsPerOver: number,
+): string {
+  const legalEvents = events.filter((event) =>
+    isLegalDelivery({ wides: event.extraWides, noBalls: event.extraNoBalls }),
+  );
+  if (legalEvents.length === 0) {
+    return '0.0';
+  }
+
+  const lastOverNumber = Math.max(...legalEvents.map((event) => event.overNumber));
+  const legalBallsInLastOver = legalEvents.filter(
+    (event) => event.overNumber === lastOverNumber,
+  ).length;
+  const expectedBalls =
+    innings.miscountedOvers.find((over) => over.overNumber === lastOverNumber)?.balls ??
+    ballsPerOver;
+
+  return `${lastOverNumber + Math.floor(legalBallsInLastOver / expectedBalls)}.${legalBallsInLastOver % expectedBalls}`;
+}
+
 function mapContributingEvent(
   fixtureId: string,
   event: FixtureStatisticsEventSource,
@@ -106,6 +130,7 @@ function mapContributingEvent(
     },
     nonBoundary: event.nonBoundary,
     bowlerWickets: event.creditedWickets,
+    wicketsLost: event.wickets.filter((wicket) => wicket.isTerminal).length,
   };
 }
 
@@ -306,6 +331,39 @@ export function deriveFixtureStatistics(
 
     const deliveryRuns = events.reduce((total, event) => total + event.runsTotal, 0);
     const penaltyRuns = (innings.penaltyPre ?? 0) + (innings.penaltyPost ?? 0);
+    const totalRuns = deliveryRuns + penaltyRuns;
+    const legalBalls = events.filter((event) =>
+      isLegalDelivery({ wides: event.extraWides, noBalls: event.extraNoBalls }),
+    ).length;
+    const wicketsLost = events.reduce(
+      (total, event) => total + event.wickets.filter((wicket) => wicket.isTerminal).length,
+      0,
+    );
+    const deliveryExtras = events.reduce((total, event) => total + event.runsExtras, 0);
+    const wides = events.reduce(
+      (total, event) =>
+        total +
+        bowlerWideRuns({
+          wides: event.extraWides,
+          noBalls: event.extraNoBalls,
+          byes: event.extraByes,
+          legByes: event.extraLegByes,
+        }),
+      0,
+    );
+    const noBalls = events.reduce((total, event) => total + (event.extraNoBalls ?? 0), 0);
+    const byes = events.reduce(
+      (total, event) => total + ((event.extraWides ?? 0) > 0 ? 0 : (event.extraByes ?? 0)),
+      0,
+    );
+    const legByes = events.reduce(
+      (total, event) => total + ((event.extraWides ?? 0) > 0 ? 0 : (event.extraLegByes ?? 0)),
+      0,
+    );
+    const deliveryPenaltyRuns = events.reduce(
+      (total, event) => total + (event.extraPenalty ?? 0),
+      0,
+    );
 
     statistics.push({
       statisticId: statisticId(source.fixtureId, 'innings', innings.inningsId),
@@ -320,7 +378,19 @@ export function deriveFixtureStatistics(
       metrics: {
         deliveryRuns,
         penaltyRuns,
-        totalRuns: deliveryRuns + penaltyRuns,
+        totalRuns,
+        wicketsLost,
+        legalBalls,
+        overs: inningsOvers(events, innings, source.ballsPerOver),
+        runRate: calculateRate(totalRuns, legalBalls, source.ballsPerOver),
+        extras: {
+          total: deliveryExtras + penaltyRuns,
+          wides,
+          noBalls,
+          byes,
+          legByes,
+          penaltyRuns: deliveryPenaltyRuns + penaltyRuns,
+        },
       },
       ...(includeContributors
         ? {

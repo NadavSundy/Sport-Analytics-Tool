@@ -3647,6 +3647,7 @@ components:
         - extras
         - nonBoundary
         - bowlerWickets
+        - wicketsLost
       properties:
         eventId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -3727,6 +3728,9 @@ components:
         bowlerWickets:
           type: integer
           minimum: 0
+        wicketsLost:
+          type: integer
+          minimum: 0
 
     FixtureStatisticCommon:
       type: object
@@ -3784,6 +3788,11 @@ components:
                 - deliveryRuns
                 - penaltyRuns
                 - totalRuns
+                - wicketsLost
+                - legalBalls
+                - overs
+                - runRate
+                - extras
               properties:
                 deliveryRuns:
                   type: integer
@@ -3794,6 +3803,51 @@ components:
                 totalRuns:
                   type: integer
                   minimum: 0
+                wicketsLost:
+                  type: integer
+                  minimum: 0
+                legalBalls:
+                  type: integer
+                  minimum: 0
+                overs:
+                  type: string
+                  pattern: '^\d+\.\d+$'
+                  example: '20.0'
+                runRate:
+                  type:
+                    - number
+                    - 'null'
+                  minimum: 0
+                  description: Runs per over, or null when no legal ball has been bowled.
+                extras:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - total
+                    - wides
+                    - noBalls
+                    - byes
+                    - legByes
+                    - penaltyRuns
+                  properties:
+                    total:
+                      type: integer
+                      minimum: 0
+                    wides:
+                      type: integer
+                      minimum: 0
+                    noBalls:
+                      type: integer
+                      minimum: 0
+                    byes:
+                      type: integer
+                      minimum: 0
+                    legByes:
+                      type: integer
+                      minimum: 0
+                    penaltyRuns:
+                      type: integer
+                      minimum: 0
 
     ParticipantFixtureStatistic:
       allOf:

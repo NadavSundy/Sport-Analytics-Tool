@@ -7,6 +7,7 @@ import {
   fixtureStatisticsQuerySchema,
   fixtureStatisticsResponseSchema,
   fixtureWeatherResponseSchema,
+  inningsTeamStatisticSchema,
   participantAggregatesQuerySchema,
   participantAggregatesResponseSchema,
   participantFixtureCollectionResponseSchema,
@@ -18,6 +19,45 @@ import {
 } from '../public-read';
 
 describe('public read contracts', () => {
+  test('requires and preserves innings scorecard context', () => {
+    const base = {
+      statisticId: 'stat-team',
+      fixtureId: '9',
+      scope: 'innings' as const,
+      statisticCode: 'team_total' as const,
+      inningsId: '30',
+      inningsOrdinal: 0,
+      competitorId: '20',
+      competitorName: 'Joburg Super Kings',
+      sourceEventCount: 0,
+    };
+    const metrics = {
+      deliveryRuns: 0,
+      penaltyRuns: 0,
+      totalRuns: 0,
+      wicketsLost: 0,
+      legalBalls: 0,
+      overs: '0.0',
+      runRate: null,
+      extras: {
+        total: 0,
+        wides: 0,
+        noBalls: 0,
+        byes: 0,
+        legByes: 0,
+        penaltyRuns: 0,
+      },
+    };
+
+    expect(inningsTeamStatisticSchema.parse({ ...base, metrics }).metrics).toEqual(metrics);
+    expect(
+      inningsTeamStatisticSchema.safeParse({
+        ...base,
+        metrics: { deliveryRuns: 0, penaltyRuns: 0, totalRuns: 0 },
+      }).success,
+    ).toBe(false);
+  });
+
   test('validates a season with readable competition context', () => {
     expect(
       seasonSchema.safeParse({
@@ -515,6 +555,18 @@ describe('public read contracts', () => {
                 deliveryRuns: 4,
                 penaltyRuns: 0,
                 totalRuns: 4,
+                wicketsLost: 0,
+                legalBalls: 1,
+                overs: '0.1',
+                runRate: 24,
+                extras: {
+                  total: 0,
+                  wides: 0,
+                  noBalls: 0,
+                  byes: 0,
+                  legByes: 0,
+                  penaltyRuns: 0,
+                },
               },
               contributingEvents: [
                 {
@@ -543,6 +595,7 @@ describe('public read contracts', () => {
                   },
                   nonBoundary: false,
                   bowlerWickets: 0,
+                  wicketsLost: 0,
                 },
               ],
             },

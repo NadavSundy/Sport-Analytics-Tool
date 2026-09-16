@@ -11,7 +11,7 @@ Issue #293 adds a bounded cache-aside projection for the public
 expensive statistic path measured in the representative workload. Contributor traces are deliberately
 excluded: they are explicit audit requests, can be much larger, and are not a repeated browse path.
 
-The cache key is `sat:v1:fixture-statistics:fixture:{fixtureId}:v{dataVersion}`. The API contract,
+The cache key is `sat:v2:fixture-statistics:fixture:{fixtureId}:v{dataVersion}`. The API contract,
 fixture scope, and authoritative data version are therefore all part of the key; this public-only
 cache has no bearer token, account, or consumer identity in either keys or values. Entries contain
 only the same public response returned by the API and expire after 60 seconds.
@@ -96,22 +96,39 @@ rather than repeated at each call site.
 
 ## Basic calculations
 
-| Result             | Calculation                                                             |
-| ------------------ | ----------------------------------------------------------------------- |
-| Team total         | Sum `runs_total` for the innings, plus `penalty_pre` and `penalty_post` |
-| Batter runs        | Sum `runs_off_bat` for deliveries where the participant is striker      |
-| Balls faced        | Count striker deliveries with no wide; a no-ball still counts as faced  |
-| Strike rate        | Batter runs / balls faced × 100, rounded to two decimal places          |
-| Fours and sixes    | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries        |
-| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes only off a wide    |
-| Legal balls bowled | Count deliveries with neither wides nor no-balls                        |
-| Overs bowled       | `completeOvers.remainingBalls`, using the fixture's `balls_per_over`    |
-| Economy rate       | Runs conceded / legal balls × `balls_per_over`, rounded to two decimals |
-| Bowler wickets     | Count wickets whose `dismissal_kind.credits_bowler` value is true       |
-| Fixture outcome    | Accepted fixture outcome fact, represented as a typed result and margin |
+| Result              | Calculation                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Team total          | Sum `runs_total` for the innings, plus `penalty_pre` and `penalty_post`                                              |
+| Wickets lost        | Count terminal dismissals; `retired hurt` and `retired not out` do not count                                         |
+| Innings legal balls | Count deliveries with neither wides nor no-balls                                                                     |
+| Innings overs       | Format progress from delivery over identity, legal balls, fixture `balls_per_over`, and any miscounted-over override |
+| Innings run rate    | Team total / legal balls × `balls_per_over`, rounded to two decimals                                                 |
+| Total extras        | Sum delivery `runs_extras` plus innings pre/post penalty runs                                                        |
+| Extras breakdown    | Wides, no-balls, byes, leg-byes, and delivery plus innings penalty runs                                              |
+| Batter runs         | Sum `runs_off_bat` for deliveries where the participant is striker                                                   |
+| Balls faced         | Count striker deliveries with no wide; a no-ball still counts as faced                                               |
+| Strike rate         | Batter runs / balls faced × 100, rounded to two decimal places                                                       |
+| Fours and sixes     | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries                                                     |
+| Runs conceded       | `runs_off_bat + wides + no-balls`; byes and leg-byes only off a wide                                                 |
+| Legal balls bowled  | Count deliveries with neither wides nor no-balls                                                                     |
+| Overs bowled        | `completeOvers.remainingBalls`, using the fixture's `balls_per_over`                                                 |
+| Economy rate        | Runs conceded / legal balls × `balls_per_over`, rounded to two decimals                                              |
+| Bowler wickets      | Count wickets whose `dismissal_kind.credits_bowler` value is true                                                    |
+| Fixture outcome     | Accepted fixture outcome fact, represented as a typed result and margin                                              |
 
 Strike rate and economy rate are `null` when their denominator is zero. This distinguishes an
 undefined rate from a real rate of zero.
+
+Innings run rate follows the same rule and is `null` until a legal ball has been bowled. Extras are
+always present, including when every component is zero. Runs recorded as byes or leg-byes on a wide
+are reported as wides under Law 22.6; byes off a no-ball remain byes. The extras `penaltyRuns`
+component combines delivery-level penalties with the innings-level pre/post penalties already
+included in `totalRuns`.
+
+The `legalBalls` count is the denominator for run rate, while `overs` is the presentation value.
+They are intentionally separate: a five- or seven-ball over recorded in `innings_miscounted_over`
+can advance the human-readable over without pretending the fixture always uses six balls or losing
+the exact number of legal deliveries.
 
 ## Statistic resources and traceability
 
@@ -136,6 +153,8 @@ data.
 For an innings total, `metrics.deliveryRuns` is traceable to delivery event IDs while
 `metrics.penaltyRuns` is traceable to the returned `inningsId`, because the approved schema records
 pre/post penalties at innings level rather than inventing a delivery for them.
+The same trace exposes the deliveries behind wickets, legal balls, run rate, and delivery extras;
+miscounted-over and innings-penalty context remains authoritative innings metadata.
 
 ## Public frontend
 
@@ -193,3 +212,4 @@ The live-revision correction rule and selective refresh dependencies were update
 of Codex[GPT-5]. The versioned public fixture-statistics cache was documented with the assistance of
 Codex[GPT-5]. The issue #623 wide-run rule was documented with the assistance of
 Claude-Code[Claude Opus 5].
+The innings scorecard context for issue #631 was documented with the assistance of Codex[GPT-5].
