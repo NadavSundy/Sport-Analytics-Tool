@@ -57,7 +57,7 @@ appear in dependency order so the worker never needs the whole package in memory
 Example:
 
 ```json
-{"recordType":"manifest","contractVersion":"1.0","packageId":"cricsheet:package:ipl-2026","competition":{"sourceId":"cricsheet:competition:ipl"},"season":{"sourceId":"cricsheet:season:2026"}}
+{"recordType":"manifest","contractVersion":"1.0","packageId":"cricsheet:package:ipl-2026","competition":{"context":{"name":"Indian Premier League"}},"season":{"context":{"name":"2026"}}}
 {"recordType":"fixture","fixtureKey":"m1","sourceId":"cricsheet:fixture:1412526"}
 {"recordType":"innings","inningsKey":"m1-i1","fixtureKey":"m1","context":{"ordinal":1,"battingTeam":{"context":{"name":"Example XI"}}}}
 {"recordType":"participant","participantKey":"striker-1","reference":{"context":{"name":"Example Batter"}}}
@@ -100,6 +100,20 @@ Where no source identity exists, packages use readable context:
 Printed ball number is display data and is never used as an identity key.
 
 ## Resolution rules
+
+The accepted reference forms and their deterministic resolver are:
+
+| Entity             | Accepted source-only form                                               | Resolver                                                                                       | Readable-context form                                                  |
+| ------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Competition        | None                                                                    | Exact competition name                                                                         | `context.name`                                                         |
+| Season             | None                                                                    | Exact season name used to narrow fixture resolution                                            | `context.name`                                                         |
+| Team               | None                                                                    | Exact team name                                                                                | `context.name`                                                         |
+| Fixture            | `cricsheet:fixture:<source-ref>` or `app:fixture:<positive-id>`         | Durable `fixture.source_ref` or canonical fixture ID, checked against the declared competition | date plus two resolved teams, optionally season and venue              |
+| Innings            | `app:innings:<positive-id>`                                             | Canonical innings ID, checked inside the resolved fixture                                      | ordinal plus batting team inside the resolved fixture                  |
+| Participant/player | `cricsheet:participant:<source-ref>` or `app:participant:<positive-id>` | Durable `person.source_ref` or canonical person ID, checked inside the resolved fixture squad  | exact display name or retained alias inside the resolved fixture squad |
+
+A source-only reference without a listed durable mapping is rejected at contract validation; the
+receiver does not accept a syntactically valid identifier that cannot ever reach a canonical record.
 
 Resolution occurs after durable receipt and before shared per-event validation:
 
@@ -170,4 +184,6 @@ resolves that reference to Azure storage coordinates.
 The issue #356 package, identity and resolution decisions were documented or edited with the
 assistance of Codex[GPT-5] and ChatGPT-Web[GPT-5.6 Sol].
 The Issue #583 fixture-proposal representation rules were documented with the assistance of
+Codex[GPT-5].
+The Issue #587 reference-form and resolver table was documented with the assistance of
 Codex[GPT-5].

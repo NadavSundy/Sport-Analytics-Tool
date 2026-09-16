@@ -98,11 +98,15 @@ three fielders, must be submitted in the JSON package.
 }
 ```
 
-No field accepts an application database primary key. A source identifier is
+Templates do not require application database keys. A source identifier is
 always `namespace:entityType:value`; it is compared only within its namespace
 and entity type. A reference may instead use readable context, or include both
-for a useful resolution audit. Names are scoped by the enclosing competition,
-season, fixture and, where supplied, team; they are never globally unique.
+for a useful resolution audit. Source-only competition, season and team
+references are rejected because the platform has no durable mapping for them.
+Source-only fixture and participant references may use `cricsheet`, while
+`app` fixture, innings and participant references require a positive canonical
+identifier. Names are scoped by the enclosing competition, season, fixture and,
+where supplied, team; they are never globally unique.
 
 An innings `ordinal` is zero-based, so the first innings of a fixture is `0`. It
 is the same number the platform stores and the same number the public read API
@@ -264,3 +268,5 @@ This Issue #357 contract and documentation were generated with the assistance
 of Codex[GPT-5]. The batch status and result-report section was generated with
 the assistance of Codex[GPT-5]. The reference-mapping section was generated with
 the assistance of Codex[GPT-5].
+The Issue #587 source-only reference-resolution rules were documented with the
+assistance of Codex[GPT-5].
