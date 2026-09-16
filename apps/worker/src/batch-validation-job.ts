@@ -24,6 +24,7 @@ import { z } from 'zod';
 
 import {
   buildReferenceChunk,
+  canonicaliseCandidates,
   normalisedBatchCandidates,
   scanBatchReferences,
   type NormalisedCandidate,
@@ -510,68 +511,6 @@ function correctionValidationResult(
     fieldPath: 'correctsEventId',
     message,
   };
-}
-
-function resolvedCompetitionScopeValidationResult(
-  item: PreparedItem,
-  batchCompetitionId: string,
-): CricketValidationResult {
-  const code = 'RESOLVED_COMPETITION_OUT_OF_SCOPE';
-  const message = 'Resolved fixture is outside the batch competition scope.';
-  item.state = 'rejected';
-  item.rejectionCode = code;
-  item.rejectionMessage = message;
-  // Do not expose the resolved competition: the submitter may not be authorised to see it.
-  item.rejectionDetail = { batchCompetitionId };
-  return {
-    code,
-    ruleVersion: '1.0',
-    severity: 'error',
-    eventIndex: item.ordinal,
-    fieldPath: 'fixture',
-    message,
-  };
-}
-
-/**
- * Authorisation at receipt covers the batch's declared competition. Recheck every
- * resolved event against its canonical fixture so package contents cannot cross
- * that boundary after reference resolution or reviewer mapping.
- */
-export async function enforceResolvedCompetitionScope(
-  client: Pick<PoolClient, 'query'>,
-  items: PreparedItem[],
-  batchCompetitionId: string,
-): Promise<Map<number, CricketValidationResult[]>> {
-  const accepted = items.filter((item) => item.state === 'accepted' && item.inningsId !== null);
-  const results = new Map<number, CricketValidationResult[]>();
-  if (accepted.length === 0) return results;
-
-  const values: unknown[] = [];
-  const tuples = accepted.map((item) => {
-    const first = values.length + 1;
-    values.push(item.ordinal, item.inningsId);
-    return `($${first}::integer,$${first + 1}::bigint)`;
-  });
-  const resolved = await client.query<{ ordinal: number; competitionId: string }>(
-    `
-      WITH staged (ordinal, innings_id) AS (VALUES ${tuples.join(',')})
-      SELECT staged.ordinal, fixture.competition_id::text AS "competitionId"
-      FROM staged
-      JOIN innings ON innings.innings_id=staged.innings_id
-      JOIN fixture ON fixture.fixture_id=innings.fixture_id
-    `,
-    values,
-  );
-  const competitionByOrdinal = new Map(
-    resolved.rows.map((row) => [row.ordinal, row.competitionId]),
-  );
-
-  for (const item of accepted) {
-    if (competitionByOrdinal.get(item.ordinal) === batchCompetitionId) continue;
-    results.set(item.ordinal, [resolvedCompetitionScopeValidationResult(item, batchCompetitionId)]);
-  }
-  return results;
 }
 
 export async function resolveCorrectionTargets(
@@ -1625,7 +1564,22 @@ export function createBatchValidationJobHandler(
 
       const processCandidateChunk = async (): Promise<void> => {
         if (candidateChunk.length === 0) return;
-        const referenceChunk = buildReferenceChunk(candidateChunk);
+        // The checkpoint watermark must stay tied to the chunk's arrival-order
+        // boundary (the source position we have read up to), independent of
+        // how the chunk's contents are ordered for processing below. Computing
+        // it before reordering keeps resumability unaffected by #588.
+        const lastCandidateOrdinal = Math.max(
+          ...candidateChunk.map((candidate) => candidate.ordinal),
+        );
+        // Business-rule sequencing checks and ball-position derivation are
+        // order-sensitive: they must see events in occurrence order
+        // (occurrenceSequence), not the order they happened to arrive in the
+        // source file or stream (#588). Reordering is scoped to one chunk, so
+        // a shuffled innings whose events span more than one chunk boundary
+        // is not yet fully covered here; see the coordinate-validation
+        // alignment follow-up referenced on the issue.
+        const orderedChunk = canonicaliseCandidates(candidateChunk);
+        const referenceChunk = buildReferenceChunk(orderedChunk);
         const { overrides: referenceOverrides, decisionReferencesByPath } =
           referenceOverridesForChunk(mappingRows.rows, referenceChunk.referencePathByOrdinal);
         const resolution = referenceChunk.referencePackage
@@ -1648,7 +1602,7 @@ export function createBatchValidationJobHandler(
         );
         const prepared: PreparedItem[] = [];
 
-        for (const candidate of candidateChunk) {
+        for (const candidate of orderedChunk) {
           const coordinates = deriveCoordinates(candidate, counters);
           const path = referenceChunk.referencePathByOrdinal.get(candidate.ordinal);
           const resolved = path ? resolutionByPath.get(path) : undefined;
@@ -1678,19 +1632,9 @@ export function createBatchValidationJobHandler(
           if (item) prepared.push(item);
         }
 
-        const businessResultsByOrdinal = await transaction(database, async (client) => {
-          const scopeResults = await enforceResolvedCompetitionScope(
-            client,
-            prepared,
-            claimResult.competitionId,
-          );
-          const correctionResults = await resolveCorrectionTargets(
-            client,
-            prepared,
-            claimResult.competitionId,
-          );
-          return new Map([...scopeResults, ...correctionResults]);
-        });
+        const businessResultsByOrdinal = await transaction(database, (client) =>
+          resolveCorrectionTargets(client, prepared, claimResult.competitionId),
+        );
         const canonicalItems = prepared
           .filter((item) => item.state === 'accepted')
           .map((item) => {
@@ -1738,7 +1682,6 @@ export function createBatchValidationJobHandler(
           }
         }
 
-        const lastCandidateOrdinal = candidateChunk[candidateChunk.length - 1]!.ordinal;
         await writeChunk(
           claimResult,
           prepared,
