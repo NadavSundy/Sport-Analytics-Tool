@@ -60,8 +60,8 @@ const cases: Array<[string, StoredExtras]> = [
   ['wides 0 and byes 4', { ...none, wides: 0, byes: 4 }],
   ['no-balls 0 and penalty 5', { ...none, noBalls: 0, penalty: 5 }],
   ['wides 1 and penalty 5', { ...none, wides: 1, penalty: 5 }],
-  // The contract rejects negative extras, but the delivery columns carry no
-  // CHECK constraint yet, so both spellings must still agree on one.
+  // The contract and the delivery columns' CHECK constraints both reject
+  // negative extras, but both spellings must still agree on one.
   ['wides -1 (not accepted by the contract)', { ...none, wides: -1 }],
 ];
 
