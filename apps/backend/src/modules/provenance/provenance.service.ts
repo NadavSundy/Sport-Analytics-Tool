@@ -1,6 +1,5 @@
 import {
   type EventProvenanceResponse,
-  type ParticipantAggregate,
   type ProvenanceSubmissionDetailResponse,
   type ProvenanceSubmissionListQuery,
   type ProvenanceSubmissionListResponse,
