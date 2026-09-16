@@ -258,6 +258,8 @@ jobs:
     if: needs.plan.outputs.coverage == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: write
     env:
       NODE_ENV: test
       SUPABASE_URL: https://example.invalid
@@ -270,6 +272,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -292,6 +296,33 @@ jobs:
           path: coverage/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Publish live coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          cp coverage/combined/badge.svg "$RUNNER_TEMP/coverage-badge.svg"
+
+          git config user.name "gitea-actions"
+          git config user.email "actions@users.noreply.sdp.ms.wits.ac.za"
+
+          git fetch origin coverage-badge || true
+          if git show-ref --verify --quiet refs/remotes/origin/coverage-badge; then
+            git switch -C coverage-badge origin/coverage-badge
+          else
+            git switch --orphan coverage-badge
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          cp "$RUNNER_TEMP/coverage-badge.svg" badge.svg
+          git add badge.svg
+          if git diff --cached --quiet; then
+            echo "Coverage badge is already current."
+            exit 0
+          fi
+
+          git commit -m "chore(coverage): update live badge"
+          git push origin coverage-badge
 
   quality:
     needs:
