@@ -313,10 +313,14 @@ fixture's date and teams match the readable selection. Season and back-catalogue
 accept NDJSON. The advanced canonical JSON editor and accepted-event correction workspace remain
 available for integrations that already hold application references.
 
-The single-fixture selector includes **New fixture** for an approved submitter. That choice collects
-the required fixture metadata and converts a matching JSON or CSV package to the version 1.1 proposal
-contract. Canonical creation remains an administrator decision in the batch review workspace, and
-the submission is revalidated after that decision. Enumerated fixture metadata uses dropdowns:
+The single-fixture workflow presents a separate **Propose a new fixture** action for an approved
+submitter, rather than placing it among existing fixture choices. Proposal mode hides the
+existing-fixture selector and provides a clear return action. It collects the required fixture
+metadata and converts a matching JSON or CSV package to the version 1.1 proposal contract. When the
+proposal's competition, season, date and two team names match an accessible existing fixture, the
+browser warns the submitter and offers to use that fixture instead. Canonical creation remains an
+administrator decision in the batch review workspace, and the submission is revalidated after that
+decision. Enumerated fixture metadata uses dropdowns:
 match type is fixed to the platform's supported `T20` value, team type offers `club` and
 `international`, and gender offers `female` and `male`.
 The file control precedes the new-fixture metadata and prefills competition, season, date and teams
@@ -382,4 +386,5 @@ Codex[GPT-5.6 Sol].
 The issue #499 plain-language submission validation guidance was documented with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
 The issue #539 correction-resubmission journey was documented with the assistance of Codex[GPT-5].
-The issue #571 new-fixture proposal journey was documented with the assistance of Codex[GPT-5].
+The issue #571 new-fixture proposal journey and its issue #583 duplicate-warning refinement were
+documented with the assistance of Codex[GPT-5].

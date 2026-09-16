@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { referenceOverridesForChunk } from '../src/batch-validation-job';
+import { prepareItem, referenceOverridesForChunk } from '../src/batch-validation-job';
 
 describe('batch reference mapping reprocessing', () => {
   test('binds a retained item decision to the current chunk-local path', () => {
@@ -52,5 +52,81 @@ describe('batch reference mapping reprocessing', () => {
 
     expect(result.overrides.has('competition')).toBe(false);
     expect(result.decisionReferencesByPath.has('competition')).toBe(false);
+  });
+
+  test('stages complete fixture-proposal evidence unchanged for reviewer resolution', () => {
+    const proposal = {
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    };
+    const resolvedReferences = {
+      fixture: {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        canonicalId: null,
+        candidates: [],
+        reason: 'No matching fixture.',
+        submittedReference: {
+          sourceId: 'submitter:fixture:new-fixture',
+          context: {
+            date: '2026-03-14',
+            teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+          },
+          season: { context: { name: '2026' } },
+          proposal,
+        },
+      },
+    };
+    const item = prepareItem(
+      {
+        ordinal: 0,
+        filePath: 'batch.json',
+        rowNumber: null,
+        fixtureKey: 'fixture-1',
+        inningsKey: 'innings-1',
+        packageEnvelope: {
+          contractVersion: '1.1',
+          packageId: 'submitter:package:new-fixture',
+          competition: { context: { name: 'Premier T20' } },
+          season: { context: { name: '2026' } },
+        },
+        fixture: {
+          sourceId: 'submitter:fixture:new-fixture',
+          context: {
+            date: '2026-03-14',
+            teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+          },
+          proposal,
+        },
+        innings: {
+          context: { ordinal: 0, battingTeam: { context: { name: 'Wanderers' } } },
+        },
+        event: {
+          eventId: 'submitter:delivery:new-fixture-1',
+          occurrenceSequence: 1,
+          overNumber: 0,
+          positionInOver: 0,
+          ballLabel: '0.1',
+          operation: 'upsert',
+          striker: { context: { name: 'A. Batter' } },
+          nonStriker: { context: { name: 'B. Batter' } },
+          bowler: { context: { name: 'C. Bowler' } },
+          runs: { offBat: 0, extras: 0, total: 0 },
+          extras: {},
+          wickets: [],
+        },
+      },
+      { inningsId: null, state: 'unresolved', resolvedReferences },
+      { overNumber: 0, positionInOver: 0 },
+    );
+
+    expect(item?.resolvedReferences).toEqual(resolvedReferences);
   });
 });
