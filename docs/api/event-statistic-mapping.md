@@ -119,10 +119,7 @@ Client confirmation of this convention is recorded as pending in
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
 The issue #623 wide-run rule was documented with the assistance of Claude-Code[Claude Opus 5].
-<<<<<<< HEAD
+
 The issue #632 participant aggregate mappings were updated with the assistance of Codex[GPT-5].
-=======
 
 The innings scorecard mapping for issue #631 was documented with the assistance of Codex[GPT-5].
-
-> > > > > > > origin/main
