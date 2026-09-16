@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-export const COVERAGE_METRICS = ['lines', 'statements', 'functions', 'branches'];
+const COVERAGE_METRICS = ['lines', 'statements', 'functions', 'branches'];
 
 export const WORKSPACE_COVERAGE = [
   { name: 'frontend', workspace: '@sport-analytics/frontend', directory: 'apps/frontend' },
