@@ -152,8 +152,11 @@ describe('direct submission contract', () => {
   });
 
   test('accepts extras types that co-occur on one delivery', () => {
-    // A wide with byes. The schema records a run count per type rather than a
-    // type and a count, because more than one type can apply to a delivery.
+    // A wide with byes. Cricsheet records runs off a wide as wides, but the
+    // contract still accepts this form, and statistics charge the byes to the
+    // bowler as wide runs (Law 22.6, ADR-014). The schema records a run count
+    // per type rather than a type and a count, because more than one type can
+    // apply to a delivery.
     const result = submissionRequestSchema.safeParse({
       fixtureId: '7',
       schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,

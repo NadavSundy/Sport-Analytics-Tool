@@ -23,7 +23,7 @@ and checked rather than taken on trust.
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | O1  | The printed ball number repeats within an over in 20.4% of overs (104,818 of 514,380). One over holds nineteen deliveries, six of them labelled `5.1`. | Delivery identity is the position in the source array, never the printed number.     |
 | O2  | 168 names map to more than one player identifier, and 40 identifiers map to more than one name. `Abdul Rahman` is three different people.              | Players key on the registry identifier. Names are display text and never a join key. |
-| O3  | Extras types co-occur on a single delivery — a wide with byes. Five types appear: wides, leg byes, no-balls, byes and penalty.                         | Extras are separate nullable columns, not a type and a count.                        |
+| O3  | Extras types co-occur on a single delivery — a no-ball with byes. Five types appear: wides, leg byes, no-balls, byes and penalty.                      | Extras are separate nullable columns, not a type and a count.                        |
 | O4  | `wickets` is an array. 5,833 dismissals name multiple fielders, and 127 fielder records identify a substitute with no name at all.                     | Wickets and fielders need their own tables, and fielder identity must be nullable.   |
 | O5  | 99 matches carry four innings rather than two; 204 innings are flagged as super overs.                                                                 | Innings count per fixture is not fixed at two.                                       |
 | O6  | 175 innings carry `miscounted_overs`, where an over legitimately holds five or seven legal balls.                                                      | No constraint may assume six legal balls per over.                                   |
@@ -42,8 +42,9 @@ or a value of zero or more: `delivery_extra_wides_nonnegative_ck`,
 `delivery_extra_legbyes_nonnegative_ck` and `delivery_extra_penalty_nonnegative_ck`. The submission
 contract applies the same rule, and the Cricsheet ingest validates every delivery's extras against
 that contract before writing anything, so a file with an invalid extra leaves no partial data
-(issue #623). Byes or leg byes recorded on a wide are still accepted as O3 describes; how they should
-be treated awaits a team decision.
+(issue #623). The #623 corpus scan found no delivery recording byes or leg byes on a wide: Cricsheet
+records runs completed off a wide as wides. The contract still accepts that form, and under Law 22.6
+such byes and leg byes are wide runs charged to the bowler (ADR-014).
 
 ### 1.1 The case that decides delivery identity
 
@@ -249,7 +250,8 @@ expressible, and each is a place where a naive model would produce wrong figures
 1. Balls faced counts deliveries where no wide was bowled. A no-ball is faced; a
    wide is not.
 2. Runs conceded by a bowler include wides and no-balls but exclude byes and
-   leg-byes.
+   leg-byes, except byes and leg-byes run off a wide, which are wide runs
+   (Law 22.6, ADR-014).
 3. Boundaries count four or six off the bat, excluding the 232 deliveries flagged
    `non_boundary`, where the runs were run rather than struck to the rope.
 4. A team total is the sum of delivery totals **plus** innings-level penalty runs
@@ -408,3 +410,4 @@ The issue #284 immutable correction audit schema was documented with the assista
 The issue #363 protected provenance API documentation was generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #297 Intermediate database-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #623 extras constraints were documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #623 wide-run rule, ADR-014, was documented with the assistance of Claude-Code[Claude Opus 5].
