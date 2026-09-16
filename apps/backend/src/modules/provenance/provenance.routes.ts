@@ -8,6 +8,7 @@ import {
   createEventProvenanceController,
   createProvenanceSubmissionController,
   createProvenanceSubmissionListController,
+  createParticipantStatisticProvenanceController,
   createStatisticProvenanceController,
 } from './provenance.controller';
 import type { ProvenanceService } from './provenance.service';
@@ -25,6 +26,12 @@ export function createProvenanceRouter(
     authenticate,
     requireSubmitter(),
     createProvenanceSubmissionListController(service),
+  );
+  router.get(
+    '/provenance/participants/:participantId/statistics/:statisticId',
+    authenticate,
+    requireSubmitter(),
+    createParticipantStatisticProvenanceController(service),
   );
   router.get(
     '/provenance/submissions/:reference',

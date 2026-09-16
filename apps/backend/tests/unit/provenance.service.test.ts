@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import type { FixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';
+import type { ParticipantAggregatesService } from '../../src/modules/statistics/participant-aggregates.service';
 import type { ProvenanceRepository } from '../../src/modules/provenance/provenance.repository';
 import {
   createProvenanceService,
@@ -17,6 +18,7 @@ function repository(overrides: Partial<ProvenanceRepository> = {}): ProvenanceRe
     findEvent: vi.fn().mockResolvedValue(null),
     findFixtureCompetition: vi.fn().mockResolvedValue('5'),
     listContributorSources: vi.fn().mockResolvedValue([]),
+    listParticipantContributorSources: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -33,6 +35,23 @@ function statistics(): FixtureStatisticsService {
       contributingEvents: [{ eventId: '101' }],
     }),
   } as unknown as FixtureStatisticsService;
+}
+
+function participantStatistics(): ParticipantAggregatesService {
+  return {
+    getParticipantAggregates: vi.fn(),
+    getParticipantAggregate: vi.fn().mockResolvedValue({
+      statisticId: 'stat_career',
+      participantId: '101',
+      participantName: 'Player',
+      scope: 'career',
+      statisticCode: 'participant_career',
+      fixtureCount: 1,
+      sourceEventCount: 1,
+      batting: null,
+      bowling: null,
+    }),
+  };
 }
 
 const source = {
@@ -53,6 +72,40 @@ const source = {
 };
 
 describe('provenance service authorization', () => {
+  test('traces a career aggregate through current stable event identities', async () => {
+    const data = repository({
+      listParticipantContributorSources: vi
+        .fn()
+        .mockResolvedValue([
+          {
+            deliveryId: '101',
+            revision: 2,
+            sourceEventId: '11111111-1111-4111-8111-111111111111',
+            source,
+          },
+        ]),
+    });
+    const service = createProvenanceService(statistics(), data, participantStatistics());
+
+    await expect(
+      service.getParticipantStatistic(
+        createTestAccount({ role: 'submitter', accountId: '1' }),
+        '101',
+        'stat_career',
+        { limit: 25 },
+      ),
+    ).resolves.toMatchObject({
+      data: {
+        scope: 'career',
+        contributors: [{ sourceEventId: '11111111-1111-4111-8111-111111111111' }],
+      },
+    });
+    expect(data.listParticipantContributorSources).toHaveBeenCalledWith(
+      '101',
+      expect.any(Object),
+      26,
+    );
+  });
   test('ordinary submitters list only their own submission provenance', async () => {
     const data = repository();
     const service = createProvenanceService(statistics(), data);

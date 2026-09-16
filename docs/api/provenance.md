@@ -50,10 +50,19 @@ to its retained source provenance. The response therefore completes:
 A submitter may read the trace only when every current contributing event belongs to that submitter.
 A competition-scoped administrator may review a mixed-source statistic for that competition.
 
+## Aggregate statistic provenance
+
+`GET /api/v1/provenance/participants/{participantId}/statistics/{statisticId}` provides the same
+private trace for the published season, competition and career participant aggregates. It resolves
+only current accepted delivery revisions, exposes their stable `sourceEventId` values and source
+submissions, and is cursor-paginated (`limit`, `cursor`) so a career trace cannot make an aggregate
+response unbounded. Follow each contributor through `GET /api/v1/provenance/events/{deliveryId}`
+for its correction lineage.
+
 ## Public privacy boundary
 
 The anonymous `/fixtures`, `/events` and `/statistics` APIs are unchanged. They do not return
 submitter IDs, batch audit state, review decisions, lifecycle transitions or correction actors. Private
 provenance is available only from the authenticated `/provenance/...` routes above.
 
-AI Declaration: The preceding document was generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+AI Declaration: This document was updated with the assistance of Codex[GPT-5].

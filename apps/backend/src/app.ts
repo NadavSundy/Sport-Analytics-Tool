@@ -163,7 +163,8 @@ export function createApp(dependencies: AppDependencies = {}) {
       legacyObjectStore: objectStorageComposition?.legacyObjectStore ?? objectStore,
     });
   const provenanceService =
-    dependencies.provenanceService ?? createProvenanceService(fixtureStatisticsService);
+    dependencies.provenanceService ??
+    createProvenanceService(fixtureStatisticsService, undefined, participantAggregatesService);
   const allowedOrigins = environment.CORS_ORIGINS.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
