@@ -35,7 +35,7 @@ Declared Vite range          ^7.3.6
 Resolved Vite                7.3.6
 Vitest                       4.1.11
 @vitest/coverage-v8          4.1.11
-@vitejs/plugin-react         5.0.4
+@vitejs/plugin-react         4.7.0
 tsx (resolved)               4.23.13
 esbuild (resolved)           0.28.1
 Node engine                  ^20.19.0 || >=22.12.0
@@ -51,8 +51,7 @@ Rationale:
   remove the repository's supported Node 20 line.
 - Vite 8 was not selected because it switches Vite's bundler architecture to Rolldown. That larger change
   is not required to resolve this advisory and would add unrelated regression surface.
-- `@vitejs/plugin-react` was upgraded to 5.0.4, which remains compatible with Vite 7 and avoids the
-  Vite 8/Oxc compatibility warnings observed when the older plugin line was exercised through Vitest 4.
+- @vitejs/plugin-react remains on 4.7.0 for compatibility with the repository's TypeScript 5.5.4 toolchain. The root Vite override keeps Vitest on Vite 7.3.6 and avoids the separate Vite 8 resolution that produced the earlier Oxc/esbuild warnings.
 - The root `package.json` uses `overrides.vite: "^7.3.6"` so Vitest and `@vitest/mocker` resolve the same
   supported Vite 7 line as the frontend instead of installing a separate Vite 8 toolchain.
 
@@ -81,7 +80,7 @@ Node 20 releases.
 
 `package-lock.json` was regenerated with npm and verified with a clean `npm ci`. No integrity hashes or
 transitive dependency entries were hand-edited. The final dependency tree resolves Vite 7.3.6 throughout
-the frontend/Vitest toolchain, Vitest 4.1.11, `@vitest/coverage-v8` 4.1.11, `@vitejs/plugin-react` 5.0.4,
+the frontend/Vitest toolchain, Vitest 4.1.11, `@vitest/coverage-v8` 4.1.11, `@vitejs/plugin-react` 4.7.0,
 tsx 4.23.13 and esbuild 0.28.1. No affected esbuild `<=0.24.2` remains.
 
 The root Vite override is a dependency-resolution constraint rather than an imported root dependency:
@@ -105,7 +104,7 @@ Verification was completed on 2026-09-16 from the repository root.
 | Gate                 | Command                                                                   | Result                                                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Lock/install         | `npm install` / `npm ci`                                                  | **PASS** — clean install completed; 677 packages audited with 0 vulnerabilities                                                                          |
-| Dependency tree      | `npm ls vite vitest @vitejs/plugin-react @vitest/coverage-v8 tsx esbuild` | **PASS** — Vite 7.3.6 is deduplicated across the frontend and Vitest; Vitest 4.1.11; plugin-react 5.0.4; coverage-v8 4.1.11; tsx 4.23.13; esbuild 0.28.1 |
+| Dependency tree      | `npm ls vite vitest @vitejs/plugin-react @vitest/coverage-v8 tsx esbuild` | **PASS** — Vite 7.3.6 is deduplicated across the frontend and Vitest; Vitest 4.1.11; plugin-react 4.7.0; coverage-v8 4.1.11; tsx 4.23.13; esbuild 0.28.1 |
 | Frontend unit tests  | `npm run test:frontend`                                                   | **PASS** — 23 files, 196 tests                                                                                                                           |
 | Contracts tests      | `npm run test:contracts`                                                  | **PASS** — 12 files, 168 tests                                                                                                                           |
 | Browser E2E          | `npm run test:e2e`                                                        | **PASS** — 51 Playwright tests                                                                                                                           |
@@ -126,7 +125,7 @@ The final `npm audit` results contain no remaining advisory, so no residual secu
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Supported Vite/Vitest path identified                        | **VERIFIED** — Vite 7.3.6 / Vitest 4.1.11 path documented and resolved consistently                                                                                       |
 | Upgrade without `npm audit fix --force`                      | **VERIFIED** — migration was performed deliberately without `--force`; a normal `npm audit fix` was later used only for separately reported fixable transitive advisories |
-| React/Vite/Vitest configuration changes applied deliberately | **VERIFIED** — Vitest 4 `execArgv` migration, contracts source-test scoping, plugin-react 5.0.4 and root Vite 7 override are documented                                   |
+| React/Vite/Vitest configuration changes applied deliberately | **VERIFIED** — Vitest 4 `execArgv` migration, contracts source-test scoping, plugin-react 4.7.0 and root Vite 7 override are documented                                   |
 | Frontend unit tests pass                                     | **VERIFIED** — 196/196                                                                                                                                                    |
 | Playwright E2E tests pass                                    | **VERIFIED** — 51/51                                                                                                                                                      |
 | `npm run check` passes                                       | **VERIFIED**                                                                                                                                                              |

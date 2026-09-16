@@ -19,7 +19,7 @@ ChatGPT reviewed the supplied repository snapshot, the existing Issue #274 secur
 - refresh backend/worker `tsx` so a stale nested esbuild does not retain the same advisory through a second development-tool path;
 - migrate the removed Vitest `poolOptions.forks.execArgv` setting to top-level `test.execArgv`;
 - align the declared Node engine and setup documentation with Vite 7's supported runtime floor;
-- upgrade `@vitejs/plugin-react` to 5.0.4 and use a root Vite 7 override so the frontend and Vitest resolve one supported Vite major;
+- retain @vitejs/plugin-react 4.7.0 for TypeScript 5.5.4 compatibility and use a root Vite 7 override so the frontend and Vitest resolve one supported Vite major
 - scope the contracts test command to `src/tests` after Vitest 4 exposed generated CommonJS test copies under `dist/tests`;
 - record the controlled migration rationale and avoid coupling the larger Vite 8/Rolldown migration to this security follow-up; and
 - create and then finalize Issue #329 validation evidence using only locally observed verification results.
@@ -33,7 +33,7 @@ quality, browser, security, documentation, hygiene and local-CI gates.
 Notable human-reviewed adaptations during verification were:
 
 - adding explicit frontend Node typings because a source-located test imports `node:fs`;
-- upgrading `@vitejs/plugin-react` to 5.0.4;
+- retaining @vitejs/plugin-react 4.7.0 after CI exposed a TypeScript 5.5.4 declaration-syntax incompatibility with plugin-react 5.x
 - replacing an unused root Vite devDependency with `overrides.vite: "^7.3.6"`;
 - scoping contract tests to `src/tests` so generated CommonJS output is not re-run by Vitest 4; and
 - applying a normal, non-forced npm audit fix for separately reported fixable transitive advisories.
