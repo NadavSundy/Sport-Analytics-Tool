@@ -16,6 +16,15 @@ export interface FixtureRecord {
   gender: string;
   ballsPerOver: number;
   scheduledOvers: number | null;
+  venue: {
+    name: string;
+    city: string | null;
+  } | null;
+  toss: {
+    winnerCompetitorId: string | null;
+    winnerCompetitorName: string | null;
+    decision: 'bat' | 'field' | null;
+  } | null;
   startDate: string;
   endDate: string;
 }
@@ -149,12 +158,28 @@ export async function listFixtures(
         f.gender,
         f.balls_per_over AS "ballsPerOver",
         f.scheduled_overs AS "scheduledOvers",
+        CASE WHEN v.venue_id IS NULL THEN NULL ELSE jsonb_build_object(
+          'name', v.name,
+          'city', v.city
+        ) END AS venue,
+        CASE
+          WHEN f.toss_winner_id IS NULL AND f.toss_decision IS NULL THEN NULL
+          ELSE jsonb_build_object(
+            'winnerCompetitorId', toss_winner.team_id::text,
+            'winnerCompetitorName', toss_winner.name,
+            'decision', f.toss_decision
+          )
+        END AS toss,
         f.start_date::text AS "startDate",
         f.end_date::text AS "endDate",
         f."totalRecords"
       FROM filtered_fixtures f
       LEFT JOIN competition c
         ON c.competition_id = f.competition_id
+      LEFT JOIN venue v
+        ON v.venue_id = f.venue_id
+      LEFT JOIN team toss_winner
+        ON toss_winner.team_id = f.toss_winner_id
       ${cursorWhere}
       ORDER BY f.start_date ASC, f.fixture_id ASC
       LIMIT $${limitParameter}
@@ -202,11 +227,27 @@ export async function findFixtureById(
         f.gender,
         f.balls_per_over AS "ballsPerOver",
         f.scheduled_overs AS "scheduledOvers",
+        CASE WHEN v.venue_id IS NULL THEN NULL ELSE jsonb_build_object(
+          'name', v.name,
+          'city', v.city
+        ) END AS venue,
+        CASE
+          WHEN f.toss_winner_id IS NULL AND f.toss_decision IS NULL THEN NULL
+          ELSE jsonb_build_object(
+            'winnerCompetitorId', toss_winner.team_id::text,
+            'winnerCompetitorName', toss_winner.name,
+            'decision', f.toss_decision
+          )
+        END AS toss,
         f.start_date::text AS "startDate",
         f.end_date::text AS "endDate"
       FROM fixture f
       LEFT JOIN competition c
         ON c.competition_id = f.competition_id
+      LEFT JOIN venue v
+        ON v.venue_id = f.venue_id
+      LEFT JOIN team toss_winner
+        ON toss_winner.team_id = f.toss_winner_id
       WHERE f.fixture_id = $1::bigint
     `,
     [fixtureId],

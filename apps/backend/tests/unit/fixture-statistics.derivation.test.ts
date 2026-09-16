@@ -190,6 +190,18 @@ describe('fixture statistics golden fixture', () => {
       method: null,
       decidedByBowlOut: false,
     });
+    expect(result.highestScorers).toEqual([
+      {
+        participantId: '101',
+        participantName: 'Player 101',
+        competitorId: '10',
+        competitorName: 'Team Alpha',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        runsScored: 10,
+        notOut: true,
+      },
+    ]);
 
     const firstInnings = result.statistics.find(
       (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
@@ -278,6 +290,117 @@ describe('fixture statistics golden fixture', () => {
     const reversed = deriveFixtureStatistics(goldenSource([...goldenEvents].reverse()));
 
     expect(reversed).toEqual(forward);
+  });
+
+  test('returns every tied highest individual innings score in deterministic order', () => {
+    const tiedEvents = [
+      event({
+        deliveryId: '20',
+        inningsId: '502',
+        inningsOrdinal: 1,
+        inningsSequence: 1,
+        battingCompetitorId: '20',
+        battingCompetitorName: 'Team Beta',
+        strikerId: '201',
+        strikerName: 'Player 201',
+        runsOffBat: 10,
+        runsTotal: 10,
+      }),
+      event({
+        deliveryId: '10',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        strikerId: '101',
+        strikerName: 'Player 101',
+        runsOffBat: 10,
+        runsTotal: 10,
+      }),
+    ];
+
+    const result = deriveFixtureStatistics(goldenSource([...tiedEvents].reverse()));
+
+    expect(
+      result.highestScorers.map((scorer) => [scorer.inningsOrdinal, scorer.participantId]),
+    ).toEqual([
+      [0, '101'],
+      [1, '201'],
+    ]);
+  });
+
+  test('uses a single innings score rather than summing the same batter across innings', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: '1',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          strikerId: '101',
+          strikerName: 'Player 101',
+          runsOffBat: 7,
+          runsTotal: 7,
+        }),
+        event({
+          deliveryId: '2',
+          inningsId: '502',
+          inningsOrdinal: 1,
+          inningsSequence: 1,
+          battingCompetitorId: '20',
+          battingCompetitorName: 'Team Beta',
+          strikerId: '101',
+          strikerName: 'Player 101',
+          runsOffBat: 7,
+          runsTotal: 7,
+        }),
+        event({
+          deliveryId: '3',
+          inningsId: '502',
+          inningsOrdinal: 1,
+          inningsSequence: 2,
+          battingCompetitorId: '20',
+          battingCompetitorName: 'Team Beta',
+          strikerId: '201',
+          strikerName: 'Player 201',
+          runsOffBat: 10,
+          runsTotal: 10,
+        }),
+      ]),
+    );
+
+    expect(result.highestScorers).toEqual([
+      expect.objectContaining({ participantId: '201', inningsOrdinal: 1, runsScored: 10 }),
+    ]);
+  });
+
+  test('marks a highest scorer dismissed when the accepted events contain a terminal wicket', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: '1',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          strikerId: '101',
+          strikerName: 'Player 101',
+          runsOffBat: 12,
+          runsTotal: 12,
+          wickets: [
+            {
+              wicketId: 'w-1',
+              eventId: '1',
+              playerOutId: '101',
+              kind: 'caught',
+              isTerminal: true,
+            },
+          ],
+        }),
+      ]),
+    );
+
+    expect(result.highestScorers).toEqual([
+      expect.objectContaining({ participantId: '101', runsScored: 12, notOut: false }),
+    ]);
   });
 
   test('keeps team extras out of a bowler extras breakdown', () => {

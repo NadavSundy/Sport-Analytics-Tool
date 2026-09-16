@@ -2,6 +2,7 @@ import {
   bowlerChargedExtras,
   bowlerWideRuns,
   countsAsBallFaced,
+  type FixtureHighestScorer,
   isLegalDelivery,
   type FixtureOutcome,
   type FixtureStatistic,
@@ -46,6 +47,17 @@ interface ParticipantAccumulator {
   eventIds: Set<string>;
   battingPosition: number | null;
   dismissal: FixtureStatisticsWicketSource | null;
+}
+
+interface InningsBattingAccumulator {
+  participantId: string;
+  participantName: string;
+  competitorId: string;
+  competitorName: string;
+  inningsId: string;
+  inningsOrdinal: number;
+  runsScored: number;
+  dismissed: boolean;
 }
 
 export interface DeriveFixtureStatisticsOptions {
@@ -160,6 +172,77 @@ function addParticipantEvent(
 
   participant.eventIds.add(event.deliveryId);
   participant.events.push(event);
+}
+
+function deriveHighestScorers(
+  orderedEvents: FixtureStatisticsEventSource[],
+): FixtureHighestScorer[] {
+  const batters = new Map<string, InningsBattingAccumulator>();
+
+  const batter = (
+    event: FixtureStatisticsEventSource,
+    participantId: string,
+    participantName: string,
+  ): InningsBattingAccumulator => {
+    const key = `${event.inningsId}:${participantId}`;
+    const existing = batters.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const created: InningsBattingAccumulator = {
+      participantId,
+      participantName,
+      competitorId: event.battingCompetitorId,
+      competitorName: event.battingCompetitorName,
+      inningsId: event.inningsId,
+      inningsOrdinal: event.inningsOrdinal,
+      runsScored: 0,
+      dismissed: false,
+    };
+    batters.set(key, created);
+    return created;
+  };
+
+  for (const event of orderedEvents) {
+    batter(event, event.strikerId, event.strikerName).runsScored += event.runsOffBat;
+    batter(event, event.nonStrikerId, event.nonStrikerName);
+
+    for (const wicket of event.wickets) {
+      if (!wicket.isTerminal) {
+        continue;
+      }
+
+      const dismissed = batters.get(`${event.inningsId}:${wicket.playerOutId}`);
+      if (dismissed) {
+        dismissed.dismissed = true;
+      }
+    }
+  }
+
+  const scores = [...batters.values()];
+  if (scores.length === 0) {
+    return [];
+  }
+
+  const highestRuns = Math.max(...scores.map((score) => score.runsScored));
+  return scores
+    .filter((score) => score.runsScored === highestRuns)
+    .sort(
+      (left, right) =>
+        left.inningsOrdinal - right.inningsOrdinal ||
+        compareDatabaseIds(left.participantId, right.participantId),
+    )
+    .map((score) => ({
+      participantId: score.participantId,
+      participantName: score.participantName,
+      competitorId: score.competitorId,
+      competitorName: score.competitorName,
+      inningsId: score.inningsId,
+      inningsOrdinal: score.inningsOrdinal,
+      runsScored: score.runsScored,
+      notOut: !score.dismissed,
+    }));
 }
 
 export function deriveFixtureStatistics(
@@ -415,6 +498,7 @@ export function deriveFixtureStatistics(
       superOversIncluded: SUPER_OVERS_INCLUDED_IN_STANDARD_STATISTICS,
     },
     outcome: mapOutcome(source),
+    highestScorers: deriveHighestScorers(orderedEvents),
     warnings,
     statistics,
   };

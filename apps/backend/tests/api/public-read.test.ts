@@ -207,6 +207,8 @@ function participantFixture(overrides: Partial<ParticipantFixture> = {}): Partic
       gender: 'male',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     },
@@ -425,6 +427,12 @@ describe('public read API', () => {
       gender: 'male',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: '20',
+        winnerCompetitorName: 'Team Alpha',
+        decision: 'bat',
+      },
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     });
@@ -444,6 +452,12 @@ describe('public read API', () => {
       fixtureId: '100',
       competitionName: 'Test Competition',
       seasonLabel: '2026',
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: '20',
+        winnerCompetitorName: 'Team Alpha',
+        decision: 'bat',
+      },
       competitors: [
         {
           competitorId: '20',
