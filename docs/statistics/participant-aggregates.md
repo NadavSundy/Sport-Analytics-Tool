@@ -63,7 +63,7 @@ it does not.
 | Balls faced        | Count striker deliveries with no wide; a no-ball still counts as faced            |
 | Strike rate        | Runs scored / balls faced × 100, recomputed over the group                        |
 | Fours and sixes    | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries                  |
-| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes are excluded                 |
+| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes count only off a wide        |
 | Legal balls bowled | Count deliveries with neither wides nor no-balls                                  |
 | Overs bowled       | `completeOvers.remainingBalls`, from the counted legal balls                      |
 | Economy rate       | Runs conceded / legal balls × balls-per-over, recomputed over the group           |
@@ -165,4 +165,5 @@ The preceding calculation, performance and API documentation was generated with 
 Claude Code[Claude Opus 5]. The corpus measurements were taken against the imported corpus and are
 reproduced in the issue #285 validation record. The selective correction-refresh dependency model
 was documented with the assistance of Codex[GPT-5]. The record of figures not derived, under issue
-#476, was documented with the assistance of Claude Code[Claude Opus 5].
+#476, was documented with the assistance of Claude Code[Claude Opus 5]. The issue #623 wide-run rule
+was documented with the assistance of Claude-Code[Claude Opus 5].

@@ -680,3 +680,88 @@ describe('fixture statistics with zero-valued extras (issue #590)', () => {
     },
   );
 });
+
+describe('fixture statistics with byes or leg byes recorded on a wide (ADR-014, issue #623)', () => {
+  function overEvent(
+    inningsSequence: number,
+    overrides: Partial<FixtureStatisticsEventSource>,
+  ): FixtureStatisticsEventSource {
+    return event({
+      deliveryId: `wide-over-${inningsSequence}`,
+      inningsId: '501',
+      inningsOrdinal: 0,
+      inningsSequence,
+      ...overrides,
+    });
+  }
+
+  // One over from bowler 201 to batter 101: nine deliveries, six of them legal.
+  function over(
+    firstWide: Partial<FixtureStatisticsEventSource>,
+    secondWide: Partial<FixtureStatisticsEventSource>,
+  ): FixtureStatisticsEventSource[] {
+    return [
+      overEvent(1, { runsOffBat: 1, runsTotal: 1 }),
+      overEvent(2, { runsExtras: 5, runsTotal: 5, ...firstWide }),
+      overEvent(3, { runsExtras: 3, runsTotal: 3, ...secondWide }),
+      // Byes off a no-ball remain byes (Law 21), so they are not the bowler's.
+      overEvent(4, { runsExtras: 3, runsTotal: 3, extraNoBalls: 1, extraByes: 2 }),
+      overEvent(5, {}),
+      overEvent(6, { runsOffBat: 4, runsTotal: 4 }),
+      overEvent(7, {}),
+      overEvent(8, {}),
+      overEvent(9, {}),
+    ];
+  }
+
+  const recordedWithByes = over(
+    { extraWides: 1, extraByes: 4 },
+    { extraWides: 2, extraLegByes: 1 },
+  );
+  const recordedAsWides = over({ extraWides: 5 }, { extraWides: 3 });
+
+  function participant(events: FixtureStatisticsEventSource[], participantId: string) {
+    const statistic = deriveFixtureStatistics(goldenSource(events)).statistics.find(
+      (candidate) => candidate.scope === 'participant' && candidate.participantId === participantId,
+    );
+    return statistic?.scope === 'participant' ? statistic : undefined;
+  }
+
+  test('derives identical statistics whether runs off a wide are recorded as byes or as wides', () => {
+    expect(deriveFixtureStatistics(goldenSource(recordedWithByes))).toEqual(
+      deriveFixtureStatistics(goldenSource(recordedAsWides)),
+    );
+  });
+
+  test('charges byes and leg byes run off a wide to the bowler as wide runs', () => {
+    expect(participant(recordedWithByes, '201')?.bowling).toEqual({
+      // 5 off the bat + 8 wide runs + 1 no-ball. The 2 byes off the no-ball
+      // are team extras.
+      runsConceded: 14,
+      wides: 8,
+      noBalls: 1,
+      legalBallsBowled: 6,
+      oversBowled: '1.0',
+      economyRate: 14,
+      wicketsTaken: 0,
+    });
+
+    // Neither wide is a ball faced, and byes are never the batter's runs.
+    expect(participant(recordedWithByes, '101')?.batting).toEqual({
+      runsScored: 5,
+      ballsFaced: 7,
+      strikeRate: 71.43,
+      fours: 1,
+      sixes: 0,
+    });
+
+    const innings = deriveFixtureStatistics(goldenSource(recordedWithByes)).statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
+    );
+    expect(innings?.scope === 'innings' ? innings.metrics : null).toEqual({
+      deliveryRuns: 16,
+      penaltyRuns: 5,
+      totalRuns: 21,
+    });
+  });
+});

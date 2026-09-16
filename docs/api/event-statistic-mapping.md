@@ -33,7 +33,7 @@ Computed per participant per fixture.
 
 | Statistic          | Derived from                                                  | Rule                                                                                           |
 | ------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Runs conceded      | `runs.offBat`, plus wides and no-balls                        | Byes and leg byes are excluded: they are not conceded by the bowler.                           |
+| Runs conceded      | `runs.offBat`, plus wides and no-balls                        | Byes and leg byes are excluded, except when run off a wide, where Law 22.6 makes them wides.   |
 | Legal balls bowled | Deliveries where the participant is the bowler                | Wides and no-balls do not count.                                                               |
 | Overs bowled       | Legal balls bowled                                            | Formatted against the fixture's balls per over, which is not assumed to be six.                |
 | Wickets taken      | `wickets[]` on deliveries where the participant is the bowler | Only kinds flagged `credits_bowler` in `dismissal_kind`. A run out is not the bowler's wicket. |
@@ -54,8 +54,8 @@ Computed per participant per fixture.
 | `runs.total`                   | Team total                                                                            |
 | `extras.wides`                 | Runs conceded; excludes the delivery from balls faced and from legal balls bowled     |
 | `extras.noBalls`               | Runs conceded; excludes the delivery from legal balls bowled but not from balls faced |
-| `extras.byes`                  | Team total only. Not runs conceded.                                                   |
-| `extras.legByes`               | Team total only. Not runs conceded.                                                   |
+| `extras.byes`                  | Team total. Runs conceded and bowler wides only when recorded on a wide.              |
+| `extras.legByes`               | Team total. Runs conceded and bowler wides only when recorded on a wide.              |
 | `extras.penalty`               | Team total only                                                                       |
 | `strikerId`                    | Attribution of runs scored, balls faced, strike rate                                  |
 | `bowlerId`                     | Attribution of runs conceded, legal balls, overs, wickets, economy rate               |
@@ -101,3 +101,4 @@ Client confirmation of this convention is recorded as pending in
 ## AI Declaration
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
+The issue #623 wide-run rule was documented with the assistance of Claude-Code[Claude Opus 5].

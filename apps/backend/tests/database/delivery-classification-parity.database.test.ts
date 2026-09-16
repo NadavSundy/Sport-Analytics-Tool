@@ -1,6 +1,8 @@
 import {
   bowlerChargedExtras,
   bowlerChargedExtrasSql,
+  bowlerWideRuns,
+  bowlerWideRunsSql,
   countsAsBallFaced,
   countsAsBallFacedSql,
   isLegalDelivery,
@@ -36,6 +38,7 @@ interface Classification {
   legal: boolean;
   ballFaced: boolean;
   bowlerExtras: number;
+  wideRuns: number;
 }
 
 const none: StoredExtras = { wides: null, noBalls: null, byes: null, legByes: null, penalty: null };
@@ -60,8 +63,14 @@ const cases: Array<[string, StoredExtras]> = [
   ['wides 0 and byes 4', { ...none, wides: 0, byes: 4 }],
   ['no-balls 0 and penalty 5', { ...none, noBalls: 0, penalty: 5 }],
   ['wides 1 and penalty 5', { ...none, wides: 1, penalty: 5 }],
-  // The contract rejects negative extras, but the delivery columns carry no
-  // CHECK constraint yet, so both spellings must still agree on one.
+  // Law 22.6: byes and leg byes run off a wide are wide runs (ADR-014, #623).
+  ['wides 1 and byes 4', { ...none, wides: 1, byes: 4 }],
+  ['wides 2 and leg byes 1', { ...none, wides: 2, legByes: 1 }],
+  ['wides 1, byes 2 and leg byes 1', { ...none, wides: 1, byes: 2, legByes: 1 }],
+  ['wides 1, byes 4 and no-balls 0', { ...none, wides: 1, noBalls: 0, byes: 4 }],
+  ['wides 0, byes 4 and leg byes 1', { ...none, wides: 0, byes: 4, legByes: 1 }],
+  // The contract and the delivery columns' CHECK constraints both reject
+  // negative extras, but both spellings must still agree on one.
   ['wides -1 (not accepted by the contract)', { ...none, wides: -1 }],
 ];
 
@@ -72,6 +81,7 @@ function typescriptClassification(extras: StoredExtras): Classification {
     legal: isLegalDelivery(extras),
     ballFaced: countsAsBallFaced(extras),
     bowlerExtras: bowlerChargedExtras(extras),
+    wideRuns: bowlerWideRuns(extras),
   };
 }
 
@@ -107,7 +117,8 @@ describe.sequential('delivery classification parity between TypeScript and SQL',
           ${isNoBallSql('c')} AS "noBall",
           ${isLegalDeliverySql('c')} AS legal,
           ${countsAsBallFacedSql('c')} AS "ballFaced",
-          ${bowlerChargedExtrasSql('c')}::int AS "bowlerExtras"
+          ${bowlerChargedExtrasSql('c')}::int AS "bowlerExtras",
+          ${bowlerWideRunsSql('c')}::int AS "wideRuns"
         FROM unnest(
           $1::text[],
           $2::smallint[],

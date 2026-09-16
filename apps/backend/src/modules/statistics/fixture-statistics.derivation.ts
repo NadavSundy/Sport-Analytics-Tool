@@ -1,5 +1,6 @@
 import {
   bowlerChargedExtras,
+  bowlerWideRuns,
   countsAsBallFaced,
   isLegalDelivery,
   type FixtureOutcome,
@@ -264,7 +265,12 @@ export function deriveFixtureStatistics(
       batter.battingPosition = nextPosition;
       nextBattingPositionByInnings.set(event.inningsId, nextPosition + 1);
     }
-    const extras = { wides: event.extraWides, noBalls: event.extraNoBalls };
+    const extras = {
+      wides: event.extraWides,
+      noBalls: event.extraNoBalls,
+      byes: event.extraByes,
+      legByes: event.extraLegByes,
+    };
     batter.batting.runsScored += event.runsOffBat;
     if (countsAsBallFaced(extras)) {
       batter.batting.ballsFaced += 1;
@@ -323,7 +329,7 @@ export function deriveFixtureStatistics(
       wicketsTaken: 0,
     };
     bowler.bowling.runsConceded += event.runsOffBat + bowlerChargedExtras(extras);
-    bowler.bowling.wides += event.extraWides ?? 0;
+    bowler.bowling.wides += bowlerWideRuns(extras);
     bowler.bowling.noBalls += event.extraNoBalls ?? 0;
     if (isLegalDelivery(extras)) {
       bowler.bowling.legalBallsBowled += 1;

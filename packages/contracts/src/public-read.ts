@@ -394,7 +394,8 @@ export const participantFixtureBattingSchema = z.object({
 
 export const participantFixtureBowlingSchema = z.object({
   runsConceded: z.number().int().nonnegative(),
-  // These are the bowler-attributable extras included in runsConceded. Byes,
+  // These are the bowler-attributable extras included in runsConceded, with
+  // byes and leg-byes run off a wide counted as wides (Law 22.6). Other byes,
   // leg-byes and innings-level penalty runs belong to the fielding team, not
   // the bowler's analysis.
   wides: z.number().int().nonnegative(),
@@ -457,8 +458,9 @@ export const participantAggregateBattingSchema = z.object({
 
 export const participantAggregateBowlingSchema = z.object({
   runsConceded: z.number().int().nonnegative(),
-  // Wides and no-balls are charged to the bowler. Other extras are deliberately
-  // not presented as a bowler figure.
+  // Wides and no-balls are charged to the bowler, including byes and leg-byes
+  // run off a wide (Law 22.6). Other extras are deliberately not presented as a
+  // bowler figure.
   wides: z.number().int().nonnegative(),
   noBalls: z.number().int().nonnegative(),
   legalBallsBowled: z.number().int().nonnegative(),
