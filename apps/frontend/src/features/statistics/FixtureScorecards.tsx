@@ -51,7 +51,7 @@ function compareNames(
   );
 }
 
-export function leadingBatters(statistics: ParticipantFixtureStatistic[]) {
+function leadingBatters(statistics: ParticipantFixtureStatistic[]) {
   return statistics
     .filter((statistic) => statistic.batting !== null)
     .sort(
@@ -62,7 +62,7 @@ export function leadingBatters(statistics: ParticipantFixtureStatistic[]) {
     .slice(0, 3);
 }
 
-export function leadingBowlers(statistics: ParticipantFixtureStatistic[]) {
+function leadingBowlers(statistics: ParticipantFixtureStatistic[]) {
   return statistics
     .filter((statistic) => statistic.bowling !== null)
     .sort(
