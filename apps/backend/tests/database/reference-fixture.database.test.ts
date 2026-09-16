@@ -538,4 +538,36 @@ describe.sequential('development reference fixture database integration', () => 
     );
     expect(partialFixture.rows[0].fixtures).toBe(0);
   });
+
+  test('rejects the committed negative-extra example before writing anything', async () => {
+    const executor = databaseClient();
+    const invalidSourceRef = `${sourceRef}-negative-extra`;
+    const invalidPath = resolve(
+      __dirname,
+      '../../../../database/seeds/invalid/negative-extra.json',
+    );
+    await executor.query('SAVEPOINT negative_extra');
+
+    try {
+      await expect(
+        ingestMatchData(executor, invalidPath, { sourceRef: invalidSourceRef }),
+      ).rejects.toThrow(/Invalid delivery extras; nothing was ingested\..*extras\.wides: /);
+
+      // Checked before rolling back: the extras are validated before the first
+      // insert, so no row exists even inside the caller's transaction.
+      const written = await executor.query<{ submissions: number; fixtures: number }>(
+        `
+          SELECT
+            (SELECT COUNT(*)::int FROM submission WHERE source_filename = 'negative-extra.json')
+              AS submissions,
+            (SELECT COUNT(*)::int FROM fixture WHERE source_ref = $1) AS fixtures
+        `,
+        [invalidSourceRef],
+      );
+      expect(written.rows[0]).toEqual({ submissions: 0, fixtures: 0 });
+    } finally {
+      await executor.query('ROLLBACK TO SAVEPOINT negative_extra');
+      await executor.query('RELEASE SAVEPOINT negative_extra');
+    }
+  });
 });

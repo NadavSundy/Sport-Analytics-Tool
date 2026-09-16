@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
-import { isLegalDelivery } from '@sport-analytics/contracts';
+import { isLegalDelivery, submissionExtrasSchema } from '@sport-analytics/contracts';
 import type { QueryExecutor } from '../src/database';
 
 interface Delivery {
@@ -66,6 +66,63 @@ function placeholders(rowCount: number, columnCount: number): string {
   }).join(',');
 }
 
+/** Cricsheet extras keys and the submission contract keys they correspond to. */
+const CONTRACT_EXTRAS_KEY_BY_CRICSHEET_KEY: Readonly<Record<string, string>> = {
+  wides: 'wides',
+  noballs: 'noBalls',
+  byes: 'byes',
+  legbyes: 'legByes',
+  penalty: 'penalty',
+};
+
+const MAX_REPORTED_EXTRAS_ISSUES = 5;
+
+interface CricsheetInnings {
+  overs?: Array<{ over: number; deliveries: Delivery[] }>;
+}
+
+/**
+ * Validate every delivery's extras against the submission contract.
+ *
+ * Runs before anything is written, so a file with one invalid delivery is
+ * rejected whole and leaves no partial data whatever transaction the caller
+ * holds. A key Cricsheet does not define is passed through unmapped, so the
+ * contract rejects it rather than the ingest silently dropping it.
+ */
+export function assertValidCricsheetExtras(innings: readonly CricsheetInnings[]): void {
+  const issues: string[] = [];
+
+  for (const [inningsIndex, currentInnings] of innings.entries()) {
+    for (const over of currentInnings.overs ?? []) {
+      for (const [position, delivery] of over.deliveries.entries()) {
+        const extras = Object.fromEntries(
+          Object.entries(delivery.extras ?? {}).map(([key, value]) => [
+            CONTRACT_EXTRAS_KEY_BY_CRICSHEET_KEY[key] ?? key,
+            value,
+          ]),
+        );
+        const result = submissionExtrasSchema.safeParse(extras);
+        if (result.success) continue;
+
+        const location = `innings ${inningsIndex + 1}, over ${over.over}, delivery ${position + 1}`;
+        for (const issue of result.error.issues) {
+          issues.push(`${location}: ${['extras', ...issue.path].join('.')}: ${issue.message}`);
+        }
+      }
+    }
+  }
+
+  if (issues.length > 0) {
+    const reported = issues.slice(0, MAX_REPORTED_EXTRAS_ISSUES).join('; ');
+    const remaining = issues.length - MAX_REPORTED_EXTRAS_ISSUES;
+    throw new Error(
+      `Invalid delivery extras; nothing was ingested. ${reported}${
+        remaining > 0 ? `; and ${remaining} more` : ''
+      }`,
+    );
+  }
+}
+
 export async function ingestMatchData(
   client: QueryExecutor,
   matchPath: string,
@@ -76,6 +133,8 @@ export async function ingestMatchData(
   const info = match.info;
   const meta = match.meta ?? {};
   const registry: Record<string, string> = info.registry?.people ?? {};
+
+  assertValidCricsheetExtras(match.innings ?? []);
 
   async function scalar<T>(sql: string, values: unknown[] = []): Promise<T> {
     const { rows } = await client.query(sql, values);
