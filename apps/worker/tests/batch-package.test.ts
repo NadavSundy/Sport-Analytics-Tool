@@ -92,6 +92,96 @@ function shippedTemplateWithReadableNames(fileName: string): string {
   return text;
 }
 
+/**
+ * A minimal, valid season-upload package for one fixture/innings with the given
+ * events. Callers control `occurrenceSequence` and file-array position
+ * independently, so tests can express "logically ordered" vs "arrival order"
+ * for the same fixture (#588).
+ */
+function jsonPackageWithEvents(
+  events: { eventId: string; occurrenceSequence: number; ballLabel: string }[],
+): string {
+  return JSON.stringify({
+    contractVersion: '1.0',
+    packageId: 'test:package:occurrence-sequence',
+    competition: { context: { name: 'Premier T20' } },
+    season: { context: { name: '2026' } },
+    fixtures: [
+      {
+        context: {
+          date: '2026-03-14',
+          teams: [{ context: { name: 'Home' } }, { context: { name: 'Away' } }],
+        },
+        innings: [
+          {
+            context: { ordinal: 0, battingTeam: { context: { name: 'Home' } } },
+            events: events.map((event) => ({
+              eventId: event.eventId,
+              occurrenceSequence: event.occurrenceSequence,
+              ballLabel: event.ballLabel,
+              striker: { context: { name: 'Striker', team: { context: { name: 'Home' } } } },
+              nonStriker: {
+                context: { name: 'Non-striker', team: { context: { name: 'Home' } } },
+              },
+              bowler: { context: { name: 'Bowler', team: { context: { name: 'Away' } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            })),
+          },
+        ],
+      },
+    ],
+  });
+}
+
+describe('occurrence-sequence ordering independent of arrival order (#588)', () => {
+  const orderedEvents = [
+    { eventId: 'test:delivery:1', occurrenceSequence: 1, ballLabel: '0.1' },
+    { eventId: 'test:delivery:2', occurrenceSequence: 2, ballLabel: '0.2' },
+    { eventId: 'test:delivery:3', occurrenceSequence: 3, ballLabel: '0.3' },
+  ];
+
+  it.each([
+    ['ordered', orderedEvents],
+    ['reversed', [...orderedEvents].reverse()],
+    ['shuffled', [orderedEvents[1]!, orderedEvents[2]!, orderedEvents[0]!]],
+  ])(
+    'settles on the same canonical event order for %s arrival order',
+    async (_label, arrivalOrderEvents) => {
+      const source = jsonPackageWithEvents(arrivalOrderEvents);
+
+      const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+      expect(scan.fatal).toBe(false);
+      expect(scan.sourceFaults).toEqual([]);
+
+      const { referencePackage } = await referenceChunkFor(source, 'application/json');
+      const events = referencePackage?.fixtures[0]?.innings[0]?.events ?? [];
+
+      // The published/canonical order must reflect occurrenceSequence, not the
+      // order the rows appeared in the source file.
+      expect(events.map((event) => event.eventId)).toEqual([
+        'test:delivery:1',
+        'test:delivery:2',
+        'test:delivery:3',
+      ]);
+      expect(events.map((event) => event.occurrenceSequence)).toEqual([1, 2, 3]);
+    },
+  );
+
+  it('rejects duplicate occurrence sequences regardless of arrival order', async () => {
+    const source = jsonPackageWithEvents([
+      { eventId: 'test:delivery:1', occurrenceSequence: 1, ballLabel: '0.1' },
+      { eventId: 'test:delivery:2', occurrenceSequence: 1, ballLabel: '0.2' },
+    ]);
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+
+    expect(scan.sourceFaults.map((fault) => fault.ruleCode)).toContain(
+      'DUPLICATE_OCCURRENCE_SEQUENCE',
+    );
+  });
+});
+
 describe('shipped guided templates (#500)', () => {
   // The JSON template's second event demonstrates a caught dismissal (#536); the CSV
   // template's example row leaves its dismissal columns blank.
