@@ -11,6 +11,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { countsAsBallFacedSql, isLegalDeliverySql } from '@sport-analytics/contracts';
 import { Client } from 'pg';
 
 const sourceRef = process.argv[2] ?? '729307';
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
             SUM(d.runs_total)
               + COALESCE(i.penalty_pre, 0)
               + COALESCE(i.penalty_post, 0)               AS runs,
-            COUNT(*) FILTER (WHERE d.extra_wides IS NULL)  AS legal_balls
+            COUNT(*) FILTER (WHERE ${countsAsBallFacedSql('d')}) AS legal_balls
        FROM innings i
        JOIN fixture f  ON f.fixture_id = i.fixture_id
        JOIN team t     ON t.team_id = i.batting_team_id
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
   // that it is re-bowled; both wides and no-balls are excluded from the over.
   const overs = await client.query(
     `SELECT i.ordinal,
-            COUNT(*) FILTER (WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL)
+            COUNT(*) FILTER (WHERE ${isLegalDeliverySql('d')})
               AS legal_balls
        FROM innings i
        JOIN fixture f ON f.fixture_id = i.fixture_id
@@ -127,7 +128,7 @@ async function main(): Promise<void> {
     `WITH d AS (
        SELECT dc.*,
               SUM(dc.runs_total) OVER (ORDER BY dc.innings_sequence) AS running_total,
-              COUNT(*) FILTER (WHERE dc.extra_wides IS NULL AND dc.extra_noballs IS NULL)
+              COUNT(*) FILTER (WHERE ${isLegalDeliverySql('dc')})
                 OVER (ORDER BY dc.innings_sequence) AS legal_balls
          FROM delivery_current dc
          JOIN innings i ON i.innings_id = dc.innings_id

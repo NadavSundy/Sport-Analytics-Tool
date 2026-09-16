@@ -1,3 +1,9 @@
+import {
+  bowlerChargedExtrasSql,
+  countsAsBallFacedSql,
+  isLegalDeliverySql,
+} from '@sport-analytics/contracts';
+
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 import { standardInningsPredicate } from '../statistics/super-over-scope';
 
@@ -261,7 +267,7 @@ export async function listParticipantFixtures(
         SELECT
           d.fixture_id,
           SUM(d.runs_off_bat)::int AS runs_scored,
-          COUNT(*) FILTER (WHERE d.extra_wides IS NULL)::int AS balls_faced,
+          COUNT(*) FILTER (WHERE ${countsAsBallFacedSql('d')})::int AS balls_faced,
           COUNT(*) FILTER (WHERE d.runs_off_bat = 4 AND NOT d.non_boundary)::int AS fours,
           COUNT(*) FILTER (WHERE d.runs_off_bat = 6 AND NOT d.non_boundary)::int AS sixes
         FROM accepted_delivery d
@@ -272,14 +278,12 @@ export async function listParticipantFixtures(
         SELECT
           d.fixture_id,
           SUM(
-            d.runs_off_bat
-            + COALESCE(d.extra_wides, 0)
-            + COALESCE(d.extra_noballs, 0)
+            d.runs_off_bat + ${bowlerChargedExtrasSql('d')}
           )::int AS runs_conceded,
           COALESCE(SUM(d.extra_wides), 0)::int AS wides,
           COALESCE(SUM(d.extra_noballs), 0)::int AS no_balls,
           COUNT(*) FILTER (
-            WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+            WHERE ${isLegalDeliverySql('d')}
           )::int AS legal_balls_bowled,
           COALESCE(SUM((
             SELECT COUNT(*)
