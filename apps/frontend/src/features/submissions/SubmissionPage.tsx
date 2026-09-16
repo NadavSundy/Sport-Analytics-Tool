@@ -121,6 +121,40 @@ function formatFixtureOption(fixture: Fixture): string {
   return `${fixture.startDate} — ${teams} — ${competition}, ${fixture.seasonLabel} (${fixture.matchType})`;
 }
 
+function normaliseFixtureValue(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function findMatchingFixtureProposal(
+  fixtures: Fixture[],
+  proposal: NewFixtureDraft,
+): Fixture | undefined {
+  const proposedTeams = [proposal.homeTeamName, proposal.awayTeamName]
+    .map(normaliseFixtureValue)
+    .sort()
+    .join('|');
+
+  if (
+    !proposal.competitionId ||
+    !proposal.seasonName.trim() ||
+    !proposal.startDate ||
+    proposedTeams === '|'
+  ) {
+    return undefined;
+  }
+
+  return fixtures.find(
+    (fixture) =>
+      fixture.competitionId === proposal.competitionId &&
+      normaliseFixtureValue(fixture.season) === normaliseFixtureValue(proposal.seasonName) &&
+      fixture.startDate === proposal.startDate &&
+      fixture.competitors
+        .map((competitor) => normaliseFixtureValue(competitor.name))
+        .sort()
+        .join('|') === proposedTeams,
+  );
+}
+
 function newDecisionKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
@@ -390,6 +424,21 @@ function SubmissionForm({
     }
   }
 
+  function beginNewFixtureProposal() {
+    setFixtureId(NEW_FIXTURE_VALUE);
+    setFile(null);
+    setDecisionKey(newDecisionKey());
+    resetResult();
+  }
+
+  function chooseExistingFixture() {
+    if (!fixtures[0]) return;
+    setFixtureId(fixtures[0].fixtureId);
+    setFile(null);
+    setDecisionKey(newDecisionKey());
+    resetResult();
+  }
+
   async function selectFile(selectedFile: File | null) {
     setFile(selectedFile);
     setDecisionKey(newDecisionKey());
@@ -415,7 +464,7 @@ function SubmissionForm({
         submittedCompetitionName: context.competitionName,
         seasonName: context.seasonName,
         startDate: context.date,
-        endDate: draft.endDate || context.date,
+        endDate: !draft.endDate || draft.endDate === draft.startDate ? context.date : draft.endDate,
         homeTeamName: context.teams[0] ?? '',
         awayTeamName: context.teams[1] ?? '',
       }));
@@ -624,6 +673,10 @@ function SubmissionForm({
 
   const competitions = [...new Set(fixtures.map((fixture) => fixture.competitionName))];
   const completed = result.kind === 'accepted' || result.kind === 'acceptedBatch';
+  const matchingFixtureProposal =
+    mode === 'file' && fixtureId === NEW_FIXTURE_VALUE
+      ? findMatchingFixtureProposal(fixtures, newFixture)
+      : undefined;
   const fixturePackageInput = (
     <div className="submission-field">
       <label htmlFor="submission-file">Fixture package</label>
@@ -680,33 +733,59 @@ function SubmissionForm({
           )}
         </section>
 
-        <div className="submission-field">
-          <label htmlFor="submission-fixture">Fixture</label>
+        {mode === 'file' && fixtureId === NEW_FIXTURE_VALUE ? (
+          <section className="submission-scope" aria-labelledby="new-fixture-proposal-title">
+            <h2 id="new-fixture-proposal-title">New fixture proposal</h2>
+            <p>
+              You are proposing a fixture for administrator review. The existing-fixture list is
+              hidden while you complete this proposal.
+            </p>
+            <button
+              className="button button--secondary"
+              type="button"
+              onClick={chooseExistingFixture}
+              disabled={result.kind === 'submitting' || completed || fixtures.length === 0}
+            >
+              Choose an existing fixture
+            </button>
+          </section>
+        ) : (
+          <div className="submission-field">
+            <label htmlFor="submission-fixture">Fixture</label>
 
-          <select
-            id="submission-fixture"
-            aria-describedby="submission-fixture-help"
-            value={fixtureId}
-            onChange={(event) => {
-              setFixtureId(event.target.value);
-              setDecisionKey(newDecisionKey());
-              resetResult();
-            }}
-            disabled={result.kind === 'submitting' || completed}
-          >
-            {fixtures.map((fixture) => (
-              <option key={fixture.fixtureId} value={fixture.fixtureId}>
-                {formatFixtureOption(fixture)}
-              </option>
-            ))}
-            {mode === 'file' ? <option value={NEW_FIXTURE_VALUE}>New fixture</option> : null}
-          </select>
+            <select
+              id="submission-fixture"
+              aria-describedby="submission-fixture-help"
+              value={fixtureId}
+              onChange={(event) => {
+                setFixtureId(event.target.value);
+                setDecisionKey(newDecisionKey());
+                resetResult();
+              }}
+              disabled={result.kind === 'submitting' || completed}
+            >
+              {fixtures.map((fixture) => (
+                <option key={fixture.fixtureId} value={fixture.fixtureId}>
+                  {formatFixtureOption(fixture)}
+                </option>
+              ))}
+            </select>
 
-          <p id="submission-fixture-help" className="field-help">
-            Choose an existing match by date and teams, or choose New fixture to propose a match for
-            administrator review. You never need to enter a database ID.
-          </p>
-        </div>
+            <p id="submission-fixture-help" className="field-help">
+              Choose an existing match by date and teams. You never need to enter a database ID.
+            </p>
+            {mode === 'file' ? (
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={beginNewFixtureProposal}
+                disabled={result.kind === 'submitting' || completed}
+              >
+                Propose a new fixture
+              </button>
+            ) : null}
+          </div>
+        )}
 
         {mode === 'file' && fixtureId === NEW_FIXTURE_VALUE ? fixturePackageInput : null}
 
@@ -717,6 +796,29 @@ function SubmissionForm({
               These details create a version 1.1 fixture proposal. The fixture remains unresolved
               until an administrator creates the canonical fixture from the proposal.
             </p>
+
+            {matchingFixtureProposal ? (
+              <div className="field-error" role="alert">
+                <p>
+                  This proposal matches the existing fixture{' '}
+                  <strong>{formatFixtureOption(matchingFixtureProposal)}</strong>. Use that fixture
+                  instead so the batch does not create a duplicate proposal.
+                </p>
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  onClick={() => {
+                    setFixtureId(matchingFixtureProposal.fixtureId);
+                    setFile(null);
+                    setDecisionKey(newDecisionKey());
+                    resetResult();
+                  }}
+                  disabled={result.kind === 'submitting' || completed}
+                >
+                  Use existing fixture
+                </button>
+              </div>
+            ) : null}
 
             {competitionState.kind === 'loading' || competitionState.kind === 'idle' ? (
               <p role="status">Loading authorised competitions…</p>

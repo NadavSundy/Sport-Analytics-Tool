@@ -893,7 +893,8 @@ describe('role-gated event submission page', () => {
         name: '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
       }),
     ).toBeInTheDocument();
-    expect(within(fixtureSelect).getByRole('option', { name: 'New fixture' })).toBeInTheDocument();
+    expect(within(fixtureSelect).queryByRole('option', { name: 'New fixture' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     expect(
       screen.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
     ).toBeVisible();
@@ -943,7 +944,35 @@ describe('role-gated event submission page', () => {
     expect(uploadHeaders.get('X-File-Name')).toBe('fixture-package.json');
   });
 
-  it('generates a version 1.1 proposal when the submitter chooses New fixture', async () => {
+  it('keeps new-fixture proposals separate from existing fixture selection', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Example Competition' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    expect(await screen.findByLabelText('Fixture')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
+
+    expect(screen.queryByLabelText('Fixture')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Choose an existing fixture' })).toBeVisible();
+    expect(screen.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose an existing fixture' }));
+    expect(await screen.findByLabelText('Fixture')).toHaveValue('7');
+  });
+
+  it('generates a version 1.1 proposal when the submitter clicks Propose a new fixture', async () => {
     const batchReference = '423e4567-e89b-42d3-a456-426614174000';
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -973,7 +1002,8 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderSubmissionPage();
 
-    fireEvent.change(await screen.findByLabelText('Fixture'), { target: { value: 'new' } });
+    await screen.findByLabelText('Fixture');
+    fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
     expect(await screen.findByRole('option', { name: 'Example Competition' })).toBeInTheDocument();
     expect(screen.getByText(/version 1.1 fixture proposal/i)).toBeVisible();
 
@@ -986,6 +1016,8 @@ describe('role-gated event submission page', () => {
     expect(screen.getByLabelText('Fixture date')).toHaveValue(fixture.startDate);
     expect(screen.getByLabelText('Home team name')).toHaveValue('Wanderers');
     expect(screen.getByLabelText('Away team name')).toHaveValue('Strikers');
+    expect(screen.getByText(/This proposal matches the existing fixture/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Use existing fixture' })).toBeVisible();
     expect(screen.getByLabelText('Match type')).toHaveValue('T20');
     expect(screen.getByLabelText('Match type')).toHaveRole('combobox');
     expect(screen.getByRole('option', { name: 'Club / domestic' })).toBeInTheDocument();
