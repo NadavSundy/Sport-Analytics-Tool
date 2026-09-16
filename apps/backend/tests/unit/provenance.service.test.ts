@@ -74,16 +74,14 @@ const source = {
 describe('provenance service authorization', () => {
   test('traces a career aggregate through current stable event identities', async () => {
     const data = repository({
-      listParticipantContributorSources: vi
-        .fn()
-        .mockResolvedValue([
-          {
-            deliveryId: '101',
-            revision: 2,
-            sourceEventId: '11111111-1111-4111-8111-111111111111',
-            source,
-          },
-        ]),
+      listParticipantContributorSources: vi.fn().mockResolvedValue([
+        {
+          deliveryId: '101',
+          revision: 2,
+          sourceEventId: '11111111-1111-4111-8111-111111111111',
+          source,
+        },
+      ]),
     });
     const service = createProvenanceService(statistics(), data, participantStatistics());
 
