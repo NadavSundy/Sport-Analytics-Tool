@@ -198,3 +198,39 @@ test('Gitea CI gives coverage its own routed lane, artifact, and quality-gate re
   assert.match(workflow, /COVERAGE_REQUIRED: \$\{\{ needs\.plan\.outputs\.coverage \}\}/);
   assert.match(workflow, /COVERAGE_RESULT: \$\{\{ needs\.coverage\.result \}\}/);
 });
+
+test('repository aggregation writes the live coverage badge from combined line coverage', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'coverage-badge-'));
+  try {
+    for (const workspace of WORKSPACE_COVERAGE) writeWorkspaceArtifacts(root, workspace, 0, 0);
+    writeWorkspaceArtifacts(root, WORKSPACE_COVERAGE[0], 3, 4);
+    writeWorkspaceArtifacts(root, WORKSPACE_COVERAGE[1], 1, 4);
+
+    const result = aggregateCoverageSummaries({ root });
+    assert.equal(result.total.lines.pct, 50);
+
+    const badge = readFileSync(path.join(root, 'coverage', 'combined', 'badge.svg'), 'utf8');
+    assert.match(badge, /aria-label="coverage: 50\.00%"/);
+    assert.match(badge, />50\.00%<\/text>/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('main coverage publishing keeps a stable badge branch and README URL', () => {
+  const readme = readFileSync('README.md', 'utf8');
+  const coverageJob = workflow.match(/\n  coverage:\n[\s\S]*?\n  quality:\n/)?.[0] ?? '';
+
+  assert.match(coverageJob, /permissions:\n\s+contents: write/);
+  assert.match(coverageJob, /name: Publish live coverage badge/);
+  assert.match(
+    coverageJob,
+    /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/,
+  );
+  assert.match(coverageJob, /git push origin coverage-badge/);
+  assert.match(
+    readme,
+    /https:\/\/sdp\.ms\.wits\.ac\.za\/git-push-pray\/Sport-Analytics-Tool\/raw\/branch\/coverage-badge\/badge\.svg/,
+  );
+  assert.match(readme, /https:\/\/sports-analytics-tool\.pages\.dev\/testing\/code-coverage\//);
+});

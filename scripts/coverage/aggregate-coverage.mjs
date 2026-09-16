@@ -122,6 +122,29 @@ function renderHtml(summary) {
 `;
 }
 
+function renderCoverageBadge(summary) {
+  const value = `${summary.total.lines.pct.toFixed(2)}%`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="134" height="20" role="img" aria-label="coverage: ${value}">
+  <title>coverage: ${value}</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="134" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="74" height="20" fill="#555"/>
+    <rect x="74" width="60" height="20" fill="#007ec6"/>
+    <rect width="134" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="37" y="15" fill="#010101" fill-opacity=".3">coverage</text>
+    <text x="37" y="14">coverage</text>
+    <text x="104" y="15" fill="#010101" fill-opacity=".3">${value}</text>
+    <text x="104" y="14">${value}</text>
+  </g>
+</svg>\n`;
+}
+
 export function aggregateCoverageSummaries({ root = repoRoot } = {}) {
   const workspaceSummaries = WORKSPACE_COVERAGE.map((workspace) => {
     const summaryPath = path.join(root, 'coverage', workspace.name, 'coverage-summary.json');
@@ -158,6 +181,7 @@ export function aggregateCoverageSummaries({ root = repoRoot } = {}) {
   writeFileSync(path.join(combinedDir, 'coverage-summary.json'), `${JSON.stringify(combined, null, 2)}\n`);
   writeFileSync(path.join(combinedDir, 'summary.txt'), renderText(combined));
   writeFileSync(path.join(combinedDir, 'index.html'), renderHtml(combined));
+  writeFileSync(path.join(combinedDir, 'badge.svg'), renderCoverageBadge(combined));
 
   const combinedLcov = WORKSPACE_COVERAGE.map((workspace) => {
     const lcov = readFileSync(path.join(root, 'coverage', workspace.name, 'lcov.info'), 'utf8');
