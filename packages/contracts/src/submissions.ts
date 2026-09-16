@@ -103,6 +103,21 @@ export const submissionWicketSchema = z
     }
   });
 
+/**
+ * A delivery's extras breakdown. Each type is a non-negative count of runs that
+ * fits the delivery table's smallint columns, and no other key is accepted.
+ * Exported so that other ingestion paths validate extras against the same rules.
+ */
+export const submissionExtrasSchema = z
+  .object({
+    wides: smallNonNegativeIntegerSchema.optional(),
+    noBalls: smallNonNegativeIntegerSchema.optional(),
+    byes: smallNonNegativeIntegerSchema.optional(),
+    legByes: smallNonNegativeIntegerSchema.optional(),
+    penalty: smallNonNegativeIntegerSchema.optional(),
+  })
+  .strict();
+
 const submissionEventBaseSchema = z
   .object({
     eventId: submissionEventIdSchema,
@@ -133,16 +148,7 @@ const submissionEventBaseSchema = z
         nonBoundary: z.boolean().default(false),
       })
       .strict(),
-    extras: z
-      .object({
-        wides: smallNonNegativeIntegerSchema.optional(),
-        noBalls: smallNonNegativeIntegerSchema.optional(),
-        byes: smallNonNegativeIntegerSchema.optional(),
-        legByes: smallNonNegativeIntegerSchema.optional(),
-        penalty: smallNonNegativeIntegerSchema.optional(),
-      })
-      .strict()
-      .default({}),
+    extras: submissionExtrasSchema.default({}),
     wickets: z.array(submissionWicketSchema).max(2).default([]),
   })
   .strict();

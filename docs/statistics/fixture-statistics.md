@@ -103,7 +103,7 @@ rather than repeated at each call site.
 | Balls faced        | Count striker deliveries with no wide; a no-ball still counts as faced  |
 | Strike rate        | Batter runs / balls faced × 100, rounded to two decimal places          |
 | Fours and sixes    | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries        |
-| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes are excluded       |
+| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes only off a wide    |
 | Legal balls bowled | Count deliveries with neither wides nor no-balls                        |
 | Overs bowled       | `completeOvers.remainingBalls`, using the fixture's `balls_per_over`    |
 | Economy rate       | Runs conceded / legal balls × `balls_per_over`, rounded to two decimals |
@@ -191,4 +191,5 @@ The preceding calculation, API and public-interface documentation was generated,
 with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
 The live-revision correction rule and selective refresh dependencies were updated with the assistance
 of Codex[GPT-5]. The versioned public fixture-statistics cache was documented with the assistance of
-Codex[GPT-5].
+Codex[GPT-5]. The issue #623 wide-run rule was documented with the assistance of
+Claude-Code[Claude Opus 5].

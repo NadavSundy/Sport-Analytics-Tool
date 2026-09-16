@@ -1525,8 +1525,9 @@ paths:
         recomputed over each group rather than averaged across fixtures, and are
         null where their denominator is zero or where the fixtures in a group do
         not share one balls-per-over divisor. Bowling figures separately expose
-        bowler-attributable wide and no-ball runs; byes, leg-byes and innings
-        penalty runs remain team extras and are not charged to the bowler.
+        bowler-attributable wide and no-ball runs. Byes and leg-byes run off a
+        wide are wide runs charged to the bowler (Law 22.6); other byes,
+        leg-byes and innings penalty runs remain team extras.
       operationId: getParticipantAggregates
       x-implementation-status: implemented
       security: []
