@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { withExplicitZeroExtras } from './explicit-zero-extras';
+import { deriveReferenceFigures, type DerivedReferenceFigures } from './reference-derived-figures';
 
 interface ReferenceCheck {
   actual: string | number;
@@ -75,7 +77,14 @@ interface DomainSnapshotRow {
   wickets: number;
 }
 
-const seedPath = resolve(__dirname, '../../../../database/seeds/matches/729307.json');
+const PUBLISHED_INNINGS = [
+  { team: 'Kings XI Punjab', runs: 132, wickets: 9, legalBalls: 120, extras: 5 },
+  { team: 'Kolkata Knight Riders', runs: 109, wickets: 10, legalBalls: 110, extras: 10 },
+];
+
+const seedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/729307.json'),
+);
 const sourceRef = `reference-729307-${process.pid}`;
 
 describe.sequential('development reference fixture database integration', () => {
@@ -203,10 +212,10 @@ describe.sequential('development reference fixture database integration', () => 
           COUNT(*) FILTER (
             WHERE d.runs_off_bat IN (4, 6) AND NOT d.non_boundary
           )::int AS boundaries,
-          COUNT(*) FILTER (WHERE d.extra_wides IS NOT NULL)::int AS wides,
-          COUNT(*) FILTER (WHERE d.extra_noballs IS NOT NULL)::int AS "noBalls",
-          COUNT(*) FILTER (WHERE d.extra_byes IS NOT NULL)::int AS byes,
-          COUNT(*) FILTER (WHERE d.extra_legbyes IS NOT NULL)::int AS "legByes",
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) > 0)::int AS wides,
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_noballs, 0) > 0)::int AS "noBalls",
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_byes, 0) > 0)::int AS byes,
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_legbyes, 0) > 0)::int AS "legByes",
           (
             SELECT COUNT(*)::int
             FROM delivery_wicket w
@@ -280,7 +289,7 @@ describe.sequential('development reference fixture database integration', () => 
             WHERE wicket_delivery.innings_id = i.innings_id
           ) AS wickets,
           COUNT(*) FILTER (
-            WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+            WHERE COALESCE(d.extra_wides, 0) = 0 AND COALESCE(d.extra_noballs, 0) = 0
           )::int AS "legalBalls",
           COALESCE(SUM(d.runs_extras), 0)::int AS extras
         FROM innings i
@@ -292,12 +301,7 @@ describe.sequential('development reference fixture database integration', () => 
       `,
       [currentFixtureId],
     );
-    const expectedInnings = [
-      { team: 'Kings XI Punjab', runs: 132, wickets: 9, legalBalls: 120, extras: 5 },
-      { team: 'Kolkata Knight Riders', runs: 109, wickets: 10, legalBalls: 110, extras: 10 },
-    ];
-
-    const checks: ReferenceCheck[] = expectedInnings.flatMap((expected, index) => {
+    const checks: ReferenceCheck[] = PUBLISHED_INNINGS.flatMap((expected, index) => {
       const actual = innings.rows[index];
       return (['team', 'runs', 'wickets', 'legalBalls', 'extras'] as const).map((field) => ({
         label: `innings ${index + 1} ${field}`,
@@ -313,7 +317,7 @@ describe.sequential('development reference fixture database integration', () => 
             d.*,
             SUM(d.runs_total) OVER (ORDER BY d.innings_sequence) AS running_total,
             COUNT(*) FILTER (
-              WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+              WHERE COALESCE(d.extra_wides, 0) = 0 AND COALESCE(d.extra_noballs, 0) = 0
             ) OVER (ORDER BY d.innings_sequence) AS legal_balls
           FROM delivery_current d
           JOIN innings i ON i.innings_id = d.innings_id
@@ -383,6 +387,32 @@ describe.sequential('development reference fixture database integration', () => 
     }
   });
 
+  let derivedFigures: Promise<DerivedReferenceFigures> | undefined;
+  function referenceFigures(): Promise<DerivedReferenceFigures> {
+    derivedFigures ??= deriveReferenceFigures(databaseClient(), ingestedFixtureId());
+    return derivedFigures;
+  }
+
+  test('reproduces the published legal balls through the statistics derivation and history', async () => {
+    const figures = await referenceFigures();
+
+    for (const expected of PUBLISHED_INNINGS) {
+      const bowlingTeam = PUBLISHED_INNINGS.find((innings) => innings.team !== expected.team)?.team;
+
+      for (const [path, teams] of [
+        ['derivation', figures.derivation],
+        ['history', figures.history],
+      ] as const) {
+        expect
+          .soft(
+            bowlingTeam === undefined ? 'missing' : teams.get(bowlingTeam)?.legalBallsBowled,
+            `${expected.team} innings ${path} legal balls bowled`,
+          )
+          .toBe(expected.legalBalls);
+      }
+    }
+  });
+
   test('matches the independently recorded score checkpoints and powerplays', async () => {
     const executor = databaseClient();
     const currentFixtureId = ingestedFixtureId();
@@ -396,7 +426,7 @@ describe.sequential('development reference fixture database integration', () => 
             i.ordinal,
             d.ball_number,
             d.innings_sequence,
-            COUNT(*) FILTER (WHERE d.extra_wides IS NULL) OVER (
+            COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) = 0) OVER (
               PARTITION BY i.innings_id ORDER BY d.innings_sequence
             )::int AS balls,
             SUM(d.runs_total) OVER (
