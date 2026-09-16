@@ -238,7 +238,11 @@ export function createProvenanceService(
       let before: string | undefined;
       if (query.cursor) {
         try {
-          before = readCursor(query.cursor, contributorCursorSchema).deliveryId;
+          const cursor = readCursor(query.cursor, contributorCursorSchema);
+          if (!cursor) {
+            throw new Error('Invalid pagination cursor.');
+          }
+          before = cursor.deliveryId;
         } catch {
           throw new ProvenanceInputError('The pagination cursor is invalid.');
         }
