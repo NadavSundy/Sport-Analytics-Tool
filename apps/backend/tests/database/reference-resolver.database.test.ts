@@ -1181,24 +1181,19 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(striker.canonicalId).toBeNull();
   });
 
-  test('never matches a source identifier from another namespace against a stored reference', async () => {
+  test('rejects a source-only fixture identifier from another namespace before resolution', () => {
     const seed = records();
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+
+    expect(() =>
       singleEventPackage(
-        // The value is exactly the stored source reference; only the namespace
-        // differs.
+        // The identifier matches a stored source-reference value, but the
+        // unsupported namespace has no deterministic canonical mapping.
         { sourceId: `otherprovider:fixture:${seed.singleFixtureSourceRef}` },
         participantByName(BOWLER_NAME),
         participantByName(CURRENT_NAME),
         participantByName(DUPLICATE_NAME),
       ),
-    );
-
-    const fixture = outcomeAt(resolution, 'fixtures.0');
-    expect(fixture.state).toBe('unresolved');
-    expect(fixture.canonicalId).toBeNull();
-    expect(fixture.reason).toContain('otherprovider');
+    ).toThrowError(/fixture sourceId without context must use a supported durable mapping/i);
   });
 
   /**
