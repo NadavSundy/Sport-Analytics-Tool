@@ -155,6 +155,17 @@ describe.sequential('fixture statistics database integration', () => {
                 legalBalls: statistic.metrics.legalBalls,
                 overs: statistic.metrics.overs,
                 runRate: statistic.metrics.runRate,
+                powerplay: statistic.metrics.powerplay
+                  ? {
+                      ranges: statistic.metrics.powerplay.ranges,
+                      runs: statistic.metrics.powerplay.runs,
+                      wicketsLost: statistic.metrics.powerplay.wicketsLost,
+                      legalBalls: statistic.metrics.powerplay.legalBalls,
+                      overs: statistic.metrics.powerplay.overs,
+                      runRate: statistic.metrics.powerplay.runRate,
+                      sourceEventCount: statistic.metrics.powerplay.sourceEventCount,
+                    }
+                  : null,
                 extras: statistic.metrics.extras,
               },
             ]
@@ -168,6 +179,15 @@ describe.sequential('fixture statistics database integration', () => {
         legalBalls: 120,
         overs: '20.0',
         runRate: 10.7,
+        powerplay: {
+          ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+          runs: 62,
+          wicketsLost: 1,
+          legalBalls: 36,
+          overs: '6.0',
+          runRate: 10.33,
+          sourceEventCount: 37,
+        },
         extras: {
           total: 18,
           wides: 5,
@@ -184,6 +204,15 @@ describe.sequential('fixture statistics database integration', () => {
         legalBalls: 120,
         overs: '20.0',
         runRate: 10.7,
+        powerplay: {
+          ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+          runs: 53,
+          wicketsLost: 1,
+          legalBalls: 36,
+          overs: '6.0',
+          runRate: 8.83,
+          sourceEventCount: 37,
+        },
         extras: {
           total: 6,
           wides: 2,

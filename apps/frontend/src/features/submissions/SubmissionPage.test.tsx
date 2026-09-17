@@ -220,6 +220,7 @@ function fixtureStatistics(totalRuns: number) {
             legalBalls: 1,
             overs: '0.1',
             runRate: totalRuns * 6,
+            powerplay: null,
             extras: {
               total: 0,
               wides: 0,

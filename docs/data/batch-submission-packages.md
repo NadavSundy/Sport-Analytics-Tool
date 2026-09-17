@@ -48,7 +48,7 @@ appear in dependency order so the worker never needs the whole package in memory
 1. one `manifest` record containing `contractVersion`, `packageId`, `competition` and `season`;
 2. `fixture` records containing a caller-local `fixtureKey` plus the fixture `sourceId` and/or `context`;
 3. `innings` records containing a caller-local `inningsKey`, their `fixtureKey`, and innings
-   `sourceId` and/or `context`;
+   `sourceId` and/or `context`, plus optional authoritative `powerplays` ranges;
 4. optional `participant` records containing a caller-local `participantKey` and the normal participant
    reference object in `reference`; and
 5. `event` records containing an `inningsKey` and the season-upload event. Event participant roles may
@@ -59,7 +59,7 @@ Example:
 ```json
 {"recordType":"manifest","contractVersion":"1.0","packageId":"cricsheet:package:ipl-2026","competition":{"context":{"name":"Indian Premier League"}},"season":{"context":{"name":"2026"}}}
 {"recordType":"fixture","fixtureKey":"m1","sourceId":"cricsheet:fixture:1412526"}
-{"recordType":"innings","inningsKey":"m1-i1","fixtureKey":"m1","context":{"ordinal":1,"battingTeam":{"context":{"name":"Example XI"}}}}
+{"recordType":"innings","inningsKey":"m1-i1","fixtureKey":"m1","context":{"ordinal":1,"battingTeam":{"context":{"name":"Example XI"}}},"powerplays":[{"from":0.1,"to":5.6,"type":"mandatory"}]}
 {"recordType":"participant","participantKey":"striker-1","reference":{"context":{"name":"Example Batter"}}}
 {"recordType":"event","fixtureKey":"m1","inningsKey":"m1-i1","event":{"eventId":"cricsheet:delivery:1412526-1-0.1","occurrenceSequence":1,"overNumber":0,"positionInOver":0,"ballLabel":"0.1","striker":"striker-1","nonStriker":{"context":{"name":"Example Non-striker"}},"bowler":{"context":{"name":"Example Bowler"}},"runs":{"offBat":0,"extras":0,"total":0},"extras":{}}}
 ```
@@ -98,6 +98,14 @@ Where no source identity exists, packages use readable context:
 - delivery occurrence sequence, over number and position within the over.
 
 Printed ball number is display data and is never used as an identity key.
+
+JSON and NDJSON may attach validated Cricsheet-style `powerplays` to an innings. Boundaries are
+inclusive source ball labels, ranges may not overlap, and `type` is retained verbatim. The worker
+records the markers in staged reference provenance, so they remain non-public until the entire
+reviewed batch publishes. Publication replaces that innings' previous authoritative ranges as one
+deterministic set; replay does not duplicate rows. Omitting `powerplays` means unknown/absent and
+never causes a six-over default to be invented. CSV does not currently carry innings-level
+powerplay metadata; use JSON or NDJSON when markers are available.
 
 ## Resolution rules
 
@@ -187,3 +195,4 @@ The Issue #583 fixture-proposal representation rules were documented with the as
 Codex[GPT-5].
 The Issue #587 reference-form and resolver table was documented with the assistance of
 Codex[GPT-5].
+The issue #633 powerplay package lifecycle was documented with the assistance of Codex[GPT-5].

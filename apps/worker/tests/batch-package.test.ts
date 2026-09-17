@@ -182,6 +182,49 @@ describe('occurrence-sequence ordering independent of arrival order (#588)', () 
   });
 });
 
+describe('authoritative powerplay metadata', () => {
+  it('preserves JSON innings ranges in the staged reference package', async () => {
+    const value = JSON.parse(
+      jsonPackageWithEvents([
+        { eventId: 'test:delivery:powerplay-1', occurrenceSequence: 1, ballLabel: '0.1' },
+      ]),
+    ) as {
+      fixtures: Array<{ innings: Array<{ powerplays?: unknown }> }>;
+    };
+    value.fixtures[0]!.innings[0]!.powerplays = [{ from: 0.1, to: 5.6, type: 'mandatory' }];
+
+    const chunk = await referenceChunkFor(JSON.stringify(value), 'application/json');
+
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.powerplays).toEqual([
+      { from: 0.1, to: 5.6, type: 'mandatory' },
+    ]);
+  });
+
+  it('reports an actionable source path for an invalid range', async () => {
+    const value = JSON.parse(
+      jsonPackageWithEvents([
+        { eventId: 'test:delivery:powerplay-invalid', occurrenceSequence: 1, ballLabel: '0.1' },
+      ]),
+    ) as {
+      fixtures: Array<{ innings: Array<{ powerplays?: unknown }> }>;
+    };
+    value.fixtures[0]!.innings[0]!.powerplays = [{ from: 5.6, to: 0.1, type: 'mandatory' }];
+
+    const scan = await scanBatchReferences(
+      async () => Readable.from(JSON.stringify(value)),
+      'application/json',
+    );
+
+    expect(scan.sourceFaults).toEqual([
+      expect.objectContaining({
+        ruleCode: 'PACKAGE_ITEM_INVALID',
+        fieldPath: expect.stringContaining('powerplays'),
+        message: expect.stringContaining('must not precede'),
+      }),
+    ]);
+  });
+});
+
 describe('shipped guided templates (#500)', () => {
   // The JSON template's second event demonstrates a caught dismissal (#536); the CSV
   // template's example row leaves its dismissal columns blank.

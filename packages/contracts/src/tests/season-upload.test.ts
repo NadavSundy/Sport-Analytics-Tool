@@ -49,6 +49,45 @@ function seasonPackage(overrides = {}) {
 }
 
 describe('versioned season-upload contract', () => {
+  test('accepts authoritative innings powerplays and rejects malformed or overlapping ranges', () => {
+    const withPowerplays = (powerplays: unknown[]) =>
+      seasonPackage({
+        fixtures: [
+          fixture({
+            innings: [
+              {
+                context: { ordinal: 1, battingTeam: homeTeam },
+                powerplays,
+                events: [event()],
+              },
+            ],
+          }),
+        ],
+      });
+
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        withPowerplays([
+          { from: 0.1, to: 5.6, type: 'mandatory' },
+          { from: 6.1, to: 16.6, type: 'batting' },
+        ]),
+      ).success,
+    ).toBe(true);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        withPowerplays([{ from: 5.6, to: 0.1, type: 'mandatory' }]),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        withPowerplays([
+          { from: 0.1, to: 5.6, type: 'mandatory' },
+          { from: 5.6, to: 6.6, type: 'batting' },
+        ]),
+      ).success,
+    ).toBe(false);
+  });
+
   test('requires a complete proposal for the canonical-creation package version', () => {
     const fixtureProposal = {
       endDate: '2026-03-14',

@@ -3,6 +3,7 @@ import type {
   FixtureStatisticsEventSource,
   FixtureStatisticsInningsSource,
   FixtureStatisticsMiscountedOverSource,
+  FixtureStatisticsPowerplaySource,
   FixtureStatisticsSquadMemberSource,
   FixtureStatisticsSource,
 } from './fixture-statistics.model';
@@ -28,6 +29,7 @@ interface FixtureInningsRow {
   penaltyPre: number | null;
   penaltyPost: number | null;
   miscountedOvers: FixtureStatisticsMiscountedOverSource[];
+  powerplays: FixtureStatisticsPowerplaySource[];
 }
 
 type DeliveryRow = FixtureStatisticsEventSource;
@@ -66,6 +68,15 @@ export async function loadFixtureStatisticsSource(
         FROM innings_miscounted_over miscount
         WHERE miscount.innings_id = i.innings_id
       ), '[]'::jsonb) AS "miscountedOvers"
+      , COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'fromBall', powerplay.from_ball::double precision,
+          'toBall', powerplay.to_ball::double precision,
+          'type', powerplay.type
+        ) ORDER BY powerplay.from_ball ASC, powerplay.to_ball ASC, powerplay.type ASC)
+        FROM innings_powerplay powerplay
+        WHERE powerplay.innings_id = i.innings_id
+      ), '[]'::jsonb) AS powerplays
     FROM fixture f
     JOIN submission publication
       ON publication.submission_id = f.first_seen_in
@@ -109,6 +120,7 @@ export async function loadFixtureStatisticsSource(
         penaltyPre: row.penaltyPre,
         penaltyPost: row.penaltyPost,
         miscountedOvers: row.miscountedOvers,
+        powerplays: row.powerplays,
       },
     ];
   });
@@ -132,6 +144,7 @@ export async function loadFixtureStatisticsSource(
       i.ordinal AS "inningsOrdinal",
       d.innings_sequence AS "inningsSequence",
       d.over_number AS "overNumber",
+      d.ball_number AS "ballNumber",
       i.batting_team_id::text AS "battingCompetitorId",
       batting_team.name AS "battingCompetitorName",
       bowling_team.competitor_id AS "bowlingCompetitorId",

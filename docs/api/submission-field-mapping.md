@@ -84,23 +84,25 @@ with no name at all. A fielder must therefore either identify a participant or b
 marked as a substitute; `fielder_identified_ck` enforces this at the database and
 the contract enforces it at submission.
 
-## 6. Fields the contract does not carry
+## 6. Innings metadata and fields the delivery contract does not carry
 
-These are represented in the relational model but have no submission path. They
-are recorded here so the omission is a known limitation rather than an oversight.
+The season package now carries authoritative powerplay metadata at innings scope. The remaining
+rows are represented in the relational model but have no delivery-submission path; they are
+recorded so each omission is explicit.
 
-| Not carried                        | Stored in                                     | Consequence                                                                                                                              |
-| ---------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Fixture creation                   | `fixture` and its associated tables           | A submission adds events to a fixture created by other means. Only the ingestion script creates one.                                     |
-| Innings creation                   | `innings`                                     | Likewise.                                                                                                                                |
-| Super-over flag                    | `innings.is_super_over`                       | Belongs to the innings, so the contract is agnostic: the same delivery is valid whichever innings it references.                         |
-| Innings penalty runs               | `innings.penalty_pre`, `innings.penalty_post` | **A team total is the sum of delivery totals plus innings-level penalty runs, so it cannot be derived from submitted deliveries alone.** |
-| Powerplay markers                  | `innings_powerplay`                           | Powerplay-scoped aggregates cannot be derived from a submission.                                                                         |
-| Miscounted-over notes              | `innings_miscounted_over`                     | The irregularity is not recorded, though legal balls are still counted from the delivery rows themselves.                                |
-| Reviews                            | `delivery_review`                             | Not used by any Basic statistic; retained in the model for provenance.                                                                   |
-| Replacements                       | `delivery_replacement`                        | Likewise.                                                                                                                                |
-| Correction of an existing delivery | `delivery.superseded_by`                      | The contract submits new events. Correcting one is not yet supported through submission.                                                 |
+| Field                               | Stored in                                     | Consequence                                                                                                                                          |
+| ----------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fixture creation                    | `fixture` and its associated tables           | A submission adds events to a fixture created by other means. Only the ingestion script creates one.                                                 |
+| Innings creation                    | `innings`                                     | Likewise.                                                                                                                                            |
+| Super-over flag                     | `innings.is_super_over`                       | Belongs to the innings, so the contract is agnostic: the same delivery is valid whichever innings it references.                                     |
+| Innings penalty runs                | `innings.penalty_pre`, `innings.penalty_post` | **A team total is the sum of delivery totals plus innings-level penalty runs, so it cannot be derived from submitted deliveries alone.**             |
+| `fixtures[].innings[].powerplays[]` | `innings_powerplay`                           | Reviewed markers are published with their source batch and scope accepted current deliveries in fixture statistics. Missing metadata remains absent. |
+| Miscounted-over notes               | `innings_miscounted_over`                     | The irregularity is not recorded, though legal balls are still counted from the delivery rows themselves.                                            |
+| Reviews                             | `delivery_review`                             | Not used by any Basic statistic; retained in the model for provenance.                                                                               |
+| Replacements                        | `delivery_replacement`                        | Likewise.                                                                                                                                            |
+| Correction of an existing delivery  | `delivery.superseded_by`                      | The contract submits new events. Correcting one is not yet supported through submission.                                                             |
 
 ## AI Declaration
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5].
+The issue #633 powerplay mapping was documented with the assistance of Codex[GPT-5].

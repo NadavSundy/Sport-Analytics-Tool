@@ -1237,7 +1237,11 @@ export async function resolvePackageReferences(
 
     for (const [inningsIndex, innings] of fixture.innings.entries()) {
       const inningsPath = `${fixturePath}.innings.${String(inningsIndex)}`;
-      const submittedInnings = { sourceId: innings.sourceId, context: innings.context };
+      const submittedInnings = {
+        sourceId: innings.sourceId,
+        context: innings.context,
+        ...(innings.powerplays === undefined ? {} : { powerplays: innings.powerplays }),
+      };
 
       const battingTeamOutcome =
         teamOutcomeByPath.get(`${inningsPath}.context.battingTeam`) ?? null;

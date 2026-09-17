@@ -2313,6 +2313,101 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('publishes staged powerplays idempotently and deterministically replaces corrected ranges', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const players = await client.query<{
+        strikerId: string;
+        nonStrikerId: string;
+        bowlerId: string;
+      }>(
+        `SELECT striker_id::text AS "strikerId", non_striker_id::text AS "nonStrikerId",
+                bowler_id::text AS "bowlerId"
+         FROM delivery WHERE delivery_id=$1::bigint`,
+        [current.deliveryId],
+      );
+      const payload = {
+        sequenceNumber: 633001,
+        ballNumber: '250.1',
+        ...players.rows[0]!,
+        runs: { offBat: 0, extras: 0, total: 0, nonBoundary: false },
+        extras: {},
+        wickets: [],
+      };
+      const resolvedReferences = (from: number, to: number) => ({
+        innings: {
+          submittedReference: {
+            context: { ordinal: 0 },
+            powerplays: [{ from, to, type: 'mandatory' }],
+          },
+        },
+      });
+      const create = async (suffix: string, from: number, to: number) => {
+        const batch = await repository.createBatch({
+          batchReference: randomUUID(),
+          submitterId: current.accountId,
+          competitionId: current.competitionId,
+          idempotencyKey: `${sourcePrefix}-powerplay-${suffix}`,
+          source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+          state: 'publishing',
+        });
+        await repository.insertBatchItems(batch.batchId, [
+          {
+            ordinal: 0,
+            inningsId: current.inningsId,
+            overNumber: 250,
+            positionInOver: 0,
+            sourceIdentity: `test:powerplay:${suffix}`,
+            state: 'accepted',
+            payload,
+            resolvedReferences: resolvedReferences(from, to),
+          },
+        ]);
+        return batch;
+      };
+
+      const first = await create('first', 0.1, 5.6);
+      const staged = await client.query(
+        `SELECT 1 FROM innings_powerplay WHERE innings_id=$1::bigint`,
+        [current.inningsId],
+      );
+      expect(staged.rowCount).toBe(0);
+
+      await repository.publishAcceptedItems(first.batchId, 'worker-powerplay-first');
+      await repository.publishAcceptedItems(first.batchId, 'worker-powerplay-retry');
+      const published = await client.query<{
+        fromBall: string;
+        toBall: string;
+        sourceBatchId: string;
+      }>(
+        `SELECT from_ball::text AS "fromBall", to_ball::text AS "toBall",
+                source_batch_id::text AS "sourceBatchId"
+         FROM innings_powerplay WHERE innings_id=$1::bigint`,
+        [current.inningsId],
+      );
+      expect(published.rows).toEqual([
+        { fromBall: '0.10', toBall: '5.60', sourceBatchId: first.batchId },
+      ]);
+
+      const corrected = await create('corrected', 0.1, 4.6);
+      await repository.publishAcceptedItems(corrected.batchId, 'worker-powerplay-corrected');
+      const replacement = await client.query<{
+        fromBall: string;
+        toBall: string;
+        sourceBatchId: string;
+      }>(
+        `SELECT from_ball::text AS "fromBall", to_ball::text AS "toBall",
+                source_batch_id::text AS "sourceBatchId"
+         FROM innings_powerplay WHERE innings_id=$1::bigint`,
+        [current.inningsId],
+      );
+      expect(replacement.rows).toEqual([
+        { fromBall: '0.10', toBall: '4.60', sourceBatchId: corrected.batchId },
+      ]);
+    });
+  });
+
   // Issue #486: the worker persists an EXACT_PUBLISHED_DUPLICATE row (with
   // real file_path/row_number from the item's source location) during
   // validation. Publication re-detects the same duplicate and used to insert
