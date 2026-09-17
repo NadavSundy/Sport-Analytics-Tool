@@ -264,11 +264,11 @@ export const publicReadApi = {
   // level in one response, so there is no cursor to follow.
   getParticipantAggregates(
     participantId: string,
-    scope: ParticipantAggregateScope,
+    scope?: ParticipantAggregateScope,
     signal?: AbortSignal,
   ) {
     return requestPublicApi<{ data: ParticipantAggregates }>(
-      `/participants/${encodeURIComponent(participantId)}/statistics?scope=${scope}`,
+      `/participants/${encodeURIComponent(participantId)}/statistics${scope ? `?scope=${scope}` : ''}`,
       participantAggregatesResponseSchema,
       signal,
     );

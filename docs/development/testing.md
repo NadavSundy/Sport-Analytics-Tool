@@ -80,6 +80,7 @@ tooling never falls back to the normal `DATABASE_URL`.
 | `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                                            | No              |
 | `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                                            | No              |
 | `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                                            | No              |
+| `npm run test:api-contract`    | OpenAPI contract tests: real API responses checked against `docs/api/openapi.yaml`              | None                                            | No              |
 | `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST`                | No              |
 | `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection                     | Yes             |
 | `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                                            | No              |
@@ -724,3 +725,5 @@ The repository-wide coverage testing section was documented with the assistance 
 ChatGPT-Web[GPT-5.6 Sol].
 The issue #458 administrator dataset-release coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #609 OpenAPI contract-test command was documented with the assistance of
+Claude-Code[Claude Opus 5].

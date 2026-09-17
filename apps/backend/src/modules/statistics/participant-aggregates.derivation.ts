@@ -36,15 +36,23 @@ function rowScope(row: ParticipantAggregateRow): ParticipantAggregateScope {
 }
 
 function battingOf(row: ParticipantAggregateRow): ParticipantAggregateBatting | null {
-  if (row.battingDeliveryCount === 0) {
+  if (row.battingInnings === 0) {
     return null;
   }
 
   return {
+    innings: row.battingInnings,
     runsScored: row.runsScored,
     ballsFaced: row.ballsFaced,
+    dismissals: row.battingDismissals,
+    notOuts: row.battingInnings - row.battingDismissals,
+    battingAverage: calculateRate(row.runsScored, row.battingDismissals, 1),
     fours: row.fours,
     sixes: row.sixes,
+    fifties: row.fifties,
+    hundreds: row.hundreds,
+    highestScore: row.highestScore ?? 0,
+    highestScoreNotOut: row.highestScoreNotOut ?? false,
     strikeRate: calculateRate(row.runsScored, row.ballsFaced, 100),
   };
 }
@@ -57,11 +65,20 @@ function bowlingOf(row: ParticipantAggregateRow): ParticipantAggregateBowling | 
   const ballsPerOver = row.ballsPerOver;
 
   return {
+    innings: row.bowlingInnings,
     runsConceded: row.runsConceded,
     wides: row.wides,
     noBalls: row.noBalls,
     legalBallsBowled: row.legalBallsBowled,
     wicketsTaken: row.wicketsTaken,
+    bowlingAverage: calculateRate(row.runsConceded, row.wicketsTaken, 1),
+    bowlingStrikeRate: calculateRate(row.legalBallsBowled, row.wicketsTaken, 1),
+    bestBowling: {
+      wicketsTaken: row.bestBowlingWickets ?? 0,
+      runsConceded: row.bestBowlingRuns ?? 0,
+    },
+    fourWicketHauls: row.fourWicketHauls,
+    fiveWicketHauls: row.fiveWicketHauls,
     ballsPerOver,
     oversBowled: ballsPerOver === null ? null : formatOvers(row.legalBallsBowled, ballsPerOver),
     economyRate:
@@ -88,12 +105,14 @@ export function deriveParticipantAggregates(
 
   // A grouping set of () yields one all-zero row even when the participant has
   // no accepted standard delivery at all. That is an absence, not a figure.
-  const contributingRows = source.rows.filter((row) => row.sourceEventCount > 0);
+  const contributingRows = source.rows.filter(
+    (row) => row.appearances > 0 || row.sourceEventCount > 0,
+  );
 
   if (contributingRows.length === 0) {
     warnings.push({
       code: 'NO_ACCEPTED_EVENTS',
-      message: 'The participant has no accepted standard delivery events.',
+      message: 'The participant has no accepted squad appearances or standard delivery events.',
     });
   }
 
@@ -108,10 +127,16 @@ export function deriveParticipantAggregates(
     const common = {
       participantId: source.participantId,
       participantName: source.participantName,
+      appearances: row.appearances,
       fixtureCount: row.fixtureCount,
       sourceEventCount: row.sourceEventCount,
       batting: battingOf(row),
       bowling: bowlingOf(row),
+      fielding: {
+        catches: row.catches,
+        stumpings: row.stumpings,
+        runOutInvolvements: row.runOutInvolvements,
+      },
     };
 
     if (row.competitionGrouped && row.competitionId === null) {

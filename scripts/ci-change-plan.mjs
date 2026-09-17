@@ -59,6 +59,7 @@ function emptyPlan() {
     hygiene: false,
     deployment: false,
     openapi: false,
+    apiContract: false,
     coverage: false,
     deployFrontend: false,
     deployBackend: false,
@@ -81,6 +82,7 @@ function markFull(plan) {
   plan.hygiene = true;
   plan.deployment = true;
   plan.openapi = true;
+  plan.apiContract = true;
   plan.needsNpm = true;
 }
 
@@ -204,6 +206,8 @@ function applyPath(plan, file) {
       file === 'docs/api/openapi.yaml'
     ) {
       plan.openapi = true;
+      // A specification-only change must still be checked against the implementation.
+      plan.apiContract = true;
     }
     return;
   }
@@ -463,6 +467,12 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     plan.hygiene = true;
     plan.openapi = true;
     plan.needsNpm = true;
+  }
+
+  if (plan.backend) {
+    // Any change that can alter backend behaviour is checked against the published
+    // OpenAPI contract, as is any change to the contract itself (see above).
+    plan.apiContract = true;
   }
 
   if (plan.frontend || plan.backend || plan.worker || plan.contracts) {

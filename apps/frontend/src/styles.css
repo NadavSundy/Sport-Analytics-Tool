@@ -3827,6 +3827,268 @@ h3 {
   background: var(--colour-surface-raised);
 }
 
+.match-summary {
+  margin-top: var(--space-6);
+  padding: var(--space-6);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface);
+}
+
+.match-summary__context,
+.scope-description {
+  margin: var(--space-3) 0 0;
+  color: var(--colour-text-secondary);
+}
+
+.match-summary__scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--colour-border);
+}
+
+.match-summary__scores > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.match-summary__scores strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.match-summary__scores span {
+  color: var(--colour-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.match-summary__highest-scores {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--colour-border);
+}
+
+.match-summary__highest-scores h4,
+.match-summary__highest-scores ul {
+  margin: 0;
+}
+
+.match-summary__highest-scores ul {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.match-summary__highest-scores li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.match-summary__highest-scores span {
+  color: var(--colour-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.scorecard-section .ui-data-table,
+.participant-scope-section .ui-data-table {
+  margin-top: var(--space-3);
+}
+
+.scorecard-group {
+  margin-top: var(--space-5);
+}
+
+.scorecard-group h4,
+.match-leaders h4,
+.participant-record-group h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.scorecard-section .ui-data-table__table,
+.participant-scope-section .ui-data-table__table {
+  font-variant-numeric: tabular-nums;
+}
+
+.scorecard-section .ui-data-table__table th[scope='row'] a {
+  white-space: nowrap;
+}
+
+.match-leaders__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-5);
+}
+
+.match-leaders ol {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match-leaders li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(8rem, 1fr) auto minmax(9rem, auto);
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--colour-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.match-leaders li small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--colour-text-muted);
+}
+
+.match-leaders__rank {
+  color: var(--colour-text-muted);
+  font-weight: 700;
+}
+
+.calculation-details > details,
+.statistics-definitions,
+.innings-extras {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface);
+}
+
+.calculation-details summary,
+.statistics-definitions summary,
+.innings-extras summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.calculation-details li + li {
+  margin-top: var(--space-2);
+}
+
+.statistics-definitions dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+
+.statistics-definitions dt {
+  font-weight: 700;
+}
+
+.statistics-definitions dd {
+  margin: var(--space-1) 0 0;
+  color: var(--colour-text-secondary);
+}
+
+.participant-career-overview,
+.participant-scope-section {
+  margin-top: var(--space-8);
+}
+
+.participant-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0;
+  margin: var(--space-4) 0 0;
+  border-block: 1px solid var(--colour-border);
+}
+
+.participant-kpis > div {
+  padding: var(--space-4);
+  border-inline-start: 1px solid var(--colour-border);
+}
+
+.participant-kpis dt,
+.record-metrics dt {
+  color: var(--colour-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.participant-kpis dd {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.statistics-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  overflow-x: auto;
+}
+
+.statistics-tab {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.statistics-tab[aria-selected='true'] {
+  border-color: var(--colour-primary);
+  box-shadow: inset 0 -3px 0 var(--colour-primary);
+  background: var(--colour-primary-soft);
+}
+
+.statistics-tab-panel {
+  margin-top: var(--space-4);
+}
+
+.participant-record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-5);
+}
+
+.participant-record-group {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--colour-border);
+}
+
+.participant-record-group:last-child {
+  grid-column: 1 / -1;
+}
+
+.record-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+
+.record-metrics dd {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 .event-export-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -3864,6 +4126,44 @@ h3 {
   padding-left: 0.75rem;
   border-left: 3px solid var(--colour-error);
   color: var(--colour-error);
+}
+
+@media (min-width: 56.3125rem) {
+  .statistics-table {
+    table-layout: fixed;
+  }
+
+  .statistics-table .statistics-table__metric {
+    width: 4.25rem;
+  }
+
+  .statistics-table .statistics-table__score {
+    width: 7rem;
+  }
+
+  .statistics-table .statistics-table__overs {
+    width: 6rem;
+  }
+
+  .statistics-table .statistics-table__rate {
+    width: 5.75rem;
+  }
+
+  .statistics-table .statistics-table__final-metric {
+    width: 7.5rem;
+  }
+
+  .statistics-table--batting .statistics-table__detail {
+    width: 18rem;
+  }
+
+  .statistics-table > :is(thead, tbody) > tr > :first-child {
+    padding-inline-start: var(--space-6);
+  }
+
+  .statistics-table > :is(thead, tbody) > tr > :last-child {
+    padding-inline-end: var(--space-8);
+  }
 }
 
 @media (max-width: 56.25rem) {
@@ -4473,6 +4773,34 @@ h3 {
 
   .statistic-metrics,
   .event-trace dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .match-summary,
+  .calculation-details > details,
+  .statistics-definitions,
+  .innings-extras {
+    padding: var(--space-4);
+  }
+
+  .match-leaders__grid,
+  .participant-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-leaders li {
+    grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  }
+
+  .match-leaders li > span:last-child {
+    grid-column: 2 / -1;
+  }
+
+  .participant-record-group:last-child {
+    grid-column: auto;
+  }
+
+  .participant-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -271,18 +271,13 @@ function renderFixtureStatistics(statistics: unknown[]) {
 // Every team group in the order it is rendered, with the player named on each of
 // its cards in the order those cards are rendered.
 async function renderedPlayerGroups() {
-  const playerSection = (await screen.findByRole('heading', { name: 'Player statistics' })).closest(
-    'section',
-  ) as HTMLElement;
-  return within(playerSection)
-    .getAllByRole('region')
-    .filter((region) => region.parentElement === playerSection)
-    .map((group) => ({
-      team: within(group).getAllByRole('heading', { level: 3 })[0]?.textContent,
-      players: within(group)
-        .getAllByRole('listitem')
-        .map((card) => within(card).getByRole('heading', { level: 3 }).textContent),
-    }));
+  await screen.findByRole('heading', { name: 'Batting scorecard' });
+  return screen.getAllByRole('table', { name: /batting scorecard$/ }).map((table) => ({
+    team: table.querySelector('caption')?.textContent?.replace(' batting scorecard', ''),
+    players: within(table)
+      .getAllByRole('rowheader')
+      .map((heading) => heading.textContent),
+  }));
 }
 
 describe('public fixture statistics pages', () => {
@@ -425,31 +420,29 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    expect(await screen.findByText('Complete data')).toBeInTheDocument();
+    expect(await screen.findByText('Complete statistics')).toBeInTheDocument();
     expect(screen.getByText('Wanderers won by 5 wickets.')).toBeInTheDocument();
-    expect(screen.getByText('Highest individual innings score')).toBeInTheDocument();
-    expect(screen.getByText('42* runs · innings 1')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Match leaders' })).toBeInTheDocument();
 
-    const teamSection = screen.getByRole('heading', { name: 'Innings totals' }).parentElement
-      ?.parentElement?.parentElement;
-    expect(teamSection).toBeTruthy();
-    expect(within(teamSection as HTMLElement).getByText('159')).toBeInTheDocument();
-    expect(within(teamSection as HTMLElement).queryByText('Delivery runs')).not.toBeInTheDocument();
-    expect(
-      within(teamSection as HTMLElement).getByRole('link', { name: 'Wanderers' }),
-    ).toHaveAttribute('href', '/competitors/team-1');
+    const teamSection = screen.getByRole('table', {
+      name: 'Score, progress, run rate and extras for each standard innings',
+    });
+    expect(within(teamSection).getByText('159/6')).toBeInTheDocument();
+    expect(within(teamSection).queryByText('Delivery runs')).not.toBeInTheDocument();
+    expect(within(teamSection).getByRole('link', { name: 'Wanderers' })).toHaveAttribute(
+      'href',
+      '/competitors/team-1',
+    );
 
-    const participantSection = screen.getByRole('heading', {
-      name: 'Player statistics',
-    }).parentElement?.parentElement?.parentElement;
-    expect(participantSection).toBeTruthy();
+    const participantSection = screen.getByRole('table', {
+      name: 'Wanderers batting scorecard',
+    });
+    const bowlingSection = screen.getByRole('table', { name: 'Wanderers bowling scorecard' });
+    expect(within(participantSection).getByLabelText('42 not out')).toBeInTheDocument();
+    expect(within(bowlingSection).getByText('WD')).toBeInTheDocument();
+    expect(within(bowlingSection).getByText('NB')).toBeInTheDocument();
     expect(
-      within(participantSection as HTMLElement).getByLabelText('42 not out'),
-    ).toBeInTheDocument();
-    expect(within(participantSection as HTMLElement).getByText('Wides')).toBeInTheDocument();
-    expect(within(participantSection as HTMLElement).getByText('No-balls')).toBeInTheDocument();
-    expect(
-      within(participantSection as HTMLElement).getByRole('link', {
+      within(participantSection).getByRole('link', {
         name: 'A Player',
       }),
     ).toHaveAttribute('href', '/participants/player-1');
@@ -505,7 +498,7 @@ describe('public fixture statistics pages', () => {
 
     renderRoute('/fixtures/fixture-empty');
 
-    expect(await screen.findByText('Partial data')).toBeInTheDocument();
+    expect(await screen.findByText('Partial statistics')).toBeInTheDocument();
     expect(screen.getByText('No accepted delivery events are available.')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'No match statistics available' }),
@@ -1072,7 +1065,7 @@ describe('public fixture statistics pages', () => {
 
     expect(await renderedPlayerGroups()).toEqual([
       { team: 'Wanderers', players: ['Ann Lowe', 'Jo Marsh'] },
-      { team: 'Team name unavailable', players: ['Nia Ford'] },
+      { team: 'Team unavailable', players: ['Nia Ford'] },
       { team: 'Strikers', players: ['Tom Reid'] },
     ]);
   });

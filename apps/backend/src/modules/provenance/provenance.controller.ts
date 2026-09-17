@@ -1,5 +1,6 @@
 import {
   apiIdentifierSchema,
+  paginationQuerySchema,
   provenanceSubmissionListQuerySchema,
 } from '@sport-analytics/contracts';
 import type { RequestHandler, Response } from 'express';
@@ -138,6 +139,36 @@ export function createStatisticProvenanceController(service: ProvenanceService):
     }
     void service
       .getStatistic(authenticated, fixtureId.data, statisticId.data)
+      .then((result) => response.json(result))
+      .catch((error: unknown) => {
+        if (rejectReadError(response, error)) return;
+        next(error);
+      });
+  };
+}
+
+export function createParticipantStatisticProvenanceController(
+  service: ProvenanceService,
+): RequestHandler {
+  return (request, response, next) => {
+    const participantId = apiIdentifierSchema.safeParse(request.params.participantId);
+    const statisticId = apiIdentifierSchema.safeParse(request.params.statisticId);
+    const query = paginationQuerySchema.safeParse(request.query);
+    if (!participantId.success || !statisticId.success || !query.success) {
+      response
+        .status(400)
+        .json({ error: { code: 'INVALID_QUERY', message: 'The provenance request is invalid.' } });
+      return;
+    }
+    let authenticated: ApplicationAccount;
+    try {
+      authenticated = account(response);
+    } catch (error) {
+      next(error);
+      return;
+    }
+    void service
+      .getParticipantStatistic(authenticated, participantId.data, statisticId.data, query.data)
       .then((result) => response.json(result))
       .catch((error: unknown) => {
         if (rejectReadError(response, error)) return;

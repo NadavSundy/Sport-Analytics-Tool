@@ -70,6 +70,7 @@ nav:
           - Fixture Statistic Calculations: statistics/fixture-statistics.md
           - Participant Aggregate Calculations: statistics/participant-aggregates.md
           - OpenAPI Specification: api/openapi.md
+          - OpenAPI Contract Testing: api/contract-testing.md
           - Versioning and Deprecation: api/versioning.md
       - Submission field mapping: api/submission-field-mapping.md
       - Event to statistic mapping: api/event-statistic-mapping.md
