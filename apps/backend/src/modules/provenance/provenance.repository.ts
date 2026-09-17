@@ -1,4 +1,5 @@
 import type {
+  ParticipantAggregate,
   ProvenanceDecision,
   ProvenanceEventSource,
   ProvenanceSubmission,
@@ -8,6 +9,7 @@ import type {
 import type { Pool } from 'pg';
 
 import { executeQuery, getDatabasePool } from '../../database';
+import { standardInningsPredicate } from '../statistics/super-over-scope';
 
 interface ProvenanceListOptions {
   accountId: string;
@@ -62,6 +64,12 @@ export interface ProvenanceRepository {
   findEvent(eventId: string): Promise<EventProvenanceRecord | null>;
   findFixtureCompetition(fixtureId: string): Promise<string | null | undefined>;
   listContributorSources(deliveryIds: string[]): Promise<StatisticProvenanceContributor[]>;
+  listParticipantContributorSources(
+    participantId: string,
+    statistic: ParticipantAggregate,
+    limit: number,
+    before?: string,
+  ): Promise<StatisticProvenanceContributor[]>;
 }
 
 interface SubmissionRow {
@@ -533,6 +541,43 @@ export function createProvenanceRepository(pool?: Pool): ProvenanceRepository {
          WHERE d.delivery_id = ANY($1::bigint[])
          ORDER BY d.innings_id, d.innings_sequence, d.delivery_id`,
         [deliveryIds],
+      );
+      return result.rows.map((row) => ({
+        deliveryId: row.deliveryId,
+        revision: row.revision,
+        sourceEventId: row.sourceEventId,
+        source: sourceForEvent(row),
+      }));
+    },
+
+    async listParticipantContributorSources(participantId, statistic, limit, before) {
+      const values: unknown[] = [participantId];
+      const filters = [
+        `(d.striker_id = $1::bigint OR d.bowler_id = $1::bigint)`,
+        `source_submission.status = 'accepted'`,
+        `publication.status = 'accepted'`,
+        standardInningsPredicate('i'),
+      ];
+      if (statistic.scope === 'season') {
+        values.push(statistic.competitionId, statistic.season);
+        filters.push(`f.competition_id = $2::bigint`, `f.season = $3::text`);
+      } else if (statistic.scope === 'competition') {
+        values.push(statistic.competitionId);
+        filters.push(`f.competition_id = $2::bigint`);
+      }
+      if (before) {
+        values.push(before);
+        filters.push(`d.delivery_id < $${values.length}::bigint`);
+      }
+      values.push(limit);
+      const result = await executeQuery<EventRow>(
+        database(),
+        `SELECT ${eventSelection} FROM delivery_current d ${eventJoins}
+         JOIN submission source_submission ON source_submission.submission_id = d.submission_id
+         JOIN submission publication ON publication.submission_id = f.first_seen_in
+         WHERE ${filters.join(' AND ')}
+         ORDER BY d.delivery_id DESC LIMIT $${values.length}`,
+        values,
       );
       return result.rows.map((row) => ({
         deliveryId: row.deliveryId,
