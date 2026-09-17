@@ -1295,6 +1295,185 @@ describe.sequential('batch repository database integration', () => {
   });
 
   /**
+   * Issue #592. A batch correction journals the same participants as a direct
+   * correction: every previous and replacement striker, non-striker, bowler,
+   * dismissed player and identified fielder, each at the season, competition
+   * and career scopes of the corrected fixture, plus the fixture scope itself.
+   */
+  test('journals refresh dependencies for every participant role a batch correction touches', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const players = (
+        await client.query<{
+          strikerId: string;
+          nonStrikerId: string;
+          bowlerId: string;
+          competitionId: string;
+          season: string;
+        }>(
+          `SELECT d.striker_id::text AS "strikerId",
+                  d.non_striker_id::text AS "nonStrikerId",
+                  d.bowler_id::text AS "bowlerId",
+                  f.competition_id::text AS "competitionId",
+                  f.season
+           FROM delivery d
+           JOIN innings i ON i.innings_id=d.innings_id
+           JOIN fixture f ON f.fixture_id=i.fixture_id
+           WHERE d.delivery_id=$1::bigint`,
+          [current.deliveryId],
+        )
+      ).rows[0]!;
+      const insertPerson = async (role: string) =>
+        (
+          await client.query<{ personId: string }>(
+            `INSERT INTO person (source_ref, display_name)
+             VALUES ($1, $1)
+             RETURNING person_id::text AS "personId"`,
+            [`${sourcePrefix}-roles-${role}`],
+          )
+        ).rows[0]!.personId;
+      const replacementNonStrikerId = await insertPerson('replacement-non-striker');
+      const fielderId = await insertPerson('fielder');
+
+      const sourceIdentity = 'cricsheet:delivery:batch-correction-roles-target';
+      const basePayload = {
+        eventId: randomUUID(),
+        sequenceNumber: 700002,
+        ballNumber: '126.1',
+        strikerId: players.strikerId,
+        nonStrikerId: players.nonStrikerId,
+        bowlerId: players.bowlerId,
+        runs: { offBat: 0, extras: 0, total: 0, nonBoundary: false },
+        extras: {},
+        wickets: [],
+      };
+      const original = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-correction-roles-original`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'publishing',
+      });
+      await repository.insertBatchItems(original.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 126,
+          positionInOver: 0,
+          sourceIdentity,
+          state: 'accepted',
+          payload: basePayload,
+        },
+      ]);
+      await expect(
+        repository.publishAcceptedItems(original.batchId, 'worker-roles-original'),
+      ).resolves.toMatchObject({ published: 1 });
+      const originalDeliveryId = (
+        await repository.listBatchItems(original.batchId, { limit: 1 })
+      )[0]!.publishedEventId!;
+
+      // The correction replaces the non-striker and records a catch, so it
+      // introduces a new non-striker, a dismissed player and a fielder, and the
+      // previous non-striker no longer appears in the delivery.
+      const correction = await repository.createBatch({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-correction-roles-replacement`,
+        source: { checksum: 'c'.repeat(64), uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+        state: 'awaiting_review',
+      });
+      await repository.insertBatchItems(correction.batchId, [
+        {
+          ordinal: 0,
+          inningsId: current.inningsId,
+          overNumber: 126,
+          positionInOver: 0,
+          sourceIdentity: 'cricsheet:delivery:batch-correction-roles-replacement',
+          operation: 'correction',
+          correctsSourceIdentity: sourceIdentity,
+          correctionTargetDeliveryId: originalDeliveryId,
+          state: 'accepted',
+          payload: {
+            ...basePayload,
+            eventId: randomUUID(),
+            nonStrikerId: replacementNonStrikerId,
+            wickets: [
+              {
+                kind: 'caught',
+                playerOutId: players.strikerId,
+                fielders: [{ participantId: fielderId, substitute: false }],
+              },
+            ],
+          },
+        },
+      ]);
+      await repository.applyReviewDecision({
+        batchId: correction.batchId,
+        actorId: current.accountId,
+        decision: 'approved',
+        reason: 'Verified the dismissal against the source.',
+      });
+      await expect(
+        repository.publishAcceptedItems(correction.batchId, 'worker-roles-correction'),
+      ).resolves.toMatchObject({ published: 1 });
+
+      const dependencies = await client.query<{
+        scope: string;
+        participantId: string | null;
+        competitionId: string | null;
+        season: string | null;
+      }>(
+        `SELECT dependency.scope,
+                dependency.participant_id::text AS "participantId",
+                dependency.competition_id::text AS "competitionId",
+                dependency.season
+         FROM statistics_refresh_dependency dependency
+         JOIN delivery replacement
+           ON replacement.source_event_id=dependency.source_event_id
+          AND replacement.revision=dependency.delivery_revision
+         WHERE replacement.supersedes_delivery_id=$1::bigint`,
+        [originalDeliveryId],
+      );
+
+      const participantScopes = (participantId: string) => [
+        {
+          scope: 'season',
+          participantId,
+          competitionId: players.competitionId,
+          season: players.season,
+        },
+        { scope: 'competition', participantId, competitionId: players.competitionId, season: null },
+        { scope: 'career', participantId, competitionId: null, season: null },
+      ];
+      const scopeKey = (row: { scope: string; participantId: string | null }) =>
+        `${row.participantId ?? ''}:${row.scope}`;
+      const byScope = (
+        left: { scope: string; participantId: string | null },
+        right: { scope: string; participantId: string | null },
+      ) => scopeKey(left).localeCompare(scopeKey(right));
+
+      expect([...dependencies.rows].sort(byScope)).toEqual(
+        [
+          {
+            scope: 'fixture',
+            participantId: null,
+            competitionId: players.competitionId,
+            season: players.season,
+          },
+          ...participantScopes(players.strikerId),
+          ...participantScopes(players.nonStrikerId),
+          ...participantScopes(players.bowlerId),
+          ...participantScopes(replacementNonStrikerId),
+          ...participantScopes(fielderId),
+        ].sort(byScope),
+      );
+    });
+  });
+
+  /**
    * Issue #529. The reported failure was a reviewer resolving a conflict with a
    * delivery published before immutable lineage existed: an accepted submission,
    * no source_event_id and no submission_event_ordinal, differing from the staged
