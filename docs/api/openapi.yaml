@@ -2158,6 +2158,56 @@ paths:
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
+  /api/v1/batches/{batchReference}/canonical-fixtures:
+    post:
+      tags: [Batches]
+      summary: Create a canonical fixture from a staged fixture proposal
+      description: >-
+        An administrator may create the canonical fixture for an unresolved fixture reference that
+        was submitted with a complete fixture proposal in a version `1.1` batch package: a source
+        identifier, date, season and two teams. The backend records the decision and queues normal
+        reference resolution and validation; it does not publish any staged delivery. Teams,
+        participants and seasons must already be canonical records.
+      operationId: createBatchCanonicalFixture
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchCanonicalFixtureRequest' }
+      responses:
+        '202':
+          description: >-
+            The canonical fixture decision was recorded. `status` is `queued` while revalidation is
+            pending, or `applied` when the stored decision has already been applied.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The account is not an administrator, or the batch is not visible to it.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            The item does not carry a complete version 1.1 fixture proposal, or the decision
+            conflicts with a prior decision (`BATCH_CANONICAL_FIXTURE_CONFLICT`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The fixture decision is invalid (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
   /api/v1/submissions/events/{eventId}:
     put:
       tags:
@@ -5739,6 +5789,15 @@ components:
         itemOrdinal: { type: integer, minimum: 0 }
         referencePath: { type: string, minLength: 1, maxLength: 1000 }
         candidateReference: { type: string, format: uuid }
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
+    BatchCanonicalFixtureRequest:
+      type: object
+      additionalProperties: false
+      required: [itemOrdinal, referencePath, decisionKey]
+      properties:
+        itemOrdinal: { type: integer, minimum: 0 }
+        referencePath: { type: string, minLength: 1, maxLength: 1000 }
         decisionKey: { type: string, minLength: 1, maxLength: 255 }
 
     BatchReferenceMappingReceipt:

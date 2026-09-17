@@ -2,11 +2,11 @@
 
 `POST /api/v1/batches` is a distinct asynchronous receipt route for whole-season and back-catalogue packages. It does not extend the synchronous Basic submission or file-upload routes, and it never publishes events merely because a package was accepted.
 
-The request body is streamed directly to the private object-store adapter. Supply `Authorization: Bearer <token>`, `Idempotency-Key`, `X-Competition-Id`, `X-Batch-Package-Version: 1.0`, and `X-File-Name` headers. Its `Content-Type` must be `application/json`, `text/csv`, or `application/x-ndjson`. A corrected upload made in response to a review decision also supplies the original batch's opaque UUID in `X-Replaces-Batch-Reference`.
+The request body is streamed directly to the private object-store adapter. Supply `Authorization: Bearer <token>`, `Idempotency-Key`, `X-Competition-Id`, `X-Batch-Package-Version` (`1.0`, or `1.1` for packages that include fixture proposals), and `X-File-Name` headers. Its `Content-Type` must be `application/json`, `text/csv`, or `application/x-ndjson`. A corrected upload made in response to a review decision also supplies the original batch's opaque UUID in `X-Replaces-Batch-Reference`.
 
-The endpoint returns `202 Accepted` with an opaque UUID `batchReference`, a relative `statusUrl`, and `stored` status. The reference is not a database ID. `GET /api/v1/batches/{batchReference}` lets the owning submitter or an administrator retrieve the receipt status.
+The endpoint returns `202 Accepted` with an opaque UUID `batchReference`, a relative `statusUrl` (also sent in the `Location` header), and `stored` status. The reference is not a database ID. `GET /api/v1/batches/{batchReference}` lets the owning submitter or an administrator retrieve the receipt status.
 
-The server authenticates and checks the persisted submitter role and competition scope before receiving source bytes. Raw source is streamed with a 50 MB limit, retained privately for 90 days, and receives a SHA-256 checksum. The idempotency key is unique within the submitter scope: replaying it with the same checksum returns the original receipt, while changed bytes return `409 BATCH_CONFLICT`. Receipt creation serializes each submitter's key lookup, active-batch limit, queue insertion, and correction linkage, so concurrent equivalent requests cannot enqueue duplicate work or claim the same correction request twice. A replacement must belong to the same submitter and competition and must identify a batch whose current state is `correction_requested`. The transaction retains that original, changes its state to `superseded`, populates `superseded_by`, and records the lifecycle transition. Invalid, stale, or competing relationships return `409 BATCH_CONFLICT`. Up to three non-terminal batches are permitted per submitter. Unsupported metadata is `422`, size is `413`, storage failures are `503`, and the active-batch limit is `409`.
+The server authenticates and checks the persisted submitter role and competition scope before receiving source bytes. Raw source is streamed with a 50 MB limit, retained privately for 90 days, and receives a SHA-256 checksum. The idempotency key is unique within the submitter scope: replaying it with the same checksum returns the original receipt, while changed bytes return `409 BATCH_CONFLICT`. Receipt creation serializes each submitter's key lookup, active-batch limit, queue insertion, and correction linkage, so concurrent equivalent requests cannot enqueue duplicate work or claim the same correction request twice. A replacement must belong to the same submitter and competition and must identify a batch whose current state is `correction_requested`. The transaction retains that original, changes its state to `superseded`, populates `superseded_by`, and records the lifecycle transition. Invalid, stale, or competing relationships return `409 BATCH_CONFLICT`. Up to three non-terminal batches are permitted per submitter. Unsupported metadata is `422`, size is `413`, storage failures are `503`, and the active-batch limit is `409`. More than six uploads by one account in 60 seconds return `429` with `Retry-After`.
 
 Package expansion, event validation, review and publication are implemented as asynchronous
 follow-on stages. After receipt, the worker expands and validates the retained package, records
@@ -43,7 +43,7 @@ the current stored resolution evidence, retains the actor and selection, and ret
 durably queues revalidation from the original private source. The status URL remains available after
 the caller leaves. Identical decisions are idempotent; stale candidates, reused keys with different
 content, competing choices, and decisions made while validation is active return
-`409 BATCH_REFERENCE_MAPPING_CONFLICT`.
+`409 BATCH_REFERENCE_MAPPING_CONFLICT`. A malformed batch reference returns `404`, and a request body that is not valid JSON or exceeds 16 KB returns `400` or `413`.
 
 Revalidation uses the normal package resolver, event schema, cricket rules, and durable worker
 checkpoint. Previous validation results remain retained as superseded evidence while status, counts,
@@ -101,3 +101,4 @@ The Issue #437 unified submission route was documented with the assistance of Co
 The Issue #539 correction-resubmission lineage was documented with the assistance of Codex[GPT-5].
 The Issue #537 reviewer blocking-item response was documented with the assistance of Codex[GPT-5].
 The Issue #297 Intermediate batch-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #609 package-version, rate-limit, Location and mapping error details were added with the assistance of Claude-Code[Claude Opus 5].
