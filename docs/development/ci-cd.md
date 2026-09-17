@@ -265,30 +265,38 @@ A hygiene failure is a required validation failure and therefore makes `quality`
 
 ## Coverage policy
 
-Issue #578 gives coverage a dedicated CI lane rather than hiding it inside the normal validation job.
-The authoritative command is `npm run test:coverage`; it runs the five required workspace coverage
-passes and aggregates their covered/coverable counters into one repository summary.
+Issue #648 keeps repository coverage accurate and visible while removing it from the blocking
+quality/deployment path. The authoritative command remains `npm run test:coverage`; it runs the five
+required workspace coverage passes and aggregates covered/coverable counters into one repository
+summary.
 
-The change-aware policy avoids duplicating expensive Vitest suites on every ordinary Pull Request:
+Coverage is now a **late evidence stage**:
 
-- ordinary application Pull Requests rely on their existing functional/unit/browser/database gates;
-- Pull Requests that change the coverage pipeline/configuration run the dedicated coverage lane so the
-  reporting mechanism validates itself before merge;
-- every push to `main` generates a repository-wide baseline for the merged commit; and
-- `workflow_dispatch` of **Sport Analytics CI** always generates the repository-wide report.
+- ordinary blocking validation/browser checks run first;
+- `quality` depends only on planning and the normal required validation lanes;
+- deployment jobs depend on `quality`, never on coverage;
+- coverage waits until `quality` and all deployment jobs have resolved, then runs when the change plan
+  requests it; and
+- a coverage-test/threshold failure is recorded as `FAILED / INCOMPLETE` evidence without retroactively
+  invalidating an otherwise successful quality/deployment path.
 
-The coverage job uploads the complete `coverage/` directory through `actions/upload-artifact@v4`,
-including per-workspace HTML/LCOV/JSON reports and the combined summary. `quality` requires the coverage
-job whenever the planner marks it as required.
+The frontend coverage command keeps the standard `vitest run --coverage` behaviour. Coverage-specific retries and worker limits were investigated and rejected because they would mask failures rather than address their cause. The separate local frontend-test failures encountered during investigation were traced to stale shared-contract build output and addressed independently in #656. Coverage failures therefore remain visible as late evidence without gating quality or deployment.
 
-Repository thresholds are centralised through `COVERAGE_THRESHOLD_LINES`,
-`COVERAGE_THRESHOLD_STATEMENTS`, `COVERAGE_THRESHOLD_FUNCTIONS`, and
-`COVERAGE_THRESHOLD_BRANCHES`. They are intentionally unset by default until an approved Sprint 3
-threshold is confirmed; no percentage is invented from the rubric. Once configured as Gitea repository
-variables, a below-threshold combined result makes the coverage job, and therefore `quality`, fail.
+Coverage still uploads the complete `coverage/` directory through `actions/upload-artifact@v4`, including
+per-workspace HTML/LCOV/JSON reports, combined output, and CI status evidence. A failed/incomplete coverage
+run does not publish a new live badge; the previous valid badge is retained.
 
-See [Repository-wide Code Coverage](../testing/code-coverage.md) for the exact source scope, aggregation
-formula, outputs and verification procedure.
+Coverage routing includes production-source changes in the five covered workspaces, coverage
+infrastructure/configuration changes, `workflow_dispatch`, and every push to `main`. Local change-aware
+CI keeps `npm run test:coverage` strict and runs it last when selected.
+
+Repository thresholds remain centralised through `COVERAGE_THRESHOLD_LINES`,
+`COVERAGE_THRESHOLD_STATEMENTS`, `COVERAGE_THRESHOLD_FUNCTIONS`, and `COVERAGE_THRESHOLD_BRANCHES`.
+Thresholds are still calculated by the authoritative coverage command; in hosted CI their non-zero exit
+is preserved as coverage evidence rather than a deployment gate.
+
+See [Repository-wide Code Coverage](../testing/code-coverage.md) for source scope, aggregation, outputs,
+routing and verification.
 
 ## Optional local CI parity before a push
 

@@ -76,16 +76,26 @@ receives or adopts an approved threshold.
 
 ## CI routing and artifacts
 
-Coverage has a dedicated Gitea Actions job so the normal validation job does not run the same Vitest
-suites a second time merely to collect coverage. The coverage lane runs when:
+Coverage has a dedicated late-stage Gitea Actions job. It is intentionally separated from the
+blocking `quality` gate and from deployment ownership.
 
-- coverage infrastructure itself changes in a Pull Request;
+The coverage lane runs when:
+
+- production source changes in a covered workspace;
+- coverage infrastructure/configuration changes in a Pull Request;
 - a deliberate `workflow_dispatch` full validation is requested; or
-- a change reaches `main`, so every merged main commit receives a repository-wide coverage record.
+- a change reaches `main`, so the merged commit receives a repository-wide coverage record.
 
-The job runs `npm run test:coverage` and uploads the complete `coverage/` tree as a Gitea Actions
-artifact. The quality gate requires the coverage job whenever the change planner marks coverage as
-required. Local change-aware CI follows the same plan and invokes the same root command.
+Hosted ordering is: normal validation/browser work -> `quality` -> routed deployment jobs -> coverage.
+The coverage job waits for the deployment jobs to resolve, but its result is not a prerequisite for any
+of them.
+
+`npm run test:coverage` remains strict. In hosted CI the workflow captures its real exit code and records
+`PASS` or `FAILED / INCOMPLETE` evidence without turning a coverage-only failure into a deployment gate.
+The complete `coverage/` tree is still uploaded as an artifact. Badge publication occurs only after a
+complete successful coverage run, so failed/partial runs retain the previous valid badge.
+
+The frontend coverage script remains `vitest run --coverage`. Coverage-specific retries and worker limits were investigated and rejected because they would mask failures rather than improve the validity of the coverage result. The separate local frontend-test failures encountered during investigation were traced to stale shared-contract build output and addressed independently in #656. Ordinary frontend tests remain blocking in normal quality validation, while the late coverage job reports incomplete coverage without blocking deployment.
 
 ## Verification
 
