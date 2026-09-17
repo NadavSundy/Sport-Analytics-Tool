@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { advanceFixtureStatisticsCacheVersions } from '@sport-analytics/batch-processing';
 import { fixtureStatisticsSchema } from '@sport-analytics/contracts';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -11,10 +12,7 @@ import {
   listCompetitorsForFixtures,
   listParticipantFixtures,
 } from '../../src/modules/participants/participant.repository';
-import {
-  advanceFixtureStatisticsCacheVersions,
-  createFixtureStatisticsCache,
-} from '../../src/modules/statistics/fixture-statistics.cache';
+import { createFixtureStatisticsCache } from '../../src/modules/statistics/fixture-statistics.cache';
 import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
 import { loadFixtureStatisticsSource } from '../../src/modules/statistics/fixture-statistics.repository';
 import { createFixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';

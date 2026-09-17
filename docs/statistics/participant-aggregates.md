@@ -6,10 +6,11 @@ and no persisted cache; the difference is only the set of fixtures a projection 
 
 When a correction changes a delivery, refresh dependencies include every previous and resulting
 participant relationship consumed here: striker, non-striker, bowler, dismissed player, and every
-identified fielder. Each participant receives at most one refresh target at each applicable season,
-competition, and career level. The correction response and the
-durable `statistics_refresh_dependency` journal make this selective boundary observable; unrelated
-participants and competition/season groups have no dependency record and no recalculation target.
+identified fielder. Direct and batch corrections derive this set with the same shared functions.
+Each participant receives at most one refresh target at each applicable season, competition, and
+career level. The correction response and the durable `statistics_refresh_dependency` journal make
+these affected scopes observable; unrelated participants and competition/season groups have no
+dependency record. The journal is not yet read: every aggregate is still derived on request.
 
 The statistic catalogue in `docs/requirements/sport-domain-definition.md` §7 names the base figures
 and the two aggregate levels these endpoints publish. Competition-wide is required by issue #285 but
@@ -190,3 +191,5 @@ was documented with the assistance of Codex[GPT-5]. The record of figures not de
 was documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #632 appearance, batting, bowling and fielding aggregate rules and example were updated
 with the assistance of Codex[GPT-5].
+The issue #592 correction dependency participant set was corrected with the assistance of
+Claude-Code[Claude Opus 5].
