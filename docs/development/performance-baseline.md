@@ -91,7 +91,12 @@ publish.
 Issue #293 adds a versioned, 60-second PostgreSQL cache-aside layer for the repeated public fixture
 statistics operation only. The benchmark should compare the first miss with subsequent same-version
 hits; an accepted event, correction, or publication makes an earlier version unreachable before the
-next read. Other listed paths remain uncached.
+next read. Other listed paths remain uncached, except participant aggregates: issue #592 stores
+their derived rows per participant and serves them while current (ADR-015).
+`npm run measure:aggregate-snapshots --workspace=@sport-analytics/backend` measures reads served from
+stored rows, read misses including the synchronous refresh, and batch publication throughput on the
+same generated corpus. The measurements that include a live derivation are interleaved
+request by request, because derivation cost varies over tens of seconds on a developer host. Both measurements run `ANALYZE` after their bulk ingest and before any timed request: freshly loaded tables have no planner statistics until autoanalyze reaches them, and a participant aggregate request planned before then took minutes (`evidence/validation/issue-592-first-read-plans/`). The first participant read is not timed. It builds the stored rows that row (a) then serves, so it is setup for (a) rather than a sample of it; timing it would put one read miss into the served sample. Read misses are measured on their own in rows (b1) and (b2), each after the stored rows have been made stale.
 “Warm” means the backend is running and its retained PostgreSQL pool connection
 has been established; PostgreSQL's own buffer state is not forcibly reset.
 “Cold” is measured separately: restart the local backend, make no prior
@@ -143,3 +148,4 @@ This performance-baseline procedure, generator-command documentation and target
 table were created with the assistance of Codex[GPT-5]. The repeated fixture-statistics cache
 measurement procedure was updated with the assistance of Codex[GPT-5].
 The Issue #297 aggregate performance procedure was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].

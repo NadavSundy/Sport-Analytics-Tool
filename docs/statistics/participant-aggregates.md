@@ -1,8 +1,11 @@
 # Participant aggregate calculations
 
 Season, competition-wide and career aggregates are deterministic projections of accepted cricket
-events, calculated when requested. As with fixture statistics there is no manually editable total
-and no persisted cache; the difference is only the set of fixtures a projection spans.
+events. As with fixture statistics there is no manually editable total; the difference is only the
+set of fixtures a projection spans. Since issue #592 the derived rows are stored per participant and
+served while current, and derived live otherwise (see
+[Stored aggregates and consistency](#stored-aggregates-and-consistency) and ADR-015). Stored rows are
+disposable: delivery rows remain the source of truth.
 
 When a correction changes a delivery, refresh dependencies include every previous and resulting
 participant relationship consumed here: striker, non-striker, bowler, dismissed player, and every
@@ -10,13 +13,13 @@ identified fielder. Direct and batch corrections derive this set with the same s
 Each participant receives at most one refresh target at each applicable season, competition, and
 career level. The correction response and the durable `statistics_refresh_dependency` journal make
 these affected scopes observable; unrelated participants and competition/season groups have no
-dependency record. The journal is not yet read: every aggregate is still derived on request.
+dependency record. The journal is correction evidence and is not read by the stored aggregates,
+which use the data versions below.
 
 ## Participant statistics data versions
 
 `participant_statistics_version` holds one `data_version` per participant: the input version of
-that participant's season, competition and career aggregates (issue #592). Nothing reads it yet. A
-write that can change a participant's aggregates advances their version in the same transaction as
+that participant's season, competition and career aggregates (issue #592). A write that can change a participant's aggregates advances their version in the same transaction as
 the write, with an upsert that increments the existing value. Fixture versions are advanced first
 and participant versions second, each in identifier order, so concurrent writers acquire those row
 locks in one consistent order.
@@ -37,6 +40,82 @@ while an extra one only costs a recomputation. For submissions, corrections and 
 squad members of the same fixture whom no event names are not affected: an added or corrected
 delivery does not change their appearances or figures. Ingest is the only write path that adds squad
 members.
+
+## Stored aggregates and consistency
+
+The grouped rows the derivation query returns are stored in two tables:
+
+- `participant_aggregate_snapshot_state`, one row per participant, records the data version and
+  definition version the participant's stored rows were built from, a refresh count, and failed
+  refresh attempts. This row vouches for the participant's complete set of scope rows.
+- `participant_aggregate_snapshot`, one row per participant, level, competition and season, holds
+  one grouped row as jsonb with the versions and refresh count of its last content write.
+
+A single table of scope rows was rejected: serving would require every row to carry the current
+version, which forces an affected participant's unchanged rows to be rewritten, and it cannot record
+a participant whose rows were built but empty.
+
+### Reads
+
+A read serves stored rows only when the participant has a `participant_statistics_version` row and
+the state row was built from that version under the running definition version. A participant with
+no version row is never served from, or written to, stored rows. The definition version is the
+SHA-256 of a fixed prefix and the aggregate SQL text, including the shared classification fragments
+and the super-over predicate, so any change to the calculation invalidates every stored row without
+a manual bump.
+
+On a read miss the response is derived live, exactly as without stored rows, and the stored rows are
+refreshed synchronously in the same request from the rows just derived. The data version is read
+before the derivation, so rows that include a later write are stored against the earlier version and
+are never served. The refresh never waits for a lock: it takes a transaction-scoped advisory lease
+with `pg_try_advisory_xact_lock`, reads the version row `FOR SHARE NOWAIT` and the state row
+`FOR UPDATE NOWAIT`, and sets `lock_timeout` to 1 ms for every other lock. If the lease or a lock is
+held, or the write fails, the live response is returned unchanged and the next read tries again.
+There is no worker or poller: refresh happens only on a read miss.
+
+The consistency guarantee is therefore the same as live derivation. A response reflects every write
+committed before its snapshot read, whether it is served from stored rows or derived live.
+
+### Refresh
+
+**Selective** means: a change recomputes each affected participant's query once and rewrites only
+the affected scope rows; unaffected participants are not recomputed and their rows stay
+byte-identical. Within one participant the whole query runs once; recomputation is never
+per scope.
+
+A refresh re-runs the unchanged derivation query for a participant whose rows are not current and
+never for one whose rows are. It then writes, in one transaction: the state row, with its refresh
+count advanced; new scope rows; scope rows whose figures changed, each with its own refresh count
+advanced; and the removal of scope rows that no longer exist. A scope row whose figures did not
+change keeps its bytes, versions and refresh count. A refresh that fails rolls back entirely, records
+an attempt count and last error on the state row, and is retried by the next read.
+
+### Untracked writes
+
+Stored rows stay correct only while every write to an aggregate input advances the affected
+participants' versions. Submissions, corrections, batch publication and ingest do. Any other write
+to an input (a data-rewriting migration, a seed that bypasses ingest, or a manual repair of
+deliveries, wickets, fielders, squads, innings, fixtures, submissions, dismissal kinds or competition
+names) must invalidate stored rows in the same transaction:
+
+```sql
+SELECT invalidate_participant_aggregate_snapshots();
+```
+
+or, from TypeScript, `invalidateParticipantAggregateSnapshots(executor)`. The function deletes every
+stored snapshot, and reads derive live and rebuild them. Existing data-rewriting migrations ran before
+the snapshot tables existed and need no action; the committed seeds use ingest.
+
+### Known limitations
+
+These need a team decision and are outside issue #592:
+
+- Participant reads can take minutes after importing or restoring into an empty or much smaller
+  database, until the tables are analysed: without planner statistics the aggregate statement chooses
+  nested loops. `evidence/validation/issue-592-first-read-plans/` records the plans; `ANALYZE`
+  removed the slow plan.
+- No `statement_timeout` is configured, so a slow request holds a backend pool connection until it
+  finishes.
 
 The statistic catalogue in `docs/requirements/sport-domain-definition.md` §7 names the base figures
 and the two aggregate levels these endpoints publish. Competition-wide is required by issue #285 but
@@ -233,6 +312,12 @@ deliveries scanned, not the number of round trips, so the shape is flat in the n
 rather than an elapsed time, because the count is stable across machines and is what a per-fixture
 implementation would break.
 
+Stored aggregates (issue #592) change the cost of a read, not the derivation. A read served from
+current stored rows is one statement; a read miss is the snapshot read, the two derivation statements
+and the synchronous refresh transaction. `npm run measure:aggregate-snapshots --workspace=@sport-analytics/backend`
+measures both, and batch publication throughput, on the generated 300-fixture corpus; the results are
+in `evidence/validation/issue-592-aggregate-snapshot-performance.md`. The first participant read is not timed. It builds the stored rows that row (a) then serves, so it is setup for (a) rather than a sample of it; timing it would put one read miss into the served sample. Read misses are measured on their own in rows (b1) and (b2), each after the stored rows have been made stale.
+
 ## Statistic resources and traceability
 
 Each projection has a stable opaque `statisticId`, a deterministic hash of the participant and the
@@ -302,4 +387,4 @@ with the assistance of Codex[GPT-5].
 The issue #635 leaderboard API, qualification rules and performance documentation were implemented
 with the assistance of Codex[GPT-5].
 The issue #592 correction dependency participant set was corrected, and participant statistics data
-versions documented, with the assistance of Claude-Code[Claude Opus 5].
+versions and stored aggregates documented, with the assistance of Claude-Code[Claude Opus 5].

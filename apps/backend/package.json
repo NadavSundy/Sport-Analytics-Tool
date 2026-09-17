@@ -18,6 +18,7 @@
     "test:contract": "vitest run tests/contract",
     "test:database": "tsx scripts/run-database-tests.ts",
     "measure:performance": "tsx scripts/run-performance-benchmark.ts",
+    "measure:aggregate-snapshots": "tsx scripts/measure-aggregate-snapshots.ts",
     "pretest:database:run": "npm run prepare:contracts",
     "test:database:run": "cross-env NODE_ENV=test vitest run tests/database",
     "test:coverage": "vitest run --coverage tests/unit tests/api tests/auth.test.ts tests/authorization.test.ts tests/health.test.ts",
