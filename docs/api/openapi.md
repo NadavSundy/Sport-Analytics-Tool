@@ -24,6 +24,15 @@ The normal project quality gate also includes OpenAPI validation through:
 npm run check
 ```
 
+## Contract tests
+
+Automated contract tests check the implemented API against this specification. See
+[OpenAPI contract testing](contract-testing.md) for what they prove and what they do not.
+
+```bash
+npm run test:api-contract
+```
+
 ## Implementation status
 
 The specification distinguishes current backend behaviour from agreed future contracts using:
@@ -61,3 +70,4 @@ PostgreSQL
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #609 contract-test section was added with the assistance of Claude-Code[Claude Opus 5].
