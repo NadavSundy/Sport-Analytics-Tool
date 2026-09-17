@@ -5944,8 +5944,7 @@ components:
           description: Zero-based position in the over; unlike the display ball number, this cannot repeat.
         ballNumber:
           type: string
-          minLength: 1
-          maxLength: 32
+          pattern: '^\d{1,3}\.\d{1,2}$'
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
@@ -6133,7 +6132,7 @@ components:
           maximum: 32767
         ballNumber:
           type: string
-          pattern: '^\\d{1,3}\\.\\d{1,2}$'
+          pattern: '^\d{1,3}\.\d{1,2}$'
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
