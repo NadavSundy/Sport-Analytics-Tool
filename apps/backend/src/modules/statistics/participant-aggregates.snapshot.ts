@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { executeQuery, getDatabasePool } from '../../database';
+import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 import type {
   ParticipantAggregateRow,
   ParticipantAggregatesSource,
@@ -350,4 +350,21 @@ export async function refreshParticipantAggregateSnapshots(
   }
 
   return outcomes;
+}
+
+/**
+ * Deletes every stored participant aggregate snapshot. Any write to aggregate
+ * inputs that does not advance participant statistics versions (a
+ * data-rewriting migration, a seed that bypasses ingest, a manual repair) must
+ * call this, or run `SELECT invalidate_participant_aggregate_snapshots()`, in
+ * the same transaction.
+ */
+export async function invalidateParticipantAggregateSnapshots(
+  executor: QueryExecutor,
+): Promise<number> {
+  const result = await executeQuery<{ invalidated: string }>(
+    executor,
+    'SELECT invalidate_participant_aggregate_snapshots()::text AS invalidated',
+  );
+  return Number(result.rows[0]?.invalidated ?? 0);
 }
