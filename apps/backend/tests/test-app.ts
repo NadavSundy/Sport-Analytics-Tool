@@ -6,6 +6,7 @@ import type { SynchronizeAccount } from '../src/modules/accounts/account.service
 import type { PublicReadService } from '../src/modules/public-read/public-read.service';
 import type { FixtureStatisticsService } from '../src/modules/statistics/fixture-statistics.service';
 import type { ParticipantAggregatesService } from '../src/modules/statistics/participant-aggregates.service';
+import type { LeaderboardsService } from '../src/modules/statistics/leaderboards.service';
 import type { SubmissionService } from '../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../src/modules/submitter-access/submitter-access.service';
 import type { AccountDeletionService } from '../src/modules/account-deletion/account-deletion.service';
@@ -113,6 +114,7 @@ export function createTestApp(
   apiConsumerRepository?: ApiConsumerRepository,
   datasetReleaseService?: DatasetReleaseService,
   provenanceService?: ProvenanceService,
+  leaderboardsService?: LeaderboardsService,
 ) {
   return createApp({
     environment: testEnvironment,
@@ -132,6 +134,7 @@ export function createTestApp(
     ...(apiConsumerRepository !== undefined ? { apiConsumerRepository } : {}),
     ...(datasetReleaseService !== undefined ? { datasetReleaseService } : {}),
     ...(provenanceService !== undefined ? { provenanceService } : {}),
+    ...(leaderboardsService !== undefined ? { leaderboardsService } : {}),
   });
 }
 

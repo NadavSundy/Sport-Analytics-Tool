@@ -35,6 +35,11 @@ import {
   createParticipantAggregatesService,
   type ParticipantAggregatesService,
 } from './modules/statistics/participant-aggregates.service';
+import { createLeaderboardsRouter } from './modules/statistics/leaderboards.routes';
+import {
+  createLeaderboardsService,
+  type LeaderboardsService,
+} from './modules/statistics/leaderboards.service';
 import { createFixtureStatisticsRouter } from './modules/statistics/fixture-statistics.routes';
 import {
   createFixtureStatisticsService,
@@ -92,6 +97,7 @@ export interface AppDependencies {
   publicReadService?: PublicReadService;
   fixtureStatisticsService?: FixtureStatisticsService;
   participantAggregatesService?: ParticipantAggregatesService;
+  leaderboardsService?: LeaderboardsService;
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
@@ -118,6 +124,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
   const participantAggregatesService =
     dependencies.participantAggregatesService ?? createParticipantAggregatesService();
+  const leaderboardsService = dependencies.leaderboardsService ?? createLeaderboardsService();
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
@@ -226,6 +233,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));
   app.use(API_BASE_PATH, createFixtureStatisticsRouter(fixtureStatisticsService));
   app.use(API_BASE_PATH, createParticipantAggregatesRouter(participantAggregatesService));
+  app.use(API_BASE_PATH, createLeaderboardsRouter(leaderboardsService));
   app.use(
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),
