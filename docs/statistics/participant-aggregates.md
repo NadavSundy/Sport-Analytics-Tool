@@ -122,6 +122,88 @@ fact. Where a group spans fixtures that do not agree on it there is no single co
 names the group. Runs conceded, legal balls bowled and wickets taken remain published, because they
 do not depend on the divisor.
 
+## Leaderboards
+
+`GET /api/v1/statistics/leaderboards` ranks the same accepted-current, standard-innings event data
+for one explicit season or competition. It supports `most_runs`, `most_wickets`, `most_fours`,
+`most_sixes`, `highest_batting_average`, `highest_strike_rate`, `best_bowling_average`,
+`best_economy_rate` and `best_bowling_strike_rate`. Season scope uses the opaque `seasonId`, which
+encodes its competition and label; competition scope uses `competitionId`.
+
+Totals are ordered from highest to lowest. Batting average and strike rate are also highest first;
+bowling average, economy and bowling strike rate are lowest first. Equal exact aggregate values are
+ordered by participant display name using PostgreSQL's deterministic `C` collation, then numeric
+participant identifier. `rank` is therefore the stable top-N position after all tie-breakers, not a
+shared competition rank.
+
+### Rate qualification
+
+Rate tables deliberately exclude samples too small to support a meaningful comparison. The server
+applies these fixed initial qualifications before ranking and returns the selected rule and rationale
+as `qualification` metadata. Total leaderboards return `qualification: null`.
+
+| Metric                   | Minimum qualification | Rationale                               |
+| ------------------------ | --------------------- | --------------------------------------- |
+| Highest batting average  | 5 dismissals          | Excludes one short not-out sample       |
+| Highest strike rate      | 100 balls faced       | Excludes short cameo innings            |
+| Best bowling average     | 5 credited wickets    | Excludes one-off wicket samples         |
+| Best economy rate        | 60 legal balls        | Avoids assuming one balls-per-over rule |
+| Best bowling strike rate | 5 credited wickets    | Excludes one-off wicket samples         |
+
+Economy additionally requires one authoritative balls-per-over value across the requested scope;
+participants spanning mixed divisors are not ranked because the platform does not assume six.
+Credited wickets, legal balls, boundaries and rate arithmetic reuse the participant aggregate rules
+above. Accepted corrections are visible immediately because ranking reads `delivery_current`.
+
+The query aggregates and ranks every eligible participant in one PostgreSQL statement and applies
+the requested limit there. The maximum limit is 50. It does not call the participant aggregate
+endpoint or issue one query per player. Database coverage exercises six published reference
+fixtures (roughly 1,500 standard deliveries), asserts one statement regardless of participant count,
+and verifies scope isolation, qualifications, tie-breaking and a corrected current revision.
+
+### Example total leaderboard
+
+```json
+{
+  "data": {
+    "scope": "competition",
+    "competitionId": "10",
+    "competitionName": "Example League",
+    "metric": "most_runs",
+    "limit": 2,
+    "qualification": null,
+    "tieBreakers": ["metricValue", "participantName", "participantId"],
+    "entries": [
+      { "rank": 1, "participantId": "7", "participantName": "A Batter", "value": 612 },
+      { "rank": 2, "participantId": "8", "participantName": "B Batter", "value": 588 }
+    ]
+  }
+}
+```
+
+### Example qualified-rate leaderboard
+
+```json
+{
+  "data": {
+    "scope": "season",
+    "seasonId": "season_opaque",
+    "season": "2026/27",
+    "competitionId": "10",
+    "competitionName": "Example League",
+    "metric": "highest_strike_rate",
+    "limit": 1,
+    "qualification": {
+      "field": "ballsFaced",
+      "minimum": 100,
+      "rationale": "A minimum of 100 balls faced excludes short cameo innings."
+    },
+    "tieBreakers": ["metricValue", "participantName", "participantId"],
+    "entries": [{ "rank": 1, "participantId": "7", "participantName": "A Batter", "value": 148.72 }]
+  }
+}
+```
+
 ## Performance
 
 Issue #105 measured the fixture statistics endpoints at roughly 2,400 ms, from about thirteen
@@ -216,6 +298,8 @@ was documented with the assistance of Codex[GPT-5]. The record of figures not de
 #476, was documented with the assistance of Claude Code[Claude Opus 5]. The issue #623 wide-run rule
 was documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #632 appearance, batting, bowling and fielding aggregate rules and example were updated
+with the assistance of Codex[GPT-5].
+The issue #635 leaderboard API, qualification rules and performance documentation were implemented
 with the assistance of Codex[GPT-5].
 The issue #592 correction dependency participant set was corrected, and participant statistics data
 versions documented, with the assistance of Claude-Code[Claude Opus 5].

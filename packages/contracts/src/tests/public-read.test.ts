@@ -10,6 +10,8 @@ import {
   inningsTeamStatisticSchema,
   participantAggregatesQuerySchema,
   participantAggregatesResponseSchema,
+  leaderboardQuerySchema,
+  leaderboardResponseSchema,
   participantFixtureCollectionResponseSchema,
   participantFixtureListQuerySchema,
   participantListQuerySchema,
@@ -393,6 +395,71 @@ describe('public read contracts', () => {
       scope: 'career',
     });
     expect(participantAggregatesQuerySchema.safeParse({ scope: 'super-over' }).success).toBe(false);
+  });
+
+  test('requires one explicit leaderboard scope and enforces the top-N bound', () => {
+    expect(
+      leaderboardQuerySchema.parse({
+        scope: 'season',
+        seasonId: 'season_opaque',
+        metric: 'most_runs',
+      }),
+    ).toEqual({
+      scope: 'season',
+      seasonId: 'season_opaque',
+      metric: 'most_runs',
+      limit: 10,
+    });
+    expect(
+      leaderboardQuerySchema.parse({
+        scope: 'competition',
+        competitionId: '10',
+        metric: 'best_economy_rate',
+        limit: '50',
+      }),
+    ).toMatchObject({ scope: 'competition', competitionId: '10', limit: 50 });
+    expect(
+      leaderboardQuerySchema.safeParse({
+        scope: 'competition',
+        competitionId: '10',
+        metric: 'most_runs',
+        limit: 51,
+      }).success,
+    ).toBe(false);
+    expect(leaderboardQuerySchema.safeParse({ scope: 'season', metric: 'most_runs' }).success).toBe(
+      false,
+    );
+    expect(
+      leaderboardQuerySchema.safeParse({
+        scope: 'season',
+        seasonId: 'season_opaque',
+        competitionId: '10',
+        metric: 'most_runs',
+      }).success,
+    ).toBe(false);
+  });
+
+  test('validates total and qualified-rate leaderboard responses', () => {
+    expect(
+      leaderboardResponseSchema.safeParse({
+        data: {
+          scope: 'season',
+          seasonId: 'season_opaque',
+          competitionId: '10',
+          competitionName: 'Example League',
+          season: '2026',
+          metric: 'highest_strike_rate',
+          limit: 10,
+          qualification: {
+            field: 'ballsFaced',
+            minimum: 100,
+            rationale: 'Prevents a very small batting sample from leading a rate table.',
+          },
+          tieBreakers: ['metricValue', 'participantName', 'participantId'],
+          entries: [{ rank: 1, participantId: '7', participantName: 'A Batter', value: 142.5 }],
+        },
+      }).success,
+    ).toBe(true);
   });
 
   test('validates season, competition and career aggregates for one participant', () => {
