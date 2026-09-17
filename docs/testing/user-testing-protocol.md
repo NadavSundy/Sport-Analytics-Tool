@@ -8,7 +8,7 @@ This document defines the canonical formal user-testing process used by the Spor
 
 The purpose of user testing is to observe whether representative users can complete important workflows without being coached through the interface, identify usability and functional problems, record those findings consistently, and ensure important findings are either acted on or consciously rejected with a documented reason.
 
-Sprint 2 established the task-based process through Issue #264 / PR #317 and ADR-013. Sprint 3 continues the same authoritative process; feature-level feedback gates add a closure convention, not a replacement feedback workflow. User-testing evidence is retained in the repository after facilitator review; Microsoft Forms, Power Automate, OneDrive retrieval and generated evidence pages are not required parts of the process.
+Sprint 2 established the task-based process through Issue #264 / PR #317 and ADR-013. Sprint 3 continues the same authoritative process through dedicated feature-level user-feedback issues. These issues track validation and evidence independently from implementation closure. User-testing evidence is retained in the repository after facilitator review; Microsoft Forms, Power Automate, OneDrive retrieval and generated evidence pages are not required parts of the process.
 
 ---
 
@@ -64,34 +64,35 @@ A session does not need to test every task in a group. Select a small set of rel
 
 ---
 
-## Sprint 3 Feature-Level Feedback Gates
+## Sprint 3 Feature-Level User-Feedback Tasks
 
-Sprint 3 uses dedicated user-feedback issues as **closure gates** for groups of implementation issues that collectively deliver one user goal.
+Sprint 3 uses dedicated user-feedback issues for groups of implementation issues that collectively deliver one user goal. They are validation/evidence tasks, not automatic closure prerequisites for the linked implementation work.
 
 The rule is:
 
-1. Implementation work may proceed while the linked feedback-gate issue is open.
-2. When an implementation issue is technically complete, deploy it to the intended test environment and move it to **In Review / awaiting user validation**.
-3. Keep the implementation issue open until its linked feedback gate closes.
-4. The implementation issue may depend on the feedback gate as a **closure gate**.
-5. The feedback-gate issue must **not** hard-depend on those implementation issues. Instead, its `Cannot Begin Until` section lists the implementation work that must be deployed and in Review before the formal session starts.
-6. A feedback gate may begin only when the required build, facilitator account/state and safe scenario data are ready.
-7. A feedback gate closes only after the retained session evidence has been evaluated, every S1/S2 or otherwise actionable finding has an explicit outcome, and every accepted S1/S2 change has the required retest evidence.
+1. Implementation work may proceed while the linked user-feedback issue is open.
+2. An implementation issue may close when its own Definition of Done, automated/manual verification and genuine technical/process dependencies are satisfied.
+3. User-feedback issues remain open independently until the required representative-user evidence has been collected and evaluated.
+4. Gitea dependencies must represent genuine implementation/process prerequisites; user-feedback status alone must not block implementation closure.
+5. A user-feedback issue's `Cannot Begin Until` section is treated as a **testing-readiness checklist**: the listed functionality must be deployed and usable before the formal session starts, but the list is not a Gitea dependency direction.
+6. A user-feedback session may begin only when the required build, facilitator account/state and safe scenario data are ready.
+7. A user-feedback issue closes only after the retained session evidence has been evaluated, every S1/S2 or otherwise actionable finding has an explicit outcome, and every accepted S1/S2 change has the required retest evidence.
+8. If testing reveals a defect or accepted improvement, create or reopen the appropriate implementation issue, link the finding and retest after the change.
 
-This direction avoids circular Gitea dependencies while preventing technically complete implementation issues from skipping representative-user validation.
+This keeps representative-user validation meaningful and traceable without artificially extending unrelated implementation issues.
 
-### Sprint 3 gate map
+### Sprint 3 user-feedback map
 
-| Feedback gate | User goal                                                | Primary task coverage                                                  |
-| ------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
-| #601          | Navigation, authentication and overall frontend flow     | `AUTH-*` plus representative cross-feature navigation                  |
-| #602          | Public statistics and fixture analytics                  | `PUB-01` to `PUB-06`                                                   |
-| #603          | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |
-| #604          | Season and multi-season back-catalogue ingestion         | `BAT-01` to `BAT-05`                                                   |
-| #605          | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*` validation                        |
-| #606          | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |
-| #607          | API consumer keys, quotas and rate-limit experience      | `PUB-05`, `API-01`                                                     |
-| #612          | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |
+| User-feedback issue | User goal                                                | Primary task coverage                                                  |
+| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| #601                | Navigation, authentication and overall frontend flow     | `AUTH-*` plus representative cross-feature navigation                  |
+| #602                | Public statistics and fixture analytics                  | `PUB-01` to `PUB-06`                                                   |
+| #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |
+| #604                | Season and multi-season back-catalogue ingestion         | `BAT-01` to `BAT-05`                                                   |
+| #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*` validation                        |
+| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |
+| #607                | API consumer keys, quotas and rate-limit experience      | `PUB-05`, `API-01`                                                     |
+| #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |
 
 The table is a starting map, not a requirement that one participant attempt every listed task. Each session still records only the Task IDs actually attempted.
 

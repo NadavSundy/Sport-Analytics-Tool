@@ -66,7 +66,7 @@ For every selected scenario, retain:
 - expected starting state;
 - expected safe mutation/outcome;
 - reset/recreate method;
-- linked feedback gate and implementation issues in Review.
+- linked user-feedback issue and relevant implementation issues.
 
 ## AI Declaration
 

@@ -166,7 +166,7 @@ The active Sprint 3 priority is therefore:
 
 1. complete and stabilise remaining Basic/Intermediate behaviour;
 2. address accepted Sprint 2 review feedback;
-3. complete feature-level user-feedback and Intermediate acceptance gates;
+3. complete feature-level user-feedback tasks and the Intermediate acceptance gate;
 4. revalidate deployment, performance and supporting evidence; and
 5. only after the Intermediate acceptance gate passes, implement the selected
    Advanced API capabilities represented by #608-#611.
@@ -1040,7 +1040,7 @@ The active Sprint 3 backlog prioritises:
 - accepted Sprint 2 review improvements #579-#582;
 - repository-wide code coverage #578;
 - Basic/Intermediate correctness #583-#597;
-- feature-level user-feedback gates #600-#607;
+- user-testing setup #600 and feature-level user-feedback tasks #601-#607;
 - the Intermediate acceptance gate #598;
 - representative-scale performance re-validation #599;
 - selected Advanced API work #608-#611 only after #598 passes;
