@@ -560,7 +560,7 @@ describe('role-gated event submission page', () => {
     expect(screen.getByText(/Revision 2 is now current/)).toBeInTheDocument();
     await waitFor(() => expect(statisticsRequests).toBe(2));
     expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
-    expect(screen.getAllByText('6').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('6/0').length).toBeGreaterThan(0);
   });
 
   it.each([

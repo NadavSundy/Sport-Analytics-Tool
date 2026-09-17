@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import type { ParticipantFixtureStatistic } from '@sport-analytics/contracts';
 import { expect, test, type Page } from '@playwright/test';
 
 const fixture = {
@@ -45,7 +46,16 @@ const inningsStatistic = {
   },
 };
 
-const participantStatistic = {
+const secondInningsStatistic = {
+  ...inningsStatistic,
+  statisticId: 'stat-innings-2',
+  inningsId: 'innings-2',
+  inningsOrdinal: 1,
+  competitorId: 'team-2',
+  competitorName: 'Team Two',
+};
+
+const participantStatistic: ParticipantFixtureStatistic = {
   statisticId: 'stat-participant-1',
   fixtureId: 'fixture-1',
   scope: 'participant',
@@ -59,8 +69,60 @@ const participantStatistic = {
   battingParticipation: 'batted',
   dismissal: { status: 'not_out', kind: null, eventId: null },
   batting: { runsScored: 4, ballsFaced: 1, strikeRate: 400, fours: 1, sixes: 0 },
-  bowling: null,
+  bowling: {
+    runsConceded: 5,
+    wides: 0,
+    noBalls: 0,
+    legalBallsBowled: 6,
+    oversBowled: '1.0',
+    economyRate: 5,
+    wicketsTaken: 1,
+  },
 };
+
+const secondParticipantStatistic = {
+  ...participantStatistic,
+  statisticId: 'stat-participant-2',
+  participantId: 'striker-2',
+  participantName: 'Second Batter',
+  competitorId: 'team-2',
+  competitorName: 'Team Two',
+};
+
+function fullTeamScorecard(
+  seed: ParticipantFixtureStatistic,
+  prefix: string,
+): ParticipantFixtureStatistic[] {
+  return Array.from({ length: 11 }, (_, index) => ({
+    ...seed,
+    statisticId: `${seed.statisticId}-${index + 1}`,
+    participantId: `${prefix}-${index + 1}`,
+    participantName:
+      index === 0 ? seed.participantName : `${seed.competitorName} Player ${index + 1}`,
+    battingPosition: index + 1,
+    battingParticipation: index === 10 ? ('did_not_bat' as const) : ('batted' as const),
+    dismissal:
+      index === 10
+        ? null
+        : index === 0
+          ? seed.dismissal
+          : { status: 'dismissed' as const, kind: 'caught at deep midwicket', eventId: null },
+    batting:
+      index === 10
+        ? null
+        : {
+            runsScored: index,
+            ballsFaced: index + 1,
+            strikeRate: index === 0 ? (seed.batting?.strikeRate ?? null) : index * 10,
+            fours: index % 3,
+            sixes: index % 2,
+          },
+    bowling: index < 6 ? seed.bowling : null,
+  }));
+}
+
+const teamOneScorecard = fullTeamScorecard(participantStatistic, 'team-one-player');
+const teamTwoScorecard = fullTeamScorecard(secondParticipantStatistic, 'team-two-player');
 
 async function readDetailSpacing(page: Page) {
   return page.evaluate(() => {
@@ -68,7 +130,7 @@ async function readDetailSpacing(page: Page) {
     const heading = document.querySelector<HTMLElement>('.page-heading--detail');
     const firstFact = document.querySelector<HTMLElement>('.record-facts > div');
     const matchStatistics = document.querySelector<HTMLElement>('.fixture-statistics-overview');
-    const summary = document.querySelector<HTMLElement>('.statistics-summary');
+    const summary = document.querySelector<HTMLElement>('.match-summary');
     if (!detailPage || !heading || !firstFact || !matchStatistics || !summary) {
       throw new Error('The public detail layout was not rendered.');
     }
@@ -84,10 +146,158 @@ async function readDetailSpacing(page: Page) {
   });
 }
 
+async function readScorecardLayoutAudit(page: Page) {
+  return page.evaluate(() => {
+    const tables = [
+      ...document.querySelectorAll<HTMLTableElement>(
+        '.fixture-statistics-overview .statistics-table',
+      ),
+    ].filter((table) => {
+      const details = table.closest('details');
+      return table.getClientRects().length > 0 && (!details || details.open);
+    });
+    return {
+      pageWidth: {
+        client: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+      },
+      tables: tables.map((table) => {
+        const wrapper = table.closest<HTMLElement>('.ui-data-table');
+        if (!wrapper) throw new Error('Scorecard table has no responsive wrapper.');
+        const rows = [...table.tBodies[0]!.rows];
+        const tableRect = table.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const section = wrapper.closest<HTMLElement>('.statistics-section, .scorecard-group');
+        if (!section) throw new Error('Statistics table has no containing section.');
+        const sectionRect = section.getBoundingClientRect();
+        const finalHeader = table.tHead?.rows[0]?.cells.item(table.tHead.rows[0].cells.length - 1);
+        if (!finalHeader) throw new Error('Scorecard table has no final header.');
+        const firstRowCells = [...rows[0]!.cells];
+        const headerCells = [...finalHeader.parentElement!.children] as HTMLElement[];
+        const finalColumnCells = [
+          finalHeader,
+          ...rows.map((row) => row.cells.item(row.cells.length - 1)),
+        ].filter((cell): cell is HTMLTableCellElement => cell !== null);
+        const contentEndGaps = finalColumnCells.map((cell) => {
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          return cell.getBoundingClientRect().right - range.getBoundingClientRect().right;
+        });
+        const contentRange = document.createRange();
+        contentRange.selectNodeContents(finalHeader);
+        const contentRect = contentRange.getBoundingClientRect();
+        const previousContentRange = document.createRange();
+        previousContentRange.selectNodeContents(headerCells[headerCells.length - 2] as HTMLElement);
+        const previousContentRect = previousContentRange.getBoundingClientRect();
+        const wrapperStyle = getComputedStyle(wrapper);
+        return {
+          caption: table.caption?.textContent?.trim() ?? '',
+          tableWidth: Math.round(tableRect.width),
+          rows: rows.length,
+          visibleRows: rows.filter((row) => {
+            const style = getComputedStyle(row);
+            const rect = row.getBoundingClientRect();
+            return (
+              style.display !== 'none' &&
+              style.visibility !== 'hidden' &&
+              rect.width > 0 &&
+              rect.height > 0 &&
+              rect.top >= tableRect.top &&
+              rect.bottom <= tableRect.bottom + 1
+            );
+          }).length,
+          wrapperClientHeight: wrapper.clientHeight,
+          wrapperScrollHeight: wrapper.scrollHeight,
+          hasVerticalOverflow:
+            ['auto', 'scroll'].includes(wrapperStyle.overflowY) &&
+            wrapper.scrollHeight > wrapper.clientHeight + 1,
+          tableWithinWrapper:
+            tableRect.left >= wrapperRect.left - 1 &&
+            tableRect.right <= wrapperRect.right + 1 &&
+            tableRect.top >= wrapperRect.top - 1 &&
+            tableRect.bottom <= wrapperRect.bottom + 1,
+          tableFillsWrapper:
+            Math.abs(tableRect.left - wrapperRect.left) <= 1 &&
+            Math.abs(tableRect.right - wrapperRect.right) <= 1,
+          wrapperWithinSection:
+            wrapperRect.left >= sectionRect.left - 1 &&
+            wrapperRect.right <= sectionRect.right + 1 &&
+            wrapperRect.top >= sectionRect.top - 1 &&
+            wrapperRect.bottom <= sectionRect.bottom + 1,
+          columnsAligned: headerCells.every((cell, index) => {
+            const headerRect = cell.getBoundingClientRect();
+            const bodyRect = firstRowCells[index]?.getBoundingClientRect();
+            return (
+              bodyRect !== undefined &&
+              Math.abs(headerRect.left - bodyRect.left) <= 1 &&
+              Math.abs(headerRect.width - bodyRect.width) <= 1
+            );
+          }),
+          columnWidths: headerCells.map((cell) => Math.round(cell.getBoundingClientRect().width)),
+          finalContentEndGap: Math.round(Math.min(...contentEndGaps)),
+          adjacentContentGap: Math.round(contentRect.left - previousContentRect.right),
+        };
+      }),
+    };
+  });
+}
+
+function expectCompleteScorecardLayout(
+  audit: Awaited<ReturnType<typeof readScorecardLayoutAudit>>,
+  desktop: boolean,
+) {
+  expect(audit.pageWidth.scroll).toBe(audit.pageWidth.client);
+  expect(audit.tables.map(({ caption }) => caption)).toEqual([
+    'Score, progress, run rate and extras for each standard innings',
+    'Team One batting scorecard',
+    'Team Two batting scorecard',
+    'Team One bowling scorecard',
+    'Team Two bowling scorecard',
+  ]);
+  expect(audit.tables.map(({ rows }) => rows)).toEqual([2, 11, 11, 6, 6]);
+  expect(audit.tables.every(({ rows, visibleRows }) => rows === visibleRows)).toBe(true);
+  expect(audit.tables.every(({ hasVerticalOverflow }) => !hasVerticalOverflow)).toBe(true);
+  expect(audit.tables.every(({ wrapperWithinSection }) => wrapperWithinSection)).toBe(true);
+  expect(audit.tables.every(({ columnsAligned }) => columnsAligned)).toBe(true);
+
+  if (!desktop) return;
+
+  expect(audit.tables.every(({ tableWithinWrapper }) => tableWithinWrapper)).toBe(true);
+  expect(audit.tables.every(({ tableFillsWrapper }) => tableFillsWrapper)).toBe(true);
+  const [innings, ...scorecards] = audit.tables;
+  const inningsMetricWidths = innings?.columnWidths.slice(1) ?? [];
+  expect(Math.max(...inningsMetricWidths)).toBeLessThanOrEqual(128);
+  expect(innings?.columnWidths[0]).toBeGreaterThan(Math.max(...inningsMetricWidths));
+  expect(innings?.adjacentContentGap).toBeGreaterThanOrEqual(32);
+  expect(innings?.adjacentContentGap).toBeLessThanOrEqual(112);
+  for (const table of scorecards) {
+    const numericWidths = table.caption.includes('batting')
+      ? table.columnWidths.slice(1, -1)
+      : table.columnWidths.slice(1);
+    expect(Math.max(...numericWidths)).toBeLessThanOrEqual(128);
+    expect(table.columnWidths[0]).toBeGreaterThan(Math.max(...numericWidths));
+    expect(table.finalContentEndGap).toBeGreaterThanOrEqual(28);
+    expect(table.finalContentEndGap).toBeLessThanOrEqual(192);
+    if (table.caption.includes('batting')) {
+      expect(table.columnWidths.at(-1)).toBeGreaterThan(Math.max(...numericWidths));
+      expect(table.columnWidths.at(-1)).toBeLessThan(table.columnWidths[0]!);
+      expect(table.adjacentContentGap).toBeGreaterThanOrEqual(24);
+      expect(table.adjacentContentGap).toBeLessThanOrEqual(64);
+    } else {
+      expect(table.adjacentContentGap).toBeGreaterThanOrEqual(32);
+      expect(table.adjacentContentGap).toBeLessThanOrEqual(112);
+    }
+  }
+}
+
 test(
   'anonymous users open the responsive match overview and calculation trace',
   { tag: '@mobile' },
   async ({ page }) => {
+    const isMobile = (page.viewportSize()?.width ?? 0) < 900;
+    if (!isMobile) {
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
     const requestedUrls: string[] = [];
 
     await page.route('**/api/v1/**', async (route) => {
@@ -165,7 +375,12 @@ test(
               },
               highestScorers: [],
               warnings: [],
-              statistics: [inningsStatistic, participantStatistic],
+              statistics: [
+                inningsStatistic,
+                secondInningsStatistic,
+                ...teamOneScorecard,
+                ...teamTwoScorecard,
+              ],
             },
           },
         });
@@ -198,12 +413,11 @@ test(
       page.getByRole('heading', { level: 1, name: 'Team One vs Team Two' }),
     ).toBeVisible();
     await expect(page.getByText('Team One won by 5 wickets.')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Batting scorecard' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Opening Batter' }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Participating players' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View fixture statistics' })).toHaveCount(0);
     expect(requestedUrls.some((url) => url.endsWith('/fixtures/fixture-1/statistics'))).toBe(true);
-    const isMobile = (page.viewportSize()?.width ?? 0) < 900;
     const detailSpacing = await readDetailSpacing(page);
     expect(detailSpacing).toEqual({
       pagePaddingTop: isMobile ? 24 : 32,
@@ -211,11 +425,50 @@ test(
       headingPaddingBottom: 16,
       factPaddingTop: 16,
       matchStatisticsMarginTop: 32,
-      summaryMarginTop: 32,
+      summaryMarginTop: 24,
     });
     expect(Object.values(detailSpacing).every((value) => value === null || value % 4 === 0)).toBe(
       true,
     );
+
+    if (!isMobile) {
+      for (const viewport of [
+        { width: 1280, height: 720 },
+        { width: 1366, height: 768 },
+        { width: 1440, height: 900 },
+        { width: 1600, height: 900 },
+        { width: 1920, height: 1080 },
+      ]) {
+        await page.setViewportSize(viewport);
+        const layoutAudit = await readScorecardLayoutAudit(page);
+        if (process.env.MEASURE_ISSUE_582_LAYOUT && [1280, 1920].includes(viewport.width)) {
+          console.log(`issue-582-layout-${viewport.width} ${JSON.stringify(layoutAudit.tables)}`);
+        }
+        expectCompleteScorecardLayout(layoutAudit, true);
+        if (process.env.CAPTURE_ISSUE_582_EVIDENCE && process.env.TEMP) {
+          await page.screenshot({
+            fullPage: true,
+            path: `${process.env.TEMP}/issue-582-statistics-${viewport.width}.png`,
+          });
+        }
+      }
+    } else {
+      expectCompleteScorecardLayout(await readScorecardLayoutAudit(page), false);
+      if (process.env.CAPTURE_ISSUE_582_EVIDENCE && process.env.TEMP) {
+        await page.screenshot({
+          fullPage: true,
+          path: `${process.env.TEMP}/issue-582-statistics-pixel-7.png`,
+        });
+      }
+      await page.setViewportSize({ width: 360, height: 800 });
+      expectCompleteScorecardLayout(await readScorecardLayoutAudit(page), false);
+      if (process.env.CAPTURE_ISSUE_582_EVIDENCE && process.env.TEMP) {
+        await page.screenshot({
+          fullPage: true,
+          path: `${process.env.TEMP}/issue-582-statistics-360.png`,
+        });
+      }
+    }
 
     await expect(page).not.toHaveURL(/sign-in/);
 
@@ -226,7 +479,7 @@ test(
       headingPaddingBottom: 16,
       factPaddingTop: 16,
       matchStatisticsMarginTop: 32,
-      summaryMarginTop: 32,
+      summaryMarginTop: 24,
     });
 
     if (process.env.CAPTURE_ISSUE_195_EVIDENCE && !isMobile) {
@@ -254,6 +507,7 @@ test(
       ),
     ).toEqual([]);
 
+    await page.getByText('How these match statistics are calculated', { exact: true }).click();
     const calculationLink = page.getByRole('link', { name: 'View calculation trace' }).first();
     await calculationLink.focus();
     await expect(calculationLink).toBeFocused();
