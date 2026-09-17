@@ -5560,7 +5560,7 @@ components:
         inningsId:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
         overNumber: { type: [integer, 'null'], minimum: 0 }
-        positionInOver: { type: [integer, 'null'], minimum: 1 }
+        positionInOver: { type: [integer, 'null'], minimum: 0 }
         description: { type: string, minLength: 1 }
 
     BatchReportError:
