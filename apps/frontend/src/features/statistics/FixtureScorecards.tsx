@@ -1,4 +1,5 @@
 import type {
+  FixtureHighestScorer,
   FixtureOutcome,
   FixtureStatistics,
   InningsTeamStatistic,
@@ -108,6 +109,27 @@ function MatchSummary({
           ))}
         </div>
       ) : null}
+      {statistics.highestScorers.length > 0 ? (
+        <section
+          aria-labelledby="highest-innings-score-heading"
+          className="match-summary__highest-scores"
+        >
+          <h4 id="highest-innings-score-heading">Highest individual innings score</h4>
+          <ul>
+            {statistics.highestScorers.map((scorer: FixtureHighestScorer) => (
+              <li key={`${scorer.inningsId}-${scorer.participantId}`}>
+                <Link to={recordPath('participants', scorer.participantId)}>
+                  {scorer.participantName}
+                </Link>
+                <span>
+                  {scorer.runsScored}
+                  {scorer.notOut ? '*' : ''} runs · innings {scorer.inningsOrdinal + 1}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </section>
   );
 }
@@ -129,7 +151,10 @@ function InningsSummary({ innings }: { innings: InningsTeamStatistic[] }) {
           >
             <colgroup>
               <col className="statistics-table__entity" />
-              <col className="statistics-table__metric" span={4} />
+              <col className="statistics-table__score" />
+              <col className="statistics-table__overs" />
+              <col className="statistics-table__rate" />
+              <col className="statistics-table__final-metric" />
             </colgroup>
             <thead>
               <tr>
@@ -174,7 +199,8 @@ function InningsSummary({ innings }: { innings: InningsTeamStatistic[] }) {
             >
               <colgroup>
                 <col className="statistics-table__entity" />
-                <col className="statistics-table__metric" span={5} />
+                <col className="statistics-table__metric" span={4} />
+                <col className="statistics-table__final-metric" />
               </colgroup>
               <thead>
                 <tr>
@@ -366,7 +392,8 @@ function BattingScorecards({
             >
               <colgroup>
                 <col className="statistics-table__entity" />
-                <col className="statistics-table__metric" span={5} />
+                <col className="statistics-table__metric" span={4} />
+                <col className="statistics-table__rate" />
                 <col className="statistics-table__detail" />
               </colgroup>
               <thead>
@@ -471,7 +498,11 @@ function BowlingScorecards({
           >
             <colgroup>
               <col className="statistics-table__entity" />
-              <col className="statistics-table__metric" span={6} />
+              <col className="statistics-table__overs" />
+              <col className="statistics-table__metric" span={2} />
+              <col className="statistics-table__rate" />
+              <col className="statistics-table__metric" />
+              <col className="statistics-table__final-metric" />
             </colgroup>
             <thead>
               <tr>

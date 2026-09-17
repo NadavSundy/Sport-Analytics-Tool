@@ -1,4 +1,5 @@
 import type {
+  FixtureHighestScorer,
   FixtureStatistics,
   ParticipantAggregateBatting,
   ParticipantAggregates,
@@ -104,6 +105,25 @@ const fixtureStatistics: FixtureStatistics = {
   ],
 };
 
+const highestScorer: FixtureHighestScorer = {
+  participantId: 'player-a',
+  participantName: 'Alpha',
+  competitorId: 'team-1',
+  competitorName: 'Falcons',
+  inningsId: 'innings-1',
+  inningsOrdinal: 0,
+  runsScored: 50,
+  notOut: false,
+};
+
+function renderHighestScorers(highestScorers: FixtureHighestScorer[]) {
+  render(
+    <MemoryRouter>
+      <FixtureAnalytics statistics={{ ...fixtureStatistics, highestScorers }} />
+    </MemoryRouter>,
+  );
+}
+
 const career = {
   statisticId: 'career-1',
   participantId: 'player-1',
@@ -148,6 +168,51 @@ const aggregates: ParticipantAggregates = {
 };
 
 describe('statistics presentation', () => {
+  it('presents a single authoritative highest innings scorer', () => {
+    renderHighestScorers([highestScorer]);
+
+    const highestScore = screen.getByRole('region', {
+      name: 'Highest individual innings score',
+    });
+    expect(within(highestScore).getByRole('link', { name: 'Alpha' })).toHaveAttribute(
+      'href',
+      '/participants/player-a',
+    );
+    expect(within(highestScore).getByText('50 runs · innings 1')).toBeInTheDocument();
+  });
+
+  it('marks an authoritative not-out highest innings score', () => {
+    renderHighestScorers([{ ...highestScorer, notOut: true }]);
+
+    expect(screen.getByText('50* runs · innings 1')).toBeInTheDocument();
+  });
+
+  it('presents the one-based innings number for a highest scorer', () => {
+    renderHighestScorers([{ ...highestScorer, inningsId: 'innings-3', inningsOrdinal: 2 }]);
+
+    expect(screen.getByText('50 runs · innings 3')).toBeInTheDocument();
+  });
+
+  it('presents every authoritative joint highest innings scorer', () => {
+    renderHighestScorers([
+      highestScorer,
+      {
+        ...highestScorer,
+        participantId: 'player-b',
+        participantName: 'Bravo',
+        inningsId: 'innings-2',
+        inningsOrdinal: 1,
+      },
+    ]);
+
+    const highestScore = screen.getByRole('region', {
+      name: 'Highest individual innings score',
+    });
+    expect(within(highestScore).getByRole('link', { name: 'Alpha' })).toBeInTheDocument();
+    expect(within(highestScore).getByRole('link', { name: 'Bravo' })).toBeInTheDocument();
+    expect(within(highestScore).getAllByRole('listitem')).toHaveLength(2);
+  });
+
   it('renders cricket scorecards, exact zeroes, undefined rates and neutral tied leaders', () => {
     render(
       <MemoryRouter>

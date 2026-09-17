@@ -3867,6 +3867,36 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+.match-summary__highest-scores {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--colour-border);
+}
+
+.match-summary__highest-scores h4,
+.match-summary__highest-scores ul {
+  margin: 0;
+}
+
+.match-summary__highest-scores ul {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.match-summary__highest-scores li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.match-summary__highest-scores span {
+  color: var(--colour-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .scorecard-section .ui-data-table,
 .participant-scope-section .ui-data-table {
   margin-top: var(--space-3);
@@ -4103,37 +4133,28 @@ h3 {
     table-layout: fixed;
   }
 
-  .statistics-table--innings .statistics-table__entity,
-  .statistics-table--extras .statistics-table__entity {
-    width: 32%;
+  .statistics-table .statistics-table__metric {
+    width: 4.25rem;
   }
 
-  .statistics-table--innings .statistics-table__metric {
-    width: 17%;
+  .statistics-table .statistics-table__score {
+    width: 7rem;
   }
 
-  .statistics-table--extras .statistics-table__metric {
-    width: 13.6%;
+  .statistics-table .statistics-table__overs {
+    width: 6rem;
   }
 
-  .statistics-table--batting .statistics-table__entity {
-    width: 32%;
+  .statistics-table .statistics-table__rate {
+    width: 5.75rem;
   }
 
-  .statistics-table--batting .statistics-table__metric {
-    width: 10%;
+  .statistics-table .statistics-table__final-metric {
+    width: 7.5rem;
   }
 
   .statistics-table--batting .statistics-table__detail {
-    width: 18%;
-  }
-
-  .statistics-table--bowling .statistics-table__entity {
-    width: 34%;
-  }
-
-  .statistics-table--bowling .statistics-table__metric {
-    width: 11%;
+    width: 18rem;
   }
 
   .statistics-table > :is(thead, tbody) > tr > :first-child {
@@ -4141,7 +4162,7 @@ h3 {
   }
 
   .statistics-table > :is(thead, tbody) > tr > :last-child {
-    padding-inline-end: var(--space-6);
+    padding-inline-end: var(--space-8);
   }
 }
 

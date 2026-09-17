@@ -172,9 +172,17 @@ async function readScorecardLayoutAudit(page: Page) {
         const sectionRect = section.getBoundingClientRect();
         const finalHeader = table.tHead?.rows[0]?.cells.item(table.tHead.rows[0].cells.length - 1);
         if (!finalHeader) throw new Error('Scorecard table has no final header.');
-        const finalHeaderRect = finalHeader.getBoundingClientRect();
         const firstRowCells = [...rows[0]!.cells];
         const headerCells = [...finalHeader.parentElement!.children] as HTMLElement[];
+        const finalColumnCells = [
+          finalHeader,
+          ...rows.map((row) => row.cells.item(row.cells.length - 1)),
+        ].filter((cell): cell is HTMLTableCellElement => cell !== null);
+        const contentEndGaps = finalColumnCells.map((cell) => {
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          return cell.getBoundingClientRect().right - range.getBoundingClientRect().right;
+        });
         const contentRange = document.createRange();
         contentRange.selectNodeContents(finalHeader);
         const contentRect = contentRange.getBoundingClientRect();
@@ -184,6 +192,7 @@ async function readScorecardLayoutAudit(page: Page) {
         const wrapperStyle = getComputedStyle(wrapper);
         return {
           caption: table.caption?.textContent?.trim() ?? '',
+          tableWidth: Math.round(tableRect.width),
           rows: rows.length,
           visibleRows: rows.filter((row) => {
             const style = getComputedStyle(row);
@@ -207,6 +216,9 @@ async function readScorecardLayoutAudit(page: Page) {
             tableRect.right <= wrapperRect.right + 1 &&
             tableRect.top >= wrapperRect.top - 1 &&
             tableRect.bottom <= wrapperRect.bottom + 1,
+          tableFillsWrapper:
+            Math.abs(tableRect.left - wrapperRect.left) <= 1 &&
+            Math.abs(tableRect.right - wrapperRect.right) <= 1,
           wrapperWithinSection:
             wrapperRect.left >= sectionRect.left - 1 &&
             wrapperRect.right <= sectionRect.right + 1 &&
@@ -222,7 +234,7 @@ async function readScorecardLayoutAudit(page: Page) {
             );
           }),
           columnWidths: headerCells.map((cell) => Math.round(cell.getBoundingClientRect().width)),
-          finalContentEndGap: Math.round(finalHeaderRect.right - contentRect.right),
+          finalContentEndGap: Math.round(Math.min(...contentEndGaps)),
           adjacentContentGap: Math.round(contentRect.left - previousContentRect.right),
         };
       }),
@@ -251,25 +263,29 @@ function expectCompleteScorecardLayout(
   if (!desktop) return;
 
   expect(audit.tables.every(({ tableWithinWrapper }) => tableWithinWrapper)).toBe(true);
+  expect(audit.tables.every(({ tableFillsWrapper }) => tableFillsWrapper)).toBe(true);
   const [innings, ...scorecards] = audit.tables;
   const inningsMetricWidths = innings?.columnWidths.slice(1) ?? [];
-  expect(Math.max(...inningsMetricWidths) - Math.min(...inningsMetricWidths)).toBeLessThanOrEqual(
-    2,
-  );
+  expect(Math.max(...inningsMetricWidths)).toBeLessThanOrEqual(128);
+  expect(innings?.columnWidths[0]).toBeGreaterThan(Math.max(...inningsMetricWidths));
+  expect(innings?.adjacentContentGap).toBeGreaterThanOrEqual(32);
+  expect(innings?.adjacentContentGap).toBeLessThanOrEqual(112);
   for (const table of scorecards) {
     const numericWidths = table.caption.includes('batting')
       ? table.columnWidths.slice(1, -1)
       : table.columnWidths.slice(1);
-    expect(Math.max(...numericWidths) - Math.min(...numericWidths)).toBeLessThanOrEqual(2);
+    expect(Math.max(...numericWidths)).toBeLessThanOrEqual(128);
     expect(table.columnWidths[0]).toBeGreaterThan(Math.max(...numericWidths));
+    expect(table.finalContentEndGap).toBeGreaterThanOrEqual(28);
+    expect(table.finalContentEndGap).toBeLessThanOrEqual(192);
     if (table.caption.includes('batting')) {
       expect(table.columnWidths.at(-1)).toBeGreaterThan(Math.max(...numericWidths));
       expect(table.columnWidths.at(-1)).toBeLessThan(table.columnWidths[0]!);
       expect(table.adjacentContentGap).toBeGreaterThanOrEqual(24);
       expect(table.adjacentContentGap).toBeLessThanOrEqual(64);
     } else {
-      expect(table.finalContentEndGap).toBeGreaterThanOrEqual(16);
-      expect(table.finalContentEndGap).toBeLessThanOrEqual(32);
+      expect(table.adjacentContentGap).toBeGreaterThanOrEqual(32);
+      expect(table.adjacentContentGap).toBeLessThanOrEqual(112);
     }
   }
 }
@@ -424,7 +440,11 @@ test(
         { width: 1920, height: 1080 },
       ]) {
         await page.setViewportSize(viewport);
-        expectCompleteScorecardLayout(await readScorecardLayoutAudit(page), true);
+        const layoutAudit = await readScorecardLayoutAudit(page);
+        if (process.env.MEASURE_ISSUE_582_LAYOUT && [1280, 1920].includes(viewport.width)) {
+          console.log(`issue-582-layout-${viewport.width} ${JSON.stringify(layoutAudit.tables)}`);
+        }
+        expectCompleteScorecardLayout(layoutAudit, true);
         if (process.env.CAPTURE_ISSUE_582_EVIDENCE && process.env.TEMP) {
           await page.screenshot({
             fullPage: true,
