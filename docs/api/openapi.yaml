@@ -2747,7 +2747,8 @@ components:
       required: [releaseId, version, createdAt, formatVersion, scope, eventCount, checksum, fields]
       properties:
         releaseId:
-          $ref: '#/components/schemas/DatabaseIdentifier'
+          type: string
+          format: uuid
         version:
           $ref: '#/components/schemas/DatasetReleaseVersion'
         createdAt: { type: string, format: date-time }
@@ -2870,15 +2871,25 @@ components:
       additionalProperties: false
       required: [data]
       properties:
-        data:
-          allOf:
-            - $ref: '#/components/schemas/ApiConsumer'
-            - type: object
-              required: [apiKey]
-              properties:
-                apiKey:
-                  type: string
-                  description: Raw API key. Returned only in this response and never retrievable again.
+        data: { $ref: '#/components/schemas/ApiConsumerWithKey' }
+    ApiConsumerWithKey:
+      description: >-
+        An API consumer together with its one-time raw key. Its fields must stay aligned with
+        `ApiConsumer`, plus `apiKey`; the OpenAPI contract tests enforce this against real
+        responses.
+      type: object
+      additionalProperties: false
+      required: [id, name, rateLimitPerMinute, dailyQuota, createdAt, keys, apiKey]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        name: { type: string }
+        rateLimitPerMinute: { type: integer }
+        dailyQuota: { type: integer }
+        createdAt: { type: string, format: date-time }
+        keys: { type: array, items: { $ref: '#/components/schemas/ApiConsumerKey' } }
+        apiKey:
+          type: string
+          description: Raw API key. Returned only in this response and never retrievable again.
     ApiConsumerRotateResponse:
       $ref: '#/components/schemas/ApiConsumerIssueResponse'
     ApiConsumerListResponse:
@@ -5355,17 +5366,52 @@ components:
         source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
 
     ProvenanceSubmissionDetail:
-      allOf:
-        - $ref: '#/components/schemas/ProvenanceSubmission'
-        - type: object
-          required: [lifecycle, decisions]
-          properties:
-            lifecycle:
-              type: array
-              items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
-            decisions:
-              type: array
-              items: { $ref: '#/components/schemas/ProvenanceDecision' }
+      description: >-
+        A provenance submission with its lifecycle and decisions. Its fields must stay aligned
+        with `ProvenanceSubmission`, plus `lifecycle` and `decisions`; the OpenAPI contract tests
+        enforce this against real responses.
+      type: object
+      additionalProperties: false
+      required:
+        [
+          kind,
+          reference,
+          submissionId,
+          batchReference,
+          fixtureId,
+          competitionId,
+          submitter,
+          status,
+          receivedAt,
+          updatedAt,
+          eventCount,
+          source,
+          lifecycle,
+          decisions,
+        ]
+      properties:
+        kind: { type: string, enum: [direct, file, batch] }
+        reference: { type: string, minLength: 1 }
+        submissionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        batchReference:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        fixtureId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        competitionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        submitter: { $ref: '#/components/schemas/ProvenanceActor' }
+        status: { type: string, minLength: 1 }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        eventCount: { type: integer, minimum: 0 }
+        source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
+        lifecycle:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
+        decisions:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceDecision' }
 
     ProvenanceSubmissionListResponse:
       type: object
