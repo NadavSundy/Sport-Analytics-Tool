@@ -29,34 +29,6 @@ interface CacheRow {
   payload: FixtureStatistics | null;
 }
 
-/** Advances the authoritative version in the same transaction as an event write. */
-export async function advanceFixtureStatisticsCacheVersions(
-  executor: QueryExecutor,
-  fixtureIds: readonly string[],
-): Promise<void> {
-  const uniqueFixtureIds = [...new Set(fixtureIds)];
-  if (uniqueFixtureIds.length === 0) return;
-
-  await executeQuery(
-    executor,
-    `
-      WITH advanced AS (
-        INSERT INTO fixture_statistics_cache_version (fixture_id, data_version, updated_at)
-        SELECT fixture_id, 1, now()
-        FROM unnest($1::bigint[]) AS source(fixture_id)
-        ON CONFLICT (fixture_id) DO UPDATE
-        SET data_version = fixture_statistics_cache_version.data_version + 1,
-            updated_at = now()
-        RETURNING fixture_id
-      )
-      DELETE FROM fixture_statistics_cache cache
-      USING advanced
-      WHERE cache.fixture_id = advanced.fixture_id
-    `,
-    [uniqueFixtureIds],
-  );
-}
-
 export function createFixtureStatisticsCache(
   executor: QueryExecutor = getDatabasePool(),
 ): FixtureStatisticsCache {

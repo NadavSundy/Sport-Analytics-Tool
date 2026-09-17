@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
   aggregateParticipantIds,
   deriveCorrectionStatisticsDependencies,
-} from '../../src/modules/statistics/recomputation-dependencies';
+} from '@sport-analytics/batch-processing';
 
 describe('correction statistics dependencies', () => {
   test('includes batters, bowler, dismissed players, and every identified fielder', () => {

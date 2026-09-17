@@ -7,6 +7,12 @@ import {
 } from '@sport-analytics/contracts';
 
 import { executeQuery, type QueryExecutor } from './database';
+import {
+  advanceFixtureStatisticsCacheVersions,
+  aggregateParticipantIds,
+  deriveCorrectionStatisticsDependencies,
+  recordStatisticsRefreshDependencies,
+} from './statistics-refresh';
 
 type BatchState =
   | 'publishing'
@@ -73,87 +79,6 @@ export class BatchPublicationLeaseBusyError extends Error {
     super('Another worker currently owns the publication lease.');
     this.name = 'BatchPublicationLeaseBusyError';
   }
-}
-
-interface StatisticsRefreshDependency {
-  scope: 'fixture' | 'season' | 'competition' | 'career';
-  fixtureId: string;
-  participantId: string | null;
-  competitionId: string | null;
-  season: string | null;
-}
-
-function deriveCorrectionStatisticsDependencies(input: {
-  fixtureId: string;
-  competitionId: string | null;
-  season: string | null;
-  previousParticipantIds: readonly string[];
-  resultingParticipantIds: readonly string[];
-}): StatisticsRefreshDependency[] {
-  const dependencies: StatisticsRefreshDependency[] = [
-    {
-      scope: 'fixture',
-      fixtureId: input.fixtureId,
-      participantId: null,
-      competitionId: input.competitionId,
-      season: input.season,
-    },
-  ];
-  const participantIds = [
-    ...new Set([...input.previousParticipantIds, ...input.resultingParticipantIds]),
-  ]
-    .filter((participantId) => participantId.length > 0)
-    .sort();
-  for (const participantId of participantIds) {
-    if (input.competitionId && input.season)
-      dependencies.push({
-        scope: 'season',
-        fixtureId: input.fixtureId,
-        participantId,
-        competitionId: input.competitionId,
-        season: input.season,
-      });
-    if (input.competitionId)
-      dependencies.push({
-        scope: 'competition',
-        fixtureId: input.fixtureId,
-        participantId,
-        competitionId: input.competitionId,
-        season: null,
-      });
-    dependencies.push({
-      scope: 'career',
-      fixtureId: input.fixtureId,
-      participantId,
-      competitionId: null,
-      season: null,
-    });
-  }
-  return dependencies;
-}
-
-async function advanceFixtureStatisticsCacheVersions(
-  executor: QueryExecutor,
-  fixtureIds: readonly string[],
-): Promise<void> {
-  const uniqueFixtureIds = [...new Set(fixtureIds)];
-  if (uniqueFixtureIds.length === 0) return;
-  await executeQuery(
-    executor,
-    `WITH advanced AS (
-       INSERT INTO fixture_statistics_cache_version (fixture_id, data_version, updated_at)
-       SELECT fixture_id, 1, now()
-       FROM unnest($1::bigint[]) AS source(fixture_id)
-       ON CONFLICT (fixture_id) DO UPDATE
-       SET data_version = fixture_statistics_cache_version.data_version + 1,
-           updated_at = now()
-       RETURNING fixture_id
-     )
-     DELETE FROM fixture_statistics_cache cache
-     USING advanced
-     WHERE cache.fixture_id = advanced.fixture_id`,
-    [uniqueFixtureIds],
-  );
 }
 
 function batchItemSelectionFor(table: string): string {
@@ -741,26 +666,15 @@ async function publishBatchCorrection(
     fixtureId: correctionTarget.fixtureId,
     competitionId: correctionTarget.competitionId,
     season: correctionTarget.season,
-    previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
-    resultingParticipantIds: [event.strikerId, event.bowlerId],
+    previousParticipantIds: aggregateParticipantIds(previousState),
+    resultingParticipantIds: aggregateParticipantIds(event),
   });
-  for (const dependency of dependencies) {
-    await executeQuery(
-      target,
-      `INSERT INTO statistics_refresh_dependency (
-         source_event_id,delivery_revision,fixture_id,scope,participant_id,competition_id,season
-       ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7)`,
-      [
-        correctionTarget.sourceEventId,
-        correctionTarget.revision + 1,
-        dependency.fixtureId,
-        dependency.scope,
-        dependency.participantId,
-        dependency.competitionId,
-        dependency.season,
-      ],
-    );
-  }
+  await recordStatisticsRefreshDependencies(
+    target,
+    correctionTarget.sourceEventId,
+    correctionTarget.revision + 1,
+    dependencies,
+  );
   await advanceFixtureStatisticsCacheVersions(target, [correctionTarget.fixtureId]);
   await executeQuery(
     target,

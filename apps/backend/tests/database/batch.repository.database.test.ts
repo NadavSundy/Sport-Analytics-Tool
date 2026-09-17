@@ -1279,7 +1279,9 @@ describe.sequential('batch repository database integration', () => {
       );
       expect(currentAndDependencies.rows[0]).toEqual({
         currentOffBat: 4,
-        dependencyCount: '7',
+        // One fixture scope, plus season, competition and career scopes for
+        // the striker, non-striker and bowler.
+        dependencyCount: '10',
       });
       const publishedItem = await repository.listBatchItems(correction.batchId, { limit: 1 });
       expect(publishedItem[0]).toMatchObject({
