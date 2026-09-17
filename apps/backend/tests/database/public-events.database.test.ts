@@ -511,9 +511,31 @@ describe.sequential('public events database API', () => {
       storageProvider: 'filesystem',
     });
     const store = new InterleavingObjectStore(async () => {
+      const previousId = current.orderedEventIds[2]!;
       await databasePool().query(
-        `UPDATE delivery SET runs_off_bat=6,runs_total=6 WHERE delivery_id=$1::bigint`,
-        [current.orderedEventIds[2]],
+        `UPDATE delivery SET superseded_at=now(),superseded_by=delivery_id WHERE delivery_id=$1::bigint`,
+        [previousId],
+      );
+      const replacement = await databasePool().query<{ eventId: string }>(
+        `INSERT INTO delivery (
+           innings_id,over_number,position_in_over,innings_sequence,ball_number,
+           striker_id,non_striker_id,bowler_id,runs_off_bat,runs_extras,runs_total,
+           non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,extra_penalty,
+           submission_id,source_event_id,submission_event_ordinal,revision,
+           supersedes_delivery_id,source_batch_item_id
+         ) SELECT
+           innings_id,over_number,position_in_over,innings_sequence,ball_number,
+           striker_id,non_striker_id,bowler_id,6,runs_extras,6,
+           non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,extra_penalty,
+           submission_id,source_event_id,submission_event_ordinal,revision+1,
+           delivery_id,source_batch_item_id
+         FROM delivery WHERE delivery_id=$1::bigint
+         RETURNING delivery_id::text AS "eventId"`,
+        [previousId],
+      );
+      await databasePool().query(
+        `UPDATE delivery SET superseded_by=$2::bigint WHERE delivery_id=$1::bigint`,
+        [previousId, replacement.rows[0]!.eventId],
       );
     });
     const handler = createDatasetReleaseJobHandler(databasePool(), store, workerLogger, {
@@ -545,8 +567,6 @@ describe.sequential('public events database API', () => {
     expect(artifact.events.map((event) => event.eventId)).toEqual(current.orderedEventIds);
     expect(artifact.events.at(-1)?.runsOffBat).toBe(1);
     const published = await repository.loadPublishedEventPage(null, 10);
-    expect(published.events).toContainEqual(
-      expect.objectContaining({ eventId: current.orderedEventIds[2], runsOffBat: 6 }),
-    );
+    expect(published.events).toContainEqual(expect.objectContaining({ runsOffBat: 6 }));
   });
 });
