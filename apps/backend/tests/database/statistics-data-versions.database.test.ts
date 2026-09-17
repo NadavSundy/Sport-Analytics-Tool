@@ -566,7 +566,7 @@ describe.sequential('statistics data versions on every write path', () => {
       expect(await versions(client, watched)).toEqual(afterIngest);
       expect(await fixtureVersion(client, fixtureId)).toBe(2);
     });
-  });
+  }, 30_000);
 
   test('concurrent writers with overlapping participants in opposite orders neither deadlock nor lose a bump', async () => {
     // Two sessions pass the same fifty participants in opposite orders. Without

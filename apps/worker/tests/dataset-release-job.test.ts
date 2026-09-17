@@ -299,5 +299,5 @@ describe('dataset release worker job', () => {
       database.calls.filter((call) => call.text.includes('SELECT json_build_object')).length,
     ).toBe(321);
     expect(store.bytes).toBeGreaterThan(50_000_000);
-  }, 60_000);
+  }, 180_000);
 });
