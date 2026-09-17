@@ -127,6 +127,11 @@ async function main(): Promise<void> {
     await client.connect();
     try {
       for (const file of files) await ingestMatchData(client, join(corpusDirectory, file));
+      // The freshly loaded tables have no planner statistics until autoanalyze
+      // reaches them, about a minute later. A statement planned before then can
+      // choose nested loops that take minutes, which measures the cold planner
+      // rather than the API (evidence/validation/issue-592-first-read-plans/).
+      await client.query('ANALYZE');
       const fixture = await client.query<{ fixtureId: string }>(
         'SELECT fixture_id::text AS "fixtureId" FROM fixture ORDER BY fixture_id LIMIT 1',
       );
