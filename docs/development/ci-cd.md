@@ -36,6 +36,17 @@ planner result and every job that the planner marked as required.
 The workflow name and final job name must therefore not be changed casually. If either changes, the
 branch-protection rule must be reviewed before merge.
 
+### User-feedback status is not a CI closure gate
+
+As of Issue #647 (17 September 2026), Sprint 3 user-feedback issues #601–#607 and #612 are
+independent validation/evidence tasks. Repository CI does **not** reopen or block an implementation
+issue or Pull Request solely because one of those user-feedback issues remains open.
+
+Gitea dependencies are reserved for genuine technical/process prerequisites. The ordinary Pull Request
+quality gate, unit/integration/E2E tests, coverage, hygiene, documentation, contracts, security and
+deployment checks remain unchanged. If later user testing finds a defect or accepted improvement, the
+finding is linked to a new or reopened implementation issue and retested after the change.
+
 ## Hosted runner environment
 
 The university provides two shared Gitea Actions runners. Project workflows target the fixed label:

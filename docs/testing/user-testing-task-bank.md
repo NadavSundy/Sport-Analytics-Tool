@@ -16,20 +16,20 @@ Tasks describe user goals rather than interface instructions.
 | #417            | `AUTH-01`, `AUTH-02`, `SUB-*`, `BAT-*`, `COR-*`          | Authentication, submission, batch ingestion, failure recovery and correction           |
 | #418            | `AUTH-01`, `AUTH-02`, `REV-*`, `ADM-*`, selected `COR-*` | Authentication, review, reference resolution, publication decisions and administration |
 
-## Suggested Sprint 3 feature-gate task sets
+## Suggested Sprint 3 user-feedback task sets
 
-| Feedback gate | Primary task groups                                                    | Purpose                                                                                         |
-| ------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| #601          | `AUTH-*` plus representative cross-feature navigation                  | Navigation, authentication, account state and overall frontend flow                             |
-| #602          | `PUB-01` to `PUB-06`                                                   | Public discovery, fixture/statistics understanding, filtering, export and meaningful comparison |
-| #603          | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` | Propose a fixture that does not yet exist and review/onboard it safely                          |
-| #604          | `BAT-01` to `BAT-05`                                                   | Season and multi-season back-catalogue ingestion, progress, recovery and reporting              |
-| #605          | `COR-01`, `ADM-02`, selected `PUB-*`                                   | Correction, provenance and the visible effect on derived statistics                             |
-| #606          | `DATA-01`, `DATA-02`                                                   | Versioned dataset release discovery and reproducibility                                         |
-| #607          | `PUB-05`, `API-01`                                                     | API discovery, consumer-key state, quota and rate-limit understanding                           |
-| #612          | `API-02`, `API-03`, `API-04`                                           | Aggregate API use, deprecation/replacement and per-consumer usage visibility                    |
+| User-feedback issue | Primary task groups                                                    | Purpose                                                                                         |
+| ------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| #601                | `AUTH-*` plus representative cross-feature navigation                  | Navigation, authentication, account state and overall frontend flow                             |
+| #602                | `PUB-01` to `PUB-06`                                                   | Public discovery, fixture/statistics understanding, filtering, export and meaningful comparison |
+| #603                | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` | Propose a fixture that does not yet exist and review/onboard it safely                          |
+| #604                | `BAT-01` to `BAT-05`                                                   | Season and multi-season back-catalogue ingestion, progress, recovery and reporting              |
+| #605                | `COR-01`, `ADM-02`, selected `PUB-*`                                   | Correction, provenance and the visible effect on derived statistics                             |
+| #606                | `DATA-01`, `DATA-02`                                                   | Versioned dataset release discovery and reproducibility                                         |
+| #607                | `PUB-05`, `API-01`                                                     | API discovery, consumer-key state, quota and rate-limit understanding                           |
+| #612                | `API-02`, `API-03`, `API-04`                                           | Aggregate API use, deprecation/replacement and per-consumer usage visibility                    |
 
-A gate begins only after the linked implementation work is deployed and in Review and the facilitator has prepared the safe scenario described in `testing/user-testing/SPRINT3_SCENARIOS.md`.
+A user-feedback session begins only after the functionality needed by the selected tasks is deployed and usable and the facilitator has prepared the safe scenario described in `testing/user-testing/SPRINT3_SCENARIOS.md`. Any `Cannot Begin Until` list on the Gitea testing issue is a readiness checklist rather than an implementation-closure dependency.
 
 Do not make one participant complete every task. A focused session of related tasks is preferable to one long end-to-end session where individual usability problems become difficult to attribute.
 

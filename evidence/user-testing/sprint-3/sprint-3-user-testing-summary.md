@@ -2,26 +2,26 @@
 
 > **Pre-test scaffold for Issue #600.** Populate only from reviewed Sprint 3 session evidence. Do not infer or invent task outcomes, findings, decisions or retest results.
 
-## Feature-Gate Coverage
+## User-Feedback Coverage
 
-| Gate | User goal                                                | Planned primary Task IDs                                               | Linked implementation issues | Formal session evidence | Gate status |
-| ---- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------- | ----------------------- | ----------- |
-| #601 | Navigation, authentication and overall frontend flow     | `AUTH-*` + representative navigation                                   |                              |                         | Not started |
-| #602 | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      |                              |                         | Not started |
-| #603 | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                         | Not started |
-| #604 | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                         | Not started |
-| #605 | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                         | Not started |
-| #606 | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |                              |                         | Not started |
-| #607 | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     |                              |                         | Not started |
-| #612 | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                         | Not started |
+| User-feedback issue | User goal                                                | Planned primary Task IDs                                               | Linked implementation issues | Formal session evidence | Testing status |
+| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------- | ----------------------- | -------------- |
+| #601                | Navigation, authentication and overall frontend flow     | `AUTH-*` + representative navigation                                   |                              |                         | Not started    |
+| #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      |                              |                         | Not started    |
+| #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                         | Not started    |
+| #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                         | Not started    |
+| #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                         | Not started    |
+| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |                              |                         | Not started    |
+| #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     |                              |                         | Not started    |
+| #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                         | Not started    |
 
-`Gate status` must reflect evidence, not implementation progress.
+`Testing status` must reflect retained user-testing evidence, not implementation-issue state.
 
 ## Participants
 
-| Participant ID | Role | Relevant experience | Gate(s) | Session evidence |
-| -------------- | ---- | ------------------- | ------- | ---------------- |
-|                |      |                     |         |                  |
+| Participant ID | Role | Relevant experience | User-feedback issue(s) | Session evidence |
+| -------------- | ---- | ------------------- | ---------------------- | ---------------- |
+|                |      |                     |                        |                  |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -73,11 +73,11 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 
 Every S1/S2 or otherwise actionable finding must have a recorded decision.
 
-| Finding ID | Session | Gate | Task ID | Finding | Severity | Decision | Decision reason | Gitea issue | Fix PR / commit | Retest |
-| ---------- | ------- | ---- | ------- | ------- | -------- | -------- | --------------- | ----------- | --------------- | ------ |
-|            |         |      |         |         |          | Pending  |                 |             |                 |        |
+| Finding ID | Session | User-feedback issue | Task ID | Finding | Severity | Decision | Decision reason | Gitea issue | Fix PR / commit | Retest |
+| ---------- | ------- | ------------------- | ------- | ------- | -------- | -------- | --------------- | ----------- | --------------- | ------ |
+|            |         |                     |         |         |          | Pending  |                 |             |                 |        |
 
-Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents gate close-out for an S1/S2 or otherwise actionable finding.
+Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents user-feedback issue close-out for an S1/S2 or otherwise actionable finding.
 
 ## Severity Summary
 
@@ -102,18 +102,18 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 | ---------- | -------- | ------ | ----------------------- |
 |            |          |        |                         |
 
-## Gate Close-Out Checklist
+## User-Feedback Issue Close-Out Checklist
 
-| Gate | `Cannot Begin Until` satisfied before testing | Formal session(s) linked | All attempted tasks scored | Actionable findings decided | Accepted S1/S2 retested | Summary current | Gate may close |
-| ---- | --------------------------------------------- | ------------------------ | -------------------------- | --------------------------- | ----------------------- | --------------- | -------------- |
-| #601 |                                               |                          |                            |                             |                         |                 |                |
-| #602 |                                               |                          |                            |                             |                         |                 |                |
-| #603 |                                               |                          |                            |                             |                         |                 |                |
-| #604 |                                               |                          |                            |                             |                         |                 |                |
-| #605 |                                               |                          |                            |                             |                         |                 |                |
-| #606 |                                               |                          |                            |                             |                         |                 |                |
-| #607 |                                               |                          |                            |                             |                         |                 |                |
-| #612 |                                               |                          |                            |                             |                         |                 |                |
+| User-feedback issue | Readiness satisfied before testing | Formal session(s) linked | All attempted tasks scored | Actionable findings decided | Accepted S1/S2 retested | Summary current | Issue may close |
+| ------------------- | ---------------------------------- | ------------------------ | -------------------------- | --------------------------- | ----------------------- | --------------- | --------------- |
+| #601                |                                    |                          |                            |                             |                         |                 |                 |
+| #602                |                                    |                          |                            |                             |                         |                 |                 |
+| #603                |                                    |                          |                            |                             |                         |                 |                 |
+| #604                |                                    |                          |                            |                             |                         |                 |                 |
+| #605                |                                    |                          |                            |                             |                         |                 |                 |
+| #606                |                                    |                          |                            |                             |                         |                 |                 |
+| #607                |                                    |                          |                            |                             |                         |                 |                 |
+| #612                |                                    |                          |                            |                             |                         |                 |                 |
 
 ## Remaining Concerns
 
@@ -125,11 +125,11 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 - [ ] Every attempted Task ID has its own Success / Partial / Failure outcome.
 - [ ] Every finding links to a Task ID.
 - [ ] S1–S4 is assigned by impact.
-- [ ] Every S1/S2 or otherwise actionable finding has a final outcome before the relevant gate closes.
+- [ ] Every S1/S2 or otherwise actionable finding has a final outcome before the relevant user-feedback issue closes.
 - [ ] Accepted S1/S2 findings have retest evidence.
 - [ ] Participant names are absent from Gitea issues and retained evidence.
 - [ ] Passwords, tokens and API keys are absent from retained evidence.
-- [ ] Feature-gate closure follows the documented non-circular dependency direction.
+- [ ] User-feedback issues are tracked independently from implementation closure; any `Cannot Begin Until` list is used only as testing readiness.
 - [ ] All session links and implementation issue/PR links resolve.
 
 ## AI Declaration

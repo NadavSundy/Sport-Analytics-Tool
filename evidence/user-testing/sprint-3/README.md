@@ -16,13 +16,13 @@ Examples:
 
 Supporting screenshots use the same prefix followed by the Task ID where useful.
 
-## Feature-gate evidence rule
+## User-feedback evidence rule
 
-Each Sprint 3 feedback-gate issue (#601–#607 and #612) links to the formal session records that exercise its user goal.
+Each Sprint 3 user-feedback issue (#601–#607 and #612) links to the formal session records that exercise its user goal. These issues are validation/evidence tasks and do not automatically block linked implementation issues from closing.
 
-A gate must not close until:
+A user-feedback issue must not close until:
 
-- linked implementation work is deployed and remains in Review/awaiting user validation;
+- the functionality required for the selected tasks is deployed and usable;
 - attempted tasks have individual Success / Partial / Failure outcomes;
 - findings are severity-rated S1–S4;
 - every S1/S2 or otherwise actionable finding has an explicit Accept / Defer / Reject outcome and reason;
@@ -30,7 +30,7 @@ A gate must not close until:
 - participant names and credentials are absent;
 - `sprint-3-user-testing-summary.md` has been updated.
 
-The gate is a closure gate for implementation work. The gate itself uses `Cannot Begin Until` rather than hard Gitea dependencies on the implementation issues so the project does not create circular dependencies.
+Any `Cannot Begin Until` list on the user-feedback issue is a testing-readiness checklist, not a Gitea dependency direction. Implementation issues close according to their own Definition of Done and genuine technical/process prerequisites. Findings that require action create or reopen linked implementation work and are retested after the change.
 
 ## Authoritative records
 

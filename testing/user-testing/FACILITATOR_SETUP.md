@@ -49,13 +49,13 @@ Complete this checklist before a participant begins. Copy relevant values into t
 - [ ] ADM-02 has known provenance/submission information to compare against.
 - [ ] Publication/access decisions are safe to execute and can be restored/recreated if a retest is needed.
 
-## Sprint 3 feature-gate preflight
+## Sprint 3 user-feedback preflight
 
 Use `testing/user-testing/SPRINT3_SCENARIOS.md` and copy the chosen scenario into `testing/user-testing/sprint-3-scenario-record.md` before the participant arrives.
 
-- [ ] Feedback-gate issue number is recorded (`#601`–`#607` or `#612`).
-- [ ] Every implementation issue listed in the gate's `Cannot Begin Until` section is deployed to the intended environment.
-- [ ] Those implementation issues are in **In Review / awaiting user validation** and remain open.
+- [ ] User-feedback issue number is recorded (`#601`–`#607` or `#612`).
+- [ ] Functionality listed in the issue's `Cannot Begin Until` / readiness section is deployed to the intended environment and usable for the selected tasks.
+- [ ] Linked implementation issue numbers are recorded for traceability; their open/closed state does not determine whether this user-feedback issue may run.
 - [ ] Scenario ID and expected starting state are recorded.
 - [ ] Test-account role/scope is known; credentials remain outside Git.
 - [ ] Every prepared package/file is versioned or has a recorded SHA-256 checksum.
@@ -63,7 +63,7 @@ Use `testing/user-testing/SPRINT3_SCENARIOS.md` and copy the chosen scenario int
 - [ ] No scenario requires changing stakeholder/production data that cannot be restored.
 - [ ] Session evidence destination under `evidence/user-testing/sprint-3/` is ready.
 
-## Sprint 3 gate-specific setup
+## Sprint 3 user-feedback-specific setup
 
 ### #601 — Navigation / authentication / frontend flow
 
