@@ -6,6 +6,13 @@ export interface FixtureStatisticsInningsSource {
   penaltyPre: number | null;
   penaltyPost: number | null;
   miscountedOvers: FixtureStatisticsMiscountedOverSource[];
+  powerplays: FixtureStatisticsPowerplaySource[];
+}
+
+export interface FixtureStatisticsPowerplaySource {
+  fromBall: number;
+  toBall: number;
+  type: string;
 }
 
 export interface FixtureStatisticsMiscountedOverSource {
@@ -19,6 +26,7 @@ export interface FixtureStatisticsEventSource {
   inningsOrdinal: number;
   inningsSequence: number;
   overNumber: number;
+  ballNumber: string;
   battingCompetitorId: string;
   battingCompetitorName: string;
   bowlingCompetitorId: string | null;

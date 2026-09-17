@@ -4302,6 +4302,7 @@ components:
                 - legalBalls
                 - overs
                 - runRate
+                - powerplay
                 - extras
               properties:
                 deliveryRuns:
@@ -4329,6 +4330,63 @@ components:
                     - 'null'
                   minimum: 0
                   description: Runs per over, or null when no legal ball has been bowled.
+                powerplay:
+                  oneOf:
+                    - type: object
+                      additionalProperties: false
+                      required:
+                        - ranges
+                        - runs
+                        - wicketsLost
+                        - legalBalls
+                        - overs
+                        - runRate
+                        - sourceEventCount
+                      properties:
+                        ranges:
+                          type: array
+                          minItems: 1
+                          items:
+                            type: object
+                            additionalProperties: false
+                            required: [fromBall, toBall, type]
+                            properties:
+                              fromBall:
+                                type: number
+                                minimum: 0
+                              toBall:
+                                type: number
+                                minimum: 0
+                              type:
+                                type: string
+                                minLength: 1
+                        runs:
+                          type: integer
+                          minimum: 0
+                        wicketsLost:
+                          type: integer
+                          minimum: 0
+                        legalBalls:
+                          type: integer
+                          minimum: 0
+                        overs:
+                          type: string
+                          pattern: '^\d+\.\d+$'
+                        runRate:
+                          type:
+                            - number
+                            - 'null'
+                          minimum: 0
+                        sourceEventCount:
+                          type: integer
+                          minimum: 0
+                        contributingEvents:
+                          type: array
+                          description: Present only when includeContributors=true.
+                          items:
+                            $ref: '#/components/schemas/StatisticContributingEvent'
+                    - type: 'null'
+                  description: Authoritative powerplay aggregate, or null when no marker metadata exists.
                 extras:
                   type: object
                   additionalProperties: false

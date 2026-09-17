@@ -24,7 +24,11 @@ import {
   affectedParticipantIds,
   type AggregateParticipantEvent,
 } from '@sport-analytics/batch-processing';
-import { isLegalDelivery, submissionExtrasSchema } from '@sport-analytics/contracts';
+import {
+  inningsPowerplaysSchema,
+  isLegalDelivery,
+  submissionExtrasSchema,
+} from '@sport-analytics/contracts';
 import type { QueryExecutor } from '../src/database';
 
 interface Delivery {
@@ -91,6 +95,21 @@ const MAX_REPORTED_EXTRAS_ISSUES = 5;
 
 interface CricsheetInnings {
   overs?: Array<{ over: number; deliveries: Delivery[] }>;
+  powerplays?: unknown;
+}
+
+export function assertValidCricsheetPowerplays(innings: readonly CricsheetInnings[]): void {
+  for (const [inningsIndex, currentInnings] of innings.entries()) {
+    if (currentInnings.powerplays === undefined) continue;
+    const result = inningsPowerplaysSchema.safeParse(currentInnings.powerplays);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      const field = issue?.path.length ? `.${issue.path.join('.')}` : '';
+      throw new Error(
+        `Invalid powerplay metadata at innings ${inningsIndex + 1}${field}: ${issue?.message ?? 'Invalid range.'}; nothing was ingested.`,
+      );
+    }
+  }
 }
 
 /**
@@ -147,6 +166,7 @@ export async function ingestMatchData(
   const registry: Record<string, string> = info.registry?.people ?? {};
 
   assertValidCricsheetExtras(match.innings ?? []);
+  assertValidCricsheetPowerplays(match.innings ?? []);
 
   async function scalar<T>(sql: string, values: unknown[] = []): Promise<T> {
     const { rows } = await client.query(sql, values);
@@ -470,6 +490,7 @@ export async function ingestMatchData(
   }
 
   const powerplayRows: unknown[][] = [];
+  const powerplayInningsIds: number[] = [];
   const absentRows: unknown[][] = [];
   const miscountedRows: unknown[][] = [];
 
@@ -477,6 +498,9 @@ export async function ingestMatchData(
     const inningsId = inningsIdByOrdinal.get(ordinal);
     if (inningsId === undefined) continue;
 
+    if (Object.prototype.hasOwnProperty.call(innings, 'powerplays')) {
+      powerplayInningsIds.push(inningsId);
+    }
     for (const powerplay of innings.powerplays ?? []) {
       powerplayRows.push([inningsId, powerplay.from, powerplay.to, powerplay.type]);
     }
@@ -497,6 +521,12 @@ export async function ingestMatchData(
         Number((detail as { balls: string | number }).balls),
       ]);
     }
+  }
+
+  if (powerplayInningsIds.length > 0) {
+    await client.query(`DELETE FROM innings_powerplay WHERE innings_id = ANY($1::bigint[])`, [
+      powerplayInningsIds,
+    ]);
   }
 
   if (powerplayRows.length > 0) {

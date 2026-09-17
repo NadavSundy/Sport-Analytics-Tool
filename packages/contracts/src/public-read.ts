@@ -220,6 +220,24 @@ export const inningsTeamStatisticSchema = fixtureStatisticCommonSchema.extend({
     legalBalls: z.number().int().nonnegative(),
     overs: z.string().regex(/^\d+\.\d+$/),
     runRate: z.number().nonnegative().nullable(),
+    powerplay: z
+      .object({
+        ranges: z.array(
+          z.object({
+            fromBall: z.number().nonnegative(),
+            toBall: z.number().nonnegative(),
+            type: z.string().min(1),
+          }),
+        ),
+        runs: z.number().int().nonnegative(),
+        wicketsLost: z.number().int().nonnegative(),
+        legalBalls: z.number().int().nonnegative(),
+        overs: z.string().regex(/^\d+\.\d+$/),
+        runRate: z.number().nonnegative().nullable(),
+        sourceEventCount: z.number().int().nonnegative(),
+        contributingEvents: z.array(statisticContributingEventSchema).optional(),
+      })
+      .nullable(),
     extras: z.object({
       total: z.number().int().nonnegative(),
       wides: z.number().int().nonnegative(),
