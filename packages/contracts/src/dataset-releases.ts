@@ -44,6 +44,8 @@ export const datasetReleaseSchema = z
     releaseId: apiIdentifierSchema,
     version: datasetReleaseVersionSchema,
     createdAt: apiDateTimeSchema,
+    snapshotId: apiIdentifierSchema.nullable(),
+    snapshotAsOf: apiDateTimeSchema.nullable(),
     formatVersion: z.literal(DATASET_RELEASE_FORMAT_VERSION),
     scope: z.literal(DATASET_RELEASE_SCOPE),
     eventCount: z.number().int().nonnegative(),

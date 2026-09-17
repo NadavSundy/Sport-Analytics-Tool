@@ -7,6 +7,8 @@ export interface DatasetReleaseSnapshot {
   releaseId: string;
   version: string;
   createdAt: string;
+  snapshotId: string | null;
+  snapshotAsOf: string | null;
   eventCount: number;
   checksum: string;
 }
@@ -69,6 +71,8 @@ interface DatasetReleaseJobRow {
   releaseId: string | null;
   releaseVersion: string | null;
   releaseCreatedAt: string | null;
+  releaseSnapshotId: string | null;
+  releaseSnapshotAsOf: string | null;
   releaseEventCount: number | null;
   releaseChecksum: string | null;
 }
@@ -96,7 +100,7 @@ export interface DatasetReleaseRepository {
   ): Promise<DatasetReleaseArtifactReference | null>;
 }
 
-const snapshotColumns = `release_id::text AS "releaseId", version, created_at::text AS "createdAt", event_count AS "eventCount", checksum_sha256 AS checksum`;
+const snapshotColumns = `release_id::text AS "releaseId", version, created_at::text AS "createdAt", snapshot_id::text AS "snapshotId", snapshot_as_of::text AS "snapshotAsOf", event_count AS "eventCount", checksum_sha256 AS checksum`;
 
 function mapJob(row: DatasetReleaseJobRow): DatasetReleaseJobRecord {
   return {
@@ -121,6 +125,8 @@ function mapJob(row: DatasetReleaseJobRow): DatasetReleaseJobRecord {
             releaseId: row.releaseId,
             version: row.releaseVersion,
             createdAt: row.releaseCreatedAt,
+            snapshotId: row.releaseSnapshotId,
+            snapshotAsOf: row.releaseSnapshotAsOf,
             eventCount: row.releaseEventCount,
             checksum: row.releaseChecksum,
           }
@@ -134,6 +140,7 @@ const jobSelection = `
   j.created_at::text AS "createdAt", j.started_at::text AS "startedAt", j.completed_at::text AS "completedAt",
   j.last_error_code AS "failureCode", j.last_error_message AS "failureMessage",
   r.release_id::text AS "releaseId", r.version AS "releaseVersion", r.created_at::text AS "releaseCreatedAt",
+  r.snapshot_id::text AS "releaseSnapshotId", r.snapshot_as_of::text AS "releaseSnapshotAsOf",
   r.event_count AS "releaseEventCount", r.checksum_sha256 AS "releaseChecksum"
 `;
 

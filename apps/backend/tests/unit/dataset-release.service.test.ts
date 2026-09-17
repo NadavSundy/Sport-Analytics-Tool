@@ -10,6 +10,8 @@ const snapshot = {
   releaseId: '01234567-89ab-cdef-0123-456789abcdef',
   version: '2026.09.1',
   createdAt: '2026-09-14T10:00:00.000Z',
+  snapshotId: '1e3af729-8ced-4f49-ae61-7f0d74eab8f8',
+  snapshotAsOf: '2026-09-14T10:00:00.000Z',
   eventCount: 3,
   checksum: 'a'.repeat(64),
 };

@@ -2918,7 +2918,19 @@ components:
     DatasetRelease:
       type: object
       additionalProperties: false
-      required: [releaseId, version, createdAt, formatVersion, scope, eventCount, checksum, fields]
+      required:
+        [
+          releaseId,
+          version,
+          createdAt,
+          snapshotId,
+          snapshotAsOf,
+          formatVersion,
+          scope,
+          eventCount,
+          checksum,
+          fields,
+        ]
       properties:
         releaseId:
           type: string
@@ -2926,6 +2938,12 @@ components:
         version:
           $ref: '#/components/schemas/DatasetReleaseVersion'
         createdAt: { type: string, format: date-time }
+        snapshotId:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+          description: Opaque identity of the durable source snapshot; null only for pre-snapshot legacy releases.
+        snapshotAsOf:
+          oneOf: [{ type: string, format: date-time }, { type: 'null' }]
+          description: Database transaction time at which the durable source snapshot was captured.
         formatVersion: { type: string, const: '1.0' }
         scope: { type: string, const: published-accepted-deliveries }
         eventCount: { type: integer, minimum: 0 }

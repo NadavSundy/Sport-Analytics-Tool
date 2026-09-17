@@ -10,6 +10,8 @@ const release = {
   releaseId: 'ba756ad4-4b1e-4b80-81f2-09a66ed6c854',
   version: '2026.09.14v1',
   createdAt: '2026-09-14T10:18:37.161Z',
+  snapshotId: '1e3af729-8ced-4f49-ae61-7f0d74eab8f8',
+  snapshotAsOf: '2026-09-14T10:18:36.000Z',
   formatVersion: '1.0',
   scope: 'published-accepted-deliveries',
   eventCount: 3_207_110,
