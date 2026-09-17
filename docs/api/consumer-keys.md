@@ -27,6 +27,8 @@ GET /api/v1/consumer/competitions
 GET /api/v1/consumer/fixtures
 ```
 
+Both accept `limit` and `cursor`, and the same filters as their public counterparts: `name` for competitions, and `competitionId`, `seasonId`, `competitorId`, `gender`, `startDateFrom` and `startDateTo` for fixtures. An invalid parameter or cursor returns `400`.
+
 Send the key only in `X-API-Key`; never place it in a URL, browser-visible client bundle, query string or logs.
 
 ```http
@@ -38,7 +40,7 @@ Missing, malformed, unknown and revoked secrets return `401`, `WWW-Authenticate:
 
 ## Policy and response metadata
 
-Each consumer has a configurable fixed-window rate limit (default **60 requests per minute**) and a durable UTC daily quota (default **10,000 limit-admitted requests per day**). Limits apply across all of a consumer's keys, so rotation cannot evade the policy. A request that exceeds either policy returns `429`; rate-limit responses include `Retry-After`.
+Each consumer has a configurable fixed-window rate limit (default **60 requests per minute**) and a durable UTC daily quota (default **10,000 limit-admitted requests per day**). Limits apply across all of a consumer's keys, so rotation cannot evade the policy. A request that exceeds either policy returns `429` with the `RateLimit-*` headers. A per-minute limit response (`RATE_LIMIT_EXCEEDED`) also includes `Retry-After`; a daily quota response (`QUOTA_EXCEEDED`) includes the `X-Quota-*` headers instead.
 
 Every accepted keyed request exposes these safe values:
 
@@ -50,3 +52,4 @@ The metadata contains counts and reset times only; it does not expose raw keys, 
 ## AI Declaration
 
 The preceding consumer-key documentation was generated and edited with the assistance of Codex[GPT-5].
+The issue #609 consumer filter and limit-header details were added with the assistance of Claude-Code[Claude Opus 5].
