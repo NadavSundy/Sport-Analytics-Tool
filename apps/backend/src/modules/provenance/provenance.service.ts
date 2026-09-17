@@ -252,6 +252,15 @@ export function createProvenanceService(
         statisticId,
       );
       if (!statistic) throw new ProvenanceNotFoundError('Statistic provenance was not found.');
+      const competitionId = statistic.scope === 'career' ? null : statistic.competitionId;
+      if (!canReviewCompetition(account, competitionId)) {
+        const ownsEverySource = await repository.hasOnlyParticipantContributorSourcesFromAccount(
+          participantId,
+          statistic,
+          account.accountId,
+        );
+        if (!ownsEverySource) throw new ProvenanceForbiddenError();
+      }
       const records =
         before === undefined
           ? await repository.listParticipantContributorSources(
@@ -266,12 +275,6 @@ export function createProvenanceService(
               before,
             );
       const contributors = records.slice(0, query.limit);
-      const ownsEverySource = contributors.every(
-        (contributor) => contributor.source.submitter.accountId === account.accountId,
-      );
-      const competitionId = statistic.scope === 'career' ? null : statistic.competitionId;
-      if (!ownsEverySource && !canReviewCompetition(account, competitionId))
-        throw new ProvenanceForbiddenError();
       const last = contributors.at(-1);
       return {
         data: {
