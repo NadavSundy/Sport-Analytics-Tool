@@ -70,6 +70,11 @@ export interface ProvenanceRepository {
     limit: number,
     before?: string,
   ): Promise<StatisticProvenanceContributor[]>;
+  hasOnlyParticipantContributorSourcesFromAccount(
+    participantId: string,
+    statistic: ParticipantAggregate,
+    accountId: string,
+  ): Promise<boolean>;
 }
 
 interface SubmissionRow {
@@ -585,6 +590,35 @@ export function createProvenanceRepository(pool?: Pool): ProvenanceRepository {
         sourceEventId: row.sourceEventId,
         source: sourceForEvent(row),
       }));
+    },
+
+    async hasOnlyParticipantContributorSourcesFromAccount(participantId, statistic, accountId) {
+      const values: unknown[] = [participantId, accountId];
+      const filters = [
+        `(d.striker_id = $1::bigint OR d.bowler_id = $1::bigint)`,
+        `source_submission.status = 'accepted'`,
+        `publication.status = 'accepted'`,
+        `source_submission.submitted_by IS NOT DISTINCT FROM $2::bigint`,
+        standardInningsPredicate('i'),
+      ];
+      if (statistic.scope === 'season') {
+        values.push(statistic.competitionId, statistic.season);
+        filters.push(`f.competition_id = $3::bigint`, `f.season = $4::text`);
+      } else if (statistic.scope === 'competition') {
+        values.push(statistic.competitionId);
+        filters.push(`f.competition_id = $3::bigint`);
+      }
+      const result = await executeQuery<{ owned: boolean }>(
+        database(),
+        `SELECT NOT EXISTS (
+           SELECT 1 FROM delivery_current d ${eventJoins}
+           JOIN submission source_submission ON source_submission.submission_id = d.submission_id
+           JOIN submission publication ON publication.submission_id = f.first_seen_in
+           WHERE ${filters.join(' AND ')}
+         ) AS owned`,
+        values,
+      );
+      return result.rows[0]?.owned ?? false;
     },
   };
 }

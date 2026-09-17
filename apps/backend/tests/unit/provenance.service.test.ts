@@ -19,6 +19,7 @@ function repository(overrides: Partial<ProvenanceRepository> = {}): ProvenanceRe
     findFixtureCompetition: vi.fn().mockResolvedValue('5'),
     listContributorSources: vi.fn().mockResolvedValue([]),
     listParticipantContributorSources: vi.fn().mockResolvedValue([]),
+    hasOnlyParticipantContributorSourcesFromAccount: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -103,6 +104,30 @@ describe('provenance service authorization', () => {
       expect.any(Object),
       26,
     );
+  });
+
+  test('does not expose one owned page from a mixed-source aggregate to a submitter', async () => {
+    const data = repository({
+      hasOnlyParticipantContributorSourcesFromAccount: vi.fn().mockResolvedValue(false),
+      listParticipantContributorSources: vi.fn().mockResolvedValue([
+        {
+          deliveryId: '101',
+          revision: 2,
+          sourceEventId: '11111111-1111-4111-8111-111111111111',
+          source,
+        },
+      ]),
+    });
+    const service = createProvenanceService(statistics(), data, participantStatistics());
+
+    await expect(
+      service.getParticipantStatistic(
+        createTestAccount({ role: 'submitter', accountId: '1' }),
+        '101',
+        'stat_career',
+        { limit: 1 },
+      ),
+    ).rejects.toBeInstanceOf(ProvenanceForbiddenError);
   });
   test('ordinary submitters list only their own submission provenance', async () => {
     const data = repository();
