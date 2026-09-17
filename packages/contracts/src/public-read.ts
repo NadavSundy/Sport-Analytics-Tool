@@ -634,6 +634,86 @@ export const participantAggregatesResponseSchema = createResourceResponseSchema(
 export const participantAggregateResponseSchema = createResourceResponseSchema(
   participantAggregateSchema,
 );
+
+// ---------------------------------------------------------------------------
+// Season and competition leaderboards
+// ---------------------------------------------------------------------------
+
+export const leaderboardMetricSchema = z.enum([
+  'most_runs',
+  'most_wickets',
+  'most_fours',
+  'most_sixes',
+  'highest_batting_average',
+  'highest_strike_rate',
+  'best_bowling_average',
+  'best_economy_rate',
+  'best_bowling_strike_rate',
+]);
+
+const leaderboardQueryCommonSchema = z.object({
+  metric: leaderboardMetricSchema,
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const leaderboardQuerySchema = z.discriminatedUnion('scope', [
+  leaderboardQueryCommonSchema
+    .extend({
+      scope: z.literal('season'),
+      seasonId: apiIdentifierSchema,
+    })
+    .strict(),
+  leaderboardQueryCommonSchema
+    .extend({
+      scope: z.literal('competition'),
+      competitionId: apiIdentifierSchema,
+    })
+    .strict(),
+]);
+
+export const leaderboardQualificationSchema = z
+  .object({
+    field: z.enum(['dismissals', 'ballsFaced', 'wicketsTaken', 'legalBallsBowled']),
+    minimum: z.number().int().positive(),
+    rationale: z.string().min(1),
+  })
+  .nullable();
+
+export const leaderboardEntrySchema = z.object({
+  rank: z.number().int().positive(),
+  participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
+  value: z.number().nonnegative(),
+});
+
+const leaderboardCommonSchema = z.object({
+  metric: leaderboardMetricSchema,
+  limit: z.number().int().min(1).max(50),
+  qualification: leaderboardQualificationSchema,
+  tieBreakers: z.tuple([
+    z.literal('metricValue'),
+    z.literal('participantName'),
+    z.literal('participantId'),
+  ]),
+  entries: z.array(leaderboardEntrySchema).max(50),
+});
+
+export const leaderboardSchema = z.discriminatedUnion('scope', [
+  leaderboardCommonSchema.extend({
+    scope: z.literal('season'),
+    seasonId: apiIdentifierSchema,
+    competitionId: apiIdentifierSchema,
+    competitionName: z.string().min(1),
+    season: z.string().min(1),
+  }),
+  leaderboardCommonSchema.extend({
+    scope: z.literal('competition'),
+    competitionId: apiIdentifierSchema,
+    competitionName: z.string().min(1),
+  }),
+]);
+
+export const leaderboardResponseSchema = createResourceResponseSchema(leaderboardSchema);
 export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
@@ -693,3 +773,8 @@ export type ParticipantAggregatesWarning = z.infer<typeof participantAggregatesW
 export type ParticipantAggregates = z.infer<typeof participantAggregatesSchema>;
 export type ParticipantAggregateScope = z.infer<typeof participantAggregateScopeSchema>;
 export type ParticipantAggregatesQuery = z.infer<typeof participantAggregatesQuerySchema>;
+export type LeaderboardMetric = z.infer<typeof leaderboardMetricSchema>;
+export type LeaderboardQuery = z.infer<typeof leaderboardQuerySchema>;
+export type LeaderboardQualification = z.infer<typeof leaderboardQualificationSchema>;
+export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
+export type Leaderboard = z.infer<typeof leaderboardSchema>;
