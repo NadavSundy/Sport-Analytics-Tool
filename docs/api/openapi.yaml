@@ -1903,7 +1903,8 @@ paths:
             name: X-Batch-Package-Version,
             in: header,
             required: true,
-            schema: { type: string, const: '1.0' },
+            description: '`1.1` permits fixture proposals for genuinely new fixtures.',
+            schema: { type: string, enum: ['1.0', '1.1'] },
           }
         - {
             name: X-File-Name,
@@ -2824,7 +2825,10 @@ components:
             - $ref: '#/components/schemas/ApiConsumer'
             - type: object
               required: [apiKey]
-              properties: { apiKey: { type: string, writeOnly: true } }
+              properties:
+                apiKey:
+                  type: string
+                  description: Raw API key. Returned only in this response and never retrievable again.
     ApiConsumerRotateResponse:
       $ref: '#/components/schemas/ApiConsumerIssueResponse'
     ApiConsumerListResponse:
