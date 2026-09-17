@@ -7,11 +7,23 @@
  * trip, a match costs about a minute one row at a time and a few seconds
  * batched. Behaviour is unchanged throughout: the same conflict clauses preserve
  * idempotency, and only rows actually inserted are counted.
+ *
+ * The fixture statistics cache version and the statistics data version of every
+ * affected participant are advanced in the caller's transaction, as every other
+ * event write does (issue #592). The affected participants are those the ingest
+ * actually adds to the fixture squad, whose appearances change, and everyone
+ * named by a delivery it actually inserts. A re-ingest that inserts nothing
+ * affects no participant, but still advances the fixture version.
  */
 
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
+import {
+  advanceStatisticsDataVersions,
+  affectedParticipantIds,
+  type AggregateParticipantEvent,
+} from '@sport-analytics/batch-processing';
 import { isLegalDelivery, submissionExtrasSchema } from '@sport-analytics/contracts';
 import type { QueryExecutor } from '../src/database';
 
@@ -344,13 +356,19 @@ export async function ingestMatchData(
     }
   }
 
+  // Only squad rows actually inserted change a participant's appearances.
+  const addedSquadParticipantIds: string[] = [];
   if (squadRows.size > 0) {
-    await client.query(
+    const insertedSquad = await client.query(
       `INSERT INTO fixture_squad (fixture_id, person_id, team_id, role)
        VALUES ${placeholders(squadRows.size, 4)}
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING person_id`,
       [...squadRows.values()].flat(),
     );
+    for (const row of insertedSquad.rows) {
+      addedSquadParticipantIds.push(String(row.person_id));
+    }
   }
 
   // ---- officials --------------------------------------------------------
@@ -519,6 +537,7 @@ export async function ingestMatchData(
   }
 
   let deliveryCount = 0;
+  const insertedEvents: AggregateParticipantEvent[] = [];
 
   for (const [ordinal, innings] of inningsList.entries()) {
     const inningsId = inningsIdByOrdinal.get(ordinal);
@@ -607,6 +626,21 @@ export async function ingestMatchData(
       const deliveryId = deliveryIdByKey.get(`${item.overNumber}:${item.position}`);
       return deliveryId === undefined ? [] : [{ ...item, deliveryId }];
     });
+
+    for (const item of inserted) {
+      insertedEvents.push({
+        strikerId: String(requirePerson(item.delivery.batter, 'batter')),
+        nonStrikerId: String(requirePerson(item.delivery.non_striker, 'non-striker')),
+        bowlerId: String(requirePerson(item.delivery.bowler, 'bowler')),
+        wickets: (item.delivery.wickets ?? []).map((wicket) => ({
+          playerOutId: String(requirePerson(wicket.player_out, 'dismissed player')),
+          fielders: (wicket.fielders ?? []).map((fielder) => {
+            const fielderId = fielder.name ? personId.get(fielder.name) : undefined;
+            return fielderId === undefined ? {} : { participantId: String(fielderId) };
+          }),
+        })),
+      });
+    }
 
     const wicketRows = inserted.flatMap((item) =>
       (item.delivery.wickets ?? []).map((wicket, wicketOrdinal) => ({
@@ -727,6 +761,14 @@ export async function ingestMatchData(
       );
     }
   }
+
+  await advanceStatisticsDataVersions(client, {
+    fixtureIds: [String(fixtureId)],
+    participantIds: affectedParticipantIds({
+      events: insertedEvents,
+      squadParticipantIds: addedSquadParticipantIds,
+    }),
+  });
 
   return {
     sourceRef,

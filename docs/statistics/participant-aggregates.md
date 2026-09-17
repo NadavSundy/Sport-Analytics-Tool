@@ -24,16 +24,19 @@ locks in one consistent order.
 The affected participants come from one shared function, `affectedParticipantIds` in
 `@sport-analytics/batch-processing`:
 
-| Write path              | Affected participants                                                                                                                  |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Direct submission       | Everyone each submitted event names as striker, non-striker, bowler, dismissed player or identified fielder.                           |
-| Direct correction       | The same roles in the previous and the replacement state of the corrected event.                                                       |
-| Batch publication chunk | The same roles in every newly published event and in the previous and replacement state of every batch correction; one bump per chunk. |
+| Write path              | Affected participants                                                                                                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Direct submission       | Everyone each submitted event names as striker, non-striker, bowler, dismissed player or identified fielder.                                                                                         |
+| Direct correction       | The same roles in the previous and the replacement state of the corrected event.                                                                                                                     |
+| Batch publication chunk | The same roles in every newly published event and in the previous and replacement state of every batch correction; one bump per chunk.                                                               |
+| Cricsheet match ingest  | Everyone the ingest actually adds to the fixture squad, whose appearances change, and the same roles in every delivery it actually inserts. A re-ingest that inserts nothing affects no participant. |
 
 The set is conservative. A named participant is included even when they are not in that fixture's
 squad and so contribute no figures, because a missing participant would leave a stale aggregate
-while an extra one only costs a recomputation. Squad members of the same fixture whom no event names
-are not affected: an added or corrected delivery does not change their appearances or figures.
+while an extra one only costs a recomputation. For submissions, corrections and batch publication,
+squad members of the same fixture whom no event names are not affected: an added or corrected
+delivery does not change their appearances or figures. Ingest is the only write path that adds squad
+members.
 
 The statistic catalogue in `docs/requirements/sport-domain-definition.md` §7 names the base figures
 and the two aggregate levels these endpoints publish. Competition-wide is required by issue #285 but
