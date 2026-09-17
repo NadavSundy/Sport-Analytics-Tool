@@ -118,6 +118,8 @@ export interface OpenApiContract {
     method: string,
     requestPath: string,
   ): { method: string; template: string } | undefined;
+  /** Validates a value against the schema at a JSON pointer in the document, such as a component schema. */
+  schemaProblems(pointer: string, value: unknown): string[];
   /** Every documented operation as `METHOD /path/template`. */
   operations(): string[];
   /** Operations checked so far through this contract instance. */
@@ -458,6 +460,10 @@ export function createOpenApiContract(
     findOperation(method, requestPath) {
       const matched = matchOperation(method, requestPath);
       return matched && { method: matched.method.toUpperCase(), template: matched.template };
+    },
+    schemaProblems(pointer, value) {
+      const validate = validatorAt(pointer);
+      return validate(value) ? [] : formatAjvErrors(validate.errors);
     },
     operations() {
       return pathEntries.flatMap((entry) =>
