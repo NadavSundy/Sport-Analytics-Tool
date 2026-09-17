@@ -148,11 +148,13 @@ export const statisticProvenanceContributorSchema = z
 export const statisticProvenanceSchema = z
   .object({
     statisticId: apiIdentifierSchema,
-    fixtureId: apiIdentifierSchema,
+    fixtureId: apiIdentifierSchema.nullable(),
+    participantId: apiIdentifierSchema.nullable(),
     statisticCode: z.string().min(1),
     scope: z.string().min(1),
     sourceEventCount: z.number().int().nonnegative(),
     contributors: z.array(statisticProvenanceContributorSchema),
+    pagination: z.object({ nextCursor: z.string().min(1).nullable() }).strict(),
   })
   .strict();
 

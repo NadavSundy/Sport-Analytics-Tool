@@ -1663,6 +1663,35 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /api/v1/provenance/participants/{participantId}/statistics/{statisticId}:
+    get:
+      tags: [Provenance]
+      summary: Trace a published participant aggregate to current source events
+      operationId: getParticipantAggregateProvenance
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: participantId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        - $ref: '#/components/parameters/StatisticId'
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+        - { name: cursor, in: query, schema: { type: string, minLength: 1 } }
+      responses:
+        '200':
+          description: Cursor-paginated aggregate contributors with stable event identities and source provenance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatisticProvenanceResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/v1/admin/batches:
     get:
       tags: [Batches]
@@ -5195,16 +5224,30 @@ components:
     StatisticProvenance:
       type: object
       additionalProperties: false
-      required: [statisticId, fixtureId, statisticCode, scope, sourceEventCount, contributors]
+      required:
+        [
+          statisticId,
+          fixtureId,
+          participantId,
+          statisticCode,
+          scope,
+          sourceEventCount,
+          contributors,
+          pagination,
+        ]
       properties:
         statisticId: { type: string, minLength: 1 }
-        fixtureId: { $ref: '#/components/schemas/ApiIdentifier' }
+        fixtureId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        participantId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
         statisticCode: { type: string, minLength: 1 }
         scope: { type: string, minLength: 1 }
         sourceEventCount: { type: integer, minimum: 0 }
         contributors:
           type: array
           items: { $ref: '#/components/schemas/StatisticProvenanceContributor' }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
 
     StatisticProvenanceResponse:
       type: object

@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import type { ApplicationAccount } from '../accounts/account';
 import type { FixtureStatisticsService } from '../statistics/fixture-statistics.service';
+import type { ParticipantAggregatesService } from '../statistics/participant-aggregates.service';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
 import { createProvenanceRepository, type ProvenanceRepository } from './provenance.repository';
 
@@ -21,6 +22,7 @@ const submissionCursorSchema = z.object({
   kind: z.enum(['direct', 'file', 'batch']),
   reference: z.string().min(1),
 });
+const contributorCursorSchema = z.object({ deliveryId: z.string().regex(/^\d+$/) });
 
 export interface ProvenanceService {
   listSubmissions(
@@ -36,6 +38,12 @@ export interface ProvenanceService {
     account: ApplicationAccount,
     fixtureId: string,
     statisticId: string,
+  ): Promise<StatisticProvenanceResponse>;
+  getParticipantStatistic(
+    account: ApplicationAccount,
+    participantId: string,
+    statisticId: string,
+    query: { limit: number; cursor?: string | undefined },
   ): Promise<StatisticProvenanceResponse>;
 }
 
@@ -54,6 +62,7 @@ function canReviewCompetition(account: ApplicationAccount, competitionId: string
 export function createProvenanceService(
   fixtureStatisticsService: FixtureStatisticsService,
   repository: ProvenanceRepository = createProvenanceRepository(),
+  participantAggregatesService?: ParticipantAggregatesService,
 ): ProvenanceService {
   return {
     async listSubmissions(account, query) {
@@ -212,10 +221,73 @@ export function createProvenanceService(
         data: {
           statisticId: statistic.statisticId,
           fixtureId: statistic.fixtureId,
+          participantId: null,
           statisticCode: statistic.statisticCode,
           scope: statistic.scope,
           sourceEventCount: statistic.sourceEventCount,
           contributors,
+          pagination: { nextCursor: null },
+        },
+      };
+    },
+
+    async getParticipantStatistic(account, participantId, statisticId, query) {
+      if (!/^\d+$/.test(participantId) || !participantAggregatesService) {
+        throw new ProvenanceNotFoundError('Statistic provenance was not found.');
+      }
+      let before: string | undefined;
+      if (query.cursor) {
+        try {
+          const cursor = readCursor(query.cursor, contributorCursorSchema);
+          if (!cursor) {
+            throw new Error('Invalid pagination cursor.');
+          }
+          before = cursor.deliveryId;
+        } catch {
+          throw new ProvenanceInputError('The pagination cursor is invalid.');
+        }
+      }
+      const statistic = await participantAggregatesService.getParticipantAggregate(
+        participantId,
+        statisticId,
+      );
+      if (!statistic) throw new ProvenanceNotFoundError('Statistic provenance was not found.');
+      const records =
+        before === undefined
+          ? await repository.listParticipantContributorSources(
+              participantId,
+              statistic,
+              query.limit + 1,
+            )
+          : await repository.listParticipantContributorSources(
+              participantId,
+              statistic,
+              query.limit + 1,
+              before,
+            );
+      const contributors = records.slice(0, query.limit);
+      const ownsEverySource = contributors.every(
+        (contributor) => contributor.source.submitter.accountId === account.accountId,
+      );
+      const competitionId = statistic.scope === 'career' ? null : statistic.competitionId;
+      if (!ownsEverySource && !canReviewCompetition(account, competitionId))
+        throw new ProvenanceForbiddenError();
+      const last = contributors.at(-1);
+      return {
+        data: {
+          statisticId: statistic.statisticId,
+          fixtureId: null,
+          participantId,
+          statisticCode: statistic.statisticCode,
+          scope: statistic.scope,
+          sourceEventCount: statistic.sourceEventCount,
+          contributors,
+          pagination: {
+            nextCursor:
+              records.length > query.limit && last
+                ? createCursor({ deliveryId: last.deliveryId })
+                : null,
+          },
         },
       };
     },
