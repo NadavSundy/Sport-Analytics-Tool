@@ -536,7 +536,7 @@ paths:
           { name: scope, in: query, schema: { type: string, enum: [season, competition, career] } },
         ]
       responses:
-        '200': { description: Participant season, competition, and career aggregates. }
+        '200': { description: 'Participant season, competition, and career aggregates.' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
