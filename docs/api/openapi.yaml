@@ -6,8 +6,10 @@ info:
   description: |
     Version-controlled contract for the handwritten Sport Analytics backend API.
 
-    The supported API major version is `v1`; every documented path is served
-    beneath `/api/v1`. URI paths are the only version-selection mechanism.
+    The supported business API major version is `v1`; application-data paths are
+    served beneath `/api/v1`. Public documentation resources such as `/openapi.yaml`
+    sit outside that versioned business surface. URI paths are the only
+    version-selection mechanism for the business API.
     Unsupported major-version paths return `404` with
     `UNSUPPORTED_API_VERSION`; request headers do not negotiate another API version.
 
@@ -32,6 +34,9 @@ servers:
 security: []
 
 tags:
+  - name: Documentation
+    description: Public machine-readable API documentation resources.
+
   - name: Health
     description: Service health and availability.
 
@@ -68,6 +73,25 @@ tags:
       documented in `docs/api/consumer-keys.md`.
 
 paths:
+  /openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: Download the authoritative OpenAPI specification
+      description: >-
+        Returns the same version-controlled OpenAPI document maintained at
+        docs/api/openapi.yaml. This documentation resource is public and is not
+        part of the versioned /api/v1 business-data surface.
+      operationId: getOpenApiSpecification
+      x-implementation-status: implemented
+      security: []
+      responses:
+        '200':
+          description: Authoritative machine-readable OpenAPI 3.1 specification.
+          content:
+            application/yaml:
+              schema:
+                type: string
+
   /api/v1/dataset-releases:
     get:
       tags: [Dataset Releases]
