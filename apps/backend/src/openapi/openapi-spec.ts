@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const OPENAPI_FILENAME = 'openapi.yaml';
 
-export function resolveOpenApiSpecificationPath(currentDirectory = __dirname): string {
+function resolveOpenApiSpecificationPath(currentDirectory = __dirname): string {
   const bundledSpecificationPath = path.resolve(currentDirectory, '..', OPENAPI_FILENAME);
 
   if (existsSync(bundledSpecificationPath)) {
