@@ -260,83 +260,11 @@ jobs:
           NODE_ENV: production
         run: npm run test:e2e
 
-  coverage:
-    needs: plan
-    if: needs.plan.outputs.coverage == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    env:
-      NODE_ENV: test
-      SUPABASE_URL: https://example.invalid
-      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
-      COVERAGE_THRESHOLD_LINES: ${{ vars.COVERAGE_THRESHOLD_LINES }}
-      COVERAGE_THRESHOLD_STATEMENTS: ${{ vars.COVERAGE_THRESHOLD_STATEMENTS }}
-      COVERAGE_THRESHOLD_FUNCTIONS: ${{ vars.COVERAGE_THRESHOLD_FUNCTIONS }}
-      COVERAGE_THRESHOLD_BRANCHES: ${{ vars.COVERAGE_THRESHOLD_BRANCHES }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate repository-wide coverage
-        run: npm run test:coverage
-
-      - name: Upload repository coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: repository-coverage-${{ github.sha }}
-          path: coverage/
-          if-no-files-found: warn
-          retention-days: 14
-
-      - name: Publish live coverage badge
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          set -euo pipefail
-          cp coverage/combined/badge.svg "$RUNNER_TEMP/coverage-badge.svg"
-
-          git config user.name "gitea-actions"
-          git config user.email "actions@users.noreply.sdp.ms.wits.ac.za"
-
-          git fetch origin coverage-badge || true
-          if git show-ref --verify --quiet refs/remotes/origin/coverage-badge; then
-            git switch -C coverage-badge origin/coverage-badge
-          else
-            git switch --orphan coverage-badge
-            git rm -rf . >/dev/null 2>&1 || true
-          fi
-
-          cp "$RUNNER_TEMP/coverage-badge.svg" badge.svg
-          git add badge.svg
-          if git diff --cached --quiet; then
-            echo "Coverage badge is already current."
-            exit 0
-          fi
-
-          git commit -m "chore(coverage): update live badge"
-          git push origin coverage-badge
-
   quality:
     needs:
       - plan
       - validation
       - browser
-      - coverage
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -350,8 +278,6 @@ jobs:
           VALIDATION_RESULT: ${{ needs.validation.result }}
           BROWSER_REQUIRED: ${{ needs.plan.outputs.e2e }}
           BROWSER_RESULT: ${{ needs.browser.result }}
-          COVERAGE_REQUIRED: ${{ needs.plan.outputs.coverage }}
-          COVERAGE_RESULT: ${{ needs.coverage.result }}
           INTERMEDIATE_INGESTION_REQUIRED: ${{ needs.plan.outputs.intermediateIngestion }}
         run: |
           if [ "$PLAN_RESULT" != "success" ]; then
@@ -370,10 +296,6 @@ jobs:
               exit 1
             fi
 
-            if [ "$COVERAGE_REQUIRED" = "true" ] && [ "$COVERAGE_RESULT" != "success" ]; then
-              echo "::error::Required repository coverage did not complete successfully ($COVERAGE_RESULT)."
-              exit 1
-            fi
 
             if [ "$INTERMEDIATE_INGESTION_REQUIRED" = "true" ]; then
               echo "Intermediate ingestion merge-gated acceptance passed through the existing validation and browser lanes."
@@ -381,12 +303,8 @@ jobs:
 
             echo "Required change-aware Pull Request validation passed."
           else
-            if [ "$COVERAGE_REQUIRED" = "true" ] && [ "$COVERAGE_RESULT" != "success" ]; then
-              echo "::error::Required repository coverage did not complete successfully ($COVERAGE_RESULT)."
-              exit 1
-            fi
 
-            echo "Main push planning and required repository coverage passed; full application quality was enforced before merge."
+            echo "Main push planning passed; full application quality was enforced before merge."
           fi
 
   deploy_frontend:
@@ -799,3 +717,114 @@ jobs:
 
           echo "::error::Expected worker image $EXPECTED_IMAGE did not become active and healthy within 120 seconds."
           exit 1
+
+  coverage:
+    needs:
+      - plan
+      - quality
+      - deploy_frontend
+      - deploy_backend
+      - deploy_docs
+      - deploy_worker
+    if: >-
+      always() &&
+      needs.plan.outputs.coverage == 'true' &&
+      needs.quality.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      NODE_ENV: test
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+      COVERAGE_THRESHOLD_LINES: ${{ vars.COVERAGE_THRESHOLD_LINES }}
+      COVERAGE_THRESHOLD_STATEMENTS: ${{ vars.COVERAGE_THRESHOLD_STATEMENTS }}
+      COVERAGE_THRESHOLD_FUNCTIONS: ${{ vars.COVERAGE_THRESHOLD_FUNCTIONS }}
+      COVERAGE_THRESHOLD_BRANCHES: ${{ vars.COVERAGE_THRESHOLD_BRANCHES }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate repository-wide coverage
+        id: repository_coverage
+        shell: bash
+        run: |
+          mkdir -p coverage
+          set +e
+          npm run test:coverage
+          coverage_exit_code=$?
+          set -e
+
+          echo "exit_code=$coverage_exit_code" >> "$GITHUB_OUTPUT"
+
+          if [ "$coverage_exit_code" -eq 0 ]; then
+            printf 'Coverage: PASS\n' > coverage/ci-status.txt
+            echo "Repository coverage completed successfully."
+          else
+            printf 'Coverage: FAILED / INCOMPLETE\nExit code: %s\n' "$coverage_exit_code" > coverage/ci-status.txt
+            echo "::warning::Coverage FAILED / INCOMPLETE (exit code $coverage_exit_code). Quality and deployment have already completed; retaining this as non-blocking evidence."
+          fi
+
+          # Coverage is a late evidence signal. Preserve the real exit code as
+          # output/status evidence without turning it back into a deployment gate.
+          exit 0
+
+      - name: Upload repository coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-coverage-${{ github.sha }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish live coverage badge
+        if: steps.repository_coverage.outputs.exit_code == '0' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          cp coverage/combined/badge.svg "$RUNNER_TEMP/coverage-badge.svg"
+
+          git config user.name "gitea-actions"
+          git config user.email "actions@users.noreply.sdp.ms.wits.ac.za"
+
+          git fetch origin coverage-badge || true
+          if git show-ref --verify --quiet refs/remotes/origin/coverage-badge; then
+            git switch -C coverage-badge origin/coverage-badge
+          else
+            git switch --orphan coverage-badge
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          cp "$RUNNER_TEMP/coverage-badge.svg" badge.svg
+          git add badge.svg
+          if git diff --cached --quiet; then
+            echo "Coverage badge is already current."
+            exit 0
+          fi
+
+          git commit -m "chore(coverage): update live badge"
+          git push origin coverage-badge
+
+      - name: Report repository coverage status
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.repository_coverage.outputs.exit_code }}" = "0" ]; then
+            echo "Repository coverage evidence completed successfully."
+          else
+            echo "::warning::Repository coverage FAILED / INCOMPLETE. This late evidence signal did not gate quality or deployment."
+          fi

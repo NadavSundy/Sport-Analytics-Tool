@@ -124,6 +124,16 @@ function isCoverageInfrastructurePath(file) {
   );
 }
 
+function isCoverageSourcePath(file) {
+  return [
+    'apps/frontend/src/',
+    'apps/backend/src/',
+    'apps/worker/src/',
+    'packages/contracts/src/',
+    'packages/batch-processing/src/',
+  ].some((prefix) => file.startsWith(prefix));
+}
+
 function isIntermediateIngestionPath(file) {
   if (
     [
@@ -181,7 +191,7 @@ function isIntermediateIngestionPath(file) {
 function applyPath(plan, file) {
   if (!file) return;
 
-  if (isCoverageInfrastructurePath(file)) plan.coverage = true;
+  if (isCoverageInfrastructurePath(file) || isCoverageSourcePath(file)) plan.coverage = true;
 
   const intermediateIngestion = isIntermediateIngestionPath(file);
   if (intermediateIngestion) plan.intermediateIngestion = true;
@@ -480,10 +490,9 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     plan.needsNpm = true;
   }
 
-  // Coverage is deliberately routed rather than duplicated on every ordinary PR.
-  // Coverage-infrastructure changes validate the pipeline itself, manual runs always
-  // produce a complete report, and application-affecting main pushes record the
-  // repository-wide baseline for the commit that can be deployed.
+  // Coverage is a late, non-blocking evidence lane. Production-source and
+  // coverage-infrastructure Pull Requests request it after normal quality; manual
+  // runs and every merged main commit also record a repository-wide baseline.
   if (eventName === 'workflow_dispatch') {
     plan.coverage = true;
   } else if (eventName === 'push') {

@@ -247,6 +247,19 @@ test('every main push records a repository-wide coverage baseline', () => {
   assert.equal(plan.coverage, true);
 });
 
+test('production source changes request late repository coverage on Pull Requests', () => {
+  for (const file of [
+    'apps/frontend/src/App.tsx',
+    'apps/backend/src/app.ts',
+    'apps/worker/src/index.ts',
+    'packages/contracts/src/api.ts',
+    'packages/batch-processing/src/index.ts',
+  ]) {
+    const plan = classifyChangedFiles([file], { eventName: 'pull_request' });
+    assert.equal(plan.coverage, true, `${file} must request repository coverage`);
+  }
+});
+
 test('coverage infrastructure changes request the dedicated coverage lane on Pull Requests', () => {
   const plan = classifyChangedFiles(['scripts/coverage/run-coverage.mjs']);
 
