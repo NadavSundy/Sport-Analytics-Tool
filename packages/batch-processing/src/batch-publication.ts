@@ -82,6 +82,52 @@ export class BatchPublicationLeaseBusyError extends Error {
   }
 }
 
+async function publishAuthoritativePowerplays(
+  target: QueryExecutor,
+  batchId: string,
+): Promise<string[]> {
+  const source = `SELECT DISTINCT ON (item.innings_id)
+         item.innings_id,
+         item.resolved_references #> '{innings,submittedReference,powerplays}' AS powerplays
+       FROM batch_item item
+       WHERE item.batch_id=$1::bigint
+         AND item.state IN ('published','duplicate_skipped')
+         AND item.innings_id IS NOT NULL
+         AND jsonb_typeof(
+           item.resolved_references #> '{innings,submittedReference,powerplays}'
+         ) = 'array'
+       ORDER BY item.innings_id, item.ordinal`;
+
+  // Keep replacement as two ordered, set-based statements. PostgreSQL gives
+  // sibling data-modifying CTEs one snapshot and does not guarantee their
+  // execution order, which can leave the old primary key visible to INSERT.
+  await executeQuery(
+    target,
+    `DELETE FROM innings_powerplay marker
+     USING (${source}) source
+     WHERE marker.innings_id=source.innings_id`,
+    [batchId],
+  );
+
+  const result = await executeQuery<{ fixtureId: string }>(
+    target,
+    `WITH source AS (${source}), inserted AS (
+       INSERT INTO innings_powerplay (innings_id,from_ball,to_ball,type,source_batch_id)
+       SELECT source.innings_id, marker."from", marker."to", marker.type, $1::bigint
+       FROM source
+       CROSS JOIN LATERAL jsonb_to_recordset(source.powerplays) AS marker(
+         "from" numeric(5,2), "to" numeric(5,2), type text
+       )
+       RETURNING innings_id
+     )
+     SELECT DISTINCT innings.fixture_id::text AS "fixtureId"
+     FROM source
+     JOIN innings ON innings.innings_id=source.innings_id`,
+    [batchId],
+  );
+  return result.rows.map((row) => row.fixtureId);
+}
+
 function batchItemSelectionFor(table: string): string {
   return `
   ${table}.batch_item_id::text AS "batchItemId",
@@ -1129,6 +1175,13 @@ export async function publishAcceptedBatchChunk(
   );
   const finalState =
     Number(conflictCount.rows[0]?.count ?? 0) > 0 ? 'partially_published' : 'published';
+  if (finalState === 'published') {
+    const powerplayFixtureIds = await publishAuthoritativePowerplays(target, batchId);
+    await advanceStatisticsDataVersions(target, {
+      fixtureIds: powerplayFixtureIds,
+      participantIds: [],
+    });
+  }
   const released = await executeQuery<{ lastOrdinal: number }>(
     target,
     `UPDATE batch_checkpoint SET last_ordinal=COALESCE(

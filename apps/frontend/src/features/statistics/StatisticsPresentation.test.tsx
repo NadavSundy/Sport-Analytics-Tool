@@ -95,6 +95,7 @@ const fixtureStatistics: FixtureStatistics = {
         legalBalls: 0,
         overs: '0.0',
         runRate: null,
+        powerplay: null,
         extras: { total: 0, wides: 0, noBalls: 0, byes: 0, legByes: 0, penaltyRuns: 0 },
       },
     },

@@ -36,6 +36,7 @@ function event(
     creditedWickets: 0,
     wickets: [],
     overNumber: 0,
+    ballNumber: '0.1',
     ...overrides,
   };
 }
@@ -137,6 +138,7 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
         penaltyPre: 5,
         penaltyPost: null,
         miscountedOvers: [],
+        powerplays: [{ fromBall: 0.1, toBall: 0.6, type: 'mandatory' }],
       },
       {
         inningsId: '502',
@@ -146,6 +148,7 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
         penaltyPre: null,
         penaltyPost: null,
         miscountedOvers: [],
+        powerplays: [],
       },
     ],
     events,
@@ -179,6 +182,98 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
 }
 
 describe('fixture statistics golden fixture', () => {
+  test('derives authoritative powerplay values and preserves missing versus zero-valued results', () => {
+    const result = deriveFixtureStatistics(goldenSource(), { includeContributors: true });
+    const innings = result.statistics.filter((statistic) => statistic.scope === 'innings');
+
+    expect(innings[0]?.scope === 'innings' ? innings[0].metrics.powerplay : undefined).toEqual({
+      ranges: [{ fromBall: 0.1, toBall: 0.6, type: 'mandatory' }],
+      runs: 18,
+      wicketsLost: 0,
+      legalBalls: 4,
+      overs: '0.4',
+      runRate: 27,
+      sourceEventCount: 6,
+      contributingEvents: expect.arrayContaining([
+        expect.objectContaining({ eventId: '1' }),
+        expect.objectContaining({ eventId: '6' }),
+      ]),
+    });
+    expect(innings[1]?.scope === 'innings' ? innings[1].metrics.powerplay : undefined).toBeNull();
+
+    const zero = goldenSource([
+      event({
+        deliveryId: 'wide-only',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        runsExtras: 0,
+        runsTotal: 0,
+        extraWides: 1,
+      }),
+    ]);
+    zero.innings = [{ ...zero.innings[0]!, penaltyPre: null }];
+    const zeroPowerplay = deriveFixtureStatistics(zero).statistics.find(
+      (statistic) => statistic.scope === 'innings',
+    );
+    expect(
+      zeroPowerplay?.scope === 'innings' ? zeroPowerplay.metrics.powerplay : null,
+    ).toMatchObject({
+      runs: 0,
+      wicketsLost: 0,
+      legalBalls: 0,
+      overs: '0.0',
+      runRate: null,
+    });
+  });
+
+  test('changes powerplay values only for accepted-event corrections inside the range', () => {
+    const source = goldenSource([
+      event({
+        deliveryId: 'inside',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        ballNumber: '0.2',
+        runsTotal: 1,
+      }),
+      event({
+        deliveryId: 'outside',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 2,
+        ballNumber: '1.1',
+        overNumber: 1,
+        runsTotal: 2,
+      }),
+    ]);
+    source.innings[0]!.penaltyPre = null;
+    const powerplayRuns = (value: FixtureStatisticsSource) => {
+      const statistic = deriveFixtureStatistics(value).statistics.find(
+        (item) => item.scope === 'innings' && item.inningsId === '501',
+      );
+      return statistic?.scope === 'innings' ? statistic.metrics.powerplay?.runs : undefined;
+    };
+
+    expect(powerplayRuns(source)).toBe(1);
+    expect(
+      powerplayRuns({
+        ...source,
+        events: source.events.map((item) =>
+          item.deliveryId === 'outside' ? { ...item, runsTotal: 9 } : item,
+        ),
+      }),
+    ).toBe(1);
+    expect(
+      powerplayRuns({
+        ...source,
+        events: source.events.map((item) =>
+          item.deliveryId === 'inside' ? { ...item, runsTotal: 4 } : item,
+        ),
+      }),
+    ).toBe(4);
+  });
+
   test('derives the manually verified Basic cricket statistics', () => {
     const result = deriveFixtureStatistics(goldenSource());
 

@@ -64,6 +64,7 @@ schema change. The main Sprint 2 migration groups are:
 | `20260909100000000_dataset-releases.sql`                                                                                                                                     | Immutable dataset-release metadata                                                       |
 | `20260911120000000_batch-correction-ingestion.sql`, `20260913100000000_batch-published-conflict-resolution.sql` and `20260913170000000_refresh-delivery-current-lineage.sql` | Batch corrections, explicit publication-conflict resolution and current-revision lineage |
 | `20260914100000000_stream-dataset-release-artifacts.sql` and `20260914150000000_async-dataset-release-jobs.sql`                                                              | Streamed release artifacts and durable asynchronous release generation                   |
+| `20260917180000000_powerplay-provenance.sql`                                                                                                                                 | Reviewed source-batch provenance for authoritative innings powerplay markers             |
 
 Apply migrations only through the documented `node-pg-migrate` commands. Integration tests rebuild
 an isolated test database from the complete ordered migration set, which makes missing dependencies
@@ -77,3 +78,4 @@ The issue #276 batch-ingestion migration was documented with the assistance of C
 The Issue #277 batch receipt migration was documented with the assistance of Codex[GPT-5].
 The Issue #283 review workflow migration was documented with the assistance of Codex[GPT-5].
 The Issue #297 Sprint 2 migration index was reviewed and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #633 powerplay provenance migration was documented with the assistance of Codex[GPT-5].
