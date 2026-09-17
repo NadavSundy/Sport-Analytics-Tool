@@ -160,6 +160,33 @@ pre/post penalties at innings level rather than inventing a delivery for them.
 The same trace exposes the deliveries behind wickets, legal balls, run rate, and delivery extras;
 miscounted-over and innings-penalty context remains authoritative innings metadata.
 
+Each innings statistic also returns a required `metrics.powerplay` field. It is `null` when the
+standard innings has no authoritative marker metadata. Otherwise it contains the retained ranges,
+runs, terminal wickets lost, legal balls, formatted overs and run rate calculated from accepted
+current deliveries whose source ball label lies inside any inclusive range. Wides and no-balls add
+runs but not legal balls, the fixture's balls-per-over controls overs and rate, and a zero-legal-ball
+rate is `null`. When contributors are requested, the nested powerplay trace contains only those
+accepted events. This makes an absent marker observably different from a real marked range that
+produces zeros. Super-over innings remain excluded before either standard or powerplay derivation.
+
+Example response fragment:
+
+```json
+{
+  "metrics": {
+    "powerplay": {
+      "ranges": [{ "fromBall": 0.1, "toBall": 5.6, "type": "mandatory" }],
+      "runs": 62,
+      "wicketsLost": 1,
+      "legalBalls": 36,
+      "overs": "6.0",
+      "runRate": 10.33,
+      "sourceEventCount": 37
+    }
+  }
+}
+```
+
 ## Public frontend
 
 Opening `/fixtures/{fixtureId}` automatically requests and displays the fixture's Basic statistics
@@ -219,3 +246,4 @@ Claude-Code[Claude Opus 5].
 The innings scorecard context for issue #631 was documented with the assistance of Codex[GPT-5].
 The issue #592 correction dependency participant set and ingest version advancement were documented
 with the assistance of Claude-Code[Claude Opus 5].
+The issue #633 powerplay derivation was documented with the assistance of Codex[GPT-5].

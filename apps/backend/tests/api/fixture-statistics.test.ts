@@ -82,6 +82,7 @@ describe('public fixture statistics API', () => {
           legalBalls: 0,
           overs: '0.0',
           runRate: null,
+          powerplay: null,
           extras: {
             total: 5,
             wides: 0,

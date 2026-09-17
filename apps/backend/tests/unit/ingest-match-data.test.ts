@@ -2,7 +2,11 @@ import { resolve } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { assertValidCricsheetExtras, ingestMatchData } from '../../scripts/ingest-match-data';
+import {
+  assertValidCricsheetExtras,
+  assertValidCricsheetPowerplays,
+  ingestMatchData,
+} from '../../scripts/ingest-match-data';
 import type { QueryExecutor } from '../../src/database';
 
 type Extras = Record<string, number>;
@@ -88,5 +92,30 @@ describe('Cricsheet extras validation (issue #623)', () => {
       /Invalid delivery extras; nothing was ingested\. innings 1, over 0, delivery 1: extras\.wides: /,
     );
     expect(statements).toEqual([]);
+  });
+});
+
+describe('Cricsheet powerplay validation (issue #633)', () => {
+  test('accepts absent and valid metadata without inventing a default', () => {
+    expect(() => assertValidCricsheetPowerplays([{}, { powerplays: [] }])).not.toThrow();
+    expect(() =>
+      assertValidCricsheetPowerplays([{ powerplays: [{ from: 0.1, to: 5.6, type: 'mandatory' }] }]),
+    ).not.toThrow();
+  });
+
+  test('rejects malformed and overlapping ranges with the innings location', () => {
+    expect(() =>
+      assertValidCricsheetPowerplays([{ powerplays: [{ from: 5.6, to: 0.1, type: 'mandatory' }] }]),
+    ).toThrow(/Invalid powerplay metadata at innings 1.*must not precede/);
+    expect(() =>
+      assertValidCricsheetPowerplays([
+        {
+          powerplays: [
+            { from: 0.1, to: 5.6, type: 'mandatory' },
+            { from: 5.6, to: 6.6, type: 'batting' },
+          ],
+        },
+      ]),
+    ).toThrow(/Invalid powerplay metadata at innings 1.*must not overlap/);
   });
 });

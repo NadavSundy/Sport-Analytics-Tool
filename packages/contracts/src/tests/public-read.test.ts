@@ -41,6 +41,7 @@ describe('public read contracts', () => {
       legalBalls: 0,
       overs: '0.0',
       runRate: null,
+      powerplay: null,
       extras: {
         total: 0,
         wides: 0,
@@ -654,6 +655,15 @@ describe('public read contracts', () => {
                 legalBalls: 1,
                 overs: '0.1',
                 runRate: 24,
+                powerplay: {
+                  ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+                  runs: 4,
+                  wicketsLost: 0,
+                  legalBalls: 1,
+                  overs: '0.1',
+                  runRate: 24,
+                  sourceEventCount: 1,
+                },
                 extras: {
                   total: 0,
                   wides: 0,
