@@ -387,6 +387,151 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
+  /api/v1/consumer/fixtures/{fixtureId}:
+    get:
+      tags: [Consumer API]
+      summary: Get a fixture with a consumer API key
+      operationId: getConsumerFixture
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      responses:
+        '200': { description: Fixture detail. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events:
+    get:
+      tags: [Consumer API]
+      summary: List accepted fixture events with a consumer API key
+      operationId: listConsumerFixtureEvents
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/Cursor' }]
+      responses:
+        '200': { description: Paginated accepted fixture events. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events/export.json:
+    get:
+      tags: [Consumer API]
+      summary: Export accepted fixture events as JSON with a consumer API key
+      operationId: exportConsumerFixtureEventsJson
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      responses:
+        '200': { description: JSON event export. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events/export.csv:
+    get:
+      tags: [Consumer API]
+      summary: Export accepted fixture events as CSV with a consumer API key
+      operationId: exportConsumerFixtureEventsCsv
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      responses:
+        '200': { description: CSV event export. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}:
+    get:
+      tags: [Consumer API]
+      summary: Get an accepted fixture event with a consumer API key
+      operationId: getConsumerFixtureEvent
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/EventId' }]
+      responses:
+        '200': { description: Accepted fixture event. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics:
+    get:
+      tags: [Consumer API]
+      summary: Get fixture statistics with a consumer API key
+      operationId: getConsumerFixtureStatistics
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      responses:
+        '200': { description: Derived fixture statistics. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}:
+    get:
+      tags: [Consumer API]
+      summary: Get one fixture statistic with a consumer API key
+      operationId: getConsumerFixtureStatistic
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/StatisticId' }]
+      responses:
+        '200': { description: Derived fixture statistic. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
+    get:
+      tags: [Consumer API]
+      summary: Export a fixture statistic trace as JSON with a consumer API key
+      operationId: exportConsumerFixtureStatisticEventsJson
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/StatisticId' }]
+      responses:
+        '200': { description: JSON statistic-event export. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
+    get:
+      tags: [Consumer API]
+      summary: Export a fixture statistic trace as CSV with a consumer API key
+      operationId: exportConsumerFixtureStatisticEventsCsv
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/StatisticId' }]
+      responses:
+        '200': { description: CSV statistic-event export. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/participants/{participantId}/statistics:
+    get:
+      tags: [Consumer API]
+      summary: Get participant aggregates with a consumer API key
+      operationId: getConsumerParticipantStatistics
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ParticipantId' }, { name: scope, in: query, schema: { type: string, enum: [season, competition, career] } }]
+      responses:
+        '200': { description: Participant season, competition, and career aggregates. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consumer/participants/{participantId}/statistics/{statisticId}:
+    get:
+      tags: [Consumer API]
+      summary: Get one participant aggregate with a consumer API key
+      operationId: getConsumerParticipantStatistic
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ParticipantId' }, { $ref: '#/components/parameters/StatisticId' }]
+      responses:
+        '200': { description: Participant aggregate statistic. }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/v1/health:
     get:
       tags:
