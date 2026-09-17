@@ -17,8 +17,8 @@
 | Browser                      |                                                             |
 | Device                       |                                                             |
 | Prepared data/files          |                                                             |
-| Feedback gate                | N/A / #601 / #602 / #603 / #604 / #605 / #606 / #607 / #612 |
-| Linked implementation issues | N/A / issue numbers in Review                               |
+| User-feedback issue          | N/A / #601 / #602 / #603 / #604 / #605 / #606 / #607 / #612 |
+| Linked implementation issues | N/A / relevant issue numbers                                |
 
 ---
 

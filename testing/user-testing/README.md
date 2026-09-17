@@ -1,6 +1,6 @@
 # Formal User-Testing Facilitator Pack
 
-This folder supports the canonical task-based process defined in `docs/testing/user-testing-protocol.md`. Sprint 2 uses the #416–#418 execution streams; Sprint 3 keeps the same process and adds feature-level feedback gates #601–#607 and #612. The folder contains reusable, non-secret reference/validation inputs plus facilitator setup and scenario records.
+This folder supports the canonical task-based process defined in `docs/testing/user-testing-protocol.md`. Sprint 2 uses the #416–#418 execution streams; Sprint 3 keeps the same process and adds feature-level user-feedback tasks #601–#607 and #612. The folder contains reusable, non-secret reference/validation inputs plus facilitator setup and scenario records.
 
 ## Rules
 
@@ -13,14 +13,14 @@ This folder supports the canonical task-based process defined in `docs/testing/u
 
 ## Sprint 3 scenario preparation
 
-Before a Sprint 3 feature-gate session:
+Before a Sprint 3 user-feedback session:
 
-1. Select the gate and task IDs from the task bank.
+1. Select the user-feedback issue and task IDs from the task bank.
 2. Select a safe scenario from `SPRINT3_SCENARIOS.md`.
 3. Copy `sprint-3-scenario-record.md` and fill in environment-specific IDs, package paths/checksums, expected state and reset method.
 4. Supply account credentials/API keys separately from Git.
 5. Complete `FACILITATOR_SETUP.md`.
-6. Do not start the gate until all implementation work listed in its `Cannot Begin Until` section is deployed and in Review.
+6. Do not start the session until the functionality listed in the issue's `Cannot Begin Until` / readiness section is deployed and usable. This is a testing-readiness check, not an implementation-closure dependency.
 
 The scenario record is intentionally metadata-only. It makes an environment-specific setup reproducible without committing secrets or pretending mutable database identifiers are portable between environments.
 

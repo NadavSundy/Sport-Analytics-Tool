@@ -4,16 +4,16 @@ Copy this file for each prepared environment-specific scenario. Do not commit cr
 
 ## Scenario metadata
 
-| Field                                  | Value                                                 |
-| -------------------------------------- | ----------------------------------------------------- |
-| Feedback gate                          | #601 / #602 / #603 / #604 / #605 / #606 / #607 / #612 |
-| Scenario ID                            |                                                       |
-| Selected Task IDs                      |                                                       |
-| Environment / URL                      |                                                       |
-| Commit / release                       |                                                       |
-| Prepared by                            |                                                       |
-| Prepared date                          |                                                       |
-| Linked implementation issues in Review |                                                       |
+| Field                        | Value                                                 |
+| ---------------------------- | ----------------------------------------------------- |
+| User-feedback issue          | #601 / #602 / #603 / #604 / #605 / #606 / #607 / #612 |
+| Scenario ID                  |                                                       |
+| Selected Task IDs            |                                                       |
+| Environment / URL            |                                                       |
+| Commit / release             |                                                       |
+| Prepared by                  |                                                       |
+| Prepared date                |                                                       |
+| Linked implementation issues |                                                       |
 
 ## Account state
 
@@ -49,7 +49,7 @@ Describe the approved reset/reseed/recreate method. Do not put passwords, tokens
 
 ## Pre-session sign-off
 
-- [ ] All `Cannot Begin Until` implementation issues are deployed and in Review.
+- [ ] Functionality required by the issue's `Cannot Begin Until` / readiness list is deployed and usable for the selected tasks.
 - [ ] Selected task functionality is present in this build.
 - [ ] Starting state has been checked immediately before the session.
 - [ ] Mutation target is disposable/restorable.

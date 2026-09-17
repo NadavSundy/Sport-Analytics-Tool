@@ -83,7 +83,7 @@ The Sprint 3 planning record captures:
 - Sprint 2 carry-over;
 - accepted Sprint 2 stakeholder / marker feedback;
 - the post-review internal technical audit;
-- the feature-level user-feedback gate model;
+- the original feature-level user-feedback gate model and its 17 September Issue #647 refinement;
 - the Basic/Intermediate acceptance gate;
 - selected Advanced API stretch work;
 - execution order, ownership status and risks; and
