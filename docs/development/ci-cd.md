@@ -490,3 +490,21 @@ silently changing project process in YAML.
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+
+### Local frontend test dependency
+
+Use the repository-level frontend test command for normal local validation:
+
+```powershell
+npm.cmd run test:frontend
+```
+
+The command rebuilds `@sport-analytics/contracts` before running the frontend Vitest suite. This mirrors the hosted validation dependency order and prevents the frontend from consuming stale compiled shared-contract output.
+
+The workspace-level command:
+
+```powershell
+npm.cmd run test --workspace=@sport-analytics/frontend
+```
+
+is a low-level test command. When using it directly, rebuild shared contracts first if their source has changed.
