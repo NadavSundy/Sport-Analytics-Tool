@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { advanceParticipantStatisticsVersions } from '@sport-analytics/batch-processing';
@@ -15,6 +14,7 @@ import {
   createParticipantAggregateSnapshotStore,
   invalidateParticipantAggregateSnapshots,
 } from '../../src/modules/statistics/participant-aggregates.snapshot';
+import { isolatedMatchCopy } from './isolated-match-copy';
 
 /**
  * The participant aggregates read path over stored snapshots (issue #592):
@@ -23,7 +23,6 @@ import {
  */
 
 const seedPath = resolve(__dirname, '../../../../database/seeds/matches/423788.json');
-const snapshotMigration = '20260918100000000_participant-aggregate-snapshots.sql';
 const sourcePrefix = `aggregate-read-path-${process.pid}`;
 const promptMs = 2_000;
 
@@ -85,7 +84,7 @@ describe.sequential('participant aggregates read path over stored snapshots', ()
   }
 
   async function ingestedPlayer(client: PoolClient, label: string): Promise<string> {
-    const { fixtureId } = await ingestMatchData(client, seedPath, {
+    const { fixtureId } = await ingestMatchData(client, isolatedMatchCopy(seedPath, sourcePrefix), {
       sourceRef: `${sourcePrefix}-${label}`,
     });
     const result = await client.query<{ personId: string }>(
@@ -213,21 +212,10 @@ describe.sequential('participant aggregates read path over stored snapshots', ()
   });
 
   test('stops serving stored rows after an untracked write invalidates them', async () => {
-    const migration = await readFile(
-      new URL(`../../../../database/migrations/${snapshotMigration}`, import.meta.url),
-      'utf8',
-    );
-    const up = migration.slice(0, migration.indexOf('-- Down Migration'));
-    // Invalidation deletes every state row. The snapshot tables and function
-    // are created in a scratch schema first on the search path, so it cannot
-    // lock rows that other database test files refresh; every other table
-    // still resolves to the public schema.
-    const schema = `issue_592_read_path_${process.pid}`;
-
+    // Invalidation deletes every visible state row. No database test commits
+    // snapshot state, so inside this transaction it deletes only this test's
+    // rows and locks nothing another test file uses.
     await withRolledBackTransaction(async (client) => {
-      await client.query(`CREATE SCHEMA ${schema}`);
-      await client.query(`SET LOCAL search_path TO ${schema}, public`);
-      await client.query(up);
       const participantId = await ingestedPlayer(client, 'invalidated');
       const { service, loadSource } = serviceFor(client, savepointPool(client));
       await service.getParticipantAggregates(participantId, {});

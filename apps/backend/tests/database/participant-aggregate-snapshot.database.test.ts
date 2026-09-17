@@ -194,13 +194,15 @@ describe.sequential('participant aggregate snapshot schema', () => {
     const schema = `issue_592_snapshot_invalidation_${process.pid}`;
 
     await withRolledBackTransaction(async (client) => {
-      const participantIds = [
-        await insertPerson(client, 'first'),
-        await insertPerson(client, 'second'),
-      ];
       await client.query(`CREATE SCHEMA ${schema}`);
       await client.query(`SET LOCAL search_path TO ${schema}, public`);
+      // A stub person table in the scratch schema: a foreign key to the live
+      // person table would lock it against inserts by parallel test files
+      // until this transaction rolls back.
+      await client.query(`CREATE TABLE person (person_id bigint PRIMARY KEY)`);
       await client.query(up);
+      const participantIds = ['1', '2'];
+      await client.query(`INSERT INTO person (person_id) VALUES (1), (2)`);
       for (const participantId of participantIds) {
         await client.query(
           `INSERT INTO participant_aggregate_snapshot_state (
@@ -255,6 +257,10 @@ describe.sequential('participant aggregate snapshot schema', () => {
     await withRolledBackTransaction(async (client) => {
       await client.query(`CREATE SCHEMA ${schema}`);
       await client.query(`SET LOCAL search_path TO ${schema}, public`);
+      // A stub person table in the scratch schema: a foreign key to the live
+      // person table would lock it against inserts by parallel test files
+      // until this transaction rolls back.
+      await client.query(`CREATE TABLE person (person_id bigint PRIMARY KEY)`);
       expect(await objects(client)).toEqual({ tables: '0', functions: '0' });
       await client.query(up);
       expect(await objects(client)).toEqual({ tables: '2', functions: '1' });

@@ -11,6 +11,7 @@ import {
   participantAggregateScopeKey,
   refreshParticipantAggregateSnapshots,
 } from '../../src/modules/statistics/participant-aggregates.snapshot';
+import { isolatedMatchCopy } from './isolated-match-copy';
 
 /**
  * The participant aggregate snapshot store (issue #592): what a refresh writes,
@@ -62,7 +63,7 @@ describe.sequential('participant aggregate snapshot store', () => {
   }
 
   async function ingestedParticipants(client: PoolClient, label: string): Promise<string[]> {
-    const { fixtureId } = await ingestMatchData(client, seedPath, {
+    const { fixtureId } = await ingestMatchData(client, isolatedMatchCopy(seedPath, sourcePrefix), {
       sourceRef: `${sourcePrefix}-${label}`,
     });
     const result = await client.query<{ personId: string }>(
