@@ -10,8 +10,8 @@ import {
   type SubmissionSourceFile,
 } from '@sport-analytics/contracts';
 import {
-  advanceFixtureStatisticsCacheVersions,
-  aggregateParticipantIds,
+  advanceStatisticsDataVersions,
+  affectedParticipantIds,
   deriveCorrectionStatisticsDependencies,
   recordStatisticsRefreshDependencies,
   type StatisticsRefreshDependency,
@@ -744,7 +744,10 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
             );
             await insertWickets(client, deliveryId, event);
           }
-          await advanceFixtureStatisticsCacheVersions(client, [submission.fixtureId]);
+          await advanceStatisticsDataVersions(client, {
+            fixtureIds: [submission.fixtureId],
+            participantIds: affectedParticipantIds({ events: submission.events }),
+          });
 
           return {
             submissionId: storedSubmission.submissionId,
@@ -864,12 +867,12 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           ],
         );
 
+        const participantIds = affectedParticipantIds({ events: [previousState, event] });
         const dependencies = deriveCorrectionStatisticsDependencies({
           fixtureId: target.fixtureId,
           competitionId: target.competitionId,
           season: target.season,
-          previousParticipantIds: aggregateParticipantIds(previousState),
-          resultingParticipantIds: aggregateParticipantIds(event),
+          participantIds,
         });
         await recordStatisticsRefreshDependencies(
           client,
@@ -877,7 +880,10 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           target.revision + 1,
           dependencies,
         );
-        await advanceFixtureStatisticsCacheVersions(client, [target.fixtureId]);
+        await advanceStatisticsDataVersions(client, {
+          fixtureIds: [target.fixtureId],
+          participantIds,
+        });
 
         return {
           eventId,

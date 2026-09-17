@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  affectedParticipantIds,
   aggregateParticipantIds,
   deriveCorrectionStatisticsDependencies,
 } from '@sport-analytics/batch-processing';
@@ -26,14 +27,36 @@ describe('correction statistics dependencies', () => {
       }),
     ).toEqual(['100', '200', '300', '400', '500']);
   });
+  test('unions every event and added squad member once, in a stable order', () => {
+    const event = (strikerId: string, nonStrikerId: string, bowlerId: string) => ({
+      strikerId,
+      nonStrikerId,
+      bowlerId,
+      wickets: [],
+    });
+
+    expect(
+      affectedParticipantIds({
+        events: [
+          event('300', '100', '200'),
+          {
+            ...event('100', '400', '200'),
+            wickets: [{ playerOutId: '400', fielders: [{ participantId: '500' }, {}] }],
+          },
+        ],
+        squadParticipantIds: ['600', '100', ''],
+      }),
+    ).toEqual(['100', '200', '300', '400', '500', '600']);
+    expect(affectedParticipantIds({ events: [] })).toEqual([]);
+  });
+
   test('targets only the fixture and the previous or resulting player aggregates', () => {
     expect(
       deriveCorrectionStatisticsDependencies({
         fixtureId: '10',
         competitionId: '20',
         season: '2026',
-        previousParticipantIds: ['100', '200'],
-        resultingParticipantIds: ['100', '300'],
+        participantIds: ['100', '200', '300'],
       }),
     ).toEqual([
       {
@@ -97,8 +120,7 @@ describe('correction statistics dependencies', () => {
         fixtureId: '10',
         competitionId: null,
         season: null,
-        previousParticipantIds: ['100'],
-        resultingParticipantIds: ['100'],
+        participantIds: ['100'],
       }),
     ).toEqual([
       { scope: 'fixture', fixtureId: '10', participantId: null, competitionId: null, season: null },

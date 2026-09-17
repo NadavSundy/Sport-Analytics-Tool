@@ -8,10 +8,11 @@ import {
 
 import { executeQuery, type QueryExecutor } from './database';
 import {
-  advanceFixtureStatisticsCacheVersions,
-  aggregateParticipantIds,
+  advanceStatisticsDataVersions,
+  affectedParticipantIds,
   deriveCorrectionStatisticsDependencies,
   recordStatisticsRefreshDependencies,
+  type AggregateParticipantEvent,
 } from './statistics-refresh';
 
 type BatchState =
@@ -568,7 +569,7 @@ async function publishBatchCorrection(
     reviewReason: string;
     reviewedAt: Date;
   },
-): Promise<string> {
+): Promise<{ fixtureId: string; events: AggregateParticipantEvent[] }> {
   await executeQuery(target, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
     item.correctsSourceIdentity,
   ]);
@@ -666,8 +667,7 @@ async function publishBatchCorrection(
     fixtureId: correctionTarget.fixtureId,
     competitionId: correctionTarget.competitionId,
     season: correctionTarget.season,
-    previousParticipantIds: aggregateParticipantIds(previousState),
-    resultingParticipantIds: aggregateParticipantIds(event),
+    participantIds: affectedParticipantIds({ events: [previousState, event] }),
   });
   await recordStatisticsRefreshDependencies(
     target,
@@ -675,14 +675,13 @@ async function publishBatchCorrection(
     correctionTarget.revision + 1,
     dependencies,
   );
-  await advanceFixtureStatisticsCacheVersions(target, [correctionTarget.fixtureId]);
   await executeQuery(
     target,
     `UPDATE batch_item SET state='published', published_event_id=$2::bigint
      WHERE batch_item_id=$1::bigint`,
     [item.batchItemId, replacementId],
   );
-  return replacementId;
+  return { fixtureId: correctionTarget.fixtureId, events: [previousState, event] };
 }
 
 export async function publishAcceptedBatchChunk(
@@ -802,6 +801,11 @@ export async function publishAcceptedBatchChunk(
     };
   }> = [];
 
+  // Statistics versions are advanced once, after every delivery in the chunk
+  // is stored, so parallel chunks take those row locks in the same order.
+  const affectedFixtureIds: string[] = [];
+  const affectedEvents: AggregateParticipantEvent[] = [];
+
   for (const item of items.rows) {
     const payload = payloadRecord(item.payload);
     const submitted = comparableDeliveryForItem(item, payload);
@@ -810,12 +814,14 @@ export async function publishAcceptedBatchChunk(
       if (!current.reviewerId || !current.reviewReason || !current.reviewedAt) {
         throw new Error('Approved batch correction has no reviewer provenance.');
       }
-      await publishBatchCorrection(target, item, submitted, {
+      const corrected = await publishBatchCorrection(target, item, submitted, {
         ...current,
         reviewerId: current.reviewerId,
         reviewReason: current.reviewReason,
         reviewedAt: current.reviewedAt,
       });
+      affectedFixtureIds.push(corrected.fixtureId);
+      affectedEvents.push(...corrected.events);
       result.published += 1;
       continue;
     }
@@ -1027,10 +1033,10 @@ export async function publishAcceptedBatchChunk(
     if (publishedCount !== newPublications.length) {
       throw new Error('Concurrent delivery publication requires a retry.');
     }
-    await advanceFixtureStatisticsCacheVersions(
-      target,
-      newPublications.map(({ item }) => item.fixtureId),
-    );
+    for (const { item, delivery } of newPublications) {
+      affectedFixtureIds.push(item.fixtureId);
+      affectedEvents.push(delivery);
+    }
 
     const wickets = newPublications.flatMap(({ item, delivery }) =>
       delivery.wickets.map((wicket, ordinal) => ({
@@ -1083,6 +1089,11 @@ export async function publishAcceptedBatchChunk(
     }
     result.published += publishedCount;
   }
+
+  await advanceStatisticsDataVersions(target, {
+    fixtureIds: affectedFixtureIds,
+    participantIds: affectedParticipantIds({ events: affectedEvents }),
+  });
 
   const remaining = await executeQuery<{ exists: boolean }>(
     target,
