@@ -26,6 +26,7 @@ jobs:
       hygiene: ${{ steps.plan.outputs.hygiene }}
       deployment: ${{ steps.plan.outputs.deployment }}
       openapi: ${{ steps.plan.outputs.openapi }}
+      apiContract: ${{ steps.plan.outputs.apiContract }}
       coverage: ${{ steps.plan.outputs.coverage }}
       deployFrontend: ${{ steps.plan.outputs.deployFrontend }}
       deployBackend: ${{ steps.plan.outputs.deployBackend }}
@@ -159,6 +160,12 @@ jobs:
       - name: Lint OpenAPI description
         if: needs.plan.outputs.openapi == 'true'
         run: npm run openapi:lint
+
+      - name: Verify the API implementation against the OpenAPI contract
+        if: needs.plan.outputs.apiContract == 'true'
+        run: |
+          npm run prepare:contracts --workspace=@sport-analytics/backend
+          npm run test:api-contract
 
       - name: Verify Intermediate ingestion acceptance invariants
         if: needs.plan.outputs.intermediateIngestion == 'true'

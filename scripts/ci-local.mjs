@@ -241,6 +241,17 @@ async function runValidation(plan) {
     await runNpm(['run', 'openapi:lint'], { env: testEnvironment, label: 'OpenAPI lint' });
   }
 
+  if (plan.apiContract) {
+    await runNpm(['run', 'prepare:contracts', '--workspace=@sport-analytics/backend'], {
+      env: testEnvironment,
+      label: 'API contract prerequisites',
+    });
+    await runNpm(['run', 'test:api-contract'], {
+      env: testEnvironment,
+      label: 'OpenAPI contract tests',
+    });
+  }
+
   if (plan.intermediateIngestion) {
     await runNpm(['run', 'verify:intermediate-ingestion:invariants'], {
       env: testEnvironment,

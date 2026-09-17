@@ -159,6 +159,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/admin/dataset-release-jobs/{jobId}:
     get:
@@ -218,8 +222,13 @@ paths:
               application/json:
                 { schema: { $ref: '#/components/schemas/ApiConsumerIssueResponse' } },
             }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The issue request is invalid.
           content:
@@ -251,6 +260,10 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: The API consumer identifier is not a numeric identifier (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}:
     delete:
@@ -277,6 +290,10 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: The API consumer or key identifier is not a numeric identifier (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/consumer/competitions:
     get:
@@ -288,16 +305,26 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
+        - name: name
+          in: query
+          description: Optional competition-name filter.
+          schema:
+            type: string
+            minLength: 1
       responses:
         '200':
-          {
-            description: Competition page.,
-            content:
-              {
-                application/json:
-                  { schema: { $ref: '#/components/schemas/CompetitionCollectionResponse' } },
-              },
-          }
+          description: Competition page.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            X-Quota-Limit: { $ref: '#/components/headers/QuotaLimit' }
+            X-Quota-Remaining: { $ref: '#/components/headers/QuotaRemaining' }
+            X-Quota-Reset: { $ref: '#/components/headers/QuotaReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompetitionCollectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
@@ -311,16 +338,49 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
+        - name: competitionId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: seasonId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: gender
+          in: query
+          schema:
+            type: string
+            minLength: 1
+        - name: startDateFrom
+          in: query
+          description: Inclusive lower fixture-date bound.
+          schema:
+            type: string
+            format: date
+        - name: startDateTo
+          in: query
+          description: Inclusive upper fixture-date bound.
+          schema:
+            type: string
+            format: date
       responses:
         '200':
-          {
-            description: Fixture page.,
-            content:
-              {
-                application/json:
-                  { schema: { $ref: '#/components/schemas/FixtureCollectionResponse' } },
-              },
-          }
+          description: Fixture page.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            X-Quota-Limit: { $ref: '#/components/headers/QuotaLimit' }
+            X-Quota-Remaining: { $ref: '#/components/headers/QuotaRemaining' }
+            X-Quota-Reset: { $ref: '#/components/headers/QuotaReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FixtureCollectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
@@ -404,6 +464,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountDeletionResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -412,6 +473,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The exact deletion confirmation was not supplied.
           content:
@@ -463,14 +528,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubmitterAccessRequestResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The authenticated account is disabled.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '409':
           description: The account already has a pending request or is already approved.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The request body or requested competition is invalid.
           content:
@@ -508,14 +582,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubmitterScopeRequestResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The authenticated account is disabled.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '409':
           description: The account is not an approved submitter, the scope is already granted, or another scope request is pending.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The request body or requested competition is invalid.
           content:
@@ -589,6 +672,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -601,6 +685,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The user identifier or requested role is invalid.
           content:
@@ -660,6 +748,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -676,6 +765,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The update shape or one of the requested competition scopes is invalid.
           content:
@@ -714,6 +807,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -730,6 +824,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The target user identifier is malformed.
           content:
@@ -1688,6 +1786,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/StatisticProvenanceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1733,6 +1832,7 @@ paths:
           description: Global batch history across all submitters, optionally filtered by lifecycle state.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchListResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
@@ -1777,6 +1877,7 @@ paths:
           description: Submitters receive only their own batches; administrator reviewers receive their authorised repository scope.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchListResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
@@ -1802,7 +1903,8 @@ paths:
             name: X-Batch-Package-Version,
             in: header,
             required: true,
-            schema: { type: string, const: '1.0' },
+            description: '`1.1` permits fixture proposals for genuinely new fixtures.',
+            schema: { type: string, enum: ['1.0', '1.1'] },
           }
         - {
             name: X-File-Name,
@@ -1823,13 +1925,17 @@ paths:
           application/x-ndjson: { schema: { type: string, format: binary } }
       responses:
         '202':
-          {
-            description: Private source bytes were durably staged; no event is published.,
-            content:
-              {
-                application/json: { schema: { $ref: '#/components/schemas/BatchReceiptResponse' } },
-              },
-          }
+          description: Private source bytes were durably staged; no event is published.
+          headers:
+            Location:
+              description: Status URL of the staged batch.
+              required: true
+              schema: { type: string, pattern: '^/api/v1/batches/' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchReceiptResponse' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409':
@@ -1850,6 +1956,15 @@ paths:
             content:
               { application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
           }
+        '429':
+          description: The account exceeded 6 batch uploads in 60 seconds (`RATE_LIMIT_EXCEEDED`).
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '503':
           {
             description: Private object storage is unavailable.,
@@ -1877,6 +1992,7 @@ paths:
           }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches/{batchReference}/report:
     get:
@@ -1898,8 +2014,10 @@ paths:
           description: Summary, grouped rules, source traceability and all faults for this report page.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchReportResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches/{batchReference}/report/download:
     get:
@@ -1921,6 +2039,7 @@ paths:
               { schema: { $ref: '#/components/schemas/BatchReportDownloadResponse' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches/{batchReference}/review:
     post:
@@ -1942,10 +2061,16 @@ paths:
           description: Persisted decision and current publication lifecycle state.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Approval is unsafe, another decision won the race, or publication is leased.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
@@ -1973,10 +2098,16 @@ paths:
           description: Conflict resolved and current batch lifecycle returned.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: The conflict is stale, ambiguous, already resolved, or cannot be corrected safely.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
@@ -2010,14 +2141,70 @@ paths:
           content:
             application/json:
               { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: The candidate is stale, unavailable, or conflicts with a prior decision.
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The mapping request is invalid.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
+  /api/v1/batches/{batchReference}/canonical-fixtures:
+    post:
+      tags: [Batches]
+      summary: Create a canonical fixture from a staged fixture proposal
+      description: >-
+        An administrator may create the canonical fixture for an unresolved fixture reference that
+        was submitted with a complete fixture proposal in a version `1.1` batch package: a source
+        identifier, date, season and two teams. The backend records the decision and queues normal
+        reference resolution and validation; it does not publish any staged delivery. Teams,
+        participants and seasons must already be canonical records.
+      operationId: createBatchCanonicalFixture
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchCanonicalFixtureRequest' }
+      responses:
+        '202':
+          description: >-
+            The canonical fixture decision was recorded. `status` is `queued` while revalidation is
+            pending, or `applied` when the stored decision has already been applied.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The account is not an administrator, or the batch is not visible to it.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            The item does not carry a complete version 1.1 fixture proposal, or the decision
+            conflicts with a prior decision (`BATCH_CANONICAL_FIXTURE_CONFLICT`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The fixture decision is invalid (`VALIDATION_FAILED`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
@@ -2047,6 +2234,10 @@ paths:
       responses:
         '200':
           description: The event was atomically superseded by a corrected revision.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
           content:
             application/json:
               schema:
@@ -2063,12 +2254,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The correction failed contract, reference, or source-event validation.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: The submission-capable account exceeded 30 requests in 60 seconds (`RATE_LIMIT_EXCEEDED`).
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/submissions/events/{eventId}/history:
     get:
@@ -2124,6 +2328,10 @@ paths:
       responses:
         '201':
           description: Uploaded events were accepted and source-file provenance was stored.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
           content:
             application/json:
               schema:
@@ -2153,10 +2361,10 @@ paths:
         '429':
           description: The submission-capable account exceeded 30 requests in 60 seconds.
           headers:
-            Retry-After:
-              schema:
-                type: integer
-              description: Seconds until the current rate-limit window ends.
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
             application/json:
               schema:
@@ -2186,6 +2394,10 @@ paths:
       responses:
         '201':
           description: Submission and all ordered events were accepted and stored.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
           content:
             application/json:
               schema:
@@ -2217,10 +2429,10 @@ paths:
         '429':
           description: The submission-capable account exceeded 30 requests in 60 seconds.
           headers:
-            Retry-After:
-              schema:
-                type: integer
-              description: Seconds until the current rate-limit window ends.
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
             application/json:
               schema:
@@ -2361,9 +2573,46 @@ components:
           - competition
           - career
 
+  headers:
+    RateLimitLimit:
+      description: Requests permitted in the current 60-second rate-limit window.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    RateLimitRemaining:
+      description: Requests remaining in the current rate-limit window.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    RateLimitReset:
+      description: Seconds until the current rate-limit window ends.
+      required: true
+      schema: { type: integer, minimum: 1 }
+    RetryAfter:
+      description: Seconds to wait before retrying, until the current rate-limit window ends.
+      required: true
+      schema: { type: integer, minimum: 1 }
+    QuotaLimit:
+      description: Requests this API consumer may make per UTC day.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    QuotaRemaining:
+      description: Requests remaining for this API consumer in the current UTC day.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    QuotaReset:
+      description: Seconds until the daily quota resets at UTC midnight.
+      required: true
+      schema: { type: integer, minimum: 0 }
+
   responses:
     BadRequest:
       description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    InvalidJsonBody:
+      description: The request body is not valid JSON (`INVALID_JSON`).
       content:
         application/json:
           schema:
@@ -2454,15 +2703,27 @@ components:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
     ConsumerLimitExceeded:
-      description: The consumer rate limit or daily quota was exhausted.
+      description: >-
+        The consumer per-minute rate limit (`RATE_LIMIT_EXCEEDED`) or daily quota
+        (`QUOTA_EXCEEDED`) was exhausted. Both carry the `RateLimit-*` headers. The per-minute
+        limit also sends `Retry-After` but not `X-Quota-*`; the daily quota sends `X-Quota-*` but
+        not `Retry-After`.
       headers:
-        RateLimit-Limit: { schema: { type: integer } }
-        RateLimit-Remaining: { schema: { type: integer } }
-        RateLimit-Reset: { schema: { type: integer } }
-        X-Quota-Limit: { schema: { type: integer } }
-        X-Quota-Remaining: { schema: { type: integer } }
-        X-Quota-Reset: { schema: { type: integer } }
-        Retry-After: { schema: { type: integer } }
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+        X-Quota-Limit:
+          description: Daily request quota. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Remaining:
+          description: Requests remaining today. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Reset:
+          description: Seconds until the daily quota resets. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        Retry-After:
+          description: Seconds to wait before retrying. Sent only when the per-minute limit is exhausted.
+          schema: { type: integer, minimum: 1 }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
@@ -2486,7 +2747,8 @@ components:
       required: [releaseId, version, createdAt, formatVersion, scope, eventCount, checksum, fields]
       properties:
         releaseId:
-          $ref: '#/components/schemas/DatabaseIdentifier'
+          type: string
+          format: uuid
         version:
           $ref: '#/components/schemas/DatasetReleaseVersion'
         createdAt: { type: string, format: date-time }
@@ -2609,12 +2871,25 @@ components:
       additionalProperties: false
       required: [data]
       properties:
-        data:
-          allOf:
-            - $ref: '#/components/schemas/ApiConsumer'
-            - type: object
-              required: [apiKey]
-              properties: { apiKey: { type: string, writeOnly: true } }
+        data: { $ref: '#/components/schemas/ApiConsumerWithKey' }
+    ApiConsumerWithKey:
+      description: >-
+        An API consumer together with its one-time raw key. Its fields must stay aligned with
+        `ApiConsumer`, plus `apiKey`; the OpenAPI contract tests enforce this against real
+        responses.
+      type: object
+      additionalProperties: false
+      required: [id, name, rateLimitPerMinute, dailyQuota, createdAt, keys, apiKey]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        name: { type: string }
+        rateLimitPerMinute: { type: integer }
+        dailyQuota: { type: integer }
+        createdAt: { type: string, format: date-time }
+        keys: { type: array, items: { $ref: '#/components/schemas/ApiConsumerKey' } }
+        apiKey:
+          type: string
+          description: Raw API key. Returned only in this response and never retrievable again.
     ApiConsumerRotateResponse:
       $ref: '#/components/schemas/ApiConsumerIssueResponse'
     ApiConsumerListResponse:
@@ -5091,17 +5366,52 @@ components:
         source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
 
     ProvenanceSubmissionDetail:
-      allOf:
-        - $ref: '#/components/schemas/ProvenanceSubmission'
-        - type: object
-          required: [lifecycle, decisions]
-          properties:
-            lifecycle:
-              type: array
-              items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
-            decisions:
-              type: array
-              items: { $ref: '#/components/schemas/ProvenanceDecision' }
+      description: >-
+        A provenance submission with its lifecycle and decisions. Its fields must stay aligned
+        with `ProvenanceSubmission`, plus `lifecycle` and `decisions`; the OpenAPI contract tests
+        enforce this against real responses.
+      type: object
+      additionalProperties: false
+      required:
+        [
+          kind,
+          reference,
+          submissionId,
+          batchReference,
+          fixtureId,
+          competitionId,
+          submitter,
+          status,
+          receivedAt,
+          updatedAt,
+          eventCount,
+          source,
+          lifecycle,
+          decisions,
+        ]
+      properties:
+        kind: { type: string, enum: [direct, file, batch] }
+        reference: { type: string, minLength: 1 }
+        submissionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        batchReference:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        fixtureId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        competitionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        submitter: { $ref: '#/components/schemas/ProvenanceActor' }
+        status: { type: string, minLength: 1 }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        eventCount: { type: integer, minimum: 0 }
+        source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
+        lifecycle:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
+        decisions:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceDecision' }
 
     ProvenanceSubmissionListResponse:
       type: object
@@ -5296,7 +5606,7 @@ components:
         inningsId:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
         overNumber: { type: [integer, 'null'], minimum: 0 }
-        positionInOver: { type: [integer, 'null'], minimum: 1 }
+        positionInOver: { type: [integer, 'null'], minimum: 0 }
         description: { type: string, minLength: 1 }
 
     BatchReportError:
@@ -5527,6 +5837,15 @@ components:
         candidateReference: { type: string, format: uuid }
         decisionKey: { type: string, minLength: 1, maxLength: 255 }
 
+    BatchCanonicalFixtureRequest:
+      type: object
+      additionalProperties: false
+      required: [itemOrdinal, referencePath, decisionKey]
+      properties:
+        itemOrdinal: { type: integer, minimum: 0 }
+        referencePath: { type: string, minLength: 1, maxLength: 1000 }
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
     BatchReferenceMappingReceipt:
       type: object
       additionalProperties: false
@@ -5625,8 +5944,7 @@ components:
           description: Zero-based position in the over; unlike the display ball number, this cannot repeat.
         ballNumber:
           type: string
-          minLength: 1
-          maxLength: 32
+          pattern: '^\d{1,3}\.\d{1,2}$'
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
@@ -5814,7 +6132,7 @@ components:
           maximum: 32767
         ballNumber:
           type: string
-          pattern: '^\\d{1,3}\\.\\d{1,2}$'
+          pattern: '^\d{1,3}\.\d{1,2}$'
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
