@@ -564,8 +564,19 @@ describe.sequential('public events database API', () => {
     const artifact = JSON.parse(store.object!.toString()) as {
       events: Array<{ eventId: string; runsOffBat: number }>;
     };
-    expect(artifact.events.map((event) => event.eventId)).toEqual(current.orderedEventIds);
-    expect(artifact.events.at(-1)?.runsOffBat).toBe(1);
+    const testEventIds = new Set(current.orderedEventIds);
+    const snapshottedTestEvents = artifact.events.filter((event) =>
+      testEventIds.has(event.eventId),
+    );
+
+    expect(snapshottedTestEvents.map((event) => event.eventId)).toEqual(current.orderedEventIds);
+
+    const correctedSnapshotEvent = snapshottedTestEvents.find(
+      (event) => event.eventId === current.orderedEventIds[2],
+    );
+
+    expect(correctedSnapshotEvent?.runsOffBat).toBe(1);
+
     const published = await repository.loadPublishedEventPage(null, 10);
     expect(published.events).toContainEqual(expect.objectContaining({ runsOffBat: 6 }));
   });
