@@ -513,6 +513,68 @@ function correctionValidationResult(
   };
 }
 
+function resolvedCompetitionScopeValidationResult(
+  item: PreparedItem,
+  batchCompetitionId: string,
+): CricketValidationResult {
+  const code = 'RESOLVED_COMPETITION_OUT_OF_SCOPE';
+  const message = 'Resolved fixture is outside the batch competition scope.';
+  item.state = 'rejected';
+  item.rejectionCode = code;
+  item.rejectionMessage = message;
+  // Do not expose the resolved competition: the submitter may not be authorised to see it.
+  item.rejectionDetail = { batchCompetitionId };
+  return {
+    code,
+    ruleVersion: '1.0',
+    severity: 'error',
+    eventIndex: item.ordinal,
+    fieldPath: 'fixture',
+    message,
+  };
+}
+
+/**
+ * Authorisation at receipt covers the batch's declared competition. Recheck every
+ * resolved event against its canonical fixture so package contents cannot cross
+ * that boundary after reference resolution or reviewer mapping.
+ */
+export async function enforceResolvedCompetitionScope(
+  client: Pick<PoolClient, 'query'>,
+  items: PreparedItem[],
+  batchCompetitionId: string,
+): Promise<Map<number, CricketValidationResult[]>> {
+  const accepted = items.filter((item) => item.state === 'accepted' && item.inningsId !== null);
+  const results = new Map<number, CricketValidationResult[]>();
+  if (accepted.length === 0) return results;
+
+  const values: unknown[] = [];
+  const tuples = accepted.map((item) => {
+    const first = values.length + 1;
+    values.push(item.ordinal, item.inningsId);
+    return `($${first}::integer,$${first + 1}::bigint)`;
+  });
+  const resolved = await client.query<{ ordinal: number; competitionId: string }>(
+    `
+      WITH staged (ordinal, innings_id) AS (VALUES ${tuples.join(',')})
+      SELECT staged.ordinal, fixture.competition_id::text AS "competitionId"
+      FROM staged
+      JOIN innings ON innings.innings_id=staged.innings_id
+      JOIN fixture ON fixture.fixture_id=innings.fixture_id
+    `,
+    values,
+  );
+  const competitionByOrdinal = new Map(
+    resolved.rows.map((row) => [row.ordinal, row.competitionId]),
+  );
+
+  for (const item of accepted) {
+    if (competitionByOrdinal.get(item.ordinal) === batchCompetitionId) continue;
+    results.set(item.ordinal, [resolvedCompetitionScopeValidationResult(item, batchCompetitionId)]);
+  }
+  return results;
+}
+
 export async function resolveCorrectionTargets(
   client: Pick<PoolClient, 'query'>,
   items: PreparedItem[],
@@ -1632,9 +1694,19 @@ export function createBatchValidationJobHandler(
           if (item) prepared.push(item);
         }
 
-        const businessResultsByOrdinal = await transaction(database, (client) =>
-          resolveCorrectionTargets(client, prepared, claimResult.competitionId),
-        );
+        const businessResultsByOrdinal = await transaction(database, async (client) => {
+          const scopeResults = await enforceResolvedCompetitionScope(
+            client,
+            prepared,
+            claimResult.competitionId,
+          );
+          const correctionResults = await resolveCorrectionTargets(
+            client,
+            prepared,
+            claimResult.competitionId,
+          );
+          return new Map([...scopeResults, ...correctionResults]);
+        });
         const canonicalItems = prepared
           .filter((item) => item.state === 'accepted')
           .map((item) => {
