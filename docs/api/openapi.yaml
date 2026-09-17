@@ -407,7 +407,12 @@ paths:
       operationId: listConsumerFixtureEvents
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/Cursor' }]
+      parameters:
+        [
+          { $ref: '#/components/parameters/FixtureId' },
+          { $ref: '#/components/parameters/Limit' },
+          { $ref: '#/components/parameters/Cursor' },
+        ]
       responses:
         '200': { description: Paginated accepted fixture events. }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -447,7 +452,8 @@ paths:
       operationId: getConsumerFixtureEvent
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/EventId' }]
+      parameters:
+        [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/EventId' }]
       responses:
         '200': { description: Accepted fixture event. }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
@@ -473,7 +479,11 @@ paths:
       operationId: getConsumerFixtureStatistic
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/StatisticId' }]
+      parameters:
+        [
+          { $ref: '#/components/parameters/FixtureId' },
+          { $ref: '#/components/parameters/StatisticId' },
+        ]
       responses:
         '200': { description: Derived fixture statistic. }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
@@ -486,7 +496,11 @@ paths:
       operationId: exportConsumerFixtureStatisticEventsJson
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/StatisticId' }]
+      parameters:
+        [
+          { $ref: '#/components/parameters/FixtureId' },
+          { $ref: '#/components/parameters/StatisticId' },
+        ]
       responses:
         '200': { description: JSON statistic-event export. }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
@@ -499,7 +513,11 @@ paths:
       operationId: exportConsumerFixtureStatisticEventsCsv
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/StatisticId' }]
+      parameters:
+        [
+          { $ref: '#/components/parameters/FixtureId' },
+          { $ref: '#/components/parameters/StatisticId' },
+        ]
       responses:
         '200': { description: CSV statistic-event export. }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
@@ -512,7 +530,11 @@ paths:
       operationId: getConsumerParticipantStatistics
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/ParticipantId' }, { name: scope, in: query, schema: { type: string, enum: [season, competition, career] } }]
+      parameters:
+        [
+          { $ref: '#/components/parameters/ParticipantId' },
+          { name: scope, in: query, schema: { type: string, enum: [season, competition, career] } },
+        ]
       responses:
         '200': { description: Participant season, competition, and career aggregates. }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -526,7 +548,11 @@ paths:
       operationId: getConsumerParticipantStatistic
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/ParticipantId' }, { $ref: '#/components/parameters/StatisticId' }]
+      parameters:
+        [
+          { $ref: '#/components/parameters/ParticipantId' },
+          { $ref: '#/components/parameters/StatisticId' },
+        ]
       responses:
         '200': { description: Participant aggregate statistic. }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
