@@ -99,6 +99,13 @@ Cricsheet may publish corrected versions of match data. The generated manifest s
 
 Refreshing the files does not itself import anything into PostgreSQL. Database ingestion will be implemented separately.
 
+Cricsheet innings `powerplays` are mapped without defaulting to `innings_powerplay.from_ball`,
+`to_ball`, and `type`. Ranges are validated before any direct import write. In the supported staged
+JSON/NDJSON path they retain batch checksum, submitter and review provenance through the batch
+reference on the published marker. A corrected, fully published source set replaces the earlier
+ranges deterministically; staged, rejected or partially published markers cannot affect public
+statistics. An omitted field remains unknown rather than being inferred as overs 0 through 5.
+
 ## Validation
 
 To confirm that the downloader only retained scoped matches, inspect:
@@ -123,3 +130,4 @@ The generated data should remain absent from `git status` because the bulk archi
 
 The preceding issue was planned and generated with the assistance of
 ChatGPT-Web[GPT-5.6 Thinking].
+The issue #633 powerplay ingestion mapping was documented with the assistance of Codex[GPT-5].

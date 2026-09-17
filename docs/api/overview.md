@@ -307,6 +307,20 @@ GET /api/v1/participants/{participantId}/statistics/{statisticId}
 
 See [Participant aggregate calculations](../statistics/participant-aggregates.md).
 
+### Season and competition leaderboards
+
+`GET /api/v1/statistics/leaderboards` returns a bounded, server-ranked participant table for one
+explicit season or competition. Supply `scope=season&seasonId=...` or
+`scope=competition&competitionId=...`, a supported `metric`, and an optional `limit` from 1 to 50
+(default 10). Invalid scope/identifier combinations, metrics and bounds return `400`; a scope that
+does not exist returns `404`.
+
+Total metrics are `most_runs`, `most_wickets`, `most_fours` and `most_sixes`. Qualified rate metrics
+are `highest_batting_average`, `highest_strike_rate`, `best_bowling_average`,
+`best_economy_rate` and `best_bowling_strike_rate`. Every response names the scope and metric,
+returns stable participant identifiers and readable names, and carries the applicable qualification
+rule. See [Participant aggregate calculations](../statistics/participant-aggregates.md#leaderboards).
+
 ### Dataset releases
 
 Administrators can queue immutable versioned dataset releases. Public consumers can discover release
@@ -347,3 +361,5 @@ The following belong to later Advanced-tier work rather than the implemented Int
 
 The preceding API overview was reviewed and updated for the Intermediate implementation with the
 assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #635 public leaderboard endpoint and qualification summary were documented with the
+assistance of Codex[GPT-5].

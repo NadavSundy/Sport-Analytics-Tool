@@ -6,8 +6,10 @@ info:
   description: |
     Version-controlled contract for the handwritten Sport Analytics backend API.
 
-    The supported API major version is `v1`; every documented path is served
-    beneath `/api/v1`. URI paths are the only version-selection mechanism.
+    The supported business API major version is `v1`; application-data paths are
+    served beneath `/api/v1`. Public documentation resources such as `/openapi.yaml`
+    sit outside that versioned business surface. URI paths are the only
+    version-selection mechanism for the business API.
     Unsupported major-version paths return `404` with
     `UNSUPPORTED_API_VERSION`; request headers do not negotiate another API version.
 
@@ -32,6 +34,9 @@ servers:
 security: []
 
 tags:
+  - name: Documentation
+    description: Public machine-readable API documentation resources.
+
   - name: Health
     description: Service health and availability.
 
@@ -68,6 +73,25 @@ tags:
       documented in `docs/api/consumer-keys.md`.
 
 paths:
+  /openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: Download the authoritative OpenAPI specification
+      description: >-
+        Returns the same version-controlled OpenAPI document maintained at
+        docs/api/openapi.yaml. This documentation resource is public and is not
+        part of the versioned /api/v1 business-data surface.
+      operationId: getOpenApiSpecification
+      x-implementation-status: implemented
+      security: []
+      responses:
+        '200':
+          description: Authoritative machine-readable OpenAPI 3.1 specification.
+          content:
+            application/yaml:
+              schema:
+                type: string
+
   /api/v1/dataset-releases:
     get:
       tags: [Dataset Releases]
@@ -1839,6 +1863,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ParticipantAggregateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/statistics/leaderboards:
+    get:
+      tags:
+        - Public Read
+      summary: Get a bounded season or competition participant leaderboard
+      description: |
+        Ranks accepted-current standard-innings participant aggregates with one
+        set-based server-side query. `scope=season` requires `seasonId`;
+        `scope=competition` requires `competitionId`. Total and batting rate
+        metrics sort descending; bowling rate metrics sort ascending. Equal
+        metric values are ordered by participant name using database C
+        collation, then stable numeric participant ID. Rate qualifications and
+        their rationale are returned in the response. Results are limited to at
+        most 50 entries and expose no submission, account, review or audit data.
+      operationId: getStatisticsLeaderboard
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [season, competition]
+        - name: seasonId
+          in: query
+          description: Required only for season scope; the opaque season resource identifier.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitionId
+          in: query
+          description: Required only for competition scope.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: metric
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/LeaderboardMetric'
+        - name: limit
+          in: query
+          description: Bounded top-N result size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: The requested authoritative leaderboard and qualification metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -4320,6 +4403,7 @@ components:
                 - legalBalls
                 - overs
                 - runRate
+                - powerplay
                 - extras
               properties:
                 deliveryRuns:
@@ -4347,6 +4431,63 @@ components:
                     - 'null'
                   minimum: 0
                   description: Runs per over, or null when no legal ball has been bowled.
+                powerplay:
+                  oneOf:
+                    - type: object
+                      additionalProperties: false
+                      required:
+                        - ranges
+                        - runs
+                        - wicketsLost
+                        - legalBalls
+                        - overs
+                        - runRate
+                        - sourceEventCount
+                      properties:
+                        ranges:
+                          type: array
+                          minItems: 1
+                          items:
+                            type: object
+                            additionalProperties: false
+                            required: [fromBall, toBall, type]
+                            properties:
+                              fromBall:
+                                type: number
+                                minimum: 0
+                              toBall:
+                                type: number
+                                minimum: 0
+                              type:
+                                type: string
+                                minLength: 1
+                        runs:
+                          type: integer
+                          minimum: 0
+                        wicketsLost:
+                          type: integer
+                          minimum: 0
+                        legalBalls:
+                          type: integer
+                          minimum: 0
+                        overs:
+                          type: string
+                          pattern: '^\d+\.\d+$'
+                        runRate:
+                          type:
+                            - number
+                            - 'null'
+                          minimum: 0
+                        sourceEventCount:
+                          type: integer
+                          minimum: 0
+                        contributingEvents:
+                          type: array
+                          description: Present only when includeContributors=true.
+                          items:
+                            $ref: '#/components/schemas/StatisticContributingEvent'
+                    - type: 'null'
+                  description: Authoritative powerplay aggregate, or null when no marker metadata exists.
                 extras:
                   type: object
                   additionalProperties: false
@@ -5115,6 +5256,124 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/ParticipantAggregate'
+
+    LeaderboardMetric:
+      type: string
+      enum:
+        - most_runs
+        - most_wickets
+        - most_fours
+        - most_sixes
+        - highest_batting_average
+        - highest_strike_rate
+        - best_bowling_average
+        - best_economy_rate
+        - best_bowling_strike_rate
+
+    LeaderboardQualification:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [field, minimum, rationale]
+          properties:
+            field:
+              type: string
+              enum: [dismissals, ballsFaced, wicketsTaken, legalBallsBowled]
+            minimum:
+              type: integer
+              minimum: 1
+            rationale:
+              type: string
+              minLength: 1
+        - type: 'null'
+
+    LeaderboardEntry:
+      type: object
+      additionalProperties: false
+      required: [rank, participantId, participantName, value]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        value:
+          type: number
+          minimum: 0
+
+    Leaderboard:
+      type: object
+      additionalProperties: false
+      allOf:
+        - if:
+            properties:
+              scope:
+                const: season
+          then:
+            required: [seasonId, season]
+            properties:
+              seasonId:
+                $ref: '#/components/schemas/ApiIdentifier'
+              season:
+                type: string
+                minLength: 1
+      required:
+        - scope
+        - competitionId
+        - competitionName
+        - metric
+        - limit
+        - qualification
+        - tieBreakers
+        - entries
+      properties:
+        scope:
+          type: string
+          enum: [season, competition]
+        seasonId:
+          description: Present and required when scope is season.
+          $ref: '#/components/schemas/ApiIdentifier'
+        season:
+          description: Present and required when scope is season.
+          type: string
+          minLength: 1
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        competitionName:
+          type: string
+          minLength: 1
+        metric:
+          $ref: '#/components/schemas/LeaderboardMetric'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        qualification:
+          $ref: '#/components/schemas/LeaderboardQualification'
+        tieBreakers:
+          type: array
+          prefixItems:
+            - const: metricValue
+            - const: participantName
+            - const: participantId
+          minItems: 3
+          maxItems: 3
+        entries:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/LeaderboardEntry'
+
+    LeaderboardResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Leaderboard'
 
     CompetitionResponse:
       type: object

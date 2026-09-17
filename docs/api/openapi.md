@@ -10,6 +10,24 @@ docs/api/openapi.yaml
 
 [Open the raw OpenAPI specification](openapi.yaml)
 
+## Public backend endpoint
+
+The backend exposes this same specification as a public, read-only documentation resource:
+
+```text
+Local development: http://localhost:3000/openapi.yaml
+Azure development: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/openapi.yaml
+```
+
+`GET /openapi.yaml` does not require application sign-in or an API consumer key. It sits outside
+`/api/v1` because it is a documentation resource rather than a versioned business-data endpoint.
+
+`docs/api/openapi.yaml` remains the only maintained source of truth. The backend build copies the exact
+version-controlled file to `apps/backend/dist/openapi.yaml`. Source-mode local development resolves the
+repository file directly, while the compiled runtime resolves the bundled copy. The Azure deployment
+artifact already includes the complete backend `dist` directory, so the deployed endpoint serves the
+same specification that is validated by `npm run openapi:lint`.
+
 ## Validation
 
 Validate the specification from the repository root with:
@@ -71,3 +89,4 @@ PostgreSQL
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #609 contract-test section was added with the assistance of Claude-Code[Claude Opus 5].
+The Issue #658 public-specification endpoint and deployment-packaging documentation was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

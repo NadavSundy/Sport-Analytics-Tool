@@ -60,6 +60,23 @@ credential-rotation requirements.
 
 Database credentials and other secrets are configured through Azure App Service and are never committed.
 
+## Public OpenAPI specification
+
+The backend exposes the machine-readable OpenAPI contract publicly at:
+
+```text
+https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/openapi.yaml
+```
+
+The equivalent local-development URL is `http://localhost:3000/openapi.yaml`. This documentation route
+requires neither Supabase application authentication nor an API consumer key and does not change the
+versioned `/api/v1` application API.
+
+The authoritative source remains `docs/api/openapi.yaml`. `npm run build --workspace=@sport-analytics/backend`
+copies that exact file to `apps/backend/dist/openapi.yaml`, and the deployment preparation step copies the
+complete backend `dist` tree into `.deployment/backend`. The copy helper verifies byte-for-byte equality
+with the version-controlled source so a production build cannot silently package a divergent contract.
+
 ## Logging
 
 The Express application uses Pino HTTP for structured request logging. Azure App Service provides the hosting/runtime log surface.
@@ -142,3 +159,4 @@ The production managed-identity composition and deployed storage settings were d
 assistance of Codex[GPT-5].
 The Issue #364 Intermediate ingestion deployment-status reconciliation was reviewed and edited with
 the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #658 public OpenAPI endpoint and deployment-packaging documentation was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

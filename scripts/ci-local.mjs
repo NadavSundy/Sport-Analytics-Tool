@@ -275,13 +275,6 @@ async function runValidation(plan) {
     });
   }
 
-  if (plan.coverage) {
-    await runNpm(['run', 'test:coverage'], {
-      env: testEnvironment,
-      label: 'Repository-wide code coverage',
-    });
-  }
-
   if (plan.e2e) {
     const browserEnvironment = {
       ...process.env,
@@ -332,6 +325,13 @@ async function runValidation(plan) {
     await runNpm(['run', 'test:database'], {
       env: testEnvironment,
       label: 'PostgreSQL 16 database integration tests',
+    });
+  }
+
+  if (plan.coverage) {
+    await runNpm(['run', 'test:coverage'], {
+      env: testEnvironment,
+      label: 'Repository-wide code coverage',
     });
   }
 }

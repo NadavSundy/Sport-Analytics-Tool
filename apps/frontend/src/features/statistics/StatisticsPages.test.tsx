@@ -127,6 +127,7 @@ const inningsStatistic = {
     legalBalls: 120,
     overs: '20.0',
     runRate: 7.95,
+    powerplay: null,
     extras: { total: 9, wides: 2, noBalls: 1, byes: 0, legByes: 1, penaltyRuns: 5 },
   },
 };

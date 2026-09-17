@@ -16,6 +16,7 @@ import {
   type VerifyAccessToken,
 } from './auth/supabase-auth';
 import { loadEnvironment, type Environment } from './config/env';
+import { loadOpenApiSpecification } from './openapi/openapi-spec';
 import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
 import {
@@ -34,6 +35,11 @@ import {
   createParticipantAggregatesService,
   type ParticipantAggregatesService,
 } from './modules/statistics/participant-aggregates.service';
+import { createLeaderboardsRouter } from './modules/statistics/leaderboards.routes';
+import {
+  createLeaderboardsService,
+  type LeaderboardsService,
+} from './modules/statistics/leaderboards.service';
 import { createFixtureStatisticsRouter } from './modules/statistics/fixture-statistics.routes';
 import {
   createFixtureStatisticsService,
@@ -91,6 +97,7 @@ export interface AppDependencies {
   publicReadService?: PublicReadService;
   fixtureStatisticsService?: FixtureStatisticsService;
   participantAggregatesService?: ParticipantAggregatesService;
+  leaderboardsService?: LeaderboardsService;
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
@@ -117,6 +124,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.fixtureStatisticsService ?? createFixtureStatisticsService();
   const participantAggregatesService =
     dependencies.participantAggregatesService ?? createParticipantAggregatesService();
+  const leaderboardsService = dependencies.leaderboardsService ?? createLeaderboardsService();
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
@@ -205,6 +213,17 @@ export function createApp(dependencies: AppDependencies = {}) {
     }),
   );
 
+  app.get('/openapi.yaml', (_request, response, next) => {
+    try {
+      response
+        .status(200)
+        .set('Content-Type', 'application/yaml; charset=utf-8')
+        .send(loadOpenApiSpecification());
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.use(API_BASE_PATH, (_request, response, next) => {
     response.setHeader('API-Version', CURRENT_API_VERSION);
     next();
@@ -214,6 +233,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));
   app.use(API_BASE_PATH, createFixtureStatisticsRouter(fixtureStatisticsService));
   app.use(API_BASE_PATH, createParticipantAggregatesRouter(participantAggregatesService));
+  app.use(API_BASE_PATH, createLeaderboardsRouter(leaderboardsService));
   app.use(
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),

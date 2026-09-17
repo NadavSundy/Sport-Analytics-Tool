@@ -100,6 +100,49 @@ function inningsOvers(
   return `${lastOverNumber + Math.floor(legalBallsInLastOver / expectedBalls)}.${legalBallsInLastOver % expectedBalls}`;
 }
 
+function powerplayForInnings(
+  fixtureId: string,
+  innings: FixtureStatisticsInningsSource,
+  events: FixtureStatisticsEventSource[],
+  ballsPerOver: number,
+  includeContributors: boolean,
+) {
+  if (innings.powerplays.length === 0) return null;
+
+  const powerplayEvents = events.filter((event) => {
+    const ball = Number(event.ballNumber);
+    return (
+      Number.isFinite(ball) &&
+      innings.powerplays.some((range) => ball >= range.fromBall && ball <= range.toBall)
+    );
+  });
+  const legalBalls = powerplayEvents.filter((event) =>
+    isLegalDelivery({ wides: event.extraWides, noBalls: event.extraNoBalls }),
+  ).length;
+  const runs = powerplayEvents.reduce((total, event) => total + event.runsTotal, 0);
+  const wicketsLost = powerplayEvents.reduce(
+    (total, event) => total + event.wickets.filter((wicket) => wicket.isTerminal).length,
+    0,
+  );
+
+  return {
+    ranges: innings.powerplays,
+    runs,
+    wicketsLost,
+    legalBalls,
+    overs: formatOvers(legalBalls, ballsPerOver),
+    runRate: calculateRate(runs, legalBalls, ballsPerOver),
+    sourceEventCount: powerplayEvents.length,
+    ...(includeContributors
+      ? {
+          contributingEvents: powerplayEvents.map((event) =>
+            mapContributingEvent(fixtureId, event),
+          ),
+        }
+      : {}),
+  };
+}
+
 function mapContributingEvent(
   fixtureId: string,
   event: FixtureStatisticsEventSource,
@@ -383,6 +426,13 @@ export function deriveFixtureStatistics(
         legalBalls,
         overs: inningsOvers(events, innings, source.ballsPerOver),
         runRate: calculateRate(totalRuns, legalBalls, source.ballsPerOver),
+        powerplay: powerplayForInnings(
+          source.fixtureId,
+          innings,
+          events,
+          source.ballsPerOver,
+          includeContributors,
+        ),
         extras: {
           total: deliveryExtras + penaltyRuns,
           wides,

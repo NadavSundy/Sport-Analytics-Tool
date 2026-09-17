@@ -131,6 +131,45 @@ const inningsContextSchema = z
   })
   .strict();
 
+const powerplayBallSchema = z
+  .number()
+  .nonnegative()
+  .max(999.99)
+  .refine(
+    (value) => Math.abs(value - Math.round(value * 100) / 100) < 1e-9,
+    'A powerplay boundary must use at most two decimal places.',
+  );
+
+export const inningsPowerplaySchema = z
+  .object({
+    from: powerplayBallSchema,
+    to: powerplayBallSchema,
+    type: readableNameSchema,
+  })
+  .strict()
+  .refine((powerplay) => powerplay.from <= powerplay.to, {
+    path: ['to'],
+    message: 'A powerplay end boundary must not precede its start boundary.',
+  });
+
+export const inningsPowerplaysSchema = z
+  .array(inningsPowerplaySchema)
+  .max(16)
+  .superRefine((powerplays, context) => {
+    const ordered = [...powerplays].sort(
+      (left, right) => left.from - right.from || left.to - right.to,
+    );
+    for (let index = 1; index < ordered.length; index += 1) {
+      if (ordered[index]!.from <= ordered[index - 1]!.to) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Powerplay ranges within an innings must not overlap.',
+        });
+        break;
+      }
+    }
+  });
+
 const runsSchema = z
   .object({
     offBat: z.number().int().min(0).max(32_767),
@@ -247,6 +286,7 @@ const inningsSchema = z
   .object({
     sourceId: sourceIdentifierFor('innings').optional(),
     context: inningsContextSchema.optional(),
+    powerplays: inningsPowerplaysSchema.optional(),
     events: z.array(seasonUploadEventSchema).min(1),
   })
   .strict()
@@ -414,4 +454,5 @@ export const referenceResolutionRequirementSchema = z
 export type SeasonUploadPackage = z.infer<typeof seasonUploadPackageSchema>;
 export type SeasonUploadManifest = z.infer<typeof seasonUploadManifestSchema>;
 export type SeasonUploadEvent = z.infer<typeof seasonUploadEventSchema>;
+export type InningsPowerplay = z.infer<typeof inningsPowerplaySchema>;
 export type FixtureProposal = z.infer<typeof fixtureProposalSchema>;

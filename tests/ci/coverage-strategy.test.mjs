@@ -187,16 +187,37 @@ test('coverage thresholds are optional, centrally parsed, and fail only when con
   );
 });
 
-test('Gitea CI gives coverage its own routed lane, artifact, and quality-gate result', () => {
-  assert.match(workflow, /\n  coverage:\n/);
-  assert.match(workflow, /needs\.plan\.outputs\.coverage == 'true'/);
-  assert.match(workflow, /run: npm run test:coverage/);
-  assert.match(workflow, /uses: actions\/upload-artifact@v4/);
-  assert.match(workflow, /name: repository-coverage-\$\{\{ github\.sha \}\}/);
-  assert.match(workflow, /path: coverage\//);
-  assert.match(workflow, /- coverage\n/);
-  assert.match(workflow, /COVERAGE_REQUIRED: \$\{\{ needs\.plan\.outputs\.coverage \}\}/);
-  assert.match(workflow, /COVERAGE_RESULT: \$\{\{ needs\.coverage\.result \}\}/);
+test('Gitea CI runs coverage after quality and deployment without gating them', () => {
+  const coverageJob = workflow.match(/\n  coverage:\n[\s\S]*$/)?.[0] ?? '';
+  const qualityJob = workflow.match(/\n  quality:\n[\s\S]*?\n  deploy_frontend:\n/)?.[0] ?? '';
+
+  assert.doesNotMatch(qualityJob, /- coverage\n/);
+  assert.doesNotMatch(qualityJob, /COVERAGE_REQUIRED|COVERAGE_RESULT/);
+
+  for (const dependency of [
+    'quality',
+    'deploy_frontend',
+    'deploy_backend',
+    'deploy_docs',
+    'deploy_worker',
+  ]) {
+    assert.match(
+      coverageJob,
+      new RegExp(`\\n      - ${dependency}\\n`),
+      `coverage must wait for ${dependency}`,
+    );
+  }
+
+  assert.match(coverageJob, /always\(\)/);
+  assert.match(coverageJob, /needs\.plan\.outputs\.coverage == 'true'/);
+  assert.match(coverageJob, /needs\.quality\.result == 'success'/);
+  assert.match(coverageJob, /id: repository_coverage/);
+  assert.match(coverageJob, /coverage_exit_code=\$\?/);
+  assert.match(coverageJob, /exit_code=\$coverage_exit_code/);
+  assert.match(coverageJob, /Coverage FAILED \/ INCOMPLETE/);
+  assert.match(coverageJob, /uses: actions\/upload-artifact@v4/);
+  assert.match(coverageJob, /name: repository-coverage-\$\{\{ github\.sha \}\}/);
+  assert.match(coverageJob, /path: coverage\//);
 });
 
 test('repository aggregation writes the live coverage badge from combined line coverage', async () => {
@@ -219,13 +240,13 @@ test('repository aggregation writes the live coverage badge from combined line c
 
 test('main coverage publishing keeps a stable badge branch and README URL', () => {
   const readme = readFileSync('README.md', 'utf8');
-  const coverageJob = workflow.match(/\n  coverage:\n[\s\S]*?\n  quality:\n/)?.[0] ?? '';
+  const coverageJob = workflow.match(/\n  coverage:\n[\s\S]*$/)?.[0] ?? '';
 
   assert.match(coverageJob, /permissions:\n\s+contents: write/);
   assert.match(coverageJob, /name: Publish live coverage badge/);
   assert.match(
     coverageJob,
-    /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/,
+    /if: steps\.repository_coverage\.outputs\.exit_code == '0' && github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/,
   );
   assert.match(coverageJob, /git push origin coverage-badge/);
   assert.match(
@@ -233,4 +254,13 @@ test('main coverage publishing keeps a stable badge branch and README URL', () =
     /https:\/\/sdp\.ms\.wits\.ac\.za\/git-push-pray\/Sport-Analytics-Tool\/raw\/branch\/coverage-badge\/badge\.svg/,
   );
   assert.match(readme, /https:\/\/sports-analytics-tool\.pages\.dev\/testing\/code-coverage\//);
+});
+
+test('frontend coverage keeps standard Vitest execution without masking failures', () => {
+  const frontendPackage = JSON.parse(readFileSync('apps/frontend/package.json', 'utf8'));
+
+  assert.equal(frontendPackage.scripts.test, 'vitest run');
+  assert.equal(frontendPackage.scripts['test:coverage'], 'vitest run --coverage');
+  assert.doesNotMatch(frontendPackage.scripts['test:coverage'], /--retry/);
+  assert.doesNotMatch(frontendPackage.scripts['test:coverage'], /--maxWorkers/);
 });

@@ -42,7 +42,7 @@ interface BatchCandidate {
     season: unknown;
   };
   fixture: { sourceId?: unknown; context?: unknown; proposal?: unknown };
-  innings: { sourceId?: unknown; context?: unknown };
+  innings: { sourceId?: unknown; context?: unknown; powerplays?: unknown };
   event: unknown;
 }
 
@@ -57,7 +57,10 @@ export interface NormalisedCandidate {
     'contractVersion' | 'packageId' | 'competition' | 'season'
   >;
   fixture: Pick<SeasonUploadPackage['fixtures'][number], 'sourceId' | 'context' | 'proposal'>;
-  innings: Pick<SeasonUploadPackage['fixtures'][number]['innings'][number], 'sourceId' | 'context'>;
+  innings: Pick<
+    SeasonUploadPackage['fixtures'][number]['innings'][number],
+    'sourceId' | 'context' | 'powerplays'
+  >;
   event: SeasonUploadEvent;
 }
 
@@ -321,7 +324,11 @@ async function* jsonCandidates(
               context: fixture.context,
               proposal: fixture.proposal,
             },
-            innings: { sourceId: innings.sourceId, context: innings.context },
+            innings: {
+              sourceId: innings.sourceId,
+              context: innings.context,
+              powerplays: innings.powerplays,
+            },
             event,
           };
         }
@@ -685,6 +692,7 @@ const ndjsonFixtureSchema = z
     fixtureKey: z.string().trim().min(1),
     sourceId: z.unknown().optional(),
     context: z.unknown().optional(),
+    powerplays: z.unknown().optional(),
   })
   .passthrough();
 const ndjsonInningsSchema = z
@@ -883,7 +891,11 @@ async function* ndjsonCandidates(
           context: fixture.context,
           proposal: fixture.proposal,
         },
-        innings: { sourceId: inningsRecord.sourceId, context: inningsRecord.context },
+        innings: {
+          sourceId: inningsRecord.sourceId,
+          context: inningsRecord.context,
+          powerplays: inningsRecord.powerplays,
+        },
         event,
       };
       continue;
@@ -970,6 +982,7 @@ function normaliseCandidate(candidate: BatchCandidate): {
       innings: {
         sourceId: parsed.fixtures[0]!.innings[0]!.sourceId,
         context: parsed.fixtures[0]!.innings[0]!.context,
+        powerplays: parsed.fixtures[0]!.innings[0]!.powerplays,
       },
       event: parsed.fixtures[0]!.innings[0]!.events[0]!,
     },
