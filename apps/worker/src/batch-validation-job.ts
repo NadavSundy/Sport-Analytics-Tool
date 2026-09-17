@@ -24,6 +24,7 @@ import { z } from 'zod';
 
 import {
   buildReferenceChunk,
+  canonicaliseCandidates,
   normalisedBatchCandidates,
   scanBatchReferences,
   type NormalisedCandidate,
@@ -1625,7 +1626,22 @@ export function createBatchValidationJobHandler(
 
       const processCandidateChunk = async (): Promise<void> => {
         if (candidateChunk.length === 0) return;
-        const referenceChunk = buildReferenceChunk(candidateChunk);
+        // The checkpoint watermark must stay tied to the chunk's arrival-order
+        // boundary (the source position we have read up to), independent of
+        // how the chunk's contents are ordered for processing below. Computing
+        // it before reordering keeps resumability unaffected by #588.
+        const lastCandidateOrdinal = Math.max(
+          ...candidateChunk.map((candidate) => candidate.ordinal),
+        );
+        // Business-rule sequencing checks and ball-position derivation are
+        // order-sensitive: they must see events in occurrence order
+        // (occurrenceSequence), not the order they happened to arrive in the
+        // source file or stream (#588). Reordering is scoped to one chunk, so
+        // a shuffled innings whose events span more than one chunk boundary
+        // is not yet fully covered here; see the coordinate-validation
+        // alignment follow-up referenced on the issue.
+        const orderedChunk = canonicaliseCandidates(candidateChunk);
+        const referenceChunk = buildReferenceChunk(orderedChunk);
         const { overrides: referenceOverrides, decisionReferencesByPath } =
           referenceOverridesForChunk(mappingRows.rows, referenceChunk.referencePathByOrdinal);
         const resolution = referenceChunk.referencePackage
@@ -1648,7 +1664,7 @@ export function createBatchValidationJobHandler(
         );
         const prepared: PreparedItem[] = [];
 
-        for (const candidate of candidateChunk) {
+        for (const candidate of orderedChunk) {
           const coordinates = deriveCoordinates(candidate, counters);
           const path = referenceChunk.referencePathByOrdinal.get(candidate.ordinal);
           const resolved = path ? resolutionByPath.get(path) : undefined;
@@ -1738,7 +1754,6 @@ export function createBatchValidationJobHandler(
           }
         }
 
-        const lastCandidateOrdinal = candidateChunk[candidateChunk.length - 1]!.ordinal;
         await writeChunk(
           claimResult,
           prepared,

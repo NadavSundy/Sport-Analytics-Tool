@@ -1174,10 +1174,51 @@ export async function scanBatchReferences(
   return { rejectedOrdinals, sourceFaults: faults, eventCount, fatal };
 }
 
+/**
+ * Reorders normalised candidates so that, within each fixture/innings, events
+ * are ordered by `occurrenceSequence` rather than by their position in the
+ * source file or stream (#588). Fixtures and innings themselves keep the
+ * order in which they were first encountered; only the events within one
+ * innings are reordered, so a reversed or shuffled but logically valid
+ * innings settles on the same canonical order as an already-ordered one.
+ *
+ * `occurrenceSequence` values are unique within an innings by contract
+ * (rejected earlier as `DUPLICATE_OCCURRENCE_SEQUENCE` otherwise); the
+ * original arrival ordinal is used only as a deterministic tiebreaker and
+ * should never actually apply to accepted input.
+ */
+export function canonicaliseCandidates(
+  candidates: readonly NormalisedCandidate[],
+): NormalisedCandidate[] {
+  const groupOrder: string[] = [];
+  const groups = new Map<string, NormalisedCandidate[]>();
+  for (const candidate of candidates) {
+    const key = `${candidate.fixtureKey}|${candidate.inningsKey}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = [];
+      groups.set(key, group);
+      groupOrder.push(key);
+    }
+    group.push(candidate);
+  }
+  const ordered: NormalisedCandidate[] = [];
+  for (const key of groupOrder) {
+    const group = groups.get(key)!;
+    group.sort(
+      (left, right) =>
+        left.event.occurrenceSequence - right.event.occurrenceSequence ||
+        left.ordinal - right.ordinal,
+    );
+    ordered.push(...group);
+  }
+  return ordered;
+}
+
 export function buildReferenceChunk(candidates: NormalisedCandidate[]): ReferenceChunk {
   const builder = new ReferencePackageBuilder();
   const referencePathByOrdinal = new Map<number, string>();
-  for (const candidate of candidates) {
+  for (const candidate of canonicaliseCandidates(candidates)) {
     const added = builder.add(candidate);
     if (added.fault || !added.path) {
       throw new Error(
