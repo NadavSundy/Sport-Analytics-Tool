@@ -42,17 +42,20 @@ makes the stored entry unreachable.
 ## Correction refresh dependencies
 
 Issue #286 makes correction refresh behaviour explicit without changing that authoritative
-live-derivation model. A correction transaction records one `fixture` dependency and only the
-participant aggregate dependencies whose inputs changed. The participant set is the union of the
-previous and replacement striker and bowler, so a role correction refreshes both people while a
-non-striker-only correction does not cause an unrelated aggregate refresh. For each affected
+live-derivation model. A correction transaction records one `fixture` dependency and the
+participant aggregate dependencies whose inputs the corrected delivery feeds. The participant set is
+the union of every previous and replacement striker, non-striker, bowler, dismissed player and
+identified fielder, because participant aggregates consume all of those relationships. A role
+correction therefore records both the previous and the replacement person. For each affected
 participant, the journal records the fixture's season, competition, and career scopes; it never
-records another fixture, season, competition, or participant.
+records another fixture, season, competition, or participant. Direct corrections through the API and
+batch corrections published by the worker derive this set with the same shared functions in
+`@sport-analytics/batch-processing` (issue #592).
 
 The immutable `statistics_refresh_dependency` rows are committed with the replacement delivery and
-are returned as `refreshedScopes` by the correction API. They are operational evidence of the
-selective behaviour and the precise invalidation/recalculation input for a future materialized
-projection or cache. The current public endpoints still calculate from `delivery_current`, so their
+are returned as `refreshedScopes` by the direct correction API. They record exactly which scopes a
+correction affects and are the invalidation input for a future materialized projection or cache.
+Nothing reads them yet, and no statistic is stored or recomputed from them. The current public endpoints still calculate from `delivery_current`, so their
 values are immediately the same values a full recomputation would produce.
 
 ## Publication input
@@ -213,3 +216,5 @@ of Codex[GPT-5]. The versioned public fixture-statistics cache was documented wi
 Codex[GPT-5]. The issue #623 wide-run rule was documented with the assistance of
 Claude-Code[Claude Opus 5].
 The innings scorecard context for issue #631 was documented with the assistance of Codex[GPT-5].
+The issue #592 correction dependency participant set was corrected with the assistance of
+Claude-Code[Claude Opus 5].
