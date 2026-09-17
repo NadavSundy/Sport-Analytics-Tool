@@ -32,6 +32,52 @@ test('OpenAPI documentation also requests OpenAPI linting', () => {
   assert.equal(plan.openapi, true);
 });
 
+test('an OpenAPI-only change runs the API contract tests without the full backend lane', () => {
+  for (const file of ['docs/api/openapi.yaml', 'redocly.yaml', '.redocly.lint-ignore.yaml']) {
+    const plan = classifyChangedFiles([file]);
+
+    assert.equal(plan.apiContract, true, `${file} must run the API contract tests`);
+    assert.equal(plan.backend, false, `${file} must not run the full backend lane`);
+    assert.equal(plan.needsNpm, true, `${file} must install dependencies`);
+  }
+});
+
+test('backend-affecting changes run the API contract tests', () => {
+  for (const file of [
+    'apps/backend/src/modules/weather/weather.service.ts',
+    'apps/backend/tests/contract/openapi-contract.ts',
+    'packages/contracts/src/public-read.ts',
+    'packages/batch-processing/src/batch-publication.ts',
+    'database/migrations/20260916111247059_delivery-extras-non-negative.sql',
+  ]) {
+    assert.equal(classifyChangedFiles([file]).apiContract, true, `${file} must run contract tests`);
+  }
+});
+
+test('changes that cannot affect the API do not run the API contract tests', () => {
+  for (const file of [
+    'docs/development/testing.md',
+    'apps/frontend/src/App.tsx',
+    'infra/azure/worker/main.bicep',
+  ]) {
+    assert.equal(
+      classifyChangedFiles([file]).apiContract,
+      false,
+      `${file} must not run contract tests`,
+    );
+  }
+});
+
+test('CI exposes the API contract route and runs the contract tests in a dedicated step', () => {
+  const workflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
+
+  assert.match(workflow, /apiContract:\s+\$\{\{\s*steps\.plan\.outputs\.apiContract\s*\}\}/);
+  assert.match(
+    workflow,
+    /if: needs\.plan\.outputs\.apiContract == 'true'\n\s+run: \|\n\s+npm run prepare:contracts --workspace=@sport-analytics\/backend\n\s+npm run test:api-contract/,
+  );
+});
+
 test('frontend implementation changes run frontend and browser validation without PostgreSQL', () => {
   const plan = classifyChangedFiles(['apps/frontend/src/App.tsx']);
 
