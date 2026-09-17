@@ -17,7 +17,8 @@ cache has no bearer token, account, or consumer identity in either keys or value
 only the same public response returned by the API and expire after 60 seconds.
 
 `fixture_statistics_cache_version` is advanced in the same database transaction as an accepted
-direct submission, correction, or batch publication. An entry for a prior version becomes unreachable
+direct submission, correction, batch publication, or Cricsheet match ingest (ingest since issue
+#592). An entry for a prior version becomes unreachable
 immediately, and the transaction also removes it. Cache expiry is a recovery bound: if an unexpected
 writer misses version advancement, a later read derives the current PostgreSQL value within 60 seconds.
 PostgreSQL delivery rows remain authoritative; cache rows are disposable and are never edited as
@@ -216,5 +217,5 @@ of Codex[GPT-5]. The versioned public fixture-statistics cache was documented wi
 Codex[GPT-5]. The issue #623 wide-run rule was documented with the assistance of
 Claude-Code[Claude Opus 5].
 The innings scorecard context for issue #631 was documented with the assistance of Codex[GPT-5].
-The issue #592 correction dependency participant set was corrected with the assistance of
-Claude-Code[Claude Opus 5].
+The issue #592 correction dependency participant set and ingest version advancement were documented
+with the assistance of Claude-Code[Claude Opus 5].
