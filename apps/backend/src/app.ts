@@ -16,6 +16,7 @@ import {
   type VerifyAccessToken,
 } from './auth/supabase-auth';
 import { loadEnvironment, type Environment } from './config/env';
+import { loadOpenApiSpecification } from './openapi/openapi-spec';
 import { errorHandler } from './middleware/error-handler';
 import { notFoundHandler } from './middleware/not-found';
 import {
@@ -204,6 +205,17 @@ export function createApp(dependencies: AppDependencies = {}) {
       redact: ['req.headers.authorization', 'req.headers.x-api-key'],
     }),
   );
+
+  app.get('/openapi.yaml', (_request, response, next) => {
+    try {
+      response
+        .status(200)
+        .set('Content-Type', 'application/yaml; charset=utf-8')
+        .send(loadOpenApiSpecification());
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.use(API_BASE_PATH, (_request, response, next) => {
     response.setHeader('API-Version', CURRENT_API_VERSION);

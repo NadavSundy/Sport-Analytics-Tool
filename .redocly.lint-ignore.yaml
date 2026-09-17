@@ -7,3 +7,6 @@ docs/api/openapi.yaml:
     # The public dataset-release catalogue accepts no parameters, body, or authentication, so the
     # implemented GET collection route has no meaningful client-error response to document.
     - '#/paths/~1api~1v1~1dataset-releases/get/responses'
+    # The public OpenAPI document accepts no parameters, body, or authentication, so the
+    # implemented GET documentation route has no meaningful client-error response to document.
+    - '#/paths/~1openapi.yaml/get/responses'
