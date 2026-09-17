@@ -62,7 +62,10 @@ tags:
     description: Administrator-only application-account and submitter-scope operations.
 
   - name: Consumer API
-    description: API-key authenticated external consumer reads with per-consumer protections.
+    description: >-
+      API-key authenticated external consumer reads with per-consumer protections.
+      The complete protected fixture, event, statistic and export surface is
+      documented in `docs/api/consumer-keys.md`.
 
 paths:
   /api/v1/dataset-releases:

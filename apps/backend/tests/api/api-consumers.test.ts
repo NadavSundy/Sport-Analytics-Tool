@@ -192,4 +192,55 @@ describe('API consumer key lifecycle and protections', () => {
     expect(response.headers['x-quota-limit']).toBe('3');
     expect(response.body.error.code).toBe('QUOTA_EXCEEDED');
   });
+
+  test.each([
+    '/api/v1/consumer/fixtures/1/events',
+    '/api/v1/consumer/fixtures/1/events/export.json',
+    '/api/v1/consumer/fixtures/1/statistics',
+    '/api/v1/consumer/fixtures/1/statistics/runs/events/export.json',
+  ])('does not allow consumer reads to bypass key enforcement through %s', async (path) => {
+    const response = await request(createTestApp()).get(path).expect(401);
+
+    expect(response.headers['www-authenticate']).toBe('ApiKey');
+    expect(response.body.error.code).toBe('API_KEY_UNAUTHORIZED');
+  });
+
+  test('shares the rate limit between consumer aliases and protected fixture event reads', async () => {
+    const app = createTestApp(
+      undefined,
+      {
+        async listCompetitions() {
+          return { data: [], pagination: { nextCursor: null } };
+        },
+        async listFixtures() {
+          return { data: [], pagination: { nextCursor: null } };
+        },
+      } as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      repository({
+        findActiveConsumer: vi
+          .fn()
+          .mockResolvedValue({ consumerId: '7', rateLimitPerMinute: 1, dailyQuota: 3 }),
+      }),
+    );
+    const key = 'sat_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+    await request(app).get('/api/v1/consumer/competitions').set('X-API-Key', key).expect(200);
+    const limited = await request(app)
+      .get('/api/v1/consumer/fixtures/1/events')
+      .set('X-API-Key', key)
+      .expect(429);
+
+    expect(limited.body.error.code).toBe('RATE_LIMIT_EXCEEDED');
+  });
 });

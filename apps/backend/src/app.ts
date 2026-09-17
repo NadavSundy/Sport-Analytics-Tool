@@ -72,6 +72,7 @@ import {
   type ApiConsumerRepository,
 } from './modules/api-consumers/api-consumer.repository';
 import { createConsumerRouter } from './modules/api-consumers/consumer.routes';
+import { createConsumerAuthentication } from './modules/api-consumers/consumer-authentication';
 import { createProvenanceRouter } from './modules/provenance/provenance.routes';
 import {
   createProvenanceService,
@@ -154,6 +155,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     dependencies.apiConsumerRepository ?? createLazyApiConsumerRepository();
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
+  const consumerAuthentication = createConsumerAuthentication(apiConsumerRepository);
   const datasetReleaseService =
     dependencies.datasetReleaseService ??
     createDatasetReleaseService(undefined, {
@@ -234,7 +236,15 @@ export function createApp(dependencies: AppDependencies = {}) {
     API_BASE_PATH,
     createApiConsumerRouter(verifyAccessToken, synchronizeAccount, apiConsumerService),
   );
-  app.use(API_BASE_PATH, createConsumerRouter(publicReadService, apiConsumerRepository));
+  app.use(
+    API_BASE_PATH,
+    createConsumerRouter(
+      publicReadService,
+      fixtureStatisticsService,
+      participantAggregatesService,
+      consumerAuthentication,
+    ),
+  );
   app.use(
     API_BASE_PATH,
     createDatasetReleaseRouter(verifyAccessToken, synchronizeAccount, datasetReleaseService),

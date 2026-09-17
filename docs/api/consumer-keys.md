@@ -18,16 +18,39 @@ The `201` response contains `data.apiKey` exactly once. Subsequent `GET /api/v1/
 
 Rotate a consumer key with `POST /api/v1/admin/api-consumers/{consumerId}/keys/rotate`. Rotation revokes every active key for that consumer before issuing the replacement. Revoke an individual key immediately with `DELETE /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}`. Both actions make the old key return the same generic `401 API_KEY_UNAUTHORIZED` result as an unknown key.
 
+## Endpoint access classification
+
+The API assigns every route to one of these access classes:
+
+| Class                  | Surface                                                                           | Policy                                                                                                                                     |
+| ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public anonymous       | Health, authentication and weather routes, plus the documented public-read API    | No consumer key, quota or consumer rate-limit accounting. These routes are for the public product surface, not consumer-only capabilities. |
+| Authenticated consumer | Every route below `/api/v1/consumer`                                              | A valid active `X-API-Key`, per-consumer one-minute limit and UTC daily quota are required.                                                |
+| Internal/admin         | `/api/v1/admin/*`, submissions, batches, provenance and account-management routes | Supabase bearer authentication plus the documented application-role check. Consumer keys never authorize these routes.                     |
+
 ## Consumer requests
 
-The currently keyed endpoints are:
+Every consumer route is key-protected. The protected analytics surface is:
 
 ```text
 GET /api/v1/consumer/competitions
 GET /api/v1/consumer/fixtures
+GET /api/v1/consumer/fixtures/{fixtureId}
+GET /api/v1/consumer/fixtures/{fixtureId}/events
+GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json
+GET /api/v1/consumer/fixtures/{fixtureId}/events/export.csv
+GET /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}
+GET /api/v1/consumer/fixtures/{fixtureId}/statistics
+GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}
+GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json
+GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv
+GET /api/v1/consumer/participants/{participantId}/statistics
+GET /api/v1/consumer/participants/{participantId}/statistics/{statisticId}
 ```
 
-Both accept `limit` and `cursor`, and the same filters as their public counterparts: `name` for competitions, and `competitionId`, `seasonId`, `competitorId`, `gender`, `startDateFrom` and `startDateTo` for fixtures. An invalid parameter or cursor returns `400`.
+The list routes accept `limit` and `cursor`, and the same filters as their public counterparts: `name` for competitions, and `competitionId`, `seasonId`, `competitorId`, `gender`, `startDateFrom` and `startDateTo` for fixtures. The fixture/event/statistics/export aliases use the same parameters and payloads as their public-read counterparts. An invalid parameter or cursor returns `400`.
+
+There is no unprotected alternate route under `/consumer`: all consumer aliases use the same authentication middleware and the same per-consumer rate-limit state. A consumer therefore cannot avoid its limit by changing from a fixture list to an event, statistic or export read.
 
 Send the key only in `X-API-Key`; never place it in a URL, browser-visible client bundle, query string or logs.
 
@@ -53,3 +76,4 @@ The metadata contains counts and reset times only; it does not expose raw keys, 
 
 The preceding consumer-key documentation was generated and edited with the assistance of Codex[GPT-5].
 The issue #609 consumer filter and limit-header details were added with the assistance of Claude-Code[Claude Opus 5].
+The issue #594 consumer-surface classification and protected aliases were added with the assistance of Codex[GPT-5].
