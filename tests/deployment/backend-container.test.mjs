@@ -6,6 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const dockerfilePath = path.join(repositoryRoot, 'apps', 'backend', 'Dockerfile');
+const containerSmokeCheckPath = path.join(
+  repositoryRoot,
+  'scripts',
+  'smoke-check-backend-container.mjs',
+);
 
 test('backend container build preserves the production runtime contract', async () => {
   await assert.doesNotReject(access(dockerfilePath), 'backend Dockerfile must exist');
@@ -38,4 +43,21 @@ test('backend container build preserves the production runtime contract', async 
   );
   assert.doesNotMatch(dockerfile, /COPY .*\.env/i, 'container must not copy environment files');
   assert.doesNotMatch(dockerfile, /COPY .*\.git/i, 'container must not copy Git metadata');
+});
+
+test('backend container smoke validates health inside the Docker container and cleans up safely', async () => {
+  const smokeCheck = await readFile(containerSmokeCheckPath, 'utf8');
+
+  assert.match(smokeCheck, /run\('docker', \[\s*'run'/);
+  assert.doesNotMatch(smokeCheck, /--publish|docker', \['port'/);
+  assert.match(smokeCheck, /run\('docker', \['exec', containerId, 'node', '-e'/);
+  assert.match(smokeCheck, /http:\/\/127\.0\.0\.1:3000\/api\/v1\/health/);
+  assert.match(smokeCheck, /response\.status !== 200/);
+  assert.match(smokeCheck, /sport-analytics-api/);
+  assert.match(smokeCheck, /attempt <= 20/);
+  assert.match(smokeCheck, /run\('docker', \[\s*'inspect'/);
+  assert.match(smokeCheck, /run\('docker', \[\s*'logs'/);
+  assert.match(smokeCheck, /finally[\s\S]*cleanupOnce\(\)/);
+  assert.match(smokeCheck, /SIGINT/);
+  assert.match(smokeCheck, /SIGTERM/);
 });

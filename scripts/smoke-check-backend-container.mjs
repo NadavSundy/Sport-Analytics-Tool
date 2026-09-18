@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
 
-import { smokeCheck } from './smoke-check-deployment.mjs';
+const HEALTH_URL = 'http://127.0.0.1:3000/api/v1/health';
+const SERVICE_MARKER = 'sport-analytics-api';
+const MAX_ATTEMPTS = 20;
+const RETRY_DELAY_MS = 1_000;
 
 function run(command, arguments_) {
   return new Promise((resolve, reject) => {
@@ -27,11 +30,8 @@ function run(command, arguments_) {
   });
 }
 
-function publishedPort(value) {
-  const match = value.match(/:(\d+)\s*$/m);
-  if (!match)
-    throw new Error(`Unable to determine the published backend container port from: ${value}`);
-  return match[1];
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 const [image] = process.argv.slice(2);
@@ -41,14 +41,92 @@ if (!image) {
 }
 
 let containerId;
+let cleanupPromise;
+
+async function cleanup() {
+  if (!containerId) return;
+
+  const id = containerId;
+  containerId = undefined;
+  await run('docker', ['rm', '--force', id]).catch(() => undefined);
+}
+
+function cleanupOnce() {
+  cleanupPromise ??= cleanup();
+  return cleanupPromise;
+}
+
+function cleanUpOnSignal(signal, exitCode) {
+  process.once(signal, () => {
+    void cleanupOnce().finally(() => process.exit(exitCode));
+  });
+}
+
+cleanUpOnSignal('SIGINT', 130);
+cleanUpOnSignal('SIGTERM', 143);
+
+async function printDiagnostics() {
+  if (!containerId) return;
+
+  const state = await run('docker', [
+    'inspect',
+    '--format',
+    'status={{.State.Status}} exitCode={{.State.ExitCode}} running={{.State.Running}}',
+    containerId,
+  ]).catch(() => 'unavailable');
+  console.error(`[smoke] backend container state: ${state}`);
+
+  const logs = await run('docker', ['logs', containerId]).catch(() => 'unavailable');
+  console.error(`[smoke] backend container logs:\n${logs}`);
+}
+
+const internalHealthCheck = [
+  `fetch('${HEALTH_URL}', { signal: AbortSignal.timeout(5_000) })`,
+  '.then(async (response) => {',
+  '  const body = await response.text();',
+  `  if (response.status !== 200 || !body.includes('${SERVICE_MARKER}')) {`,
+  '    console.error(`Unexpected health response: HTTP ${response.status}`);',
+  '    process.exitCode = 1;',
+  '  }',
+  '})',
+  '.catch((error) => {',
+  '  console.error(error instanceof Error ? error.message : String(error));',
+  '  process.exitCode = 1;',
+  '});',
+].join('\n');
+
+async function waitForHealth() {
+  let lastError;
+
+  for (let attempt = 1; attempt <= 20; attempt += 1) {
+    try {
+      await run('docker', ['exec', containerId, 'node', '-e', internalHealthCheck]);
+      console.log(`[smoke] backend container image passed on attempt ${attempt}/${MAX_ATTEMPTS}.`);
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `[smoke] backend container image attempt ${attempt}/${MAX_ATTEMPTS} failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      if (attempt < MAX_ATTEMPTS) await delay(RETRY_DELAY_MS);
+    }
+  }
+
+  throw new Error(
+    `backend container image failed after ${MAX_ATTEMPTS} attempts. Last error: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`,
+  );
+}
 
 try {
   containerId = await run('docker', [
     'run',
     '--detach',
-    '--rm',
-    '--publish',
-    '127.0.0.1::3000',
+    '--name',
+    `backend-container-smoke-${process.pid}-${Date.now()}`,
     '--env',
     'NODE_ENV=production',
     '--env',
@@ -72,17 +150,10 @@ try {
     image,
   ]);
 
-  const port = publishedPort(await run('docker', ['port', containerId, '3000/tcp']));
-  await smokeCheck({
-    attempts: 20,
-    delayMs: 1_000,
-    expectedText: 'sport-analytics-api',
-    label: 'backend container image',
-    timeoutMs: 5_000,
-    url: `http://127.0.0.1:${port}/api/v1/health`,
-  });
+  await waitForHealth();
+} catch (error) {
+  await printDiagnostics();
+  throw error;
 } finally {
-  if (containerId) {
-    await run('docker', ['stop', '--time', '10', containerId]).catch(() => undefined);
-  }
+  await cleanupOnce();
 }
