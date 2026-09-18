@@ -63,6 +63,7 @@ Current runtime variables are:
 | `AZURE_STORAGE_CONTAINER_NAME`           | Required with the Azure provider                                         | No      | Non-secret private Blob container identifier used by the production adapter.                                                                                                               |
 | `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Preferred with Azure; old name remains an alias                          | No      | Private staged-ingestion container.                                                                                                                                                        |
 | `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Required with Azure                                                      | No      | Separate private immutable dataset-release container.                                                                                                                                      |
+| `AZURE_CLIENT_ID`                        | Required in the Container Apps runtime                                 | No      | API runtime user-assigned managed identity client ID for `DefaultAzureCredential`.                                                                                                        |
 
 The current `.env.example` also contains reserved placeholders (`EXTERNAL_API_KEY`, `API_VERSION`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`) that are not read by the current application runtime. Do not treat a reserved placeholder as an implemented configuration option. `CORS_ORIGINS` is the variable used by the code today.
 
@@ -257,7 +258,18 @@ npm run build --workspace=@sport-analytics/backend
 npm run start --workspace=@sport-analytics/backend
 ```
 
-The backend is hosted on Azure App Service.
+The production deployment uses `apps/backend/Dockerfile`, built from the repository root. It compiles
+the backend and its required workspace packages in a Node 22 Bookworm build stage, prunes development
+dependencies, copies the compiled runtime dependencies and Supabase CA certificate into a Node 22
+runtime stage, and starts `node apps/backend/dist/index.js` directly as non-root `node` on port `3000`.
+This preserves the existing production start behaviour while allowing Node to receive Container Apps
+termination signals directly.
+
+The normal backend target is Azure Container Apps. The runtime uses external HTTPS ingress and
+`/api/v1/health` probes, Key Vault-backed `DATABASE_URL` and `SUPABASE_SECRET_KEY` references, and a
+managed identity for Blob Storage. The existing App Service remains a manual acceptance-period
+fallback. See [Azure backend deployment](../../docs/deployment/azure-backend.md) for deployment,
+scaling, CI, rollback, and acceptance procedures.
 
 ## Common problems
 
@@ -303,3 +315,5 @@ ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5]. The issue #255 competition-scoped acc
 documented with the assistance of Codex[GPT-5].
 The local filesystem object-storage configuration and dataset-release workflow were documented with
 the assistance of Codex[GPT-5].
+The Issue #563 production container and Container Apps runtime documentation was updated with the
+assistance of Codex[GPT-5].

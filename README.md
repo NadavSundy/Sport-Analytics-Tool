@@ -172,13 +172,14 @@ The Sport Analytics Tool uses Microsoft Azure for hosting.
 
 ### Backend
 
-URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/
+URL: resolved from the Azure Container App external HTTPS FQDN after deployment
 
-- Platform: Azure App Service (Linux)
-- Runtime: Node.js 22 LTS
+- Platform: Azure Container Apps
+- Runtime: Node.js 22 LTS production container
 - Environment: Development
-- Deployment: Azure App Service
-- Configuration: Environment variables managed through Azure App Service
+- Deployment: immutable ACR image and Bicep through Gitea Actions
+- Configuration: Container Apps configuration; Key Vault-backed secrets; managed identities for ACR and Blob access
+- Rollback during acceptance: existing App Service `statsthegame-api-dev` remains manually deployable
 
 ### Frontend
 
@@ -206,9 +207,9 @@ The deployment workflow will:
 
 1. install root workspace dependencies from `package-lock.json`;
 2. lint, type-check and test the affected workspace and shared contracts;
-3. build the application from its `apps/frontend` or `apps/backend` workspace;
-4. deploy the prepared application bundle to Azure App Service; and
-5. retry a content-aware smoke or health check against the deployed service.
+3. build the frontend bundle or the backend production container from the root workspace;
+4. deploy the frontend to Azure App Service and the backend immutable container image to Azure Container Apps; and
+5. retry content-aware health and database smoke checks against the deployed backend service.
 
 Deployment credentials are stored securely using repository Action Secrets.
 
@@ -299,3 +300,4 @@ shared register remains available while its entries are migrated.
 
 The preceding README was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The asynchronous worker setup and deployment summary were added with the assistance of Codex[GPT-5].
+The Issue #563 backend Container Apps deployment summary was updated with the assistance of Codex[GPT-5].

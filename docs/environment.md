@@ -32,6 +32,7 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 | `AZURE_STORAGE_CONTAINER_NAME`           | Compatibility alias for the ingestion container     | No     | Existing staged-ingestion setting; remains supported unchanged.                              |
 | `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Preferred when provider is `azure`                  | No     | Private staged-ingestion container.                                                          |
 | `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Required when provider is `azure`                   | No     | Separate private immutable-release container.                                                |
+| `AZURE_CLIENT_ID`                        | Required by the Container Apps runtime              | No     | Client ID of the API runtime user-assigned managed identity.                                |
 
 The committed backend example selects `filesystem` and
 `OBJECT_STORAGE_FILESYSTEM_ROOT=../../.local/object-storage` for development. npm workspace commands
@@ -46,11 +47,31 @@ database is accidentally shared. It is a safety guard, not a recommendation to s
 data with local processes.
 
 Production must explicitly set `OBJECT_STORAGE_PROVIDER=azure`, a non-local
-`DEPLOYMENT_ENVIRONMENT`, and both logical containers; a missing provider or `filesystem`
+`DEPLOYMENT_ENVIRONMENT`, both logical containers, and `AZURE_CLIENT_ID`; a missing provider or `filesystem`
 selection fails configuration rather than falling back to the local disk. Blob authentication uses
-`DefaultAzureCredential` with the Azure App Service managed identity. Azure Storage connection
+`DefaultAzureCredential` with the Azure Container Apps runtime managed identity. Azure Storage connection
 strings, account keys, SAS tokens, and shared-key credentials are not supported application
 configuration.
+
+## Backend Container Apps configuration boundaries
+
+The normal deployed API uses the non-secret runtime variables in the preceding table. `NODE_ENV` is
+`production`, `PORT` is `3000`, `OBJECT_STORAGE_PROVIDER` is `azure`, and Bicep derives
+`AZURE_CLIENT_ID` from the runtime identity. `CORS_ORIGINS`, `SUPABASE_URL`, and
+`SUPABASE_PUBLISHABLE_KEY` are ordinary runtime configuration values; they are not substituted for
+server secrets.
+
+`DATABASE_URL` and `SUPABASE_SECRET_KEY` are Key Vault secret values. Container Apps receives only
+versionless Key Vault secret-reference URIs, creates Container Apps secrets, and supplies those two
+variables through `secretRef`. The deployment CI receives only the URIs, never their values.
+`SUPABASE_SECRET_KEY` is required to preserve authenticated account deletion; process startup and
+unrelated routes remain available without it, but deletion returns `501`.
+
+Gitea Actions secrets are separate again. The existing `AZURE_WORKER_CREDENTIALS` secret is the
+shared Azure resource-group deployment-principal credential despite its worker-oriented legacy name.
+Backend-specific secrets hold the resource group, two Key Vault secret-reference URIs, CORS origins,
+Supabase URL, and Supabase publishable key used by backend deployment CI. Do not put real values in
+`.env` examples, Docker build arguments, Bicep outputs, workflow logs, or repository documentation.
 
 ## Asynchronous worker runtime
 
@@ -111,4 +132,6 @@ assistance of Codex[GPT-5].
 The asynchronous worker configuration and secret boundary were documented with the assistance of
 Codex[GPT-5].
 The explicit local-filesystem and production-Azure provider configuration was documented with the
+assistance of Codex[GPT-5].
+The Issue #563 Container Apps configuration and secret-reference boundary was documented with the
 assistance of Codex[GPT-5].
