@@ -5,7 +5,7 @@ The selected deployment architecture is:
 | Component              | Hosting / service          | Deployment tool                                 |
 | ---------------------- | -------------------------- | ----------------------------------------------- |
 | React frontend         | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
-| Express backend API    | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
+| Express backend API    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions            |
 | Asynchronous worker    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions            |
 | PostgreSQL database    | Supabase-hosted PostgreSQL | Database migrations through the backend tooling |
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
@@ -25,7 +25,10 @@ ADR-010 and ADR-011 select these targets for Intermediate implementation. The ve
 Repository definitions are not evidence that a live Azure deployment has succeeded; the deployed
 revision and exact commit-SHA image must still be verified.
 
-Azure App Service was accepted in ADR 0003 for the frontend and backend. The documentation site is deliberately hosted separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
+Azure App Service was accepted in ADR 0003 for the frontend and originally for the backend. Issue #563
+migrates the normal backend deployment path to Container Apps while retaining `statsthegame-api-dev`
+as the manual App Service fallback during acceptance. The documentation site is deliberately hosted
+separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
 
 ## Minimum environments
 
@@ -45,6 +48,9 @@ Azure App Service was accepted in ADR 0003 for the frontend and backend. The doc
 - Automatically deploy the worker after a validated worker-affecting change reaches `main`; require the
   active healthy Container Apps revision to use the exact commit-SHA image. Retain the manual worker
   workflow for recovery and deliberate operational redeployment.
+- Automatically deploy backend-affecting main commits to Container Apps only after quality succeeds;
+  require the active healthy revision to use the exact commit-SHA image, then run health and
+  database-backed smoke checks. Retain the manual App Service workflow for acceptance rollback.
 
 See:
 
@@ -73,7 +79,10 @@ Using a fixed runner label provides a more reproducible CI environment than
 `ubuntu-latest`, while targeting an environment currently supported by the
 university-hosted runners.
 
-The automatic validation and affected-target deployments run through `Sport Analytics CI`. The standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Deploy Backend`, `Sport Analytics - Deploy Docs` and `Sport Analytics - Provision and Deploy Batch Worker` workflows use the same runner for manual recovery/redeployment.
+The automatic validation and affected-target deployments run through `Sport Analytics CI`. The
+standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Redeploy App Service Backend
+(Rollback)`, `Sport Analytics - Deploy Docs` and `Sport Analytics - Provision and Deploy Batch Worker`
+workflows use the same runner for manual recovery/redeployment.
 
 The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. Cheap
 structure, whitespace, routing and lockfile checks run during planning; application validation and the
@@ -108,3 +117,5 @@ The issue #356 approved Intermediate deployment targets were documented with the
 Codex[GPT-5].
 The issue #365 versioned worker target and deployment control were documented with the assistance
 of Codex[GPT-5].
+The Issue #563 backend Container Apps deployment and rollback boundary was documented with the
+assistance of Codex[GPT-5].

@@ -227,6 +227,21 @@ test('backend deployment helpers request backend deployment without unrelated ta
   assert.equal(plan.deployDocs, false);
 });
 
+test('backend Container Apps runtime and infrastructure changes request backend deployment', () => {
+  for (const file of [
+    'apps/backend/Dockerfile',
+    'infra/azure/backend/main.bicep',
+    'scripts/smoke-check-backend-container.mjs',
+  ]) {
+    const plan = classifyChangedFiles([file]);
+
+    assert.equal(plan.backend, true, `${file} must validate the backend`);
+    assert.equal(plan.deployment, true, `${file} must validate deployment contracts`);
+    assert.equal(plan.deployBackend, true, `${file} must request backend deployment`);
+    assert.equal(plan.deployWorker, false, `${file} must not request worker deployment`);
+  }
+});
+
 test('unknown files fail safely to full CI', () => {
   const plan = classifyChangedFiles(['unexpected-root-file.xyz']);
 

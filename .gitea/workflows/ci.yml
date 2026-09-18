@@ -389,9 +389,10 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.plan.outputs.deployBackend == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
-      BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
+      ACR_NAME: statsthegamedevyhmqlinqfhkyg
+      BACKEND_CONTAINER_APP_NAME: statsthegame-dev-api
 
     steps:
       - name: Check out validated main commit
@@ -407,28 +408,121 @@ jobs:
       - name: Install root workspace dependencies
         run: npm ci
 
-      - name: Validate deployment secret
+      - name: Validate Container Apps deployment configuration
         env:
-          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+          AZURE_BACKEND_CONTAINER_RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+          AZURE_BACKEND_DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+          AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI: ${{ secrets.AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI }}
+          AZURE_BACKEND_CORS_ORIGINS: ${{ secrets.AZURE_BACKEND_CORS_ORIGINS }}
+          AZURE_BACKEND_SUPABASE_URL: ${{ secrets.AZURE_BACKEND_SUPABASE_URL }}
+          AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          if [ -z "$AZURE_BACKEND_PUBLISH_PROFILE" ]; then
-            echo "::error::Required Gitea secret AZURE_BACKEND_PUBLISH_PROFILE is not configured."
+          missing=0
+          for name in AZURE_WORKER_CREDENTIALS AZURE_BACKEND_CONTAINER_RESOURCE_GROUP AZURE_BACKEND_DATABASE_SECRET_URI AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI AZURE_BACKEND_CORS_ORIGINS AZURE_BACKEND_SUPABASE_URL AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Build immutable backend container image
+        run: >-
+          docker build
+          --file apps/backend/Dockerfile
+          --tag "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+          .
+
+      - name: Smoke check backend container image
+        run: >-
+          npm run smoke:backend-container --
+          "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+
+      - name: Push immutable backend image to Azure Container Registry
+        run: |
+          az acr login --name "$ACR_NAME"
+          docker push "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+      - name: Deploy backend Container Apps revision
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+          SUPABASE_SECRET_KEY_SECRET_URI: ${{ secrets.AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI }}
+          CORS_ORIGINS: ${{ secrets.AZURE_BACKEND_CORS_ORIGINS }}
+          SUPABASE_URL: ${{ secrets.AZURE_BACKEND_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY }}
+        run: >-
+          az deployment group create
+          --name backend-${{ github.sha }}
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/backend/main.bicep
+          --parameters
+          containerImage="$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          supabaseSecretKeySecretUri="$SUPABASE_SECRET_KEY_SECRET_URI"
+          corsOrigins="$CORS_ORIGINS"
+          supabaseUrl="$SUPABASE_URL"
+          supabasePublishableKey="$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Wait for the healthy backend Container Apps revision
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+        run: |
+          EXPECTED_IMAGE="$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+          for attempt in {1..12}; do
+            MATCHING_REVISION=$(az containerapp revision list \
+              --name "$BACKEND_CONTAINER_APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active && properties.healthState=='Healthy' && properties.template.containers[0].image=='$EXPECTED_IMAGE'] | [0].name" \
+              -o tsv)
+
+            echo "Backend revision readiness check $attempt/12"
+
+            az containerapp revision list \
+              --name "$BACKEND_CONTAINER_APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active].{Revision:name,Health:properties.healthState,Image:properties.template.containers[0].image}" \
+              -o table
+
+            if [ -n "$MATCHING_REVISION" ]; then
+              echo "Verified healthy backend revision: $MATCHING_REVISION"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Expected backend image $EXPECTED_IMAGE did not become active and healthy within 120 seconds."
+          exit 1
+
+      - name: Resolve backend Container Apps HTTPS endpoint
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+        run: |
+          BACKEND_FQDN=$(az containerapp show \
+            --name "$BACKEND_CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)
+
+          if [ -z "$BACKEND_FQDN" ]; then
+            echo "::error::Backend Container App has no external ingress FQDN."
             exit 1
           fi
 
-      - name: Build backend deployment bundle
-        run: npm run build --workspace=@sport-analytics/backend
-
-      - name: Prepare backend deployment artifact
-        run: npm run deploy:prepare:backend
-
-      - name: Smoke check backend deployment artifact
-        run: node scripts/smoke-check-backend-artifact.mjs
-
-      - name: Deploy backend artifact to Azure
-        env:
-          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-        run: python3 scripts/deploy-backend-azure.py
+          echo "BACKEND_URL=https://$BACKEND_FQDN" >> "$GITHUB_ENV"
 
       - name: Smoke check deployed backend health
         env:
