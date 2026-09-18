@@ -292,13 +292,13 @@ interface BatchReferenceMappingRecord {
   decidedAt: string;
 }
 
-export interface FixtureOnboardingUnresolvedParticipant {
+interface FixtureOnboardingUnresolvedParticipant {
   name: string;
   teamName?: string;
   candidates: { personId: string; displayName: string }[];
 }
 
-export interface FixtureOnboardingSummary {
+interface FixtureOnboardingSummary {
   inningsCreated: number;
   squadCreated: number;
   unresolvedParticipants: FixtureOnboardingUnresolvedParticipant[];

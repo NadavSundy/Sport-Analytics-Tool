@@ -7,7 +7,7 @@ import type { BatchReferenceEntityType } from '@sport-analytics/contracts';
  * callers should always go through `storedOutcomes` rather than reading the
  * JSON shape directly.
  */
-export interface StoredReferenceCandidate {
+interface StoredReferenceCandidate {
   canonicalId: string;
   label: string;
   outOfScope?: boolean;
