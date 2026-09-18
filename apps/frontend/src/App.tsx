@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
 import { HomePage } from './features/home/HomePage';
@@ -33,11 +34,31 @@ import {
 } from './features/dataset-releases/DatasetReleasePages';
 import { AdminDatasetReleasePage } from './features/dataset-releases/AdminDatasetReleasePage';
 
+const ApiExplorerPage = lazy(() =>
+  import('./features/api-explorer/ApiExplorerPage').then(({ ApiExplorerPage }) => ({
+    default: ApiExplorerPage,
+  })),
+);
+
 export function PublicApp() {
   return (
     <PublicShell>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route
+          path="/api"
+          element={
+            <Suspense
+              fallback={
+                <div className="content-boundary api-explorer-route-loading" role="status">
+                  Loading API Explorer…
+                </div>
+              }
+            >
+              <ApiExplorerPage />
+            </Suspense>
+          }
+        />
 
         <Route path="/competitions" element={<CompetitionsPage />} />
         <Route path="/competitions/:competitionId" element={<CompetitionDetailPage />} />

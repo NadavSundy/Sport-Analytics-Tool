@@ -111,6 +111,26 @@ chunk, and pre-enhancement first paint all retain the complete static visual and
 Unexpected WebGL context loss stops the animation and immediately reveals the same fallback; a
 restored context resumes the existing scene without replacing its canvas or renderer.
 
+## Public API Explorer
+
+The public `/api` route lazy-loads Swagger UI and retrieves the authoritative OpenAPI document from
+the backend `/openapi.yaml` endpoint. The frontend does not bundle or maintain a second API
+specification.
+
+The explorer derives the specification endpoint from `VITE_API_BASE_URL`, so the default local
+configuration reads `http://localhost:3000/openapi.yaml` and deployed environments read the contract
+from the same backend origin as `/api/v1`.
+
+Implemented operations are interactive by default. Operations carrying
+`x-implementation-status: planned` are hidden unless the user explicitly enables them; while planned
+operations are visible, interactive submission is disabled so future contract work cannot be mistaken
+for deployed behaviour. Swagger authorization controls use the contract's `bearerAuth` and
+`apiKeyAuth` definitions. Credentials entered there are runtime browser state and are not stored in the
+frontend source or OpenAPI document.
+
+The page provides accessible loading, failure and retry states around contract loading and retains the
+normal public header, footer, theme controls and keyboard focus treatment.
+
 ## Submitter access workflow
 
 After authentication, `/account` loads the current application profile from the handwritten
@@ -324,3 +344,5 @@ The accepted-event correction workflow was documented with the assistance of Cod
 The Issue #311 administrator submission interface was documented with the assistance of Codex[GPT-5].
 The issue #314 static homepage, progressive Three.js enhancement, fallback, motion and performance
 behavior were documented with the assistance of Codex[GPT-5.6 Sol].
+
+The Issue #660 public API Explorer implementation and documentation were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
