@@ -56,7 +56,8 @@
     "verify:intermediate-ingestion:invariants": "node scripts/verify-intermediate-ingestion.mjs --invariants-only",
     "ci:docker": "node scripts/ci-docker.mjs",
     "hooks:install": "node scripts/git-hooks.mjs install",
-    "hooks:remove": "node scripts/git-hooks.mjs remove"
+    "hooks:remove": "node scripts/git-hooks.mjs remove",
+    "test:e2e:api-explorer-live": "cross-env PLAYWRIGHT_API_EXPLORER_LIVE=1 PLAYWRIGHT_API_BASE_URL=https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/api/v1 node scripts/run-playwright.mjs tests/e2e/api-explorer-live.spec.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

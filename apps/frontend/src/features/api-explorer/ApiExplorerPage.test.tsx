@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,21 +16,16 @@ vi.mock('../auth/AuthProvider', () => ({
 vi.mock('swagger-ui-react', () => ({
   default: ({
     spec,
-    supportedSubmitMethods,
   }: {
     spec?: {
       components?: { securitySchemes?: Record<string, unknown> };
       paths?: Record<string, unknown>;
     };
-    supportedSubmitMethods?: string[];
   }) => (
     <div
       data-testid="swagger-ui"
       data-auth-schemes={Object.keys(spec?.components?.securitySchemes ?? {}).join(',')}
       data-paths={Object.keys(spec?.paths ?? {}).join(',')}
-      data-submit-methods={
-        supportedSubmitMethods === undefined ? 'default' : supportedSubmitMethods.join(',')
-      }
     >
       Swagger UI
     </div>
@@ -120,7 +115,7 @@ describe('ApiExplorerPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading API specification');
   });
 
-  it('renders Swagger from the fetched contract and hides planned operations by default', async () => {
+  it('renders Swagger from the fetched contract and excludes planned operations', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okSpecification()));
 
     renderPage();
@@ -128,7 +123,6 @@ describe('ApiExplorerPage', () => {
     const swagger = await screen.findByTestId('swagger-ui');
     expect(swagger).toHaveAttribute('data-paths', '/api/v1/health');
     expect(swagger).toHaveAttribute('data-auth-schemes', 'bearerAuth,apiKeyAuth');
-    expect(swagger).toHaveAttribute('data-submit-methods', 'default');
 
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:3000/openapi.yaml',
@@ -141,7 +135,7 @@ describe('ApiExplorerPage', () => {
     );
   });
 
-  it('shows planned operations only on request and disables interactive submissions in that view', async () => {
+  it('shows planned operations separately as non-executable contract information', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okSpecification()));
 
     renderPage();
@@ -151,14 +145,13 @@ describe('ApiExplorerPage', () => {
 
     fireEvent.click(toggle);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('swagger-ui')).toHaveAttribute(
-        'data-paths',
-        '/api/v1/health,/api/v1/future-statistic',
-      );
-    });
-    expect(screen.getByTestId('swagger-ui')).toHaveAttribute('data-submit-methods', '');
-    expect(screen.getByRole('status')).toHaveTextContent('Try it out is disabled');
+    const plannedRegion = await screen.findByRole('region', { name: 'Planned operations' });
+    expect(within(plannedRegion).getByText('/api/v1/future-statistic')).toBeInTheDocument();
+    expect(within(plannedRegion).getByText('Future statistic')).toBeInTheDocument();
+    expect(within(plannedRegion).getByText('PLANNED')).toBeInTheDocument();
+    expect(within(plannedRegion).queryByRole('button')).not.toBeInTheDocument();
+
+    expect(screen.getByTestId('swagger-ui')).toHaveAttribute('data-paths', '/api/v1/health');
   });
 
   it('shows a clear failure state and retries the specification request', async () => {
@@ -181,6 +174,6 @@ describe('ApiExplorerPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading specification' }));
 
     expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 });

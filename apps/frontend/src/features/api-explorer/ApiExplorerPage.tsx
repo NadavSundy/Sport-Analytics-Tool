@@ -13,7 +13,6 @@ const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'patch', 'options'
 
 type OpenApiOperation = Record<string, unknown> & {
   description?: string;
-  deprecated?: boolean;
   summary?: string;
   'x-implementation-status'?: string;
 };
@@ -27,10 +26,21 @@ export type OpenApiDocument = Record<string, unknown> & {
   paths?: Record<string, OpenApiPathItem>;
 };
 
+export interface PlannedOperationSummary {
+  method: string;
+  operationId?: string;
+  path: string;
+  summary: string;
+}
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error' }
-  | { document: OpenApiDocument; kind: 'ready'; plannedCount: number };
+  | {
+      document: OpenApiDocument;
+      kind: 'ready';
+      plannedOperations: PlannedOperationSummary[];
+    };
 
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
@@ -47,47 +57,39 @@ function isOperation(value: unknown): value is OpenApiOperation {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function plannedOperation(operation: OpenApiOperation): boolean {
+function isPlannedOperation(operation: OpenApiOperation): boolean {
   return operation['x-implementation-status'] === 'planned';
 }
 
-export function countPlannedOperations(document: OpenApiDocument): number {
-  let count = 0;
+export function plannedOperations(document: OpenApiDocument): PlannedOperationSummary[] {
+  const planned: PlannedOperationSummary[] = [];
 
-  for (const pathItem of Object.values(document.paths ?? {})) {
+  for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, rawOperation] of Object.entries(pathItem)) {
       if (!HTTP_METHODS.has(method) || !isOperation(rawOperation)) continue;
-      if (plannedOperation(rawOperation)) count += 1;
+      if (!isPlannedOperation(rawOperation)) continue;
+
+      planned.push({
+        method: method.toUpperCase(),
+        path,
+        summary:
+          typeof rawOperation.summary === 'string' ? rawOperation.summary : 'Planned operation',
+        ...(typeof rawOperation.operationId === 'string'
+          ? { operationId: rawOperation.operationId }
+          : {}),
+      });
     }
   }
 
-  return count;
+  return planned;
 }
 
-function decoratePlannedOperation(operation: OpenApiOperation): OpenApiOperation {
-  const descriptionPrefix =
-    '**Planned operation — this operation is not currently deployed. Interactive requests are disabled while planned operations are visible.**';
-
-  return {
-    ...operation,
-    deprecated: true,
-    summary:
-      typeof operation.summary === 'string'
-        ? `[PLANNED] ${operation.summary}`
-        : '[PLANNED] Not currently deployed',
-    description:
-      typeof operation.description === 'string'
-        ? `${descriptionPrefix}\n\n${operation.description}`
-        : descriptionPrefix,
-  };
-}
-
-export function explorerDocument(document: OpenApiDocument, showPlanned: boolean): OpenApiDocument {
+export function implementedExplorerDocument(document: OpenApiDocument): OpenApiDocument {
   const nextPaths: Record<string, OpenApiPathItem> = {};
 
   for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
     const nextPathItem: OpenApiPathItem = {};
-    let operationCount = 0;
+    let implementedOperationCount = 0;
 
     for (const [key, value] of Object.entries(pathItem)) {
       if (!HTTP_METHODS.has(key)) {
@@ -95,24 +97,15 @@ export function explorerDocument(document: OpenApiDocument, showPlanned: boolean
         continue;
       }
 
-      if (!isOperation(value)) {
-        nextPathItem[key] = value;
-        operationCount += 1;
-        continue;
-      }
-
-      if (plannedOperation(value)) {
-        if (!showPlanned) continue;
-        nextPathItem[key] = decoratePlannedOperation(value);
-        operationCount += 1;
+      if (isOperation(value) && isPlannedOperation(value)) {
         continue;
       }
 
       nextPathItem[key] = value;
-      operationCount += 1;
+      implementedOperationCount += 1;
     }
 
-    if (operationCount > 0) {
+    if (implementedOperationCount > 0) {
       nextPaths[path] = nextPathItem;
     }
   }
@@ -131,6 +124,7 @@ function parseOpenApiDocument(source: string): OpenApiDocument {
   }
 
   const document = parsed as OpenApiDocument;
+
   if (typeof document.openapi !== 'string' || !document.openapi.startsWith('3.')) {
     throw new Error('OpenAPI document does not declare a supported OpenAPI version');
   }
@@ -175,10 +169,10 @@ export function ApiExplorerPage() {
           setLoadState({
             kind: 'ready',
             document,
-            plannedCount: countPlannedOperations(document),
+            plannedOperations: plannedOperations(document),
           });
         }
-      } catch (error) {
+      } catch {
         if (!active || controller.signal.aborted) return;
         setLoadState({ kind: 'error' });
       }
@@ -192,10 +186,10 @@ export function ApiExplorerPage() {
     };
   }, [reloadToken, specificationUrl]);
 
-  const visibleDocument = useMemo(() => {
+  const swaggerDocument = useMemo(() => {
     if (loadState.kind !== 'ready') return null;
-    return explorerDocument(loadState.document, showPlanned);
-  }, [loadState, showPlanned]);
+    return implementedExplorerDocument(loadState.document);
+  }, [loadState]);
 
   return (
     <PageLayout
@@ -239,7 +233,7 @@ export function ApiExplorerPage() {
         </div>
       ) : null}
 
-      {loadState.kind === 'ready' && visibleDocument ? (
+      {loadState.kind === 'ready' && swaggerDocument ? (
         <>
           <section
             className="api-explorer__controls ui-card"
@@ -248,8 +242,8 @@ export function ApiExplorerPage() {
             <div>
               <h2 id="implementation-status-heading">Implementation status</h2>
               <p>
-                Implemented operations are interactive. Planned operations are hidden by default so
-                future contract work is not mistaken for deployed functionality.
+                Implemented operations are interactive in Swagger. Planned contract entries are
+                hidden by default and, when shown, appear separately as non-executable information.
               </p>
             </div>
             <label className="api-explorer__planned-toggle">
@@ -260,16 +254,50 @@ export function ApiExplorerPage() {
               />
               <span>
                 Show planned operations
-                {loadState.plannedCount > 0 ? ` (${loadState.plannedCount})` : ''}
+                {loadState.plannedOperations.length > 0
+                  ? ` (${loadState.plannedOperations.length})`
+                  : ''}
               </span>
             </label>
-            {showPlanned ? (
-              <p className="api-explorer__planned-note" role="status">
-                Planned operations are marked <strong>[PLANNED]</strong>. Try it out is disabled
-                while they are visible. Hide planned operations to execute implemented endpoints.
-              </p>
-            ) : null}
           </section>
+
+          {showPlanned ? (
+            loadState.plannedOperations.length > 0 ? (
+              <section
+                className="api-explorer__planned-list ui-card"
+                aria-labelledby="planned-operations-heading"
+              >
+                <div className="api-explorer__planned-list-heading">
+                  <div>
+                    <p className="eyebrow">Contract roadmap</p>
+                    <h2 id="planned-operations-heading">Planned operations</h2>
+                  </div>
+                  <span className="api-explorer__planned-badge">NOT DEPLOYED</span>
+                </div>
+                <p>
+                  These operations are documented for future work. They are intentionally kept out
+                  of Swagger&apos;s executable operation list.
+                </p>
+                <ul className="api-explorer__planned-items">
+                  {loadState.plannedOperations.map((operation) => (
+                    <li
+                      key={`${operation.method}:${operation.path}`}
+                      className="api-explorer__planned-item"
+                    >
+                      <span className="api-explorer__planned-method">{operation.method}</span>
+                      <code>{operation.path}</code>
+                      <span>{operation.summary}</span>
+                      <span className="api-explorer__planned-state">PLANNED</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : (
+              <p className="api-explorer__planned-empty ui-card" role="status">
+                The current contract contains no planned operations.
+              </p>
+            )
+          ) : null}
 
           <section className="api-explorer__swagger-region" aria-labelledby="swagger-heading">
             <h2 className="api-explorer__swagger-heading" id="swagger-heading">
@@ -277,11 +305,11 @@ export function ApiExplorerPage() {
             </h2>
             <div className="api-explorer__swagger">
               <SwaggerUI
-                spec={visibleDocument}
+                spec={swaggerDocument}
                 deepLinking
                 displayRequestDuration
+                defaultModelsExpandDepth={-1}
                 persistAuthorization={false}
-                {...(showPlanned ? { supportedSubmitMethods: [] } : {})}
               />
             </div>
           </section>
