@@ -1,4 +1,4 @@
-name: Sport Analytics - Deploy Backend
+name: Sport Analytics - Redeploy App Service Backend (Rollback)
 
 on:
   workflow_dispatch:
