@@ -74,7 +74,9 @@ function fakeDatabase(
         ],
         rowCount: 1,
       };
-    if (sql.includes('select json_build_object')) {
+    if (sql.includes('select snapshot_id::text'))
+      return { rows: [{ snapshotId: null }], rowCount: 1 };
+    if (sql.includes('from dataset_release_snapshot_event')) {
       page += 1;
       if (options.failPage && page === 2) throw new Error('database page failed');
       if (options.eventCount !== undefined) {
@@ -182,6 +184,29 @@ describe('dataset release worker job', () => {
     expect(database.calls.filter((call) => call.text.includes('last_fixture_id=$6'))).toHaveLength(
       2,
     );
+  });
+
+  it('materializes one release snapshot before paging so a mid-generation correction cannot mix revisions', async () => {
+    const database = fakeDatabase();
+    const store = new MemoryStore();
+    const handler = createDatasetReleaseJobHandler(database.pool, store, logger, {
+      workerId: 'worker-1',
+      leaseMs: 120000,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem',
+      pageSize: 2,
+    }).handler;
+
+    await handler(message, new AbortController().signal);
+
+    expect(
+      database.calls.some((call) =>
+        call.text.includes('INSERT INTO dataset_release_snapshot_event'),
+      ),
+    ).toBe(true);
+    expect(
+      database.calls.filter((call) => call.text.includes('FROM dataset_release_snapshot_event')),
+    ).toHaveLength(2);
   });
 
   it.each([
@@ -296,7 +321,8 @@ describe('dataset release worker job', () => {
     );
     expect(insert?.values?.[4]).toBe(3_200_000);
     expect(
-      database.calls.filter((call) => call.text.includes('SELECT json_build_object')).length,
+      database.calls.filter((call) => call.text.includes('FROM dataset_release_snapshot_event'))
+        .length,
     ).toBe(321);
     expect(store.bytes).toBeGreaterThan(50_000_000);
   }, 180_000);

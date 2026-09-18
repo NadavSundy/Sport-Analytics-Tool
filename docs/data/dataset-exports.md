@@ -97,16 +97,18 @@ its public metadata, JSON artefact and catalogue entry. The backend administrato
 authoritative permission boundary.
 
 The collection is returned newest first and includes each release's stable version, creation time,
-scope, event count, format version, documented fields and SHA-256 checksum. The public application
+durable snapshot identity and snapshot as-of time, scope, event count, format version, documented
+fields and SHA-256 checksum. The public application
 exposes the same catalogue at `/dataset-releases`; each release page presents its metadata, schema,
 checksum and a direct JSON download without requiring sign-in.
 
 Each artifact is canonical JSON containing its format version, scope, field descriptions and ordered
 published accepted-delivery rows. It is generated only from the live, corrected `delivery_current`
 revision whose source submission is `accepted`; pending, rejected and superseded rows are excluded.
-Release generation reads those rows in deterministic 10,000-row keyset pages ordered by fixture,
-innings, delivery sequence and delivery identifier. A supporting innings lower bound keeps later
-pages index-backed instead of rescanning the preceding corpus. The worker writes the JSON header, individual event
+Before paging, the worker atomically materializes the accepted current-delivery rows into a durable
+snapshot and records its opaque identity and transaction as-of time. Every deterministic 10,000-row
+keyset page reads that snapshot, so a correction published after generation begins cannot enter only
+later pages and a retry produces the same logical release. The worker writes the JSON header, individual event
 objects and closing bytes directly to private object storage while updating SHA-256 over those exact
 UTF-8 bytes. It therefore never constructs the complete event array or artifact string in
 application memory. PostgreSQL retains the immutable version, schema, event count, checksum and
@@ -144,4 +146,5 @@ Codex[GPT-5]. The administrator publication workflow was documented with the ass
 Codex[GPT-5.6 Sol]. The complete-export and calculation-trace export documentation for issue #467 was
 updated with the assistance of Claude Code[Claude Opus 5]. The streamed release-generation and
 storage lifecycle and local development provider were documented with the assistance of
+Codex[GPT-5]. The durable point-in-time snapshot semantics were documented with the assistance of
 Codex[GPT-5].

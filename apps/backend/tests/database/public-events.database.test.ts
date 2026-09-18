@@ -1,10 +1,14 @@
 import request from 'supertest';
+import { Readable } from 'node:stream';
+import type { ObjectStore } from '@sport-analytics/object-storage';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { executeQuery } from '../../src/database';
 import { createPublicEventRepository } from '../../src/modules/events/event.repository';
 import { createDatasetReleaseRepository } from '../../src/modules/dataset-releases/dataset-release.repository';
+import { createDatasetReleaseJobHandler } from '../../../worker/src/dataset-release-job';
+import type { Logger } from '../../../worker/src/logger';
 import { createPublicReadService } from '../../src/modules/public-read/public-read.service';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 import { createTestApp } from '../test-app';
@@ -24,6 +28,34 @@ interface TestRecords {
 }
 
 const sourcePrefix = `public-events-test-${process.pid}`;
+
+class InterleavingObjectStore implements ObjectStore {
+  object: Buffer | undefined;
+  private corrected = false;
+
+  constructor(private readonly publishCorrection: () => Promise<void>) {}
+
+  async write(_key: string, source: Readable) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of source) {
+      chunks.push(Buffer.from(chunk));
+      if (!this.corrected) {
+        this.corrected = true;
+        await this.publishCorrection();
+      }
+    }
+    this.object = Buffer.concat(chunks);
+    return { versionId: null };
+  }
+  async read() {
+    return Readable.from(this.object ?? Buffer.alloc(0));
+  }
+  async delete() {
+    this.object = undefined;
+  }
+}
+
+const workerLogger: Logger = { debug() {}, info() {}, warn() {}, error() {} };
 
 describe.sequential('public events database API', () => {
   let pool: Pool | undefined;
@@ -464,5 +496,96 @@ describe.sequential('public events database API', () => {
       [jobId],
     );
     expect(outbox.rows[0]!.count).toBe('2');
+  });
+
+  test('keeps a release coherent when a correction is published between streamed pages', async () => {
+    const current = testRecords();
+    const repository = createDatasetReleaseRepository(databasePool());
+    const owner = await databasePool().query<{ accountId: string }>(
+      `SELECT app_user_id::text AS "accountId" FROM app_user ORDER BY app_user_id LIMIT 1`,
+    );
+    const requested = await repository.requestGeneration({
+      version: `${sourcePrefix}-snapshot`,
+      requesterId: owner.rows[0]!.accountId,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem',
+    });
+    const store = new InterleavingObjectStore(async () => {
+      const previousId = current.orderedEventIds[2]!;
+      await databasePool().query(
+        `UPDATE delivery SET superseded_at=now(),superseded_by=delivery_id WHERE delivery_id=$1::bigint`,
+        [previousId],
+      );
+      const replacement = await databasePool().query<{ eventId: string }>(
+        `INSERT INTO delivery (
+           innings_id,over_number,position_in_over,innings_sequence,ball_number,
+           striker_id,non_striker_id,bowler_id,runs_off_bat,runs_extras,runs_total,
+           non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,extra_penalty,
+           submission_id,source_event_id,submission_event_ordinal,revision,
+           supersedes_delivery_id,source_batch_item_id
+         ) SELECT
+           innings_id,over_number,position_in_over,innings_sequence,ball_number,
+           striker_id,non_striker_id,bowler_id,6,runs_extras,6,
+           non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,extra_penalty,
+           submission_id,source_event_id,submission_event_ordinal,revision+1,
+           delivery_id,source_batch_item_id
+         FROM delivery WHERE delivery_id=$1::bigint
+         RETURNING delivery_id::text AS "eventId"`,
+        [previousId],
+      );
+      await databasePool().query(
+        `UPDATE delivery SET superseded_by=$2::bigint WHERE delivery_id=$1::bigint`,
+        [previousId, replacement.rows[0]!.eventId],
+      );
+    });
+    const handler = createDatasetReleaseJobHandler(databasePool(), store, workerLogger, {
+      workerId: 'snapshot-test-worker',
+      leaseMs: 120000,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem',
+      pageSize: 1,
+    }).handler;
+
+    await handler(
+      {
+        messageId: 'snapshot-test-message',
+        deliveryCount: 1,
+        body: {
+          type: 'dataset-release.generate',
+          version: 1,
+          jobId: requested.job!.jobId,
+          releaseVersion: `${sourcePrefix}-snapshot`,
+          deploymentEnvironment: 'test',
+        },
+      },
+      new AbortController().signal,
+    );
+
+    const artifact = JSON.parse(store.object!.toString()) as {
+      events: Array<{ eventId: string; runsOffBat: number }>;
+    };
+    const testEventIds = new Set(current.orderedEventIds);
+    const snapshottedTestEvents = artifact.events.filter((event) =>
+      testEventIds.has(event.eventId),
+    );
+
+    expect(snapshottedTestEvents.map((event) => event.eventId)).toEqual(current.orderedEventIds);
+
+    const correctedSnapshotEvent = snapshottedTestEvents.find(
+      (event) => event.eventId === current.orderedEventIds[2],
+    );
+
+    expect(correctedSnapshotEvent?.runsOffBat).toBe(1);
+
+    const correctedLiveEvent = await databasePool().query<{ runsOffBat: number }>(
+      `
+        SELECT runs_off_bat AS "runsOffBat"
+        FROM delivery_current
+        WHERE supersedes_delivery_id = $1::bigint
+      `,
+      [current.orderedEventIds[2]],
+    );
+
+    expect(correctedLiveEvent.rows).toEqual([{ runsOffBat: 6 }]);
   });
 });

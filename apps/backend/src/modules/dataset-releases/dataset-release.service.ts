@@ -57,6 +57,8 @@ function mapSnapshot(snapshot: DatasetReleaseSnapshot): DatasetRelease {
     releaseId: snapshot.releaseId,
     version: snapshot.version,
     createdAt: toApiDateTime(snapshot.createdAt),
+    snapshotId: snapshot.snapshotId,
+    snapshotAsOf: toNullableApiDateTime(snapshot.snapshotAsOf),
     formatVersion: DATASET_RELEASE_FORMAT_VERSION,
     scope: DATASET_RELEASE_SCOPE,
     eventCount: snapshot.eventCount,
