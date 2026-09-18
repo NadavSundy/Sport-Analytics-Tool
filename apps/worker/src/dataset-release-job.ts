@@ -159,27 +159,57 @@ export function createDatasetReleaseJobHandler(
     });
   }
 
+  async function materializeSnapshot(jobId: string): Promise<void> {
+    await transaction(database, async (client) => {
+      await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+      const job = await client.query<{ snapshotId: string | null }>(
+        `SELECT snapshot_id::text AS "snapshotId" FROM dataset_release_job WHERE job_id=$1::uuid AND lease_owner=$2 FOR UPDATE`,
+        [jobId, options.workerId],
+      );
+      if (job.rowCount !== 1) throw new LeaseBusyError();
+      if (job.rows[0]!.snapshotId) return;
+      await client.query(
+        `UPDATE dataset_release_job SET snapshot_id=gen_random_uuid(),snapshot_as_of=transaction_timestamp() WHERE job_id=$1::uuid AND lease_owner=$2`,
+        [jobId, options.workerId],
+      );
+      await client.query(
+        `INSERT INTO dataset_release_snapshot_event (job_id,fixture_id,innings_ordinal,sequence_number,event_id,event)
+         SELECT $1::uuid,i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id,jsonb_build_object(
+           'eventId',d.delivery_id::text,'fixtureId',i.fixture_id::text,'inningsId',i.innings_id::text,
+           'inningsOrdinal',i.ordinal,'sequenceNumber',d.innings_sequence,'overNumber',d.over_number,
+           'positionInOver',d.position_in_over,'ballNumber',d.ball_number,'strikerParticipantId',d.striker_id::text,
+           'nonStrikerParticipantId',d.non_striker_id::text,'bowlerParticipantId',d.bowler_id::text,
+           'runsOffBat',d.runs_off_bat,'runsExtras',d.runs_extras,'runsTotal',d.runs_total)
+         FROM delivery_current d INNER JOIN innings i ON i.innings_id=d.innings_id
+         INNER JOIN submission s ON s.submission_id=d.submission_id AND s.status='accepted'
+         ON CONFLICT DO NOTHING`,
+        [jobId],
+      );
+    });
+  }
+
   async function loadPage(
+    jobId: string,
     cursor: Cursor | null,
   ): Promise<{ events: unknown[]; next: Cursor | null }> {
     const predicate = cursor
-      ? `WHERE (i.fixture_id,i.ordinal)>=($1::bigint,$2::integer) AND (i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id)>($1::bigint,$2::integer,$3::integer,$4::bigint)`
-      : '';
+      ? `WHERE se.job_id=$1::uuid AND (se.fixture_id,se.innings_ordinal,se.sequence_number,se.event_id)>($2::bigint,$3::integer,$4::integer,$5::bigint)`
+      : 'WHERE se.job_id=$1::uuid';
     const params = cursor
-      ? [cursor.fixtureId, cursor.inningsOrdinal, cursor.sequenceNumber, cursor.eventId, pageSize]
-      : [pageSize];
-    const limit = cursor ? '$5' : '$1';
+      ? [
+          jobId,
+          cursor.fixtureId,
+          cursor.inningsOrdinal,
+          cursor.sequenceNumber,
+          cursor.eventId,
+          pageSize,
+        ]
+      : [jobId, pageSize];
+    const limit = cursor ? '$6' : '$2';
     const result = await database.query<EventRow>(
-      `SELECT json_build_object(
-      'eventId',d.delivery_id::text,'fixtureId',i.fixture_id::text,'inningsId',i.innings_id::text,
-      'inningsOrdinal',i.ordinal,'sequenceNumber',d.innings_sequence,'overNumber',d.over_number,
-      'positionInOver',d.position_in_over,'ballNumber',d.ball_number,'strikerParticipantId',d.striker_id::text,
-      'nonStrikerParticipantId',d.non_striker_id::text,'bowlerParticipantId',d.bowler_id::text,
-      'runsOffBat',d.runs_off_bat,'runsExtras',d.runs_extras,'runsTotal',d.runs_total) AS event,
-      i.fixture_id::text AS "fixtureId",i.ordinal AS "inningsOrdinal",d.innings_sequence AS "sequenceNumber",d.delivery_id::text AS "eventId"
-      FROM delivery_current d INNER JOIN innings i ON i.innings_id=d.innings_id
-      INNER JOIN submission s ON s.submission_id=d.submission_id AND s.status='accepted'
-      ${predicate} ORDER BY i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id LIMIT ${limit}`,
+      `SELECT se.event,se.fixture_id::text AS "fixtureId",se.innings_ordinal AS "inningsOrdinal",se.sequence_number AS "sequenceNumber",se.event_id::text AS "eventId"
+      FROM dataset_release_snapshot_event se ${predicate}
+      ORDER BY se.fixture_id,se.innings_ordinal,se.sequence_number,se.event_id LIMIT ${limit}`,
       params,
     );
     const last = result.rows.at(-1);
@@ -259,6 +289,7 @@ export function createDatasetReleaseJobHandler(
     const started = Date.now();
     const claimed = await claim(command);
     if (claimed.terminal) return;
+    await materializeSnapshot(command.jobId);
     if (claimed.previousKey) {
       try {
         await objectStore.delete(claimed.previousKey);
@@ -298,7 +329,7 @@ export function createDatasetReleaseJobHandler(
           eventsProcessed: events,
           bytesWritten: bytes,
         });
-        const loaded = await loadPage(cursor);
+        const loaded = await loadPage(command.jobId, cursor);
         for (const event of loaded.events) {
           const serialized = JSON.stringify(event);
           if (serialized === undefined)
@@ -345,7 +376,10 @@ export function createDatasetReleaseJobHandler(
           `dataset-release:${command.deploymentEnvironment}:${command.releaseVersion}`,
         ]);
         const inserted = await client.query<{ releaseId: string }>(
-          `INSERT INTO dataset_release (version,deployment_environment,format_version,scope,event_count,fields,artifact_storage_key,artifact_provider_version_id,artifact_storage_provider,artifact_storage_location,checksum_sha256) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,'release',$10) ON CONFLICT (deployment_environment,version) DO NOTHING RETURNING release_id::text AS "releaseId"`,
+          `INSERT INTO dataset_release (version,deployment_environment,format_version,scope,event_count,fields,artifact_storage_key,artifact_provider_version_id,artifact_storage_provider,artifact_storage_location,checksum_sha256,snapshot_id,snapshot_as_of)
+           SELECT $1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,'release',$10,drj.snapshot_id,drj.snapshot_as_of
+           FROM dataset_release_job drj WHERE drj.job_id=$11::uuid
+           ON CONFLICT (deployment_environment,version) DO NOTHING RETURNING release_id::text AS "releaseId"`,
           [
             command.releaseVersion,
             command.deploymentEnvironment,
@@ -357,6 +391,7 @@ export function createDatasetReleaseJobHandler(
             stored.versionId,
             options.storageProvider,
             checksum,
+            command.jobId,
           ],
         );
         let releaseId = inserted.rows[0]?.releaseId;
