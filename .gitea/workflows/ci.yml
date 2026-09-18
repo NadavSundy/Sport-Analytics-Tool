@@ -436,7 +436,7 @@ jobs:
 
       - name: Smoke check backend container image
         run: >-
-          node scripts/smoke-check-backend-container.mjs
+          npm run smoke:backend-container --
           "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
 
       - name: Install Azure CLI

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const ciWorkflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
+const rootPackage = JSON.parse(readFileSync('package.json', 'utf8'));
 const manualBackendWorkflow = readFileSync('.gitea/workflows/deploy-backend.yml', 'utf8');
 const backendDeployScript = readFileSync('scripts/deploy-backend-azure.py', 'utf8');
 const backendArtifactSmokeCheck = readFileSync('scripts/smoke-check-backend-artifact.mjs', 'utf8');
@@ -39,7 +40,12 @@ test('automatic backend deployment builds, validates and deploys an immutable Co
   assert.match(job, /AZURE_WORKER_CREDENTIALS/);
   assert.doesNotMatch(job, /AZURE_BACKEND_CONTAINER_CREDENTIALS/);
   assert.match(job, /docker build[\s\S]*apps\/backend\/Dockerfile/);
-  assert.match(job, /smoke-check-backend-container\.mjs/);
+  assert.equal(
+    rootPackage.scripts['smoke:backend-container'],
+    'node scripts/smoke-check-backend-container.mjs',
+  );
+  assert.match(job, /npm run smoke:backend-container --/);
+  assert.doesNotMatch(job, /node scripts\/smoke-check-backend-container\.mjs/);
   assert.match(job, /sport-analytics-api:\$\{\{ github\.sha \}\}/);
   assert.match(job, /az acr login/);
   assert.match(job, /infra\/azure\/backend\/main\.bicep/);
