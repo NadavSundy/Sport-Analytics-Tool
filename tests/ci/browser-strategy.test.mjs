@@ -103,9 +103,10 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
     return matches.map(() => path);
   });
 
-  assert.equal(tagged.length, 11);
+  assert.equal(tagged.length, 12);
   for (const required of [
     'tests/e2e/accessibility.spec.ts',
+    'tests/e2e/api-explorer.spec.ts',
     'tests/e2e/authentication.spec.ts',
     'tests/e2e/homepage.spec.ts',
     'tests/e2e/public-browsing.spec.ts',

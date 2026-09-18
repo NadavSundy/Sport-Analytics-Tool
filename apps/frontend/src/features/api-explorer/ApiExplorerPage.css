@@ -347,10 +347,27 @@
   font-family: var(--font-mono);
 }
 
-.api-explorer__swagger .swagger-ui code {
+.api-explorer__swagger .swagger-ui .info code,
+.api-explorer__swagger .swagger-ui .markdown code {
   border-radius: 4px;
   background: var(--colour-surface-raised);
   color: var(--colour-brand-text);
+}
+
+/*
+ * Keep Swagger's own response/example syntax renderer native.
+ * Broad project-level code backgrounds make Microlight tokens look boxed.
+ */
+.api-explorer__swagger .swagger-ui .highlight-code code,
+.api-explorer__swagger .swagger-ui .microlight code,
+.api-explorer__swagger .swagger-ui pre code {
+  background: transparent;
+  color: inherit;
+}
+
+.api-explorer__swagger .swagger-ui .highlight-code span,
+.api-explorer__swagger .swagger-ui .microlight span {
+  background-color: transparent !important;
 }
 
 .api-explorer__swagger .swagger-ui .scheme-container {
@@ -611,8 +628,7 @@
 :root[data-theme='night'] .api-explorer__swagger .swagger-ui .highlight-code,
 :root[data-theme='night'] .api-explorer__swagger .swagger-ui .microlight,
 :root[data-theme='night'] .api-explorer__swagger .swagger-ui pre {
-  background: #08121b !important;
-  color: #f6f8f2 !important;
+  border-color: var(--colour-border);
 }
 
 :root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux {
@@ -668,3 +684,489 @@
 }
 
 /* === End Stats The Game Swagger theme v2 === */
+
+/* === Issue #661 non-executable planned operations === */
+
+.api-explorer__planned-list {
+  margin-bottom: var(--space-6);
+  border-inline-start: 4px solid var(--colour-brand);
+}
+
+.api-explorer__planned-list-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.api-explorer__planned-list-heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.api-explorer__planned-list > p {
+  max-width: 54rem;
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.api-explorer__planned-badge,
+.api-explorer__planned-state {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--colour-brand) 14%, var(--colour-surface));
+  color: var(--colour-brand-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.api-explorer__planned-badge {
+  padding: 0.35rem 0.55rem;
+}
+
+.api-explorer__planned-items {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.api-explorer__planned-item {
+  display: grid;
+  grid-template-columns: auto minmax(12rem, auto) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface-soft);
+}
+
+.api-explorer__planned-method {
+  min-width: 4rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.api-explorer__planned-item code {
+  overflow-wrap: anywhere;
+  color: var(--colour-text);
+  font-family: var(--font-mono);
+}
+
+.api-explorer__planned-state {
+  padding: 0.25rem 0.45rem;
+}
+
+.api-explorer__planned-empty {
+  margin-bottom: var(--space-6);
+  color: var(--colour-text-secondary);
+}
+
+@media (max-width: 47.9375rem) {
+  .api-explorer__planned-list-heading {
+    display: grid;
+  }
+
+  .api-explorer__planned-badge {
+    justify-self: start;
+  }
+
+  .api-explorer__planned-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .api-explorer__planned-item > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .api-explorer__planned-state {
+    justify-self: end;
+  }
+}
+
+/* === Issue #661 Swagger Night Match complete readability fix === */
+
+/* Major Swagger surfaces */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .operation-tag-content,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock-body,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .parameters-container,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .request-body,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .responses-wrapper,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .responses-inner,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .response,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example {
+  background: var(--colour-surface) !important;
+  color: var(--colour-text) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .scheme-container,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock-tag,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock .opblock-section-header,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui section.models,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-container {
+  background: var(--colour-surface-soft) !important;
+  color: var(--colour-text) !important;
+  border-color: var(--colour-border) !important;
+}
+
+/* Text contrast across expanded operations and models */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui p,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui li,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui label,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui td,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui th,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .markdown,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .renderedMarkdown,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .response-col_status,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .response-col_description,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .parameters-col_name,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .parameters-col_description,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .parameter__name,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .parameter__in,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-title,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-title__text,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .prop-name,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .property-row,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui section.models h4 {
+  color: var(--colour-text) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock-summary-description,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .info .description,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .info .description p,
+:root[data-theme='night']
+  .api-explorer__swagger
+  .swagger-ui
+  .response-control-media-type__accept-message,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .prop-format,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-hint,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .response-col_links {
+  color: var(--colour-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .prop-type,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .parameter__type {
+  color: var(--colour-data-accent) !important;
+  opacity: 1 !important;
+}
+
+/* Fix the Schemas/Models block specifically */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui section.models {
+  box-shadow: none !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box-control,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .models-control,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-toggle,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .expand-operation {
+  color: var(--colour-text) !important;
+  background: transparent !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box-control:hover,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .models-control:hover {
+  background: var(--colour-surface-raised) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box-control svg,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .models-control svg,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-toggle svg,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .expand-operation svg,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock-summary-control svg {
+  fill: var(--colour-text) !important;
+  color: var(--colour-text) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-toggle::after {
+  filter: invert(1) brightness(1.35);
+  opacity: 0.95;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-title,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-title__text,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box-control,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box-control .model-title,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .models-control span {
+  background: transparent !important;
+  color: var(--colour-text) !important;
+  opacity: 1 !important;
+}
+
+/* Tabs / media type controls */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .tab li,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .tab li button,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .tab li button.tablinks,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .response-control-media-type__title {
+  background: transparent !important;
+  color: var(--colour-text) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .tab li.active button,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .tab li button.active {
+  color: var(--colour-primary) !important;
+}
+
+/* Form controls inside Swagger */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui select,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui input,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui textarea {
+  border-color: var(--colour-border) !important;
+  background: var(--colour-surface-raised) !important;
+  color: var(--colour-text) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui select option {
+  background: var(--colour-surface) !important;
+  color: var(--colour-text) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui input::placeholder,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui textarea::placeholder {
+  color: var(--colour-text-secondary) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .btn:not(.authorize):not(.execute) {
+  border-color: var(--colour-border) !important;
+  background: var(--colour-surface-raised) !important;
+  color: var(--colour-text) !important;
+}
+
+/* Response/parameter tables */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui table,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui table thead,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui table tbody,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui table tr,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui table td,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui table th,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .responses-table {
+  background: transparent !important;
+  border-color: var(--colour-border) !important;
+  color: var(--colour-text) !important;
+}
+
+/* Keep Swagger syntax tokens native; style only the frame */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .highlight-code,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .microlight,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui pre {
+  border: 1px solid var(--colour-border) !important;
+  border-radius: var(--radius-control);
+  box-shadow: none !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .highlight-code span,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .microlight span,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui pre span {
+  background-color: transparent !important;
+}
+
+/* Authorization dialog */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux-header,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux-content {
+  border-color: var(--colour-border) !important;
+  background: var(--colour-surface) !important;
+  color: var(--colour-text) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux-header h3,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux-content h4,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux-content p,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux-content label {
+  color: var(--colour-text) !important;
+}
+
+/* Internal Swagger scrollbars */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui * {
+  scrollbar-color: var(--colour-border-strong) var(--colour-surface);
+}
+
+/* === End Issue #661 Swagger Night Match complete readability fix === */
+
+/* === Issue #661 final Swagger product-surface cleanup === */
+
+/*
+ * The application owns API title, version and onboarding above Swagger.
+ * Swagger's duplicate info block adds a second title/description surface and
+ * creates needless theme duplication.
+ */
+.api-explorer__swagger .swagger-ui .info {
+  display: none;
+}
+
+/*
+ * With the duplicate info block removed, the server/auth strip becomes the
+ * deliberate top edge of the embedded Swagger surface.
+ */
+.api-explorer__swagger .swagger-ui .scheme-container {
+  margin-top: 0;
+  border-top: 0;
+}
+
+/* === End Issue #661 final Swagger product-surface cleanup === */
+
+/* === Issue #661 endpoint Schema Night Match contrast fix === */
+
+/*
+ * Swagger endpoint-level Schema rendering retains literal dark greys in some
+ * nested model labels. In Night Match those labels become almost invisible.
+ * Keep Swagger's structure, and repair only the contrast.
+ */
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-title,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-title__text,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box-control,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box-control span,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .property,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .property-row,
+:root[data-theme='night']
+  .api-explorer__swagger
+  .swagger-ui
+  .model-example
+  .property-row
+  .prop-name,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .prop-name,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .brace-open,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .brace-close {
+  color: var(--colour-text) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box-control,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-title,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-title__text {
+  background: transparent !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .prop-type,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .parameter__type {
+  color: var(--colour-data-accent) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .prop-format,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-hint,
+:root[data-theme='night']
+  .api-explorer__swagger
+  .swagger-ui
+  .model-example
+  .property-row
+  .renderedMarkdown,
+:root[data-theme='night']
+  .api-explorer__swagger
+  .swagger-ui
+  .model-example
+  .property-row
+  .renderedMarkdown
+  p {
+  color: var(--colour-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+/* Expand/collapse controls should read as controls, not disabled content. */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button span {
+  color: var(--colour-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button:hover,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button:hover span {
+  color: var(--colour-data-accent) !important;
+}
+
+/* Restore strong labels after the generic button rule. */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button .model-title,
+:root[data-theme='night']
+  .api-explorer__swagger
+  .swagger-ui
+  .model-example
+  button
+  .model-title__text,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .prop-name {
+  color: var(--colour-text) !important;
+}
+
+/* Distinguish the model canvas from the surrounding response area. */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box {
+  background: color-mix(in srgb, var(--colour-surface-soft) 78%, var(--colour-surface)) !important;
+  border: 1px solid var(--colour-border) !important;
+  border-radius: var(--radius-control);
+}
+
+/* === End Issue #661 endpoint Schema Night Match contrast fix === */
+
+/* === Issue #661 final endpoint-schema Night Match fix === */
+
+/*
+ * Swagger's model renderer uses several nested utility classes with fixed
+ * grey text. In Night Match, make the whole endpoint-level Schema model
+ * readable first, then re-apply semantic accents for types/hints.
+ */
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box * {
+  color: var(--colour-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-title,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-title__text,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model .property,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model .prop-name,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box strong {
+  color: var(--colour-text) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .prop-type,
+:root[data-theme='night']
+  .api-explorer__swagger
+  .swagger-ui
+  .model-example
+  .model
+  .property.primitive {
+  color: var(--colour-data-accent) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .prop-format,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-hint {
+  color: var(--colour-text-secondary) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box-control,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .model-box-control * {
+  background: transparent !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button {
+  color: var(--colour-text-secondary) !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button:hover,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example button:hover * {
+  color: var(--colour-data-accent) !important;
+}
+
+/* The response section heading is another Swagger literal dark grey. */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .responses-inner > h4,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .responses-inner h4 {
+  color: var(--colour-text) !important;
+  opacity: 1 !important;
+}
+
+/* Keep required markers visible without changing Swagger's semantics. */
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-example .star {
+  color: var(--colour-error) !important;
+}
+
+/* === End Issue #661 final endpoint-schema Night Match fix === */

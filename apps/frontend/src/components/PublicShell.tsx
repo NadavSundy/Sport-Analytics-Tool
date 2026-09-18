@@ -94,6 +94,7 @@ export function PublicShell({ children }: PublicShellProps) {
             <NavLink to="/competitors">Teams</NavLink>
             <NavLink to="/participants">Players</NavLink>
             <NavLink to="/dataset-releases">Downloads</NavLink>
+            <NavLink to="/api">API</NavLink>
           </nav>
           <div className="site-header__controls">
             <AuthenticationNavigation />
@@ -107,8 +108,9 @@ export function PublicShell({ children }: PublicShellProps) {
       <footer className="site-footer">
         <div className="site-footer__inner">
           <BrandWordmark />
-          <nav aria-label="Site" className="site-footer__navigation">
-            <a href="https://sports-analytics-tool.pages.dev/api/overview/">API</a>
+          <nav aria-label="API resources" className="site-footer__navigation">
+            <Link to="/api">API Explorer</Link>
+            <a href="https://sports-analytics-tool.pages.dev/api/overview/">API Documentation</a>
           </nav>
           <p>The game, measured ball by ball.</p>
         </div>
