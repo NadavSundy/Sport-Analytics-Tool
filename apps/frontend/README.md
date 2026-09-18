@@ -131,6 +131,42 @@ frontend source or OpenAPI document.
 The page provides accessible loading, failure and retry states around contract loading and retains the
 normal public header, footer, theme controls and keyboard focus treatment.
 
+### Public discovery and production verification
+
+The API Explorer is a first-class public product surface:
+
+- the primary public navigation links to `/api` as **API**;
+- the bottom-of-page API entry now opens the in-app **API Explorer**;
+- the footer separately retains **API Documentation** for the broader MkDocs material;
+- no application sign-in is required to open the explorer.
+
+The explorer does not supply credentials itself. Public endpoints can be explored anonymously.
+Bearer tokens and consumer API keys are entered only through Swagger's runtime authorization
+dialog. Project code does not copy those values into source control, custom local storage, telemetry
+or logs, and `persistAuthorization` remains disabled.
+
+The outer page, navigation, onboarding and theme integration follow the Stat'sTheGame design system.
+Swagger's response/example syntax renderer intentionally retains Swagger's own token formatting so
+JSON examples remain readable in both Day Match and Night Match.
+
+Production-style browser verification against the deployed development API is available with:
+
+```bash
+npm run test:e2e:api-explorer-live
+```
+
+That command runs the normal production-preview frontend while pointing `VITE_API_BASE_URL` at the
+deployed API. The browser itself must successfully fetch `/openapi.yaml`; therefore a CORS failure
+prevents Swagger from rendering and fails the test.
+
+After frontend deployment, verify the exact deployed frontend origin with:
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL="https://<deployed-frontend-origin>"
+npm.cmd run test:e2e:api-explorer-live
+Remove-Item Env:PLAYWRIGHT_BASE_URL
+```
+
 ## Submitter access workflow
 
 After authentication, `/account` loads the current application profile from the handwritten
@@ -346,3 +382,5 @@ The issue #314 static homepage, progressive Three.js enhancement, fallback, moti
 behavior were documented with the assistance of Codex[GPT-5.6 Sol].
 
 The Issue #660 public API Explorer implementation and documentation were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Issue #661 public navigation, Swagger UX refinement, production verification and accessibility coverage were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

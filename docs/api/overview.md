@@ -48,6 +48,10 @@ Implemented operations are available for normal exploration. Planned operations 
 default; users may reveal them explicitly, but interactive submission is disabled while the planned
 view is active.
 
+The Explorer is discoverable from the Stat'sTheGame primary public navigation as **API**. The
+bottom-of-page API entry opens the in-app Explorer, while a separate **API Documentation** link
+continues to expose the extended MkDocs documentation.
+
 ## Current endpoints
 
 ```http
@@ -375,3 +379,4 @@ assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #635 public leaderboard endpoint and qualification summary were documented with the
 assistance of Codex[GPT-5].
 The Issue #660 public API Explorer workflow was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #661 public API Explorer discoverability and production UX guidance was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].

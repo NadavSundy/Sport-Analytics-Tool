@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 
 import { seasonUploadPackageSchema, type SeasonUploadPackage } from '@sport-analytics/contracts';
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
@@ -1134,6 +1135,140 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(await countTestOwnedRows('fixture')).toBe(fixturesBefore);
     expect(await countTestOwnedRows('team')).toBe(teamsBefore);
     expect(await countTestOwnedRows('person')).toBe(peopleBefore);
+  });
+
+  test('resolves innings and squad for a genuinely new fixture once it is canonically onboarded (issue #584)', async () => {
+    const seed = records();
+    const sourceRef = `${prefix}-new-fixture-584`;
+    const newDurablePersonSourceId = `cricsheet:participant:${prefix}-new584-striker`;
+
+    const uploadPackage = singleEventPackage(
+      { sourceId: `cricsheet:fixture:${sourceRef}` },
+      {
+        sourceId: `cricsheet:participant:${prefix}-bowler`,
+        context: { name: BOWLER_NAME, team: { context: { name: `${prefix}-alpha` } } },
+      },
+      {
+        sourceId: newDurablePersonSourceId,
+        context: {
+          name: `${prefix} New584 Striker`,
+          team: { context: { name: `${prefix}-alpha` } },
+        },
+      },
+      {
+        context: {
+          name: `${prefix} New584 Bowler`,
+          team: { context: { name: `${prefix}-beta` } },
+        },
+      },
+    );
+
+    // Before onboarding: exactly the bug in issue #584. The fixture, its
+    // innings and its participants are all permanently unresolved because
+    // nothing about this fixture exists yet.
+    const before = await resolvePackageReferences(databaseClient(), uploadPackage);
+    expect(outcomeAt(before, 'fixtures.0').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0.events.0.striker').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0.events.0.nonStriker').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0.events.0.bowler').state).toBe('unresolved');
+
+    const repository = createBatchRepository(databaseClient());
+    const batch = await repository.createBatchAndQueueValidation({
+      batchReference: randomUUID(),
+      submitterId: seed.submitterId,
+      competitionId: seed.competitionId,
+      idempotencyKey: `${prefix}-584-idempotency`,
+      source: { checksum: 'b'.repeat(64), uri: `stored-object:${prefix}-584`, sizeBytes: 1 },
+    });
+    await repository.insertBatchItems(batch.batchId, [
+      {
+        ordinal: 0,
+        overNumber: 0,
+        positionInOver: 0,
+        payload: {},
+        referenceResolutionState: 'unresolved',
+        state: 'rejected',
+        rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+      },
+    ]);
+    await databaseClient().query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [
+      batch.batchId,
+    ]);
+    await databaseClient().query(
+      `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+      [batch.batchId],
+    );
+
+    // This is the fix: creating the canonical fixture also onboards the
+    // innings and whatever squad members carry a durable identity.
+    const decision = await repository.createCanonicalFixtureAndQueueMapping({
+      batchId: batch.batchId,
+      batchReference: batch.batchReference,
+      competitionId: seed.competitionId,
+      actorId: seed.submitterId,
+      itemOrdinal: 0,
+      referencePath: 'fixtures.0',
+      decisionKey: '584-onboard',
+      sourceRef,
+      season: SEASON_NAME,
+      startDate: '2026-09-09',
+      teamNames: [`${prefix}-alpha`, `${prefix}-beta`],
+      proposal: {
+        endDate: '2026-09-09',
+        matchType: 'T20',
+        teamType: 'club',
+        gender: 'mixed',
+        ballsPerOver: 6,
+        outcome: 'tie',
+        sourceVersion: '1.1',
+        sourceRevision: 1,
+      },
+      innings: [{ ordinal: 0, battingTeamName: `${prefix}-alpha` }],
+      participants: [
+        {
+          sourceId: `cricsheet:participant:${prefix}-bowler`,
+          name: BOWLER_NAME,
+          teamName: `${prefix}-alpha`,
+        },
+        {
+          sourceId: newDurablePersonSourceId,
+          name: `${prefix} New584 Striker`,
+          teamName: `${prefix}-alpha`,
+        },
+        { name: `${prefix} New584 Bowler`, teamName: `${prefix}-beta` },
+      ],
+    });
+
+    expect(decision.onboarding).toEqual({
+      inningsCreated: 1,
+      squadCreated: 2,
+      unresolvedParticipants: [
+        { name: `${prefix} New584 Bowler`, teamName: `${prefix}-beta`, candidates: [] },
+      ],
+    });
+
+    // The existing durable person was reused, not duplicated.
+    expect(
+      await scalar(`SELECT count(*)::text FROM person WHERE source_ref=$1`, [`${prefix}-bowler`]),
+    ).toBe('1');
+    expect(seed.bowlerPersonId).toEqual(
+      await scalar(`SELECT person_id::text FROM person WHERE source_ref=$1`, [`${prefix}-bowler`]),
+    );
+
+    // After onboarding: re-running the exact same, untouched reference
+    // resolver against the exact same package now resolves the fixture, its
+    // innings and its identified squad members - exactly what issue #584
+    // requires ("A newly created fixture can therefore exist while its
+    // events still fail to resolve or publish" must no longer be true). The
+    // one participant with no durable identity is correctly left unresolved
+    // rather than silently guessed at.
+    const after = await resolvePackageReferences(databaseClient(), uploadPackage);
+    expect(outcomeAt(after, 'fixtures.0').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0.events.0.striker').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0.events.0.nonStriker').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0.events.0.bowler').state).toBe('unresolved');
   });
 
   test('treats a fixture in another competition as invalid rather than resolving across the declared scope', async () => {
