@@ -94,49 +94,45 @@ test(
   },
 );
 
-test(
-  'planned operations are explicit, separate from Swagger, and non-executable',
-  { tag: '@mobile' },
-  async ({ page }) => {
-    await stubOpenApi(page);
-    await page.goto('/api');
+test('planned operations are explicit, separate from Swagger, and non-executable', async ({
+  page,
+}) => {
+  await stubOpenApi(page);
+  await page.goto('/api');
 
-    await page.getByRole('checkbox', { name: /Show planned operations/ }).check();
+  await page.getByRole('checkbox', { name: /Show planned operations/ }).check();
 
-    const plannedRegion = page.getByRole('region', { name: 'Planned operations' });
-    await expect(plannedRegion).toBeVisible();
-    await expect(plannedRegion.getByText('/api/v1/future-statistic')).toBeVisible();
-    await expect(plannedRegion.getByText('Future statistic')).toBeVisible();
-    await expect(plannedRegion.locator('.api-explorer__planned-state')).toHaveText('PLANNED');
-    await expect(plannedRegion.getByRole('button')).toHaveCount(0);
+  const plannedRegion = page.getByRole('region', { name: 'Planned operations' });
+  await expect(plannedRegion).toBeVisible();
+  await expect(plannedRegion.getByText('/api/v1/future-statistic')).toBeVisible();
+  await expect(plannedRegion.getByText('Future statistic')).toBeVisible();
+  await expect(plannedRegion.locator('.api-explorer__planned-state')).toHaveText('PLANNED');
+  await expect(plannedRegion.getByRole('button')).toHaveCount(0);
 
-    await expect(
-      page.locator('.swagger-ui .opblock-summary-path', {
-        hasText: '/api/v1/future-statistic',
-      }),
-    ).toHaveCount(0);
+  await expect(
+    page.locator('.swagger-ui .opblock-summary-path', {
+      hasText: '/api/v1/future-statistic',
+    }),
+  ).toHaveCount(0);
 
-    await expect(
-      page.locator('.swagger-ui .opblock-summary-path', { hasText: '/api/v1/health' }),
-    ).toBeVisible();
-  },
-);
+  await expect(
+    page.locator('.swagger-ui .opblock-summary-path', { hasText: '/api/v1/health' }),
+  ).toBeVisible();
+});
 
-test(
-  'project-owned explorer shell and controls have no serious accessibility violations',
-  { tag: '@mobile' },
-  async ({ page }) => {
-    await stubOpenApi(page);
-    await page.goto('/api');
+test('project-owned explorer shell and controls have no serious accessibility violations', async ({
+  page,
+}) => {
+  await stubOpenApi(page);
+  await page.goto('/api');
 
-    await expect(page.getByRole('heading', { level: 1, name: 'API Explorer' })).toBeVisible();
-    await expect(page.locator('.swagger-ui')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'API Explorer' })).toBeVisible();
+  await expect(page.locator('.swagger-ui')).toBeVisible();
 
-    const results = await new AxeBuilder({ page }).exclude('.swagger-ui').analyze();
-    const seriousOrCritical = results.violations.filter(
-      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-    );
+  const results = await new AxeBuilder({ page }).exclude('.swagger-ui').analyze();
+  const seriousOrCritical = results.violations.filter(
+    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+  );
 
-    expect(seriousOrCritical).toEqual([]);
-  },
-);
+  expect(seriousOrCritical).toEqual([]);
+});
