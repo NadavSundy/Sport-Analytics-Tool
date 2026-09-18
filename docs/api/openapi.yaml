@@ -29,8 +29,9 @@ x-api-versioning:
     code: UNSUPPORTED_API_VERSION
 servers:
   - url: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
-    description: Development API
-
+    description: Deployed development API
+  - url: http://127.0.0.1:3000
+    description: Local development API
 security: []
 
 tags:
@@ -418,11 +419,18 @@ paths:
       operationId: getConsumerFixture
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
       responses:
-        '200': { description: Fixture detail. }
+        '200':
+          description: Fixture detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureResponse'
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events:
     get:
@@ -432,16 +440,50 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [
-          { $ref: '#/components/parameters/FixtureId' },
-          { $ref: '#/components/parameters/Limit' },
-          { $ref: '#/components/parameters/Cursor' },
-        ]
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: >-
+            Limit events to those involving this participant as striker,
+            non-striker, bowler, dismissed player or identified fielder.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
       responses:
-        '200': { description: Paginated accepted fixture events. }
+        '200':
+          description: Paginated accepted fixture events in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventCollectionResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/export.json:
     get:
@@ -450,11 +492,48 @@ paths:
       operationId: exportConsumerFixtureEventsJson
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: Limit events to those involving this participant.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
       responses:
-        '200': { description: JSON event export. }
+        '200':
+          description: Every matching accepted event in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventExportResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/export.csv:
     get:
@@ -463,11 +542,54 @@ paths:
       operationId: exportConsumerFixtureEventsCsv
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: Limit events to those involving this participant.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
       responses:
-        '200': { description: CSV event export. }
+        '200':
+          description: A CSV attachment of every matching accepted event in occurrence order.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the CSV export.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}:
     get:
@@ -477,11 +599,18 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [{ $ref: '#/components/parameters/FixtureId' }, { $ref: '#/components/parameters/EventId' }]
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/EventId'
       responses:
-        '200': { description: Accepted fixture event. }
+        '200':
+          description: One current accepted fixture event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventResponse'
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics:
     get:
@@ -490,11 +619,20 @@ paths:
       operationId: getConsumerFixtureStatistics
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/FixtureId' }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/IncludeStatisticContributors'
       responses:
-        '200': { description: Derived fixture statistics. }
+        '200':
+          description: Derived fixture statistics and completeness state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureStatisticsResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}:
     get:
@@ -504,14 +642,20 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [
-          { $ref: '#/components/parameters/FixtureId' },
-          { $ref: '#/components/parameters/StatisticId' },
-        ]
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+        - $ref: '#/components/parameters/IncludeStatisticContributors'
       responses:
-        '200': { description: Derived fixture statistic. }
+        '200':
+          description: One derived fixture statistic resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureStatisticResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
     get:
@@ -521,14 +665,21 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [
-          { $ref: '#/components/parameters/FixtureId' },
-          { $ref: '#/components/parameters/StatisticId' },
-        ]
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
       responses:
-        '200': { description: JSON statistic-event export. }
+        '200':
+          description: The statistic's contributing accepted events in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventExportResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ExportTraceChanged' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
     get:
@@ -538,14 +689,27 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [
-          { $ref: '#/components/parameters/FixtureId' },
-          { $ref: '#/components/parameters/StatisticId' },
-        ]
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
       responses:
-        '200': { description: CSV statistic-event export. }
+        '200':
+          description: A CSV attachment of the statistic's contributing accepted events.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the CSV export.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ExportTraceChanged' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/participants/{participantId}/statistics:
     get:
@@ -555,15 +719,19 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [
-          { $ref: '#/components/parameters/ParticipantId' },
-          { name: scope, in: query, schema: { type: string, enum: [season, competition, career] } },
-        ]
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/ParticipantAggregateScope'
       responses:
-        '200': { description: 'Participant season, competition, and career aggregates.' }
+        '200':
+          description: Participant season, competition, and career aggregates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregatesResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
 
   /api/v1/consumer/participants/{participantId}/statistics/{statisticId}:
     get:
@@ -573,15 +741,18 @@ paths:
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
       parameters:
-        [
-          { $ref: '#/components/parameters/ParticipantId' },
-          { $ref: '#/components/parameters/StatisticId' },
-        ]
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/StatisticId'
       responses:
-        '200': { description: Participant aggregate statistic. }
+        '200':
+          description: One derived participant aggregate resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregateResponse'
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
-
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
   /api/v1/health:
     get:
       tags:
@@ -2700,12 +2871,18 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: Supabase access token
+      bearerFormat: JWT
+      description: >-
+        Supabase-issued access token for authenticated application endpoints.
+        Enter the raw access token in an interactive OpenAPI client's authorization
+        dialog; the client adds the `Bearer` scheme to the request automatically.
     apiKeyAuth:
       type: apiKey
       in: header
       name: X-API-Key
-
+      description: >-
+        External consumer API key sent in the `X-API-Key` request header.
+        Real API keys must not be stored in this specification or its examples.
   parameters:
     DatasetReleaseVersion:
       name: version

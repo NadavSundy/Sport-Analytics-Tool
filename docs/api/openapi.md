@@ -67,6 +67,28 @@ x-implementation-status: planned
 
 Planned operations must not be treated as deployed functionality.
 
+## Interactive OpenAPI consumers
+
+The OpenAPI document includes the metadata needed by interactive API clients.
+
+- The `servers` list contains both the deployed development API and the local
+  backend used during development.
+- Public operations declare `security: []`.
+- Authenticated application operations use `bearerAuth`; the value supplied by
+  a client is the raw Supabase access token.
+- External consumer operations use `apiKeyAuth`, sent in the `X-API-Key`
+  request header.
+- Request parameters and response media types are documented on the operations
+  that expose them, including JSON and CSV exports.
+
+Real bearer tokens, API keys and credentials must never be committed to the
+OpenAPI file as examples. Authentication values entered into an interactive
+client are runtime input only.
+
+`x-implementation-status` remains authoritative. Making a contract renderable
+or executable in an API explorer does not change a planned operation into an
+implemented operation.
+
 ## Handwritten API boundary
 
 The specification documents the team's Express HTTP API.
@@ -90,3 +112,4 @@ PostgreSQL
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #609 contract-test section was added with the assistance of Claude-Code[Claude Opus 5].
 The Issue #658 public-specification endpoint and deployment-packaging documentation was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #659 OpenAPI contract hardening and regression tests were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
