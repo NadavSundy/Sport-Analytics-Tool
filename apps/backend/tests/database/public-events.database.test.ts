@@ -577,7 +577,15 @@ describe.sequential('public events database API', () => {
 
     expect(correctedSnapshotEvent?.runsOffBat).toBe(1);
 
-    const published = await repository.loadPublishedEventPage(null, 10);
-    expect(published.events).toContainEqual(expect.objectContaining({ runsOffBat: 6 }));
+    const correctedLiveEvent = await databasePool().query<{ runsOffBat: number }>(
+      `
+        SELECT runs_off_bat AS "runsOffBat"
+        FROM delivery_current
+        WHERE supersedes_delivery_id = $1::bigint
+      `,
+      [current.orderedEventIds[2]],
+    );
+
+    expect(correctedLiveEvent.rows).toEqual([{ runsOffBat: 6 }]);
   });
 });
