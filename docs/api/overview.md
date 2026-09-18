@@ -37,6 +37,17 @@ deprecation and retirement rules.
 See [Shared API Contracts](contracts.md) for the complete identifier,
 response, error, filtering, sorting, date/time, event-ordering, and pagination conventions.
 
+## Interactive API Explorer
+
+The public frontend exposes an interactive API Explorer at `/api`. It loads the authoritative
+`/openapi.yaml` document from the backend at runtime rather than keeping a frontend copy of the
+contract. The page identifies `v1` as the currently supported API major version and exposes the
+contract-defined bearer-token and consumer API-key authorization controls.
+
+Implemented operations are available for normal exploration. Planned operations are hidden by
+default; users may reveal them explicitly, but interactive submission is disabled while the planned
+view is active.
+
 ## Current endpoints
 
 ```http
@@ -363,3 +374,4 @@ The preceding API overview was reviewed and updated for the Intermediate impleme
 assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #635 public leaderboard endpoint and qualification summary were documented with the
 assistance of Codex[GPT-5].
+The Issue #660 public API Explorer workflow was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].

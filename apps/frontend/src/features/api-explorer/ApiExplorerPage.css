@@ -1,0 +1,670 @@
+.api-explorer__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: start;
+  margin-bottom: var(--space-6);
+}
+
+.api-explorer__intro h2,
+.api-explorer__controls h2,
+.api-explorer__state h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  line-height: 1.15;
+}
+
+.api-explorer__intro p:not(.eyebrow),
+.api-explorer__controls p {
+  max-width: 52rem;
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.api-explorer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.api-explorer__links a {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.api-explorer__state {
+  max-width: 48rem;
+}
+
+.api-explorer__retry {
+  margin-top: var(--space-4);
+}
+
+.api-explorer__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4) var(--space-6);
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.api-explorer__controls h2 {
+  margin-bottom: var(--space-2);
+}
+
+.api-explorer__controls p {
+  margin: 0;
+}
+
+.api-explorer__planned-toggle {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.api-explorer__planned-toggle input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+}
+
+.api-explorer__planned-note {
+  grid-column: 1 / -1;
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--colour-brand);
+  background: var(--colour-surface-soft);
+}
+
+.api-explorer__swagger-region {
+  min-width: 0;
+}
+
+.api-explorer__swagger-heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.api-explorer__swagger {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
+  background: #ffffff;
+  color: #1b1b1b;
+  box-shadow: var(--shadow-card);
+}
+
+.api-explorer__swagger .swagger-ui {
+  min-width: 0;
+}
+
+.api-explorer__swagger .swagger-ui .wrapper {
+  max-width: none;
+  padding-inline: var(--space-4);
+}
+
+.api-explorer__swagger .swagger-ui .information-container {
+  margin: 0;
+}
+
+.api-explorer__swagger .swagger-ui .scheme-container {
+  box-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui button,
+.api-explorer__swagger .swagger-ui input,
+.api-explorer__swagger .swagger-ui select,
+.api-explorer__swagger .swagger-ui textarea,
+.api-explorer__swagger .swagger-ui a {
+  scroll-margin-top: var(--space-4);
+}
+
+.api-explorer__swagger .swagger-ui button:focus-visible,
+.api-explorer__swagger .swagger-ui input:focus-visible,
+.api-explorer__swagger .swagger-ui select:focus-visible,
+.api-explorer__swagger .swagger-ui textarea:focus-visible,
+.api-explorer__swagger .swagger-ui a:focus-visible {
+  outline: 3px solid #007f9e;
+  outline-offset: 3px;
+}
+
+.api-explorer-route-loading {
+  padding-block: var(--space-8);
+}
+
+@media (max-width: 47.9375rem) {
+  .api-explorer__intro,
+  .api-explorer__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .api-explorer__links {
+    width: 100%;
+  }
+
+  .api-explorer__links a,
+  .api-explorer__planned-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .api-explorer__swagger .swagger-ui .wrapper {
+    padding-inline: var(--space-2);
+  }
+}
+
+/* === Stats The Game Swagger theme v2 === */
+
+/*
+ * Swagger UI keeps its interaction model, but is visually mapped onto the
+ * application's existing semantic tokens.
+ *
+ * The application switches themes with:
+ *   :root[data-theme='night']
+ */
+
+.api-explorer__intro {
+  padding: var(--space-6);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-large);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--colour-primary-soft) 52%, transparent),
+      transparent 58%
+    ),
+    var(--colour-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.api-explorer__intro .eyebrow {
+  color: var(--colour-label);
+}
+
+.api-explorer__links a {
+  transition:
+    background-color var(--motion-fast) var(--ease-fast),
+    border-color var(--motion-fast) var(--ease-fast),
+    color var(--motion-fast) var(--ease-fast),
+    transform var(--motion-fast) var(--ease-fast);
+}
+
+.api-explorer__links a:hover {
+  border-color: var(--colour-primary);
+  background: var(--colour-primary-soft);
+  color: var(--colour-text);
+  transform: translateY(-1px);
+}
+
+.api-explorer__controls {
+  border-top: 3px solid var(--colour-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.api-explorer__planned-toggle:hover {
+  border-color: var(--colour-primary);
+  background: var(--colour-primary-soft);
+}
+
+.api-explorer__planned-toggle input {
+  accent-color: var(--colour-primary);
+}
+
+.api-explorer__planned-note {
+  border-inline-start-color: var(--colour-brand);
+}
+
+.api-explorer__swagger-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.api-explorer__swagger-heading::after {
+  content: 'PUBLIC';
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: var(--colour-primary-soft);
+  color: var(--colour-label);
+  font-family: var(--font-interface);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.api-explorer__swagger {
+  overflow: hidden;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-large);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  box-shadow: var(--shadow-card);
+}
+
+.api-explorer__swagger .swagger-ui {
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  font-family: var(--font-interface);
+}
+
+.api-explorer__swagger .swagger-ui .wrapper {
+  max-width: none;
+  padding-inline: var(--space-5);
+}
+
+.api-explorer__swagger .swagger-ui,
+.api-explorer__swagger .swagger-ui p,
+.api-explorer__swagger .swagger-ui li,
+.api-explorer__swagger .swagger-ui table,
+.api-explorer__swagger .swagger-ui label,
+.api-explorer__swagger .swagger-ui .parameter__name,
+.api-explorer__swagger .swagger-ui .parameter__type,
+.api-explorer__swagger .swagger-ui .response-col_status,
+.api-explorer__swagger .swagger-ui .response-col_description,
+.api-explorer__swagger .swagger-ui .model,
+.api-explorer__swagger .swagger-ui .model-title,
+.api-explorer__swagger .swagger-ui .prop-name {
+  color: var(--colour-text);
+  font-family: var(--font-interface);
+}
+
+.api-explorer__swagger .swagger-ui a,
+.api-explorer__swagger .swagger-ui .link {
+  color: var(--colour-link);
+}
+
+.api-explorer__swagger .swagger-ui .info {
+  margin: 0;
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  border-bottom: 1px solid var(--colour-border);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--colour-primary-soft) 38%, transparent),
+      transparent 62%
+    ),
+    var(--colour-surface);
+}
+
+.api-explorer__swagger .swagger-ui .info .title,
+.api-explorer__swagger .swagger-ui .opblock-tag,
+.api-explorer__swagger .swagger-ui .model-title,
+.api-explorer__swagger .swagger-ui .model-title__text {
+  color: var(--colour-text);
+  font-family: var(--font-display);
+}
+
+.api-explorer__swagger .swagger-ui .info .title {
+  margin-bottom: var(--space-4);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.api-explorer__swagger .swagger-ui .info .title small {
+  border-radius: 999px;
+  font-family: var(--font-interface);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.api-explorer__swagger .swagger-ui .info .title small.version-stamp {
+  background: var(--colour-primary);
+  color: var(--colour-primary-ink);
+}
+
+.api-explorer__swagger .swagger-ui .info .base-url,
+.api-explorer__swagger .swagger-ui .info .description,
+.api-explorer__swagger .swagger-ui .info .description p {
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.api-explorer__swagger .swagger-ui code,
+.api-explorer__swagger .swagger-ui pre,
+.api-explorer__swagger .swagger-ui .microlight,
+.api-explorer__swagger .swagger-ui .parameter__type,
+.api-explorer__swagger .swagger-ui .prop-type,
+.api-explorer__swagger .swagger-ui .opblock-summary-path {
+  font-family: var(--font-mono);
+}
+
+.api-explorer__swagger .swagger-ui code {
+  border-radius: 4px;
+  background: var(--colour-surface-raised);
+  color: var(--colour-brand-text);
+}
+
+.api-explorer__swagger .swagger-ui .scheme-container {
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--colour-border);
+  background: var(--colour-surface-soft);
+  box-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui select,
+.api-explorer__swagger .swagger-ui input[type='text'],
+.api-explorer__swagger .swagger-ui input[type='password'],
+.api-explorer__swagger .swagger-ui textarea {
+  min-height: 2.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  font-family: var(--font-interface);
+  box-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui .btn {
+  min-height: 2.5rem;
+  border-radius: var(--radius-control);
+  font-family: var(--font-interface);
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui .btn.authorize,
+.api-explorer__swagger .swagger-ui .btn.execute {
+  border-color: var(--colour-primary);
+  background: var(--colour-primary);
+  color: var(--colour-primary-ink);
+}
+
+.api-explorer__swagger .swagger-ui .btn.authorize svg {
+  fill: currentColor;
+}
+
+.api-explorer__swagger .swagger-ui .btn.cancel {
+  border-color: var(--colour-border);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+
+.api-explorer__swagger .swagger-ui .opblock-tag-section {
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.api-explorer__swagger .swagger-ui .opblock-tag {
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--colour-border);
+  background: var(--colour-surface-soft);
+  font-size: clamp(1.45rem, 2.5vw, 1.8rem);
+  font-weight: 600;
+}
+
+.api-explorer__swagger .swagger-ui .opblock-tag:hover {
+  background: var(--colour-surface-raised);
+}
+
+.api-explorer__swagger .swagger-ui .opblock-tag small {
+  color: var(--colour-text-secondary);
+  font-family: var(--font-interface);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.api-explorer__swagger .swagger-ui .operation-tag-content {
+  padding: var(--space-3) var(--space-4) var(--space-5);
+  background: var(--colour-surface);
+}
+
+.api-explorer__swagger .swagger-ui .opblock {
+  margin: var(--space-2) 0;
+  overflow: hidden;
+  border-width: 1px;
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui .opblock .opblock-summary {
+  min-height: 3.25rem;
+  padding: 0 var(--space-3);
+  border-bottom: 0;
+}
+
+.api-explorer__swagger .swagger-ui .opblock .opblock-summary-method {
+  min-width: 5.25rem;
+  border-radius: 5px;
+  font-family: var(--font-interface);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui .opblock .opblock-summary-path {
+  color: var(--colour-text);
+}
+
+.api-explorer__swagger .swagger-ui .opblock .opblock-summary-description {
+  color: var(--colour-text-secondary);
+  font-family: var(--font-interface);
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-get {
+  border-color: var(--colour-data-accent);
+  background: color-mix(in srgb, var(--colour-data-accent) 8%, var(--colour-surface));
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: var(--colour-data-accent);
+  color: #ffffff;
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-post {
+  border-color: var(--colour-primary);
+  background: color-mix(in srgb, var(--colour-primary) 8%, var(--colour-surface));
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background: var(--colour-primary);
+  color: var(--colour-primary-ink);
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-put,
+.api-explorer__swagger .swagger-ui .opblock.opblock-patch {
+  border-color: var(--colour-brand);
+  background: color-mix(in srgb, var(--colour-brand) 8%, var(--colour-surface));
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-put .opblock-summary-method,
+.api-explorer__swagger .swagger-ui .opblock.opblock-patch .opblock-summary-method {
+  background: var(--colour-brand);
+  color: #ffffff;
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-delete {
+  border-color: var(--colour-error);
+  background: color-mix(in srgb, var(--colour-error) 8%, var(--colour-surface));
+}
+
+.api-explorer__swagger .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background: var(--colour-error);
+  color: #ffffff;
+}
+
+.api-explorer__swagger .swagger-ui .opblock .opblock-section-header {
+  padding: var(--space-3) var(--space-4);
+  background: var(--colour-surface-raised);
+  box-shadow: none;
+}
+
+.api-explorer__swagger .swagger-ui .opblock-body,
+.api-explorer__swagger .swagger-ui .responses-inner,
+.api-explorer__swagger .swagger-ui .request-body,
+.api-explorer__swagger .swagger-ui .parameters-container {
+  color: var(--colour-text);
+}
+
+.api-explorer__swagger .swagger-ui .model-box,
+.api-explorer__swagger .swagger-ui section.models {
+  border-color: var(--colour-border);
+  background: var(--colour-surface-soft);
+}
+
+.api-explorer__swagger .swagger-ui section.models {
+  margin: var(--space-5) var(--space-4);
+  border-radius: var(--radius-card);
+}
+
+.api-explorer__swagger .swagger-ui .model-box {
+  border-radius: var(--radius-control);
+}
+
+.api-explorer__swagger .swagger-ui .model-box-control:focus,
+.api-explorer__swagger .swagger-ui .models-control:focus,
+.api-explorer__swagger .swagger-ui .opblock-summary-control:focus,
+.api-explorer__swagger .swagger-ui .expand-operation:focus,
+.api-explorer__swagger .swagger-ui button:focus-visible,
+.api-explorer__swagger .swagger-ui a:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 3px;
+}
+
+.api-explorer__swagger .swagger-ui .dialog-ux .backdrop-ux {
+  background: rgb(8 18 27 / 72%);
+}
+
+.api-explorer__swagger .swagger-ui .dialog-ux .modal-ux {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-large);
+  background: var(--colour-surface);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* Explicitly catch Swagger's hard-coded light surfaces in the app's night theme. */
+:root[data-theme='night'] .api-explorer__swagger,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .wrapper,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .operation-tag-content,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .responses-inner {
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .info,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .scheme-container,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock-tag,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock .opblock-section-header,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .model-box,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui section.models {
+  background: var(--colour-surface-soft);
+  color: var(--colour-text);
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui select,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui input,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui textarea {
+  border-color: var(--colour-border);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text);
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui select option {
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock-summary-control svg,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .models-control svg,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .expand-operation svg {
+  fill: var(--colour-text);
+  color: var(--colour-text);
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock.opblock-get {
+  background: color-mix(in srgb, var(--colour-data-accent) 12%, var(--colour-surface));
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock.opblock-post {
+  background: color-mix(in srgb, var(--colour-primary) 10%, var(--colour-surface));
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock.opblock-put,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock.opblock-patch {
+  background: color-mix(in srgb, var(--colour-brand) 12%, var(--colour-surface));
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .opblock.opblock-delete {
+  background: color-mix(in srgb, var(--colour-error) 12%, var(--colour-surface));
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .highlight-code,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .microlight,
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui pre {
+  background: #08121b !important;
+  color: #f6f8f2 !important;
+}
+
+:root[data-theme='night'] .api-explorer__swagger .swagger-ui .dialog-ux .modal-ux {
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+
+@media (max-width: 47.9375rem) {
+  .api-explorer__intro {
+    padding: var(--space-4);
+  }
+
+  .api-explorer__swagger {
+    border-radius: var(--radius-card);
+  }
+
+  .api-explorer__swagger .swagger-ui .wrapper {
+    padding-inline: var(--space-2);
+  }
+
+  .api-explorer__swagger .swagger-ui .info {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .api-explorer__swagger .swagger-ui .scheme-container,
+  .api-explorer__swagger .swagger-ui .opblock-tag {
+    padding-inline: var(--space-4);
+  }
+
+  .api-explorer__swagger .swagger-ui .opblock .opblock-summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding-block: var(--space-2);
+  }
+
+  .api-explorer__swagger .swagger-ui .opblock .opblock-summary-path {
+    max-width: calc(100vw - 9rem);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .api-explorer__swagger .swagger-ui .opblock .opblock-summary-description {
+    width: 100%;
+    padding-inline-start: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-explorer__links a {
+    transition: none;
+  }
+}
+
+/* === End Stats The Game Swagger theme v2 === */
