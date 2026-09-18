@@ -333,6 +333,24 @@ export const batchCanonicalFixtureRequestSchema = z
   })
   .strict();
 
+export const batchFixtureOnboardingUnresolvedParticipantSchema = z
+  .object({
+    name: z.string().min(1),
+    teamName: z.string().min(1).optional(),
+    candidates: z.array(
+      z.object({ personId: apiIdentifierSchema, displayName: z.string().min(1) }).strict(),
+    ),
+  })
+  .strict();
+
+export const batchFixtureOnboardingSummarySchema = z
+  .object({
+    inningsCreated: z.number().int().nonnegative(),
+    squadCreated: z.number().int().nonnegative(),
+    unresolvedParticipants: z.array(batchFixtureOnboardingUnresolvedParticipantSchema),
+  })
+  .strict();
+
 export const batchReferenceMappingReceiptSchema = z
   .object({
     batchReference: batchReferenceSchema,
@@ -340,6 +358,7 @@ export const batchReferenceMappingReceiptSchema = z
     status: z.enum(['queued', 'applied']),
     statusUrl: z.string().startsWith('/api/v1/batches/'),
     submittedAt: apiDateTimeSchema,
+    onboarding: batchFixtureOnboardingSummarySchema.optional(),
   })
   .strict();
 
@@ -366,4 +385,5 @@ export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResp
 export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
 export type BatchReferenceMappingRequest = z.infer<typeof batchReferenceMappingRequestSchema>;
 export type BatchCanonicalFixtureRequest = z.infer<typeof batchCanonicalFixtureRequestSchema>;
+export type BatchFixtureOnboardingSummary = z.infer<typeof batchFixtureOnboardingSummarySchema>;
 export type BatchReferenceMappingResponse = z.infer<typeof batchReferenceMappingResponseSchema>;

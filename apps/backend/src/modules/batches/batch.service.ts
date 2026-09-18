@@ -40,6 +40,8 @@ import {
 } from './batch.repository';
 import type { BatchRecord, BatchReportItemRecord } from './batch.repository';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
+import { extractFixtureOnboardingContext } from './fixture-onboarding';
+import { storedOutcomes } from './reference-outcomes';
 
 export class BatchForbiddenError extends Error {}
 export class BatchConflictError extends Error {}
@@ -95,21 +97,6 @@ export interface BatchService {
   ): Promise<BatchReferenceMappingResponse>;
 }
 
-interface StoredReferenceCandidate {
-  canonicalId: string;
-  label: string;
-  outOfScope?: boolean;
-}
-
-interface StoredReferenceOutcome {
-  referencePath: string;
-  entityType: BatchReferenceEntityType;
-  state: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
-  submittedReference: unknown;
-  candidates: StoredReferenceCandidate[];
-  reason: string | null;
-}
-
 function candidateReference(
   batchReference: string,
   itemOrdinal: number,
@@ -124,48 +111,6 @@ function candidateReference(
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const value = bytes.toString('hex');
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
-}
-
-function storedOutcomes(value: unknown): StoredReferenceOutcome[] {
-  const results: StoredReferenceOutcome[] = [];
-  function visit(candidate: unknown) {
-    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return;
-    const record = candidate as Record<string, unknown>;
-    if (
-      typeof record.referencePath === 'string' &&
-      ['competition', 'team', 'fixture', 'innings', 'participant'].includes(
-        String(record.entityType),
-      ) &&
-      ['resolved', 'ambiguous', 'unresolved', 'invalid'].includes(String(record.state)) &&
-      Array.isArray(record.candidates)
-    ) {
-      const candidates = record.candidates.flatMap((entry): StoredReferenceCandidate[] => {
-        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
-        const item = entry as Record<string, unknown>;
-        return typeof item.canonicalId === 'string' && typeof item.label === 'string'
-          ? [
-              {
-                canonicalId: item.canonicalId,
-                label: item.label,
-                ...(item.outOfScope === true ? { outOfScope: true } : {}),
-              },
-            ]
-          : [];
-      });
-      results.push({
-        referencePath: record.referencePath,
-        entityType: record.entityType as BatchReferenceEntityType,
-        state: record.state as StoredReferenceOutcome['state'],
-        submittedReference: record.submittedReference,
-        candidates,
-        reason: typeof record.reason === 'string' ? record.reason : null,
-      });
-      return;
-    }
-    for (const nested of Object.values(record)) visit(nested);
-  }
-  visit(value);
-  return results;
 }
 
 function reportReferenceResolutions(
@@ -815,6 +760,23 @@ export function createBatchService(
         throw new BatchConflictError('A complete version 1.1 fixture proposal is required.');
       }
       try {
+        const onboardingItems: { resolvedReferences: unknown }[] = [...items];
+        let afterOrdinal: number | undefined = items.at(-1)?.ordinal;
+        let lastPage = items.length;
+        while (lastPage >= 1000 && afterOrdinal !== undefined) {
+          const page = await repository.listBatchItems(batch.batchId, {
+            afterOrdinal,
+            limit: 1000,
+          });
+          onboardingItems.push(...page);
+          lastPage = page.length;
+          afterOrdinal = page.at(-1)?.ordinal;
+        }
+        const onboardingContext = extractFixtureOnboardingContext(
+          onboardingItems,
+          request.referencePath,
+          submitted.sourceId,
+        );
         const decision = await repository.createCanonicalFixtureAndQueueMapping({
           batchId: batch.batchId,
           batchReference: reference,
@@ -828,6 +790,8 @@ export function createBatchService(
           startDate: submitted.context.date,
           teamNames: teams as string[],
           proposal: proposal.data,
+          innings: onboardingContext.innings,
+          participants: onboardingContext.participants,
         });
         return {
           data: {
@@ -836,6 +800,7 @@ export function createBatchService(
             status: decision.state === 'applied' ? 'applied' : 'queued',
             statusUrl: `${API_BASE_PATH}/batches/${reference}`,
             submittedAt: decision.decidedAt,
+            ...(decision.onboarding ? { onboarding: decision.onboarding } : {}),
           },
         };
       } catch (error) {
