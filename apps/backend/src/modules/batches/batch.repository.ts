@@ -13,6 +13,8 @@ import {
   BatchPublicationLeaseBusyError,
   publishAcceptedBatchChunk,
 } from '@sport-analytics/batch-processing';
+import type { FixtureOnboardingParticipant, FixtureOnboardingInnings } from './fixture-onboarding';
+
 type BatchState =
   | 'received'
   | 'stored'
@@ -290,6 +292,18 @@ interface BatchReferenceMappingRecord {
   decidedAt: string;
 }
 
+export interface FixtureOnboardingUnresolvedParticipant {
+  name: string;
+  teamName?: string;
+  candidates: { personId: string; displayName: string }[];
+}
+
+export interface FixtureOnboardingSummary {
+  inningsCreated: number;
+  squadCreated: number;
+  unresolvedParticipants: FixtureOnboardingUnresolvedParticipant[];
+}
+
 export class BatchReviewConflictError extends Error {}
 export class BatchReviewResolutionError extends Error {}
 export class BatchReferenceMappingConflictError extends Error {}
@@ -373,7 +387,9 @@ export interface BatchRepository {
     startDate: string;
     teamNames: string[];
     proposal: FixtureProposal;
-  }): Promise<BatchReferenceMappingRecord>;
+    innings?: FixtureOnboardingInnings[];
+    participants?: FixtureOnboardingParticipant[];
+  }): Promise<BatchReferenceMappingRecord & { onboarding?: FixtureOnboardingSummary }>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
   publishAcceptedItems(batchId: string, workerId: string): Promise<BatchPublicationResult>;
@@ -849,6 +865,140 @@ async function ensureBatchPublicationJob(
      )`,
     [commandId, createdJobId, batchId],
   );
+}
+
+/**
+ * Issue #584: a reviewer-approved fixture proposal only carries fixture-level
+ * facts. Every innings and every squad member the new fixture needs still
+ * exists only as an unresolved reference on the deliveries that named them.
+ * This creates them deterministically so the batch's next validation pass can
+ * resolve those references the same way it resolves them for any
+ * already-known fixture, instead of leaving them permanently unresolved.
+ *
+ * A participant identified only by name is matched against the *global*
+ * person table (there is no fixture squad yet to scope the match to). A name
+ * matching more than one existing person is never guessed at: it is reported
+ * back as ambiguous so a reviewer can disambiguate explicitly, and no
+ * fixture_squad row is written for it.
+ */
+async function onboardFixtureCanonicalContext(
+  executor: QueryExecutor,
+  fixtureId: string,
+  teamIdByName: Map<string, string>,
+  innings: FixtureOnboardingInnings[],
+  participants: FixtureOnboardingParticipant[],
+): Promise<FixtureOnboardingSummary> {
+  let inningsCreated = 0;
+  if (innings.length > 0) {
+    const rows = innings.flatMap((entry) => {
+      const battingTeamId = teamIdByName.get(entry.battingTeamName);
+      return battingTeamId ? [{ ordinal: entry.ordinal, battingTeamId }] : [];
+    });
+    if (rows.length > 0) {
+      const result = await executeQuery(
+        executor,
+        `INSERT INTO innings (fixture_id, ordinal, batting_team_id)
+         SELECT $1::bigint, r.ordinal, r."battingTeamId"::bigint
+         FROM jsonb_to_recordset($2::jsonb) AS r(ordinal int, "battingTeamId" text)
+         ON CONFLICT (fixture_id, ordinal) DO NOTHING
+         RETURNING innings_id`,
+        [fixtureId, JSON.stringify(rows)],
+      );
+      inningsCreated = result.rowCount ?? result.rows.length;
+    }
+  }
+
+  let squadCreated = 0;
+  const unresolvedParticipants: FixtureOnboardingUnresolvedParticipant[] = [];
+
+  for (const participant of participants) {
+    const teamId = participant.teamName ? teamIdByName.get(participant.teamName) : undefined;
+    if (!teamId) continue;
+
+    let personId: string | undefined;
+
+    if (participant.sourceId) {
+      // `person.source_ref` is a durable registry identifier (comment on the
+      // column: "Names are not stable ... Names must never be used as a join
+      // key."), so a participant carrying one can always be safely created
+      // or reused without risking a false match.
+      const identifier = participant.sourceId.split(':', 3);
+      const namespace = identifier[0];
+      const value = identifier[2];
+      if (namespace === 'app' && value) {
+        const existing = await executeQuery<{ personId: string }>(
+          executor,
+          `SELECT person_id::text AS "personId" FROM person WHERE person_id = $1::bigint`,
+          [value],
+        );
+        personId = existing.rows[0]?.personId;
+      } else if (value) {
+        const upserted = await executeQuery<{ personId: string }>(
+          executor,
+          `INSERT INTO person (source_ref, display_name)
+           VALUES ($1, COALESCE($2, $1))
+           ON CONFLICT (source_ref) DO NOTHING
+           RETURNING person_id::text AS "personId"`,
+          [value, participant.name ?? null],
+        );
+        personId =
+          upserted.rows[0]?.personId ??
+          (
+            await executeQuery<{ personId: string }>(
+              executor,
+              `SELECT person_id::text AS "personId" FROM person WHERE source_ref = $1`,
+              [value],
+            )
+          ).rows[0]?.personId;
+      }
+      if (!personId && participant.name) {
+        unresolvedParticipants.push({
+          name: participant.name,
+          ...(participant.teamName ? { teamName: participant.teamName } : {}),
+          candidates: [],
+        });
+        continue;
+      }
+    } else if (participant.name) {
+      // No durable identifier was submitted. A name alone is never enough to
+      // safely create or match a canonical person (see the note on
+      // `person.source_ref`), so this is always reported for a reviewer to
+      // resolve explicitly - by supplying a registry identifier, or by
+      // picking one of any existing aliases that share the name - rather
+      // than guessed at or silently created.
+      const aliasMatches = await executeQuery<{ personId: string; displayName: string }>(
+        executor,
+        `SELECT DISTINCT p.person_id::text AS "personId", p.display_name AS "displayName"
+         FROM person p
+         LEFT JOIN person_alias pa ON pa.person_id = p.person_id
+         WHERE p.display_name = $1 OR pa.name = $1`,
+        [participant.name],
+      );
+      unresolvedParticipants.push({
+        name: participant.name,
+        ...(participant.teamName ? { teamName: participant.teamName } : {}),
+        candidates: aliasMatches.rows.map((row) => ({
+          personId: row.personId,
+          displayName: row.displayName,
+        })),
+      });
+      continue;
+    }
+
+    if (!personId) continue;
+
+    const inserted = await executeQuery(
+      executor,
+      `INSERT INTO fixture_squad (fixture_id, person_id, team_id)
+       VALUES ($1::bigint, $2::bigint, $3::bigint)
+       ON CONFLICT (fixture_id, person_id) DO NOTHING
+       RETURNING fixture_id`,
+      [fixtureId, personId, teamId],
+    );
+    squadCreated += inserted.rowCount ?? inserted.rows.length;
+  }
+
+  return { inningsCreated, squadCreated, unresolvedParticipants };
 }
 
 export function createBatchRepository(executor?: QueryExecutor): BatchRepository {
@@ -2135,16 +2285,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
       let fixtureId = existingFixture?.fixtureId;
+      let onboarding: FixtureOnboardingSummary | undefined;
       if (!fixtureId) {
-        const teams = await executeQuery<{ teamId: string }>(
+        const teams = await executeQuery<{ teamId: string; name: string }>(
           executor,
-          `SELECT team_id::text AS "teamId" FROM team WHERE name = ANY($1::text[])`,
+          `SELECT team_id::text AS "teamId", name FROM team WHERE name = ANY($1::text[])`,
           [input.teamNames],
         );
         if (teams.rows.length !== 2)
           throw new BatchReferenceMappingConflictError(
             'Both proposed fixture teams must already be canonical records.',
           );
+        const teamIdByName = new Map(teams.rows.map((row) => [row.name, row.teamId]));
         const proposal = input.proposal;
         const inserted = await executeQuery<{ fixtureId: string }>(
           executor,
@@ -2192,6 +2344,13 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           JOIN team ON team.name=proposed.name ON CONFLICT DO NOTHING`,
           [fixtureId, input.teamNames],
         );
+        onboarding = await onboardFixtureCanonicalContext(
+          executor,
+          fixtureId,
+          teamIdByName,
+          input.innings ?? [],
+          input.participants ?? [],
+        );
       }
       await executeQuery(
         executor,
@@ -2199,7 +2358,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         VALUES ($1::bigint,$2,$3::bigint,$4::bigint) ON CONFLICT (batch_id,reference_path) DO NOTHING`,
         [input.batchId, input.referencePath, fixtureId, input.actorId],
       );
-      return createBatchRepository(executor).queueReferenceMapping({
+      const mapped = await createBatchRepository(executor).queueReferenceMapping({
         decisionReference: randomUUID(),
         batchId: input.batchId,
         actorId: input.actorId,
@@ -2210,6 +2369,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         candidateLabel: `Canonical fixture ${fixtureId}`,
         decisionKey: input.decisionKey,
       });
+      return onboarding ? { ...mapped, onboarding } : mapped;
     },
 
     async applyReferenceResolution(updates) {
