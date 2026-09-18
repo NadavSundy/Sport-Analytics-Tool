@@ -11,7 +11,7 @@ deployment target without changing the frontend hosting decision.
 | Component            | Service                   | Runtime/build context                                |
 | -------------------- | ------------------------- | ---------------------------------------------------- |
 | React frontend       | Azure App Service (Linux) | Node.js 22 LTS build environment; Vite static bundle |
-| Express backend API  | Azure Container Apps       | Node.js 22 non-root production container             |
+| Express backend API  | Azure Container Apps      | Node.js 22 non-root production container             |
 | Async batch worker   | Azure Container Apps      | Node.js 22 LTS non-root container                    |
 | Private object bytes | Azure Blob Storage        | Backend managed identity and private container       |
 

@@ -6,7 +6,10 @@ const ciWorkflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
 const manualBackendWorkflow = readFileSync('.gitea/workflows/deploy-backend.yml', 'utf8');
 const backendDeployScript = readFileSync('scripts/deploy-backend-azure.py', 'utf8');
 const backendArtifactSmokeCheck = readFileSync('scripts/smoke-check-backend-artifact.mjs', 'utf8');
-const backendContainerSmokeCheck = readFileSync('scripts/smoke-check-backend-container.mjs', 'utf8');
+const backendContainerSmokeCheck = readFileSync(
+  'scripts/smoke-check-backend-container.mjs',
+  'utf8',
+);
 
 function automaticBackendJob() {
   const marker = '\n  deploy_backend:';
@@ -50,7 +53,10 @@ test('automatic backend deployment builds, validates and deploys an immutable Co
   const healthSmokeIndex = job.indexOf('Smoke check deployed backend health');
   const databaseSmokeIndex = job.indexOf('Smoke check deployed database access');
   assert.ok(readinessStepIndex >= 0, 'readiness wait must be present');
-  assert.ok(healthSmokeIndex > readinessStepIndex, 'health smoke must run after readiness succeeds');
+  assert.ok(
+    healthSmokeIndex > readinessStepIndex,
+    'health smoke must run after readiness succeeds',
+  );
   assert.ok(databaseSmokeIndex > healthSmokeIndex, 'database smoke must run after health succeeds');
   assert.doesNotMatch(job, /continue-on-error:\s*true/);
   assert.doesNotMatch(job, /AZURE_BACKEND_PUBLISH_PROFILE/);

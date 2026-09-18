@@ -32,7 +32,7 @@ Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, da
 | `AZURE_STORAGE_CONTAINER_NAME`           | Compatibility alias for the ingestion container     | No     | Existing staged-ingestion setting; remains supported unchanged.                              |
 | `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Preferred when provider is `azure`                  | No     | Private staged-ingestion container.                                                          |
 | `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Required when provider is `azure`                   | No     | Separate private immutable-release container.                                                |
-| `AZURE_CLIENT_ID`                        | Required by the Container Apps runtime              | No     | Client ID of the API runtime user-assigned managed identity.                                |
+| `AZURE_CLIENT_ID`                        | Required by the Container Apps runtime              | No     | Client ID of the API runtime user-assigned managed identity.                                 |
 
 The committed backend example selects `filesystem` and
 `OBJECT_STORAGE_FILESYSTEM_ROOT=../../.local/object-storage` for development. npm workspace commands

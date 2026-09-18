@@ -17,14 +17,14 @@ has been completed and an explicit retirement decision is recorded.
 
 The Bicep target is `infra/azure/backend/main.bicep`. It reuses these existing development resources:
 
-| Concern | Resource / design |
-| --- | --- |
-| Registry | Existing Azure Container Registry `statsthegamedevyhmqlinqfhkyg.azurecr.io` |
+| Concern             | Resource / design                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| Registry            | Existing Azure Container Registry `statsthegamedevyhmqlinqfhkyg.azurecr.io`              |
 | Compute environment | Existing Container Apps environment `statsthegame-dev-worker-env` shared with the worker |
-| Runtime container | `statsthegame-dev-api`, external HTTPS ingress on target port `3000` |
-| Object storage | Existing private Blob account and staged-ingestion/dataset-release containers |
-| Database and Auth | Existing Supabase PostgreSQL and Supabase Auth services |
-| Secret store | Existing Key Vault, referenced by URI rather than copied into the image or workflow |
+| Runtime container   | `statsthegame-dev-api`, external HTTPS ingress on target port `3000`                     |
+| Object storage      | Existing private Blob account and staged-ingestion/dataset-release containers            |
+| Database and Auth   | Existing Supabase PostgreSQL and Supabase Auth services                                  |
+| Secret store        | Existing Key Vault, referenced by URI rather than copied into the image or workflow      |
 
 The API has separate user-assigned identities: a pull identity with `AcrPull` on the existing ACR,
 and a runtime identity with `Key Vault Secrets User` and `Storage Blob Data Contributor` on the
@@ -58,20 +58,20 @@ procedure below.
 
 Ordinary Container App configuration is supplied as non-secret values:
 
-| Variable | Production value/source |
-| --- | --- |
-| `NODE_ENV` | `production` |
-| `PORT` | `3000` |
-| `DEPLOYMENT_ENVIRONMENT` | Bicep environment label, currently `dev` |
-| `CORS_ORIGINS` | Explicit allowed browser origins supplied to deployment CI |
-| `SUPABASE_URL` | Supabase project URL supplied to deployment CI |
-| `SUPABASE_PUBLISHABLE_KEY` | Publishable Supabase key supplied to deployment CI |
-| `OBJECT_STORAGE_PROVIDER` | `azure` |
-| `AZURE_STORAGE_ACCOUNT_NAME` | Existing Blob account name |
-| `AZURE_STORAGE_CONTAINER_NAME` | Existing staged-ingestion container |
-| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Existing staged-ingestion container |
-| `AZURE_STORAGE_RELEASE_CONTAINER_NAME` | Existing dataset-release container |
-| `AZURE_CLIENT_ID` | Runtime managed identity client ID supplied by Bicep |
+| Variable                                 | Production value/source                                    |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| `NODE_ENV`                               | `production`                                               |
+| `PORT`                                   | `3000`                                                     |
+| `DEPLOYMENT_ENVIRONMENT`                 | Bicep environment label, currently `dev`                   |
+| `CORS_ORIGINS`                           | Explicit allowed browser origins supplied to deployment CI |
+| `SUPABASE_URL`                           | Supabase project URL supplied to deployment CI             |
+| `SUPABASE_PUBLISHABLE_KEY`               | Publishable Supabase key supplied to deployment CI         |
+| `OBJECT_STORAGE_PROVIDER`                | `azure`                                                    |
+| `AZURE_STORAGE_ACCOUNT_NAME`             | Existing Blob account name                                 |
+| `AZURE_STORAGE_CONTAINER_NAME`           | Existing staged-ingestion container                        |
+| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Existing staged-ingestion container                        |
+| `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Existing dataset-release container                         |
+| `AZURE_CLIENT_ID`                        | Runtime managed identity client ID supplied by Bicep       |
 
 `DATABASE_URL` and `SUPABASE_SECRET_KEY` are different: Key Vault holds their values, Container
 Apps creates Key Vault-backed secrets from versionless secret-reference URIs, and the runtime receives
@@ -86,15 +86,15 @@ Supabase configuration secrets. No secret value belongs in Bicep parameters, wor
 logs, Docker build context, or documentation. See [Environment variables](../environment.md) for the
 cross-application configuration matrix.
 
-| Gitea Actions secret | Purpose |
-| --- | --- |
-| `AZURE_WORKER_CREDENTIALS` | Existing shared Azure resource-group deployment principal credential; legacy name retained. |
-| `AZURE_BACKEND_CONTAINER_RESOURCE_GROUP` | Backend deployment resource group. |
-| `AZURE_BACKEND_DATABASE_SECRET_URI` | Versionless Key Vault reference URI for `DATABASE_URL`. |
-| `AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI` | Versionless Key Vault reference URI for `SUPABASE_SECRET_KEY`. |
-| `AZURE_BACKEND_CORS_ORIGINS` | Allowed API browser origins. |
-| `AZURE_BACKEND_SUPABASE_URL` | Backend Supabase project URL. |
-| `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY` | Backend Supabase publishable key. |
+| Gitea Actions secret                           | Purpose                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `AZURE_WORKER_CREDENTIALS`                     | Existing shared Azure resource-group deployment principal credential; legacy name retained. |
+| `AZURE_BACKEND_CONTAINER_RESOURCE_GROUP`       | Backend deployment resource group.                                                          |
+| `AZURE_BACKEND_DATABASE_SECRET_URI`            | Versionless Key Vault reference URI for `DATABASE_URL`.                                     |
+| `AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI` | Versionless Key Vault reference URI for `SUPABASE_SECRET_KEY`.                              |
+| `AZURE_BACKEND_CORS_ORIGINS`                   | Allowed API browser origins.                                                                |
+| `AZURE_BACKEND_SUPABASE_URL`                   | Backend Supabase project URL.                                                               |
+| `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY`       | Backend Supabase publishable key.                                                           |
 
 ## Networking and service boundaries
 

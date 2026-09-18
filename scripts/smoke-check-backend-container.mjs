@@ -20,14 +20,17 @@ function run(command, arguments_) {
         resolve(output.trim());
         return;
       }
-      reject(new Error(`${command} ${arguments_.join(' ')} failed with exit code ${code}. ${output}`));
+      reject(
+        new Error(`${command} ${arguments_.join(' ')} failed with exit code ${code}. ${output}`),
+      );
     });
   });
 }
 
 function publishedPort(value) {
   const match = value.match(/:(\d+)\s*$/m);
-  if (!match) throw new Error(`Unable to determine the published backend container port from: ${value}`);
+  if (!match)
+    throw new Error(`Unable to determine the published backend container port from: ${value}`);
   return match[1];
 }
 

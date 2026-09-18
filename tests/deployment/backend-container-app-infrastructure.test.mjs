@@ -55,7 +55,10 @@ test('backend Container Apps infrastructure preserves secret and service boundar
     /\{ name: 'SUPABASE_SECRET_KEY', value:/,
     'the Supabase admin key must never be a plaintext environment value',
   );
-  assert.match(infrastructure, /\{ name: 'AZURE_CLIENT_ID', value: runtimeIdentity\.properties\.clientId \}/);
+  assert.match(
+    infrastructure,
+    /\{ name: 'AZURE_CLIENT_ID', value: runtimeIdentity\.properties\.clientId \}/,
+  );
   assert.match(infrastructure, /roleDefinitionId: blobContributorRoleId/);
   assert.match(infrastructure, /scope: existingStorage/);
   assert.doesNotMatch(infrastructure, /(?:ServiceBus|serviceBus|SERVICE_BUS)/);
