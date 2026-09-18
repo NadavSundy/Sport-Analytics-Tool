@@ -286,6 +286,13 @@ Intermediate persistence, so they are no longer future schema concepts.
 - **Participant statistics data versions.** `participant_statistics_version` holds one
   monotonically increasing `data_version` per participant. It is the input version of that
   participant's season, competition and career aggregates, and nothing reads it yet (issue #592).
+- **Participant aggregate snapshots.** `participant_aggregate_snapshot_state` holds one row per
+  participant recording the data and definition versions its stored rows were built from, a refresh
+  count and failed attempts. `participant_aggregate_snapshot` holds one row per participant, level,
+  competition and season with the grouped aggregate row as jsonb. Stored rows are disposable: they
+  are valid only while the state row matches the participant's current data version and the running
+  definition. `invalidate_participant_aggregate_snapshots()` deletes them all, and any write to
+  aggregate inputs that does not advance participant versions must call it (issue #592).
 - **Fixture-statistics caching.** A versioned cache supports repeated fixture-statistics reads
   without replacing accepted events as the source of truth.
 - **Dataset releases.** Immutable release metadata and mutable `dataset_release_job` state support
@@ -414,4 +421,4 @@ The issue #363 protected provenance API documentation was generated and edited w
 The Issue #297 Intermediate database-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #623 extras constraints were documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #623 wide-run rule, ADR-014, was documented with the assistance of Claude-Code[Claude Opus 5].
-The issue #592 participant statistics data versions were documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #592 participant statistics data versions and aggregate snapshots were documented with the assistance of Claude-Code[Claude Opus 5].
