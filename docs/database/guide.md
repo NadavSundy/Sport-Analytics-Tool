@@ -35,7 +35,10 @@ to reproduce event context.
 accepted delivery revisions; they are not manually entered totals. The `delivery_current` view selects
 the one live revision for each event lineage. `statistics_refresh_dependency` records scopes affected
 by an accepted correction, while `fixture_statistics_cache` is a versioned performance cache, not a
-second source of truth. Immutable dataset releases use `dataset_release`; its mutable generation work
+second source of truth. `participant_statistics_version` and the participant aggregate snapshot
+tables store derived participant aggregates that are served only while current; any write to their
+inputs that does not advance participant versions must call
+`invalidate_participant_aggregate_snapshots()` (ADR-015). Immutable dataset releases use `dataset_release`; its mutable generation work
 is kept separately in `dataset_release_job` until publication succeeds.
 
 Submissions and batches retain provenance from receipt to publication. `submission`, `batch`,
@@ -112,3 +115,4 @@ of test runs while checking migration order and rollback sections.
 
 The preceding Issue #579 database architecture guide was planned, generated and reviewed with the
 assistance of Codex[GPT-5].
+The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].

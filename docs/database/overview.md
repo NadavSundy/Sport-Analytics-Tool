@@ -39,7 +39,8 @@ replacement, requester, reviewer and source provenance. Public reads continue to
 
 Season, competition and career participant aggregates are derived from current accepted delivery
 events rather than stored as editable totals. `statistics_refresh_dependency` records the affected
-aggregate scopes after a correction. Repeated fixture-statistics reads use the separate versioned
+aggregate scopes after a correction. Their derived rows are stored per participant and served only
+while they match the participant's current statistics data version (ADR-015). Repeated fixture-statistics reads use the separate versioned
 cache added for the Intermediate performance work; the cache is not a second source of truth.
 
 Versioned dataset publication persists immutable release metadata separately from mutable
@@ -78,3 +79,4 @@ The repository migration guide is maintained at `database/migrations/README.md`.
 
 The preceding database overview was reviewed and rewritten to reflect the implemented Sprint 2
 PostgreSQL/Supabase architecture with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].

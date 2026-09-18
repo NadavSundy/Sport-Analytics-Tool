@@ -1,0 +1,268 @@
+GroupAggregate  (cost=275.28..290.29 rows=3 width=311) (actual time=243037.569..243037.649 rows=3 loops=1)
+  Group Key: ((GROUPING(pf.competition_id) = 0)), ((GROUPING(pf.season) = 0)), pf.competition_id, pf.season, ((count(DISTINCT pf.fixture_id))::integer), ac.fixture_count, ac.source_event_count, ac.batting_delivery_count, ac.bowling_delivery_count, br.runs_scored, br.balls_faced, br.fours, br.sixes, br.batting_innings, br.batting_dismissals, br.fifties, br.hundreds, br.highest_score, br.highest_score_not_out, bo.runs_conceded, bo.wides, bo.no_balls, bo.legal_balls, bo.wickets, bo.bowling_innings, bo.four_wicket_hauls, bo.five_wicket_hauls, bo.best_bowling_wickets, bo.best_bowling_runs, bo.balls_per_over, fi.catches, fi.stumpings, fi.run_out_involvements
+  Buffers: shared hit=86279
+  CTE published_fixture
+    ->  Nested Loop  (cost=13.67..27.65 rows=1 width=50) (actual time=0.817..3.728 rows=300 loops=1)
+          Buffers: shared hit=914
+          ->  Hash Join  (cost=13.39..25.54 rows=1 width=50) (actual time=0.343..1.073 rows=300 loops=1)
+                Hash Cond: (f.first_seen_in = publication.submission_id)
+                Buffers: shared hit=14
+                ->  Seq Scan on fixture f  (cost=0.00..11.70 rows=170 width=58) (actual time=0.037..0.230 rows=300 loops=1)
+                      Buffers: shared hit=8
+                ->  Hash  (cost=13.38..13.38 rows=1 width=8) (actual time=0.272..0.274 rows=300 loops=1)
+                      Buckets: 1024  Batches: 1  Memory Usage: 20kB
+                      Buffers: shared hit=6
+                      ->  Seq Scan on submission publication  (cost=0.00..13.38 rows=1 width=8) (actual time=0.034..0.157 rows=300 loops=1)
+                            Filter: (status = 'accepted'::submission_status)
+                            Buffers: shared hit=6
+          ->  Index Only Scan using fixture_squad_pkey on fixture_squad fs  (cost=0.28..1.95 rows=1 width=8) (actual time=0.007..0.007 rows=1 loops=300)
+                Index Cond: ((fixture_id = f.fixture_id) AND (person_id = '1'::bigint))
+                Heap Fetches: 300
+                Buffers: shared hit=900
+  CTE participant_delivery
+    ->  Unique  (cost=215.64..215.65 rows=1 width=98) (actual time=242804.628..242812.297 rows=8700 loops=1)
+          Buffers: shared hit=63155
+          ->  Sort  (cost=215.64..215.64 rows=1 width=98) (actual time=242804.621..242805.648 rows=8700 loops=1)
+                Sort Key: delivery.innings_id, delivery.over_number, delivery.position_in_over, delivery.revision DESC, delivery.delivery_id DESC
+                Sort Method: quicksort  Memory: 1268kB
+                Buffers: shared hit=63155
+                ->  Nested Loop  (cost=141.02..215.63 rows=1 width=98) (actual time=23.931..242750.391 rows=8700 loops=1)
+                      Buffers: shared hit=63152
+                      ->  Nested Loop  (cost=140.87..160.59 rows=1 width=117) (actual time=23.705..241928.178 rows=8700 loops=1)
+                            Join Filter: (delivery_1.delivery_id = delivery.delivery_id)
+                            Rows Removed by Join Filter: 588550650
+                            Buffers: shared hit=6152
+                            ->  Nested Loop  (cost=4.60..24.21 rows=1 width=117) (actual time=0.099..591.689 rows=72000 loops=1)
+                                  Buffers: shared hit=3994
+                                  ->  Nested Loop  (cost=4.31..12.83 rows=2 width=58) (actual time=0.070..32.587 rows=600 loops=1)
+                                        Buffers: shared hit=903
+                                        ->  CTE Scan on published_fixture pf_1  (cost=0.00..0.02 rows=1 width=50) (actual time=0.001..1.642 rows=300 loops=1)
+                                        ->  Bitmap Heap Scan on innings i  (cost=4.31..12.79 rows=2 width=16) (actual time=0.038..0.046 rows=2 loops=300)
+                                              Recheck Cond: (fixture_id = pf_1.fixture_id)
+                                              Filter: (NOT is_super_over)
+                                              Heap Blocks: exact=303
+                                              Buffers: shared hit=903
+                                              ->  Bitmap Index Scan on innings_fixture_idx  (cost=0.00..4.31 rows=5 width=0) (actual time=0.025..0.025 rows=2 loops=300)
+                                                    Index Cond: (fixture_id = pf_1.fixture_id)
+                                                    Buffers: shared hit=600
+                                  ->  Index Scan using delivery_sequence_live on delivery  (cost=0.29..5.68 rows=1 width=67) (actual time=0.024..0.636 rows=120 loops=600)
+                                        Index Cond: (innings_id = i.innings_id)
+                                        Buffers: shared hit=3091
+                            ->  HashAggregate  (cost=136.27..136.32 rows=5 width=8) (actual time=0.001..2.147 rows=8174 loops=72000)
+                                  Group Key: delivery_1.delivery_id
+                                  Batches: 1  Memory Usage: 937kB
+                                  Buffers: shared hit=2158
+                                  ->  Append  (cost=0.29..136.26 rows=5 width=8) (actual time=0.070..11.871 rows=8700 loops=1)
+                                        Buffers: shared hit=2158
+                                        ->  Index Scan using delivery_striker_idx on delivery delivery_1  (cost=0.29..8.30 rows=1 width=8) (actual time=0.055..3.589 rows=3300 loops=1)
+                                              Index Cond: (striker_id = '1'::bigint)
+                                              Buffers: shared hit=811
+                                        ->  Index Scan using delivery_non_striker_idx on delivery delivery_2  (cost=0.29..8.30 rows=1 width=8) (actual time=0.078..3.242 rows=3000 loops=1)
+                                              Index Cond: (non_striker_id = '1'::bigint)
+                                              Buffers: shared hit=742
+                                        ->  Index Scan using delivery_bowler_idx on delivery delivery_3  (cost=0.29..8.30 rows=1 width=8) (actual time=0.038..2.677 rows=2400 loops=1)
+                                              Index Cond: (bowler_id = '1'::bigint)
+                                              Buffers: shared hit=603
+                                        ->  Nested Loop  (cost=4.47..36.27 rows=1 width=8) (actual time=0.023..0.026 rows=0 loops=1)
+                                              Buffers: shared hit=2
+                                              ->  Bitmap Heap Scan on delivery_wicket wicket_4  (cost=4.17..11.28 rows=3 width=8) (actual time=0.021..0.022 rows=0 loops=1)
+                                                    Recheck Cond: (player_out_id = '1'::bigint)
+                                                    Buffers: shared hit=2
+                                                    ->  Bitmap Index Scan on delivery_wicket_player_out_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.015..0.016 rows=0 loops=1)
+                                                          Index Cond: (player_out_id = '1'::bigint)
+                                                          Buffers: shared hit=2
+                                              ->  Memoize  (cost=0.30..8.32 rows=1 width=8) (never executed)
+                                                    Cache Key: wicket_4.delivery_id
+                                                    Cache Mode: logical
+                                                    ->  Index Scan using delivery_pkey on delivery delivery_4  (cost=0.29..8.31 rows=1 width=8) (never executed)
+                                                          Index Cond: (delivery_id = wicket_4.delivery_id)
+                                                          Filter: (superseded_at IS NULL)
+                                        ->  Nested Loop  (cost=15.08..75.05 rows=1 width=8) (actual time=0.095..0.098 rows=0 loops=1)
+                                              ->  Hash Join  (cost=14.79..34.37 rows=9 width=8) (actual time=0.094..0.096 rows=0 loops=1)
+                                                    Hash Cond: (wicket_5.wicket_id = fielder_1.wicket_id)
+                                                    ->  Seq Scan on delivery_wicket wicket_5  (cost=0.00..16.90 rows=690 width=16) (actual time=0.091..0.091 rows=0 loops=1)
+                                                    ->  Hash  (cost=14.68..14.68 rows=9 width=8) (never executed)
+                                                          ->  Bitmap Heap Scan on delivery_wicket_fielder fielder_1  (cost=4.13..14.68 rows=9 width=8) (never executed)
+                                                                Recheck Cond: (person_id = '1'::bigint)
+                                                                ->  Bitmap Index Scan on delivery_wicket_fielder_person_idx  (cost=0.00..4.13 rows=9 width=0) (never executed)
+                                                                      Index Cond: (person_id = '1'::bigint)
+                                              ->  Index Scan using delivery_pkey on delivery delivery_5  (cost=0.29..4.52 rows=1 width=8) (never executed)
+                                                    Index Cond: (delivery_id = wicket_5.delivery_id)
+                                                    Filter: (superseded_at IS NULL)
+                      ->  Index Scan using submission_pkey on submission source_submission  (cost=0.15..0.38 rows=1 width=8) (actual time=0.018..0.018 rows=1 loops=8700)
+                            Index Cond: (submission_id = delivery.submission_id)
+                            Filter: (status = 'accepted'::submission_status)
+                            Buffers: shared hit=17400
+                      SubPlan 2
+                        ->  Bitmap Heap Scan on delivery_wicket wicket_2  (cost=4.17..11.29 rows=1 width=0) (actual time=0.009..0.009 rows=0 loops=8700)
+                              Recheck Cond: (delivery_id = delivery.delivery_id)
+                              Filter: (player_out_id = '1'::bigint)
+                              Buffers: shared hit=17400
+                              ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.005..0.005 rows=0 loops=8700)
+                                    Index Cond: (delivery_id = delivery.delivery_id)
+                                    Buffers: shared hit=17400
+                      SubPlan 4
+                        ->  Bitmap Heap Scan on delivery_wicket wicket_3  (cost=4.17..11.30 rows=1 width=0) (actual time=0.004..0.004 rows=0 loops=8700)
+                              Recheck Cond: (delivery_id = delivery.delivery_id)
+                              Filter: ((kind <> ALL ('{"retired hurt","retired not out"}'::text[])) AND (player_out_id = '1'::bigint))
+                              Buffers: shared hit=17400
+                              ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.002..0.002 rows=0 loops=8700)
+                                    Index Cond: (delivery_id = delivery.delivery_id)
+                                    Buffers: shared hit=17400
+                      SubPlan 6
+                        ->  Aggregate  (cost=31.82..31.83 rows=1 width=8) (actual time=0.017..0.017 rows=1 loops=2400)
+                              Buffers: shared hit=4800
+                              ->  Nested Loop  (cost=4.32..31.81 rows=2 width=0) (actual time=0.014..0.014 rows=0 loops=2400)
+                                    Buffers: shared hit=4800
+                                    ->  Bitmap Heap Scan on delivery_wicket dw  (cost=4.17..11.28 rows=3 width=32) (actual time=0.004..0.004 rows=0 loops=2400)
+                                          Recheck Cond: (delivery_id = delivery.delivery_id)
+                                          Buffers: shared hit=4800
+                                          ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.002..0.002 rows=0 loops=2400)
+                                                Index Cond: (delivery_id = delivery.delivery_id)
+                                                Buffers: shared hit=4800
+                                    ->  Index Scan using dismissal_kind_pkey on dismissal_kind dk  (cost=0.15..6.83 rows=1 width=32) (never executed)
+                                          Index Cond: (code = dw.kind)
+                                          Filter: credits_bowler
+  ->  Incremental Sort  (cost=31.98..46.69 rows=3 width=187) (actual time=243037.538..243037.569 rows=3 loops=1)
+        Sort Key: ((GROUPING(pf.competition_id) = 0)) DESC, ((GROUPING(pf.season) = 0)) DESC, pf.competition_id, pf.season, ((count(DISTINCT pf.fixture_id))::integer), ac.fixture_count, ac.source_event_count, ac.batting_delivery_count, ac.bowling_delivery_count, br.runs_scored, br.balls_faced, br.fours, br.sixes, br.batting_innings, br.batting_dismissals, br.fifties, br.hundreds, br.highest_score, br.highest_score_not_out, bo.runs_conceded, bo.wides, bo.no_balls, bo.legal_balls, bo.wickets, bo.bowling_innings, bo.four_wicket_hauls, bo.five_wicket_hauls, bo.best_bowling_wickets, bo.best_bowling_runs, bo.balls_per_over, fi.catches, fi.stumpings, fi.run_out_involvements
+        Presorted Key: ((GROUPING(pf.competition_id) = 0)), ((GROUPING(pf.season) = 0))
+        Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 25kB  Peak Memory: 25kB
+        Buffers: shared hit=86279
+        ->  Nested Loop Left Join  (cost=24.68..46.56 rows=3 width=187) (actual time=243033.585..243037.400 rows=3 loops=1)
+              Join Filter: ((NOT (bo.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (bo.season IS DISTINCT FROM pf.season)) AND (bo.competition_grouped = ((GROUPING(pf.competition_id) = 0))) AND (bo.season_grouped = ((GROUPING(pf.season) = 0))))
+              Rows Removed by Join Filter: 6
+              Buffers: shared hit=86273
+              ->  Nested Loop Left Join  (cost=24.52..45.97 rows=3 width=143) (actual time=243021.802..243023.827 rows=3 loops=1)
+                    Join Filter: ((NOT (fi.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (fi.season IS DISTINCT FROM pf.season)) AND (fi.competition_grouped = ((GROUPING(pf.competition_id) = 0))) AND (fi.season_grouped = ((GROUPING(pf.season) = 0))))
+                    Rows Removed by Join Filter: 2
+                    Buffers: shared hit=86273
+                    ->  Nested Loop Left Join  (cost=0.58..21.44 rows=3 width=131) (actual time=242852.638..242854.643 rows=3 loops=1)
+                          Join Filter: ((NOT (br.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (br.season IS DISTINCT FROM pf.season)) AND (br.competition_grouped = ((GROUPING(pf.competition_id) = 0))) AND (br.season_grouped = ((GROUPING(pf.season) = 0))))
+                          Rows Removed by Join Filter: 6
+                          Buffers: shared hit=64073
+                          ->  Nested Loop Left Join  (cost=0.48..20.92 rows=3 width=94) (actual time=242834.804..242834.879 rows=3 loops=1)
+                                Buffers: shared hit=64073
+                                ->  Merge Left Join  (cost=0.33..0.40 rows=3 width=62) (actual time=242834.758..242834.785 rows=3 loops=1)
+                                      Merge Cond: ((((GROUPING(pf.competition_id) = 0)) = ac.competition_grouped) AND (((GROUPING(pf.season) = 0)) = ac.season_grouped))
+                                      Join Filter: ((NOT (ac.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (ac.season IS DISTINCT FROM pf.season)))
+                                      Buffers: shared hit=64069
+                                      ->  Sort  (cost=0.13..0.14 rows=3 width=46) (actual time=4.920..4.925 rows=3 loops=1)
+                                            Sort Key: ((GROUPING(pf.competition_id) = 0)) DESC, ((GROUPING(pf.season) = 0)) DESC
+                                            Sort Method: quicksort  Memory: 25kB
+                                            Buffers: shared hit=914
+                                            ->  GroupAggregate  (cost=0.03..0.11 rows=3 width=46) (actual time=4.698..4.752 rows=3 loops=1)
+                                                  Group Key: pf.competition_id, pf.season
+                                                  Group Key: pf.competition_id
+                                                  Group Key: ()
+                                                  Buffers: shared hit=914
+                                                  ->  Sort  (cost=0.03..0.04 rows=1 width=48) (actual time=4.355..4.395 rows=300 loops=1)
+                                                        Sort Key: pf.competition_id, pf.season
+                                                        Sort Method: quicksort  Memory: 39kB
+                                                        Buffers: shared hit=914
+                                                        ->  CTE Scan on published_fixture pf  (cost=0.00..0.02 rows=1 width=48) (actual time=0.827..4.121 rows=300 loops=1)
+                                                              Buffers: shared hit=914
+                                      ->  Sort  (cost=0.19..0.20 rows=3 width=58) (actual time=242829.821..242829.827 rows=3 loops=1)
+                                            Sort Key: ac.competition_grouped DESC, ac.season_grouped DESC
+                                            Sort Method: quicksort  Memory: 25kB
+                                            Buffers: shared hit=63155
+                                            ->  Subquery Scan on ac  (cost=0.03..0.17 rows=3 width=58) (actual time=242829.099..242829.805 rows=3 loops=1)
+                                                  Buffers: shared hit=63155
+                                                  ->  GroupAggregate  (cost=0.03..0.14 rows=3 width=58) (actual time=242829.096..242829.798 rows=3 loops=1)
+                                                        Group Key: pd.competition_id, pd.season
+                                                        Group Key: pd.competition_id
+                                                        Group Key: ()
+                                                        Buffers: shared hit=63155
+                                                        ->  Sort  (cost=0.03..0.04 rows=1 width=50) (actual time=242821.513..242822.564 rows=8700 loops=1)
+                                                              Sort Key: pd.competition_id, pd.season
+                                                              Sort Method: quicksort  Memory: 860kB
+                                                              Buffers: shared hit=63155
+                                                              ->  CTE Scan on participant_delivery pd  (cost=0.00..0.02 rows=1 width=50) (actual time=242804.636..242817.327 rows=8700 loops=1)
+                                                                    Buffers: shared hit=63155
+                                ->  Index Scan using competition_pkey on competition c  (cost=0.15..6.84 rows=1 width=40) (actual time=0.023..0.023 rows=1 loops=3)
+                                      Index Cond: (competition_id = pf.competition_id)
+                                      Buffers: shared hit=4
+                          ->  Materialize  (cost=0.10..0.32 rows=3 width=79) (actual time=5.942..6.580 rows=3 loops=3)
+                                ->  Subquery Scan on br  (cost=0.10..0.30 rows=3 width=79) (actual time=17.818..19.718 rows=3 loops=1)
+                                      ->  GroupAggregate  (cost=0.10..0.27 rows=3 width=79) (actual time=17.816..19.713 rows=3 loops=1)
+                                            Group Key: bi.competition_id, bi.season
+                                            Group Key: bi.competition_id
+                                            Group Key: ()
+                                            ->  Sort  (cost=0.10..0.10 rows=1 width=65) (actual time=16.142..16.180 rows=300 loops=1)
+                                                  Sort Key: bi.competition_id, bi.season
+                                                  Sort Method: quicksort  Memory: 46kB
+                                                  ->  Subquery Scan on bi  (cost=0.06..0.08 rows=1 width=65) (actual time=15.820..16.042 rows=300 loops=1)
+                                                        ->  HashAggregate  (cost=0.06..0.07 rows=1 width=73) (actual time=15.818..16.001 rows=300 loops=1)
+                                                              Group Key: pd_1.innings_id, pd_1.fixture_id, pd_1.competition_id, pd_1.season
+                                                              Filter: bool_or((pd_1.is_striker OR pd_1.is_non_striker OR pd_1.is_batter))
+                                                              Batches: 1  Memory Usage: 193kB
+                                                              Rows Removed by Filter: 300
+                                                              ->  CTE Scan on participant_delivery pd_1  (cost=0.00..0.02 rows=1 width=65) (actual time=0.004..5.274 rows=8700 loops=1)
+                    ->  Materialize  (cost=23.95..24.21 rows=5 width=54) (actual time=56.384..56.389 rows=1 loops=3)
+                          Buffers: shared hit=22200
+                          ->  Subquery Scan on fi  (cost=23.95..24.18 rows=5 width=54) (actual time=169.141..169.155 rows=1 loops=1)
+                                Buffers: shared hit=22200
+                                ->  GroupAggregate  (cost=23.95..24.13 rows=5 width=54) (actual time=169.139..169.151 rows=1 loops=1)
+                                      Group Key: fc.competition_id, fc.season
+                                      Group Key: fc.competition_id
+                                      Group Key: ()
+                                      Buffers: shared hit=22200
+                                      ->  Sort  (cost=23.95..23.95 rows=2 width=72) (actual time=169.128..169.139 rows=0 loops=1)
+                                            Sort Key: fc.competition_id, fc.season
+                                            Sort Method: quicksort  Memory: 25kB
+                                            Buffers: shared hit=22200
+                                            ->  Subquery Scan on fc  (cost=23.89..23.94 rows=2 width=72) (actual time=169.121..169.131 rows=0 loops=1)
+                                                  Buffers: shared hit=22200
+                                                  ->  Unique  (cost=23.89..23.92 rows=2 width=88) (actual time=169.120..169.128 rows=0 loops=1)
+                                                        Buffers: shared hit=22200
+                                                        ->  Sort  (cost=23.89..23.89 rows=2 width=88) (actual time=169.118..169.126 rows=0 loops=1)
+                                                              Sort Key: pd_2.fixture_id, pd_2.competition_id, pd_2.season, wicket.wicket_id, wicket.kind
+                                                              Sort Method: quicksort  Memory: 25kB
+                                                              Buffers: shared hit=22200
+                                                              ->  Append  (cost=4.33..23.88 rows=2 width=88) (actual time=169.104..169.112 rows=0 loops=1)
+                                                                    Buffers: shared hit=22200
+                                                                    ->  Nested Loop  (cost=4.33..12.55 rows=1 width=88) (actual time=130.580..130.584 rows=0 loops=1)
+                                                                          Buffers: shared hit=17400
+                                                                          ->  Nested Loop  (cost=4.17..11.33 rows=3 width=88) (actual time=130.579..130.581 rows=0 loops=1)
+                                                                                Buffers: shared hit=17400
+                                                                                ->  CTE Scan on participant_delivery pd_2  (cost=0.00..0.02 rows=1 width=56) (actual time=0.004..10.768 rows=8700 loops=1)
+                                                                                ->  Bitmap Heap Scan on delivery_wicket wicket  (cost=4.17..11.28 rows=3 width=48) (actual time=0.003..0.003 rows=0 loops=8700)
+                                                                                      Recheck Cond: (delivery_id = pd_2.delivery_id)
+                                                                                      Buffers: shared hit=17400
+                                                                                      ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.002..0.002 rows=0 loops=8700)
+                                                                                            Index Cond: (delivery_id = pd_2.delivery_id)
+                                                                                            Buffers: shared hit=17400
+                                                                          ->  Index Scan using delivery_wicket_fielder_pkey on delivery_wicket_fielder fielder  (cost=0.15..0.40 rows=1 width=8) (never executed)
+                                                                                Index Cond: (wicket_id = wicket.wicket_id)
+                                                                                Filter: (person_id = '1'::bigint)
+                                                                    ->  Nested Loop  (cost=4.17..11.32 rows=1 width=88) (actual time=38.518..38.520 rows=0 loops=1)
+                                                                          Buffers: shared hit=4800
+                                                                          ->  CTE Scan on participant_delivery pd_3  (cost=0.00..0.02 rows=1 width=56) (actual time=0.008..4.964 rows=2400 loops=1)
+                                                                                Filter: is_bowler
+                                                                                Rows Removed by Filter: 6300
+                                                                          ->  Bitmap Heap Scan on delivery_wicket wicket_1  (cost=4.17..11.29 rows=1 width=48) (actual time=0.003..0.003 rows=0 loops=2400)
+                                                                                Recheck Cond: (delivery_id = pd_3.delivery_id)
+                                                                                Filter: (kind = 'caught and bowled'::text)
+                                                                                Buffers: shared hit=4800
+                                                                                ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0) (actual time=0.002..0.002 rows=0 loops=2400)
+                                                                                      Index Cond: (delivery_id = pd_3.delivery_id)
+                                                                                      Buffers: shared hit=4800
+              ->  Materialize  (cost=0.16..0.40 rows=3 width=86) (actual time=3.925..4.517 rows=3 loops=3)
+                    ->  Subquery Scan on bo  (cost=0.16..0.38 rows=3 width=86) (actual time=11.744..13.508 rows=3 loops=1)
+                          ->  GroupAggregate  (cost=0.16..0.35 rows=3 width=86) (actual time=11.742..13.501 rows=3 loops=1)
+                                Group Key: bo_1.competition_id, bo_1.season
+                                Group Key: bo_1.competition_id
+                                Group Key: ()
+                                ->  Sort  (cost=0.16..0.16 rows=1 width=70) (actual time=9.662..9.715 rows=300 loops=1)
+                                      Sort Key: bo_1.competition_id, bo_1.season
+                                      Sort Method: quicksort  Memory: 48kB
+                                      ->  Subquery Scan on bo_1  (cost=0.11..0.15 rows=1 width=70) (actual time=8.896..9.359 rows=300 loops=1)
+                                            ->  HashAggregate  (cost=0.11..0.14 rows=1 width=82) (actual time=8.893..9.261 rows=300 loops=1)
+                                                  Group Key: pd_4.innings_id, pd_4.fixture_id, pd_4.competition_id, pd_4.season, pd_4.balls_per_over
+                                                  Batches: 1  Memory Usage: 309kB
+                                                  ->  CTE Scan on participant_delivery pd_4  (cost=0.00..0.02 rows=1 width=76) (actual time=0.013..3.951 rows=2400 loops=1)
+                                                        Filter: is_bowler
+                                                        Rows Removed by Filter: 6300
+Planning:
+  Buffers: shared hit=72
+Planning Time: 18.532 ms
+Execution Time: 243042.551 ms
