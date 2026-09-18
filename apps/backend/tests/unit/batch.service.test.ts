@@ -909,6 +909,87 @@ describe('canonical fixture creation', () => {
     expect(batches.publishAcceptedItems).not.toHaveBeenCalled();
   });
 
+  test('gathers innings and squad context from every delivery of the new fixture, and surfaces onboarding results', async () => {
+    const secondDelivery = {
+      ...unresolvedFixture,
+      batchItemId: '43',
+      ordinal: 2,
+      resolvedReferences: {
+        fixture: unresolvedFixture.resolvedReferences.fixture,
+        innings: {
+          referencePath: 'fixtures.0.innings.0',
+          entityType: 'innings',
+          state: 'unresolved',
+          candidates: [],
+          reason: null,
+          submittedReference: {
+            context: { ordinal: 0, battingTeam: { context: { name: 'Wits' } } },
+          },
+        },
+        striker: {
+          referencePath: 'fixtures.0.innings.0.events.0.striker',
+          entityType: 'participant',
+          state: 'unresolved',
+          candidates: [],
+          reason: null,
+          submittedReference: {
+            context: { name: 'A. Smith', team: { context: { name: 'Wits' } } },
+          },
+        },
+        bowler: {
+          referencePath: 'fixtures.0.innings.0.events.0.bowler',
+          entityType: 'participant',
+          state: 'unresolved',
+          candidates: [],
+          reason: null,
+          submittedReference: {
+            context: { name: 'C. Khumalo', team: { context: { name: 'UCT' } } },
+          },
+        },
+      },
+    };
+    const createCanonicalFixtureAndQueueMapping = vi.fn().mockResolvedValue({
+      decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+      state: 'applied',
+      decidedAt: '2026-09-11T12:00:00.000Z',
+      onboarding: {
+        inningsCreated: 1,
+        squadCreated: 2,
+        unresolvedParticipants: [],
+      },
+    });
+    const batches = repository({
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, packageVersion: '1.1', state: 'rejected' }),
+      listBatchItems: vi.fn().mockResolvedValue([unresolvedFixture, secondDelivery]),
+      createCanonicalFixtureAndQueueMapping,
+    });
+    const result = await createBatchService(
+      {} as BatchPayloadStorageService,
+      batches,
+    ).createCanonicalFixture(createTestAccount({ role: 'admin' }), persistedBatch.batchReference, {
+      itemOrdinal: 1,
+      referencePath: 'fixtures.0',
+      decisionKey: 'create-fixture',
+    });
+
+    expect(createCanonicalFixtureAndQueueMapping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        innings: [{ ordinal: 0, battingTeamName: 'Wits' }],
+        participants: expect.arrayContaining([
+          { name: 'A. Smith', teamName: 'Wits' },
+          { name: 'C. Khumalo', teamName: 'UCT' },
+        ]),
+      }),
+    );
+    expect(result.data.onboarding).toEqual({
+      inningsCreated: 1,
+      squadCreated: 2,
+      unresolvedParticipants: [],
+    });
+  });
+
   test('rejects non-administrators, legacy packages, and incomplete proposals', async () => {
     const service = createBatchService(
       {} as BatchPayloadStorageService,

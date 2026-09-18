@@ -3280,4 +3280,158 @@ describe.sequential('batch repository database integration', () => {
       ).rejects.toBeInstanceOf(BatchReferenceMappingConflictError);
     });
   });
+
+  test('onboards innings and a squad for a genuinely new fixture (issue #584)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+
+      // A person who already exists globally with a durable source id: the
+      // new fixture's squad must reuse this row rather than duplicating it.
+      const existingBySourceRef = await client.query<{ personId: string }>(
+        `INSERT INTO person (source_ref, display_name) VALUES ($1, $2)
+         RETURNING person_id::text AS "personId"`,
+        [`${sourcePrefix}-durable-bowler`, `${sourcePrefix} Durable Bowler`],
+      );
+
+      // Two existing people who happen to share a display name: an unrelated
+      // name-only participant reference to that name must be reported as
+      // ambiguous rather than silently attached to either of them.
+      await client.query(
+        `INSERT INTO person (source_ref, display_name) VALUES ($1, $3), ($2, $3)`,
+        [
+          `${sourcePrefix}-ambiguous-1`,
+          `${sourcePrefix}-ambiguous-2`,
+          `${sourcePrefix} Ambiguous Name`,
+        ],
+      );
+
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-onboarding`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 1 },
+      });
+      await repository.insertBatchItems(batch.batchId, [
+        {
+          ordinal: 0,
+          overNumber: 0,
+          positionInOver: 0,
+          payload: {},
+          referenceResolutionState: 'unresolved',
+          state: 'rejected',
+          rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+        },
+      ]);
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      const sourceRef = `${sourcePrefix}-onboarding-fixture`;
+      const battingTeamName = `${sourcePrefix}-batting`;
+      const bowlingTeamName = `${sourcePrefix}-bowling`;
+
+      const decision = await repository.createCanonicalFixtureAndQueueMapping({
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'onboard',
+        sourceRef,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [battingTeamName, bowlingTeamName],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+        innings: [
+          { ordinal: 0, battingTeamName },
+          { ordinal: 1, battingTeamName: bowlingTeamName },
+        ],
+        participants: [
+          {
+            sourceId: `cricsheet:participant:${sourcePrefix}-durable-bowler`,
+            name: `${sourcePrefix} Durable Bowler`,
+            teamName: bowlingTeamName,
+          },
+          { name: `${sourcePrefix} New Striker`, teamName: battingTeamName },
+          { name: `${sourcePrefix} Ambiguous Name`, teamName: battingTeamName },
+        ],
+      });
+
+      expect(decision.onboarding).toEqual({
+        inningsCreated: 2,
+        squadCreated: 1,
+        unresolvedParticipants: expect.arrayContaining([
+          {
+            name: `${sourcePrefix} New Striker`,
+            teamName: battingTeamName,
+            candidates: [],
+          },
+          {
+            name: `${sourcePrefix} Ambiguous Name`,
+            teamName: battingTeamName,
+            candidates: expect.arrayContaining([
+              expect.objectContaining({ displayName: `${sourcePrefix} Ambiguous Name` }),
+            ]),
+          },
+        ]),
+      });
+      expect(decision.onboarding?.unresolvedParticipants).toHaveLength(2);
+      const ambiguous = decision.onboarding?.unresolvedParticipants.find(
+        (participant) => participant.name === `${sourcePrefix} Ambiguous Name`,
+      );
+      expect(ambiguous?.candidates).toHaveLength(2);
+
+      const fixtureRow = await client.query<{ fixtureId: string }>(
+        `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1`,
+        [sourceRef],
+      );
+      const fixtureId = fixtureRow.rows[0]!.fixtureId;
+
+      const inningsRows = await client.query<{ ordinal: number; battingTeamId: string }>(
+        `SELECT ordinal, batting_team_id::text AS "battingTeamId" FROM innings
+         WHERE fixture_id=$1 ORDER BY ordinal`,
+        [fixtureId],
+      );
+      expect(inningsRows.rows).toHaveLength(2);
+
+      const squadRows = await client.query<{ personId: string; teamId: string }>(
+        `SELECT person_id::text AS "personId", team_id::text AS "teamId" FROM fixture_squad
+         WHERE fixture_id=$1`,
+        [fixtureId],
+      );
+      // Only the durable bowler (a real, unambiguous registry identity) is
+      // onboarded automatically. A bare name - whether brand new or matching
+      // more than one existing person - is never enough to safely create or
+      // join a canonical person record, so both are left for a reviewer.
+      expect(squadRows.rows).toHaveLength(1);
+      expect(squadRows.rows[0]!.personId).toBe(existingBySourceRef.rows[0]!.personId);
+
+      const durablePersonCount = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM person WHERE source_ref=$1`,
+        [`${sourcePrefix}-durable-bowler`],
+      );
+      expect(durablePersonCount.rows[0]!.count).toBe('1');
+
+      const newStrikerPersonCount = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM person WHERE display_name=$1`,
+        [`${sourcePrefix} New Striker`],
+      );
+      // Confirms no person was silently fabricated for the unresolved name.
+      expect(newStrikerPersonCount.rows[0]!.count).toBe('0');
+    });
+  });
 });
