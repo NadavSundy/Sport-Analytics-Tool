@@ -1,29 +1,4 @@
-import { createHash } from 'node:crypto';
 
-import {
-  bowlerChargedExtrasSql,
-  bowlerWideRunsSql,
-  countsAsBallFacedSql,
-  isLegalDeliverySql,
-} from '@sport-analytics/contracts';
-
-import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
-import type {
-  ParticipantAggregateRow,
-  ParticipantAggregatesSource,
-} from './participant-aggregates.model';
-import { standardInningsPredicate } from './super-over-scope';
-
-interface ParticipantRow {
-  participantId: string;
-  participantName: string;
-}
-
-/**
- * The grouped aggregate statement. It is a module constant so that its text can
- * identify the calculation that produced stored aggregate rows.
- */
-const participantAggregateRowsSql = `
       WITH published_fixture AS (
         SELECT
           f.fixture_id,
@@ -110,7 +85,7 @@ const participantAggregateRowsSql = `
          AND source_submission.status = 'accepted'
         JOIN innings i
           ON i.innings_id = d.innings_id
-         AND ${standardInningsPredicate('i')}
+         AND i.is_super_over = false
         JOIN published_fixture pf
           ON pf.fixture_id = i.fixture_id
         ORDER BY
@@ -161,7 +136,7 @@ const participantAggregateRowsSql = `
           pd.season,
           COALESCE(SUM(pd.runs_off_bat) FILTER (WHERE pd.is_striker), 0)::int AS runs_scored,
           COUNT(*) FILTER (
-            WHERE pd.is_striker AND ${countsAsBallFacedSql('pd')}
+            WHERE pd.is_striker AND (COALESCE(pd.extra_wides, 0) <= 0)
           )::int AS balls_faced,
           COUNT(*) FILTER (
             WHERE pd.is_striker AND pd.runs_off_bat = 4 AND NOT pd.non_boundary
@@ -215,10 +190,10 @@ const participantAggregateRowsSql = `
           pd.season,
           pd.balls_per_over,
           COUNT(*)::int AS delivery_count,
-          COALESCE(SUM(pd.runs_off_bat + ${bowlerChargedExtrasSql('pd')}), 0)::int AS runs_conceded,
-          COALESCE(SUM(${bowlerWideRunsSql('pd')}), 0)::int AS wides,
+          COALESCE(SUM(pd.runs_off_bat + ((CASE WHEN COALESCE(pd.extra_wides, 0) > 0 THEN COALESCE(pd.extra_wides, 0) + GREATEST(COALESCE(pd.extra_byes, 0), 0) + GREATEST(COALESCE(pd.extra_legbyes, 0), 0) ELSE 0 END) + GREATEST(COALESCE(pd.extra_noballs, 0), 0))), 0)::int AS runs_conceded,
+          COALESCE(SUM((CASE WHEN COALESCE(pd.extra_wides, 0) > 0 THEN COALESCE(pd.extra_wides, 0) + GREATEST(COALESCE(pd.extra_byes, 0), 0) + GREATEST(COALESCE(pd.extra_legbyes, 0), 0) ELSE 0 END)), 0)::int AS wides,
           COALESCE(SUM(pd.extra_noballs), 0)::int AS no_balls,
-          COUNT(*) FILTER (WHERE ${isLegalDeliverySql('pd')})::int AS legal_balls,
+          COUNT(*) FILTER (WHERE (COALESCE(pd.extra_wides, 0) <= 0 AND COALESCE(pd.extra_noballs, 0) <= 0))::int AS legal_balls,
           COALESCE(SUM(pd.credited_wickets), 0)::int AS wickets
         FROM participant_delivery pd
         WHERE pd.is_bowler
@@ -410,84 +385,3 @@ const participantAggregateRowsSql = `
         ar.season_grouped DESC,
         ar.competition_id ASC NULLS LAST,
         ar.season ASC
-    `;
-
-/**
- * Identifies the calculation behind stored participant aggregate rows (issue
- * #592). It hashes the aggregate statement itself, including the shared
- * classification fragments and super-over predicate interpolated into it, so
- * any change to that SQL invalidates every stored row without a manual version
- * bump. The prefix is advanced by hand only when the row mapping changes
- * without the SQL changing.
- */
-export const participantAggregatesDefinitionVersion = createHash('sha256')
-  .update('participant-aggregate-rows:v1\n')
-  .update(participantAggregateRowsSql)
-  .digest('hex');
-
-/**
- * Every level of a participant's figures, in one grouped statement.
- *
- * Issue #105 measured the fixture statistics endpoints at roughly 2,400 ms from
- * about thirteen sequential queries over a 173 ms link, for a single fixture. A
- * career spans every fixture a player has appeared in, so anything per-fixture
- * would be far worse. This statement is therefore set-based and its cost does
- * not grow with the number of round trips:
- *
- *   - the participant's deliveries are found by two index scans on the partial
- *     indexes `delivery_striker_idx` and `delivery_bowler_idx`, which already
- *     carry the live-revision predicate, rather than by scanning the corpus;
- *   - the season, competition-wide and career levels come from one pass over
- *     that set using GROUPING SETS, not one query per level; and
- *   - the caller issues exactly two statements — this one and the participant
- *     lookup — however many fixtures the participant has played.
- *
- * The derivation rules are the ones the fixture statistics module applies, so
- * that a career figure equals the sum of the published fixture figures:
- *
- *   - the fixture's own submission and each delivery's submission must be
- *     accepted;
- *   - a revised delivery resolves to its live revision;
- *   - super-over innings are excluded, through `standardInningsPredicate`;
- *   - a wide is not a ball faced, but a no-ball is;
- *   - neither a wide nor a no-ball is a legal ball bowled;
- *   - byes and leg byes are not conceded by the bowler, except when run off a
- *     wide, where Law 22.6 makes them wide runs;
- *   - a boundary excludes deliveries flagged `non_boundary`; and
- *   - only dismissal kinds crediting the bowler count as wickets, so a run out
- *     is not the bowler's.
- *
- * Grouping is by `person_id`. Display names are not identity: §10 of the domain
- * definition records that 166 names in the corpus belong to more than one
- * person.
- */
-export async function loadParticipantAggregatesSource(
-  participantId: string,
-  executor: QueryExecutor = getDatabasePool(),
-): Promise<ParticipantAggregatesSource | null> {
-  const [participantResult, aggregateResult] = await Promise.all([
-    executeQuery<ParticipantRow>(
-      executor,
-      `
-      SELECT
-        person_id::text AS "participantId",
-        display_name AS "participantName"
-      FROM person
-      WHERE person_id = $1::bigint
-    `,
-      [participantId],
-    ),
-    executeQuery<ParticipantAggregateRow>(executor, participantAggregateRowsSql, [participantId]),
-  ]);
-
-  const participant = participantResult.rows[0];
-  if (!participant) {
-    return null;
-  }
-
-  return {
-    participantId: participant.participantId,
-    participantName: participant.participantName,
-    rows: aggregateResult.rows,
-  };
-}

@@ -140,6 +140,10 @@ describe.sequential('participant statistics version schema', () => {
     await withRolledBackTransaction(async (client) => {
       await client.query(`CREATE SCHEMA ${schema}`);
       await client.query(`SET LOCAL search_path TO ${schema}, public`);
+      // A stub person table in the scratch schema: a foreign key to the live
+      // person table would lock it against inserts by parallel test files
+      // until this transaction rolls back.
+      await client.query(`CREATE TABLE person (person_id bigint PRIMARY KEY)`);
       expect(await tableExists(client)).toBe(false);
       await client.query(up);
       expect(await tableExists(client)).toBe(true);

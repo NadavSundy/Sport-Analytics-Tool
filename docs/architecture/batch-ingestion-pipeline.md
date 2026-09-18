@@ -23,7 +23,10 @@ Issue #364 verifies the complete Intermediate path against this design rather th
 ### 1.3 Out of scope
 
 1. Dataset release and snapshot construction, defined by issue #294.
-2. Selective recomputation of derived statistics after publication, defined by issue #286.
+2. Selective recomputation of derived statistics after publication, defined by issue #286 and
+   implemented by issue #592 (ADR-015). Selective means a change recomputes each affected
+   participant's query once and rewrites only the affected scope rows; unaffected participants are
+   not recomputed and their rows stay byte-identical.
 3. The corpus importer, described in section 2.1 as context only and not modified by this design.
 
 ---
@@ -807,3 +810,4 @@ The Issue #364 implementation-status reconciliation was reviewed and edited with
 ChatGPT-Web[GPT-5.6 Sol].
 The Issue #539 correction-resubmission lifecycle was updated with the assistance of Codex[GPT-5].
 The Issue #540 durable asynchronous publication and final season-scale acceptance update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].
