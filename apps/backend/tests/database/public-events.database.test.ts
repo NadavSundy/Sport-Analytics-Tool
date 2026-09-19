@@ -564,15 +564,23 @@ describe.sequential('public events database API', () => {
     const artifact = JSON.parse(store.object!.toString()) as {
       events: Array<{ eventId: string; runsOffBat: number }>;
     };
-    const testEventIds = new Set(current.orderedEventIds);
+    const stableEventIds = await databasePool().query<{ eventId: string }>(
+      `SELECT d.source_event_id::text AS "eventId"
+       FROM unnest($1::bigint[]) WITH ORDINALITY requested(delivery_id, ordinal)
+       JOIN delivery d ON d.delivery_id=requested.delivery_id
+       ORDER BY requested.ordinal`,
+      [current.orderedEventIds],
+    );
+    const orderedStableEventIds = stableEventIds.rows.map((event) => event.eventId);
+    const testEventIds = new Set(orderedStableEventIds);
     const snapshottedTestEvents = artifact.events.filter((event) =>
       testEventIds.has(event.eventId),
     );
 
-    expect(snapshottedTestEvents.map((event) => event.eventId)).toEqual(current.orderedEventIds);
+    expect(snapshottedTestEvents.map((event) => event.eventId)).toEqual(orderedStableEventIds);
 
     const correctedSnapshotEvent = snapshottedTestEvents.find(
-      (event) => event.eventId === current.orderedEventIds[2],
+      (event) => event.eventId === orderedStableEventIds[2],
     );
 
     expect(correctedSnapshotEvent?.runsOffBat).toBe(1);
