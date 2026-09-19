@@ -184,6 +184,11 @@ describe('consumer filters, errors and limit headers', () => {
       },
       apiConsumerRepository: {
         findActiveConsumer: async () => ({ consumerId: '7', rateLimitPerMinute, dailyQuota: 100 }),
+        consumeRateLimit: async () => ({
+          allowed: true,
+          used: 1,
+          resetAt: new Date(Date.now() + 60_000),
+        }),
         consumeDailyQuota: async () => ({ allowed: quotaAllowed, used: quotaAllowed ? 1 : 100 }),
       },
     });

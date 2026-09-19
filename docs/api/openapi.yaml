@@ -355,6 +355,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures:
     get:
@@ -411,6 +412,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}:
     get:
@@ -431,6 +433,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events:
     get:
@@ -484,6 +487,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/export.json:
     get:
@@ -534,6 +538,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/export.csv:
     get:
@@ -590,6 +595,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}:
     get:
@@ -611,6 +617,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics:
     get:
@@ -633,6 +640,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}:
     get:
@@ -656,6 +664,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
     get:
@@ -680,6 +689,7 @@ paths:
         '409': { $ref: '#/components/responses/ExportTraceChanged' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
     get:
@@ -710,6 +720,7 @@ paths:
         '409': { $ref: '#/components/responses/ExportTraceChanged' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/participants/{participantId}/statistics:
     get:
@@ -732,6 +743,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/participants/{participantId}/statistics/{statisticId}:
     get:
@@ -753,6 +765,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
   /api/v1/health:
     get:
       tags:
@@ -3158,6 +3171,14 @@ components:
         Retry-After:
           description: Seconds to wait before retrying. Sent only when the per-minute limit is exhausted.
           schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
+    ConsumerRateLimitUnavailable:
+      description: >-
+        The shared consumer rate-limit store is unavailable. The request is not
+        admitted and consumers should retry with bounded backoff.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }

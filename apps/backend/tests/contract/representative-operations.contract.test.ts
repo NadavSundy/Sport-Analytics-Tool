@@ -112,6 +112,11 @@ const apiConsumer = {
 function activeConsumerRepository() {
   return {
     findActiveConsumer: async () => ({ consumerId: '7', rateLimitPerMinute: 60, dailyQuota: 100 }),
+    consumeRateLimit: async () => ({
+      allowed: true,
+      used: 1,
+      resetAt: new Date(Date.now() + 60_000),
+    }),
     consumeDailyQuota: async () => ({ allowed: true, used: 1 }),
   };
 }
