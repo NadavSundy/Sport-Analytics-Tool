@@ -175,11 +175,22 @@ export function createDatasetReleaseJobHandler(
       await client.query(
         `INSERT INTO dataset_release_snapshot_event (job_id,fixture_id,innings_ordinal,sequence_number,event_id,event)
          SELECT $1::uuid,i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id,jsonb_build_object(
-           'eventId',d.delivery_id::text,'fixtureId',i.fixture_id::text,'inningsId',i.innings_id::text,
+           'eventId',d.source_event_id::text,'fixtureId',i.fixture_id::text,'inningsId',i.innings_id::text,
            'inningsOrdinal',i.ordinal,'sequenceNumber',d.innings_sequence,'overNumber',d.over_number,
            'positionInOver',d.position_in_over,'ballNumber',d.ball_number,'strikerParticipantId',d.striker_id::text,
            'nonStrikerParticipantId',d.non_striker_id::text,'bowlerParticipantId',d.bowler_id::text,
-           'runsOffBat',d.runs_off_bat,'runsExtras',d.runs_extras,'runsTotal',d.runs_total)
+           'runsOffBat',d.runs_off_bat,'runsExtras',d.runs_extras,'runsTotal',d.runs_total,
+           'runsNonBoundary',d.non_boundary,
+           'extras',jsonb_strip_nulls(jsonb_build_object(
+             'wides',d.extra_wides,'noBalls',d.extra_noballs,'byes',d.extra_byes,
+             'legByes',d.extra_legbyes,'penalty',d.extra_penalty)),
+           'wickets',COALESCE((SELECT jsonb_agg(jsonb_build_object(
+             'wicketId',w.wicket_id::text,'kind',w.kind,'sourceKind',w.source_kind,
+             'playerOutParticipantId',w.player_out_id::text,
+             'fielders',COALESCE((SELECT jsonb_agg(jsonb_build_object(
+               'participantId',f.person_id::text,'isSubstitute',f.is_substitute) ORDER BY f.ordinal)
+               FROM delivery_wicket_fielder f WHERE f.wicket_id=w.wicket_id),'[]'::jsonb)) ORDER BY w.ordinal)
+             FROM delivery_wicket w WHERE w.delivery_id=d.delivery_id),'[]'::jsonb))
          FROM delivery_current d INNER JOIN innings i ON i.innings_id=d.innings_id
          INNER JOIN submission s ON s.submission_id=d.submission_id AND s.status='accepted'
          ON CONFLICT DO NOTHING`,
