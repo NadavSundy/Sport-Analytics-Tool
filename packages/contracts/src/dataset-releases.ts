@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 import { apiDateTimeSchema, apiIdentifierSchema, createResourceResponseSchema } from './api';
 
-export const DATASET_RELEASE_FORMAT_VERSION = '1.0' as const;
+export const DATASET_RELEASE_FORMAT_VERSION = '1.1' as const;
 export const DATASET_RELEASE_SCOPE = 'published-accepted-deliveries' as const;
 export const DATASET_RELEASE_FIELDS = [
-  { name: 'eventId', description: 'Stable identifier of the accepted delivery revision.' },
+  { name: 'eventId', description: 'Stable logical delivery identity retained across corrections.' },
   { name: 'fixtureId', description: 'Fixture containing the delivery.' },
   { name: 'inningsId', description: 'Innings containing the delivery.' },
   { name: 'inningsOrdinal', description: 'Zero-based source innings order.' },
@@ -19,6 +19,9 @@ export const DATASET_RELEASE_FIELDS = [
   { name: 'runsOffBat', description: 'Runs credited to the striker.' },
   { name: 'runsExtras', description: 'Extra runs on the delivery.' },
   { name: 'runsTotal', description: 'Total runs on the delivery.' },
+  { name: 'runsNonBoundary', description: 'Whether runs must not count as a boundary.' },
+  { name: 'extras', description: 'Detailed wides; no-balls; byes; leg-byes and penalty runs.' },
+  { name: 'wickets', description: 'Ordered dismissal details; including player out and fielders.' },
 ] as const;
 
 export const datasetReleaseVersionSchema = z
@@ -46,7 +49,7 @@ export const datasetReleaseSchema = z
     createdAt: apiDateTimeSchema,
     snapshotId: apiIdentifierSchema.nullable(),
     snapshotAsOf: apiDateTimeSchema.nullable(),
-    formatVersion: z.literal(DATASET_RELEASE_FORMAT_VERSION),
+    formatVersion: z.enum(['1.0', DATASET_RELEASE_FORMAT_VERSION]),
     scope: z.literal(DATASET_RELEASE_SCOPE),
     eventCount: z.number().int().nonnegative(),
     checksum: z.string().regex(/^[a-f0-9]{64}$/),

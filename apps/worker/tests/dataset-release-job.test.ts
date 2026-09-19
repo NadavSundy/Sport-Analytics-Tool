@@ -209,6 +209,28 @@ describe('dataset release worker job', () => {
     ).toHaveLength(2);
   });
 
+  it('materializes every delivery attribute needed to reproduce published statistics', async () => {
+    const database = fakeDatabase();
+    const handler = createDatasetReleaseJobHandler(database.pool, new MemoryStore(), logger, {
+      workerId: 'worker-1',
+      leaseMs: 120000,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem',
+      pageSize: 2,
+    }).handler;
+
+    await handler(message, new AbortController().signal);
+
+    const snapshot = database.calls.find((call) =>
+      call.text.includes('INSERT INTO dataset_release_snapshot_event'),
+    );
+    expect(snapshot?.text).toContain("'runsNonBoundary'");
+    expect(snapshot?.text).toContain("'extras'");
+    expect(snapshot?.text).toContain("'wickets'");
+    expect(snapshot?.text).toContain('delivery_wicket');
+    expect(snapshot?.text).toContain('delivery_wicket_fielder');
+  });
+
   it.each([
     ['database page failure', { failPage: true }],
     ['metadata insert failure', { failMetadata: true }],

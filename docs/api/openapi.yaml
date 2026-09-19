@@ -3225,7 +3225,7 @@ components:
         snapshotAsOf:
           oneOf: [{ type: string, format: date-time }, { type: 'null' }]
           description: Database transaction time at which the durable source snapshot was captured.
-        formatVersion: { type: string, const: '1.0' }
+        formatVersion: { type: string, enum: ['1.0', '1.1'] }
         scope: { type: string, const: published-accepted-deliveries }
         eventCount: { type: integer, minimum: 0 }
         checksum:
@@ -3299,7 +3299,7 @@ components:
       additionalProperties: false
       required: [formatVersion, scope, fields, events]
       properties:
-        formatVersion: { type: string, const: '1.0' }
+        formatVersion: { type: string, const: '1.1' }
         scope: { type: string, const: published-accepted-deliveries }
         fields:
           type: array

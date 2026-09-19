@@ -91,8 +91,11 @@ describe('dataset release pages', () => {
     const schema = screen.getByRole('heading', { name: 'Schema and fields' }).parentElement!;
     expect(within(schema).getByText('eventId')).toBeInTheDocument();
     expect(
-      within(schema).getByText('Stable identifier of the accepted delivery revision.'),
+      within(schema).getByText('Stable logical delivery identity retained across corrections.'),
     ).toBeInTheDocument();
+    expect(within(schema).getByText('runsNonBoundary')).toBeInTheDocument();
+    expect(within(schema).getByText('extras')).toBeInTheDocument();
+    expect(within(schema).getByText('wickets')).toBeInTheDocument();
 
     const download = screen.getByRole('link', { name: 'Download JSON artefact' });
     expect(download).toHaveAttribute(
