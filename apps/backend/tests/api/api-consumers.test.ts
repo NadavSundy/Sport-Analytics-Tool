@@ -344,9 +344,17 @@ describe('API consumer key lifecycle and protections', () => {
     );
     const key = 'sat_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
-    await request(app).get('/consumer').set('X-API-Key', key).expect('RateLimit-Reset', '1').expect(200);
+    await request(app)
+      .get('/consumer')
+      .set('X-API-Key', key)
+      .expect('RateLimit-Reset', '1')
+      .expect(200);
     now = new Date('2026-09-19T10:01:00.000Z');
-    await request(app).get('/consumer').set('X-API-Key', key).expect('RateLimit-Reset', '60').expect(200);
+    await request(app)
+      .get('/consumer')
+      .set('X-API-Key', key)
+      .expect('RateLimit-Reset', '60')
+      .expect(200);
   });
 
   test('fails closed when the shared rate-limit store is unavailable', async () => {
@@ -354,7 +362,9 @@ describe('API consumer key lifecycle and protections', () => {
     app.get(
       '/consumer',
       createConsumerAuthentication(
-        repository({ consumeRateLimit: vi.fn().mockRejectedValue(new Error('database unavailable')) }),
+        repository({
+          consumeRateLimit: vi.fn().mockRejectedValue(new Error('database unavailable')),
+        }),
       ),
       (_request, response) => response.status(200).json({ data: [] }),
     );
