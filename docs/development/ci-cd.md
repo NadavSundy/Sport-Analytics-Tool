@@ -445,7 +445,7 @@ pipelines and therefore cannot race or deploy before the shared post-merge quali
 Application deployment paths are documented in:
 
 - [Azure backend](../deployment/azure-backend.md)
-- [Azure frontend](../deployment/azure-fronted.md)
+- [Cloudflare Pages frontend](../deployment/frontend-cloudflare-pages.md)
 - [Cloudflare Pages](../deployment/cloudflare_pages.md)
 - [Deployment overview](../deployment/overview.md)
 

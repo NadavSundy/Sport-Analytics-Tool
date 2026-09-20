@@ -9,6 +9,15 @@
 
 ---
 
+> **Note:** this is a historical incident record from the period when both the frontend and the primary
+> backend were hosted on Azure App Service. The frontend has since migrated to Cloudflare Pages (see
+> `docs/deployment/frontend-cloudflare-pages.md`) and the backend's normal deployment path has moved to
+> Azure Container Apps (see `docs/deployment/azure-backend.md`); `statsthegame-api-dev` App Service is
+> now only a manual rollback target. The App Service recovery procedures below remain useful for that
+> rollback path but no longer describe normal production deployment for either component.
+
+---
+
 ## 1. Purpose
 
 This document records the Azure deployment problems encountered while deploying the Sport Analytics Tool frontend and backend, the investigation performed by the team, the fixes applied, the evidence used to verify recovery, and the remaining work required to make the deployment reliable.

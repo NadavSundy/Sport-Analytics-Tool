@@ -307,7 +307,7 @@ The frontend application is hosted on Azure App Service. Cloudflare Pages is use
 
 See:
 
-- `docs/deployment/azure-fronted.md`
+- `docs/deployment/frontend-cloudflare-pages.md`
 - `docs/development/setup.md`
 - `docs/development/technology-stack.md`
 - `docs/security/authentication.md`

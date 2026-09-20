@@ -99,7 +99,7 @@ nav:
       - Azure Backend: deployment/azure-backend.md
       - Azure Batch Worker: deployment/azure-worker.md
       - Private Object Storage Operations: deployment/object-storage-operations.md
-      - Azure Frontend: deployment/azure-fronted.md
+      - Frontend (Cloudflare Pages): deployment/frontend-cloudflare-pages.md
       - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
       - Dedicated CI Runner Operations: deployment/runner-operations.md
       - Cloudflare Documentation: deployment/cloudflare_pages.md

@@ -183,7 +183,7 @@ URL: resolved from the Azure Container App external HTTPS FQDN after deployment
 
 ### Frontend
 
-URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/
+URL: https://sport-analytics-tool-web.pages.dev/
 
 - Platform: Azure App Service (Linux)
 - Runtime: Node.js 22 LTS
@@ -215,7 +215,7 @@ Deployment credentials are stored securely using repository Action Secrets.
 
 No deployment credentials are committed to source control.
 
-See [Azure frontend deployment](docs/deployment/azure-fronted.md) and
+See [Cloudflare Pages frontend deployment](docs/deployment/frontend-cloudflare-pages.md) and
 [Azure backend deployment](docs/deployment/azure-backend.md) for workflow triggers, required Gitea
 secrets, artifact contents and failure behaviour.
 

@@ -4,7 +4,7 @@ The selected deployment architecture is:
 
 | Component              | Hosting / service          | Deployment tool                                 |
 | ---------------------- | -------------------------- | ----------------------------------------------- |
-| React frontend         | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
+| React frontend         | Cloudflare Pages           | Gitea Actions / Wrangler CLI                    |
 | Express backend API    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions            |
 | Asynchronous worker    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions            |
 | PostgreSQL database    | Supabase-hosted PostgreSQL | Database migrations through the backend tooling |
@@ -25,10 +25,14 @@ ADR-010 and ADR-011 select these targets for Intermediate implementation. The ve
 Repository definitions are not evidence that a live Azure deployment has succeeded; the deployed
 revision and exact commit-SHA image must still be verified.
 
-Azure App Service was accepted in ADR 0003 for the frontend and originally for the backend. Issue #563
-migrates the normal backend deployment path to Container Apps while retaining `statsthegame-api-dev`
-as the manual App Service fallback during acceptance. The documentation site is deliberately hosted
-separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
+Azure App Service was originally accepted in ADR 0003 for the frontend and backend. Both have since
+moved off it: the backend now runs on Azure Container Apps (issue #563), with `statsthegame-api-dev`
+retained as a manual App Service fallback during acceptance; the frontend has moved to Cloudflare Pages
+(issue #564, see `docs/deployment/frontend-cloudflare-pages.md`) because its built output is static and
+does not need continuously running compute, with the Azure frontend deployment retained in parallel
+until Cloudflare Pages acceptance succeeds, then retired. The documentation site was already hosted
+separately on Cloudflare Pages, deployed from the generated MkDocs `site/` directory with Wrangler, and
+both migrations follow that same pattern.
 
 ## Minimum environments
 
@@ -57,7 +61,7 @@ See:
 - `docs/adr/0003-azure-hosting.md`
 - `docs/deployment/azure-backend.md`
 - `docs/deployment/azure-worker.md`
-- `docs/deployment/azure-fronted.md`
+- `docs/deployment/frontend-cloudflare-pages.md`
 - `docs/deployment/cloudflare_pages.md`
 - `docs/development/technology-stack.md`
 
