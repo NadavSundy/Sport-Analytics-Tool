@@ -12,12 +12,12 @@ for both; see `docs/adr/0003-azure-hosting.md`.
 
 ## Selected mapping
 
-| Component            | Service                   | Runtime/build context                                |
-| --------------------- | -------------------------- | ------------------------------------------------------ |
-| React frontend       | Cloudflare Pages          | Node.js 22 LTS build environment; static Vite bundle |
-| Express backend API  | Azure Container Apps      | Node.js 22 non-root production container             |
-| Async batch worker   | Azure Container Apps      | Node.js 22 LTS non-root container                    |
-| Private object bytes | Azure Blob Storage        | Backend managed identity and private container       |
+| Component            | Service              | Runtime/build context                                |
+| -------------------- | -------------------- | ---------------------------------------------------- |
+| React frontend       | Cloudflare Pages     | Node.js 22 LTS build environment; static Vite bundle |
+| Express backend API  | Azure Container Apps | Node.js 22 non-root production container             |
+| Async batch worker   | Azure Container Apps | Node.js 22 LTS non-root container                    |
+| Private object bytes | Azure Blob Storage   | Backend managed identity and private container       |
 
 The PostgreSQL database and managed authentication remain on Supabase. The public MkDocs documentation site is hosted separately on Cloudflare Pages, alongside the frontend application (a separate Pages project).
 

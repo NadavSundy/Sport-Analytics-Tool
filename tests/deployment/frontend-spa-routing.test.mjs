@@ -20,8 +20,8 @@ test('the SPA fallback rewrites every unmatched path to index.html with a 200 st
   assert.match(
     contents,
     /^\/\*\s+\/index\.html\s+200\s*$/m,
-    'expected a catch-all rewrite rule "/*  /index.html  200'
-      + ' so deep links and refreshes on client-side routes do not 404',
+    'expected a catch-all rewrite rule "/*  /index.html  200' +
+      ' so deep links and refreshes on client-side routes do not 404',
   );
 });
 

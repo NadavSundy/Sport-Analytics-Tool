@@ -31,18 +31,18 @@ function assertRepositoryDrivenFrontendDeployment(workflow, label) {
   );
 
   assert.ok(
-    workflow.indexOf('npm run build --workspace=@sport-analytics/frontend')
-      < workflow.indexOf('check-frontend-bundle-secrets.mjs'),
+    workflow.indexOf('npm run build --workspace=@sport-analytics/frontend') <
+      workflow.indexOf('check-frontend-bundle-secrets.mjs'),
     'the bundle must be built before it is scanned for leaked secrets',
   );
   assert.ok(
-    workflow.indexOf('check-frontend-bundle-secrets.mjs')
-      < workflow.indexOf('wrangler pages deploy apps/frontend/dist'),
+    workflow.indexOf('check-frontend-bundle-secrets.mjs') <
+      workflow.indexOf('wrangler pages deploy apps/frontend/dist'),
     'the bundle secret scan must pass before the bundle is published',
   );
   assert.ok(
-    workflow.indexOf('wrangler pages deploy apps/frontend/dist')
-      < workflow.indexOf('smoke-check-deployment.mjs'),
+    workflow.indexOf('wrangler pages deploy apps/frontend/dist') <
+      workflow.indexOf('smoke-check-deployment.mjs'),
     'Cloudflare deployment must complete before the public smoke check',
   );
 }
@@ -73,7 +73,11 @@ test('automatic frontend deployment validates the required Cloudflare and public
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_PUBLISHABLE_KEY',
   ]) {
-    assert.match(job, new RegExp(name), `deployment must validate the ${name} secret is configured`);
+    assert.match(
+      job,
+      new RegExp(name),
+      `deployment must validate the ${name} secret is configured`,
+    );
   }
 });
 

@@ -63,7 +63,7 @@ covered by `tests/deployment/frontend-spa-routing.test.mjs`.
 ## Environment Variables
 
 | Variable                        | Current status | Description                                                                        |
-| -------------------------------- | -------------- | ----------------------------------------------------------------------------------- |
+| ------------------------------- | -------------- | ---------------------------------------------------------------------------------- |
 | `VITE_API_BASE_URL`             | Used           | Deployed backend `/api/v1` base URL.                                               |
 | `VITE_SUPABASE_URL`             | Used           | Public Supabase Auth project URL.                                                  |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Used           | Public Supabase publishable key.                                                   |
@@ -77,7 +77,7 @@ secrets (see below), not committed to the repository.
 
 ### Guarding against embedded secrets
 
-Because the risk is a *future* accidental leak (someone hardcoding or logging a server-only value in
+Because the risk is a _future_ accidental leak (someone hardcoding or logging a server-only value in
 frontend source) rather than the normal Vite build path, CI also runs
 `node scripts/check-frontend-bundle-secrets.mjs apps/frontend/dist` against the built output before
 every deployment. It scans the built JS/CSS/HTML for backend-only configuration names (for example
@@ -120,13 +120,13 @@ verified in `tests/deployment/frontend-workflow.test.mjs`.
 
 ## Gitea Action secrets
 
-| Secret                           | Purpose                                                       |
-| --------------------------------- | -------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`           | Authenticates the Wrangler Cloudflare Pages deployment.       |
-| `CLOUDFLARE_ACCOUNT_ID`          | Identifies the Cloudflare account/Pages project to deploy to. |
-| `VITE_API_BASE_URL`              | Selects the deployed `/api/v1` backend at build time.         |
-| `VITE_SUPABASE_URL`              | Selects the public Supabase Auth project.                     |
-| `VITE_SUPABASE_PUBLISHABLE_KEY`  | Configures the browser-safe Supabase client key.              |
+| Secret                          | Purpose                                                       |
+| ------------------------------- | ------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`          | Authenticates the Wrangler Cloudflare Pages deployment.       |
+| `CLOUDFLARE_ACCOUNT_ID`         | Identifies the Cloudflare account/Pages project to deploy to. |
+| `VITE_API_BASE_URL`             | Selects the deployed `/api/v1` backend at build time.         |
+| `VITE_SUPABASE_URL`             | Selects the public Supabase Auth project.                     |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Configures the browser-safe Supabase client key.              |
 
 The Cloudflare API token should be scoped to only the permissions required to deploy the
 `sport-analytics-tool-web` Pages project (the same principle already applied to the documentation
