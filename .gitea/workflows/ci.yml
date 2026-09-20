@@ -429,17 +429,17 @@ jobs:
           done
           exit "$missing"
 
-      - name: Build immutable backend container image
-        run: >-
-          docker build
-          --file apps/backend/Dockerfile
-          --tag "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
-          .
+      - name: Verify Docker npm registry connectivity
+        run: |
+          echo "Checking DNS resolution inside Docker with the runner host network..."
+          timeout 30s docker run --rm --network=host node:22-bookworm-slim \
+            node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"
 
-      - name: Smoke check backend container image
-        run: >-
-          npm run smoke:backend-container --
-          "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+          echo "Checking npm registry connectivity inside Docker with the runner host network..."
+          timeout 45s docker run --rm --network=host node:22-bookworm-slim \
+            npm ping --registry=https://registry.npmjs.org/
+
+          echo "Docker npm registry connectivity verified."
 
       - name: Install Azure CLI
         run: |
@@ -451,10 +451,76 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
 
-      - name: Push immutable backend image to Azure Container Registry
+      - name: Sign in to Azure Container Registry
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Prepare Docker Buildx
         run: |
-          az acr login --name "$ACR_NAME"
-          docker push "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+          docker buildx version
+
+          docker buildx rm -f backend-ci-builder >/dev/null 2>&1 || true
+
+          docker buildx create \
+            --name backend-ci-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --buildkitd-flags '--allow-insecure-entitlement network.host' \
+            --use \
+            --bootstrap
+
+          docker buildx inspect
+
+      - name: Verify Buildx npm registry connectivity
+        shell: bash
+        run: |
+          timeout 60s docker buildx build \
+            --progress=plain \
+            --allow network.host \
+            --network=host \
+            --file - \
+            . <<'EOF'
+          FROM node:22-bookworm-slim
+          RUN npm ping --registry=https://registry.npmjs.org/
+          EOF
+
+      - name: Build immutable backend container image
+        shell: bash
+        run: |
+          set -o pipefail
+          build_log="$(mktemp)"
+          trap 'rm -f "$build_log"' EXIT
+
+            if ! docker buildx build \
+              --progress=plain \
+              --allow network.host \
+              --network=host \
+              --cache-from "type=registry,ref=$ACR_NAME.azurecr.io/sport-analytics-api:buildcache" \
+              --cache-to "type=registry,ref=$ACR_NAME.azurecr.io/sport-analytics-api:buildcache,mode=max" \
+              --file apps/backend/Dockerfile \
+              --tag "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}" \
+              --load \
+              . 2>&1 | tee "$build_log"; then
+
+            if grep -Fq 'Exit handler never called!' "$build_log"; then
+              echo '::error::Backend Docker build failed: npm internal crash (Exit handler never called).'
+            elif grep -Eqi 'EAI_AGAIN|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed' "$build_log"; then
+              echo '::error::Backend Docker build failed: npm registry or Docker network failure.'
+            elif grep -Eqi 'ELIFECYCLE|node-gyp|npm error (path|command|code [1-9][0-9]*)' "$build_log"; then
+              echo '::error::Backend Docker build failed: lifecycle-script failure.'
+            else
+              echo '::error::Backend Docker build failed; inspect the BuildKit output above.'
+            fi
+
+            exit 1
+          fi
+
+      - name: Smoke check backend container image
+        run: >-
+          npm run smoke:backend-container --
+          "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+      - name: Push immutable backend image to Azure Container Registry
+        run: docker push "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
 
       - name: Deploy backend Container Apps revision
         env:
