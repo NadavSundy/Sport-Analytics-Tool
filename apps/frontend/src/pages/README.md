@@ -50,7 +50,10 @@ Fixture-statistics pages additionally identify complete or partial data in text,
 and organise the published response as a match summary, innings comparison, deterministic match
 leaders, semantic batting and bowling scorecards, and consolidated calculation details. Tables use
 the shared horizontally scrollable data-table pattern on narrow screens and preserve zero values,
-while undefined backend rates are displayed as an em dash.
+while undefined backend rates are displayed as an em dash. A separate Powerplay comparison shows
+the backend-supplied score, overs and run rate for each marked innings, distinguishes those figures
+from the full innings, and states when an innings has no authoritative marker instead of substituting
+zeroes or assuming the first six overs.
 Player details immediately embed the participant fixture-history endpoint. Named match cards link to
 the complete fixture overview and present readable competition, season, date, match type, team, and
 role context with available batting and bowling figures. The history section owns its loading,
@@ -102,3 +105,4 @@ Claude Code[Claude Opus 5].
 The player career totals behaviour was documented with the assistance of Claude Code[Claude Opus 5].
 The issue #582 public statistics information architecture was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #634 powerplay presentation was documented with the assistance of Codex[GPT-5].

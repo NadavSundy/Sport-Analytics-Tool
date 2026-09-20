@@ -42,7 +42,15 @@ const inningsStatistic = {
     legalBalls: 0,
     overs: '0.0',
     runRate: null,
-    powerplay: null,
+    powerplay: {
+      ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+      runs: 42,
+      wicketsLost: 1,
+      legalBalls: 36,
+      overs: '6.0',
+      runRate: 7,
+      sourceEventCount: 38,
+    },
     extras: { total: 1, wides: 1, noBalls: 0, byes: 0, legByes: 0, penaltyRuns: 0 },
   },
 };
@@ -54,6 +62,7 @@ const secondInningsStatistic = {
   inningsOrdinal: 1,
   competitorId: 'team-2',
   competitorName: 'Team Two',
+  metrics: { ...inningsStatistic.metrics, powerplay: null },
 };
 
 const participantStatistic: ParticipantFixtureStatistic = {
@@ -250,12 +259,13 @@ function expectCompleteScorecardLayout(
   expect(audit.pageWidth.scroll).toBe(audit.pageWidth.client);
   expect(audit.tables.map(({ caption }) => caption)).toEqual([
     'Score, progress, run rate and extras for each standard innings',
+    'Authoritative powerplay performance by innings',
     'Team One batting scorecard',
     'Team Two batting scorecard',
     'Team One bowling scorecard',
     'Team Two bowling scorecard',
   ]);
-  expect(audit.tables.map(({ rows }) => rows)).toEqual([2, 11, 11, 6, 6]);
+  expect(audit.tables.map(({ rows }) => rows)).toEqual([2, 1, 11, 11, 6, 6]);
   expect(audit.tables.every(({ rows, visibleRows }) => rows === visibleRows)).toBe(true);
   expect(audit.tables.every(({ hasVerticalOverflow }) => !hasVerticalOverflow)).toBe(true);
   expect(audit.tables.every(({ wrapperWithinSection }) => wrapperWithinSection)).toBe(true);
@@ -265,7 +275,7 @@ function expectCompleteScorecardLayout(
 
   expect(audit.tables.every(({ tableWithinWrapper }) => tableWithinWrapper)).toBe(true);
   expect(audit.tables.every(({ tableFillsWrapper }) => tableFillsWrapper)).toBe(true);
-  const [innings, ...scorecards] = audit.tables;
+  const [innings, , ...scorecards] = audit.tables;
   const inningsMetricWidths = innings?.columnWidths.slice(1) ?? [];
   expect(Math.max(...inningsMetricWidths)).toBeLessThanOrEqual(128);
   expect(innings?.columnWidths[0]).toBeGreaterThan(Math.max(...inningsMetricWidths));
@@ -415,6 +425,23 @@ test(
     ).toBeVisible();
     await expect(page.getByText('Team One won by 5 wickets.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Batting scorecard' })).toBeVisible();
+    const powerplay = page.getByRole('region', { name: 'Powerplay' });
+    await expect(powerplay).toContainText('Team One');
+    await expect(powerplay).toContainText('42/1');
+    await expect(powerplay).toContainText('6.0');
+    await expect(powerplay).toContainText(
+      'Team Two innings 2: authoritative powerplay information is unavailable.',
+    );
+    await expect(powerplay).not.toContainText('0.1');
+    const powerplayTable = powerplay.getByRole('table');
+    await powerplayTable.locator('..').focus();
+    await expect(powerplayTable.locator('..')).toBeFocused();
+    if (process.env.CAPTURE_ISSUE_634_EVIDENCE) {
+      await page.screenshot({
+        fullPage: true,
+        path: `evidence/validation/issue-634-powerplay-${isMobile ? 'mobile' : 'desktop'}.png`,
+      });
+    }
     await expect(page.getByRole('link', { name: 'Opening Batter' }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Participating players' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View fixture statistics' })).toHaveCount(0);
