@@ -67,6 +67,7 @@ schema change. The main Sprint 2 migration groups are:
 
 | `20260917120000000_dataset-release-snapshots.sql` | Durable point-in-time source snapshots for asynchronous dataset releases |
 | `20260917180000000_powerplay-provenance.sql` | Reviewed source-batch provenance for authoritative innings powerplay markers |
+| `20260919100000000_api-consumer-shared-rate-limits.sql` | Atomic shared UTC-minute counters for consumer limits across backend replicas |
 
 Apply migrations only through the documented `node-pg-migrate` commands. Integration tests rebuild
 an isolated test database from the complete ordered migration set, which makes missing dependencies
@@ -81,3 +82,4 @@ The Issue #277 batch receipt migration was documented with the assistance of Cod
 The Issue #283 review workflow migration was documented with the assistance of Codex[GPT-5].
 The Issue #297 Sprint 2 migration index was reviewed and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #633 powerplay provenance migration was documented with the assistance of Codex[GPT-5].
+The issue #595 shared consumer rate-limit migration was documented with the assistance of Codex[GPT-5].

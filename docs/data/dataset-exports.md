@@ -134,10 +134,25 @@ before reuse.
 Release rows cannot be updated or deleted. Later corrections can be captured only in a new version,
 so a prior version and checksum always resolve to the same retained artifact.
 
-Artifacts remain uncompressed canonical JSON in format 1.0. Deterministic gzip was evaluated but is
+Artifacts remain uncompressed canonical JSON in format 1.1. The format includes ordered wickets and
+fielders; detailed extras; and the `runsNonBoundary` flag, alongside the stable event identity and
+delivery ordering fields, so analysts can reproduce built-in statistics without internal schema
+knowledge. Deterministic gzip was evaluated but is
 deferred: introducing it safely requires explicit content-encoding metadata and a compatibility
 contract for existing `.json` releases. The checksum continues to cover the exact uncompressed bytes
 returned by the artifact endpoint.
+
+### Release event schema (format 1.1)
+
+Each event object carries: `eventId`, `fixtureId`, `inningsId`, `inningsOrdinal`,
+`sequenceNumber`, `overNumber`, `positionInOver`, `ballNumber`, `strikerParticipantId`,
+`nonStrikerParticipantId`, `bowlerParticipantId`, `runsOffBat`, `runsExtras`, `runsTotal`,
+`runsNonBoundary`, `extras`, and `wickets`. `eventId` is the stable source event identity, rather
+than a revision-specific delivery-row identifier. `extras` records `wides`, `noBalls`, `byes`,
+`legByes`, and `penalty` when present. `wickets` preserves their source order; every wicket records
+its stable wicket ID, kind, source kind, player out, and ordered fielders, including substitute
+status. The metadata `fields` array in every artifact repeats these field descriptions
+machine-readably.
 
 ## AI Declaration
 
@@ -147,4 +162,6 @@ Codex[GPT-5.6 Sol]. The complete-export and calculation-trace export documentati
 updated with the assistance of Claude Code[Claude Opus 5]. The streamed release-generation and
 storage lifecycle and local development provider were documented with the assistance of
 Codex[GPT-5]. The durable point-in-time snapshot semantics were documented with the assistance of
+Codex[GPT-5].
+The derivation-complete release schema for issue #597 was documented with the assistance of
 Codex[GPT-5].

@@ -355,6 +355,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures:
     get:
@@ -411,6 +412,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}:
     get:
@@ -431,6 +433,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events:
     get:
@@ -484,6 +487,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/export.json:
     get:
@@ -534,6 +538,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/export.csv:
     get:
@@ -590,6 +595,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}:
     get:
@@ -611,6 +617,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics:
     get:
@@ -633,6 +640,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}:
     get:
@@ -656,6 +664,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
     get:
@@ -680,6 +689,7 @@ paths:
         '409': { $ref: '#/components/responses/ExportTraceChanged' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
     get:
@@ -710,6 +720,7 @@ paths:
         '409': { $ref: '#/components/responses/ExportTraceChanged' }
         '422': { $ref: '#/components/responses/ExportTooLarge' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/participants/{participantId}/statistics:
     get:
@@ -732,6 +743,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/participants/{participantId}/statistics/{statisticId}:
     get:
@@ -753,6 +765,7 @@ paths:
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
   /api/v1/health:
     get:
       tags:
@@ -3162,6 +3175,14 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
+    ConsumerRateLimitUnavailable:
+      description: >-
+        The shared consumer rate-limit store is unavailable. The request is not
+        admitted and consumers should retry with bounded backoff.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
   schemas:
     DatasetReleaseVersion:
       type: string
@@ -3204,7 +3225,7 @@ components:
         snapshotAsOf:
           oneOf: [{ type: string, format: date-time }, { type: 'null' }]
           description: Database transaction time at which the durable source snapshot was captured.
-        formatVersion: { type: string, const: '1.0' }
+        formatVersion: { type: string, enum: ['1.0', '1.1'] }
         scope: { type: string, const: published-accepted-deliveries }
         eventCount: { type: integer, minimum: 0 }
         checksum:
@@ -3278,7 +3299,7 @@ components:
       additionalProperties: false
       required: [formatVersion, scope, fields, events]
       properties:
-        formatVersion: { type: string, const: '1.0' }
+        formatVersion: { type: string, const: '1.1' }
         scope: { type: string, const: published-accepted-deliveries }
         fields:
           type: array

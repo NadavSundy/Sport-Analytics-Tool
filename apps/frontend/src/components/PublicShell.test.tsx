@@ -28,7 +28,7 @@ function createSignedOutAuthClient() {
   } as unknown as AuthClient;
 }
 
-describe('public shell footer', () => {
+describe('public shell API discovery', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'matchMedia',
@@ -50,10 +50,7 @@ describe('public shell footer', () => {
     vi.unstubAllGlobals();
   });
 
-  // Issue #475 (P01-F27): in Sprint 2 user testing the participant searched the
-  // navigation and the footer for API information and found none. The footer entry
-  // leads to the published documentation site, which documents the API.
-  it('links from the footer to the published API documentation in the same tab', () => {
+  it('exposes the API Explorer from the primary public navigation', () => {
     render(
       <AuthProvider client={createSignedOutAuthClient()}>
         <MemoryRouter initialEntries={['/fixtures']}>
@@ -64,12 +61,38 @@ describe('public shell footer', () => {
       </AuthProvider>,
     );
 
-    expect(screen.getByText('Another public page')).toBeInTheDocument();
-    const apiLink = within(screen.getByRole('contentinfo')).getByRole('link', { name: 'API' });
-    expect(apiLink).toHaveAttribute(
+    const publicNavigation = screen.getByRole('navigation', { name: 'Public records' });
+    expect(within(publicNavigation).getByRole('link', { name: 'API' })).toHaveAttribute(
+      'href',
+      '/api',
+    );
+  });
+
+  it('makes the bottom API entry open the explorer while keeping broader docs distinct', () => {
+    render(
+      <AuthProvider client={createSignedOutAuthClient()}>
+        <MemoryRouter initialEntries={['/fixtures']}>
+          <PublicShell>
+            <p>Another public page</p>
+          </PublicShell>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    const apiResources = within(screen.getByRole('contentinfo')).getByRole('navigation', {
+      name: 'API resources',
+    });
+
+    expect(within(apiResources).getByRole('link', { name: 'API Explorer' })).toHaveAttribute(
+      'href',
+      '/api',
+    );
+
+    const docsLink = within(apiResources).getByRole('link', { name: 'API Documentation' });
+    expect(docsLink).toHaveAttribute(
       'href',
       'https://sports-analytics-tool.pages.dev/api/overview/',
     );
-    expect(apiLink).not.toHaveAttribute('target');
+    expect(docsLink).not.toHaveAttribute('target');
   });
 });

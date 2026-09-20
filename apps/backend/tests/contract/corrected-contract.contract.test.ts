@@ -177,6 +177,8 @@ describe('consumer filters, errors and limit headers', () => {
   const fixturePage = { data: [], pagination: { nextCursor: null, totalPages: 0 } };
 
   function consumerApp(rateLimitPerMinute: number, quotaAllowed: boolean) {
+    let rateLimitUsed = 0;
+    const resetAt = new Date(Date.now() + 60_000);
     return contractApp({
       publicRead: {
         listCompetitions: async () => competitionPage,
@@ -184,6 +186,11 @@ describe('consumer filters, errors and limit headers', () => {
       },
       apiConsumerRepository: {
         findActiveConsumer: async () => ({ consumerId: '7', rateLimitPerMinute, dailyQuota: 100 }),
+        consumeRateLimit: async (_consumerId, limit) => {
+          if (rateLimitUsed >= limit) return { allowed: false, used: limit, resetAt };
+          rateLimitUsed += 1;
+          return { allowed: true, used: rateLimitUsed, resetAt };
+        },
         consumeDailyQuota: async () => ({ allowed: quotaAllowed, used: quotaAllowed ? 1 : 100 }),
       },
     });

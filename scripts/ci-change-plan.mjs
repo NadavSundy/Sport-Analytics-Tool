@@ -336,11 +336,15 @@ function applyPath(plan, file) {
     const affectsBackendRuntime =
       file.startsWith('apps/backend/src/') ||
       file.startsWith('apps/backend/certs/') ||
+      file === 'apps/backend/Dockerfile' ||
       file === 'apps/backend/package.json' ||
       file === 'apps/backend/tsconfig.json';
 
     if (affectsBackendRuntime) {
       plan.deployBackend = true;
+      if (file === 'apps/backend/Dockerfile') {
+        plan.deployment = true;
+      }
     }
     return;
   }
@@ -368,6 +372,7 @@ function applyPath(plan, file) {
   if (
     file === 'scripts/prepare-backend-deployment.mjs' ||
     file === 'scripts/smoke-check-backend-artifact.mjs' ||
+    file === 'scripts/smoke-check-backend-container.mjs' ||
     file === 'scripts/deploy-backend-azure.py'
   ) {
     plan.backend = true;
@@ -428,6 +433,15 @@ function applyPath(plan, file) {
     plan.database = true;
     plan.deployment = true;
     plan.deployWorker = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
+  if (file.startsWith('infra/azure/backend/')) {
+    plan.backend = true;
+    plan.deployment = true;
+    plan.deployBackend = true;
     plan.hygiene = true;
     plan.needsNpm = true;
     return;

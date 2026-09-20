@@ -32,6 +32,11 @@ export interface ApiConsumerRepository {
   rotate(ownerAccountId: string, consumerId: string, key: GeneratedKey): Promise<ApiConsumer>;
   revoke(ownerAccountId: string, consumerId: string, keyId: string): Promise<void>;
   findActiveConsumer(keyHash: string): Promise<ActiveConsumer | null>;
+  consumeRateLimit(
+    consumerId: string,
+    limit: number,
+    at: Date,
+  ): Promise<{ allowed: boolean; used: number; resetAt: Date }>;
   consumeDailyQuota(consumerId: string, quota: number): Promise<{ allowed: boolean; used: number }>;
 }
 
@@ -164,6 +169,36 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
       );
       return result.rows[0] ?? null;
     },
+    async consumeRateLimit(consumerId, limit, at) {
+      const result = await executeQuery<{ requestCount: number; windowStart: Date }>(
+        pool,
+        `WITH current_window AS (
+           SELECT date_trunc('minute', $3::timestamptz) AS window_start
+         )
+         INSERT INTO api_consumer_minute_usage (api_consumer_id, window_start, request_count)
+         SELECT $1, window_start, 1 FROM current_window
+         ON CONFLICT (api_consumer_id, window_start) DO UPDATE
+           SET request_count = api_consumer_minute_usage.request_count + 1
+           WHERE api_consumer_minute_usage.request_count < $2
+         RETURNING request_count AS "requestCount", window_start AS "windowStart"`,
+        [consumerId, limit, at],
+      );
+      const usage = result.rows[0];
+      if (!usage) {
+        const windowStart = new Date(at);
+        windowStart.setUTCSeconds(0, 0);
+        return {
+          allowed: false,
+          used: limit,
+          resetAt: new Date(windowStart.getTime() + 60_000),
+        };
+      }
+      return {
+        allowed: true,
+        used: usage.requestCount,
+        resetAt: new Date(usage.windowStart.getTime() + 60_000),
+      };
+    },
     async consumeDailyQuota(consumerId, quota) {
       const result = await executeQuery<{ requestCount: number }>(
         pool,
@@ -191,6 +226,7 @@ export function createLazyApiConsumerRepository(): ApiConsumerRepository {
     rotate: (...args) => resolved().rotate(...args),
     revoke: (...args) => resolved().revoke(...args),
     findActiveConsumer: (...args) => resolved().findActiveConsumer(...args),
+    consumeRateLimit: (...args) => resolved().consumeRateLimit(...args),
     consumeDailyQuota: (...args) => resolved().consumeDailyQuota(...args),
   };
 }

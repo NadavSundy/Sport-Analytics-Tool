@@ -6,11 +6,6 @@ import {
   type ActiveConsumer,
 } from './api-consumer.repository';
 
-interface Window {
-  startedAt: number;
-  count: number;
-}
-
 function unauthorized(response: Parameters<RequestHandler>[1]): void {
   response.setHeader('WWW-Authenticate', 'ApiKey');
   response.status(401).json({
@@ -23,8 +18,10 @@ function secondsToUtcMidnight(now = new Date()): number {
   return Math.max(1, Math.ceil((midnight - now.getTime()) / 1000));
 }
 
-export function createConsumerAuthentication(repository: ApiConsumerRepository): RequestHandler {
-  const windows = new Map<string, Window>();
+export function createConsumerAuthentication(
+  repository: ApiConsumerRepository,
+  now: () => Date = () => new Date(),
+): RequestHandler {
   return (request, response, next) => {
     const rawKey = request.get('X-API-Key');
     if (!rawKey || !/^sat_live_[A-Za-z0-9_-]{43}$/.test(rawKey)) {
@@ -38,7 +35,24 @@ export function createConsumerAuthentication(repository: ApiConsumerRepository):
           unauthorized(response);
           return;
         }
-        if (!withinRateLimit(consumer, windows, response)) return;
+        const requestTime = now();
+        let rateLimit: { allowed: boolean; used: number; resetAt: Date };
+        try {
+          rateLimit = await repository.consumeRateLimit(
+            consumer.consumerId,
+            consumer.rateLimitPerMinute,
+            requestTime,
+          );
+        } catch {
+          response.status(503).json({
+            error: {
+              code: 'RATE_LIMIT_UNAVAILABLE',
+              message: 'Consumer rate limiting is temporarily unavailable. Please retry shortly.',
+            },
+          });
+          return;
+        }
+        if (!withinRateLimit(consumer, rateLimit, response, requestTime)) return;
         const quota = await repository.consumeDailyQuota(consumer.consumerId, consumer.dailyQuota);
         response.setHeader('X-Quota-Limit', consumer.dailyQuota);
         response.setHeader('X-Quota-Remaining', Math.max(0, consumer.dailyQuota - quota.used));
@@ -61,23 +75,18 @@ export function createConsumerAuthentication(repository: ApiConsumerRepository):
 
 function withinRateLimit(
   consumer: ActiveConsumer,
-  windows: Map<string, Window>,
+  rateLimit: { allowed: boolean; used: number; resetAt: Date },
   response: Parameters<RequestHandler>[1],
+  now: Date,
 ): boolean {
-  const now = Date.now();
-  const existing = windows.get(consumer.consumerId);
-  const window =
-    !existing || now - existing.startedAt >= 60_000 ? { startedAt: now, count: 0 } : existing;
-  window.count += 1;
-  windows.set(consumer.consumerId, window);
-  const reset = Math.max(1, Math.ceil((window.startedAt + 60_000 - now) / 1000));
+  const reset = Math.max(1, Math.ceil((rateLimit.resetAt.getTime() - now.getTime()) / 1000));
   response.setHeader('RateLimit-Limit', consumer.rateLimitPerMinute);
   response.setHeader(
     'RateLimit-Remaining',
-    Math.max(0, consumer.rateLimitPerMinute - window.count),
+    Math.max(0, consumer.rateLimitPerMinute - rateLimit.used),
   );
   response.setHeader('RateLimit-Reset', reset);
-  if (window.count <= consumer.rateLimitPerMinute) return true;
+  if (rateLimit.allowed) return true;
   response.setHeader('Retry-After', reset);
   response.status(429).json({
     error: {
