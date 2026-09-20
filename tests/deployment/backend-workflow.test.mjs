@@ -69,23 +69,37 @@ test('automatic backend deployment builds, validates and deploys an immutable Co
   assert.doesNotMatch(job, /(?:adminUser|--username|--password)/i);
 });
 
-test('automatic backend deployment verifies Docker npm access and builds through the runner host network', () => {
+test('automatic backend deployment verifies Docker npm access and uses a cached host-networked Buildx builder', () => {
   const job = automaticBackendJob();
 
   const connectivityStart = job.indexOf('- name: Verify Docker npm registry connectivity');
-  const buildStart = job.indexOf(
-    '- name: Build immutable backend container image',
+  const acrLoginStart = job.indexOf(
+    '- name: Sign in to Azure Container Registry',
     connectivityStart,
   );
+  const buildxStart = job.indexOf('- name: Prepare Docker Buildx', connectivityStart);
+  const buildStart = job.indexOf('- name: Build immutable backend container image', buildxStart);
 
   assert.notEqual(
     connectivityStart,
     -1,
     'backend deployment must diagnose Docker DNS and npm registry access before the image build',
   );
+  assert.notEqual(
+    acrLoginStart,
+    -1,
+    'backend deployment must authenticate to ACR before using the registry-backed build cache',
+  );
+  assert.notEqual(buildxStart, -1, 'backend deployment must prepare a Buildx builder');
   assert.notEqual(buildStart, -1, 'backend deployment must retain the immutable image build');
 
-  const connectivity = job.slice(connectivityStart, buildStart);
+  assert.ok(
+    acrLoginStart < buildxStart,
+    'ACR authentication must occur before the Buildx builder uses the registry cache',
+  );
+  assert.ok(buildxStart < buildStart, 'Buildx must be prepared before the backend image build');
+
+  const connectivity = job.slice(connectivityStart, acrLoginStart);
   const hostNetworkRuns = connectivity.match(
     /docker run --rm --network=host node:22-bookworm-slim/g,
   );
@@ -109,29 +123,67 @@ test('automatic backend deployment verifies Docker npm access and builds through
     /timeout 45s docker run --rm --network=host node:22-bookworm-slim[\s\S]*?npm ping/,
     'backend deployment must bound the Docker npm registry preflight to 45 seconds',
   );
+
+  const buildxSetup = job.slice(buildxStart, buildStart);
+
   assert.match(
-    job.slice(buildStart),
-    /DOCKER_BUILDKIT=1 docker build[\s\S]*?--network=host/,
-    'backend Docker build must use the same host network as the verified registry probes',
+    buildxSetup,
+    /docker buildx inspect backend-ci-builder/,
+    'backend deployment must detect and reuse an existing Buildx builder',
   );
   assert.match(
-    job.slice(buildStart),
+    buildxSetup,
+    /docker buildx use backend-ci-builder/,
+    'backend deployment must reuse the existing backend Buildx builder when available',
+  );
+  assert.match(
+    buildxSetup,
+    /docker buildx create[\s\S]*?--name backend-ci-builder[\s\S]*?--driver docker-container[\s\S]*?--driver-opt network=host[\s\S]*?--use/,
+    'new backend Buildx builders must use the runner host network',
+  );
+  assert.match(
+    buildxSetup,
+    /docker buildx inspect --bootstrap/,
+    'backend deployment must bootstrap the Buildx builder before building',
+  );
+
+  const buildAndDeploy = job.slice(buildStart);
+
+  assert.match(buildAndDeploy, /docker buildx build/, 'backend image must be built with Buildx');
+  assert.match(
+    buildAndDeploy,
+    /--cache-from "type=registry,ref=\$ACR_NAME\.azurecr\.io\/sport-analytics-api:buildcache"/,
+    'backend build must import its persistent registry-backed BuildKit cache',
+  );
+  assert.match(
+    buildAndDeploy,
+    /--cache-to "type=registry,ref=\$ACR_NAME\.azurecr\.io\/sport-analytics-api:buildcache,mode=max"/,
+    'backend build must export its persistent registry-backed BuildKit cache',
+  );
+  assert.match(
+    buildAndDeploy,
+    /--load/,
+    'backend Buildx build must load the image locally for the container smoke check',
+  );
+
+  assert.match(
+    buildAndDeploy,
     /npm registry or Docker network failure/,
     'backend Docker build failure diagnostics must distinguish registry or network failures',
   );
   assert.match(
-    job.slice(buildStart),
+    buildAndDeploy,
     /npm internal crash/,
     'backend Docker build failure diagnostics must distinguish npm internal crashes',
   );
   assert.match(
-    job.slice(buildStart),
+    buildAndDeploy,
     /lifecycle-script failure/,
     'backend Docker build failure diagnostics must distinguish lifecycle-script failures',
   );
   assert.match(
-    job.slice(buildStart),
-    /Backend Docker build failed before Azure authentication[\s\S]*?fi\s*\n\s*exit 1/,
+    buildAndDeploy,
+    /Backend Docker build failed; inspect the BuildKit output above\.[\s\S]*?fi\s*\n\s*exit 1/,
     'backend Docker build diagnostic branch must always fail the deployment job',
   );
 });
