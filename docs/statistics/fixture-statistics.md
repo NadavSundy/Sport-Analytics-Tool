@@ -195,6 +195,12 @@ completeness state, warnings, innings totals, available player batting and bowli
 participating players without a separate statistics action. The previous
 `/fixtures/{fixtureId}/statistics` route remains available for compatible deep links.
 
+The Powerplay section compares the API-supplied runs, wickets, formatted overs and run rate for each
+innings with authoritative marker metadata. It labels the team and one-based innings number, keeps
+the phase distinct from full-innings totals, and explains that the interface never assumes the first
+six overs. An innings whose `metrics.powerplay` value is `null` receives an explicit unavailable
+message; the frontend does not reconstruct a range or replace missing metadata with zeroes.
+
 The statistics API exposes readable team and player names alongside stable identifiers so public
 interfaces can present cricket identities without additional name-resolution requests. Identifiers
 remain internal to API requests, routes, and React keys rather than visible page content.
@@ -247,3 +253,4 @@ The innings scorecard context for issue #631 was documented with the assistance 
 The issue #592 correction dependency participant set and ingest version advancement were documented
 with the assistance of Claude-Code[Claude Opus 5].
 The issue #633 powerplay derivation was documented with the assistance of Codex[GPT-5].
+The issue #634 public powerplay presentation was documented with the assistance of Codex[GPT-5].

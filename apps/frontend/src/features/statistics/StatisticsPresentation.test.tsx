@@ -256,6 +256,87 @@ describe('statistics presentation', () => {
     );
   });
 
+  it('presents authoritative powerplay figures with readable innings context', () => {
+    const firstInnings = fixtureStatistics.statistics[0];
+    if (firstInnings?.scope !== 'innings') throw new Error('Expected an innings statistic.');
+
+    render(
+      <MemoryRouter>
+        <FixtureAnalytics
+          statistics={{
+            ...fixtureStatistics,
+            statistics: [
+              {
+                ...firstInnings,
+                metrics: {
+                  ...firstInnings.metrics,
+                  powerplay: {
+                    ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+                    runs: 46,
+                    wicketsLost: 2,
+                    legalBalls: 36,
+                    overs: '6.0',
+                    runRate: 7.67,
+                    sourceEventCount: 38,
+                  },
+                },
+              },
+              {
+                ...firstInnings,
+                statisticId: 'innings-2-stat',
+                inningsId: 'innings-2',
+                inningsOrdinal: 1,
+                competitorId: 'team-2',
+                competitorName: 'Wanderers',
+                metrics: {
+                  ...firstInnings.metrics,
+                  powerplay: {
+                    ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+                    runs: 0,
+                    wicketsLost: 0,
+                    legalBalls: 0,
+                    overs: '0.0',
+                    runRate: null,
+                    sourceEventCount: 0,
+                  },
+                },
+              },
+            ],
+          }}
+        />
+      </MemoryRouter>,
+    );
+
+    const powerplay = screen.getByRole('region', { name: 'Powerplay' });
+    expect(within(powerplay).getByText(/only the recorded powerplay periods/i)).toBeInTheDocument();
+    const table = within(powerplay).getByRole('table', {
+      name: 'Authoritative powerplay performance by innings',
+    });
+    expect(
+      within(table).getByRole('row', { name: 'Falcons Innings 1 46/2 6.0 7.67' }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('row', { name: 'Wanderers Innings 2 0/0 0.0 —' }),
+    ).toBeInTheDocument();
+    expect(powerplay).not.toHaveTextContent('0.1');
+    expect(powerplay).not.toHaveTextContent('mandatory');
+  });
+
+  it('explains missing authoritative powerplay metadata without presenting zeroes', () => {
+    render(
+      <MemoryRouter>
+        <FixtureAnalytics statistics={fixtureStatistics} />
+      </MemoryRouter>,
+    );
+
+    const powerplay = screen.getByRole('region', { name: 'Powerplay' });
+    expect(powerplay).toHaveTextContent(
+      'Falcons innings 1: authoritative powerplay information is unavailable.',
+    );
+    expect(within(powerplay).queryByRole('table')).not.toBeInTheDocument();
+    expect(powerplay).not.toHaveTextContent('0/0');
+  });
+
   it('switches aggregate scope with pointer and keyboard controls', () => {
     render(
       <MemoryRouter>
