@@ -244,6 +244,88 @@ function InningsSummary({ innings }: { innings: InningsTeamStatistic[] }) {
   );
 }
 
+function PowerplaySummary({ innings }: { innings: InningsTeamStatistic[] }) {
+  const withPowerplay = innings.filter((statistic) => statistic.metrics.powerplay !== null);
+  const withoutPowerplay = innings.filter((statistic) => statistic.metrics.powerplay === null);
+
+  return (
+    <section aria-labelledby="powerplay-heading" className="statistics-section">
+      <div className="statistics-section-heading">
+        <div>
+          <p className="eyebrow">Recorded phase</p>
+          <h3 id="powerplay-heading">Powerplay</h3>
+        </div>
+      </div>
+      <p className="scope-description">
+        These figures cover only the recorded powerplay periods, not the entire innings. A powerplay
+        is shown only when its period is explicitly marked in the published match data; the first
+        six overs are not assumed.
+      </p>
+      {withPowerplay.length > 0 ? (
+        <DataTable
+          caption="Authoritative powerplay performance by innings"
+          className="statistics-table statistics-table--powerplay"
+        >
+          <colgroup>
+            <col className="statistics-table__entity" />
+            <col className="statistics-table__detail" />
+            <col className="statistics-table__score" />
+            <col className="statistics-table__overs" />
+            <col className="statistics-table__final-metric" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Team</th>
+              <th scope="col">Innings</th>
+              <th scope="col" data-numeric>
+                Powerplay score
+              </th>
+              <th scope="col" data-numeric>
+                Overs
+              </th>
+              <th scope="col" data-numeric>
+                Run rate
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {withPowerplay.map((statistic) => {
+              const powerplay = statistic.metrics.powerplay!;
+              return (
+                <tr key={statistic.statisticId}>
+                  <th scope="row">
+                    <Link to={recordPath('competitors', statistic.competitorId)}>
+                      {statistic.competitorName}
+                    </Link>
+                  </th>
+                  <td>Innings {statistic.inningsOrdinal + 1}</td>
+                  <td data-numeric>
+                    {powerplay.runs}/{powerplay.wicketsLost}
+                  </td>
+                  <td data-numeric>{powerplay.overs}</td>
+                  <td data-numeric>{formatRate(powerplay.runRate)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </DataTable>
+      ) : null}
+      {withoutPowerplay.length > 0 ? (
+        <div role="status">
+          <ul className="statistics-section__empty">
+            {withoutPowerplay.map((statistic) => (
+              <li key={statistic.statisticId}>
+                {statistic.competitorName} innings {statistic.inningsOrdinal + 1}: authoritative
+                powerplay information is unavailable.
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function MatchLeaders({ players }: { players: ParticipantFixtureStatistic[] }) {
   const batters = leadingBatters(players);
   const bowlers = leadingBowlers(players);
@@ -630,6 +712,7 @@ export function FixtureAnalytics({ statistics }: { statistics: FixtureStatistics
       ) : (
         <>
           <InningsSummary innings={innings} />
+          <PowerplaySummary innings={innings} />
           <MatchLeaders players={players} />
           <BattingScorecards innings={innings} players={players} />
           <BowlingScorecards innings={innings} players={players} />
