@@ -338,6 +338,8 @@ const fixtureSchema = z
     sourceId: sourceIdentifierFor('fixture').optional(),
     context: fixtureContextSchema.optional(),
     proposal: fixtureProposalSchema.optional(),
+
+    season: seasonReferenceSchema.optional(),
     innings: z.array(inningsSchema).min(1).max(8),
   })
   .strict()
