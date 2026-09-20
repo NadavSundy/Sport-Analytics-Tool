@@ -456,19 +456,30 @@ jobs:
         run: |
           docker buildx version
 
-          if docker buildx inspect backend-ci-builder >/dev/null 2>&1; then
-            echo "Reusing existing backend-ci-builder."
-            docker buildx use backend-ci-builder
-          else
-            echo "Creating backend-ci-builder."
-            docker buildx create \
-              --name backend-ci-builder \
-              --driver docker-container \
-              --driver-opt network=host \
-              --use
-          fi
+          docker buildx rm -f backend-ci-builder >/dev/null 2>&1 || true
 
-          docker buildx inspect --bootstrap
+          docker buildx create \
+            --name backend-ci-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --buildkitd-flags '--allow-insecure-entitlement network.host' \
+            --use \
+            --bootstrap
+
+          docker buildx inspect
+
+      - name: Verify Buildx npm registry connectivity
+        shell: bash
+        run: |
+          timeout 60s docker buildx build \
+            --progress=plain \
+            --allow network.host \
+            --network=host \
+            --file - \
+            . <<'EOF'
+          FROM node:22-bookworm-slim
+          RUN npm ping --registry=https://registry.npmjs.org/
+          EOF
 
       - name: Build immutable backend container image
         shell: bash
@@ -479,12 +490,14 @@ jobs:
 
             if ! docker buildx build \
               --progress=plain \
+              --allow network.host \
+              --network=host \
               --cache-from "type=registry,ref=$ACR_NAME.azurecr.io/sport-analytics-api:buildcache" \
               --cache-to "type=registry,ref=$ACR_NAME.azurecr.io/sport-analytics-api:buildcache,mode=max" \
-            --file apps/backend/Dockerfile \
-            --tag "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}" \
-            --load \
-            . 2>&1 | tee "$build_log"; then
+              --file apps/backend/Dockerfile \
+              --tag "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}" \
+              --load \
+              . 2>&1 | tee "$build_log"; then
 
             if grep -Fq 'Exit handler never called!' "$build_log"; then
               echo '::error::Backend Docker build failed: npm internal crash (Exit handler never called).'
