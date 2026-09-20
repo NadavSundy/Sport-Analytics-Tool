@@ -900,7 +900,6 @@ export async function resolvePackageReferences(
   // ambiguous rather than resolved to an arbitrary row.
 
   const competitionName = readableName(uploadPackage.competition);
-  const seasonName = readableName(uploadPackage.season);
 
   const teamReferences: { path: string; reference: ReferenceInput }[] = [];
   for (const [fixtureIndex, fixture] of uploadPackage.fixtures.entries()) {
@@ -1101,11 +1100,13 @@ export async function resolvePackageReferences(
 
   for (const [fixtureIndex, fixture] of uploadPackage.fixtures.entries()) {
     const fixturePath = `fixtures.${String(fixtureIndex)}`;
+    const fixtureSeason = fixture.season ?? uploadPackage.season;
+    const fixtureSeasonName = readableName(fixtureSeason);
     const submitted = {
       sourceId: fixture.sourceId,
       context: fixture.context,
       proposal: fixture.proposal,
-      season: uploadPackage.season,
+      season: fixtureSeason,
     };
 
     let resolvedFixture: ReferenceOutcome;
@@ -1132,7 +1133,7 @@ export async function resolvePackageReferences(
         fixtureBySourceRef,
         fixtureByCanonicalId,
         competitionId,
-        seasonName,
+        fixtureSeasonName,
       );
     } else if (fixture.context) {
       // Section 3.7 applied to the fixture (#500). An identifier from a namespace
@@ -1146,7 +1147,7 @@ export async function resolvePackageReferences(
         fixture.context,
         fixtureTeamOutcomes,
         fixtureByNaturalKeyRows,
-        seasonName,
+        fixtureSeasonName,
         fixture.sourceId ? ignoredFixtureSourceIdentifier(fixture.sourceId) : null,
       );
     } else {

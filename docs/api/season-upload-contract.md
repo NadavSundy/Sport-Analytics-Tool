@@ -270,3 +270,62 @@ the assistance of Codex[GPT-5]. The reference-mapping section was generated with
 the assistance of Codex[GPT-5].
 The Issue #587 source-only reference-resolution rules were documented with the
 assistance of Codex[GPT-5].
+
+## Multi-season back catalogues
+
+A back-catalogue package may contain fixtures from more than one season. The
+package-level `season` remains required as the backwards-compatible default.
+A fixture may add its own `season` reference; when present, that fixture-level
+season overrides the package default for fixture resolution and validation.
+
+This is an additive envelope extension. Existing single-season packages do not
+need to change.
+
+The following is an **envelope fragment**; innings/event payloads are omitted
+because their shape is unchanged.
+
+```json
+{
+  "contractVersion": "1.0",
+  "packageId": "provider:package:catalogue-2025-2026",
+  "competition": { "context": { "name": "Example Competition" } },
+  "season": { "context": { "name": "2025" } },
+  "fixtures": [
+    {
+      "context": {
+        "date": "2025-01-10",
+        "teams": [{ "context": { "name": "Alpha" } }, { "context": { "name": "Bravo" } }]
+      }
+    },
+    {
+      "season": { "context": { "name": "2026" } },
+      "context": {
+        "date": "2026-01-10",
+        "teams": [{ "context": { "name": "Alpha" } }, { "context": { "name": "Charlie" } }]
+      }
+    }
+  ]
+}
+```
+
+The effective season for a fixture is therefore:
+
+1. `fixture.season`, when supplied; otherwise
+2. the package-level `season`.
+
+The effective season participates in canonical fixture resolution. A legitimate
+season change inside a catalogue is not treated as an envelope mismatch merely
+because another fixture in the same package belongs to a different season.
+
+Idempotency, duplicate classification, review decisions, checkpointed
+publication, and batch summary counts continue to use the existing batch
+pipeline. Replaying the same source deliveries must not create additional
+published events. Validation and reference-resolution failures remain attached
+to the affected fixture/item so valid siblings are not hidden by a catalogue
+containing one bad fixture.
+
+For acceptance evidence, exercise at least two seasons, multiple fixtures in
+each season, one invalid fixture among valid fixtures, and a replay of the same
+catalogue after the first publication.
+
+AI Declaration: This Issue #589 edit was generated and reviewed with the assistance of ChatGPT-Web[GPT-5.6 Sol].
