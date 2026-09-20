@@ -69,6 +69,73 @@ test('automatic backend deployment builds, validates and deploys an immutable Co
   assert.doesNotMatch(job, /(?:adminUser|--username|--password)/i);
 });
 
+test('automatic backend deployment verifies Docker npm access and builds through the runner host network', () => {
+  const job = automaticBackendJob();
+
+  const connectivityStart = job.indexOf('- name: Verify Docker npm registry connectivity');
+  const buildStart = job.indexOf(
+    '- name: Build immutable backend container image',
+    connectivityStart,
+  );
+
+  assert.notEqual(
+    connectivityStart,
+    -1,
+    'backend deployment must diagnose Docker DNS and npm registry access before the image build',
+  );
+  assert.notEqual(buildStart, -1, 'backend deployment must retain the immutable image build');
+
+  const connectivity = job.slice(connectivityStart, buildStart);
+  const hostNetworkRuns = connectivity.match(
+    /docker run --rm --network=host node:22-bookworm-slim/g,
+  );
+
+  assert.ok(
+    hostNetworkRuns && hostNetworkRuns.length >= 2,
+    'backend deployment must probe both DNS and npm through the runner host network',
+  );
+  assert.match(
+    connectivity,
+    /registry\.npmjs\.org/,
+    'backend deployment must name the registry in diagnostics',
+  );
+  assert.match(
+    connectivity,
+    /timeout 30s docker run --rm --network=host node:22-bookworm-slim[\s\S]*?require\('dns'\)/,
+    'backend deployment must bound the Docker DNS preflight to 30 seconds',
+  );
+  assert.match(
+    connectivity,
+    /timeout 45s docker run --rm --network=host node:22-bookworm-slim[\s\S]*?npm ping/,
+    'backend deployment must bound the Docker npm registry preflight to 45 seconds',
+  );
+  assert.match(
+    job.slice(buildStart),
+    /DOCKER_BUILDKIT=1 docker build[\s\S]*?--network=host/,
+    'backend Docker build must use the same host network as the verified registry probes',
+  );
+  assert.match(
+    job.slice(buildStart),
+    /npm registry or Docker network failure/,
+    'backend Docker build failure diagnostics must distinguish registry or network failures',
+  );
+  assert.match(
+    job.slice(buildStart),
+    /npm internal crash/,
+    'backend Docker build failure diagnostics must distinguish npm internal crashes',
+  );
+  assert.match(
+    job.slice(buildStart),
+    /lifecycle-script failure/,
+    'backend Docker build failure diagnostics must distinguish lifecycle-script failures',
+  );
+  assert.match(
+    job.slice(buildStart),
+    /Backend Docker build failed before Azure authentication[\s\S]*?fi\s*\n\s*exit 1/,
+    'backend Docker build diagnostic branch must always fail the deployment job',
+  );
+});
+
 test('manual backend deployment workflow preserves the App Service rollback path', () => {
   assert.match(manualBackendWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(manualBackendWorkflow, /\n\s*push:/);
