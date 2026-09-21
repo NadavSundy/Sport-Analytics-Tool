@@ -11,6 +11,13 @@ The selected deployment architecture is:
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
 | Public documentation   | Cloudflare Pages           | Wrangler CLI                                    |
 
+The current public application endpoints are:
+
+| Component   | URL                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Frontend    | <https://sport-analytics-tool-web.pages.dev/>                                                    |
+| Backend API | <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1> |
+
 The Intermediate deployment boundaries are:
 
 | Component              | Approved target                                                | Deployment responsibility                                                             |

@@ -8,6 +8,10 @@ directly as Node PID 1, listens on port `3000`, runs as the non-root `node` user
 Supabase CA certificate, and handles `SIGINT`/`SIGTERM` through the existing Express and PostgreSQL
 shutdown path.
 
+The current deployed API is available at
+`https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io`, with
+business endpoints under `/api/v1`.
+
 The existing Azure App Service `statsthegame-api-dev` remains intact and deployable during the
 Container Apps acceptance period. It is an independent rollback target, not part of the normal
 main-branch deployment. Do not retire, stop, or reconfigure it until the acceptance checklist below

@@ -135,7 +135,13 @@ site's token).
 ## Backend origin
 
 `VITE_API_BASE_URL` must point at the backend's Container Apps ingress FQDN
-(`https://<fqdn>/api/v1`). `.gitea/workflows/ci.yml`'s `deploy_backend` job resolves this FQDN with
+(`https://<fqdn>/api/v1`). The current deployed value is:
+
+```text
+https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1
+```
+
+`.gitea/workflows/ci.yml`'s `deploy_backend` job resolves this FQDN with
 `az containerapp show` on every deploy rather than hardcoding it, but the FQDN itself is stable for the
 life of the Container App resource — it does not change between revisions/redeployments, only if the
 Container App itself is recreated. So `VITE_API_BASE_URL` only needs to be set once (after the first

@@ -159,12 +159,15 @@ That command runs the normal production-preview frontend while pointing `VITE_AP
 deployed API. The browser itself must successfully fetch `/openapi.yaml`; therefore a CORS failure
 prevents Swagger from rendering and fails the test.
 
-After frontend deployment, verify the exact deployed frontend origin with:
+After frontend deployment, verify the Cloudflare Pages frontend against the deployed Container Apps
+API with:
 
 ```powershell
-$env:PLAYWRIGHT_BASE_URL="https://<deployed-frontend-origin>"
+$env:PLAYWRIGHT_BASE_URL="https://sport-analytics-tool-web.pages.dev"
+$env:VITE_API_BASE_URL="https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1"
 npm.cmd run test:e2e:api-explorer-live
 Remove-Item Env:PLAYWRIGHT_BASE_URL
+Remove-Item Env:VITE_API_BASE_URL
 ```
 
 ## Submitter access workflow
@@ -303,7 +306,17 @@ creates `apps/frontend/dist/`. Generated build output must not be committed.
 
 ## Deployment
 
-The frontend application is hosted on Azure App Service. Cloudflare Pages is used for the MkDocs documentation site, not for this frontend application.
+The frontend application is hosted on Cloudflare Pages:
+
+```text
+https://sport-analytics-tool-web.pages.dev
+```
+
+It is built with Vite and calls the deployed Container Apps API at:
+
+```text
+https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1
+```
 
 See:
 
