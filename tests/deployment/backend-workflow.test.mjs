@@ -81,7 +81,10 @@ test('backend deployments apply ordered migrations before activating code and sm
 
   assert.ok(azureLoginIndex >= 0, 'Azure login must remain available before migrations run');
   assert.ok(migrationIndex > azureLoginIndex, 'migrations must run after Azure login');
-  assert.ok(deployIndex > migrationIndex, 'Container Apps code activation must wait for migrations');
+  assert.ok(
+    deployIndex > migrationIndex,
+    'Container Apps code activation must wait for migrations',
+  );
   assert.ok(schemaSmokeIndex > deployIndex, 'schema smoke must verify the deployed revision');
 
   const migrationSteps = [
@@ -106,7 +109,9 @@ test('backend deployments apply ordered migrations before activating code and sm
   const manualMigrationIndex = manualBackendWorkflow.indexOf(
     '- name: Apply pending backend database migrations',
   );
-  const manualDeployIndex = manualBackendWorkflow.indexOf('- name: Deploy backend artifact to Azure');
+  const manualDeployIndex = manualBackendWorkflow.indexOf(
+    '- name: Deploy backend artifact to Azure',
+  );
   assert.ok(manualMigrationIndex >= 0, 'rollback workflow must check migration compatibility');
   assert.ok(
     manualDeployIndex > manualMigrationIndex,
