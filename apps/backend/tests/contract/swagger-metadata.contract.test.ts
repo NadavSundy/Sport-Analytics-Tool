@@ -68,7 +68,7 @@ describe('Swagger/explorer-facing OpenAPI metadata', () => {
   test('documents deployed and local development servers', () => {
     expect(document.servers).toEqual([
       {
-        url: 'https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net',
+        url: 'https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io',
         description: 'Deployed development API',
       },
       {
