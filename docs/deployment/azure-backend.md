@@ -45,8 +45,8 @@ below.
 
 ## Capacity and scaling
 
-The initial API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=1`, and `maxReplicas=1`.
-Because the minimum is one, scale-to-zero is disabled.
+The API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=0`, and `maxReplicas=1`. The development deployment scales to zero while idle to reduce Azure consumption cost. The first request after an idle period may incur Container Apps cold-start latency. `maxReplicas=1` preserves process-local rate-limit semantics until rate-limit state is externalised.
+Because the minimum is zero, the API can scale to zero while idle and wake when HTTP traffic arrives.
 
 The single-replica maximum is deliberate and temporary. Current API submitter and API-consumer
 per-minute rate limits use process-local `Map` state. Multiple replicas would weaken those limits by
