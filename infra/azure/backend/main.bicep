@@ -50,10 +50,10 @@ param supabaseUrl string
 @description('Supabase publishable key used by backend token verification.')
 param supabasePublishableKey string
 
-@description('Minimum continuously available API replicas. One replica preserves process-local rate-limit semantics.')
-@minValue(1)
+@description('Minimum continuously available API replicas. Scale to zero while idle; maxReplicas remains one to preserve process-local rate-limit semantics.')
+@minValue(0)
 @maxValue(1)
-param minReplicas int = 1
+param minReplicas int = 0
 
 @description('Maximum API replicas. Keep at one until shared rate-limit state is implemented.')
 @minValue(1)
