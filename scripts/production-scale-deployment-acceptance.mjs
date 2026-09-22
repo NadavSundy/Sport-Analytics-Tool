@@ -47,6 +47,12 @@ function jobFromResponse(payload) {
   return job;
 }
 
+function fixtureIdFromResponse(payload) {
+  const fixtureId = payload?.data?.[0]?.fixtureId;
+  if (typeof fixtureId !== 'string' && typeof fixtureId !== 'number') return null;
+  return String(fixtureId);
+}
+
 async function expectResponse(fetchRequest, url, options, label) {
   const response = await fetchRequest(url, options);
   if (!response.ok) throw new Error(`${label} failed with HTTP ${response.status}.`);
@@ -106,6 +112,15 @@ export async function runProductionScaleAcceptance(input, dependencies = {}) {
   if (!frontendHtml.includes("Stat'sTheGame")) {
     throw new Error("Frontend response did not contain the Stat'sTheGame application marker.");
   }
+  const frontendRoute = await expectResponse(
+    fetchRequest,
+    apiUrl(frontendUrl, '/fixtures'),
+    {},
+    'frontend fixture route availability',
+  );
+  if (!(await frontendRoute.text()).includes("Stat'sTheGame")) {
+    throw new Error("Frontend fixture route did not return the Stat'sTheGame application marker.");
+  }
 
   await readJson(
     await expectResponse(
@@ -116,6 +131,19 @@ export async function runProductionScaleAcceptance(input, dependencies = {}) {
     ),
     'database read smoke',
   );
+  const fixtureList = await readJson(
+    await expectResponse(
+      fetchRequest,
+      apiUrl(apiBaseUrl, '/fixtures?limit=1'),
+      {},
+      'representative fixture read',
+    ),
+    'representative fixture read',
+  );
+  const fixtureId = fixtureIdFromResponse(fixtureList);
+  if (!fixtureId) {
+    throw new Error('Representative fixture read did not return a fixture identifier.');
+  }
   await readJson(
     await expectResponse(
       fetchRequest,
@@ -175,6 +203,20 @@ export async function runProductionScaleAcceptance(input, dependencies = {}) {
         'public fixture read during generation',
       );
       readSamples.push({ durationMs: sampleDuration(now, started), endpoint: '/fixtures?limit=1' });
+      const statisticsStarted = now();
+      await readJson(
+        await expectResponse(
+          fetchRequest,
+          apiUrl(apiBaseUrl, `/fixtures/${encodeURIComponent(fixtureId)}/statistics`),
+          {},
+          'public fixture statistics read during generation',
+        ),
+        'public fixture statistics read during generation',
+      );
+      readSamples.push({
+        durationMs: sampleDuration(now, statisticsStarted),
+        endpoint: `/fixtures/${fixtureId}/statistics`,
+      });
     }
     release = job.release ?? null;
   }
