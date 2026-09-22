@@ -69,6 +69,56 @@ test('automatic backend deployment builds, validates and deploys an immutable Co
   assert.doesNotMatch(job, /(?:adminUser|--username|--password)/i);
 });
 
+test('backend deployments apply ordered migrations before activating code and smoke-check schema reads', () => {
+  const automaticJob = automaticBackendJob();
+
+  const azureLoginIndex = automaticJob.indexOf('- name: Sign in to Azure');
+  const migrationIndex = automaticJob.indexOf('- name: Apply pending backend database migrations');
+  const deployIndex = automaticJob.indexOf('- name: Deploy backend Container Apps revision');
+  const schemaSmokeIndex = automaticJob.indexOf(
+    '- name: Smoke check deployed dataset-release schema access',
+  );
+
+  assert.ok(azureLoginIndex >= 0, 'Azure login must remain available before migrations run');
+  assert.ok(migrationIndex > azureLoginIndex, 'migrations must run after Azure login');
+  assert.ok(
+    deployIndex > migrationIndex,
+    'Container Apps code activation must wait for migrations',
+  );
+  assert.ok(schemaSmokeIndex > deployIndex, 'schema smoke must verify the deployed revision');
+
+  const migrationSteps = [
+    automaticJob.slice(migrationIndex, deployIndex),
+    manualBackendWorkflow.slice(
+      manualBackendWorkflow.indexOf('- name: Apply pending backend database migrations'),
+    ),
+  ];
+
+  for (const migrationStep of migrationSteps) {
+    assert.match(migrationStep, /az keyvault secret show[\s\S]*?--id "\$DATABASE_SECRET_URI"/);
+    assert.match(migrationStep, /npm run db:migrate --workspace=@sport-analytics\/backend/);
+    assert.match(migrationStep, /Applying reviewed backend database migrations/);
+    assert.doesNotMatch(migrationStep, /echo[^\n]*DATABASE_URL/i);
+    assert.doesNotMatch(migrationStep, /set -x/);
+  }
+
+  const schemaSmoke = automaticJob.slice(schemaSmokeIndex);
+  assert.match(schemaSmoke, /\/api\/v1\/dataset-releases/);
+  assert.match(schemaSmoke, /SMOKE_CHECK_ATTEMPTS/);
+
+  const manualMigrationIndex = manualBackendWorkflow.indexOf(
+    '- name: Apply pending backend database migrations',
+  );
+  const manualDeployIndex = manualBackendWorkflow.indexOf(
+    '- name: Deploy backend artifact to Azure',
+  );
+  assert.ok(manualMigrationIndex >= 0, 'rollback workflow must check migration compatibility');
+  assert.ok(
+    manualDeployIndex > manualMigrationIndex,
+    'rollback workflow must not deploy code before migrations succeed',
+  );
+});
+
 test('automatic backend deployment verifies Docker npm access and uses a cached host-networked Buildx builder', () => {
   const job = automaticBackendJob();
 
