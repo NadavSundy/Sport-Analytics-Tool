@@ -53,7 +53,7 @@ export interface CricketValidationEvent {
   inningsId: string;
   sequenceNumber: number;
   overNumber: number;
-  ballNumber: string;
+  ballNumber?: string | undefined;
   strikerId: string;
   nonStrikerId: string;
   bowlerId: string;
@@ -212,7 +212,7 @@ export function validateCricketBusinessRules(
       }
     }
 
-    const ballMatch = /^(\d{1,3})\.(\d{1,2})$/.exec(event.ballNumber);
+    const ballMatch = event.ballNumber ? /^(\d{1,5})\.(\d{1,2})$/.exec(event.ballNumber) : null;
 
     if (ballMatch !== null) {
       const printedOver = Number(ballMatch[1]);

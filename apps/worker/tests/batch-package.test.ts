@@ -118,6 +118,8 @@ function jsonPackageWithEvents(
             events: events.map((event) => ({
               eventId: event.eventId,
               occurrenceSequence: event.occurrenceSequence,
+              overNumber: Number(event.ballLabel.split('.')[0]),
+              positionInOver: event.occurrenceSequence - 1,
               ballLabel: event.ballLabel,
               striker: { context: { name: 'Striker', team: { context: { name: 'Home' } } } },
               nonStriker: {
@@ -562,6 +564,32 @@ describe('CSV dismissal columns (#536)', () => {
 });
 
 describe('batch package streaming expansion', () => {
+  it('requires canonical coordinate columns in CSV and permits a blank display label', async () => {
+    const withoutOverHeader = header
+      .split(',')
+      .filter((column) => column !== 'overNumber')
+      .join(',');
+    const missingCoordinateScan = await scanBatchReferences(
+      async () => Readable.from(`${withoutOverHeader}\n${csvRow()}`),
+      'text/csv',
+    );
+    expect(missingCoordinateScan.sourceFaults).toEqual([
+      expect.objectContaining({
+        message: expect.stringMatching(/missing required columns: overNumber/i),
+      }),
+    ]);
+
+    const withoutLabel = csvRow().replace(',0.1,upsert,', ',,upsert,');
+    const chunk = await referenceChunkFor(`${header}\n${withoutLabel}`, 'text/csv');
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.events[0]).toMatchObject({
+      overNumber: 0,
+      positionInOver: 0,
+    });
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.events[0]).not.toHaveProperty(
+      'ballLabel',
+    );
+  });
+
   it('preserves correction metadata from CSV packages', async () => {
     const source = `${header}\n${csvRow(
       'Competition',
@@ -742,6 +770,8 @@ describe('multi-season back-catalogue staging (#589)', () => {
             {
               eventId: `test:delivery:issue589-${id}`,
               occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
               ballLabel: '0.1',
               striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
               nonStriker: {
@@ -803,6 +833,8 @@ describe('multi-season back-catalogue item validation (#589)', () => {
             {
               eventId: `test:delivery:issue589-invalid-${id}`,
               occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
               ballLabel: '0.1',
               striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
               nonStriker: {
@@ -877,6 +909,8 @@ describe('multi-season back-catalogue replay (#589)', () => {
             {
               eventId: `test:delivery:issue589-replay-${id}`,
               occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
               ballLabel: '0.1',
               striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
               nonStriker: {

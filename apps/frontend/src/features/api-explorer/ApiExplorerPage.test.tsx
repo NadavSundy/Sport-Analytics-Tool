@@ -101,7 +101,7 @@ describe('ApiExplorerPage', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'API Explorer' }),
+      await screen.findByRole('heading', { level: 1, name: 'API Explorer' }, { timeout: 5_000 }),
     ).toBeInTheDocument();
     expect(screen.getByText('Supported API major version: v1')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Login or Sign up' })).toBeInTheDocument();

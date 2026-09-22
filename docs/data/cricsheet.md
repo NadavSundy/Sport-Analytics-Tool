@@ -99,6 +99,12 @@ Cricsheet may publish corrected versions of match data. The generated manifest s
 
 Refreshing the files does not itself import anything into PostgreSQL. Database ingestion will be implemented separately.
 
+Cricsheet-derived package events retain explicit zero-based `overNumber` and
+`positionInOver` canonical coordinates. The source ball label may also be
+retained as optional display data, but it is not used to derive or identify the
+delivery because wides and no-balls may repeat a printed label. When retained,
+the label's over component must agree with `overNumber`.
+
 Cricsheet innings `powerplays` are mapped without defaulting to `innings_powerplay.from_ball`,
 `to_ball`, and `type`. Ranges are validated before any direct import write. In the supported staged
 JSON/NDJSON path they retain batch checksum, submitter and review provenance through the batch

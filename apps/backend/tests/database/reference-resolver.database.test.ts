@@ -307,6 +307,8 @@ describe.sequential('batch reference resolution database integration', () => {
     return {
       eventId: `cricsheet:delivery:${prefix}-e${String(ordinal)}`,
       occurrenceSequence: ordinal,
+      overNumber: 0,
+      positionInOver: ordinal - 1,
       striker,
       nonStriker,
       bowler,

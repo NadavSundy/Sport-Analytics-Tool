@@ -15,6 +15,8 @@ function event(overrides = {}) {
   return {
     eventId: 'cricsheet:delivery:1412526-1-1',
     occurrenceSequence: 1,
+    overNumber: 0,
+    positionInOver: 0,
     ballLabel: '0.1',
     striker: { sourceId: 'cricsheet:participant:player-1' },
     nonStriker: { context: { name: 'A. Batter', team: homeTeam } },
@@ -178,6 +180,57 @@ describe('versioned season-upload contract', () => {
 
     expect(result.success).toBe(true);
     expect(JSON.stringify(seasonPackage())).not.toMatch(/"(?:fixture|innings|participant|team)Id"/);
+  });
+
+  test('requires explicit canonical coordinates while keeping the display label optional', () => {
+    const explicitWithoutLabel = event({ ballLabel: undefined });
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [
+                { context: { ordinal: 1, battingTeam: homeTeam }, events: [explicitWithoutLabel] },
+              ],
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(true);
+
+    const missingOver = event({ overNumber: undefined });
+    const missingPosition = event({ positionInOver: undefined });
+    for (const invalidEvent of [missingOver, missingPosition]) {
+      expect(
+        seasonUploadPackageSchema.safeParse(
+          seasonPackage({
+            fixtures: [
+              fixture({
+                innings: [
+                  { context: { ordinal: 1, battingTeam: homeTeam }, events: [invalidEvent] },
+                ],
+              }),
+            ],
+          }),
+        ).success,
+      ).toBe(false);
+    }
+  });
+
+  test('rejects malformed and contradictory display labels', () => {
+    for (const invalidEvent of [event({ ballLabel: 'first ball' }), event({ overNumber: 1 })]) {
+      const result = seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [{ context: { ordinal: 1, battingTeam: homeTeam }, events: [invalidEvent] }],
+            }),
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toMatch(/ball label/i);
+    }
   });
 
   test('accepts a representative 70-fixture season without application database identifiers', () => {

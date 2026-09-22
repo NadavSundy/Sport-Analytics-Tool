@@ -9,6 +9,12 @@ The current schema version is `1.0`. A request contains one fixture and 1–1,00
 delivery events. Events for each innings must appear in ascending `sequenceNumber` order. Statistics
 are not accepted: the platform derives them from accepted deliveries.
 
+Each event requires explicit zero-based `overNumber` and `positionInOver`
+coordinates. `ballNumber` is optional display data and is never used for
+identity or ordering. If supplied, it must use `<over>.<ball>` form and its over
+component must match `overNumber`; the ball component may repeat for wides and
+no-balls.
+
 ```http
 POST /api/v1/submissions
 Authorization: Bearer <supabase-access-token>

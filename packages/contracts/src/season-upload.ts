@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { eventCoordinateSchema, validateDisplayBallLabel } from './event-coordinates';
+
 /** The first published package format for season and back-catalogue uploads. */
 export const SEASON_UPLOAD_CONTRACT_VERSION = '1.0' as const;
 export const FIXTURE_PROPOSAL_CONTRACT_VERSION = '1.1' as const;
@@ -227,11 +229,10 @@ export const seasonUploadEventSchema = z
     // ball number and remains unchanged when a correction is submitted.
     eventId: sourceIdentifierFor('delivery'),
     occurrenceSequence: z.number().int().positive().max(2_147_483_647),
-    // Canonical delivery coordinates are optional for compatibility with the
-    // initial templates. The batch expander prefers them when supplied and can
-    // deterministically derive them from ordered source rows where possible.
-    overNumber: z.number().int().min(0).max(32_767).optional(),
-    positionInOver: z.number().int().min(0).max(32_767).optional(),
+    // These zero-based coordinates are the canonical delivery position. The
+    // printed label is display-only and never substitutes for either value.
+    overNumber: eventCoordinateSchema,
+    positionInOver: eventCoordinateSchema,
     ballLabel: z.string().max(32).optional(),
     operation: z.enum(['upsert', 'correction']).default('upsert'),
     correctsEventId: sourceIdentifierFor('delivery').optional(),
@@ -244,6 +245,8 @@ export const seasonUploadEventSchema = z
   })
   .strict()
   .superRefine((event, context) => {
+    validateDisplayBallLabel(event.ballLabel, event.overNumber, 'ballLabel', context);
+
     const extrasTotal = Object.values(event.extras).reduce<number>(
       (total, value) => total + (value ?? 0),
       0,
