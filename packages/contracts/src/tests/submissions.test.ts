@@ -77,6 +77,34 @@ describe('direct submission contract', () => {
     });
   });
 
+  test('accepts explicit coordinates without the optional display ball number', () => {
+    const event = validEvent();
+    delete (event as Partial<typeof event>).ballNumber;
+
+    expect(
+      submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [event],
+      }).success,
+    ).toBe(true);
+  });
+
+  test('rejects malformed and contradictory display ball numbers', () => {
+    for (const invalidEvent of [
+      { ...validEvent(), ballNumber: 'first ball' },
+      { ...validEvent(), overNumber: 1 },
+    ]) {
+      const result = submissionRequestSchema.safeParse({
+        fixtureId: '7',
+        schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
+        events: [invalidEvent],
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toMatch(/ball number/i);
+    }
+  });
+
   test('rejects final totals and inconsistent delivery runs', () => {
     expect(
       submissionRequestSchema.safeParse({
@@ -259,7 +287,6 @@ describe('direct submission contract', () => {
       'sequenceNumber',
       'overNumber',
       'positionInOver',
-      'ballNumber',
       'strikerId',
       'nonStrikerId',
       'bowlerId',
