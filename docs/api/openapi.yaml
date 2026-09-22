@@ -28,7 +28,7 @@ x-api-versioning:
     status: 404
     code: UNSUPPORTED_API_VERSION
 servers:
-  - url: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
+  - url: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io
     description: Deployed development API
   - url: http://127.0.0.1:3000
     description: Local development API

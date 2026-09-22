@@ -21,6 +21,13 @@ for both; see `docs/adr/0003-azure-hosting.md`.
 
 The PostgreSQL database and managed authentication remain on Supabase. The public MkDocs documentation site is hosted separately on Cloudflare Pages, alongside the frontend application (a separate Pages project).
 
+The current public application endpoints are:
+
+| Component   | URL                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Frontend    | <https://sport-analytics-tool-web.pages.dev/>                                                    |
+| Backend API | <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1> |
+
 ## App Service history, Container Apps migration and frontend static hosting
 
 ADR 0003 records the original App Service reasons:

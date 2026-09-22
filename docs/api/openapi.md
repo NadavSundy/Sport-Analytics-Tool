@@ -16,7 +16,7 @@ The backend exposes this same specification as a public, read-only documentation
 
 ```text
 Local development: http://localhost:3000/openapi.yaml
-Azure development: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/openapi.yaml
+Deployed Container Apps API: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/openapi.yaml
 ```
 
 `GET /openapi.yaml` does not require application sign-in or an API consumer key. It sits outside
@@ -24,8 +24,8 @@ Azure development: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanort
 
 `docs/api/openapi.yaml` remains the only maintained source of truth. The backend build copies the exact
 version-controlled file to `apps/backend/dist/openapi.yaml`. Source-mode local development resolves the
-repository file directly, while the compiled runtime resolves the bundled copy. The Azure deployment
-artifact already includes the complete backend `dist` directory, so the deployed endpoint serves the
+repository file directly, while the compiled runtime resolves the bundled copy. The Container Apps
+deployment image includes the complete backend `dist` directory, so the deployed endpoint serves the
 same specification that is validated by `npm run openapi:lint`.
 
 ## Validation
