@@ -451,6 +451,21 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
 
+      - name: Apply pending backend database migrations
+        env:
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+        run: |
+          echo "Applying reviewed backend database migrations before backend activation."
+          DATABASE_URL="$(az keyvault secret show --id "$DATABASE_SECRET_URI" --query value --output tsv)"
+
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The backend database secret resolved to an empty value."
+            exit 1
+          fi
+
+          export DATABASE_URL
+          npm run db:migrate --workspace=@sport-analytics/backend
+
       - name: Sign in to Azure Container Registry
         run: az acr login --name "$ACR_NAME"
 
@@ -613,6 +628,17 @@ jobs:
           "deployed backend database access"
           "$BACKEND_URL/api/v1/competitions?limit=1"
           "pagination"
+
+      - name: Smoke check deployed dataset-release schema access
+        env:
+          SMOKE_CHECK_ATTEMPTS: 6
+          SMOKE_CHECK_DELAY_MS: 5000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed dataset-release schema access"
+          "$BACKEND_URL/api/v1/dataset-releases"
+          "data"
 
   deploy_docs:
     needs:
