@@ -83,6 +83,8 @@ three fielders, must be submitted in the JSON package.
             {
               "eventId": "cricsheet:delivery:1412526-1-1",
               "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
               "ballLabel": "0.1",
               "striker": { "context": { "name": "A. Batter" } },
               "nonStriker": { "context": { "name": "B. Batter" } },
@@ -117,7 +119,10 @@ returns, so no conversion applies in either direction.
 JSON-array position, CSV row number, manifest-file order, nor `ballLabel` is
 used as an identity or ordering key. A printed label is optional display data,
 so a no-ball or wide cannot change identity merely by repeating a legal-ball
-label.
+label. Every event supplies the zero-based canonical coordinates `overNumber`
+and `positionInOver`; neither coordinate is derived from a label or source-row
+order. When `ballLabel` is present it must use `<over>.<ball>` form and its over
+component must equal `overNumber`.
 
 ## Fixture proposals in version 1.1
 

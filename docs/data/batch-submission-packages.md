@@ -69,6 +69,16 @@ Malformed individual event/unknown lines are assigned a deterministic source ord
 continues where later lines remain independently interpretable. Invalid UTF-8 and structural faults
 that make the remaining dependency graph unsafe are batch-level source faults instead.
 
+## Canonical event coordinates
+
+JSON, NDJSON and CSV events all require explicit zero-based `overNumber` and
+`positionInOver` values. Together with the resolved innings they identify the
+canonical delivery position. The worker does not derive either coordinate from
+file order, `occurrenceSequence` or `ballLabel`. `ballLabel` is optional display
+data; when present it must use `<over>.<ball>` form and name the same over as
+`overNumber`. This preserves Cricsheet labels, including repeated labels for
+illegal deliveries, without treating them as unique positions.
+
 ## User-facing references
 
 A submitter is never required to discover or enter a PostgreSQL primary key. Packages identify

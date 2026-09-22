@@ -39,7 +39,7 @@ the submission that supplied it.
 | `sequenceNumber`   | `delivery.innings_sequence`          | `delivery`              | Assigned at submission, not derived on read. Must ascend within an innings.                        |
 | `overNumber`       | `delivery.over_number`               | `delivery`              | Zero-based. Part of the natural key.                                                               |
 | `positionInOver`   | `delivery.position_in_over`          | `delivery`              | Zero-based index within the over. **This is the identifying column**, not the printed ball number. |
-| `ballNumber`       | `delivery.ball_number`               | `delivery`              | Display only. Never unique, never used to join.                                                    |
+| `ballNumber`       | `delivery.ball_number`               | `delivery`              | Optional display only. Never unique or used to join; its over component must match `overNumber`.   |
 | `strikerId`        | `delivery.striker_id`                | `delivery`              | References `person`. Must differ from the non-striker.                                             |
 | `nonStrikerId`     | `delivery.non_striker_id`            | `delivery`              | References `person`.                                                                               |
 | `bowlerId`         | `delivery.bowler_id`                 | `delivery`              | References `person`.                                                                               |

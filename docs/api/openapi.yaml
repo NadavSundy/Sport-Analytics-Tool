@@ -6566,7 +6566,6 @@ components:
         - sequenceNumber
         - overNumber
         - positionInOver
-        - ballNumber
         - strikerId
         - nonStrikerId
         - bowlerId
@@ -6593,7 +6592,9 @@ components:
           description: Zero-based position in the over; unlike the display ball number, this cannot repeat.
         ballNumber:
           type: string
-          pattern: '^\d{1,3}\.\d{1,2}$'
+          maxLength: 32
+          pattern: '^\d{1,5}\.\d{1,2}$'
+          description: Optional display label; its over component must match overNumber.
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
@@ -6763,7 +6764,6 @@ components:
         - inningsId
         - overNumber
         - positionInOver
-        - ballNumber
         - strikerId
         - nonStrikerId
         - bowlerId
@@ -6781,7 +6781,9 @@ components:
           maximum: 32767
         ballNumber:
           type: string
-          pattern: '^\d{1,3}\.\d{1,2}$'
+          maxLength: 32
+          pattern: '^\d{1,5}\.\d{1,2}$'
+          description: Optional display label; its over component must match overNumber.
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
