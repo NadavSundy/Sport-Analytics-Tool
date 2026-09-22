@@ -39,7 +39,9 @@ test('runs the deployed release acceptance path, samples reads while the worker 
             },
           );
         }
-        if (requestUrl === frontendUrl) return new Response("<title>Stat'sTheGame</title>");
+        if (requestUrl === frontendUrl || requestUrl === `${frontendUrl}/fixtures`) {
+          return new Response("<title>Stat'sTheGame</title>");
+        }
         if (requestUrl === `${apiBaseUrl}/competitions?limit=1`) {
           return Response.json({ data: [{ competitionId: 7 }] });
         }
@@ -66,6 +68,9 @@ test('runs the deployed release acceptance path, samples reads while the worker 
         if (requestUrl === `${apiBaseUrl}/fixtures?limit=1`) {
           return Response.json({ data: [{ fixtureId: 23 }] });
         }
+        if (requestUrl === `${apiBaseUrl}/fixtures/23/statistics`) {
+          return Response.json({ data: { fixtureId: 23, statistics: [] } });
+        }
         if (requestUrl === `${apiBaseUrl}/dataset-releases/${version}`) {
           return Response.json({ data: release });
         }
@@ -84,10 +89,13 @@ test('runs the deployed release acceptance path, samples reads while the worker 
 
   assert.equal(result.release.checksum, checksum);
   assert.equal(result.release.eventCount, 3207110);
-  assert.equal(result.readSamples.length, 1);
+  assert.equal(result.readSamples.length, 2);
   assert.ok(result.readSamples[0].durationMs > 0);
+  assert.equal(result.readSamples[1].endpoint, '/fixtures/23/statistics');
   assert.ok(requests.some((request) => request.url === `${apiBaseUrl}/auth/me`));
   assert.ok(requests.some((request) => request.url === `${apiBaseUrl}/fixtures?limit=1`));
+  assert.ok(requests.some((request) => request.url === `${apiBaseUrl}/fixtures/23/statistics`));
+  assert.ok(requests.some((request) => request.url === `${frontendUrl}/fixtures`));
 });
 
 test('rejects a completed release when its downloaded artifact does not match the published checksum', async () => {
@@ -110,9 +118,14 @@ test('rejects a completed release when its downloaded artifact does not match th
               { headers: { 'access-control-allow-origin': frontendUrl }, status: 200 },
             );
           }
-          if (requestUrl === frontendUrl) return new Response("<title>Stat'sTheGame</title>");
+          if (requestUrl === frontendUrl || requestUrl === `${frontendUrl}/fixtures`) {
+            return new Response("<title>Stat'sTheGame</title>");
+          }
           if (requestUrl === `${apiBaseUrl}/competitions?limit=1`)
             return Response.json({ data: [] });
+          if (requestUrl === `${apiBaseUrl}/fixtures?limit=1`) {
+            return Response.json({ data: [{ fixtureId: 23 }] });
+          }
           if (requestUrl === `${apiBaseUrl}/auth/me`)
             return Response.json({ user: { role: 'admin' } });
           if (requestUrl === `${apiBaseUrl}/admin/dataset-releases`) {
