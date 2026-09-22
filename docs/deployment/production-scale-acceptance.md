@@ -42,9 +42,10 @@ The runner fails unless it observes all of the following:
 
 - `/health` returns the expected API identity and allows the deployed frontend origin through CORS;
 - a database-backed public competition read and authenticated `/auth/me` request succeed;
-- the frontend returns the application title;
+- the frontend root and `/fixtures` client-side route return the application title;
 - `POST /admin/dataset-releases` returns an asynchronous generation job;
-- the job reaches `completed`, with a public fixture read sampled while it is `generating`;
+- the job reaches `completed`, with public fixture and derived-statistics reads sampled while it is
+  `generating`;
 - public release metadata and artifact retrieval succeed; and
 - the SHA-256 of the downloaded artifact equals the published checksum.
 
@@ -52,6 +53,16 @@ The JSON output records the release version, event count, checksum and measured 
 It deliberately does not print the bearer token or API response bodies. A rerun that only verifies an
 already published release must set `PRODUCTION_ACCEPTANCE_ALLOW_EXISTING_RELEASE=true`; it is not
 evidence of a full asynchronous generation run.
+
+## Live frontend journey
+
+While the release job remains `generating`, use a browser against the final static deployment to
+open `/fixtures`, select the sampled fixture and open its statistics screen. Record the UTC time,
+selected fixture ID, API-backed content shown and any browser-console or network failure. Then open
+`/sign-in`, complete sign-in with the approved acceptance account and verify one authenticated action
+appropriate to that account. Record the final backend origin observed by the browser and the CORS
+result. This manual journey is required because the HTTP runner can verify static-route fallback but
+cannot authenticate a browser session or prove that React rendered API-backed screen content.
 
 ## Recovery and duplicate-publication exercise
 
