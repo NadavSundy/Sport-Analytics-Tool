@@ -370,6 +370,9 @@ describe('public browsing pages', () => {
     renderRoute('/fixtures?gender=female&limit=25');
 
     expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'View statistics for Wanderers vs Strikers' }),
+    ).toHaveAttribute('href', '/fixtures/fixture-1/statistics');
     expect(screen.getByLabelText('Gender')).toHaveValue('female');
     expect(screen.getByLabelText('Records per page')).toHaveValue('25');
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/fixtures?gender=female&limit=25');
@@ -635,7 +638,7 @@ describe('public browsing pages', () => {
     ).toBe(true);
   });
 
-  it('opens a fixture and displays its match statistics and participating players', async () => {
+  it('opens a fixture and exposes statistics and players through local navigation', async () => {
     let resolveWeather!: (value: Response) => void;
     const requestedUrls: string[] = [];
     const fixture = {
@@ -755,8 +758,16 @@ describe('public browsing pages', () => {
     expect(venueFact).not.toBeNull();
     expect(within(venueFact!).getByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
     expect(screen.getByText('Wanderers won the toss and chose to field.')).toBeVisible();
+    const fixtureNavigation = screen.getByRole('navigation', { name: 'Fixture sections' });
+    const statisticsLink = within(fixtureNavigation).getByRole('link', { name: 'Statistics' });
+    const playersLink = within(fixtureNavigation).getByRole('link', { name: 'Players' });
+    expect(statisticsLink).toHaveAttribute('href', '/fixtures/fixture-1/statistics');
+    expect(playersLink).toHaveAttribute('href', '/fixtures/fixture-1/players');
+
+    fireEvent.click(statisticsLink);
     expect(await screen.findByText('Wanderers won by 12 runs.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'A Player' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('link', { name: 'Players' }));
+    expect(await screen.findByRole('link', { name: 'A Player' })).toHaveAttribute(
       'href',
       '/participants/player-1',
     );

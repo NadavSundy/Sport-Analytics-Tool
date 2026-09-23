@@ -1,6 +1,6 @@
 # Information architecture, user journeys and responsive wireframes
 
-**Issue:** #56
+**Issues:** #56, #581
 
 > This document defines the navigation structure, the main user journeys, and low-fidelity
 > responsive wireframes for Stat'sTheGame. It covers presentation and flow only; it does not
@@ -34,19 +34,22 @@ wireframe below assumes the backend re-checks role and scope on every request.
 
 ### 2.1 Site map
 
-All routes below exist today in `apps/frontend/src/App.tsx`. Public browsing routes require no
-session; `/submissions/new` requires `submitter`/`admin`; `/admin/users` and
-`/admin/dataset-releases/new` require `admin`.
+The current application separates stable public navigation from Account and role-specific
+Manage Submission navigation. Public browsing routes require no session; submission routes require a
+`submitter` or `admin`; review and administration routes require an `admin`. The backend remains
+the authorization boundary.
 
 ```mermaid
 flowchart TD
     Home["/ — Landing"]
 
-    subgraph Public["Public browsing (no sign-in)"]
+    subgraph Public["Public product (no sign-in)"]
+        Api["/api — API Explorer"]
         Competitions["/competitions"] --> CompetitionDetail["/competitions/:id"]
         Seasons["/seasons"] --> SeasonDetail["/seasons/:id"]
         Fixtures["/fixtures"] --> FixtureDetail["/fixtures/:id"]
         FixtureDetail --> FixtureStats["/fixtures/:id/statistics"]
+        FixtureDetail --> FixturePlayers["/fixtures/:id/players"]
         FixtureStats --> FixtureStatDetail["/fixtures/:id/statistics/:statisticId"]
         Competitors["/competitors"] --> CompetitorDetail["/competitors/:id"]
         Participants["/participants"] --> ParticipantDetail["/participants/:id"]
@@ -55,16 +58,23 @@ flowchart TD
 
     subgraph Auth["Authentication"]
         SignIn["/sign-in"] --> Callback["/auth/callback"]
-        Callback --> Account["/account"]
+        Callback --> Account["/account/overview"]
+        Account --> AccountAccess["/account/access"]
+        Account --> AccountSecurity["/account/security"]
     end
 
-    subgraph Submitter["Submitter (role: submitter/admin, in-scope)"]
+    subgraph Submitter["Manage Submission — submitter/admin"]
         Submit["/submissions/new"]
+        SubmissionHistory["/submissions/batches"] --> SubmissionReport["/submissions/batches/:batchReference"]
     end
 
     subgraph Admin["Administrator (role: admin)"]
+        ReviewQueue["/reviews/batches"] --> ReviewDetail["/reviews/batches/:batchReference"]
+        Administration["/admin"]
         AdminUsers["/admin/users"]
         PublishRelease["/admin/dataset-releases/new"]
+        Administration --> AdminUsers
+        Administration --> PublishRelease
     end
 
     Home --> Competitions
@@ -73,30 +83,40 @@ flowchart TD
     Home --> Competitors
     Home --> Participants
     Home --> SignIn
-    Account --> Submit
-    Account --> AdminUsers
-    Account --> PublishRelease
+    Home --> Api
+    Submit --> SubmissionHistory
     NotFound["* — 404 Not Found"]
 ```
 
 ### 2.2 Navigation rules
 
-- The global header exposes the same public browsing links (Competitions, Seasons, Fixtures,
-  Competitors, Participants) to every audience, signed in or not — public statistics must remain
-  reachable without an account.
+- The global header remains stable before and after sign-in: **Explore Data** (Fixtures,
+  Competitions, Seasons, Teams, Players), **Downloads**, and **API**. API links directly to the
+  internal `/api` explorer.
 - The header shows **Sign in** for an unauthenticated visitor, and **Account** (leading to
-  `/account`) once authenticated.
+  `/account/overview`) once authenticated.
 - **Downloads** exposes the public dataset-release catalogue to every audience without requiring a
   session.
-- **Submit events** appears in account-area navigation only for `submitter`/`admin` roles, and
-  only once the account's scope has been confirmed by the backend (the page itself still checks
-  independently — see §3.3).
-- **Manage users** and **Publish dataset release** appear in account-area navigation only for
-  `admin`. Each destination independently checks the backend-owned role before exposing controls.
+- Account contains **Overview**, **Access**, and **Settings**. It is not the launcher for private
+  product workflows.
+- A submitter **Manage Submission** menu exposes **Submit data**, **My submissions**, and
+  **Access & scope**. An administrator **Manage Submission** menu exposes **Submit data**,
+  **Submission history**, and **Review**. **Administration** is a separate administrator-only
+  navigation item.
+- Administration organises existing **Users & access** and **Data governance** surfaces. Review
+  decisions remain administrator-only; no reviewer application role exists.
+- The mobile menu exposes the same public and permitted Manage Submission destinations as labelled direct
+  links, without depending on icon recognition or nested entity grids.
+- Protected deep links carry a validated internal return path through sign-in. External and
+  protocol-relative return targets are rejected.
 - Deep links to any public detail page (`/fixtures/:id`, `/participants/:id`, etc.) work directly,
   without first visiting the list page, since these are the URLs likely to be shared or indexed.
 - An unknown path, or a public ID that does not resolve, renders the shared 404 page rather than
   redirecting silently.
+
+The navigation, Account/Manage Submission separation, and route additions in this section supersede older
+account-launcher wording in the original issue #56 journey diagrams below. Those diagrams remain
+useful as task-state wireframes and do not change backend role or scope semantics.
 
 ### 2.3 Content hierarchy per page type
 
@@ -388,3 +408,5 @@ ChatGPT-Web[GPT-5.6 Sol].
 The issue #539 correction-resubmission journey was documented with the assistance of Codex[GPT-5].
 The issue #571 new-fixture proposal journey and its issue #583 duplicate-warning refinement were
 documented with the assistance of Codex[GPT-5].
+The issue #581 navigation, Account/Manage Submission separation, local navigation and safe authentication
+return-path implementation were documented with the assistance of Codex[GPT-5.6 Sol].

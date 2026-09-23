@@ -266,7 +266,7 @@ function renderFixtureStatistics(statistics: unknown[]) {
       return Promise.resolve(notMocked());
     }),
   );
-  renderRoute('/fixtures/fixture-1');
+  renderRoute('/fixtures/fixture-1/statistics');
 }
 
 // Every team group in the order it is rendered, with the player named on each of
@@ -364,7 +364,7 @@ describe('public fixture statistics pages', () => {
     expect(screen.queryByText('Balls faced')).not.toBeInTheDocument();
   });
 
-  it('automatically loads the match overview, statistics, and participating players anonymously', async () => {
+  it('loads fixture statistics anonymously from the statistics deep link', async () => {
     let resolveStatistics!: (value: Response) => void;
     const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
@@ -382,12 +382,11 @@ describe('public fixture statistics pages', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+      await screen.findByRole('heading', { level: 1, name: 'Loading fixture statistics' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Loading match statistics' })).toBeInTheDocument();
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -421,6 +420,9 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Match statistics' }),
+    ).toBeInTheDocument();
     expect(await screen.findByText('Complete statistics')).toBeInTheDocument();
     expect(screen.getByText('Wanderers won by 5 wickets.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Match leaders' })).toBeInTheDocument();
@@ -447,7 +449,10 @@ describe('public fixture statistics pages', () => {
         name: 'A Player',
       }),
     ).toHaveAttribute('href', '/participants/player-1');
-    expect(screen.getByRole('heading', { name: 'Participating players' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Players' })).toHaveAttribute(
+      'href',
+      '/fixtures/fixture-1/players',
+    );
     expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
 
     const statisticsCall = fetchMock.mock.calls.find(
@@ -497,7 +502,7 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    renderRoute('/fixtures/fixture-empty');
+    renderRoute('/fixtures/fixture-empty/statistics');
 
     expect(await screen.findByText('Partial statistics')).toBeInTheDocument();
     expect(screen.getByText('No accepted delivery events are available.')).toBeInTheDocument();
@@ -554,24 +559,13 @@ describe('public fixture statistics pages', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     expect(
-      await screen.findByText(
-        'Published match statistics could not be requested. Try this section again.',
-      ),
+      await screen.findByRole('heading', { name: 'Fixture statistics could not be loaded' }),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Wanderers vs Strikers',
-      }),
-    ).toBeVisible();
-
-    expect(screen.getByText('Premier Cricket League')).toBeVisible();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Retry match statistics' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(
       await screen.findByRole('heading', {
@@ -960,19 +954,14 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(
-      'Published match statistics could not be requested. Try this section again.',
-    );
+    expect(alert).toHaveTextContent('Fixture statistics could not be loaded');
     // The section previously discarded the reason, so every distinct failure
     // reached the reader as the same sentence.
     expect(alert).toHaveTextContent('Failed to fetch');
-    expect(screen.getByRole('button', { name: 'Retry match statistics' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   // The application mounts no error boundary, so before this guard an exception
@@ -1013,17 +1002,14 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Match statistics could not be loaded');
     expect(alert).toHaveTextContent('The published statistics could not be displayed.');
     expect(screen.getByRole('button', { name: 'Retry match statistics' })).toBeInTheDocument();
     // The rest of the match overview must survive the failed section.
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Premier Cricket League')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Match statistics' })).toBeInTheDocument();
   });
 
   // Issue #475 (P01-F09 / P02-F06): the endpoint returns player statistics in person-ID

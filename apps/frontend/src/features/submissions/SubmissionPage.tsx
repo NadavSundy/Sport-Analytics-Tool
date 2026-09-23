@@ -10,7 +10,7 @@ import {
   type SubmissionResponse,
 } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
@@ -23,6 +23,7 @@ import {
 } from './BatchUploadPage';
 import { invalidateBatchCollections } from './batch-collection-state';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
+import { signInPathFor } from '../auth/auth-return';
 import {
   listAllFixtures,
   listScopedFixtures,
@@ -1266,6 +1267,7 @@ export function SubmissionPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const client = useAuthenticatedApiClient();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const requestedWorkflow = searchParams.get('workflow');
   const replacementReference = batchReferenceSchema.safeParse(searchParams.get('replaces'));
   const replacementCompetitionId = searchParams.get('competitionId');
@@ -1330,14 +1332,14 @@ export function SubmissionPage() {
   }, [client, isAuthenticated, isLoading]);
 
   if (!isLoading && !isAuthenticated) {
-    return <Navigate to="/sign-in" replace />;
+    return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
   }
 
   return (
     <section className="submission-page content-boundary" aria-labelledby="submission-page-title">
       <header className="page-heading submission-page__heading">
-        <p className="eyebrow">Submitter workspace</p>
-        <h1 id="submission-page-title">Submit Delivery Events</h1>
+        <p className="eyebrow">Manage Submission</p>
+        <h1 id="submission-page-title">Submit data</h1>
         <p>
           Choose whether your file contains one fixture, one season, or historical data from
           multiple seasons. Use readable names; after upload, the platform validates the file in the

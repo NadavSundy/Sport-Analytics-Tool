@@ -440,7 +440,8 @@ test(
     await expect(
       page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
     ).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Match statistics' })).toBeVisible();
+    await page.getByRole('link', { name: 'Statistics', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Match statistics' })).toBeVisible();
     await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Innings summary' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Batting scorecard' })).toBeVisible();

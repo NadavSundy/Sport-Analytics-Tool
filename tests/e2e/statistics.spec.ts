@@ -141,7 +141,7 @@ async function readDetailSpacing(page: Page) {
     const firstFact = document.querySelector<HTMLElement>('.record-facts > div');
     const matchStatistics = document.querySelector<HTMLElement>('.fixture-statistics-overview');
     const summary = document.querySelector<HTMLElement>('.match-summary');
-    if (!detailPage || !heading || !firstFact || !matchStatistics || !summary) {
+    if (!detailPage || !heading || !matchStatistics || !summary) {
       throw new Error('The public detail layout was not rendered.');
     }
 
@@ -149,7 +149,7 @@ async function readDetailSpacing(page: Page) {
       pagePaddingTop: Number.parseFloat(getComputedStyle(detailPage).paddingTop),
       headingPaddingTop: Number.parseFloat(getComputedStyle(heading).paddingTop),
       headingPaddingBottom: Number.parseFloat(getComputedStyle(heading).paddingBottom),
-      factPaddingTop: Number.parseFloat(getComputedStyle(firstFact).paddingTop),
+      factPaddingTop: firstFact ? Number.parseFloat(getComputedStyle(firstFact).paddingTop) : null,
       matchStatisticsMarginTop: Number.parseFloat(getComputedStyle(matchStatistics).marginTop),
       summaryMarginTop: Number.parseFloat(getComputedStyle(summary).marginTop),
     };
@@ -423,6 +423,7 @@ test(
     await expect(
       page.getByRole('heading', { level: 1, name: 'Team One vs Team Two' }),
     ).toBeVisible();
+    await page.getByRole('link', { name: 'Statistics', exact: true }).click();
     await expect(page.getByText('Team One won by 5 wickets.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Batting scorecard' })).toBeVisible();
     const powerplay = page.getByRole('region', { name: 'Powerplay' });
@@ -443,7 +444,6 @@ test(
       });
     }
     await expect(page.getByRole('link', { name: 'Opening Batter' }).first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Participating players' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View fixture statistics' })).toHaveCount(0);
     expect(requestedUrls.some((url) => url.endsWith('/fixtures/fixture-1/statistics'))).toBe(true);
     const detailSpacing = await readDetailSpacing(page);
@@ -451,8 +451,8 @@ test(
       pagePaddingTop: isMobile ? 24 : 32,
       headingPaddingTop: 16,
       headingPaddingBottom: 16,
-      factPaddingTop: 16,
-      matchStatisticsMarginTop: 32,
+      factPaddingTop: null,
+      matchStatisticsMarginTop: 0,
       summaryMarginTop: 24,
     });
     expect(Object.values(detailSpacing).every((value) => value === null || value % 4 === 0)).toBe(
@@ -505,8 +505,8 @@ test(
       pagePaddingTop: isMobile ? 24 : 32,
       headingPaddingTop: 16,
       headingPaddingBottom: 16,
-      factPaddingTop: 16,
-      matchStatisticsMarginTop: 32,
+      factPaddingTop: null,
+      matchStatisticsMarginTop: 0,
       summaryMarginTop: 24,
     });
 
@@ -535,6 +535,9 @@ test(
       ),
     ).toEqual([]);
 
+    await page.getByRole('link', { name: 'Players', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Participating players' })).toBeVisible();
+    await page.getByRole('link', { name: 'Statistics', exact: true }).click();
     await page.getByText('How these match statistics are calculated', { exact: true }).click();
     const calculationLink = page.getByRole('link', { name: 'View calculation trace' }).first();
     await calculationLink.focus();
