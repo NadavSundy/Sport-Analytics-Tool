@@ -889,6 +889,75 @@ async function ensureBatchPublicationJob(
  * back as ambiguous so a reviewer can disambiguate explicitly, and no
  * fixture_squad row is written for it.
  */
+/**
+ * Returns a batch to `stored` and re-queues its validation, so that the next
+ * pass sees whatever a reviewer decision has just changed.
+ *
+ * Extracted from `queueReferenceMapping`, which performed these seven
+ * statements inline. A participant onboarding decision (issue #708) queues no
+ * reference mapping — a participant resolves naturally once it is in the squad
+ * — but needs exactly this revalidation, and needs it **once** for a whole
+ * array of decisions rather than once per decision. Sharing the tail keeps one
+ * definition of what revalidation means rather than adding a second mechanism.
+ */
+async function requestBatchRevalidation(
+  executor: QueryExecutor,
+  batch: { batchId: string; batchReference: string; state: string },
+  actorId: string,
+  reason: string,
+): Promise<void> {
+  await executeQuery(
+    executor,
+    `UPDATE batch_validation_result
+     SET active = false, superseded_at = now()
+     WHERE batch_id = $1::bigint AND active`,
+    [batch.batchId],
+  );
+  await executeQuery(
+    executor,
+    `UPDATE batch_item
+     SET innings_id=NULL, state='pending', rejection_code=NULL, rejection_detail=NULL
+     WHERE batch_id=$1::bigint AND published_event_id IS NULL`,
+    [batch.batchId],
+  );
+  await executeQuery(
+    executor,
+    `UPDATE batch_checkpoint
+     SET last_ordinal = -1, lease_owner = NULL, lease_expires_at = NULL, attempt_count = 0
+     WHERE batch_id = $1::bigint AND phase = 'validating'`,
+    [batch.batchId],
+  );
+  const job = await executeQuery<{ jobId: string }>(
+    executor,
+    `UPDATE background_job
+     SET state='queued', progress_current=0, progress_total=NULL, attempt_count=0,
+         started_at=NULL, completed_at=NULL, last_error_code=NULL, last_error_message=NULL
+     WHERE batch_id=$1::bigint AND job_type='batch.validate'
+     RETURNING job_id::text AS "jobId"`,
+    [batch.batchId],
+  );
+  const jobId = requireRow(job.rows[0], 'Batch validation job reset').jobId;
+  await executeQuery(
+    executor,
+    `INSERT INTO outbox_message (
+       outbox_message_id, job_id, message_type, contract_version, body
+     ) VALUES ($1::uuid,$2::uuid,'batch.validate',1,
+       jsonb_build_object('type','batch.validate','version',1,'commandId',$1::text,
+         'jobId',$2::text,'batchId',$3::text,'batchReference',$4::text))`,
+    [randomUUID(), jobId, batch.batchId, batch.batchReference],
+  );
+  await executeQuery(executor, `UPDATE batch SET state='stored' WHERE batch_id=$1::bigint`, [
+    batch.batchId,
+  ]);
+  await executeQuery(
+    executor,
+    `INSERT INTO batch_state_transition (
+       batch_id,from_state,to_state,actor_kind,actor_identifier,reason
+     ) VALUES ($1::bigint,$2::batch_state,'stored','api',$3,$4)`,
+    [batch.batchId, batch.state, actorId, reason],
+  );
+}
+
 async function onboardFixtureCanonicalContext(
   executor: QueryExecutor,
   batchId: string,
@@ -2304,60 +2373,11 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         ],
       );
 
-      await executeQuery(
+      await requestBatchRevalidation(
         executor,
-        `UPDATE batch_validation_result
-         SET active = false, superseded_at = now()
-         WHERE batch_id = $1::bigint AND active`,
-        [input.batchId],
-      );
-      await executeQuery(
-        executor,
-        `UPDATE batch_item
-         SET innings_id=NULL, state='pending', rejection_code=NULL, rejection_detail=NULL
-         WHERE batch_id=$1::bigint AND published_event_id IS NULL`,
-        [input.batchId],
-      );
-      await executeQuery(
-        executor,
-        `UPDATE batch_checkpoint
-         SET last_ordinal = -1, lease_owner = NULL, lease_expires_at = NULL, attempt_count = 0
-         WHERE batch_id = $1::bigint AND phase = 'validating'`,
-        [input.batchId],
-      );
-      const job = await executeQuery<{ jobId: string }>(
-        executor,
-        `UPDATE background_job
-         SET state='queued', progress_current=0, progress_total=NULL, attempt_count=0,
-             started_at=NULL, completed_at=NULL, last_error_code=NULL, last_error_message=NULL
-         WHERE batch_id=$1::bigint AND job_type='batch.validate'
-         RETURNING job_id::text AS "jobId"`,
-        [input.batchId],
-      );
-      const jobId = requireRow(job.rows[0], 'Batch validation job reset').jobId;
-      await executeQuery(
-        executor,
-        `INSERT INTO outbox_message (
-           outbox_message_id, job_id, message_type, contract_version, body
-         ) VALUES ($1::uuid,$2::uuid,'batch.validate',1,
-           jsonb_build_object('type','batch.validate','version',1,'commandId',$1::text,
-             'jobId',$2::text,'batchId',$3::text,'batchReference',$4::text))`,
-        [randomUUID(), jobId, batch.batchId, batch.batchReference],
-      );
-      await executeQuery(executor, `UPDATE batch SET state='stored' WHERE batch_id=$1::bigint`, [
-        input.batchId,
-      ]);
-      await executeQuery(
-        executor,
-        `INSERT INTO batch_state_transition (
-           batch_id,from_state,to_state,actor_kind,actor_identifier,reason
-         ) VALUES ($1::bigint,$2::batch_state,'stored','api',$3,$4)`,
-        [
-          input.batchId,
-          batch.state,
-          input.actorId,
-          `Reference mapping queued for ${input.referencePath}.`,
-        ],
+        batch,
+        input.actorId,
+        `Reference mapping queued for ${input.referencePath}.`,
       );
 
       const row = requireRow(inserted.rows[0], 'Batch mapping decision insertion');
