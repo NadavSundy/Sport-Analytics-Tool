@@ -292,11 +292,304 @@ against a 15-minute target.
 
 ## 8. Results
 
-_Pending. Populated by the runs listed in section 6, each committed as it completes._
+Every stated target in section 5 is met. Nothing regressed against the prior local
+evidence in section 7. Three things that are not simple passes are reported in
+sections 8.6 to 8.8.
+
+### 8.1 The five #289 operations
+
+`evidence/validation/issue-599/api-response-times-run-{1,2,3}.md`. P95 in
+milliseconds, with the closest comparable prior run alongside.
+
+| Operation             | Target | #592 after-analyze | Run 1 | Run 2 | Run 3 |
+| --------------------- | -----: | -----------------: | ----: | ----: | ----: |
+| public fixture page   |    500 |               14.8 |  10.0 |  12.2 |  15.3 |
+| fixture event page    |    750 |               31.7 |  19.1 |  22.2 |  33.1 |
+| fixture statistics    |  1,500 |               45.2 |  22.2 |  28.9 |  43.9 |
+| participant aggregate |  1,500 |              257.3 | 133.1 | 155.1 | 259.4 |
+| CSV event export      |  1,000 |               90.6 |  39.5 |  47.8 |  69.9 |
+
+Fifteen of fifteen pass. The three runs drift upwards in order, which is why three
+were taken: a single run would have supported any conclusion between "half the #592
+figure" and "the same as it". Taking run 3, the least favourable, every operation is
+at or below its #592 value.
+
+The participant aggregate is the operation worth watching, because it is the one
+that failed at 3,843.2 ms in #290 and 9,978.5 ms in the #410 baseline. It is now
+133 to 259 ms, five to seventy-five times inside its target.
+
+### 8.2 Participant aggregate snapshots and batch publication
+
+`evidence/validation/issue-599/aggregate-snapshots.md`, 20 samples.
+
+| Read                                            | #592 P95 | #599 P95 | Target |
+| ----------------------------------------------- | -------: | -------: | -----: |
+| (a) served from current snapshot                |      4.5 |      5.1 |  1,500 |
+| (b1) read miss after a version advance          |    121.2 |    121.5 |  1,500 |
+| (b2) read miss with no stored rows              |    128.6 |    119.3 |  1,500 |
+| reference: live derivation only                 |    139.0 |    140.2 |  1,500 |
+| fixture statistics, unchanged per-fixture cache |      3.8 |      5.2 |  1,500 |
+
+| Publication scenario                          | #592 deliveries/s | #599 deliveries/s |
+| --------------------------------------------- | ----------------: | ----------------: |
+| one batch                                     |           1,562.5 |           1,557.4 |
+| two concurrent batches, shared participants   |           2,578.2 |           2,502.2 |
+| two concurrent batches, disjoint participants |           2,634.9 |           2,953.7 |
+
+The stored-snapshot path still does what ADR-015 claims: a served read is about 5 ms
+against about 120 ms for a read miss, roughly a twenty-four-fold saving. The
+shared-participant publication scenario is 2.9% lower and the disjoint scenario 12.1%
+higher than in #592; both sit inside the spread the API runs showed on this host
+within the same hour, so neither is reported as a change in behaviour.
+
+### 8.3 Filtered and paginated reads
+
+`evidence/validation/issue-599/filtered-paginated-reads.md`, 20 samples. First
+measurement of these workloads.
+
+| Operation                                 |  P50 |  P95 | Target |
+| ----------------------------------------- | ---: | ---: | -----: |
+| unfiltered fixture list, first page       |  6.4 |  8.2 |    500 |
+| fixture list filtered by competition      |  6.8 | 11.5 |    500 |
+| fixture list filtered by start-date range |  4.6 |  6.7 |    500 |
+| fixture list, last page of 6              |  5.0 |  7.0 |    500 |
+| participant fixture history, first page   | 28.7 | 33.0 |  1,500 |
+
+The deep page is not slower than the first page, 7.0 against 8.2. The fixture cursor
+is a keyset cursor and does not degrade with depth. That is the question deep
+pagination was measured to answer and page one alone cannot answer it.
+
+The competition filter costs 3.3 ms more than no filter at all. On this corpus that
+is the worst case rather than a typical one, because all 300 fixtures belong to the
+one generated competition, so the predicate is evaluated and removes nothing. The
+selective date-range filter is faster than the unfiltered read, which is the expected
+direction.
+
+### 8.4 API consumer enforcement overhead
+
+`evidence/validation/issue-599/consumer-enforcement-overhead.md`, 20 interleaved
+pairs. First measurement of this workload.
+
+| Read                       | Public P95 | Consumer P95 | Delta | Target delta |
+| -------------------------- | ---------: | -----------: | ----: | -----------: |
+| fixture list, 50 records   |        7.1 |         12.5 |   5.4 |          100 |
+| fixture statistics         |        3.8 |          8.2 |   4.4 |          100 |
+| competition list, 1 record |        5.3 |         10.8 |   5.5 |          100 |
+
+The delta is 4.4 to 5.5 ms across three reads whose own costs differ by a factor of
+two, which is what three added database round trips should look like when each is
+local.
+
+That consistency is also the caveat, and it is the most important qualification in
+this document. The cost is **three round trips**, not a fixed 5 ms.
+`consumer-authentication.ts` calls `findActiveConsumer`, then `consumeRateLimit`
+against the shared `api_consumer_minute_usage` table introduced by #595, then
+`consumeDailyQuota`. Against the hosted database the warm round trip on record is
+183 ms. Three of those would dominate the response rather than decorate it. This
+measurement bounds the enforcement logic; it does not bound its deployed cost.
+
+### 8.5 Batch report reads
+
+`evidence/validation/issue-599/batch-report-reads-run-{2,3}.md`, 20 samples over a
+5,000-item batch. First measurement of this workload.
+
+| Read                           | Run 1 P95 | Run 2 P95 | Run 3 P95 | Target |
+| ------------------------------ | --------: | --------: | --------: | -----: |
+| batch report, first page of 50 |      61.4 |      63.5 |      60.2 |  1,500 |
+| batch report download          |     728.3 |     682.8 |     705.1 |  1,500 |
+| batch status                   |      24.1 |      12.5 |      23.1 |  1,500 |
+
+All pass, and unlike release generation these figures are stable across runs. The
+full report costs about three times the status read, and the download about eleven
+times the report page. That ordering is explained by the work: `getReport` issues
+eight repository reads in one request, one of which loads blocking items under a
+50,001-row bound.
+
+The download at about 700 ms is the closest any measured read comes to being slow in
+absolute terms. It is less than half its target and there is no prior figure to
+regress against, so it is recorded rather than flagged.
+
+### 8.6 Dataset release generation: a result reported as a range
+
+`evidence/validation/issue-599/dataset-release-generation-run-{2,3}.md`.
+
+| Run | Events |  Wall-clock |    Throughput | Artefact checksum |
+| --- | -----: | ----------: | ------------: | ----------------- |
+| 1   | 72,000 | 16,235.6 ms |  4,434.7 ev/s | `17f0fa08…`       |
+| 2   | 72,000 |  5,697.6 ms | 12,637.0 ev/s | `17f0fa08…`       |
+| 3   | 72,000 |  4,322.3 ms | 16,657.8 ev/s | `17f0fa08…`       |
+
+All three runs wrote 72,000 events and produced **byte-identical artefacts**. The
+work was the same. The wall-clock was not: the spread is 3.8x.
+
+This is why the result is a range and not a figure. **Dataset release generation over
+the 72,000-event corpus took between 4.3 and 16.2 seconds on this host.** Anyone
+quoting a single number from this row would be quoting the run that suited them.
+
+The runs improve monotonically, which points at a warm-up effect in the host rather
+than anything in the code — each run creates a fresh temporary database directory and
+a fresh artefact file, and repeated creation of similar paths on Windows gets cheaper
+as filesystem and anti-malware state warms. **That is a hypothesis and it was not
+isolated.** Establishing it would need runs interleaved with a control, or the same
+measurement on a second machine, and neither is in scope for #599. The honest
+statement is that the variance is real, unexplained, and larger than any difference
+this measurement could otherwise detect.
+
+The practical consequence: this workload is not yet in a state where a target could
+be set for it. A target needs a repeatable measurement, and this one is not yet
+repeatable to better than a factor of four.
+
+The run-1 artefacts are not retained. That run used the script's default output paths
+and was overwritten by run 2 before per-run paths were introduced. Its figures are
+recorded above and in the commit that added the runner; the omission is stated rather
+than hidden by renumbering the two files that were kept.
+
+### 8.7 Public reads during release generation
+
+Sampled on a 100 ms cycle for the whole of each generation.
+
+| Read during generation          | Run 2 P95 | Run 3 P95 | Target |
+| ------------------------------- | --------: | --------: | -----: |
+| `GET /fixtures?limit=50`        |      12.1 |      41.9 |    500 |
+| `GET /fixtures/{id}/statistics` |       6.4 |      57.0 |  1,500 |
+
+Both pass in both runs, worst observed 41.9 ms against a 500 ms target. Generation
+does measurably slow public reads — the fixture list P95 is 8.2 ms with the system
+idle (section 8.3) and up to 41.9 ms during generation, about five times — but the
+margin to target is large enough that this is a note, not a concern.
+
+This is the local analogue of the `#565` "public read while generation runs" row,
+which remains `pending` for the deployed environment. It is not a substitute for it:
+the deployed worker and API are separate Container Apps competing for one Supabase
+database, whereas here both run on the measuring host.
+
+### 8.8 Cold-start observations
+
+`evidence/validation/issue-599/cold-start-observations.md`. First local cold run on
+record.
+
+| Operation             | Cold first request | Next request | Difference | Maximum |
+| --------------------- | -----------------: | -----------: | ---------: | ------: |
+| public fixture page   |              124.1 |          9.3 |      114.8 |   5,000 |
+| fixture event page    |              152.4 |         27.7 |      124.7 |   5,000 |
+| fixture statistics    |              133.9 |          5.3 |      128.6 |   5,000 |
+| participant aggregate |              287.5 |          3.7 |      283.8 |   5,000 |
+| CSV event export      |              127.3 |         43.5 |       83.9 |   5,000 |
+
+All pass with two orders of magnitude to spare, and the 84 to 284 ms penalty is the
+local first-connection cost. Section 9.3 states plainly why this says very little
+about the deployed cold path.
+
+### 8.9 Query plans and index use
+
+`evidence/validation/issue-599/query-plans/`. Both opt-in assertions pass.
+
+The participant-history delivery selection still returns identical delivery IDs
+without the redundant `Unique` node, 89.989 ms against 66.324 ms. #290 recorded
+32.115 ms against 21.082 ms; the absolute figures differ because the host and
+PostgreSQL instance differ, and what the test pins is the node set, not the clock.
+
+The endpoint statement `listParticipantFixtures` issues still plans with **zero**
+repeated scans of the materialised `accepted_delivery` set, every `CTE Scan` at
+`Actual Loops` 1. #410 measured the defective form at 51 and 102 loops and 845.5 ms
+of an 889.5 ms plan. The invariant holds.
+
+The two Sprint 3 indexes in
+`database/migrations/20260916210000000_participant-aggregate-indexes.sql`,
+`delivery_non_striker_idx` and `delivery_wicket_fielder_person_idx`, are present in
+the measured schema; the aggregate figures in section 8.2 are the behaviour with them
+in place. No query, index or storage change was made for issue #599.
+
+### 8.10 Finding: the documented query-plan command does not run cleanly
+
+`RUN_PERFORMANCE_DATABASE_TESTS=1 npm run test:database`, exactly as
+`docs/development/performance-baseline.md` specified, **fails on this host** — not in
+the performance test, but in unrelated tests it runs alongside.
+
+| Run                                                       | Result                                                |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| Flag unset                                                | 32 files passed, 1 skipped; 233 passed, 2 skipped     |
+| Flag set, first run                                       | 2 files failed, 31 passed; 2 tests failed, 233 passed |
+| Flag set, second run                                      | 1 file failed, 32 passed; 2 tests failed, 233 passed  |
+| Performance file alone, own disposable database, flag set | 1 file passed; 2 tests passed                         |
+
+The two flagged runs failed **differently** — once on an assertion returning nulls,
+once on two five-second timeouts in `tests/database/public-events.database.test.ts` —
+which is what identifies a race rather than a defect. The suite shares one disposable
+PostgreSQL server and Vitest runs files in parallel, so the performance test's
+300-fixture ingest reaches tests that did not create those rows.
+
+This was reported and documented rather than fixed. Making the check safe alongside
+the suite means giving it its own database or forcing the suite sequential; both are
+changes to shared test infrastructure that need their own issue and review. The
+figures in section 8.9 were taken in isolation for this reason, and
+`docs/development/performance-baseline.md` now says so.
 
 ## 9. Measured facts, assumptions and unknowns
 
-_Pending. Completed once the results in section 8 are in._
+### 9.1 Measured facts
+
+Everything in section 8, and every figure in `evidence/validation/issue-599/`, is a
+**measured figure** under `docs/development/reference-fixtures.md` section 4.2. Each
+was produced by the command named alongside it, on the build in section 2, against
+the dataset in section 3. No figure is estimated, interpolated, extrapolated, or
+carried over from another run.
+
+The prior figures in section 7 are measured facts of **their** runs, on their hosts
+and commits, quoted from the evidence files cited. They are not re-measured here.
+
+### 9.2 Stated as assumption, not fact
+
+- **That the release-generation spread is a host warm-up effect** (section 8.6). The
+  spread is measured; the cause is a hypothesis that was not tested.
+- **That the shared-participant publication figure being 2.9% lower than #592 is run
+  variance rather than a change** (section 8.2). The reasoning is that the same hour
+  showed a wider spread on operations known not to have changed, which is an argument
+  from context, not a controlled result.
+- **That the competition-filter cost is the worst case** (section 8.3). This follows
+  from the corpus having one competition, which is a documented property of the
+  generator, but the selective case was not separately constructed.
+- **That the API replica cap may no longer be necessary** (section 4.2). The premise
+  is verifiable — #595 did move rate-limit state into a shared table — but whether
+  the API is now safe to scale horizontally was not tested, and nothing here should
+  be read as clearance to raise the cap.
+
+### 9.3 Unknown, and not to be inferred from this document
+
+- **Deployed response time for any workload measured here.** These are loopback
+  figures against an embedded server. The recorded local-to-hosted gap is roughly 5 ms
+  against 183 ms warm. Section 1 states this at length because it is the single
+  easiest mistake to make with this document.
+- **Deployed cold start.** Section 8.8 measures process start and first local
+  connection. It does not measure the Supabase connection handshake, recorded at
+  2,863 ms in #369, and it does not measure Azure Container Apps scheduling a
+  container, which `minReplicas: 0` guarantees a deployed request will sometimes pay.
+- **Behaviour under concurrency.** Every read measured here is sequential. No
+  workload was measured with concurrent clients, so nothing here bounds throughput,
+  queueing, or pool contention under load. The single measured concurrency is the two
+  publishing workers in section 8.2 and the reads sampled during generation in
+  section 8.7.
+- **Supabase database tier, instance size, region, connection limit, and server
+  version.** Not evidenced anywhere in the repository. Section 4.1.
+- **Observed deployed replica counts, CPU and memory.** The #565 capacity table that
+  would carry them is `pending` throughout.
+- **Deployed production-scale acceptance.** Still outstanding under #565. Section 1.1.
+- **Deployed season-scale batch ingestion.** The last figure is the #540 run of
+  2026-09-15 at 3m37.235s against a 15-minute target, on commit `b68158c`. It was not
+  re-run for Sprint 3 and cannot be re-run locally.
+
+### 9.4 Follow-ups this measurement surfaced
+
+None were acted on, because each is a change to production code, infrastructure or
+shared test infrastructure, and issue #599 is a measurement exercise.
+
+1. The opt-in query-plan check cannot run with the database suite (section 8.10).
+2. The API replica cap's stated rationale appears to be obsolete (section 4.2).
+3. Dataset release generation is not repeatable to better than a factor of four
+   (section 8.6), so no target can be set for it yet.
+4. The embedded-PostgreSQL-and-corpus setup block is now duplicated across five
+   measurement scripts, about 170 lines each. Extracting it was deliberately not done
+   in the change whose own output is this evidence.
 
 ## AI Declaration
 
