@@ -6556,9 +6556,10 @@ components:
         onboarding:
           allOf: [{ $ref: '#/components/schemas/BatchFixtureOnboardingSummary' }]
           description: >-
-            Present only when the decision created the canonical fixture, which is the only time
-            there is onboarding to report. A repeat decision for a fixture that already exists
-            omits it.
+            Present on a canonical fixture decision. A repeat decision for a fixture that already
+            exists reports what it was able to add this time and what still needs a reviewer, so
+            the counts describe that decision rather than the fixture's whole history. Absent on
+            an ordinary reference mapping, which onboards nothing.
 
     BatchReferenceMappingResponse:
       type: object

@@ -2328,18 +2328,31 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
       let fixtureId = existingFixture?.fixtureId;
-      let onboarding: FixtureOnboardingSummary | undefined;
+      /*
+       * Issue #708, gap A. The team lookup and the onboarding call used to sit
+       * inside the `if (!fixtureId)` block, so onboarding ran once, when the
+       * fixture was created, and never again. A participant reported as
+       * unresolved by that first decision could not then be onboarded by a
+       * second: the fixture existed, so the whole block was skipped and the
+       * squad stayed as it was.
+       *
+       * The lookup is now unconditional and the creation stays guarded. The
+       * "both teams must already be canonical" refusal therefore still applies
+       * only when creating a fixture, so a repeat decision cannot begin failing
+       * where it used to succeed; a team that does not resolve on a repeat is
+       * reported as `team_not_recognised` like any other.
+       */
+      const teams = await executeQuery<{ teamId: string; name: string }>(
+        executor,
+        `SELECT team_id::text AS "teamId", name FROM team WHERE name = ANY($1::text[])`,
+        [input.teamNames],
+      );
+      const teamIdByName = new Map(teams.rows.map((row) => [row.name, row.teamId]));
       if (!fixtureId) {
-        const teams = await executeQuery<{ teamId: string; name: string }>(
-          executor,
-          `SELECT team_id::text AS "teamId", name FROM team WHERE name = ANY($1::text[])`,
-          [input.teamNames],
-        );
         if (teams.rows.length !== 2)
           throw new BatchReferenceMappingConflictError(
             'Both proposed fixture teams must already be canonical records.',
           );
-        const teamIdByName = new Map(teams.rows.map((row) => [row.name, row.teamId]));
         const proposal = input.proposal;
         const inserted = await executeQuery<{ fixtureId: string }>(
           executor,
@@ -2387,14 +2400,17 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           JOIN team ON team.name=proposed.name ON CONFLICT DO NOTHING`,
           [fixtureId, input.teamNames],
         );
-        onboarding = await onboardFixtureCanonicalContext(
-          executor,
-          fixtureId,
-          teamIdByName,
-          input.innings ?? [],
-          input.participants ?? [],
-        );
       }
+      // Runs for an existing fixture as well as a new one. Every write it makes
+      // is ON CONFLICT DO NOTHING, so a repeat decision adds whatever is now
+      // resolvable and leaves everything already onboarded alone.
+      const onboarding = await onboardFixtureCanonicalContext(
+        executor,
+        fixtureId,
+        teamIdByName,
+        input.innings ?? [],
+        input.participants ?? [],
+      );
       await executeQuery(
         executor,
         `INSERT INTO batch_canonical_fixture_decision (batch_id,reference_path,fixture_id,actor_id)
@@ -2412,7 +2428,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         candidateLabel: `Canonical fixture ${fixtureId}`,
         decisionKey: input.decisionKey,
       });
-      return onboarding ? { ...mapped, onboarding } : mapped;
+      return { ...mapped, onboarding };
     },
 
     async applyReferenceResolution(updates) {

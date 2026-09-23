@@ -3529,4 +3529,111 @@ describe.sequential('batch repository database integration', () => {
       expect(fabricated.rows[0]!.count).toBe('0');
     });
   });
+
+  test('a second decision onboards participants the first could not (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Gap A Batting`;
+      const bowlingTeamName = `${sourcePrefix} Gap A Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-gap-a`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      const sourceRef = `${sourcePrefix}-gap-a-fixture`;
+      const decide = async (
+        decisionKey: string,
+        participants: { sourceId?: string; name?: string; teamName?: string }[],
+      ) =>
+        repository.createCanonicalFixtureAndQueueMapping({
+          batchId: batch.batchId,
+          batchReference: batch.batchReference,
+          competitionId: current.competitionId,
+          actorId: current.accountId,
+          itemOrdinal: 0,
+          referencePath: 'fixtures.0',
+          decisionKey,
+          sourceRef,
+          season: '2026',
+          startDate: '2026-01-01',
+          teamNames: [battingTeamName, bowlingTeamName],
+          proposal: {
+            endDate: '2026-01-01',
+            matchType: 'T20',
+            teamType: 'club',
+            gender: 'mixed',
+            ballsPerOver: 6,
+            outcome: 'tie' as const,
+            sourceVersion: '1.1',
+            sourceRevision: 1,
+          },
+          innings: [{ ordinal: 0, battingTeamName }],
+          participants,
+        });
+
+      // The first decision creates the fixture. The second participant has no
+      // durable identifier, so only the first is onboarded.
+      const first = await decide('gap-a', [
+        {
+          sourceId: `cricsheet:participant:${sourcePrefix}-gap-a-known`,
+          name: `${sourcePrefix} Gap A Known`,
+          teamName: battingTeamName,
+        },
+        { name: `${sourcePrefix} Gap A Later`, teamName: battingTeamName },
+      ]);
+      expect(first.onboarding?.squadCreated).toBe(1);
+      expect(first.onboarding?.unresolvedParticipants).toHaveLength(1);
+
+      // The reviewer supplies the identifier the first decision asked for. The
+      // fixture already exists, which is exactly the case that used to skip
+      // onboarding altogether and leave the squad short for good.
+      const second = await decide('gap-a', [
+        {
+          sourceId: `cricsheet:participant:${sourcePrefix}-gap-a-known`,
+          name: `${sourcePrefix} Gap A Known`,
+          teamName: battingTeamName,
+        },
+        {
+          sourceId: `cricsheet:participant:${sourcePrefix}-gap-a-later`,
+          name: `${sourcePrefix} Gap A Later`,
+          teamName: battingTeamName,
+        },
+      ]);
+      expect(second.onboarding?.squadCreated).toBe(1);
+      expect(second.onboarding?.unresolvedParticipants).toEqual([]);
+
+      const fixtureRow = await client.query<{ fixtureId: string }>(
+        `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1`,
+        [sourceRef],
+      );
+      // One fixture, not two, and both participants now in its squad: the
+      // second decision added to the first rather than replacing it.
+      expect(fixtureRow.rows).toHaveLength(1);
+      const squad = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM fixture_squad WHERE fixture_id=$1`,
+        [fixtureRow.rows[0]!.fixtureId],
+      );
+      expect(squad.rows[0]!.count).toBe('2');
+
+      // Innings are unchanged: the repeat is additive, not duplicating.
+      const innings = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM innings WHERE fixture_id=$1`,
+        [fixtureRow.rows[0]!.fixtureId],
+      );
+      expect(innings.rows[0]!.count).toBe('1');
+    });
+  });
 });
