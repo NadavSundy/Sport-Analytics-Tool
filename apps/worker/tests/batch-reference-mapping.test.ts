@@ -184,6 +184,23 @@ describe('reviewer-actionable batch finalisation (#695)', () => {
     expect(finalBatchValidationState(1, false)).toBe('awaiting_review');
   });
 
+  test('keeps a batch reviewable while participant onboarding work remains (issue #708)', () => {
+    // The case #708 exists for. The reviewer has created the canonical fixture,
+    // so the fixture now resolves and the #695 guard no longer applies, but the
+    // new fixture's squad is incomplete so nothing is accepted. Rejecting here
+    // would strand the batch at the moment the reviewer had just acted on it.
+    expect(finalBatchValidationState(0, false, true)).toBe('awaiting_review');
+
+    // Once every task is settled and there is still nothing publishable, the
+    // batch is rejected as before: outstanding work is what defers it, not the
+    // mere existence of a reviewer.
+    expect(finalBatchValidationState(0, false, false)).toBe('rejected');
+
+    // The default preserves every existing caller's behaviour.
+    expect(finalBatchValidationState(0, false)).toBe('rejected');
+    expect(finalBatchValidationState(0, true)).toBe('awaiting_review');
+  });
+
   test('does not treat a resolved fixture as a reviewer action', () => {
     expect(
       isReviewerActionableFixtureResolution({

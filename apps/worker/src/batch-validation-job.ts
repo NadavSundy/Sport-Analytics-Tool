@@ -94,11 +94,29 @@ export function isReviewerActionableFixtureResolution(value: unknown): boolean {
   );
 }
 
+/**
+ * A batch with nothing publishable is rejected, unless a reviewer still has
+ * something they can do about it.
+ *
+ * Two kinds of outstanding work qualify. Issue #695 added the first: unresolved
+ * fixture evidence carrying a complete proposal, which an administrator can turn
+ * into a canonical fixture. Issue #708 adds the second: participants that
+ * fixture creation could not onboard, recorded as tasks against the batch.
+ *
+ * The second exists because the first cures itself. Once the reviewer creates
+ * the fixture it resolves, so the #695 guard stops applying — and if the new
+ * fixture's squad is incomplete, every delivery still fails to resolve and the
+ * batch was rejected terminally at the exact moment the reviewer had most
+ * recently acted on it.
+ */
 export function finalBatchValidationState(
   accepted: number,
   hasReviewerActionableProposal: boolean,
+  hasOutstandingOnboardingTask = false,
 ): 'awaiting_review' | 'rejected' {
-  return accepted > 0 || hasReviewerActionableProposal ? 'awaiting_review' : 'rejected';
+  return accepted > 0 || hasReviewerActionableProposal || hasOutstandingOnboardingTask
+    ? 'awaiting_review'
+    : 'rejected';
 }
 
 export function referenceOverridesForChunk(
@@ -1521,7 +1539,27 @@ export function createBatchValidationJobHandler(
         );
       }
 
-      const target = finalBatchValidationState(accepted, hasReviewerActionableProposal);
+      let hasOutstandingOnboardingTask = false;
+      if (accepted === 0 && !hasReviewerActionableProposal) {
+        // Issue #708. Participants a reviewer-created fixture could not onboard
+        // are recorded against the batch. While any remains outstanding there is
+        // a decision left to make, so the batch is not terminally rejected.
+        // Answered by the partial index on this table.
+        const taskResult = await client.query<{ outstanding: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM batch_participant_onboarding_task
+              WHERE batch_id=$1::bigint AND state='outstanding'
+           ) AS outstanding`,
+          [claimResult.batchId],
+        );
+        hasOutstandingOnboardingTask = taskResult.rows[0]?.outstanding ?? false;
+      }
+
+      const target = finalBatchValidationState(
+        accepted,
+        hasReviewerActionableProposal,
+        hasOutstandingOnboardingTask,
+      );
       await client.query(
         `UPDATE batch SET state=$2::batch_state,item_count=$3::integer WHERE batch_id=$1::bigint`,
         [claimResult.batchId, target, eventCount],
