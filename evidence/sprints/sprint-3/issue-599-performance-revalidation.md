@@ -1,5 +1,43 @@
 # Issue #599 — Sprint 3 representative-scale performance re-validation
 
+## What this does not cover
+
+**Read this before quoting any figure in this document.**
+
+1. **Every figure here is a local measurement.** The backend ran on the measuring
+   host and reached a disposable embedded PostgreSQL server over loopback. A warm
+   public read costs roughly **5 ms** that way. The same warm read from a locally
+   running backend to the team's hosted development database is recorded at
+   **183 ms**, and its first request after start-up at 2,863 ms
+   (`evidence/validation/issue-369-idle-backend-latency.md`). These figures show
+   whether a code path does unnecessary work at representative data volume. They are
+   **not** deployed response times.
+
+2. **The Sprint 3 topology is described from repository definitions, not observed.**
+   Section 4 is read out of `infra/azure/backend/main.bicep`,
+   `infra/azure/worker/main.bicep` and `docs/deployment/`. Nothing in this document
+   ran against Azure Container Apps or Cloudflare Pages. Bicep states what a
+   deployment would provision; it is not evidence of what is live, and
+   `docs/deployment/overview.md` makes the same point. The Supabase database tier,
+   size, region and connection limit are not evidenced anywhere in the repository and
+   are recorded as unknown.
+
+3. **Deployed production-scale acceptance under #565 is still pending.** Its evidence
+   record is a baseline smoke only: health with CORS and two static frontend routes
+   pass; the asynchronous release lifecycle, public reads during generation, artifact
+   checksum, recovery, and every capacity, replica and CPU signal are `pending`.
+
+4. **Therefore the deployed-architecture criteria of issue #599 are not discharged by
+   this work, and a deployed re-run is still required.** A local measurement cannot
+   settle how the deployed system behaves: the API is capped at one 0.5-CPU replica
+   with `minReplicas` 0, the worker and API are separate Container Apps competing for
+   one hosted database, and every database round trip carries roughly thirty-six times
+   the latency measured here. What #599 establishes is that no code path regressed at
+   representative scale and that five previously unmeasured workloads now have
+   baselines. What it does not establish is what any of them cost in production.
+
+Sections 1 and 9.3 expand on each of these.
+
 ## 1. Scope and what these figures are not
 
 Every measurement in this record was taken **locally, against a disposable embedded

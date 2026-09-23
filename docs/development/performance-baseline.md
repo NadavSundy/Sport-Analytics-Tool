@@ -170,36 +170,79 @@ behaviour from warm API timings.
 ## Query-plan regression check
 
 Issue #290 adds an opt-in PostgreSQL regression check for the representative
-corpus. Run it after generating the corpus with:
+corpus.
+
+> **Do not run this check with the full database suite.**
+> `RUN_PERFORMANCE_DATABASE_TESTS=1` combined with `npm run test:database` **causes
+> unrelated tests to fail.** Every file in the database suite shares one disposable
+> PostgreSQL server and Vitest runs files in parallel, so this check's 300-fixture,
+> 72,000-delivery ingest lands in the same database as tests that did not create
+> those rows. The isolated command below is the only supported way to run it.
+
+### Supported command
+
+Generate the corpus first, then run the check against a database **nothing else is
+using**, from `apps/backend`:
 
 ```powershell
+$env:NODE_ENV = 'test'
+$env:DATABASE_URL_TEST = '<an isolated PostgreSQL 16 database nothing else is using>'
 $env:RUN_PERFORMANCE_DATABASE_TESTS = '1'
-npm run test:database
+npm.cmd run db:test:reset
+npm.cmd run db:test:migrate
+npx.cmd vitest run tests/database/performance-query-plans.database.test.ts
 ```
 
-The check imports the 300-fixture corpus into the disposable test database,
-then compares the old and current participant-history delivery selection using
-`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`. It proves that both forms return the
-same live delivery IDs. The current query relies on the `delivery_current`
-invariant: its partial unique natural-key index already admits one live delivery
-per innings, over and position. It therefore must not add a second `DISTINCT ON`
-and sort over those same keys.
+Set `PERFORMANCE_PLAN_OUTPUT` to a file path to retain the first test's plan
+comparison as JSON. **The directory must already exist**; the test writes the file
+but does not create the directory.
+
+`compose.test.yml` defines one suitable database on `127.0.0.1:55432`. Any other
+isolated PostgreSQL 16 instance works equally well. The issue #599 run used a
+disposable embedded server started for that single file; the form of the database
+does not matter, only that no other test is using it.
+
+### Why the combined command fails
+
+Issue #599 ran the combined command twice and it failed **differently each time** —
+once on an assertion returning nulls, once on two five-second timeouts in
+`tests/database/public-events.database.test.ts` at lines 460 and 501, both in tests
+that page published events. Differing symptoms across runs is what identifies this as
+a race rather than a defect in either test.
+
+| Run                                                       | Result                                                |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| `npm run test:database`, flag unset                       | 32 files passed, 1 skipped; 233 passed, 2 skipped     |
+| `npm run test:database`, flag set, first run              | 2 files failed, 31 passed; 2 tests failed, 233 passed |
+| `npm run test:database`, flag set, second run             | 1 file failed, 32 passed; 2 tests failed, 233 passed  |
+| Performance file alone, own disposable database, flag set | 1 file passed; 2 tests passed                         |
+
+If you have run the combined command and seen a failure elsewhere in the suite,
+**that is this interference, not a regression.** Re-run the suite with the flag unset
+to confirm it is clean, then run the check in isolation.
+
+Fixing this properly means giving the opt-in check its own database or forcing the
+suite sequential. Both are changes to shared test infrastructure and belong in their
+own issue. `evidence/validation/issue-599/query-plans/README.md` records the detail.
+
+### What the check proves
+
+It imports the 300-fixture corpus, then compares the old and current
+participant-history delivery selection using
+`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, proving that both forms return the same
+live delivery IDs. The current query relies on the `delivery_current` invariant: its
+partial unique natural-key index already admits one live delivery per innings, over
+and position. It therefore must not add a second `DISTINCT ON` and sort over those
+same keys.
+
+The second test plans the statement `listParticipantFixtures` actually issues and
+asserts a **loop count, not a duration**: zero repeated scans of the materialised
+`accepted_delivery` set beneath a `SubPlan`. A loop count is stable across machines
+in a way an elapsed time is not.
 
 The API timing command above remains the authoritative response-time target
-measurement. The query-plan check is complementary database evidence and does
-not substitute for a networked API measurement.
-
-**Run this check on its own database.** The whole database suite shares one
-disposable PostgreSQL server and Vitest runs test files in parallel, so the
-performance test's 300-fixture ingest reaches tests that did not create those rows.
-Issue #599 recorded two flagged runs of the documented command failing differently,
-once on an assertion and once on two five-second timeouts in
-`tests/database/public-events.database.test.ts`; the suite is clean with the flag
-unset, and the performance file passes alone. Until the opt-in check is given its
-own database or the suite is forced sequential, run the file directly against a
-database nothing else is using, and treat a failure elsewhere in the suite under
-this flag as the interference rather than as a regression.
-`evidence/validation/issue-599/query-plans/README.md` records the detail.
+measurement. The query-plan check is complementary database evidence and does not
+substitute for a networked API measurement.
 
 ## AI Declaration
 
