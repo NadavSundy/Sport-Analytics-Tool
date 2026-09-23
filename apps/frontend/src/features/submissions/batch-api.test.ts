@@ -48,4 +48,42 @@ describe('batch upload idempotency key', () => {
       }),
     );
   });
+
+  test.each([
+    ['1.0', '1.0'],
+    ['1.1', '1.1'],
+  ])(
+    'sends JSON contractVersion %s as batch package metadata',
+    async (contractVersion, expected) => {
+      const request = vi.fn().mockResolvedValue({
+        data: {
+          batchReference: '323e4567-e89b-42d3-a456-426614174000',
+          status: 'stored',
+          statusUrl: '/api/v1/batches/323e4567-e89b-42d3-a456-426614174000',
+          receivedAt: '2026-09-23T08:00:00.000Z',
+        },
+      });
+
+      const file = fileWithBytes(
+        JSON.stringify({ contractVersion }),
+        `package-${contractVersion}.json`,
+      );
+
+      await uploadBatch(
+        { request } as unknown as AuthenticatedApiClient,
+        '5',
+        file,
+        `version-${contractVersion}`,
+      );
+
+      expect(request).toHaveBeenCalledWith(
+        '/batches',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Batch-Package-Version': expected,
+          }),
+        }),
+      );
+    },
+  );
 });

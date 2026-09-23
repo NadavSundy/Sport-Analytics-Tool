@@ -8,6 +8,7 @@ import type {
 } from '@sport-analytics/contracts';
 import { useCallback, useId, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Breadcrumbs, LocalNavigation } from '../../components/NavigationPrimitives';
 import { publicReadApi } from '../../api/public-read';
 import { DetailError, DetailLoading, RelatedLinks } from '../browse/RecordDetail';
 import { SectionBoundary, SectionError } from '../browse/SectionBoundary';
@@ -18,6 +19,14 @@ import { ParticipantAggregateView } from './ParticipantAggregateView';
 
 function recordPath(resource: 'competitors' | 'participants', identifier: string) {
   return `/${resource}/${encodeURIComponent(identifier)}`;
+}
+
+function fixtureLabel(statistics: FixtureStatistics): string {
+  const names = statistics.statistics
+    .map((statistic) => statistic.competitorName)
+    .filter((name): name is string => Boolean(name));
+  const distinctNames = [...new Set(names)];
+  return distinctNames.length > 0 ? distinctNames.join(' vs ') : 'Fixture';
 }
 
 function StatisticMetric({ label, value }: { label: string; value: ReactNode }) {
@@ -135,10 +144,24 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
   );
 }
 
-function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
+function StatisticsContent({
+  statistics,
+  retry,
+}: {
+  statistics: FixtureStatistics;
+  retry(): void;
+}) {
+  const fixturePath = `/fixtures/${encodeURIComponent(statistics.fixtureId)}`;
   return (
     <article className="detail-page statistics-page content-boundary">
-      <Link className="back-link" to={`/fixtures/${encodeURIComponent(statistics.fixtureId)}`}>
+      <Breadcrumbs
+        items={[
+          { label: 'Fixtures', to: '/fixtures' },
+          { label: fixtureLabel(statistics), to: fixturePath },
+          { label: 'Statistics', to: '#' },
+        ]}
+      />
+      <Link className="back-link" to={fixturePath}>
         Back to match overview
       </Link>
       <header className="page-heading page-heading--detail">
@@ -146,7 +169,27 @@ function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
         <h1>Match statistics</h1>
         <p>Cricket scorecards calculated from accepted delivery events.</p>
       </header>
-      <FixtureAnalytics statistics={statistics} />
+      <LocalNavigation
+        label="Fixture sections"
+        items={[
+          { label: 'Overview', to: fixturePath },
+          { label: 'Statistics', to: `${fixturePath}/statistics` },
+          { label: 'Players', to: `${fixturePath}/players` },
+        ]}
+      />
+      <div className="fixture-statistics-overview">
+        <SectionBoundary
+          onRetry={retry}
+          renderError={(boundaryRetry) => (
+            <StatisticsSectionError
+              reason="The published statistics could not be displayed."
+              retry={boundaryRetry}
+            />
+          )}
+        >
+          <FixtureAnalytics statistics={statistics} />
+        </SectionBoundary>
+      </div>
     </article>
   );
 }
@@ -280,7 +323,7 @@ export function FixtureStatisticsPage() {
         <DetailError error={state.error} label="Fixture statistics" reload={state.reload} />
       </div>
     );
-  return <StatisticsContent statistics={state.data.data} />;
+  return <StatisticsContent statistics={state.data.data} retry={state.reload} />;
 }
 
 function EventTrace({ event }: { event: StatisticContributingEvent }) {
@@ -340,8 +383,16 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
       : { participantId: statistic.participantId };
   return (
     <article className="detail-page statistics-page content-boundary">
-      <Link className="back-link" to={`/fixtures/${fixtureId}`}>
-        Back to match overview
+      <Breadcrumbs
+        items={[
+          { label: 'Fixtures', to: '/fixtures' },
+          { label: 'Fixture', to: `/fixtures/${fixtureId}` },
+          { label: 'Statistics', to: `/fixtures/${fixtureId}/statistics` },
+          { label: title, to: '#' },
+        ]}
+      />
+      <Link className="back-link" to={`/fixtures/${fixtureId}/statistics`}>
+        Back to match statistics
       </Link>
       <header className="page-heading page-heading--detail">
         <p className="eyebrow">Calculation trace</p>

@@ -114,6 +114,41 @@ export const batchDecisionReceipt = {
   },
 };
 
+/**
+ * The canonical-fixture decision as it is returned when the fixture is newly
+ * created: issue #584 attaches an onboarding summary, and issue #708 gives each
+ * participant it could not onboard the reason a reviewer needs to act on it.
+ * Every reason value appears once so the contract check covers the whole enum.
+ */
+export const batchDecisionReceiptWithOnboarding = {
+  data: {
+    ...batchDecisionReceipt.data,
+    onboarding: {
+      inningsCreated: 2,
+      squadCreated: 20,
+      unresolvedParticipants: [
+        { name: 'A Solo', reason: 'no_durable_identifier', candidates: [] },
+        {
+          name: 'A Namesake',
+          teamName: 'North XI',
+          reason: 'ambiguous_name',
+          candidates: [
+            { personId: '11', displayName: 'A Namesake' },
+            { personId: '12', displayName: 'A Namesake' },
+          ],
+        },
+        {
+          name: 'A Stranger',
+          teamName: 'Unknown XI',
+          reason: 'team_not_recognised',
+          candidates: [],
+        },
+        { name: 'A Ghost', teamName: 'North XI', reason: 'identifier_not_found', candidates: [] },
+      ],
+    },
+  },
+};
+
 export const provenanceSubmissionDetail = {
   data: {
     kind: 'direct',

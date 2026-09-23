@@ -129,7 +129,7 @@ test('administrator publishes a snapshot that appears in the public catalogue @m
     });
   });
 
-  await page.goto('/account');
+  await page.goto('/admin');
   const publishLink = page.getByRole('link', { name: 'Publish dataset release' });
   await expect(publishLink).toBeVisible();
   await publishLink.click();

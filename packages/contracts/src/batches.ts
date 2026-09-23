@@ -333,10 +333,28 @@ export const batchCanonicalFixtureRequestSchema = z
   })
   .strict();
 
+/**
+ * Why a participant named by the batch could not be onboarded into the new
+ * fixture's squad, and therefore which decision a reviewer has to make. A
+ * participant is never matched on a name alone, so every value here is a
+ * decision rather than a guess the platform could have made for itself.
+ */
+export const batchFixtureOnboardingUnresolvedReasonSchema = z.enum([
+  /** The submitted team is missing, or is not one of the fixture's two teams. */
+  'team_not_recognised',
+  /** No source identifier, and at most one existing person carries the name. */
+  'no_durable_identifier',
+  /** No source identifier, and the name belongs to more than one existing person. */
+  'ambiguous_name',
+  /** An application identifier was supplied but names no existing person. */
+  'identifier_not_found',
+]);
+
 export const batchFixtureOnboardingUnresolvedParticipantSchema = z
   .object({
     name: z.string().min(1),
     teamName: z.string().min(1).optional(),
+    reason: batchFixtureOnboardingUnresolvedReasonSchema,
     candidates: z.array(
       z.object({ personId: apiIdentifierSchema, displayName: z.string().min(1) }).strict(),
     ),

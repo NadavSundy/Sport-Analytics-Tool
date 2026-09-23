@@ -4,13 +4,15 @@ import {
   type DatasetReleaseJob,
 } from '@sport-analytics/contracts';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { datasetReleaseArtifactUrl } from '../../api/public-read';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
+import { signInPathFor } from '../auth/auth-return';
+import { Breadcrumbs } from '../../components/NavigationPrimitives';
 import {
   AdminDatasetReleaseContractError,
   createAdministratorDatasetRelease,
@@ -48,6 +50,7 @@ function errorMessage(error: unknown): string {
 
 export function AdminDatasetReleasePage() {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   const client = useAuthenticatedApiClient();
   const [accessState, setAccessState] = useState<AccessState>({ kind: 'loading' });
   const [version, setVersion] = useState('');
@@ -148,12 +151,20 @@ export function AdminDatasetReleasePage() {
     }
   }
 
-  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isLoading && !isAuthenticated)
+    return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
 
   return (
     <section className="admin-release-page content-boundary" aria-labelledby="admin-release-title">
+      <Breadcrumbs
+        items={[
+          { label: 'Administration', to: '/admin' },
+          { label: 'Data governance', to: '/admin' },
+          { label: 'Publish dataset release', to: '#' },
+        ]}
+      />
       <header className="page-heading admin-release-page__heading">
-        <p className="eyebrow">Administrator workspace</p>
+        <p className="eyebrow">Administration</p>
         <h1 id="admin-release-title">Publish dataset release</h1>
         <p>
           Generate a versioned snapshot of published accepted deliveries and make it available to

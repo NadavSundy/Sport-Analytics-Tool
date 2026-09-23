@@ -114,6 +114,25 @@ Fixtures are identified by the Cricsheet match identifier, retained as
 `source_ref`, so that a resubmitted or corrected match file is recognised as the
 same fixture.
 
+`fixture.first_seen_in` references the accepted submission that first brought the
+fixture into the database. It is not decoration: every public read joins through
+it and requires that submission to be `accepted`, so a fixture whose
+`first_seen_in` is null is absent from fixture statistics, participant fixture
+history, leaderboards and provenance, however many deliveries it holds. Two
+writers set it, and neither ever overwrites a value already present:
+
+- the corpus importer, when it creates a fixture it has not seen; and
+- batch publication, for a fixture created by the reviewer canonical-fixture
+  path (issue #584), which has no submission of its own until its deliveries
+  publish.
+
+**The submission it names covers a chunk, not a batch.** Publication inserts one
+submission per fixture per chunk, and the column is filled by the first chunk to
+reach that fixture, so its `event_count` is that chunk's count rather than the
+fixture's total. Nothing reads it that way today: the read paths use it only to
+establish that an accepted submission exists. Treat it as the answer to "was this
+fixture ever published?", not as a count of anything.
+
 ---
 
 ## 3. Corrections
@@ -299,6 +318,18 @@ Intermediate persistence, so they are no longer future schema concepts.
   asynchronous generation of checksum-backed dataset artifacts in private object storage.
 - **External API consumers.** Consumer/key persistence and usage accounting support administrator
   key management, per-minute rate limits and UTC daily quotas.
+- **Participant onboarding tasks.** `batch_participant_onboarding_task` records each participant a
+  reviewer-created fixture could not onboard deterministically, the reason it needs a decision, and
+  the candidates that make it actionable (issue #708). A row is the unit of outstanding onboarding
+  work: while any is `outstanding`, the batch is kept `awaiting_review` rather than rejected, so a
+  reviewer is never left with work to do and no batch to do it on.
+
+  **A decision must address a task by its `participant_key`, never by re-deriving a key from what
+  the decision supplies.** The key is the source identifier where one was submitted and the name
+  and team otherwise, so answering a `no_durable_identifier` task _with_ an identifier changes the
+  key that would be derived, from `name:…` to `source:…`. A decision that re-derived it would match
+  no existing task: the original would stay outstanding for ever and hold the batch in
+  `awaiting_review` permanently, which is the mirror image of the defect the table exists to fix.
 
 The migration history under `database/migrations/` is authoritative for the exact columns,
 constraints and indexes added after the original model approval.
@@ -422,3 +453,5 @@ The Issue #297 Intermediate database-documentation audit was reviewed and edited
 The issue #623 extras constraints were documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #623 wide-run rule, ADR-014, was documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #592 participant statistics data versions and aggregate snapshots were documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #708 `fixture.first_seen_in` description was added with the assistance of
+Claude-Code[Claude Opus 5].

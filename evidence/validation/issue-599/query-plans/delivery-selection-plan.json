@@ -1,0 +1,47 @@
+{
+  "rows": 12240,
+  "before": {
+    "executionMs": 89.989,
+    "nodes": [
+      "Unique",
+      "Sort",
+      "Nested Loop",
+      "Nested Loop",
+      "Nested Loop",
+      "Aggregate",
+      "Limit",
+      "Sort",
+      "Nested Loop",
+      "Hash Join",
+      "Seq Scan",
+      "Hash",
+      "Seq Scan",
+      "Index Only Scan",
+      "Bitmap Heap Scan",
+      "Bitmap Index Scan",
+      "Index Scan",
+      "Index Scan"
+    ]
+  },
+  "after": {
+    "executionMs": 66.324,
+    "nodes": [
+      "Nested Loop",
+      "Nested Loop",
+      "Nested Loop",
+      "Aggregate",
+      "Limit",
+      "Sort",
+      "Nested Loop",
+      "Hash Join",
+      "Seq Scan",
+      "Hash",
+      "Seq Scan",
+      "Index Only Scan",
+      "Bitmap Heap Scan",
+      "Bitmap Index Scan",
+      "Index Scan",
+      "Index Scan"
+    ]
+  }
+}

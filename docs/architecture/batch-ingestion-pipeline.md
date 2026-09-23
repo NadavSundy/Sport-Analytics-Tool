@@ -231,19 +231,19 @@ _Satisfies acceptance criterion 1._
 
 ### 4.1 Batch states
 
-| State                  | Meaning                                                                                            | Terminal |
-| ---------------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `received`             | Request accepted, batch record created. No payload stored.                                         | No       |
-| `stored`               | Payload written to object storage, checksum recorded.                                              | No       |
-| `validating`           | A worker holds a lease and is expanding and validating items.                                      | No       |
-| `rejected`             | Validation completed; no item is publishable.                                                      | Yes      |
-| `awaiting_review`      | Validation completed; at least one item accepted. Reviewer decision required.                      | No       |
-| `correction_requested` | A reviewer returned the immutable source for correction; a corrected upload uses a new batch.      | Yes      |
-| `publishing`           | Reviewer approved; accepted items are being written to the event tables.                           | No       |
-| `published`            | All accepted items written.                                                                        | Yes      |
-| `partially_published`  | Publication completed with at least one accepted item failing to write. Operator action required.  | Yes      |
-| `failed`               | Processing stopped through infrastructure failure after the retry budget was exhausted. Resumable. | No       |
-| `superseded`           | Replaced by a later batch carrying the same idempotency key.                                       | Yes      |
+| State                  | Meaning                                                                                             | Terminal |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | -------- |
+| `received`             | Request accepted, batch record created. No payload stored.                                          | No       |
+| `stored`               | Payload written to object storage, checksum recorded.                                               | No       |
+| `validating`           | A worker holds a lease and is expanding and validating items.                                       | No       |
+| `rejected`             | Validation completed; no item is publishable and no reviewer decision remains.                      | No       |
+| `awaiting_review`      | Validation completed; an item is accepted or a reviewer decision remains. Reviewer action required. | No       |
+| `correction_requested` | A reviewer returned the immutable source for correction; a corrected upload uses a new batch.       | Yes      |
+| `publishing`           | Reviewer approved; accepted items are being written to the event tables.                            | No       |
+| `published`            | All accepted items written.                                                                         | Yes      |
+| `partially_published`  | Publication completed with at least one accepted item failing to write. Operator action required.   | Yes      |
+| `failed`               | Processing stopped through infrastructure failure after the retry budget was exhausted. Resumable.  | No       |
+| `superseded`           | Replaced by a later batch carrying the same idempotency key.                                        | Yes      |
 
 ### 4.2 Item states
 
@@ -258,9 +258,10 @@ _Satisfies acceptance criterion 1._
 ### 4.3 Permitted transitions
 
 ```text
-received ──▶ stored ──▶ validating ──┬──▶ rejected
+received ──▶ stored ──▶ validating ──┬──▶ rejected ──▶ stored        (reviewer decision)
                                      └──▶ awaiting_review ──┬──▶ publishing ──┬──▶ published
                                                            ├──▶ rejected
+                                                           ├──▶ stored        (reviewer decision)
                                                            └──▶ correction_requested
                                                                            └──▶ partially_published
 
@@ -271,10 +272,23 @@ any non-terminal ──▶ superseded
 
 A transition not listed above must be rejected by the state machine and recorded as an integrity error.
 
+**`rejected` is not terminal.** It was described as terminal until issue #708, and the
+implementation never matched: a reviewer decision — a reference mapping, or a canonical fixture
+decision — has always been accepted from `rejected`, `awaiting_review` or `correction_requested`,
+and returns the batch to `stored` so that validation runs again over the decision. The table and
+the diagram above now say so.
+
+The distinction that matters is not whether a state is final but whether a reviewer still has a
+move. `rejected` means validation found nothing publishable **and** no decision remains to be made.
+While a decision does remain — an unresolved fixture carrying a complete proposal (issue #695), or
+an outstanding participant onboarding task (issue #708) — validation finishes in `awaiting_review`
+even with nothing accepted, because a batch a reviewer can still act on must be somewhere they can
+still find it.
+
 ### 4.4 Requirements
 
 1. A batch state transition must be written in the same transaction as the work that caused it.
-2. A batch in a terminal state may not transition, except that `rejected` and `published` may be superseded under section 8.4.
+2. A batch in a terminal state may not transition, except that `published` may be superseded under section 8.4. `rejected` is not terminal: it may be superseded, and a reviewer decision returns it to `stored` for revalidation.
 3. Every transition must be recorded in an append-only audit record carrying the actor, the timestamp and the reason.
 
 ---
@@ -811,3 +825,5 @@ ChatGPT-Web[GPT-5.6 Sol].
 The Issue #539 correction-resubmission lifecycle was updated with the assistance of Codex[GPT-5].
 The Issue #540 durable asynchronous publication and final season-scale acceptance update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].
+The issue #708 batch state-machine correction, recording that `rejected` is not terminal and that
+outstanding reviewer work defers rejection, was made with the assistance of Claude-Code[Claude Opus 5].

@@ -18,4 +18,6 @@ Work is not done until the acceptance criteria are met, tests pass, the code is 
 
 ## AI-assisted work
 
-Where AI generated or substantially changed code, add an `Assisted-by` trailer to the commit message and update `evidence/ai/ai-usage-register.csv`.
+Where AI generated or substantially changed code, add an `Assisted-by` trailer to the commit message and update your own register at `evidence/ai/registers/<member>.csv`.
+
+See [`evidence/ai/registers/README.md`](evidence/ai/registers/README.md) for the columns and the rules that apply to them. It also records why the single shared register at `evidence/ai/ai-usage-register.csv` is being retired: every member edited it, it conflicted on almost every merge, and it was corrupted three times. Entries remain in both files until every member has created their own, after which the shared register is removed. Add new entries to your own register, not to the shared one.

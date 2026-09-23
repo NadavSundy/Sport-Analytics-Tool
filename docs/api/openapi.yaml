@@ -6495,6 +6495,54 @@ components:
         referencePath: { type: string, minLength: 1, maxLength: 1000 }
         decisionKey: { type: string, minLength: 1, maxLength: 255 }
 
+    BatchFixtureOnboardingUnresolvedParticipant:
+      type: object
+      additionalProperties: false
+      required: [name, reason, candidates]
+      description: >-
+        A participant named by the batch that could not be added to the new fixture's squad.
+        A participant is never matched on a name alone, so each of these is a decision for a
+        reviewer rather than a match the platform declined to guess at.
+      properties:
+        name: { type: string, minLength: 1 }
+        teamName: { type: string, minLength: 1 }
+        reason:
+          type: string
+          description: >-
+            Which decision the reviewer has to make. `team_not_recognised`: the submitted team is
+            missing or is not one of the fixture's two teams, so the team must be chosen.
+            `no_durable_identifier`: no source identifier was submitted and at most one existing
+            person carries the name, so a registry identifier must be supplied or the single
+            candidate confirmed. `ambiguous_name`: the name belongs to more than one existing
+            person, so a candidate must be chosen. `identifier_not_found`: an application
+            identifier was supplied but names no existing person.
+          enum: [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+        candidates:
+          type: array
+          description: Existing people sharing the submitted name, by display name or alias.
+          items:
+            type: object
+            additionalProperties: false
+            required: [personId, displayName]
+            properties:
+              personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              displayName: { type: string, minLength: 1 }
+
+    BatchFixtureOnboardingSummary:
+      type: object
+      additionalProperties: false
+      required: [inningsCreated, squadCreated, unresolvedParticipants]
+      description: >-
+        What creating the canonical fixture onboarded deterministically, and what it could not.
+        A reviewer-approved proposal carries fixture-level facts only, so the innings and squad
+        the fixture needs are recovered from the deliveries that named them.
+      properties:
+        inningsCreated: { type: integer, minimum: 0 }
+        squadCreated: { type: integer, minimum: 0 }
+        unresolvedParticipants:
+          type: array
+          items: { $ref: '#/components/schemas/BatchFixtureOnboardingUnresolvedParticipant' }
+
     BatchReferenceMappingReceipt:
       type: object
       additionalProperties: false
@@ -6505,6 +6553,13 @@ components:
         status: { type: string, enum: [queued, applied] }
         statusUrl: { type: string, pattern: '^/api/v1/batches/' }
         submittedAt: { type: string, format: date-time }
+        onboarding:
+          allOf: [{ $ref: '#/components/schemas/BatchFixtureOnboardingSummary' }]
+          description: >-
+            Present on a canonical fixture decision. A repeat decision for a fixture that already
+            exists reports what it was able to add this time and what still needs a reviewer, so
+            the counts describe that decision rather than the fixture's whole history. Absent on
+            an ordinary reference mapping, which onboards nothing.
 
     BatchReferenceMappingResponse:
       type: object
