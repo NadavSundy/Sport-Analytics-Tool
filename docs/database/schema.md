@@ -114,6 +114,25 @@ Fixtures are identified by the Cricsheet match identifier, retained as
 `source_ref`, so that a resubmitted or corrected match file is recognised as the
 same fixture.
 
+`fixture.first_seen_in` references the accepted submission that first brought the
+fixture into the database. It is not decoration: every public read joins through
+it and requires that submission to be `accepted`, so a fixture whose
+`first_seen_in` is null is absent from fixture statistics, participant fixture
+history, leaderboards and provenance, however many deliveries it holds. Two
+writers set it, and neither ever overwrites a value already present:
+
+- the corpus importer, when it creates a fixture it has not seen; and
+- batch publication, for a fixture created by the reviewer canonical-fixture
+  path (issue #584), which has no submission of its own until its deliveries
+  publish.
+
+**The submission it names covers a chunk, not a batch.** Publication inserts one
+submission per fixture per chunk, and the column is filled by the first chunk to
+reach that fixture, so its `event_count` is that chunk's count rather than the
+fixture's total. Nothing reads it that way today: the read paths use it only to
+establish that an accepted submission exists. Treat it as the answer to "was this
+fixture ever published?", not as a count of anything.
+
 ---
 
 ## 3. Corrections
@@ -422,3 +441,5 @@ The Issue #297 Intermediate database-documentation audit was reviewed and edited
 The issue #623 extras constraints were documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #623 wide-run rule, ADR-014, was documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #592 participant statistics data versions and aggregate snapshots were documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #708 `fixture.first_seen_in` description was added with the assistance of
+Claude-Code[Claude Opus 5].
