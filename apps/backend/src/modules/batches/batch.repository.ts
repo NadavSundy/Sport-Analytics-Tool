@@ -292,9 +292,13 @@ interface BatchReferenceMappingRecord {
   decidedAt: string;
 }
 
+type FixtureOnboardingUnresolvedReason =
+  'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
+
 interface FixtureOnboardingUnresolvedParticipant {
   name: string;
   teamName?: string;
+  reason: FixtureOnboardingUnresolvedReason;
   candidates: { personId: string; displayName: string }[];
 }
 
@@ -911,9 +915,38 @@ async function onboardFixtureCanonicalContext(
   let squadCreated = 0;
   const unresolvedParticipants: FixtureOnboardingUnresolvedParticipant[] = [];
 
+  /**
+   * A participant is identified to the reviewer by its name where one was
+   * submitted, and otherwise by the source identifier that was. One of the two
+   * is always present: a participant carrying neither is not collected in the
+   * first place (`participantKey` in `fixture-onboarding.ts`).
+   */
+  const reportedName = (participant: FixtureOnboardingParticipant): string =>
+    participant.name ?? participant.sourceId ?? '';
+
+  const report = (
+    participant: FixtureOnboardingParticipant,
+    reason: FixtureOnboardingUnresolvedReason,
+    candidates: { personId: string; displayName: string }[] = [],
+  ): void => {
+    unresolvedParticipants.push({
+      name: reportedName(participant),
+      ...(participant.teamName ? { teamName: participant.teamName } : {}),
+      reason,
+      candidates,
+    });
+  };
+
   for (const participant of participants) {
     const teamId = participant.teamName ? teamIdByName.get(participant.teamName) : undefined;
-    if (!teamId) continue;
+    if (!teamId) {
+      // Issue #708. This used to `continue` silently, so a participant whose
+      // team was missing or was not one of the fixture's two teams vanished:
+      // no squad row, no report, and nothing for a reviewer to act on. Which
+      // team a participant belongs to is a decision, not something to infer.
+      report(participant, 'team_not_recognised');
+      continue;
+    }
 
     let personId: string | undefined;
 
@@ -951,12 +984,13 @@ async function onboardFixtureCanonicalContext(
             )
           ).rows[0]?.personId;
       }
-      if (!personId && participant.name) {
-        unresolvedParticipants.push({
-          name: participant.name,
-          ...(participant.teamName ? { teamName: participant.teamName } : {}),
-          candidates: [],
-        });
+      if (!personId) {
+        // An identifier was submitted but names nothing this platform holds:
+        // an application identifier for a person that does not exist, or a
+        // namespace the platform does not compare against. Reported whether or
+        // not a name came with it, because the identifier alone tells the
+        // reviewer which participant this is.
+        report(participant, 'identifier_not_found');
         continue;
       }
     } else if (participant.name) {
@@ -974,18 +1008,27 @@ async function onboardFixtureCanonicalContext(
          WHERE p.display_name = $1 OR pa.name = $1`,
         [participant.name],
       );
-      unresolvedParticipants.push({
-        name: participant.name,
-        ...(participant.teamName ? { teamName: participant.teamName } : {}),
-        candidates: aliasMatches.rows.map((row) => ({
-          personId: row.personId,
-          displayName: row.displayName,
-        })),
-      });
+      const candidates = aliasMatches.rows.map((row) => ({
+        personId: row.personId,
+        displayName: row.displayName,
+      }));
+      // More than one person answering to the name is a different decision
+      // from none or one: the reviewer must choose between them rather than
+      // supply or confirm an identifier.
+      report(
+        participant,
+        candidates.length > 1 ? 'ambiguous_name' : 'no_durable_identifier',
+        candidates,
+      );
       continue;
     }
 
-    if (!personId) continue;
+    // Unreachable while a collected participant carries a name or an
+    // identifier, and every branch above either resolves one or reports it.
+    if (!personId) {
+      report(participant, 'no_durable_identifier');
+      continue;
+    }
 
     const inserted = await executeQuery(
       executor,

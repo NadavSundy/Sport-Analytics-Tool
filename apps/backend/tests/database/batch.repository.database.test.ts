@@ -3378,11 +3378,13 @@ describe.sequential('batch repository database integration', () => {
           {
             name: `${sourcePrefix} New Striker`,
             teamName: battingTeamName,
+            reason: 'no_durable_identifier',
             candidates: [],
           },
           {
             name: `${sourcePrefix} Ambiguous Name`,
             teamName: battingTeamName,
+            reason: 'ambiguous_name',
             candidates: expect.arrayContaining([
               expect.objectContaining({ displayName: `${sourcePrefix} Ambiguous Name` }),
             ]),
@@ -3432,6 +3434,99 @@ describe.sequential('batch repository database integration', () => {
       );
       // Confirms no person was silently fabricated for the unresolved name.
       expect(newStrikerPersonCount.rows[0]!.count).toBe('0');
+    });
+  });
+
+  test('reports a participant whose team is not one of the fixture teams (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Gap B Batting`;
+      const bowlingTeamName = `${sourcePrefix} Gap B Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      // createBatchAndQueueValidation, not createBatch: the decision reuses
+      // queueReferenceMapping, which resets this batch's batch.validate job.
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-gap-b`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+      const sourceRef = `${sourcePrefix}-gap-b-fixture`;
+
+      const decision = await repository.createCanonicalFixtureAndQueueMapping({
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'gap-b',
+        sourceRef,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [battingTeamName, bowlingTeamName],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+        innings: [{ ordinal: 0, battingTeamName }],
+        participants: [
+          // A team that is not one of the fixture's two.
+          {
+            sourceId: `cricsheet:participant:${sourcePrefix}-wrong-team`,
+            name: `${sourcePrefix} Wrong Team`,
+            teamName: `${sourcePrefix} Some Other Club`,
+          },
+          // No team submitted at all.
+          {
+            sourceId: `cricsheet:participant:${sourcePrefix}-no-team`,
+            name: `${sourcePrefix} No Team`,
+          },
+        ],
+      });
+
+      // Both used to be dropped in silence: no squad row, no report, and
+      // nothing a reviewer could act on.
+      expect(decision.onboarding?.unresolvedParticipants).toEqual(
+        expect.arrayContaining([
+          {
+            name: `${sourcePrefix} Wrong Team`,
+            teamName: `${sourcePrefix} Some Other Club`,
+            reason: 'team_not_recognised',
+            candidates: [],
+          },
+          {
+            name: `${sourcePrefix} No Team`,
+            reason: 'team_not_recognised',
+            candidates: [],
+          },
+        ]),
+      );
+      expect(decision.onboarding?.unresolvedParticipants).toHaveLength(2);
+      expect(decision.onboarding?.squadCreated).toBe(0);
+
+      // Neither was fabricated as a person, and neither reached the squad.
+      const fabricated = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM person WHERE source_ref = ANY($1::text[])`,
+        [[`${sourcePrefix}-wrong-team`, `${sourcePrefix}-no-team`]],
+      );
+      expect(fabricated.rows[0]!.count).toBe('0');
     });
   });
 });
