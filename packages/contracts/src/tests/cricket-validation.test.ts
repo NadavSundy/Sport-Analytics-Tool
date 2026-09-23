@@ -41,6 +41,13 @@ function validEvent(overrides: Partial<CricketValidationEvent> = {}): CricketVal
 }
 
 describe('versioned cricket business-rule validation', () => {
+  test('does not require a display ball number for canonical validation', () => {
+    const event = validEvent();
+    delete (event as Partial<CricketValidationEvent>).ballNumber;
+
+    expect(validateCricketBusinessRules([event], context)).toEqual([]);
+  });
+
   test('returns stable rule metadata and accumulates team-context errors', () => {
     const results = validateCricketBusinessRules(
       [

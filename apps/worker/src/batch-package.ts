@@ -41,7 +41,7 @@ interface BatchCandidate {
     competition: unknown;
     season: unknown;
   };
-  fixture: { sourceId?: unknown; context?: unknown; proposal?: unknown };
+  fixture: { sourceId?: unknown; context?: unknown; proposal?: unknown; season?: unknown };
   innings: { sourceId?: unknown; context?: unknown; powerplays?: unknown };
   event: unknown;
 }
@@ -56,7 +56,10 @@ export interface NormalisedCandidate {
     SeasonUploadPackage,
     'contractVersion' | 'packageId' | 'competition' | 'season'
   >;
-  fixture: Pick<SeasonUploadPackage['fixtures'][number], 'sourceId' | 'context' | 'proposal'>;
+  fixture: Pick<
+    SeasonUploadPackage['fixtures'][number],
+    'sourceId' | 'context' | 'proposal' | 'season'
+  >;
   innings: Pick<
     SeasonUploadPackage['fixtures'][number]['innings'][number],
     'sourceId' | 'context' | 'powerplays'
@@ -323,6 +326,7 @@ async function* jsonCandidates(
               sourceId: fixture.sourceId,
               context: fixture.context,
               proposal: fixture.proposal,
+              season: fixture.season,
             },
             innings: {
               sourceId: innings.sourceId,
@@ -515,7 +519,8 @@ const REQUIRED_CSV_COLUMNS = [
   'battingTeamName',
   'eventId',
   'occurrenceSequence',
-  'ballLabel',
+  'overNumber',
+  'positionInOver',
   'strikerName',
   'nonStrikerName',
   'bowlerName',
@@ -605,7 +610,7 @@ async function* csvCandidates(
       occurrenceSequence: numeric(row.occurrenceSequence),
       overNumber: numeric(row.overNumber),
       positionInOver: numeric(row.positionInOver),
-      ballLabel: optional(row.ballLabel),
+      ...(optional(row.ballLabel) === undefined ? {} : { ballLabel: optional(row.ballLabel) }),
       operation: optional(row.operation) ?? 'upsert',
       correctsEventId: optional(row.correctsEventId),
       striker: reference(row.strikerSourceId, row.strikerName),
@@ -692,6 +697,7 @@ const ndjsonFixtureSchema = z
     fixtureKey: z.string().trim().min(1),
     sourceId: z.unknown().optional(),
     context: z.unknown().optional(),
+    season: z.unknown().optional(),
     powerplays: z.unknown().optional(),
   })
   .passthrough();
@@ -890,6 +896,7 @@ async function* ndjsonCandidates(
           sourceId: fixture.sourceId,
           context: fixture.context,
           proposal: fixture.proposal,
+          season: fixture.season,
         },
         innings: {
           sourceId: inningsRecord.sourceId,
@@ -978,6 +985,7 @@ function normaliseCandidate(candidate: BatchCandidate): {
         sourceId: parsed.fixtures[0]!.sourceId,
         context: parsed.fixtures[0]!.context,
         proposal: parsed.fixtures[0]!.proposal,
+        season: parsed.fixtures[0]!.season,
       },
       innings: {
         sourceId: parsed.fixtures[0]!.innings[0]!.sourceId,
@@ -995,7 +1003,11 @@ class BatchIntegrityScanner {
   private readonly sequencesByInnings = new Map<string, Set<number>>();
 
   add(candidate: NormalisedCandidate): SourceFault | null {
-    const fingerprint = JSON.stringify(candidate.packageEnvelope);
+    const fingerprint = JSON.stringify({
+      contractVersion: candidate.packageEnvelope.contractVersion,
+      packageId: candidate.packageEnvelope.packageId,
+      competition: candidate.packageEnvelope.competition,
+    });
     if (this.envelopeFingerprint === null) {
       this.envelopeFingerprint = fingerprint;
     } else if (this.envelopeFingerprint !== fingerprint) {
@@ -1056,8 +1068,7 @@ class ReferencePackageBuilder {
       this.packageValue.contractVersion !== candidate.packageEnvelope.contractVersion ||
       this.packageValue.packageId !== candidate.packageEnvelope.packageId ||
       JSON.stringify(this.packageValue.competition) !==
-        JSON.stringify(candidate.packageEnvelope.competition) ||
-      JSON.stringify(this.packageValue.season) !== JSON.stringify(candidate.packageEnvelope.season)
+        JSON.stringify(candidate.packageEnvelope.competition)
     ) {
       return {
         fault: {

@@ -52,6 +52,55 @@ interface ReferenceMappingRow {
   canonicalId: string;
 }
 
+export function isReviewerActionableFixtureResolution(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  const resolution = value as {
+    entityType?: unknown;
+    state?: unknown;
+    submittedReference?: unknown;
+  };
+  if (resolution.entityType !== 'fixture' || resolution.state !== 'unresolved') return false;
+
+  const submitted = resolution.submittedReference;
+  if (!submitted || typeof submitted !== 'object') return false;
+
+  const fixture = submitted as { sourceId?: unknown; proposal?: unknown };
+  if (
+    typeof fixture.sourceId !== 'string' ||
+    !fixture.proposal ||
+    typeof fixture.proposal !== 'object'
+  ) {
+    return false;
+  }
+
+  // Proposal metadata has already crossed the package contract boundary before
+  // reaching resolved_references. This guard rejects legacy/malformed evidence
+  // without duplicating the complete upload contract in the worker.
+  const proposal = fixture.proposal as Record<string, unknown>;
+  return (
+    typeof proposal.endDate === 'string' &&
+    typeof proposal.matchType === 'string' &&
+    typeof proposal.teamType === 'string' &&
+    typeof proposal.gender === 'string' &&
+    typeof proposal.ballsPerOver === 'number' &&
+    Number.isInteger(proposal.ballsPerOver) &&
+    proposal.ballsPerOver > 0 &&
+    typeof proposal.outcome === 'string' &&
+    typeof proposal.sourceVersion === 'string' &&
+    typeof proposal.sourceRevision === 'number' &&
+    Number.isInteger(proposal.sourceRevision) &&
+    proposal.sourceRevision >= 0
+  );
+}
+
+export function finalBatchValidationState(
+  accepted: number,
+  hasReviewerActionableProposal: boolean,
+): 'awaiting_review' | 'rejected' {
+  return accepted > 0 || hasReviewerActionableProposal ? 'awaiting_review' : 'rejected';
+}
+
 export function referenceOverridesForChunk(
   mappings: readonly ReferenceMappingRow[],
   referencePathByOrdinal: ReadonlyMap<number, string>,
@@ -265,29 +314,11 @@ function canonicalWickets(candidate: NormalisedCandidate, references: Record<str
 
 function deriveCoordinates(
   candidate: NormalisedCandidate,
-  counters: Map<string, number>,
 ): { overNumber: number; positionInOver: number } | null {
-  const explicitOver = candidate.event.overNumber;
-  const labelMatch = candidate.event.ballLabel
-    ? /^(\d{1,5})\./.exec(candidate.event.ballLabel)
-    : null;
-  const overNumber = explicitOver ?? (labelMatch ? Number(labelMatch[1]) : undefined);
-  if (
-    overNumber === undefined ||
-    !Number.isInteger(overNumber) ||
-    overNumber < 0 ||
-    overNumber > 32_767
-  ) {
-    return null;
-  }
-
-  const key = `${candidate.inningsKey}|${String(overNumber)}`;
-  const next = counters.get(key) ?? 0;
-  const positionInOver = candidate.event.positionInOver ?? next;
-  counters.set(key, Math.max(next, positionInOver + 1));
-  if (!Number.isInteger(positionInOver) || positionInOver < 0 || positionInOver > 32_767)
-    return null;
-  return { overNumber, positionInOver };
+  const { overNumber, positionInOver } = candidate.event;
+  return overNumber === undefined || positionInOver === undefined
+    ? null
+    : { overNumber, positionInOver };
 }
 
 function referenceResolutionFailureCode(resolvedReferences: Record<string, unknown>): string {
@@ -352,7 +383,7 @@ export function prepareItem(
     sequenceNumber: candidate.event.occurrenceSequence,
     overNumber: coordinates.overNumber,
     positionInOver: coordinates.positionInOver,
-    ballNumber: candidate.event.ballLabel,
+    ...(candidate.event.ballLabel === undefined ? {} : { ballNumber: candidate.event.ballLabel }),
     strikerId,
     nonStrikerId,
     bowlerId,
@@ -1467,11 +1498,30 @@ export function createBatchValidationJobHandler(
       );
       if (lease.rowCount !== 1) throw new LeaseBusyError();
       const countResult = await client.query<{ accepted: string }>(
-        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM batch_item WHERE batch_id=$1::bigint`,
+        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM
+         batch_item WHERE batch_id=$1::bigint`,
         [claimResult.batchId],
       );
       const accepted = Number(countResult.rows[0]?.accepted ?? 0);
-      const target = accepted > 0 ? 'awaiting_review' : 'rejected';
+
+      let hasReviewerActionableProposal = false;
+      if (accepted === 0) {
+        const proposalResult = await client.query<{ fixtureResolution: unknown }>(
+          `SELECT DISTINCT resolved_references->'fixture' AS "fixtureResolution"
+             FROM batch_item
+            WHERE batch_id=$1::bigint
+              AND state='rejected'
+              AND rejection_code='REFERENCE_RESOLUTION_FAILED'
+              AND reference_resolution_state='unresolved'
+              AND resolved_references ? 'fixture'`,
+          [claimResult.batchId],
+        );
+        hasReviewerActionableProposal = proposalResult.rows.some(({ fixtureResolution }) =>
+          isReviewerActionableFixtureResolution(fixtureResolution),
+        );
+      }
+
+      const target = finalBatchValidationState(accepted, hasReviewerActionableProposal);
       await client.query(
         `UPDATE batch SET state=$2::batch_state,item_count=$3::integer WHERE batch_id=$1::bigint`,
         [claimResult.batchId, target, eventCount],
@@ -1610,7 +1660,6 @@ export function createBatchValidationJobHandler(
       await recordSourceFaults(claimResult, scan.sourceFaults, scan.eventCount);
       if (signal.aborted) throw new Error('Worker shutdown interrupted batch validation.');
 
-      const counters = new Map<string, number>();
       const cricketValidationState = createCricketValidationState();
       const dismissalKinds = await loadDismissalKinds();
       await rehydrateCricketValidationState(
@@ -1633,8 +1682,7 @@ export function createBatchValidationJobHandler(
         const lastCandidateOrdinal = Math.max(
           ...candidateChunk.map((candidate) => candidate.ordinal),
         );
-        // Business-rule sequencing checks and ball-position derivation are
-        // order-sensitive: they must see events in occurrence order
+        // Business-rule sequencing checks are order-sensitive: they must see events in occurrence order
         // (occurrenceSequence), not the order they happened to arrive in the
         // source file or stream (#588). Reordering is scoped to one chunk, so
         // a shuffled innings whose events span more than one chunk boundary
@@ -1665,7 +1713,7 @@ export function createBatchValidationJobHandler(
         const prepared: PreparedItem[] = [];
 
         for (const candidate of orderedChunk) {
-          const coordinates = deriveCoordinates(candidate, counters);
+          const coordinates = deriveCoordinates(candidate);
           const path = referenceChunk.referencePathByOrdinal.get(candidate.ordinal);
           const resolved = path ? resolutionByPath.get(path) : undefined;
           if (!coordinates) {
@@ -1675,7 +1723,8 @@ export function createBatchValidationJobHandler(
               filePath: candidate.filePath,
               rowNumber: candidate.rowNumber,
               fieldPath: 'overNumber',
-              message: 'Event needs an over number and deterministic position within the over.',
+              message:
+                'Event requires explicit overNumber and positionInOver canonical coordinates.',
             });
             continue;
           }
@@ -1767,13 +1816,7 @@ export function createBatchValidationJobHandler(
 
       if (!scan.fatal) {
         for await (const candidate of normalisedBatchCandidates(openSource, source.mediaType)) {
-          // Rebuild deterministic in-over counters across the already completed
-          // prefix before skipping it. This makes resume produce the same
-          // coordinates as an uninterrupted run.
           if (candidate.ordinal <= claimResult.lastOrdinal) {
-            if (!scan.rejectedOrdinals.has(candidate.ordinal)) {
-              deriveCoordinates(candidate, counters);
-            }
             continue;
           }
           if (scan.rejectedOrdinals.has(candidate.ordinal)) {

@@ -8,6 +8,10 @@ directly as Node PID 1, listens on port `3000`, runs as the non-root `node` user
 Supabase CA certificate, and handles `SIGINT`/`SIGTERM` through the existing Express and PostgreSQL
 shutdown path.
 
+The current deployed API is available at
+`https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io`, with
+business endpoints under `/api/v1`.
+
 The existing Azure App Service `statsthegame-api-dev` remains intact and deployable during the
 Container Apps acceptance period. It is an independent rollback target, not part of the normal
 main-branch deployment. Do not retire, stop, or reconfigure it until the acceptance checklist below
@@ -41,8 +45,8 @@ below.
 
 ## Capacity and scaling
 
-The initial API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=1`, and `maxReplicas=1`.
-Because the minimum is one, scale-to-zero is disabled.
+The API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=0`, and `maxReplicas=1`. The development deployment scales to zero while idle to reduce Azure consumption cost. The first request after an idle period may incur Container Apps cold-start latency. `maxReplicas=1` preserves process-local rate-limit semantics until rate-limit state is externalised.
+Because the minimum is zero, the API can scale to zero while idle and wake when HTTP traffic arrives.
 
 The single-replica maximum is deliberate and temporary. Current API submitter and API-consumer
 per-minute rate limits use process-local `Map` state. Multiple replicas would weaken those limits by
@@ -114,6 +118,8 @@ For a validated backend-affecting commit on `main`, `Sport Analytics CI` perform
 
 ```text
 validated main commit
+  -> retrieve DATABASE_URL from the existing Key Vault secret reference into the migration step only
+  -> apply reviewed pending node-pg-migrate migrations; stop on failure
   -> Docker build from apps/backend/Dockerfile
   -> inert local container /api/v1/health smoke
   -> Azure login
@@ -122,13 +128,30 @@ validated main commit
   -> bounded wait for the active healthy revision using that exact image
   -> external HTTPS /api/v1/health smoke
   -> /api/v1/competitions?limit=1 database smoke
+  -> /api/v1/dataset-releases schema-dependent smoke
   -> success, otherwise failure
 ```
 
 The image reference uses the commit SHA and never `latest` as its authoritative deployment target.
 The database smoke is separate because `/api/v1/health` proves that the HTTP process is available but
 does not prove PostgreSQL-backed reads work. Any failed local smoke, deployment, readiness wait,
-health smoke, or database smoke fails the deployment job.
+health smoke, database smoke, or dataset-release schema smoke fails the deployment job.
+
+### Migration gate and recovery
+
+Before building or activating backend code, both the automatic Container Apps workflow and the manual
+App Service rollback workflow retrieve `DATABASE_URL` from the existing
+`AZURE_BACKEND_DATABASE_SECRET_URI` Key Vault reference. The value is captured only in the migration
+step's environment and is never printed or passed as a command-line argument. The workflow then runs
+`npm run db:migrate --workspace=@sport-analytics/backend`. This retains the committed
+`node-pg-migrate` ordering and fails the job if any pending migration cannot be applied. It does not
+run dataset-release generation or start a worker.
+
+A failed migration prevents the Container Apps revision deployment or rollback artifact deployment
+from starting. Investigate the named migration and database error in the CI log, correct the reviewed
+migration or the target database condition, and rerun the workflow. Do not automatically run a down
+migration or bypass the gate: recovery must be reviewed because the database may have been changed
+before the failure. A successful rerun logs the migration status and only then permits code activation.
 
 The workflow reuses `azure/login@v2` with the repository's Azure service-principal secret. It does
 not introduce a second authentication mechanism, ACR admin credentials, registry passwords, or
@@ -174,6 +197,8 @@ Auth redirect settings and the restored API endpoint before announcing rollback 
 - [ ] Bicep deployment completed and the expected SHA image revision became healthy within its bound.
 - [ ] External HTTPS `/api/v1/health` smoke passed.
 - [ ] `/api/v1/competitions?limit=1` database smoke passed.
+- [ ] Migration status was logged and completed before backend activation.
+- [ ] `/api/v1/dataset-releases` schema-dependent smoke passed without a 5xx response.
 - [ ] A failed deployment path demonstrably fails CI and leaves rollback decisions to operators.
 
 ### Manual acceptance evidence

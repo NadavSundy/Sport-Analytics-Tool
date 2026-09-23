@@ -14,9 +14,9 @@ unsupported versions rather than attempting a best-effort parse.
 
 The deployed frontend publishes these downloadable starter files:
 
-- [Canonical JSON template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-template.json)
-- [Spreadsheet CSV template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-template.csv)
-- [Multi-file manifest template](https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/season-upload-manifest-template.json)
+- [Canonical JSON template](https://sport-analytics-tool-web.pages.dev/season-upload-template.json)
+- [Spreadsheet CSV template](https://sport-analytics-tool-web.pages.dev/season-upload-template.csv)
+- [Multi-file manifest template](https://sport-analytics-tool-web.pages.dev/season-upload-manifest-template.json)
 
 The CSV is a spreadsheet-oriented flat view of the same values. Repeating
 fixture and innings context in each row is intentional: spreadsheet users do
@@ -83,6 +83,8 @@ three fielders, must be submitted in the JSON package.
             {
               "eventId": "cricsheet:delivery:1412526-1-1",
               "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
               "ballLabel": "0.1",
               "striker": { "context": { "name": "A. Batter" } },
               "nonStriker": { "context": { "name": "B. Batter" } },
@@ -117,7 +119,10 @@ returns, so no conversion applies in either direction.
 JSON-array position, CSV row number, manifest-file order, nor `ballLabel` is
 used as an identity or ordering key. A printed label is optional display data,
 so a no-ball or wide cannot change identity merely by repeating a legal-ball
-label.
+label. Every event supplies the zero-based canonical coordinates `overNumber`
+and `positionInOver`; neither coordinate is derived from a label or source-row
+order. When `ballLabel` is present it must use `<over>.<ball>` form and its over
+component must equal `overNumber`.
 
 ## Fixture proposals in version 1.1
 
@@ -270,3 +275,62 @@ the assistance of Codex[GPT-5]. The reference-mapping section was generated with
 the assistance of Codex[GPT-5].
 The Issue #587 source-only reference-resolution rules were documented with the
 assistance of Codex[GPT-5].
+
+## Multi-season back catalogues
+
+A back-catalogue package may contain fixtures from more than one season. The
+package-level `season` remains required as the backwards-compatible default.
+A fixture may add its own `season` reference; when present, that fixture-level
+season overrides the package default for fixture resolution and validation.
+
+This is an additive envelope extension. Existing single-season packages do not
+need to change.
+
+The following is an **envelope fragment**; innings/event payloads are omitted
+because their shape is unchanged.
+
+```json
+{
+  "contractVersion": "1.0",
+  "packageId": "provider:package:catalogue-2025-2026",
+  "competition": { "context": { "name": "Example Competition" } },
+  "season": { "context": { "name": "2025" } },
+  "fixtures": [
+    {
+      "context": {
+        "date": "2025-01-10",
+        "teams": [{ "context": { "name": "Alpha" } }, { "context": { "name": "Bravo" } }]
+      }
+    },
+    {
+      "season": { "context": { "name": "2026" } },
+      "context": {
+        "date": "2026-01-10",
+        "teams": [{ "context": { "name": "Alpha" } }, { "context": { "name": "Charlie" } }]
+      }
+    }
+  ]
+}
+```
+
+The effective season for a fixture is therefore:
+
+1. `fixture.season`, when supplied; otherwise
+2. the package-level `season`.
+
+The effective season participates in canonical fixture resolution. A legitimate
+season change inside a catalogue is not treated as an envelope mismatch merely
+because another fixture in the same package belongs to a different season.
+
+Idempotency, duplicate classification, review decisions, checkpointed
+publication, and batch summary counts continue to use the existing batch
+pipeline. Replaying the same source deliveries must not create additional
+published events. Validation and reference-resolution failures remain attached
+to the affected fixture/item so valid siblings are not hidden by a catalogue
+containing one bad fixture.
+
+For acceptance evidence, exercise at least two seasons, multiple fixtures in
+each season, one invalid fixture among valid fixtures, and a replay of the same
+catalogue after the first publication.
+
+AI Declaration: This Issue #589 edit was generated and reviewed with the assistance of ChatGPT-Web[GPT-5.6 Sol].

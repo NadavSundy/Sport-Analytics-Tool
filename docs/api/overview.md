@@ -23,10 +23,11 @@ The version-controlled API contract is published in the
 
 ## Live development API
 
-The deployed Sprint 2 development backend is documented at:
+The deployed development backend is hosted on Azure Container Apps:
 
-- **Base URL:** <https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net>
-- **Health check:** <https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/api/v1/health>
+- **Base URL:** <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io>
+- **API base URL:** <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1>
+- **Health check:** <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1/health>
 
 The deployment guides and Sprint evidence retain the deployment/acceptance trail. Availability is
 verified as part of milestone close-out rather than inferred from this documentation page.

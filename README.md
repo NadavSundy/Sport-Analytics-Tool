@@ -172,7 +172,9 @@ The Sport Analytics Tool uses Microsoft Azure for hosting.
 
 ### Backend
 
-URL: resolved from the Azure Container App external HTTPS FQDN after deployment
+URL: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io
+
+API base URL: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1
 
 - Platform: Azure Container Apps
 - Runtime: Node.js 22 LTS production container
@@ -183,12 +185,12 @@ URL: resolved from the Azure Container App external HTTPS FQDN after deployment
 
 ### Frontend
 
-URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/
+URL: https://sport-analytics-tool-web.pages.dev/
 
-- Platform: Azure App Service (Linux)
+- Platform: Cloudflare Pages
 - Runtime: Node.js 22 LTS
 - Environment: Development
-- Deployment: Azure App Service
+- Deployment: Gitea Actions with Wrangler
 - Built using Vite.
 
 ### Asynchronous ingestion worker
@@ -208,14 +210,14 @@ The deployment workflow will:
 1. install root workspace dependencies from `package-lock.json`;
 2. lint, type-check and test the affected workspace and shared contracts;
 3. build the frontend bundle or the backend production container from the root workspace;
-4. deploy the frontend to Azure App Service and the backend immutable container image to Azure Container Apps; and
+4. deploy the frontend to Cloudflare Pages and the backend immutable container image to Azure Container Apps; and
 5. retry content-aware health and database smoke checks against the deployed backend service.
 
 Deployment credentials are stored securely using repository Action Secrets.
 
 No deployment credentials are committed to source control.
 
-See [Azure frontend deployment](docs/deployment/azure-fronted.md) and
+See [Cloudflare Pages frontend deployment](docs/deployment/frontend-cloudflare-pages.md) and
 [Azure backend deployment](docs/deployment/azure-backend.md) for workflow triggers, required Gitea
 secrets, artifact contents and failure behaviour.
 

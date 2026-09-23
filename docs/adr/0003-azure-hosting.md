@@ -14,7 +14,22 @@ Use Azure App Service for application hosting.
 
 ## Status
 
-Accepted
+Superseded. Both original decisions below have since moved:
+
+> **Backend hosting superseded (issue #563).** The backend Express API moved from Azure App Service to
+> Azure Container Apps. `statsthegame-api-dev` (App Service) is retained only as a manual rollback path
+> during acceptance. See `docs/deployment/azure-backend.md` for the current backend hosting decision and
+> deployment process.
+
+> **Frontend hosting superseded, 19 September 2026 (issue #564).** The frontend's Azure App Service
+> decision below was superseded by a move to Cloudflare Pages: the built frontend is a static Vite
+> bundle with no server-side runtime, so it does not need App Service compute, and hosting it there
+> coupled its availability and cost to unnecessary compute. See
+> `docs/deployment/frontend-cloudflare-pages.md` for the current frontend hosting decision and
+> deployment process.
+
+The "Alternatives" and "Consequences" sections below are retained as the historical record of the
+original Sprint 1 decision and are not current guidance.
 
 ## Context
 

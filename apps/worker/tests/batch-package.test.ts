@@ -118,6 +118,8 @@ function jsonPackageWithEvents(
             events: events.map((event) => ({
               eventId: event.eventId,
               occurrenceSequence: event.occurrenceSequence,
+              overNumber: Number(event.ballLabel.split('.')[0]),
+              positionInOver: event.occurrenceSequence - 1,
               ballLabel: event.ballLabel,
               striker: { context: { name: 'Striker', team: { context: { name: 'Home' } } } },
               nonStriker: {
@@ -562,6 +564,32 @@ describe('CSV dismissal columns (#536)', () => {
 });
 
 describe('batch package streaming expansion', () => {
+  it('requires canonical coordinate columns in CSV and permits a blank display label', async () => {
+    const withoutOverHeader = header
+      .split(',')
+      .filter((column) => column !== 'overNumber')
+      .join(',');
+    const missingCoordinateScan = await scanBatchReferences(
+      async () => Readable.from(`${withoutOverHeader}\n${csvRow()}`),
+      'text/csv',
+    );
+    expect(missingCoordinateScan.sourceFaults).toEqual([
+      expect.objectContaining({
+        message: expect.stringMatching(/missing required columns: overNumber/i),
+      }),
+    ]);
+
+    const withoutLabel = csvRow().replace(',0.1,upsert,', ',,upsert,');
+    const chunk = await referenceChunkFor(`${header}\n${withoutLabel}`, 'text/csv');
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.events[0]).toMatchObject({
+      overNumber: 0,
+      positionInOver: 0,
+    });
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.events[0]).not.toHaveProperty(
+      'ballLabel',
+    );
+  });
+
   it('preserves correction metadata from CSV packages', async () => {
     const source = `${header}\n${csvRow(
       'Competition',
@@ -724,5 +752,224 @@ describe('batch package streaming expansion', () => {
 
     const referenceChunk = await referenceChunkFor(records, 'application/x-ndjson');
     expect(referenceChunk.referencePackage?.fixtures[0]?.innings[0]?.events).toHaveLength(1);
+  });
+});
+
+describe('multi-season back-catalogue staging (#589)', () => {
+  it('keeps two seasons and multiple fixtures per season in one staged JSON package', async () => {
+    const fixture = (id: string, date: string, home: string, away: string, season?: string) => ({
+      ...(season ? { season: { context: { name: season } } } : {}),
+      context: {
+        date,
+        teams: [{ context: { name: home } }, { context: { name: away } }],
+      },
+      innings: [
+        {
+          context: { ordinal: 0, battingTeam: { context: { name: home } } },
+          events: [
+            {
+              eventId: `test:delivery:issue589-${id}`,
+              occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
+              ballLabel: '0.1',
+              striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
+              nonStriker: {
+                context: { name: `Non-striker ${id}`, team: { context: { name: home } } },
+              },
+              bowler: { context: { name: `Bowler ${id}`, team: { context: { name: away } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            },
+          ],
+        },
+      ],
+    });
+
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:issue589-multi-season',
+      competition: { context: { name: 'Premier T20' } },
+      // Existing single-season uploads continue to use this package default.
+      season: { context: { name: '2025' } },
+      fixtures: [
+        fixture('2025-a', '2025-03-10', 'Alpha', 'Bravo'),
+        fixture('2025-b', '2025-03-11', 'Charlie', 'Delta'),
+        fixture('2026-a', '2026-03-10', 'Alpha', 'Charlie', '2026'),
+        fixture('2026-b', '2026-03-11', 'Bravo', 'Delta', '2026'),
+      ],
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(scan.eventCount).toBe(4);
+
+    const { referencePackage } = await referenceChunkFor(source, 'application/json');
+
+    expect(referencePackage?.season.context?.name).toBe('2025');
+    expect(referencePackage?.fixtures).toHaveLength(4);
+    expect(
+      referencePackage?.fixtures.map(
+        (candidate) => candidate.season?.context?.name ?? referencePackage.season.context?.name,
+      ),
+    ).toEqual(['2025', '2025', '2026', '2026']);
+  });
+});
+
+describe('multi-season back-catalogue item validation (#589)', () => {
+  it('keeps valid siblings visible when one fixture has an invalid season (#589)', async () => {
+    const fixture = (id: string, date: string, home: string, away: string, season?: string) => ({
+      ...(season ? { season: { context: { name: season } } } : {}),
+      context: {
+        date,
+        teams: [{ context: { name: home } }, { context: { name: away } }],
+      },
+      innings: [
+        {
+          context: { ordinal: 0, battingTeam: { context: { name: home } } },
+          events: [
+            {
+              eventId: `test:delivery:issue589-invalid-${id}`,
+              occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
+              ballLabel: '0.1',
+              striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
+              nonStriker: {
+                context: { name: `Non-striker ${id}`, team: { context: { name: home } } },
+              },
+              bowler: { context: { name: `Bowler ${id}`, team: { context: { name: away } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            },
+          ],
+        },
+      ],
+    });
+
+    const badFixture = fixture('2026-bad', '2026-03-10', 'Alpha', 'Charlie', '2026') as {
+      season?: { context?: { name?: string } };
+    };
+    badFixture.season = { context: { name: '' } };
+
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:issue589-invalid-sibling',
+      competition: { context: { name: 'Premier T20' } },
+      season: { context: { name: '2025' } },
+      fixtures: [
+        fixture('2025-a', '2025-03-10', 'Alpha', 'Bravo'),
+        fixture('2025-b', '2025-03-11', 'Charlie', 'Delta'),
+        badFixture,
+        fixture('2026-good', '2026-03-11', 'Bravo', 'Delta', '2026'),
+      ],
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.eventCount).toBe(4);
+    expect(scan.rejectedOrdinals.size).toBe(1);
+    expect([...scan.rejectedOrdinals]).toEqual([2]);
+    expect(scan.sourceFaults).toEqual([
+      expect.objectContaining({
+        sourceOrdinal: 2,
+        ruleCode: 'PACKAGE_ITEM_INVALID',
+        fieldPath: expect.stringContaining('season'),
+      }),
+    ]);
+
+    const candidates = [];
+    for await (const candidate of normalisedBatchCandidates(
+      async () => Readable.from(source),
+      'application/json',
+    )) {
+      candidates.push(candidate);
+    }
+
+    expect(candidates).toHaveLength(3);
+    expect(candidates.map((candidate) => candidate.ordinal)).toEqual([0, 1, 3]);
+  });
+});
+
+describe('multi-season back-catalogue replay (#589)', () => {
+  it('replaying the same multi-season catalogue preserves duplicate identities (#589)', async () => {
+    const fixture = (id: string, date: string, home: string, away: string, season?: string) => ({
+      ...(season ? { season: { context: { name: season } } } : {}),
+      context: {
+        date,
+        teams: [{ context: { name: home } }, { context: { name: away } }],
+      },
+      innings: [
+        {
+          context: { ordinal: 0, battingTeam: { context: { name: home } } },
+          events: [
+            {
+              eventId: `test:delivery:issue589-replay-${id}`,
+              occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
+              ballLabel: '0.1',
+              striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
+              nonStriker: {
+                context: { name: `Non-striker ${id}`, team: { context: { name: home } } },
+              },
+              bowler: { context: { name: `Bowler ${id}`, team: { context: { name: away } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            },
+          ],
+        },
+      ],
+    });
+
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:issue589-replay',
+      competition: { context: { name: 'Premier T20' } },
+      season: { context: { name: '2025' } },
+      fixtures: [
+        fixture('2025-a', '2025-03-10', 'Alpha', 'Bravo'),
+        fixture('2025-b', '2025-03-11', 'Charlie', 'Delta'),
+        fixture('2026-a', '2026-03-10', 'Alpha', 'Charlie', '2026'),
+        fixture('2026-b', '2026-03-11', 'Bravo', 'Delta', '2026'),
+      ],
+    });
+
+    async function stageCatalogue() {
+      const candidates: Parameters<typeof buildReferenceChunk>[0] = [];
+      for await (const candidate of normalisedBatchCandidates(
+        async () => Readable.from(source),
+        'application/json',
+      )) {
+        candidates.push(candidate);
+      }
+
+      const chunk = buildReferenceChunk(candidates);
+      return { candidates, chunk };
+    }
+
+    const first = await stageCatalogue();
+    const replay = await stageCatalogue();
+
+    expect(first.candidates).toHaveLength(4);
+    expect(replay.candidates).toHaveLength(4);
+
+    expect(first.candidates.map((candidate) => candidate.event.eventId)).toEqual(
+      replay.candidates.map((candidate) => candidate.event.eventId),
+    );
+
+    const effectiveSeasons = (chunk: ReturnType<typeof buildReferenceChunk>) =>
+      chunk.referencePackage?.fixtures.map(
+        (candidate) =>
+          candidate.season?.context?.name ?? chunk.referencePackage?.season.context?.name,
+      );
+
+    expect(effectiveSeasons(first.chunk)).toEqual(['2025', '2025', '2026', '2026']);
+    expect(effectiveSeasons(replay.chunk)).toEqual(['2025', '2025', '2026', '2026']);
+    expect(replay.chunk.referencePackage).toEqual(first.chunk.referencePackage);
+    expect(replay.chunk.referencePathByOrdinal).toEqual(first.chunk.referencePathByOrdinal);
   });
 });

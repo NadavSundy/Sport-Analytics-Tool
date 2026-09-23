@@ -28,11 +28,42 @@ jobs:
       - name: Validate deployment secret
         env:
           AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+          AZURE_BACKEND_DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
         run: |
-          if [ -z "$AZURE_BACKEND_PUBLISH_PROFILE" ]; then
-            echo "::error::Required Gitea secret AZURE_BACKEND_PUBLISH_PROFILE is not configured."
+          missing=0
+          for name in AZURE_BACKEND_PUBLISH_PROFILE AZURE_WORKER_CREDENTIALS AZURE_BACKEND_DATABASE_SECRET_URI; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+
+      - name: Apply pending backend database migrations
+        env:
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+        run: |
+          echo "Applying reviewed backend database migrations before backend activation."
+          DATABASE_URL="$(az keyvault secret show --id "$DATABASE_SECRET_URI" --query value --output tsv)"
+
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The backend database secret resolved to an empty value."
             exit 1
           fi
+
+          export DATABASE_URL
+          npm run db:migrate --workspace=@sport-analytics/backend
 
       - name: Build backend deployment bundle
         run: npm run build --workspace=@sport-analytics/backend
@@ -69,3 +100,14 @@ jobs:
           "deployed backend database access"
           "$BACKEND_URL/api/v1/competitions?limit=1"
           "pagination"
+
+      - name: Smoke check deployed dataset-release schema access
+        env:
+          SMOKE_CHECK_ATTEMPTS: 6
+          SMOKE_CHECK_DELAY_MS: 5000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed dataset-release schema access"
+          "$BACKEND_URL/api/v1/dataset-releases"
+          "data"

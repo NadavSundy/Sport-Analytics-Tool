@@ -14,6 +14,12 @@ Real environment files are ignored by Git. Only placeholder examples may be comm
 
 Only public-safe values may use the `VITE_` prefix. Secret/service-role keys, database passwords and OAuth client secrets must never be exposed to the frontend.
 
+For the deployed Cloudflare Pages frontend, `VITE_API_BASE_URL` is set at build time to:
+
+```text
+https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1
+```
+
 ## Backend application runtime
 
 | Variable                                 | Required by current code                            | Secret | Purpose                                                                                      |
