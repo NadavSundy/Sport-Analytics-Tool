@@ -1328,84 +1328,6 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   return (
     <ReviewerGate profile={profile}>
       <Link to="/reviews/batches">Back to review queue</Link>
-<<<<<<< HEAD
-      <p className={`batch-lifecycle batch-lifecycle--${report.batch.status}`} role="status">
-        Current state: <strong>{statusLabels[report.batch.status]}</strong>.{' '}
-        {lifecycleGuidance(report)}
-      </p>
-      <SourceMetadata batch={report.batch} />
-      <section aria-labelledby="review-summary-title">
-        <h2 id="review-summary-title">Validation and reference summary</h2>
-        <div className="state-message batch-counts__explanation">
-          <strong>Counts describe overlapping categories.</strong>
-          <p>
-            The same {report.batch.progress.total} submitted{' '}
-            {report.batch.progress.total === 1 ? 'item' : 'items'} can be both rejected and{' '}
-            unresolved. Do not add these counts together.
-          </p>
-        </div>
-        <dl className="batch-counts">
-          <div>
-            <dt>Accepted</dt>
-            <dd>{report.reviewSummary.validation.accepted}</dd>
-          </div>
-          <div>
-            <dt>Rejected</dt>
-            <dd>{report.reviewSummary.validation.rejected}</dd>
-          </div>
-          <div>
-            <dt>Blocking errors</dt>
-            <dd>{report.reviewSummary.validation.blockingErrors}</dd>
-          </div>
-          <div>
-            <dt>Duplicates</dt>
-            <dd>{report.reviewSummary.validation.duplicate}</dd>
-          </div>
-          <div>
-            <dt>Conflicts</dt>
-            <dd>{report.reviewSummary.validation.conflicting}</dd>
-          </div>
-          <div>
-            <dt>Resolved references</dt>
-            <dd>{report.reviewSummary.resolution.resolved}</dd>
-          </div>
-          <div>
-            <dt>Ambiguous</dt>
-            <dd>{report.reviewSummary.resolution.ambiguous}</dd>
-          </div>
-          <div>
-            <dt>Unresolved</dt>
-            <dd>{report.reviewSummary.resolution.unresolved}</dd>
-          </div>
-          <div>
-            <dt>Invalid references</dt>
-            <dd>{report.reviewSummary.resolution.invalid}</dd>
-          </div>
-          <div>
-            <dt>Candidate matches</dt>
-            <dd>{report.reviewSummary.resolution.proposed}</dd>
-          </div>
-          <div>
-            <dt>New-fixture proposals requiring review</dt>
-            <dd>{newFixtureProposalCount}</dd>
-          </div>
-        </dl>
-      </section>
-      <ErrorGroups report={report} />
-      <section className="published-conflicts" aria-labelledby="published-conflicts-title">
-        <div className="published-conflicts__heading">
-          <div>
-            <h2 id="published-conflicts-title">Published delivery conflicts</h2>
-            <p>Resolve each conflict before the batch can be approved for publication.</p>
-          </div>
-          <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
-        </div>
-        {report.blockingItems.some((item) => item.publishedConflict) ? (
-          report.blockingItems
-            .filter((item) => item.publishedConflict)
-            .map((item) => (
-              <PublishedConflictResolution
-=======
       <SectionNavigation
         label="Review detail sections"
         items={[
@@ -1416,11 +1338,20 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
       />
       <AnchoredSection id="summary">
         <p className={`batch-lifecycle batch-lifecycle--${report.batch.status}`} role="status">
-          Current state: <strong>{statusLabels[report.batch.status]}</strong>
+          Current state: <strong>{statusLabels[report.batch.status]}</strong>.{' '}
+          {lifecycleGuidance(report)}
         </p>
         <SourceMetadata batch={report.batch} />
         <section aria-labelledby="review-summary-title">
           <h2 id="review-summary-title">Validation and reference summary</h2>
+          <div className="state-message batch-counts__explanation">
+            <strong>Counts describe overlapping categories.</strong>
+            <p>
+              The same {report.batch.progress.total} submitted{' '}
+              {report.batch.progress.total === 1 ? 'item' : 'items'} can be both rejected and{' '}
+              unresolved. Do not add these counts together.
+            </p>
+          </div>
           <dl className="batch-counts">
             <div>
               <dt>Accepted</dt>
@@ -1459,8 +1390,12 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               <dd>{report.reviewSummary.resolution.invalid}</dd>
             </div>
             <div>
-              <dt>Proposed matches</dt>
+              <dt>Candidate matches</dt>
               <dd>{report.reviewSummary.resolution.proposed}</dd>
+            </div>
+            <div>
+              <dt>New-fixture proposals requiring review</dt>
+              <dd>{newFixtureProposalCount}</dd>
             </div>
           </dl>
         </section>
@@ -1508,6 +1443,10 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               ))}
             </ul>
           )}
+          <p className="review-scope-note">
+            Fixture totals are submitted items. Rejected and unresolved are overlapping labels, not
+            additional items.
+          </p>
           <h3>Accepted content sample</h3>
           <p>
             Showing at most 15 accepted items; the full season-scale dataset is never rendered here.
@@ -1533,95 +1472,7 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
             </ol>
           )}
         </section>
-        <section aria-labelledby="reference-review-title">
-          <h2 id="reference-review-title">References requiring attention</h2>
-          {report.blockingItems.some((item) => item.referenceResolutions.length > 0) ? (
-            report.blockingItems.map((item) => (
-              <ReferenceResolution
->>>>>>> origin/main
-                key={item.ordinal}
-                batchReference={batchReference}
-                packageVersion={report.batch.source.packageVersion}
-                item={item}
-                refresh={load}
-              />
-            ))
-<<<<<<< HEAD
-        ) : (
-          <p>No unresolved published-delivery conflicts are shown.</p>
-        )}
-      </section>
-      <section aria-labelledby="fixture-summary-title">
-        <h2 id="fixture-summary-title">Fixture summaries</h2>
-        {report.fixtureSummaries.length === 0 ? (
-          <p>No fixture summaries are available.</p>
-        ) : (
-          <ul className="fixture-summary-list">
-            {report.fixtureSummaries.map((fixture) => (
-              <li key={fixture.fixtureId ?? fixture.label}>
-                <strong>{fixture.label}</strong>
-                <span>
-                  {fixture.total} items · {fixture.accepted} accepted · {fixture.rejected} rejected
-                  · {fixture.unresolved} unresolved
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="review-scope-note">
-          Fixture totals are submitted items. Rejected and unresolved are overlapping labels, not
-          additional items.
-        </p>
-        <h3>Accepted content sample</h3>
-        <p>
-          Showing at most 15 accepted items; the full season-scale dataset is never rendered here.
-        </p>
-        {report.acceptedSamples.length === 0 ? (
-          <p>No accepted samples are available.</p>
-        ) : (
-          <ol className="accepted-samples">
-            {report.acceptedSamples.map((item) => (
-              <li key={item.ordinal}>
-                {item.context.description}
-                {item.correctionTarget ? (
-                  <span>
-                    {' '}
-                    Target: <code>{item.correctionTarget.sourceEventId}</code>
-                    {item.correctionTarget.resolvedDeliveryId
-                      ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
-                      : ' (not resolved)'}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-      <ReferenceReview batchReference={batchReference} report={report} refresh={load} />
-      {report.pagination.nextCursor ? (
-        <section aria-labelledby="report-results-title">
-          <h2 id="report-results-title">Report results</h2>
-          <button
-            className="button button--secondary"
-            type="button"
-            disabled={loadingMore}
-            onClick={() => void loadMore()}
-          >
-            {loadingMore ? 'Loading…' : 'Load more report results'}
-          </button>
-=======
-          ) : (
-            <p>
-              {report.reviewSummary.resolution.ambiguous +
-                report.reviewSummary.resolution.unresolved +
-                report.reviewSummary.resolution.invalid >
-              0
-                ? 'Reference details are temporarily unavailable. Refresh this review before approval.'
-                : 'All references are resolved.'}
-            </p>
-          )}
->>>>>>> origin/main
-        </section>
+        <ReferenceReview batchReference={batchReference} report={report} refresh={load} />
         {report.pagination.nextCursor ? (
           <section aria-labelledby="report-results-title">
             <h2 id="report-results-title">Report results</h2>
