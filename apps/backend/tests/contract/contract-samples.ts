@@ -95,6 +95,42 @@ export const batchReport = {
   },
 };
 
+/**
+ * A report item whose participant reference is waiting on an onboarding task
+ * (issue #708). The `onboard_participant` action and the task it carries are
+ * what a reviewer acts on, so the contract has to describe them.
+ */
+const reportItemAwaitingOnboarding = {
+  ...reportItem,
+  referenceResolutions: [
+    {
+      referencePath: 'fixtures.0.innings.0.events.0.striker',
+      entityType: 'participant',
+      state: 'unresolved',
+      submittedReference: { context: { name: 'A Player' } },
+      reason: 'No member of the resolved fixture squad is named "A Player".',
+      requiredAction: 'onboard_participant',
+      candidates: [],
+      onboardingTask: {
+        taskReference: '0b6f2f6e-6f6c-4a1a-9d0f-2a1d3c4b5e6f',
+        reason: 'ambiguous_name',
+        candidates: [
+          { personId: '11', displayName: 'A Player' },
+          { personId: '12', displayName: 'A Player' },
+        ],
+      },
+    },
+  ],
+};
+
+export const batchReportAwaitingOnboarding = {
+  data: {
+    ...batchReport.data,
+    blockingItems: [reportItemAwaitingOnboarding],
+    items: [reportItemAwaitingOnboarding],
+  },
+};
+
 export const batchReceipt = {
   data: {
     batchReference: BATCH_REFERENCE,

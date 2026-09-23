@@ -6288,8 +6288,36 @@ components:
         state: { type: string, enum: [ambiguous, unresolved, invalid] }
         submittedReference: {}
         reason: { type: [string, 'null'], minLength: 1 }
-        requiredAction: { type: string, enum: [select_candidate, contact_reviewer] }
+        requiredAction:
+          type: string
+          enum: [select_candidate, contact_reviewer, onboard_participant]
+          description: >-
+            `onboard_participant` means this reference is waiting on a participant onboarding
+            task that an administrator can settle at
+            `POST /api/v1/batches/{batchReference}/participants`.
         candidates: { type: array, items: { $ref: '#/components/schemas/BatchReferenceCandidate' } }
+        onboardingTask:
+          type: object
+          additionalProperties: false
+          required: [taskReference, reason, candidates]
+          description: >-
+            Present when `requiredAction` is `onboard_participant`. `taskReference` is the handle
+            a decision addresses, and is never derived from anything the decision supplies.
+          properties:
+            taskReference: { type: string, format: uuid }
+            reason:
+              type: string
+              enum:
+                [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+            candidates:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [personId, displayName]
+                properties:
+                  personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+                  displayName: { type: string, minLength: 1 }
 
     BatchPublishedConflict:
       type: object
@@ -6494,6 +6522,83 @@ components:
         itemOrdinal: { type: integer, minimum: 0 }
         referencePath: { type: string, minLength: 1, maxLength: 1000 }
         decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
+    BatchParticipantOnboardingDecision:
+      type: object
+      additionalProperties: false
+      required: [taskReference]
+      description: >-
+        One decision settling one outstanding task. Exactly one of `personId`, `sourceId` or
+        `teamName` must be given. The task is addressed by `taskReference` and never by anything
+        derivable from the answer: supplying an identifier or a team changes what the task's
+        participant key would derive to, so a re-derived handle would match no task.
+      properties:
+        taskReference: { type: string, format: uuid }
+        personId:
+          allOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }]
+          description: One of the candidates the task offered. Any other person is refused.
+        sourceId:
+          type: string
+          description: >-
+            A durable registry identifier, `namespace:entityType:value`. A `cricsheet`
+            participant is created or reused by source reference; an `app` participant must
+            already exist.
+        teamName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: One of the fixture's two teams. Any other team is refused.
+
+    BatchParticipantOnboardingRequest:
+      type: object
+      additionalProperties: false
+      required: [decisionKey, decisions]
+      properties:
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+        decisions:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingDecision' }
+
+    BatchParticipantOnboardingReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          batchReference,
+          decisionReference,
+          status,
+          statusUrl,
+          submittedAt,
+          onboarded,
+          alreadyOnboarded,
+          revalidationQueued,
+        ]
+      properties:
+        batchReference: { type: string, format: uuid }
+        decisionReference: { type: string, format: uuid }
+        status: { type: string, enum: [queued, applied] }
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        submittedAt: { type: string, format: date-time }
+        onboarded:
+          type: integer
+          minimum: 0
+          description: Tasks this request settled.
+        alreadyOnboarded:
+          type: integer
+          minimum: 0
+          description: Tasks already settled when it arrived. A replay reports its whole result here.
+        revalidationQueued:
+          type: boolean
+          description: False when nothing changed, because then there is nothing to revalidate.
+
+    BatchParticipantOnboardingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchParticipantOnboardingReceipt' }
 
     BatchFixtureOnboardingUnresolvedParticipant:
       type: object

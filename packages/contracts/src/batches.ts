@@ -172,6 +172,23 @@ export const batchReferenceEntityTypeSchema = z.enum([
   'participant',
 ]);
 
+/**
+ * Why a participant named by the batch could not be onboarded into the new
+ * fixture's squad, and therefore which decision a reviewer has to make. A
+ * participant is never matched on a name alone, so every value here is a
+ * decision rather than a guess the platform could have made for itself.
+ */
+export const batchFixtureOnboardingUnresolvedReasonSchema = z.enum([
+  /** The submitted team is missing, or is not one of the fixture's two teams. */
+  'team_not_recognised',
+  /** No source identifier, and at most one existing person carries the name. */
+  'no_durable_identifier',
+  /** No source identifier, and the name belongs to more than one existing person. */
+  'ambiguous_name',
+  /** An application identifier was supplied but names no existing person. */
+  'identifier_not_found',
+]);
+
 export const batchReferenceResolutionSchema = z
   .object({
     referencePath: z.string().min(1),
@@ -179,7 +196,7 @@ export const batchReferenceResolutionSchema = z
     state: z.enum(['ambiguous', 'unresolved', 'invalid']),
     submittedReference: z.unknown(),
     reason: z.string().min(1).nullable(),
-    requiredAction: z.enum(['select_candidate', 'contact_reviewer']),
+    requiredAction: z.enum(['select_candidate', 'contact_reviewer', 'onboard_participant']),
     candidates: z.array(
       z
         .object({
@@ -188,6 +205,22 @@ export const batchReferenceResolutionSchema = z
         })
         .strict(),
     ),
+    /**
+     * Present when `requiredAction` is `onboard_participant`: the outstanding
+     * onboarding task this reference is waiting on. `taskReference` is the
+     * handle a decision addresses, and is never derived from anything the
+     * decision supplies.
+     */
+    onboardingTask: z
+      .object({
+        taskReference: z.string().uuid(),
+        reason: batchFixtureOnboardingUnresolvedReasonSchema,
+        candidates: z.array(
+          z.object({ personId: apiIdentifierSchema, displayName: z.string().min(1) }).strict(),
+        ),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -325,6 +358,69 @@ export const batchReferenceMappingRequestSchema = z
   })
   .strict();
 
+/**
+ * One reviewer decision settling one outstanding participant onboarding task.
+ *
+ * The task is addressed by `taskReference` and never by anything derivable from
+ * the answer: supplying an identifier or a team changes what the task's
+ * participant key would derive to, so a re-derived handle would match no task.
+ *
+ * Exactly one answer is given. `personId` picks one of the candidates the task
+ * offered; `sourceId` supplies a durable registry identifier; `teamName` names
+ * which of the fixture's two teams the participant belongs to.
+ */
+export const batchParticipantOnboardingDecisionSchema = z
+  .object({
+    taskReference: z.string().uuid(),
+    personId: apiIdentifierSchema.optional(),
+    sourceId: sourceIdentifierSchema.optional(),
+    teamName: z.string().trim().min(1).max(255).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const answers = [value.personId, value.sourceId, value.teamName].filter(
+      (answer) => answer !== undefined,
+    );
+    if (answers.length !== 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Give exactly one of personId, sourceId or teamName.',
+      });
+    }
+  });
+
+/**
+ * A whole array of decisions is applied together and the batch is revalidated
+ * once. One decision per revalidation would mean a season-scale batch with
+ * twenty-two outstanding tasks paying for twenty-two full revalidation passes.
+ */
+export const batchParticipantOnboardingRequestSchema = z
+  .object({
+    decisionKey: z.string().trim().min(1).max(255),
+    decisions: z.array(batchParticipantOnboardingDecisionSchema).min(1).max(200),
+  })
+  .strict();
+
+export const batchParticipantOnboardingReceiptSchema = z
+  .object({
+    batchReference: batchReferenceSchema,
+    decisionReference: z.string().uuid(),
+    status: z.enum(['queued', 'applied']),
+    statusUrl: z.string().startsWith('/api/v1/batches/'),
+    submittedAt: apiDateTimeSchema,
+    /** Tasks this request settled. */
+    onboarded: z.number().int().nonnegative(),
+    /** Tasks already settled when it arrived, which a replay reports as its whole result. */
+    alreadyOnboarded: z.number().int().nonnegative(),
+    /** False when nothing changed, because then there is nothing to revalidate. */
+    revalidationQueued: z.boolean(),
+  })
+  .strict();
+
+export const batchParticipantOnboardingResponseSchema = createResourceResponseSchema(
+  batchParticipantOnboardingReceiptSchema,
+);
+
 export const batchCanonicalFixtureRequestSchema = z
   .object({
     itemOrdinal: z.number().int().nonnegative(),
@@ -332,23 +428,6 @@ export const batchCanonicalFixtureRequestSchema = z
     decisionKey: z.string().trim().min(1).max(255),
   })
   .strict();
-
-/**
- * Why a participant named by the batch could not be onboarded into the new
- * fixture's squad, and therefore which decision a reviewer has to make. A
- * participant is never matched on a name alone, so every value here is a
- * decision rather than a guess the platform could have made for itself.
- */
-export const batchFixtureOnboardingUnresolvedReasonSchema = z.enum([
-  /** The submitted team is missing, or is not one of the fixture's two teams. */
-  'team_not_recognised',
-  /** No source identifier, and at most one existing person carries the name. */
-  'no_durable_identifier',
-  /** No source identifier, and the name belongs to more than one existing person. */
-  'ambiguous_name',
-  /** An application identifier was supplied but names no existing person. */
-  'identifier_not_found',
-]);
 
 export const batchFixtureOnboardingUnresolvedParticipantSchema = z
   .object({
@@ -403,5 +482,14 @@ export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResp
 export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
 export type BatchReferenceMappingRequest = z.infer<typeof batchReferenceMappingRequestSchema>;
 export type BatchCanonicalFixtureRequest = z.infer<typeof batchCanonicalFixtureRequestSchema>;
+export type BatchParticipantOnboardingDecision = z.infer<
+  typeof batchParticipantOnboardingDecisionSchema
+>;
+export type BatchParticipantOnboardingRequest = z.infer<
+  typeof batchParticipantOnboardingRequestSchema
+>;
+export type BatchParticipantOnboardingResponse = z.infer<
+  typeof batchParticipantOnboardingResponseSchema
+>;
 export type BatchFixtureOnboardingSummary = z.infer<typeof batchFixtureOnboardingSummarySchema>;
 export type BatchReferenceMappingResponse = z.infer<typeof batchReferenceMappingResponseSchema>;
