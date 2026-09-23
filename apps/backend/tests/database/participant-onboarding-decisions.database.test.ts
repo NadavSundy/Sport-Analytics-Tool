@@ -371,6 +371,47 @@ describe.sequential('participant onboarding decisions', () => {
     });
   }, 60_000);
 
+  test('lists outstanding onboarding work once for the batch', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const seeded = await seed(client, 'report');
+      const repository = createBatchRepository(client);
+      const candidate = await insertPerson(client, 'report-candidate');
+
+      const outstanding = await addTask(client, seeded, {
+        participantKey: 'name:A Player::batting',
+        reason: 'ambiguous_name',
+        candidates: [{ personId: candidate, displayName: 'A Player' }],
+      });
+      const settled = await addTask(client, seeded, {
+        participantKey: 'name:B Player::batting',
+        reason: 'no_durable_identifier',
+      });
+      await repository.applyParticipantOnboardingDecisions({
+        batchId: seeded.batchId,
+        actorId: seeded.accountId,
+        decisionKey: 'onboard-report',
+        decisions: [
+          { taskReference: settled, sourceId: `cricsheet:participant:${sourcePrefix}-r` },
+        ],
+      });
+
+      const listed = await repository.listParticipantOnboardingTasks(seeded.batchId);
+
+      // One entry per decision still to make. A settled task is no longer work
+      // and a reviewer should not be shown a decision they already made.
+      expect(listed).toHaveLength(1);
+      expect(listed[0]).toMatchObject({
+        taskReference: outstanding,
+        fixtureId: seeded.fixtureId,
+        submittedName: 'A Player',
+        submittedTeamName: seeded.battingTeamName,
+        reason: 'ambiguous_name',
+        candidates: [{ personId: candidate, displayName: 'A Player' }],
+      });
+      expect(listed.map((task) => task.taskReference)).not.toContain(settled);
+    });
+  }, 60_000);
+
   test('a name still never matches globally, however unique it is', async () => {
     await withRolledBackTransaction(async (client) => {
       const seeded = await seed(client, 'no-global-name');

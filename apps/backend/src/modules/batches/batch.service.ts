@@ -45,6 +45,7 @@ import type {
   BatchRecord,
   BatchReportItemRecord,
   ParticipantOnboardingDecisionFault,
+  ParticipantOnboardingTaskRecord,
 } from './batch.repository';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
 import { extractFixtureOnboardingContext } from './fixture-onboarding';
@@ -137,10 +138,43 @@ function candidateReference(
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
+/**
+ * Finds the outstanding onboarding task a participant reference is waiting on.
+ *
+ * The task is matched on the identity fixture onboarding collected it by, read
+ * from the submitted reference. That is stable batch data, not anything a
+ * decision supplies, so this is not the forbidden re-derivation: a decision
+ * still addresses its task by `taskReference`.
+ */
+function onboardingTaskFor(
+  outcome: { entityType: string; submittedReference: unknown },
+  tasks: readonly ParticipantOnboardingTaskRecord[],
+) {
+  if (outcome.entityType !== 'participant' || tasks.length === 0) return undefined;
+  const submitted = outcome.submittedReference as
+    | { sourceId?: string; context?: { name?: string; team?: { context?: { name?: string } } } }
+    | undefined;
+  const name = submitted?.context?.name;
+  const teamName = submitted?.context?.team?.context?.name ?? null;
+  const match = tasks.find((task) =>
+    submitted?.sourceId
+      ? task.submittedName === submitted.sourceId || task.submittedName === name
+      : task.submittedName === name && task.submittedTeamName === teamName,
+  );
+  return match
+    ? {
+        taskReference: match.taskReference,
+        reason: match.reason,
+        candidates: match.candidates,
+      }
+    : undefined;
+}
+
 function reportReferenceResolutions(
   record: BatchReportItemRecord,
   batchReference: string,
   competitionId: string,
+  onboardingTasks: readonly ParticipantOnboardingTaskRecord[] = [],
 ) {
   const paths = new Set<string>();
   return storedOutcomes(record.resolvedReferences).flatMap((outcome) => {
@@ -161,6 +195,7 @@ function reportReferenceResolutions(
         ),
         label: candidate.label,
       }));
+    const onboardingTask = onboardingTaskFor(outcome, onboardingTasks);
     return [
       {
         referencePath: outcome.referencePath,
@@ -168,9 +203,15 @@ function reportReferenceResolutions(
         state: outcome.state,
         submittedReference: outcome.submittedReference,
         reason: outcome.reason,
-        requiredAction:
-          candidates.length > 0 ? ('select_candidate' as const) : ('contact_reviewer' as const),
+        // An onboarding task outranks the generic fallback: it is the action a
+        // reviewer can actually take, where contact_reviewer is a dead end.
+        requiredAction: onboardingTask
+          ? ('onboard_participant' as const)
+          : candidates.length > 0
+            ? ('select_candidate' as const)
+            : ('contact_reviewer' as const),
         candidates,
+        ...(onboardingTask ? { onboardingTask } : {}),
       },
     ];
   });
@@ -299,6 +340,7 @@ function mapReportItem(
   record: BatchReportItemRecord,
   batchReference: string,
   competitionId: string,
+  onboardingTasks: readonly ParticipantOnboardingTaskRecord[] = [],
 ): BatchReportItem {
   const context = reportContext(record);
   return {
@@ -317,7 +359,12 @@ function mapReportItem(
           }
         : null,
     publishedConflict: reportPublishedConflict(record),
-    referenceResolutions: reportReferenceResolutions(record, batchReference, competitionId),
+    referenceResolutions: reportReferenceResolutions(
+      record,
+      batchReference,
+      competitionId,
+      onboardingTasks,
+    ),
     errors: record.errors.map((error) => ({
       ruleCode: error.ruleCode,
       message: error.message,
@@ -512,14 +559,21 @@ export function createBatchService(
         repository.listBatchReportItems(batch.batchId, { blockingOnly: true, limit: 50_001 }),
       ]);
       const page = records.slice(0, query.limit);
-      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
-        await Promise.all([
-          status(batch),
-          repository.listBatchRuleGroups(batch.batchId),
-          repository.countBlockingValidationErrors(batch.batchId),
-          repository.getBatchResolutionCounts(batch.batchId),
-          repository.listBatchFixtureSummaries(batch.batchId),
-        ]);
+      const [
+        batchStatus,
+        errorGroups,
+        blockingValidationErrors,
+        resolution,
+        fixtureSummaries,
+        onboardingTasks,
+      ] = await Promise.all([
+        status(batch),
+        repository.listBatchRuleGroups(batch.batchId),
+        repository.countBlockingValidationErrors(batch.batchId),
+        repository.getBatchResolutionCounts(batch.batchId),
+        repository.listBatchFixtureSummaries(batch.batchId),
+        repository.listParticipantOnboardingTasks(batch.batchId),
+      ]);
       const blockingReasons: string[] = [];
       if (blockingValidationErrors > 0) blockingReasons.push('Blocking validation errors remain.');
       if (batchStatus.counts.conflicting > 0) blockingReasons.push('Conflicting records remain.');
@@ -543,14 +597,22 @@ export function createBatchService(
             blockingReasons,
           },
           fixtureSummaries,
+          // The same tasks the per-reference actions point at, listed once
+          // each. A player named in three hundred deliveries is three hundred
+          // actions but one decision.
+          participantOnboarding: onboardingTasks,
           acceptedSamples: acceptedRecords
             .filter((record) => reportOutcome(record) === 'accepted')
             .slice(0, 15)
-            .map((record) => mapReportItem(record, reference, batch.competitionId)),
+            .map((record) =>
+              mapReportItem(record, reference, batch.competitionId, onboardingTasks),
+            ),
           blockingItems: blockingRecords.map((record) =>
-            mapReportItem(record, reference, batch.competitionId),
+            mapReportItem(record, reference, batch.competitionId, onboardingTasks),
           ),
-          items: page.map((record) => mapReportItem(record, reference, batch.competitionId)),
+          items: page.map((record) =>
+            mapReportItem(record, reference, batch.competitionId, onboardingTasks),
+          ),
           pagination: {
             nextCursor:
               records.length > query.limit && page.length > 0
@@ -571,18 +633,29 @@ export function createBatchService(
           ...(afterOrdinal === undefined ? {} : { afterOrdinal }),
           limit: 1000,
         });
-        items.push(...page.map((record) => mapReportItem(record, reference, batch.competitionId)));
+        items.push(
+          ...page.map((record) =>
+            mapReportItem(record, reference, batch.competitionId, onboardingTasks),
+          ),
+        );
         if (page.length < 1000) break;
         afterOrdinal = page.at(-1)!.ordinal;
       }
-      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
-        await Promise.all([
-          status(batch),
-          repository.listBatchRuleGroups(batch.batchId),
-          repository.countBlockingValidationErrors(batch.batchId),
-          repository.getBatchResolutionCounts(batch.batchId),
-          repository.listBatchFixtureSummaries(batch.batchId),
-        ]);
+      const [
+        batchStatus,
+        errorGroups,
+        blockingValidationErrors,
+        resolution,
+        fixtureSummaries,
+        onboardingTasks,
+      ] = await Promise.all([
+        status(batch),
+        repository.listBatchRuleGroups(batch.batchId),
+        repository.countBlockingValidationErrors(batch.batchId),
+        repository.getBatchResolutionCounts(batch.batchId),
+        repository.listBatchFixtureSummaries(batch.batchId),
+        repository.listParticipantOnboardingTasks(batch.batchId),
+      ]);
       const blockingReasons = [
         ...(blockingValidationErrors > 0 ? ['Blocking validation errors remain.'] : []),
         ...(batchStatus.counts.conflicting > 0 ? ['Conflicting records remain.'] : []),
@@ -607,6 +680,10 @@ export function createBatchService(
             blockingReasons,
           },
           fixtureSummaries,
+          // The same tasks the per-reference actions point at, listed once
+          // each. A player named in three hundred deliveries is three hundred
+          // actions but one decision.
+          participantOnboarding: onboardingTasks,
           acceptedSamples: items.filter((item) => item.outcome === 'accepted').slice(0, 15),
           items,
         },

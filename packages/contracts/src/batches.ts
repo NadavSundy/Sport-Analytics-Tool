@@ -325,12 +325,34 @@ export const batchReviewSummarySchema = z
   })
   .strict();
 
+/**
+ * One outstanding participant onboarding task, listed once for the batch.
+ *
+ * The same task also appears as an `onboard_participant` action on every
+ * reference waiting on it, which for a player named in three hundred
+ * deliveries is three hundred appearances of one decision. This list is that
+ * work deduplicated: one entry per decision a reviewer actually has to make.
+ */
+export const batchParticipantOnboardingTaskSchema = z
+  .object({
+    taskReference: z.string().uuid(),
+    fixtureId: apiIdentifierSchema,
+    submittedName: z.string().min(1),
+    submittedTeamName: z.string().min(1).nullable(),
+    reason: batchFixtureOnboardingUnresolvedReasonSchema,
+    candidates: z.array(
+      z.object({ personId: apiIdentifierSchema, displayName: z.string().min(1) }).strict(),
+    ),
+  })
+  .strict();
+
 export const batchReportSchema = z
   .object({
     batch: batchStatusSchema,
     errorGroups: z.array(batchReportRuleGroupSchema),
     reviewSummary: batchReviewSummarySchema,
     fixtureSummaries: z.array(batchFixtureSummarySchema),
+    participantOnboarding: z.array(batchParticipantOnboardingTaskSchema),
     acceptedSamples: z.array(batchReportItemSchema).max(15),
     blockingItems: z.array(batchReportItemSchema),
     items: z.array(batchReportItemSchema),

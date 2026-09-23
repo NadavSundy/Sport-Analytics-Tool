@@ -318,6 +318,16 @@ export class BatchReferenceMappingConflictError extends Error {}
 export class BatchPublishedConflictResolutionError extends Error {}
 export class BatchReplacementConflictError extends Error {}
 
+export interface ParticipantOnboardingTaskRecord {
+  taskReference: string;
+  fixtureId: string;
+  submittedName: string;
+  submittedTeamName: string | null;
+  reason:
+    'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
+  candidates: { personId: string; displayName: string }[];
+}
+
 interface ParticipantOnboardingDecisionInput {
   taskReference: string;
   // Explicitly `| undefined`: the contract type these arrive as carries it, and
@@ -406,6 +416,7 @@ export interface BatchRepository {
   countBlockingValidationErrors(batchId: string): Promise<number>;
   getBatchResolutionCounts(batchId: string): Promise<BatchResolutionCountsRecord>;
   listBatchFixtureSummaries(batchId: string): Promise<BatchFixtureSummaryRecord[]>;
+  listParticipantOnboardingTasks(batchId: string): Promise<ParticipantOnboardingTaskRecord[]>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
   listBatchItems(batchId: string, options: BatchItemPageOptions): Promise<BatchItemRecord[]>;
   findCheckpoint(
@@ -2561,6 +2572,22 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         decisionKey: input.decisionKey,
       });
       return { ...mapped, onboarding };
+    },
+
+    async listParticipantOnboardingTasks(batchId) {
+      // Outstanding only. A settled task is no longer work, and the reviewer
+      // should not be shown a decision they have already made.
+      const result = await executeQuery<ParticipantOnboardingTaskRecord>(
+        database(),
+        `SELECT task_reference::text AS "taskReference", fixture_id::text AS "fixtureId",
+                submitted_name AS "submittedName", submitted_team_name AS "submittedTeamName",
+                reason, candidates
+         FROM batch_participant_onboarding_task
+         WHERE batch_id = $1::bigint AND state = 'outstanding'
+         ORDER BY fixture_id, submitted_name, task_reference`,
+        [batchId],
+      );
+      return result.rows;
     },
 
     async applyParticipantOnboardingDecisions(input) {

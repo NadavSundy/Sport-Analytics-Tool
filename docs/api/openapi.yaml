@@ -6502,6 +6502,33 @@ components:
         approvalBlocked: { type: boolean }
         blockingReasons: { type: array, items: { type: string, minLength: 1 } }
 
+    BatchParticipantOnboardingTask:
+      type: object
+      additionalProperties: false
+      required: [taskReference, fixtureId, submittedName, submittedTeamName, reason, candidates]
+      description: >-
+        One outstanding participant onboarding task, listed once for the batch. The same task
+        also appears as an `onboard_participant` action on every reference waiting on it, which
+        for a player named in three hundred deliveries is three hundred appearances of one
+        decision. This list is that work deduplicated.
+      properties:
+        taskReference: { type: string, format: uuid }
+        fixtureId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        submittedName: { type: string, minLength: 1 }
+        submittedTeamName: { type: [string, 'null'], minLength: 1 }
+        reason:
+          type: string
+          enum: [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [personId, displayName]
+            properties:
+              personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              displayName: { type: string, minLength: 1 }
+
     BatchReport:
       type: object
       additionalProperties: false
@@ -6511,6 +6538,7 @@ components:
           errorGroups,
           reviewSummary,
           fixtureSummaries,
+          participantOnboarding,
           acceptedSamples,
           blockingItems,
           items,
@@ -6523,6 +6551,9 @@ components:
         reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
         fixtureSummaries:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        participantOnboarding:
+          type: array
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingTask' }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         blockingItems:
@@ -6543,13 +6574,25 @@ components:
     BatchReportDownload:
       type: object
       additionalProperties: false
-      required: [batch, errorGroups, reviewSummary, fixtureSummaries, acceptedSamples, items]
+      required:
+        [
+          batch,
+          errorGroups,
+          reviewSummary,
+          fixtureSummaries,
+          participantOnboarding,
+          acceptedSamples,
+          items,
+        ]
       properties:
         batch: { $ref: '#/components/schemas/BatchStatus' }
         errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
         reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
         fixtureSummaries:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        participantOnboarding:
+          type: array
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingTask' }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }

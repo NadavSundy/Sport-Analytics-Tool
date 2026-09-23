@@ -77,6 +77,7 @@ export const batchReport = {
       approvalBlocked: true,
       blockingReasons: ['Ambiguous references remain.'],
     },
+    participantOnboarding: [],
     fixtureSummaries: [
       {
         fixtureId: null,
@@ -126,6 +127,19 @@ const reportItemAwaitingOnboarding = {
 export const batchReportAwaitingOnboarding = {
   data: {
     ...batchReport.data,
+    participantOnboarding: [
+      {
+        taskReference: '0b6f2f6e-6f6c-4a1a-9d0f-2a1d3c4b5e6f',
+        fixtureId: '20',
+        submittedName: 'A Player',
+        submittedTeamName: 'North XI',
+        reason: 'ambiguous_name',
+        candidates: [
+          { personId: '11', displayName: 'A Player' },
+          { personId: '12', displayName: 'A Player' },
+        ],
+      },
+    ],
     blockingItems: [reportItemAwaitingOnboarding],
     items: [reportItemAwaitingOnboarding],
   },
