@@ -31,10 +31,10 @@ param keyVaultName string
 @description('Versionless HTTPS Key Vault secret URI for DATABASE_URL.')
 param databaseSecretUri string
 
-@description('Minimum continuously available worker replicas. Scale to zero while the Service Bus queue is idle.')
-@minValue(0)
+@description('Minimum continuously available worker replicas. Keep one running so the PostgreSQL outbox relay can publish queued batch jobs.')
+@minValue(1)
 @maxValue(3)
-param minReplicas int = 0
+param minReplicas int = 1
 
 @description('Maximum replicas, bounded to protect PostgreSQL and storage.')
 @minValue(1)

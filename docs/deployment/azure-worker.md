@@ -232,11 +232,11 @@ The automatic deployment:
 4. builds an immutable worker image tagged with the exact Git commit SHA;
 5. pushes that image to Azure Container Registry;
 6. deploys the corresponding Azure Container Apps revision; and
-7. waits until an active healthy revision is using that exact commit-SHA image.
+7. verifies the live Container App retains `minReplicas=1`, then waits until an active healthy revision is using that exact commit-SHA image.
 
 Documentation-only and unrelated frontend/backend changes do not select worker deployment.
 
-The standalone `Sport Analytics - Provision and Deploy Batch Worker` workflow remains available through manual dispatch for recovery and deliberate operational redeployment. The manual path uses the same immutable commit-SHA image and active-revision verification requirements as the automatic path.
+The standalone `Sport Analytics - Provision and Deploy Batch Worker` workflow remains available through manual dispatch for recovery and deliberate operational redeployment. Both paths explicitly deploy `minReplicas=1`, ensuring the PostgreSQL outbox relay remains available to publish stored batch jobs before Service Bus receives work to scale above that baseline. Existing Service Bus KEDA scaling can still add replicas up to the configured maximum. The manual path uses the same immutable commit-SHA image and active-revision verification requirements as the automatic path.
 
 ### Docker registry preflight resilience
 
