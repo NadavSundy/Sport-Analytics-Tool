@@ -52,6 +52,55 @@ interface ReferenceMappingRow {
   canonicalId: string;
 }
 
+export function isReviewerActionableFixtureResolution(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  const resolution = value as {
+    entityType?: unknown;
+    state?: unknown;
+    submittedReference?: unknown;
+  };
+  if (resolution.entityType !== 'fixture' || resolution.state !== 'unresolved') return false;
+
+  const submitted = resolution.submittedReference;
+  if (!submitted || typeof submitted !== 'object') return false;
+
+  const fixture = submitted as { sourceId?: unknown; proposal?: unknown };
+  if (
+    typeof fixture.sourceId !== 'string' ||
+    !fixture.proposal ||
+    typeof fixture.proposal !== 'object'
+  ) {
+    return false;
+  }
+
+  // Proposal metadata has already crossed the package contract boundary before
+  // reaching resolved_references. This guard rejects legacy/malformed evidence
+  // without duplicating the complete upload contract in the worker.
+  const proposal = fixture.proposal as Record<string, unknown>;
+  return (
+    typeof proposal.endDate === 'string' &&
+    typeof proposal.matchType === 'string' &&
+    typeof proposal.teamType === 'string' &&
+    typeof proposal.gender === 'string' &&
+    typeof proposal.ballsPerOver === 'number' &&
+    Number.isInteger(proposal.ballsPerOver) &&
+    proposal.ballsPerOver > 0 &&
+    typeof proposal.outcome === 'string' &&
+    typeof proposal.sourceVersion === 'string' &&
+    typeof proposal.sourceRevision === 'number' &&
+    Number.isInteger(proposal.sourceRevision) &&
+    proposal.sourceRevision >= 0
+  );
+}
+
+export function finalBatchValidationState(
+  accepted: number,
+  hasReviewerActionableProposal: boolean,
+): 'awaiting_review' | 'rejected' {
+  return accepted > 0 || hasReviewerActionableProposal ? 'awaiting_review' : 'rejected';
+}
+
 export function referenceOverridesForChunk(
   mappings: readonly ReferenceMappingRow[],
   referencePathByOrdinal: ReadonlyMap<number, string>,
@@ -1449,11 +1498,30 @@ export function createBatchValidationJobHandler(
       );
       if (lease.rowCount !== 1) throw new LeaseBusyError();
       const countResult = await client.query<{ accepted: string }>(
-        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM batch_item WHERE batch_id=$1::bigint`,
+        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM
+         batch_item WHERE batch_id=$1::bigint`,
         [claimResult.batchId],
       );
       const accepted = Number(countResult.rows[0]?.accepted ?? 0);
-      const target = accepted > 0 ? 'awaiting_review' : 'rejected';
+
+      let hasReviewerActionableProposal = false;
+      if (accepted === 0) {
+        const proposalResult = await client.query<{ fixtureResolution: unknown }>(
+          `SELECT DISTINCT resolved_references->'fixture' AS "fixtureResolution"
+             FROM batch_item
+            WHERE batch_id=$1::bigint
+              AND state='rejected'
+              AND rejection_code='REFERENCE_RESOLUTION_FAILED'
+              AND reference_resolution_state='unresolved'
+              AND resolved_references ? 'fixture'`,
+          [claimResult.batchId],
+        );
+        hasReviewerActionableProposal = proposalResult.rows.some(({ fixtureResolution }) =>
+          isReviewerActionableFixtureResolution(fixtureResolution),
+        );
+      }
+
+      const target = finalBatchValidationState(accepted, hasReviewerActionableProposal);
       await client.query(
         `UPDATE batch SET state=$2::batch_state,item_count=$3::integer WHERE batch_id=$1::bigint`,
         [claimResult.batchId, target, eventCount],

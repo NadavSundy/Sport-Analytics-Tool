@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { prepareItem, referenceOverridesForChunk } from '../src/batch-validation-job';
+import {
+  finalBatchValidationState,
+  isReviewerActionableFixtureResolution,
+  prepareItem,
+  referenceOverridesForChunk,
+} from '../src/batch-validation-job';
 
 describe('batch reference mapping reprocessing', () => {
   test('binds a retained item decision to the current chunk-local path', () => {
@@ -128,5 +133,68 @@ describe('batch reference mapping reprocessing', () => {
     );
 
     expect(item?.resolvedReferences).toEqual(resolvedReferences);
+  });
+});
+
+describe('reviewer-actionable batch finalisation (#695)', () => {
+  const proposal = {
+    endDate: '2026-01-01',
+    matchType: 'T20',
+    teamType: 'university',
+    gender: 'mixed',
+    ballsPerOver: 6,
+    outcome: 'tie',
+    sourceVersion: '1.1',
+    sourceRevision: 1,
+  };
+
+  test('keeps a zero-accepted batch reviewable when an unresolved fixture has a valid proposal', () => {
+    expect(
+      isReviewerActionableFixtureResolution({
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'submitter:fixture:new-1',
+          proposal,
+        },
+      }),
+    ).toBe(true);
+
+    expect(finalBatchValidationState(0, true)).toBe('awaiting_review');
+  });
+
+  test('still rejects zero-accepted batches without an actionable fixture proposal', () => {
+    expect(
+      isReviewerActionableFixtureResolution({
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'submitter:fixture:new-1',
+          proposal: { sourceVersion: '1.1' },
+        },
+      }),
+    ).toBe(false);
+
+    expect(finalBatchValidationState(0, false)).toBe('rejected');
+  });
+
+  test('preserves existing accepted-item finalisation behaviour', () => {
+    expect(finalBatchValidationState(1, false)).toBe('awaiting_review');
+  });
+
+  test('does not treat a resolved fixture as a reviewer action', () => {
+    expect(
+      isReviewerActionableFixtureResolution({
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'resolved',
+        submittedReference: {
+          sourceId: 'submitter:fixture:new-1',
+          proposal,
+        },
+      }),
+    ).toBe(false);
   });
 });
