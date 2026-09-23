@@ -297,6 +297,264 @@ describe('reviewer batch workspace', () => {
     expect(screen.queryByText('Create canonical fixture from proposal')).toBeInTheDocument();
   });
 
+  test('renders structured fixture, innings and participant references as cricket context', async () => {
+    const body = report(true);
+    body.data.blockingItems[0]!.referenceResolutions = [
+      {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'cricsheet:fixture:12345',
+          season: { context: { name: '2026' } },
+          context: {
+            date: '2026-01-01',
+            teams: [{ context: { name: 'Wits' } }, { context: { name: 'UCT' } }],
+          },
+        },
+        reason: 'No matching fixture.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+      {
+        referencePath: 'fixtures.0.innings.0',
+        entityType: 'innings',
+        state: 'unresolved',
+        submittedReference: {
+          context: { ordinal: 0, battingTeam: { context: { name: 'Wits' } } },
+        },
+        reason: 'Fixture must be resolved first.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+      {
+        referencePath: 'fixtures.0.innings.0.events.0.striker',
+        entityType: 'participant',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'cricsheet:participant:a-smith',
+          context: { name: 'A. Smith', team: { context: { name: 'Wits' } } },
+        },
+        reason: 'No matching participant.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+    ];
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 3;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Fixture: Wits vs UCT · 2026-01-01 · Season 2026',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Source: cricsheet:fixture:12345')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Innings: Innings 1 · Wits batting' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Participant: A. Smith · Wits' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
+  });
+
+  test('bounds large unresolved collections and filters every reference by review attributes', async () => {
+    const body = report(true);
+    body.data.blockingItems[0]!.referenceResolutions = Array.from({ length: 45 }, (_, index) => ({
+      referencePath: `fixtures.0.innings.0.events.${index}.striker`,
+      entityType: 'participant' as const,
+      state: index === 44 ? ('invalid' as const) : ('unresolved' as const),
+      submittedReference: {
+        context: { name: `Player ${index + 1}`, team: { context: { name: 'Wits' } } },
+      },
+      reason: 'No matching participant.',
+      requiredAction: 'contact_reviewer' as const,
+      candidates: [],
+    }));
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 44;
+    body.data.reviewSummary.resolution.invalid = 1;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByText('45 unresolved references in total')).toBeInTheDocument();
+    expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(20);
+    fireEvent.click(screen.getByRole('button', { name: 'Show next unresolved references' }));
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 21 · Wits' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show next unresolved references' }));
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 45 · Wits' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Resolution state'), { target: { value: 'invalid' } });
+    expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 45 · Wits' }),
+    ).toBeInTheDocument();
+  });
+
+  test('surfaces multiple fixture proposals and scopes queued feedback to the chosen proposal', async () => {
+    const body = report(true);
+    body.data.batch.source.packageVersion = '1.1';
+    const fixtureResolution = (index: number, left: string, right: string) => ({
+      referencePath: `fixtures.${index}`,
+      entityType: 'fixture' as const,
+      state: 'unresolved' as const,
+      submittedReference: {
+        sourceId: `cricsheet:fixture:new-${index}`,
+        season: { context: { name: '2026' } },
+        context: {
+          date: `2026-01-0${index + 1}`,
+          teams: [{ context: { name: left } }, { context: { name: right } }],
+        },
+        proposal: {
+          endDate: `2026-01-0${index + 1}`,
+          matchType: 'T20',
+          teamType: 'university',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+      },
+      reason: 'New fixture.',
+      requiredAction: 'contact_reviewer' as const,
+      candidates: [],
+    });
+    body.data.blockingItems[0]!.referenceResolutions = [
+      fixtureResolution(0, 'Wits', 'UCT'),
+      fixtureResolution(1, 'Lions', 'Bears'),
+    ];
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 2;
+    let queued = false;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/auth/me')) return Promise.resolve(response(profile));
+      if (init?.method === 'POST' && url.includes('/canonical-fixtures')) {
+        queued = true;
+        body.data.batch.status = 'validating';
+        return Promise.resolve(
+          response({
+            data: {
+              batchReference: reference,
+              decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+              status: 'queued',
+              statusUrl: `/api/v1/batches/${reference}`,
+              submittedAt: '2026-09-11T12:00:00.000Z',
+            },
+          }),
+        );
+      }
+      return Promise.resolve(response(body));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+
+    const actionSection = await screen.findByRole('region', { name: 'Reviewer actions required' });
+    const proposalCards = within(actionSection).getAllByRole('article', { name: /Fixture:/ });
+    expect(proposalCards).toHaveLength(2);
+    fireEvent.click(
+      within(proposalCards[0]!).getByRole('button', {
+        name: 'Create canonical fixture from proposal',
+      }),
+    );
+
+    expect(
+      await within(proposalCards[0]!).findByText(
+        'Canonical fixture decision queued for validation.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(proposalCards[1]!).queryByText('Canonical fixture decision queued for validation.'),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(queued).toBe(true));
+    expect(screen.getByText(/Revalidation in progress/)).toBeInTheDocument();
+    for (const button of screen.getAllByRole('button', {
+      name: 'Create canonical fixture from proposal',
+    })) {
+      expect(button).toBeDisabled();
+    }
+  });
+
+  test('scopes action errors to the reference whose mapping failed', async () => {
+    const body = report(true);
+    const first = body.data.blockingItems[0]!.referenceResolutions[0]!;
+    body.data.blockingItems[0]!.referenceResolutions = [
+      first,
+      {
+        ...structuredClone(first),
+        referencePath: 'fixtures.0.innings.0.events.1.striker',
+        submittedReference: 'Second participant',
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes('/auth/me')) return Promise.resolve(response(profile));
+        if (init?.method === 'POST') return Promise.resolve(response({}, 500));
+        return Promise.resolve(response(body));
+      }),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const actionSection = await screen.findByRole('region', { name: 'Reviewer actions required' });
+    const cards = within(actionSection).getAllByRole('article');
+    fireEvent.click(within(cards[0]!).getByRole('button', { name: /^Use Lions vs Bears/ }));
+
+    expect(await within(cards[0]!).findByRole('alert')).toHaveTextContent(
+      'The mapping could not be saved.',
+    );
+    expect(within(cards[1]!).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('explains overlapping counts and distinguishes candidate matches from fixture proposals', async () => {
+    const body = report(true);
+    body.data.batch.progress.total = 4;
+    body.data.batch.progress.rejected = 4;
+    body.data.batch.counts.rejected = 4;
+    body.data.batch.counts.unresolved = 4;
+    body.data.reviewSummary.validation.rejected = 4;
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 4;
+    body.data.reviewSummary.resolution.proposed = 0;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByText('Counts describe overlapping categories.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The same 4 submitted items can be both rejected and unresolved. Do not add these counts together.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Candidate matches')).toBeInTheDocument();
+    expect(screen.getByText('New-fixture proposals requiring review')).toBeInTheDocument();
+    expect(screen.queryByText('Proposed matches')).not.toBeInTheDocument();
+  });
+
   test('does not offer creation for an unresolved fixture without a proposal', async () => {
     const body = report(true);
     body.data.items[0]!.referenceResolutions = [
@@ -558,6 +816,7 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
 
+    expect(await screen.findByText(/Ready for publication/)).toBeInTheDocument();
     expect(await screen.findByText('Only the accepted subset will publish')).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -704,8 +963,9 @@ describe('reviewer batch workspace', () => {
         ),
     );
     renderPage(`/reviews/batches/${reference}`);
+    expect(await screen.findByText(/superseded and is terminal/)).toBeInTheDocument();
     expect(
-      await screen.findByRole('link', { name: body.data.batch.lineage.replacesBatchReference! }),
+      screen.getByRole('link', { name: body.data.batch.lineage.replacesBatchReference! }),
     ).toHaveAttribute('href', '/reviews/batches/223e4567-e89b-42d3-a456-426614174000');
     expect(
       screen.getByRole('link', { name: body.data.batch.lineage.supersededByBatchReference! }),

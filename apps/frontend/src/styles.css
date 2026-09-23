@@ -1433,6 +1433,98 @@ main {
   background: var(--colour-surface-raised);
 }
 
+.reference-actions,
+.reference-review {
+  display: grid;
+  gap: var(--space-4);
+  margin-block: var(--space-8);
+}
+
+.reference-actions {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 2px solid var(--colour-data-accent);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface-soft);
+}
+
+.reference-review__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.reference-review__heading h2,
+.reference-review__heading p,
+.reference-resolution h3,
+.reference-resolution__source {
+  margin: 0;
+}
+
+.reference-review__heading p,
+.reference-resolution__source,
+.reference-resolution__notice {
+  color: var(--colour-text-secondary);
+}
+
+.reference-review__heading > strong {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 999px;
+  background: var(--colour-surface-raised);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.reference-review__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+}
+
+.reference-review__filters label {
+  display: grid;
+  gap: var(--space-1);
+  font-weight: 600;
+}
+
+.reference-review__filters select {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  color: var(--colour-text-primary);
+  background: var(--colour-surface-raised);
+  font: inherit;
+}
+
+.reference-review__list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.reference-resolution {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.reference-resolution h3 {
+  overflow-wrap: anywhere;
+}
+
+.reference-review__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.batch-counts__explanation {
+  margin-block: var(--space-4);
+}
+
 .review-error-group + .review-error-group,
 .reference-resolution + .reference-resolution {
   margin-top: 0.75rem;
