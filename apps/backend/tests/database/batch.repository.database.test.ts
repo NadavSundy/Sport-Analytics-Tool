@@ -3378,11 +3378,13 @@ describe.sequential('batch repository database integration', () => {
           {
             name: `${sourcePrefix} New Striker`,
             teamName: battingTeamName,
+            reason: 'no_durable_identifier',
             candidates: [],
           },
           {
             name: `${sourcePrefix} Ambiguous Name`,
             teamName: battingTeamName,
+            reason: 'ambiguous_name',
             candidates: expect.arrayContaining([
               expect.objectContaining({ displayName: `${sourcePrefix} Ambiguous Name` }),
             ]),
@@ -3432,6 +3434,303 @@ describe.sequential('batch repository database integration', () => {
       );
       // Confirms no person was silently fabricated for the unresolved name.
       expect(newStrikerPersonCount.rows[0]!.count).toBe('0');
+    });
+  });
+
+  test('reports a participant whose team is not one of the fixture teams (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Gap B Batting`;
+      const bowlingTeamName = `${sourcePrefix} Gap B Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      // createBatchAndQueueValidation, not createBatch: the decision reuses
+      // queueReferenceMapping, which resets this batch's batch.validate job.
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-gap-b`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+      const sourceRef = `${sourcePrefix}-gap-b-fixture`;
+
+      const decision = await repository.createCanonicalFixtureAndQueueMapping({
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'gap-b',
+        sourceRef,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [battingTeamName, bowlingTeamName],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+        innings: [{ ordinal: 0, battingTeamName }],
+        participants: [
+          // A team that is not one of the fixture's two.
+          {
+            sourceId: `cricsheet:participant:${sourcePrefix}-wrong-team`,
+            name: `${sourcePrefix} Wrong Team`,
+            teamName: `${sourcePrefix} Some Other Club`,
+          },
+          // No team submitted at all.
+          {
+            sourceId: `cricsheet:participant:${sourcePrefix}-no-team`,
+            name: `${sourcePrefix} No Team`,
+          },
+        ],
+      });
+
+      // Both used to be dropped in silence: no squad row, no report, and
+      // nothing a reviewer could act on.
+      expect(decision.onboarding?.unresolvedParticipants).toEqual(
+        expect.arrayContaining([
+          {
+            name: `${sourcePrefix} Wrong Team`,
+            teamName: `${sourcePrefix} Some Other Club`,
+            reason: 'team_not_recognised',
+            candidates: [],
+          },
+          {
+            name: `${sourcePrefix} No Team`,
+            reason: 'team_not_recognised',
+            candidates: [],
+          },
+        ]),
+      );
+      expect(decision.onboarding?.unresolvedParticipants).toHaveLength(2);
+      expect(decision.onboarding?.squadCreated).toBe(0);
+
+      // Neither was fabricated as a person, and neither reached the squad.
+      const fabricated = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM person WHERE source_ref = ANY($1::text[])`,
+        [[`${sourcePrefix}-wrong-team`, `${sourcePrefix}-no-team`]],
+      );
+      expect(fabricated.rows[0]!.count).toBe('0');
+    });
+  });
+
+  test('a second decision onboards participants the first could not (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Gap A Batting`;
+      const bowlingTeamName = `${sourcePrefix} Gap A Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-gap-a`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      const sourceRef = `${sourcePrefix}-gap-a-fixture`;
+      const decide = async (
+        decisionKey: string,
+        participants: { sourceId?: string; name?: string; teamName?: string }[],
+      ) =>
+        repository.createCanonicalFixtureAndQueueMapping({
+          batchId: batch.batchId,
+          batchReference: batch.batchReference,
+          competitionId: current.competitionId,
+          actorId: current.accountId,
+          itemOrdinal: 0,
+          referencePath: 'fixtures.0',
+          decisionKey,
+          sourceRef,
+          season: '2026',
+          startDate: '2026-01-01',
+          teamNames: [battingTeamName, bowlingTeamName],
+          proposal: {
+            endDate: '2026-01-01',
+            matchType: 'T20',
+            teamType: 'club',
+            gender: 'mixed',
+            ballsPerOver: 6,
+            outcome: 'tie' as const,
+            sourceVersion: '1.1',
+            sourceRevision: 1,
+          },
+          innings: [{ ordinal: 0, battingTeamName }],
+          participants,
+        });
+
+      // The participants a decision sees are extracted from the batch items,
+      // so they are the same on every decision for the same batch. What can
+      // differ is what the database can resolve them to.
+      const participants = [
+        {
+          sourceId: `cricsheet:participant:${sourcePrefix}-gap-a-known`,
+          name: `${sourcePrefix} Gap A Known`,
+          teamName: battingTeamName,
+        },
+        { name: `${sourcePrefix} Gap A Later`, teamName: battingTeamName },
+      ];
+
+      const first = await decide('gap-a', participants);
+      expect(first.onboarding?.squadCreated).toBe(1);
+      expect(first.onboarding?.unresolvedParticipants).toHaveLength(1);
+
+      // Both decisions run inside this test's transaction, so now() is the same
+      // instant for each. Backdating the first report is what makes "the repeat
+      // did not reset it" observable at all.
+      await client.query(
+        `UPDATE batch_participant_onboarding_task
+         SET first_reported_at = timestamptz '2026-01-01 00:00:00+00' WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      // The fixture now exists, which is exactly the case that used to skip
+      // onboarding altogether: the decision returned no summary and touched
+      // nothing, so the squad could never be topped up.
+      const second = await decide('gap-a', participants);
+      expect(second.onboarding).toBeDefined();
+      // Nothing new to add, and nothing duplicated: every write is
+      // ON CONFLICT DO NOTHING, so the repeat settles rather than doubles.
+      expect(second.onboarding?.squadCreated).toBe(0);
+      expect(second.onboarding?.unresolvedParticipants).toHaveLength(1);
+
+      const fixtureRow = await client.query<{ fixtureId: string }>(
+        `SELECT fixture_id::text AS "fixtureId" FROM fixture WHERE source_ref=$1`,
+        [sourceRef],
+      );
+      // One fixture, not two, and both participants now in its squad: the
+      // second decision added to the first rather than replacing it.
+      expect(fixtureRow.rows).toHaveLength(1);
+      const squad = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM fixture_squad WHERE fixture_id=$1`,
+        [fixtureRow.rows[0]!.fixtureId],
+      );
+      expect(squad.rows[0]!.count).toBe('1');
+
+      // Innings are unchanged: the repeat is additive, not duplicating.
+      const innings = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM innings WHERE fixture_id=$1`,
+        [fixtureRow.rows[0]!.fixtureId],
+      );
+      expect(innings.rows[0]!.count).toBe('1');
+
+      // One task, still outstanding after two decisions and still carrying the
+      // moment it was first found. The repeat refreshed it rather than adding
+      // a second row or resetting its provenance.
+      const tasks = await client.query<{
+        state: string;
+        keptFirstReported: boolean;
+      }>(
+        `SELECT state,
+                first_reported_at = timestamptz '2026-01-01 00:00:00+00' AS "keptFirstReported"
+         FROM batch_participant_onboarding_task WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+      expect(tasks.rows).toHaveLength(1);
+      expect(tasks.rows[0]!.state).toBe('outstanding');
+      expect(tasks.rows[0]!.keptFirstReported).toBe(true);
+    });
+  });
+
+  test('persists outstanding participant onboarding work (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Tasks Batting`;
+      const bowlingTeamName = `${sourcePrefix} Tasks Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-tasks`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      await repository.createCanonicalFixtureAndQueueMapping({
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'tasks',
+        sourceRef: `${sourcePrefix}-tasks-fixture`,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [battingTeamName, bowlingTeamName],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+        innings: [{ ordinal: 0, battingTeamName }],
+        participants: [
+          { name: `${sourcePrefix} Tasks Nameless`, teamName: battingTeamName },
+          { name: `${sourcePrefix} Tasks No Team` },
+          {
+            sourceId: `app:participant:9223372036854775806`,
+            name: `${sourcePrefix} Tasks Missing Id`,
+            teamName: battingTeamName,
+          },
+        ],
+      });
+
+      const tasks = await client.query<{
+        reason: string;
+        state: string;
+        submittedName: string;
+      }>(
+        `SELECT reason, state, submitted_name AS "submittedName"
+         FROM batch_participant_onboarding_task WHERE batch_id=$1 ORDER BY reason`,
+        [batch.batchId],
+      );
+      // Every participant that needs a decision is recorded, with the decision
+      // it needs. Before this the whole set existed only in one response body.
+      expect(tasks.rows.map((row) => row.reason)).toEqual([
+        'identifier_not_found',
+        'no_durable_identifier',
+        'team_not_recognised',
+      ]);
+      expect(tasks.rows.every((row) => row.state === 'outstanding')).toBe(true);
     });
   });
 });

@@ -47,7 +47,14 @@ interface SubmittedParticipantReference {
   };
 }
 
-function participantKey(participant: FixtureOnboardingParticipant): string | null {
+/**
+ * Stable identity of a submitted participant within its fixture: the source
+ * identifier where one was submitted, otherwise the name and team. Exported so
+ * that an onboarding task is keyed by exactly the identity the extraction
+ * collected by, and a repeated decision updates its task rather than adding a
+ * second one for the same person.
+ */
+export function participantKey(participant: FixtureOnboardingParticipant): string | null {
   if (participant.sourceId) return `source:${participant.sourceId}`;
   if (participant.name) return `name:${participant.name}::${participant.teamName ?? ''}`;
   return null;

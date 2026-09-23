@@ -1071,6 +1071,28 @@ export async function publishAcceptedBatchChunk(
          FROM inserted_deliveries delivery
          WHERE item.batch_item_id=delivery.source_batch_item_id
          RETURNING item.batch_item_id
+       ), adopted_fixtures AS (
+         /*
+          * Issue #708. Every public read inner-joins the fixture to the
+          * accepted submission named by first_seen_in, so a fixture that has
+          * none is absent from fixture statistics, participant history,
+          * leaderboards and provenance. Only the corpus importer set it, which
+          * left every fixture created by the reviewer canonical-fixture path
+          * (#584) invisible after its deliveries published.
+          *
+          * IS NULL decides which submission counts as first. Publication
+          * inserts one submission per fixture per chunk, so the first chunk to
+          * reach a fixture adopts it and every later chunk is a no-op, which
+          * makes this idempotent across a worker restart. A fixture that
+          * already carries the column keeps it, so imported fixtures and
+          * existing known-fixture ingestion are untouched.
+          */
+         UPDATE fixture
+         SET first_seen_in=submission.submission_id
+         FROM inserted_submissions submission
+         WHERE fixture.fixture_id=submission.fixture_id
+           AND fixture.first_seen_in IS NULL
+         RETURNING fixture.fixture_id
        )
        SELECT count(*)::text AS count FROM updated_items`,
       [current.submitterId, current.checksum, JSON.stringify(publicationRows)],

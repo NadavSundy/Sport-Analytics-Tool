@@ -7,6 +7,7 @@ import {
   BATCH_REFERENCE,
   apiConsumer,
   batchDecisionReceipt,
+  batchDecisionReceiptWithOnboarding,
   batchReceipt,
   batchReport,
   batchStatus,
@@ -463,6 +464,29 @@ describe('batch errors, reports and canonical fixture decisions', () => {
       );
     },
   );
+
+  test('POST /batches/{batchReference}/canonical-fixtures documents the onboarding summary', async () => {
+    // Issue #708. A newly created canonical fixture returns an onboarding
+    // summary (#584), and until this test existed nothing checked that shape
+    // against the contract: BatchReferenceMappingReceipt sets
+    // additionalProperties false, so an undocumented onboarding key is a
+    // violation rather than an extension.
+    const decision = { itemOrdinal: 0, referencePath: 'fixtures.0', decisionKey: 'create-fixture' };
+    const path = `/api/v1/batches/${BATCH_REFERENCE}/canonical-fixtures`;
+
+    contract.expectResponse(
+      await request(
+        batchApp(administrator, {
+          createCanonicalFixture: async () => batchDecisionReceiptWithOnboarding as never,
+        }),
+      )
+        .post(path)
+        .set('Authorization', token)
+        .send(decision)
+        .expect(202),
+      { requestBody: decision },
+    );
+  });
 
   test('POST /batches/{batchReference}/canonical-fixtures matches every documented response', async () => {
     const decision = { itemOrdinal: 0, referencePath: 'fixtures.0', decisionKey: 'create-fixture' };
