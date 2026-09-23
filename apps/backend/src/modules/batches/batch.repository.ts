@@ -13,7 +13,11 @@ import {
   BatchPublicationLeaseBusyError,
   publishAcceptedBatchChunk,
 } from '@sport-analytics/batch-processing';
-import type { FixtureOnboardingParticipant, FixtureOnboardingInnings } from './fixture-onboarding';
+import {
+  participantKey,
+  type FixtureOnboardingParticipant,
+  type FixtureOnboardingInnings,
+} from './fixture-onboarding';
 
 type BatchState =
   | 'received'
@@ -887,6 +891,7 @@ async function ensureBatchPublicationJob(
  */
 async function onboardFixtureCanonicalContext(
   executor: QueryExecutor,
+  batchId: string,
   fixtureId: string,
   teamIdByName: Map<string, string>,
   innings: FixtureOnboardingInnings[],
@@ -924,17 +929,72 @@ async function onboardFixtureCanonicalContext(
   const reportedName = (participant: FixtureOnboardingParticipant): string =>
     participant.name ?? participant.sourceId ?? '';
 
-  const report = (
+  /**
+   * Records the participant in the summary the decision returns, and as an
+   * outstanding task. The task is what survives the request: the summary is
+   * seen once, whereas the batch report, revalidation and the reviewer's next
+   * decision all need to know this work is still outstanding.
+   *
+   * Keyed by the identity the extraction collected by, so a repeated decision
+   * refreshes the same row. `first_reported_at` is deliberately not touched on
+   * conflict: looking at the work again does not make it newer.
+   */
+  const report = async (
     participant: FixtureOnboardingParticipant,
     reason: FixtureOnboardingUnresolvedReason,
     candidates: { personId: string; displayName: string }[] = [],
-  ): void => {
+  ): Promise<void> => {
     unresolvedParticipants.push({
       name: reportedName(participant),
       ...(participant.teamName ? { teamName: participant.teamName } : {}),
       reason,
       candidates,
     });
+    const key = participantKey(participant);
+    if (!key) return;
+    await executeQuery(
+      executor,
+      `INSERT INTO batch_participant_onboarding_task (
+         batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
+         submitted_team_name, reason, candidates
+       ) VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6, $7, $8::jsonb)
+       ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
+         submitted_name=EXCLUDED.submitted_name,
+         submitted_source_id=EXCLUDED.submitted_source_id,
+         submitted_team_name=EXCLUDED.submitted_team_name,
+         reason=EXCLUDED.reason,
+         candidates=EXCLUDED.candidates,
+         state='outstanding',
+         person_id=NULL,
+         onboarded_at=NULL,
+         last_reported_at=now()`,
+      [
+        batchId,
+        fixtureId,
+        key,
+        reportedName(participant),
+        participant.sourceId ?? null,
+        participant.teamName ?? null,
+        reason,
+        JSON.stringify(candidates),
+      ],
+    );
+  };
+
+  /** Closes the task for a participant that has just reached the squad. */
+  const recordOnboarded = async (
+    participant: FixtureOnboardingParticipant,
+    personId: string,
+  ): Promise<void> => {
+    const key = participantKey(participant);
+    if (!key) return;
+    await executeQuery(
+      executor,
+      `UPDATE batch_participant_onboarding_task
+       SET state='onboarded', person_id=$4::bigint, onboarded_at=now(), last_reported_at=now()
+       WHERE batch_id=$1::bigint AND fixture_id=$2::bigint AND participant_key=$3`,
+      [batchId, fixtureId, key, personId],
+    );
   };
 
   for (const participant of participants) {
@@ -944,7 +1004,7 @@ async function onboardFixtureCanonicalContext(
       // team was missing or was not one of the fixture's two teams vanished:
       // no squad row, no report, and nothing for a reviewer to act on. Which
       // team a participant belongs to is a decision, not something to infer.
-      report(participant, 'team_not_recognised');
+      await report(participant, 'team_not_recognised');
       continue;
     }
 
@@ -990,7 +1050,7 @@ async function onboardFixtureCanonicalContext(
         // namespace the platform does not compare against. Reported whether or
         // not a name came with it, because the identifier alone tells the
         // reviewer which participant this is.
-        report(participant, 'identifier_not_found');
+        await report(participant, 'identifier_not_found');
         continue;
       }
     } else if (participant.name) {
@@ -1015,7 +1075,7 @@ async function onboardFixtureCanonicalContext(
       // More than one person answering to the name is a different decision
       // from none or one: the reviewer must choose between them rather than
       // supply or confirm an identifier.
-      report(
+      await report(
         participant,
         candidates.length > 1 ? 'ambiguous_name' : 'no_durable_identifier',
         candidates,
@@ -1026,7 +1086,7 @@ async function onboardFixtureCanonicalContext(
     // Unreachable while a collected participant carries a name or an
     // identifier, and every branch above either resolves one or reports it.
     if (!personId) {
-      report(participant, 'no_durable_identifier');
+      await report(participant, 'no_durable_identifier');
       continue;
     }
 
@@ -1039,6 +1099,10 @@ async function onboardFixtureCanonicalContext(
       [fixtureId, personId, teamId],
     );
     squadCreated += inserted.rowCount ?? inserted.rows.length;
+    // Closes any task an earlier decision opened for this participant. Run for
+    // every squad member rather than only newly inserted ones, so a replayed
+    // decision still settles a task the previous attempt left open.
+    await recordOnboarded(participant, personId);
   }
 
   return { inningsCreated, squadCreated, unresolvedParticipants };
@@ -2406,6 +2470,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       // resolvable and leaves everything already onboarded alone.
       const onboarding = await onboardFixtureCanonicalContext(
         executor,
+        input.batchId,
         fixtureId,
         teamIdByName,
         input.innings ?? [],
