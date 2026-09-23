@@ -427,6 +427,8 @@ describe('role-gated event submission page', () => {
     expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent(/validation and review/i);
 
+    await waitFor(() => expect(resolveBatch).toBeTypeOf('function'));
+
     await act(async () => {
       resolveBatch(
         response(202, {
