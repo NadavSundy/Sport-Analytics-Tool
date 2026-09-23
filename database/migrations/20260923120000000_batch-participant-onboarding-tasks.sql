@@ -54,7 +54,12 @@ COMMENT ON TABLE batch_participant_onboarding_task IS
 COMMENT ON COLUMN batch_participant_onboarding_task.participant_key IS
     'Stable identity of the submitted participant within its fixture: the source identifier
      where one was submitted, otherwise the name and team. Matches the key fixture onboarding
-     collects by, so a repeated decision updates its task rather than adding another.';
+     collects by, so a repeated decision updates its task rather than adding another.
+     A reviewer decision must address a task by this value, never by re-deriving a key from
+     what the decision itself supplies: answering "no durable identifier" with an identifier
+     changes the derived key from name:... to source:..., so the original task would never be
+     matched, would stay outstanding for ever, and would hold the batch in awaiting_review
+     permanently - the mirror of the defect this table exists to fix.';
 
 COMMENT ON COLUMN batch_participant_onboarding_task.candidates IS
     'Existing people sharing the submitted name, by display name or alias. Offered to the

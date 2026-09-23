@@ -318,6 +318,18 @@ Intermediate persistence, so they are no longer future schema concepts.
   asynchronous generation of checksum-backed dataset artifacts in private object storage.
 - **External API consumers.** Consumer/key persistence and usage accounting support administrator
   key management, per-minute rate limits and UTC daily quotas.
+- **Participant onboarding tasks.** `batch_participant_onboarding_task` records each participant a
+  reviewer-created fixture could not onboard deterministically, the reason it needs a decision, and
+  the candidates that make it actionable (issue #708). A row is the unit of outstanding onboarding
+  work: while any is `outstanding`, the batch is kept `awaiting_review` rather than rejected, so a
+  reviewer is never left with work to do and no batch to do it on.
+
+  **A decision must address a task by its `participant_key`, never by re-deriving a key from what
+  the decision supplies.** The key is the source identifier where one was submitted and the name
+  and team otherwise, so answering a `no_durable_identifier` task _with_ an identifier changes the
+  key that would be derived, from `name:…` to `source:…`. A decision that re-derived it would match
+  no existing task: the original would stay outstanding for ever and hold the batch in
+  `awaiting_review` permanently, which is the mirror image of the defect the table exists to fix.
 
 The migration history under `database/migrations/` is authoritative for the exact columns,
 constraints and indexes added after the original model approval.
