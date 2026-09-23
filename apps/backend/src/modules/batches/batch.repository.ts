@@ -318,6 +318,44 @@ export class BatchReferenceMappingConflictError extends Error {}
 export class BatchPublishedConflictResolutionError extends Error {}
 export class BatchReplacementConflictError extends Error {}
 
+interface ParticipantOnboardingDecisionInput {
+  taskReference: string;
+  personId?: string;
+  sourceId?: string;
+  teamName?: string;
+}
+
+interface ParticipantOnboardingResult {
+  onboarded: number;
+  alreadyOnboarded: number;
+  revalidationQueued: boolean;
+}
+
+/** Why one decision in a participant onboarding array could not be applied. */
+export interface ParticipantOnboardingDecisionFault {
+  taskReference: string;
+  code:
+    | 'TASK_NOT_FOUND'
+    | 'CANDIDATE_NOT_OFFERED'
+    | 'PERSON_NOT_FOUND'
+    | 'TEAM_NOT_IN_FIXTURE'
+    | 'IDENTIFIER_UNSUPPORTED';
+  message: string;
+}
+
+/**
+ * Carries every fault in the array, not merely the first. The array is applied
+ * all or nothing, so a reviewer who submitted twenty-two decisions needs to be
+ * told about all the broken ones at once rather than discovering them one
+ * resubmission at a time.
+ */
+export class BatchParticipantOnboardingConflictError extends Error {
+  constructor(readonly faults: ParticipantOnboardingDecisionFault[]) {
+    super('One or more participant onboarding decisions could not be applied.');
+    this.name = 'BatchParticipantOnboardingConflictError';
+  }
+}
+
 /**
  * The outcome of resolving one staged item's references.
  *
@@ -398,6 +436,12 @@ export interface BatchRepository {
     innings?: FixtureOnboardingInnings[];
     participants?: FixtureOnboardingParticipant[];
   }): Promise<BatchReferenceMappingRecord & { onboarding?: FixtureOnboardingSummary }>;
+  applyParticipantOnboardingDecisions(input: {
+    batchId: string;
+    actorId: string;
+    decisionKey: string;
+    decisions: ParticipantOnboardingDecisionInput[];
+  }): Promise<ParticipantOnboardingResult>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
   publishAcceptedItems(batchId: string, workerId: string): Promise<BatchPublicationResult>;
@@ -2514,6 +2558,234 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         decisionKey: input.decisionKey,
       });
       return { ...mapped, onboarding };
+    },
+
+    async applyParticipantOnboardingDecisions(input) {
+      if (!executor) {
+        return withTransaction(getDatabasePool(), (client) =>
+          createBatchRepository(client).applyParticipantOnboardingDecisions(input),
+        );
+      }
+
+      const locked = await executeQuery<BatchRow>(
+        executor,
+        `SELECT ${batchSelection} FROM batch WHERE batch_id = $1::bigint FOR UPDATE`,
+        [input.batchId],
+      );
+      const batch = mapBatch(requireRow(locked.rows[0], 'Batch onboarding decision lookup'));
+      if (!['rejected', 'awaiting_review', 'correction_requested'].includes(batch.state)) {
+        throw new BatchParticipantOnboardingConflictError(
+          input.decisions.map((decision) => ({
+            taskReference: decision.taskReference,
+            code: 'TASK_NOT_FOUND' as const,
+            message: 'Onboarding decisions can only be applied after validation has finished.',
+          })),
+        );
+      }
+
+      // Every addressed task, read once and locked, so two reviewers deciding
+      // the same batch cannot interleave.
+      const references = input.decisions.map((decision) => decision.taskReference);
+      const taskRows = await executeQuery<{
+        taskReference: string;
+        fixtureId: string;
+        state: string;
+        submittedTeamName: string | null;
+        candidates: { personId: string; displayName: string }[];
+      }>(
+        executor,
+        `SELECT task_reference::text AS "taskReference", fixture_id::text AS "fixtureId",
+                state, submitted_team_name AS "submittedTeamName", candidates
+         FROM batch_participant_onboarding_task
+         WHERE batch_id = $1::bigint AND task_reference = ANY($2::uuid[])
+         FOR UPDATE`,
+        [input.batchId, references],
+      );
+      const taskByReference = new Map(taskRows.rows.map((row) => [row.taskReference, row]));
+
+      const faults: ParticipantOnboardingDecisionFault[] = [];
+      const fault = (
+        taskReference: string,
+        code: ParticipantOnboardingDecisionFault['code'],
+        message: string,
+      ): void => {
+        faults.push({ taskReference, code, message });
+      };
+
+      const applicable: Array<{
+        decision: ParticipantOnboardingDecisionInput;
+        fixtureId: string;
+        personId: string;
+        teamId: string;
+      }> = [];
+      let alreadyOnboarded = 0;
+
+      for (const decision of input.decisions) {
+        const task = taskByReference.get(decision.taskReference);
+        if (!task) {
+          fault(
+            decision.taskReference,
+            'TASK_NOT_FOUND',
+            'No onboarding task for this batch carries that reference.',
+          );
+          continue;
+        }
+        if (task.state === 'onboarded') {
+          // A replay, not a fault. The reviewer's earlier decision stands.
+          alreadyOnboarded += 1;
+          continue;
+        }
+
+        // The team the participant is placed in must be one of this fixture's
+        // two. A reviewer answering team_not_recognised names it; otherwise the
+        // name the submission carried is used.
+        const teamName = decision.teamName ?? task.submittedTeamName;
+        let teamId: string | undefined;
+        if (teamName) {
+          const team = await executeQuery<{ teamId: string }>(
+            executor,
+            `SELECT team.team_id::text AS "teamId"
+             FROM fixture_team
+             JOIN team ON team.team_id = fixture_team.team_id
+             WHERE fixture_team.fixture_id = $1::bigint AND team.name = $2`,
+            [task.fixtureId, teamName],
+          );
+          teamId = team.rows[0]?.teamId;
+        }
+        if (!teamId) {
+          fault(
+            decision.taskReference,
+            'TEAM_NOT_IN_FIXTURE',
+            'Name one of the two teams of the fixture this task belongs to.',
+          );
+          continue;
+        }
+
+        let personId: string | undefined;
+        if (decision.personId) {
+          // Only a candidate the task itself offered. Any other person would be
+          // a match this platform never made, reached by a route it cannot
+          // show, which is precisely what a name is not allowed to buy.
+          const offered = task.candidates.some(
+            (candidate) => candidate.personId === decision.personId,
+          );
+          if (!offered) {
+            fault(
+              decision.taskReference,
+              'CANDIDATE_NOT_OFFERED',
+              'Choose one of the candidates this task offered, or supply a durable identifier.',
+            );
+            continue;
+          }
+          personId = decision.personId;
+        } else if (decision.sourceId) {
+          const identifier = decision.sourceId.split(':', 3);
+          const namespace = identifier[0];
+          const value = identifier[2];
+          if (namespace === 'app' && value) {
+            const existing = await executeQuery<{ personId: string }>(
+              executor,
+              `SELECT person_id::text AS "personId" FROM person WHERE person_id = $1::bigint`,
+              [value],
+            );
+            personId = existing.rows[0]?.personId;
+            if (!personId) {
+              fault(
+                decision.taskReference,
+                'PERSON_NOT_FOUND',
+                'That application identifier names no person on this platform.',
+              );
+              continue;
+            }
+          } else if (namespace === 'cricsheet' && value) {
+            // A registry identifier is durable, so creating or reusing by it
+            // cannot produce a false match. This is the same write fixture
+            // onboarding performs for a participant that arrived carrying one.
+            const upserted = await executeQuery<{ personId: string }>(
+              executor,
+              `INSERT INTO person (source_ref, display_name)
+               VALUES ($1, $1)
+               ON CONFLICT (source_ref) DO NOTHING
+               RETURNING person_id::text AS "personId"`,
+              [value],
+            );
+            personId =
+              upserted.rows[0]?.personId ??
+              (
+                await executeQuery<{ personId: string }>(
+                  executor,
+                  `SELECT person_id::text AS "personId" FROM person WHERE source_ref = $1`,
+                  [value],
+                )
+              ).rows[0]?.personId;
+          } else {
+            fault(
+              decision.taskReference,
+              'IDENTIFIER_UNSUPPORTED',
+              'Identifiers are compared only within the cricsheet or app namespaces.',
+            );
+            continue;
+          }
+        }
+
+        if (!personId) {
+          // Reached by a team_not_recognised task answered with a team alone,
+          // where the submission carried no identity to place in that team.
+          fault(
+            decision.taskReference,
+            'PERSON_NOT_FOUND',
+            'This task also needs a person: choose a candidate or supply a durable identifier.',
+          );
+          continue;
+        }
+        applicable.push({ decision, fixtureId: task.fixtureId, personId, teamId });
+      }
+
+      // All or nothing. A partly applied array would leave the reviewer
+      // guessing which half took effect, and would make "revalidate once"
+      // ambiguous.
+      if (faults.length > 0) throw new BatchParticipantOnboardingConflictError(faults);
+
+      for (const entry of applicable) {
+        await executeQuery(
+          executor,
+          `INSERT INTO fixture_squad (fixture_id, person_id, team_id)
+           VALUES ($1::bigint, $2::bigint, $3::bigint)
+           ON CONFLICT (fixture_id, person_id) DO NOTHING`,
+          [entry.fixtureId, entry.personId, entry.teamId],
+        );
+        await executeQuery(
+          executor,
+          `UPDATE batch_participant_onboarding_task
+           SET state='onboarded', person_id=$3::bigint, onboarded_at=now(),
+               decided_by=$4::bigint, decision_key=$5, last_reported_at=now()
+           WHERE batch_id=$1::bigint AND task_reference=$2::uuid`,
+          [
+            input.batchId,
+            entry.decision.taskReference,
+            entry.personId,
+            input.actorId,
+            input.decisionKey,
+          ],
+        );
+      }
+
+      // Once for the whole array, and not at all when nothing changed: a replay
+      // must not cost a full revalidation pass.
+      if (applicable.length > 0) {
+        await requestBatchRevalidation(
+          executor,
+          batch,
+          input.actorId,
+          `Participant onboarding decisions applied (${String(applicable.length)}).`,
+        );
+      }
+
+      return {
+        onboarded: applicable.length,
+        alreadyOnboarded,
+        revalidationQueued: applicable.length > 0,
+      };
     },
 
     async applyReferenceResolution(updates) {
