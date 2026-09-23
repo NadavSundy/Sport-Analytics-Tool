@@ -20,10 +20,10 @@ import {
   RecordFact,
   RecordFacts,
 } from '../features/browse/RecordDetail';
+import { AnchoredSection, LocalNavigation } from '../components/NavigationPrimitives';
 import { SectionBoundary, SectionError } from '../features/browse/SectionBoundary';
 import { usePublicData } from '../features/browse/usePublicData';
 import {
-  FixtureStatisticsOverview,
   ParticipantCareerOverview,
   PlayerPerformance,
 } from '../features/statistics/StatisticsPages';
@@ -328,7 +328,13 @@ function FixtureRecord({ fixture }: { fixture: Fixture }) {
           {fixtureTitle(fixture)}
         </Link>
       </h3>
-      <p className="record-list__summary">{context.join(' · ')}</p>
+      <p className="record-list__summary">
+        {context.join(' · ')}
+        <br />
+        <Link to={`/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`}>
+          View statistics for {fixtureTitle(fixture)}
+        </Link>
+      </p>
     </RecordListItem>
   );
 }
@@ -823,31 +829,47 @@ export function CompetitionDetailPage() {
             backTo="/competitions"
             eyebrow="Competition"
             title={competition.name}
+            breadcrumbs={[
+              { label: 'Explore', to: '/competitions' },
+              { label: 'Competitions', to: '/competitions' },
+              { label: competition.name, to: '#' },
+            ]}
+            sections={[
+              { label: 'Seasons', to: '#seasons' },
+              { label: 'Fixtures', to: '#fixtures' },
+              { label: 'Teams', to: '#teams' },
+            ]}
           >
-            <RelatedCollection
-              emptyMessage="No published seasons are available for this competition."
-              filters={relatedFilters('competitionId', competition.competitionId)}
-              load={publicReadApi.listSeasons}
-              renderRecords={(seasons) => <SeasonRecords seasons={seasons} />}
-              resourceLabel="seasons"
-              title="Seasons"
-            />
-            <RelatedCollection
-              emptyMessage="No published fixtures are available for this competition."
-              filters={relatedFilters('competitionId', competition.competitionId)}
-              load={publicReadApi.listFixtures}
-              renderRecords={(fixtures) => <CompetitionFixtureRecords fixtures={fixtures} />}
-              resourceLabel="fixtures"
-              title="Fixtures by season"
-            />
-            <RelatedCollection
-              emptyMessage="No published teams are available for this competition."
-              filters={relatedFilters('competitionId', competition.competitionId)}
-              load={publicReadApi.listCompetitors}
-              renderRecords={(teams) => <TeamRecords teams={teams} />}
-              resourceLabel="teams"
-              title="Teams"
-            />
+            <AnchoredSection id="seasons">
+              <RelatedCollection
+                emptyMessage="No published seasons are available for this competition."
+                filters={relatedFilters('competitionId', competition.competitionId)}
+                load={publicReadApi.listSeasons}
+                renderRecords={(seasons) => <SeasonRecords seasons={seasons} />}
+                resourceLabel="seasons"
+                title="Seasons"
+              />
+            </AnchoredSection>
+            <AnchoredSection id="fixtures">
+              <RelatedCollection
+                emptyMessage="No published fixtures are available for this competition."
+                filters={relatedFilters('competitionId', competition.competitionId)}
+                load={publicReadApi.listFixtures}
+                renderRecords={(fixtures) => <CompetitionFixtureRecords fixtures={fixtures} />}
+                resourceLabel="fixtures"
+                title="Fixtures by season"
+              />
+            </AnchoredSection>
+            <AnchoredSection id="teams">
+              <RelatedCollection
+                emptyMessage="No published teams are available for this competition."
+                filters={relatedFilters('competitionId', competition.competitionId)}
+                load={publicReadApi.listCompetitors}
+                renderRecords={(teams) => <TeamRecords teams={teams} />}
+                resourceLabel="teams"
+                title="Teams"
+              />
+            </AnchoredSection>
           </DetailLayout>
         );
       }}
@@ -874,33 +896,49 @@ export function SeasonDetailPage() {
             backTo="/seasons"
             eyebrow={season.competitionName}
             title={season.label}
+            breadcrumbs={[
+              { label: 'Explore', to: '/seasons' },
+              { label: 'Seasons', to: '/seasons' },
+              { label: season.label, to: '#' },
+            ]}
+            sections={[
+              { label: 'Overview', to: '#overview' },
+              { label: 'Fixtures', to: '#fixtures' },
+              { label: 'Teams', to: '#teams' },
+            ]}
           >
-            <RecordFacts>
-              <RecordFact
-                label="Competition"
-                value={
-                  <Link to={`/competitions/${encodeURIComponent(season.competitionId)}`}>
-                    {season.competitionName}
-                  </Link>
-                }
+            <AnchoredSection id="overview">
+              <RecordFacts>
+                <RecordFact
+                  label="Competition"
+                  value={
+                    <Link to={`/competitions/${encodeURIComponent(season.competitionId)}`}>
+                      {season.competitionName}
+                    </Link>
+                  }
+                />
+              </RecordFacts>
+            </AnchoredSection>
+            <AnchoredSection id="fixtures">
+              <RelatedCollection
+                emptyMessage="No published fixtures are available for this season."
+                filters={relatedFilters('seasonId', season.seasonId)}
+                load={publicReadApi.listFixtures}
+                renderRecords={(fixtures) => <FixtureRecords fixtures={fixtures} />}
+                resourceLabel="fixtures"
+                title="Fixtures"
               />
-            </RecordFacts>
-            <RelatedCollection
-              emptyMessage="No published fixtures are available for this season."
-              filters={relatedFilters('seasonId', season.seasonId)}
-              load={publicReadApi.listFixtures}
-              renderRecords={(fixtures) => <FixtureRecords fixtures={fixtures} />}
-              resourceLabel="fixtures"
-              title="Fixtures"
-            />
-            <RelatedCollection
-              emptyMessage="No published teams are available for this season."
-              filters={relatedFilters('seasonId', season.seasonId)}
-              load={publicReadApi.listCompetitors}
-              renderRecords={(teams) => <TeamRecords teams={teams} />}
-              resourceLabel="teams"
-              title="Teams"
-            />
+            </AnchoredSection>
+            <AnchoredSection id="teams">
+              <RelatedCollection
+                emptyMessage="No published teams are available for this season."
+                filters={relatedFilters('seasonId', season.seasonId)}
+                load={publicReadApi.listCompetitors}
+                renderRecords={(teams) => <TeamRecords teams={teams} />}
+                resourceLabel="teams"
+                title="Teams"
+              />
+            </AnchoredSection>
           </DetailLayout>
         );
       }}
@@ -927,7 +965,25 @@ export function FixtureDetailPage() {
             backTo="/fixtures"
             eyebrow="Fixture overview"
             title={fixtureTitle(fixture)}
+            breadcrumbs={[
+              { label: 'Fixtures', to: '/fixtures' },
+              { label: fixtureTitle(fixture), to: '#' },
+            ]}
           >
+            <LocalNavigation
+              label="Fixture sections"
+              items={[
+                { label: 'Overview', to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}` },
+                {
+                  label: 'Statistics',
+                  to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`,
+                },
+                {
+                  label: 'Players',
+                  to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}/players`,
+                },
+              ]}
+            />
             <RecordFacts>
               <RecordFact
                 label="Competition"
@@ -986,19 +1042,64 @@ export function FixtureDetailPage() {
               />
             </RecordFacts>
             <FixtureWeatherOverview fixtureId={fixture.fixtureId} />
-            <FixtureStatisticsOverview fixtureId={fixture.fixtureId} />
-            <RelatedCollection
-              emptyMessage="No published players are available for this match."
-              filters={relatedFilters('fixtureId', fixture.fixtureId)}
-              load={publicReadApi.listParticipants}
-              renderRecords={(players) => <PlayerRecords players={players} />}
-              resourceLabel="players"
-              title="Participating players"
-            />
           </DetailLayout>
         );
       }}
       requestKey={fixtureId}
+    />
+  );
+}
+
+export function FixturePlayersPage() {
+  const { fixtureId = '' } = useParams();
+  const load = useCallback(
+    (signal: AbortSignal) => publicReadApi.getFixture(fixtureId, signal),
+    [fixtureId],
+  );
+  return (
+    <DetailState
+      label="Fixture players"
+      load={load}
+      requestKey={fixtureId}
+      render={({ data: fixture }) => (
+        <DetailLayout
+          backLabel="fixtures"
+          backTo="/fixtures"
+          eyebrow="Fixture players"
+          title={fixtureTitle(fixture)}
+          breadcrumbs={[
+            { label: 'Fixtures', to: '/fixtures' },
+            {
+              label: fixtureTitle(fixture),
+              to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}`,
+            },
+            { label: 'Players', to: '#' },
+          ]}
+        >
+          <LocalNavigation
+            label="Fixture sections"
+            items={[
+              { label: 'Overview', to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}` },
+              {
+                label: 'Statistics',
+                to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}/statistics`,
+              },
+              {
+                label: 'Players',
+                to: `/fixtures/${encodeURIComponent(fixture.fixtureId)}/players`,
+              },
+            ]}
+          />
+          <RelatedCollection
+            emptyMessage="No published players are available for this match."
+            filters={relatedFilters('fixtureId', fixture.fixtureId)}
+            load={publicReadApi.listParticipants}
+            renderRecords={(players) => <PlayerRecords players={players} />}
+            resourceLabel="players"
+            title="Participating players"
+          />
+        </DetailLayout>
+      )}
     />
   );
 }
@@ -1021,23 +1122,36 @@ export function CompetitorDetailPage() {
             backTo="/competitors"
             eyebrow="Team"
             title={competitor.name}
+            breadcrumbs={[
+              { label: 'Explore', to: '/competitors' },
+              { label: 'Teams', to: '/competitors' },
+              { label: competitor.name, to: '#' },
+            ]}
+            sections={[
+              { label: 'Fixtures', to: '#fixtures' },
+              { label: 'Players', to: '#players' },
+            ]}
           >
-            <RelatedCollection
-              emptyMessage="No published fixtures are available for this team."
-              filters={relatedFilters('competitorId', competitor.competitorId)}
-              load={publicReadApi.listFixtures}
-              renderRecords={(fixtures) => <FixtureRecords fixtures={fixtures} />}
-              resourceLabel="fixtures"
-              title="Fixtures"
-            />
-            <RelatedCollection
-              emptyMessage="No published players are available for this team."
-              filters={relatedFilters('competitorId', competitor.competitorId)}
-              load={publicReadApi.listParticipants}
-              renderRecords={(players) => <PlayerRecords players={players} />}
-              resourceLabel="players"
-              title="Players"
-            />
+            <AnchoredSection id="fixtures">
+              <RelatedCollection
+                emptyMessage="No published fixtures are available for this team."
+                filters={relatedFilters('competitorId', competitor.competitorId)}
+                load={publicReadApi.listFixtures}
+                renderRecords={(fixtures) => <FixtureRecords fixtures={fixtures} />}
+                resourceLabel="fixtures"
+                title="Fixtures"
+              />
+            </AnchoredSection>
+            <AnchoredSection id="players">
+              <RelatedCollection
+                emptyMessage="No published players are available for this team."
+                filters={relatedFilters('competitorId', competitor.competitorId)}
+                load={publicReadApi.listParticipants}
+                renderRecords={(players) => <PlayerRecords players={players} />}
+                resourceLabel="players"
+                title="Players"
+              />
+            </AnchoredSection>
           </DetailLayout>
         );
       }}
@@ -1064,11 +1178,24 @@ export function ParticipantDetailPage() {
             backTo="/participants"
             eyebrow="Player"
             title={participant.displayName}
+            breadcrumbs={[
+              { label: 'Explore', to: '/participants' },
+              { label: 'Players', to: '/participants' },
+              { label: participant.displayName, to: '#' },
+            ]}
+            sections={[
+              { label: 'Overview', to: '#overview' },
+              { label: 'Match history', to: '#match-history' },
+            ]}
           >
             {/* Siblings, so both requests start in the same commit rather than one
                 waiting on the other; neither section's state can hide the other. */}
-            <ParticipantCareerOverview participantId={participant.participantId} />
-            <PlayerMatchHistory participantId={participant.participantId} />
+            <AnchoredSection id="overview">
+              <ParticipantCareerOverview participantId={participant.participantId} />
+            </AnchoredSection>
+            <AnchoredSection id="match-history">
+              <PlayerMatchHistory participantId={participant.participantId} />
+            </AnchoredSection>
           </DetailLayout>
         );
       }}

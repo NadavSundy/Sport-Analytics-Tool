@@ -54,9 +54,17 @@ test(
     await stubOpenApi(page);
     await page.goto('/');
 
-    const navigation = page.getByRole('navigation', { name: 'Public records' });
-    await expect(navigation.getByRole('link', { name: 'API' })).toBeVisible();
-    await navigation.getByRole('link', { name: 'API' }).click();
+    if ((page.viewportSize()?.width ?? 0) < 900) {
+      await page.getByRole('button', { name: 'Menu' }).click();
+      await page
+        .getByRole('navigation', { name: 'Mobile navigation' })
+        .getByRole('link', { name: 'API' })
+        .click();
+    } else {
+      const navigation = page.getByRole('navigation', { name: 'Public records' });
+      await expect(navigation.getByRole('link', { name: 'API' })).toBeVisible();
+      await navigation.getByRole('link', { name: 'API' }).click();
+    }
 
     await expect(page).toHaveURL(/\/api$/);
     await expect(page.getByRole('heading', { level: 1, name: 'API Explorer' })).toBeVisible();

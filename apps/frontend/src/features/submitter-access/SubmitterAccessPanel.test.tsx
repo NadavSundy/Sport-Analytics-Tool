@@ -2,9 +2,9 @@ import type { ApplicationRole, SubmitterApprovalState } from '@sport-analytics/c
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PublicApp } from '../../App';
+import { AccountPage } from '../auth/AuthPages';
 import { AuthProvider } from '../auth/AuthProvider';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
@@ -93,8 +93,10 @@ function competitionsResponse(
 function renderAccountPage(session: Session | null = createSession()) {
   return render(
     <AuthProvider client={createAuthClient(session)}>
-      <MemoryRouter initialEntries={['/account']}>
-        <PublicApp />
+      <MemoryRouter initialEntries={['/account/access']}>
+        <Routes>
+          <Route path="/account/:section" element={<AccountPage />} />
+        </Routes>
       </MemoryRouter>
     </AuthProvider>,
   );

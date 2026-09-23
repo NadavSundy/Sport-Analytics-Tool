@@ -104,7 +104,7 @@ describe('ApiExplorerPage', () => {
       await screen.findByRole('heading', { level: 1, name: 'API Explorer' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Supported API major version: v1')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Login or Sign up' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('shows an accessible loading state while fetching the backend specification', () => {

@@ -7,11 +7,17 @@ import type {
 } from '@sport-analytics/contracts';
 import { fixtureProposalSchema } from '@sport-analytics/contracts';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
+import { signInPathFor } from '../auth/auth-return';
+import {
+  AnchoredSection,
+  Breadcrumbs,
+  SectionNavigation,
+} from '../../components/NavigationPrimitives';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import {
   getBatchReport,
@@ -157,7 +163,7 @@ function ReviewQueue() {
         if (!controller.signal.aborted)
           setState({
             kind: 'error',
-            message: 'The administrator batch workspace could not be loaded.',
+            message: 'The review queue could not be loaded.',
           });
       });
     return () => controller.abort();
@@ -247,79 +253,92 @@ function ReviewQueue() {
 
   return (
     <ReviewerGate profile={state.value.profile}>
-      <section className="review-batch-section" aria-labelledby="needs-review-title">
-        <div>
-          <h2 id="needs-review-title">Needs review</h2>
-          <p className="review-scope-note">
-            Showing every batch currently awaiting administrator review.
-          </p>
-        </div>
-        {state.value.pending.batches.length === 0 ? (
-          <p role="status">No batches are awaiting your review.</p>
-        ) : (
-          <ul className="batch-list review-queue">
-            {state.value.pending.batches.map((batch) => (
-              <BatchQueueItem key={batch.batchReference} batch={batch} />
-            ))}
-          </ul>
-        )}
-        {state.value.pending.cursor ? (
-          <button
-            className="button button--secondary"
-            type="button"
-            disabled={pendingLoadingMore}
-            onClick={() => void loadMorePending()}
-          >
-            {pendingLoadingMore ? 'Loading…' : 'Load more pending batches'}
-          </button>
-        ) : null}
-        {pendingError ? <p role="alert">{pendingError}</p> : null}
-      </section>
-
-      <section className="review-batch-section" aria-labelledby="batch-history-title">
-        <div className="review-history__heading">
+      <SectionNavigation
+        label="Review queue sections"
+        items={[
+          { label: 'Needs review', to: '#needs-review' },
+          { label: 'History', to: '#history' },
+        ]}
+      />
+      <AnchoredSection id="needs-review">
+        <section className="review-batch-section" aria-labelledby="needs-review-title">
           <div>
-            <h2 id="batch-history-title">All batches</h2>
-            <p>Global batch history across every submitter and lifecycle state.</p>
+            <h2 id="needs-review-title">Needs review</h2>
+            <p className="review-scope-note">
+              Showing every batch currently awaiting administrator review.
+            </p>
           </div>
-          <label className="review-history__filter">
-            Status
-            <select
-              value={historyStatus}
-              disabled={historyRefreshing}
-              onChange={(event) => void changeHistoryStatus(event.target.value as HistoryStatus)}
-            >
-              <option value="all">All statuses</option>
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
+          {state.value.pending.batches.length === 0 ? (
+            <div className="state-message" role="status">
+              <p>Nothing needs review.</p>
+              <a href="#history">View review history</a>
+            </div>
+          ) : (
+            <ul className="batch-list review-queue">
+              {state.value.pending.batches.map((batch) => (
+                <BatchQueueItem key={batch.batchReference} batch={batch} />
               ))}
-            </select>
-          </label>
-        </div>
-        {historyRefreshing ? <p role="status">Refreshing batch history…</p> : null}
-        {!historyRefreshing && state.value.history.batches.length === 0 ? (
-          <p role="status">No batches match this status.</p>
-        ) : (
-          <ul className="batch-list review-queue">
-            {state.value.history.batches.map((batch) => (
-              <BatchQueueItem key={batch.batchReference} batch={batch} />
-            ))}
-          </ul>
-        )}
-        {state.value.history.cursor ? (
-          <button
-            className="button button--secondary"
-            type="button"
-            disabled={historyLoadingMore || historyRefreshing}
-            onClick={() => void loadMoreHistory()}
-          >
-            {historyLoadingMore ? 'Loading…' : 'Load more batch history'}
-          </button>
-        ) : null}
-        {historyError ? <p role="alert">{historyError}</p> : null}
-      </section>
+            </ul>
+          )}
+          {state.value.pending.cursor ? (
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={pendingLoadingMore}
+              onClick={() => void loadMorePending()}
+            >
+              {pendingLoadingMore ? 'Loading…' : 'Load more pending batches'}
+            </button>
+          ) : null}
+          {pendingError ? <p role="alert">{pendingError}</p> : null}
+        </section>
+      </AnchoredSection>
+      <AnchoredSection id="history">
+        <section className="review-batch-section" aria-labelledby="batch-history-title">
+          <div className="review-history__heading">
+            <div>
+              <h2 id="batch-history-title">All batches</h2>
+              <p>Global batch history across every submitter and lifecycle state.</p>
+            </div>
+            <label className="review-history__filter">
+              Status
+              <select
+                value={historyStatus}
+                disabled={historyRefreshing}
+                onChange={(event) => void changeHistoryStatus(event.target.value as HistoryStatus)}
+              >
+                <option value="all">All statuses</option>
+                {Object.entries(statusLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {historyRefreshing ? <p role="status">Refreshing batch history…</p> : null}
+          {!historyRefreshing && state.value.history.batches.length === 0 ? (
+            <p role="status">No batches match this status.</p>
+          ) : (
+            <ul className="batch-list review-queue">
+              {state.value.history.batches.map((batch) => (
+                <BatchQueueItem key={batch.batchReference} batch={batch} />
+              ))}
+            </ul>
+          )}
+          {state.value.history.cursor ? (
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={historyLoadingMore || historyRefreshing}
+              onClick={() => void loadMoreHistory()}
+            >
+              {historyLoadingMore ? 'Loading…' : 'Load more batch history'}
+            </button>
+          ) : null}
+          {historyError ? <p role="alert">{historyError}</p> : null}
+        </section>
+      </AnchoredSection>
     </ReviewerGate>
   );
 }
@@ -903,232 +922,251 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
       queueMicrotask(() => triggerRef.current?.focus());
     }
   }
-  if (state.kind === 'loading') return <p role="status">Loading reviewer workspace…</p>;
+  if (state.kind === 'loading') return <p role="status">Loading review queue…</p>;
   if (state.kind === 'error') return <p role="alert">{state.message}</p>;
   const { profile, report } = state.value;
   return (
     <ReviewerGate profile={profile}>
       <Link to="/reviews/batches">Back to review queue</Link>
-      <p className={`batch-lifecycle batch-lifecycle--${report.batch.status}`} role="status">
-        Current state: <strong>{statusLabels[report.batch.status]}</strong>
-      </p>
-      <SourceMetadata batch={report.batch} />
-      <section aria-labelledby="review-summary-title">
-        <h2 id="review-summary-title">Validation and reference summary</h2>
-        <dl className="batch-counts">
-          <div>
-            <dt>Accepted</dt>
-            <dd>{report.reviewSummary.validation.accepted}</dd>
+      <SectionNavigation
+        label="Review detail sections"
+        items={[
+          { label: 'Summary', to: '#summary' },
+          { label: 'Issues', to: '#issues' },
+          { label: 'Decision', to: '#decision' },
+        ]}
+      />
+      <AnchoredSection id="summary">
+        <p className={`batch-lifecycle batch-lifecycle--${report.batch.status}`} role="status">
+          Current state: <strong>{statusLabels[report.batch.status]}</strong>
+        </p>
+        <SourceMetadata batch={report.batch} />
+        <section aria-labelledby="review-summary-title">
+          <h2 id="review-summary-title">Validation and reference summary</h2>
+          <dl className="batch-counts">
+            <div>
+              <dt>Accepted</dt>
+              <dd>{report.reviewSummary.validation.accepted}</dd>
+            </div>
+            <div>
+              <dt>Rejected</dt>
+              <dd>{report.reviewSummary.validation.rejected}</dd>
+            </div>
+            <div>
+              <dt>Blocking errors</dt>
+              <dd>{report.reviewSummary.validation.blockingErrors}</dd>
+            </div>
+            <div>
+              <dt>Duplicates</dt>
+              <dd>{report.reviewSummary.validation.duplicate}</dd>
+            </div>
+            <div>
+              <dt>Conflicts</dt>
+              <dd>{report.reviewSummary.validation.conflicting}</dd>
+            </div>
+            <div>
+              <dt>Resolved references</dt>
+              <dd>{report.reviewSummary.resolution.resolved}</dd>
+            </div>
+            <div>
+              <dt>Ambiguous</dt>
+              <dd>{report.reviewSummary.resolution.ambiguous}</dd>
+            </div>
+            <div>
+              <dt>Unresolved</dt>
+              <dd>{report.reviewSummary.resolution.unresolved}</dd>
+            </div>
+            <div>
+              <dt>Invalid references</dt>
+              <dd>{report.reviewSummary.resolution.invalid}</dd>
+            </div>
+            <div>
+              <dt>Proposed matches</dt>
+              <dd>{report.reviewSummary.resolution.proposed}</dd>
+            </div>
+          </dl>
+        </section>
+      </AnchoredSection>
+      <AnchoredSection id="issues">
+        <ErrorGroups report={report} />
+        <section className="published-conflicts" aria-labelledby="published-conflicts-title">
+          <div className="published-conflicts__heading">
+            <div>
+              <h2 id="published-conflicts-title">Published delivery conflicts</h2>
+              <p>Resolve each conflict before the batch can be approved for publication.</p>
+            </div>
+            <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
           </div>
-          <div>
-            <dt>Rejected</dt>
-            <dd>{report.reviewSummary.validation.rejected}</dd>
-          </div>
-          <div>
-            <dt>Blocking errors</dt>
-            <dd>{report.reviewSummary.validation.blockingErrors}</dd>
-          </div>
-          <div>
-            <dt>Duplicates</dt>
-            <dd>{report.reviewSummary.validation.duplicate}</dd>
-          </div>
-          <div>
-            <dt>Conflicts</dt>
-            <dd>{report.reviewSummary.validation.conflicting}</dd>
-          </div>
-          <div>
-            <dt>Resolved references</dt>
-            <dd>{report.reviewSummary.resolution.resolved}</dd>
-          </div>
-          <div>
-            <dt>Ambiguous</dt>
-            <dd>{report.reviewSummary.resolution.ambiguous}</dd>
-          </div>
-          <div>
-            <dt>Unresolved</dt>
-            <dd>{report.reviewSummary.resolution.unresolved}</dd>
-          </div>
-          <div>
-            <dt>Invalid references</dt>
-            <dd>{report.reviewSummary.resolution.invalid}</dd>
-          </div>
-          <div>
-            <dt>Proposed matches</dt>
-            <dd>{report.reviewSummary.resolution.proposed}</dd>
-          </div>
-        </dl>
-      </section>
-      <ErrorGroups report={report} />
-      <section className="published-conflicts" aria-labelledby="published-conflicts-title">
-        <div className="published-conflicts__heading">
-          <div>
-            <h2 id="published-conflicts-title">Published delivery conflicts</h2>
-            <p>Resolve each conflict before the batch can be approved for publication.</p>
-          </div>
-          <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
-        </div>
-        {report.blockingItems.some((item) => item.publishedConflict) ? (
-          report.blockingItems
-            .filter((item) => item.publishedConflict)
-            .map((item) => (
-              <PublishedConflictResolution
+          {report.blockingItems.some((item) => item.publishedConflict) ? (
+            report.blockingItems
+              .filter((item) => item.publishedConflict)
+              .map((item) => (
+                <PublishedConflictResolution
+                  key={item.ordinal}
+                  batchReference={batchReference}
+                  item={item}
+                  refresh={load}
+                  resolutionAvailable={report.batch.status === 'awaiting_review'}
+                />
+              ))
+          ) : (
+            <p>No unresolved published-delivery conflicts are shown.</p>
+          )}
+        </section>
+        <section aria-labelledby="fixture-summary-title">
+          <h2 id="fixture-summary-title">Fixture summaries</h2>
+          {report.fixtureSummaries.length === 0 ? (
+            <p>No fixture summaries are available.</p>
+          ) : (
+            <ul className="fixture-summary-list">
+              {report.fixtureSummaries.map((fixture) => (
+                <li key={fixture.fixtureId ?? fixture.label}>
+                  <strong>{fixture.label}</strong>
+                  <span>
+                    {fixture.total} items · {fixture.accepted} accepted · {fixture.rejected}{' '}
+                    rejected · {fixture.unresolved} unresolved
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3>Accepted content sample</h3>
+          <p>
+            Showing at most 15 accepted items; the full season-scale dataset is never rendered here.
+          </p>
+          {report.acceptedSamples.length === 0 ? (
+            <p>No accepted samples are available.</p>
+          ) : (
+            <ol className="accepted-samples">
+              {report.acceptedSamples.map((item) => (
+                <li key={item.ordinal}>
+                  {item.context.description}
+                  {item.correctionTarget ? (
+                    <span>
+                      {' '}
+                      Target: <code>{item.correctionTarget.sourceEventId}</code>
+                      {item.correctionTarget.resolvedDeliveryId
+                        ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
+                        : ' (not resolved)'}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+        <section aria-labelledby="reference-review-title">
+          <h2 id="reference-review-title">References requiring attention</h2>
+          {report.blockingItems.some((item) => item.referenceResolutions.length > 0) ? (
+            report.blockingItems.map((item) => (
+              <ReferenceResolution
                 key={item.ordinal}
                 batchReference={batchReference}
+                packageVersion={report.batch.source.packageVersion}
                 item={item}
                 refresh={load}
-                resolutionAvailable={report.batch.status === 'awaiting_review'}
               />
             ))
-        ) : (
-          <p>No unresolved published-delivery conflicts are shown.</p>
-        )}
-      </section>
-      <section aria-labelledby="fixture-summary-title">
-        <h2 id="fixture-summary-title">Fixture summaries</h2>
-        {report.fixtureSummaries.length === 0 ? (
-          <p>No fixture summaries are available.</p>
-        ) : (
-          <ul className="fixture-summary-list">
-            {report.fixtureSummaries.map((fixture) => (
-              <li key={fixture.fixtureId ?? fixture.label}>
-                <strong>{fixture.label}</strong>
-                <span>
-                  {fixture.total} items · {fixture.accepted} accepted · {fixture.rejected} rejected
-                  · {fixture.unresolved} unresolved
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <h3>Accepted content sample</h3>
-        <p>
-          Showing at most 15 accepted items; the full season-scale dataset is never rendered here.
-        </p>
-        {report.acceptedSamples.length === 0 ? (
-          <p>No accepted samples are available.</p>
-        ) : (
-          <ol className="accepted-samples">
-            {report.acceptedSamples.map((item) => (
-              <li key={item.ordinal}>
-                {item.context.description}
-                {item.correctionTarget ? (
-                  <span>
-                    {' '}
-                    Target: <code>{item.correctionTarget.sourceEventId}</code>
-                    {item.correctionTarget.resolvedDeliveryId
-                      ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
-                      : ' (not resolved)'}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-      <section aria-labelledby="reference-review-title">
-        <h2 id="reference-review-title">References requiring attention</h2>
-        {report.blockingItems.some((item) => item.referenceResolutions.length > 0) ? (
-          report.blockingItems.map((item) => (
-            <ReferenceResolution
-              key={item.ordinal}
-              batchReference={batchReference}
-              packageVersion={report.batch.source.packageVersion}
-              item={item}
-              refresh={load}
-            />
-          ))
-        ) : (
-          <p>
-            {report.reviewSummary.resolution.ambiguous +
-              report.reviewSummary.resolution.unresolved +
-              report.reviewSummary.resolution.invalid >
-            0
-              ? 'Reference details are temporarily unavailable. Refresh this review before approval.'
-              : 'All references are resolved.'}
-          </p>
-        )}
-      </section>
-      {report.pagination.nextCursor ? (
-        <section aria-labelledby="report-results-title">
-          <h2 id="report-results-title">Report results</h2>
-          <button
-            className="button button--secondary"
-            type="button"
-            disabled={loadingMore}
-            onClick={() => void loadMore()}
-          >
-            {loadingMore ? 'Loading…' : 'Load more report results'}
-          </button>
+          ) : (
+            <p>
+              {report.reviewSummary.resolution.ambiguous +
+                report.reviewSummary.resolution.unresolved +
+                report.reviewSummary.resolution.invalid >
+              0
+                ? 'Reference details are temporarily unavailable. Refresh this review before approval.'
+                : 'All references are resolved.'}
+            </p>
+          )}
         </section>
-      ) : null}
-      {report.batch.status === 'awaiting_review' ? (
-        <section className="batch-review" aria-labelledby="decision-title">
-          <h2 id="decision-title">Review decision</h2>
-          {report.reviewSummary.approvalBlocked ? (
-            <div className="state-message state-message--error" role="alert">
-              <strong>Approval unavailable</strong>
-              <ul>
-                {report.reviewSummary.blockingReasons.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {!report.reviewSummary.approvalBlocked && report.batch.counts.rejected > 0 ? (
-            <div className="state-message" role="status">
-              <strong>Only the accepted subset will publish</strong>
-              <p>
-                Approving publishes {report.batch.counts.accepted} accepted{' '}
-                {report.batch.counts.accepted === 1 ? 'record' : 'records'}. The{' '}
-                {report.batch.counts.rejected} rejected{' '}
-                {report.batch.counts.rejected === 1 ? 'record remains' : 'records remain'}{' '}
-                unpublished and retained in this report.
-              </p>
-            </div>
-          ) : null}
-          <label htmlFor="review-reason">
-            Reason <span>(required; corrections and rejections need at least 10 characters)</span>
-          </label>
-          <textarea
-            id="review-reason"
-            maxLength={2000}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            disabled={saving}
-          />
-          <div className="batch-review__actions">
-            <button
-              className="button button--primary"
-              type="button"
-              disabled={saving || report.reviewSummary.approvalBlocked}
-              onClick={(event) => begin('approved', event.currentTarget)}
-            >
-              Approve and publish
-            </button>
+        {report.pagination.nextCursor ? (
+          <section aria-labelledby="report-results-title">
+            <h2 id="report-results-title">Report results</h2>
             <button
               className="button button--secondary"
               type="button"
-              disabled={saving}
-              onClick={(event) => begin('returned_for_correction', event.currentTarget)}
+              disabled={loadingMore}
+              onClick={() => void loadMore()}
             >
-              Return for correction
+              {loadingMore ? 'Loading…' : 'Load more report results'}
             </button>
-            <button
-              className="button button--danger"
-              type="button"
+          </section>
+        ) : null}
+      </AnchoredSection>
+      <AnchoredSection id="decision">
+        {report.batch.status === 'awaiting_review' ? (
+          <section className="batch-review" aria-labelledby="decision-title">
+            <h2 id="decision-title">Review decision</h2>
+            {report.reviewSummary.approvalBlocked ? (
+              <div className="state-message state-message--error" role="alert">
+                <strong>Approval unavailable</strong>
+                <ul>
+                  {report.reviewSummary.blockingReasons.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {!report.reviewSummary.approvalBlocked && report.batch.counts.rejected > 0 ? (
+              <div className="state-message" role="status">
+                <strong>Only the accepted subset will publish</strong>
+                <p>
+                  Approving publishes {report.batch.counts.accepted} accepted{' '}
+                  {report.batch.counts.accepted === 1 ? 'record' : 'records'}. The{' '}
+                  {report.batch.counts.rejected} rejected{' '}
+                  {report.batch.counts.rejected === 1 ? 'record remains' : 'records remain'}{' '}
+                  unpublished and retained in this report.
+                </p>
+              </div>
+            ) : null}
+            <label htmlFor="review-reason">
+              Reason <span>(required; corrections and rejections need at least 10 characters)</span>
+            </label>
+            <textarea
+              id="review-reason"
+              maxLength={2000}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
               disabled={saving}
-              onClick={(event) => begin('rejected', event.currentTarget)}
-            >
-              Reject batch
-            </button>
+            />
+            <div className="batch-review__actions">
+              <button
+                className="button button--primary"
+                type="button"
+                disabled={saving || report.reviewSummary.approvalBlocked}
+                onClick={(event) => begin('approved', event.currentTarget)}
+              >
+                Approve and publish
+              </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={saving}
+                onClick={(event) => begin('returned_for_correction', event.currentTarget)}
+              >
+                Return for correction
+              </button>
+              <button
+                className="button button--danger"
+                type="button"
+                disabled={saving}
+                onClick={(event) => begin('rejected', event.currentTarget)}
+              >
+                Reject submission
+              </button>
+            </div>
+          </section>
+        ) : (
+          <div>
+            <p>
+              This submission is no longer awaiting a decision. Duplicate or competing actions are
+              not submitted.
+            </p>
+            <Link className="button button--secondary" to="/reviews/batches">
+              Return to review queue
+            </Link>
           </div>
-        </section>
-      ) : (
-        <p>
-          This batch is no longer awaiting a decision. Duplicate or competing actions are not
-          submitted.
-        </p>
-      )}
+        )}
+      </AnchoredSection>
       {feedback ? (
         <p role="status" aria-live="polite">
           {feedback}
@@ -1150,16 +1188,32 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
 export function BatchReviewWorkspacePage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { batchReference } = useParams();
+  const location = useLocation();
   useEffect(() => {
-    document.title = `${batchReference ? 'Review batch' : 'Batch management'} | Stat'sTheGame`;
+    document.title = `${batchReference ? 'Review submission' : 'Review queue'} | Stat'sTheGame`;
   }, [batchReference]);
-  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isLoading && !isAuthenticated)
+    return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
   return (
     <section className="review-workspace content-boundary" aria-labelledby="review-workspace-title">
+      <Breadcrumbs
+        items={
+          batchReference
+            ? [
+                { label: 'Manage Submission', to: '/reviews/batches' },
+                { label: 'Review', to: '/reviews/batches' },
+                { label: 'Submission', to: '#' },
+              ]
+            : [
+                { label: 'Manage Submission', to: '/reviews/batches' },
+                { label: 'Review queue', to: '#' },
+              ]
+        }
+      />
       <header className="page-heading review-workspace__heading">
-        <p className="eyebrow">Reviewer workspace</p>
+        <p className="eyebrow">Manage Submission</p>
         <h1 id="review-workspace-title">
-          {batchReference ? 'Review staged batch' : 'Batch management'}
+          {batchReference ? 'Review staged submission' : 'Review queue'}
         </h1>
         <p>
           {batchReference

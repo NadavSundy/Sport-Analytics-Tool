@@ -139,12 +139,13 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('the account Submit events action opens the unified submission workflow', async ({ page }) => {
-  await page.goto('/account');
-  await page.getByRole('link', { name: 'Submit events' }).click();
+test('Manage Submission opens the unified submission workflow', async ({ page }) => {
+  await page.goto('/account/overview');
+  await page.getByRole('button', { name: 'Manage Submission' }).click();
+  await page.getByRole('link', { name: 'Submit data' }).click();
 
   await expect(page).toHaveURL(/\/submissions\/new$/);
-  await expect(page.getByRole('heading', { name: 'Submit Delivery Events' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Submit data' })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
   await expect(page.getByRole('radio', { name: /Season/ })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Back catalogue/ })).toBeVisible();
@@ -430,7 +431,8 @@ test(
       .getByRole('link', { name: 'View submission history' })
       .click();
     await expect(page).toHaveURL(/\/submissions\/batches$/);
-    await expect(page.getByRole('link', { name: batchReference })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'fixture-package.json' })).toBeVisible();
+    await expect(page.getByText(batchReference)).toBeVisible();
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );

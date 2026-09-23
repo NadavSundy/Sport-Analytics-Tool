@@ -1,10 +1,12 @@
 import type { BatchReportItem, BatchReportResponse, BatchStatus } from '@sport-analytics/contracts';
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
+import { signInPathFor } from '../auth/auth-return';
+import { Breadcrumbs } from '../../components/NavigationPrimitives';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import { downloadBatchReport, getBatchReport, listBatches, mapBatchReference } from './batch-api';
 import { useBatchCollectionsRevision } from './batch-collection-state';
@@ -71,7 +73,7 @@ function Summary({ batch }: { batch: BatchStatus }) {
   const partial = batch.counts.accepted > 0 && batch.counts.rejected > 0;
   return (
     <section className="batch-summary" aria-labelledby="batch-summary-title">
-      <h2 id="batch-summary-title">Batch summary</h2>
+      <h2 id="batch-summary-title">Status summary</h2>
       <p className="batch-summary__state">
         <strong>{stateLabels[batch.status]}</strong>
         {partial ? ' — partial success' : ''}
@@ -122,17 +124,30 @@ function Summary({ batch }: { batch: BatchStatus }) {
           <dt>Received</dt>
           <dd>{new Date(batch.receivedAt).toLocaleString()}</dd>
         </div>
-        <div>
-          <dt>Checksum</dt>
-          <dd>
-            <code>{batch.source.checksum ?? 'Pending'}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Package version</dt>
-          <dd>{batch.source.packageVersion}</dd>
-        </div>
       </dl>
+      <details className="validation-technical-details">
+        <summary>Technical details</summary>
+        <dl className="batch-metadata">
+          <div>
+            <dt>Submission reference</dt>
+            <dd>
+              <code>{batch.batchReference}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Checksum</dt>
+            <dd>
+              <code>{batch.source.checksum ?? 'Pending'}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Package version</dt>
+            <dd>
+              <code>{batch.source.packageVersion}</code>
+            </dd>
+          </div>
+        </dl>
+      </details>
       {batch.lineage.replacesBatchReference ? (
         <p>
           Corrected replacement for{' '}
@@ -407,8 +422,11 @@ function BatchList() {
   if (state.batches.length === 0)
     return (
       <div className="state-message" role="status">
-        <h2>No batches yet</h2>
-        <p>Your uploaded batches will appear here.</p>
+        <h2>No submissions yet</h2>
+        <p>You haven't submitted anything yet.</p>
+        <Link className="button button--primary" to="/submissions/new">
+          Submit data
+        </Link>
       </div>
     );
   return (
@@ -416,12 +434,15 @@ function BatchList() {
       <ul className="batch-list">
         {state.batches.map((batch) => (
           <li key={batch.batchReference}>
-            <Link to={`/submissions/batches/${batch.batchReference}`}>{batch.batchReference}</Link>
+            <Link to={`/submissions/batches/${batch.batchReference}`}>
+              {batch.source.fileName ?? 'Submission report'}
+            </Link>
             <span>
               Received {new Date(batch.receivedAt).toLocaleDateString()} ·{' '}
               {stateLabels[batch.status]} · {batch.counts.accepted} accepted ·{' '}
               {batch.counts.rejected} rejected
             </span>
+            <code>{batch.batchReference}</code>
             {batch.lineage.replacesBatchReference ? (
               <span>
                 Replaces{' '}
@@ -545,7 +566,7 @@ function BatchReport({ batchReference }: { batchReference: string }) {
       {downloadState.kind === 'error' ? (
         <p role="alert">The complete report is temporarily unavailable. Try the download again.</p>
       ) : null}
-      <h2>Item results</h2>
+      <h2>Results</h2>
       <ReportItems batchReference={batchReference} items={state.report.items} />
       {state.report.pagination.nextCursor ? (
         <button
@@ -563,26 +584,42 @@ function BatchReport({ batchReference }: { batchReference: string }) {
 export function BatchReportsPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { batchReference } = useParams();
+  const location = useLocation();
   useEffect(() => {
-    document.title = `${batchReference ? 'Batch report' : 'Batch reports'} | Stat'sTheGame`;
+    document.title = `${batchReference ? 'Submission report' : 'My submissions'} | Stat'sTheGame`;
   }, [batchReference]);
-  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isLoading && !isAuthenticated)
+    return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
   return (
     <section className="submission-page content-boundary" aria-labelledby="batch-reports-title">
+      <Breadcrumbs
+        items={
+          batchReference
+            ? [
+                { label: 'Manage Submission', to: '/submissions/new' },
+                { label: 'My submissions', to: '/submissions/batches' },
+                { label: 'Submission report', to: '#' },
+              ]
+            : [
+                { label: 'Manage Submission', to: '/submissions/new' },
+                { label: 'My submissions', to: '#' },
+              ]
+        }
+      />
       <header className="page-heading submission-page__heading">
-        <p className="eyebrow">Submitter workspace</p>
-        <h1 id="batch-reports-title">
-          {batchReference ? 'Batch result report' : 'Your batch reports'}
-        </h1>
+        <p className="eyebrow">Manage Submission</p>
+        <h1 id="batch-reports-title">{batchReference ? 'Submission report' : 'My submissions'}</h1>
         <p>
           {batchReference
             ? 'Inspect every accepted and rejected source item.'
             : 'Track uploaded batch progress and inspect validation outcomes.'}
         </p>
         {batchReference ? (
-          <Link to="/submissions/batches">Back to all batches</Link>
+          <Link to="/submissions/batches">Back to submissions</Link>
         ) : (
-          <Link to="/submissions/new">Submit another package</Link>
+          <Link className="button button--primary" to="/submissions/new">
+            New submission
+          </Link>
         )}
       </header>
       {isLoading ? (

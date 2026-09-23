@@ -11,6 +11,16 @@ async function isolateSupabaseClientLock(page: Page) {
   });
 }
 
+async function signedOutNavigationAction(page: Page) {
+  if ((page.viewportSize()?.width ?? 0) < 900) {
+    await page.getByRole('button', { name: 'Menu' }).click();
+    return page
+      .getByRole('navigation', { name: 'Mobile navigation' })
+      .getByRole('link', { name: 'Sign in' });
+  }
+  return page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Sign in' });
+}
+
 function createStoredSession() {
   const expiresAt = Math.floor(Date.now() / 1000) + 3600;
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -48,14 +58,8 @@ test(
     await isolateSupabaseClientLock(page);
     await page.goto('/');
 
-    const accountNavigation = page.getByRole('navigation', { name: 'Account' });
-    const authenticationAction = accountNavigation.getByRole('link', {
-      name: 'Login or Sign up',
-    });
+    const authenticationAction = await signedOutNavigationAction(page);
     await expect(authenticationAction).toHaveAttribute('href', '/sign-in');
-    await expect(accountNavigation.getByRole('link')).toHaveCount(1);
-    await expect(accountNavigation.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
-    await expect(accountNavigation.getByRole('link', { name: 'Sign In' })).toHaveCount(0);
 
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -107,7 +111,7 @@ test('OAuth cancellation returns a safe signed-out callback state', async ({ pag
 
   await expect(
     page.getByRole('navigation', { name: 'Account' }).getByRole('link', {
-      name: 'Login or Sign up',
+      name: 'Sign in',
     }),
   ).toBeVisible();
 });
@@ -142,13 +146,13 @@ test('stored Supabase identity completes the callback and opens the account', as
 
   await page.goto('/auth/callback');
 
-  await expect(page).toHaveURL(/\/account$/);
+  await expect(page).toHaveURL(/\/account\/overview$/);
 
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
 
   await expect(page.getByText('browser@example.com')).toBeVisible();
 
-  await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
 });
 
 test('stored Supabase identity updates navigation and can sign out', async ({ page }) => {
@@ -161,23 +165,18 @@ test('stored Supabase identity updates navigation and can sign out', async ({ pa
     await route.fulfill({ status: 204 });
   });
 
-  await page.goto('/account');
+  await page.goto('/account/security');
 
   await expect(page.getByRole('link', { name: 'Account' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
-  await expect(page.getByText('browser@example.com')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Login or Sign up' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in' })).toHaveCount(0);
 
-  const signOut = page.getByRole('button', { name: 'Sign Out' });
+  const signOut = page.getByRole('button', { name: 'Sign out' });
   await signOut.focus();
   await expect(signOut).toBeFocused();
   await page.keyboard.press('Enter');
 
   await expect(page).toHaveURL('/');
-  const signedOutNavigation = page.getByRole('navigation', { name: 'Account' });
-  await expect(signedOutNavigation.getByRole('link', { name: 'Login or Sign up' })).toBeVisible();
-  await expect(signedOutNavigation.getByRole('link')).toHaveCount(1);
-  await expect(signedOutNavigation.getByRole('link', { name: 'Create Account' })).toHaveCount(0);
-  await expect(signedOutNavigation.getByRole('link', { name: 'Sign In' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Sign Out' })).toHaveCount(0);
+  await expect(await signedOutNavigationAction(page)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
 });
