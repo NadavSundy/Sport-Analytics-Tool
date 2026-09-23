@@ -21,6 +21,7 @@
     "measure:aggregate-snapshots": "tsx scripts/measure-aggregate-snapshots.ts",
     "measure:public-read-workloads": "tsx scripts/measure-public-read-workloads.ts",
     "measure:batch-and-release-workloads": "tsx scripts/measure-batch-and-release-workloads.ts",
+    "measure:cold-start": "tsx scripts/measure-cold-start.ts",
     "pretest:database:run": "npm run prepare:contracts",
     "test:database:run": "cross-env NODE_ENV=test vitest run tests/database",
     "test:coverage": "vitest run --coverage tests/unit tests/api tests/auth.test.ts tests/authorization.test.ts tests/health.test.ts",
