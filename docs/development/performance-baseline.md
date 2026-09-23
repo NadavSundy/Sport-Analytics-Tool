@@ -111,6 +111,53 @@ fixed data, counts, and source references make the workload reproducible;
 machine specifications, Node version, PostgreSQL version, backend commit, and
 database location belong in the generated measurement evidence.
 
+## Additional measured workloads
+
+Issue #599 added three runners for workloads the commands above do not cover. Each
+follows the same pattern: a disposable embedded PostgreSQL server, the generated
+fictional corpus, and `ANALYZE` before any timed request. Each takes an explicit
+output path, and **every run must pass one**: the two older harnesses default to the
+path of an existing committed evidence file, so a defaulted run overwrites history.
+
+```bash
+npm run measure:public-read-workloads --workspace=@sport-analytics/backend -- \
+  --filtered-output evidence/validation/<issue>/filtered-paginated-reads.md \
+  --consumer-output evidence/validation/<issue>/consumer-enforcement-overhead.md
+
+npm run measure:batch-and-release-workloads --workspace=@sport-analytics/backend -- \
+  --report-output evidence/validation/<issue>/batch-report-reads.md \
+  --release-output evidence/validation/<issue>/dataset-release-generation.md
+
+npm run measure:cold-start --workspace=@sport-analytics/backend -- \
+  --output evidence/validation/<issue>/cold-start-observations.md
+```
+
+| Workload                                            | Target                                                      |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| Fixture list under a filter, or a deep cursor page  | P95 ≤ 500 ms                                                |
+| Participant fixture history, `?limit=50`            | P95 ≤ 1,500 ms                                              |
+| Consumer-authenticated read against its public twin | P95 delta ≤ 100 ms, and within the public twin's own target |
+| Batch report read                                   | P95 ≤ 1,500 ms                                              |
+| Public reads sampled during release generation      | Their ordinary targets above                                |
+| Dataset release generation                          | **No latency target.** Throughput recorded only.            |
+
+Release generation carries no target because it had never been measured. The issue
+#599 run recorded 72,000 events in 4,322 ms to 16,236 ms across three runs that
+produced byte-identical artefacts, a 3.8x spread whose cause was not isolated. Quote
+the range, not a figure, until a dedicated repeat measurement explains the variance.
+
+The consumer delta is measured as a pair, public read then consumer read,
+interleaved request by request, and it bounds the enforcement logic rather than its
+deployed cost: the middleware adds three database round trips, which cost tens of
+milliseconds over loopback and would cost far more against the hosted database.
+
+`measure:cold-start` polls `/api/v1/health`, which does not touch PostgreSQL, so
+readiness polling does not establish the pool connection the measurement exists to
+time. It covers process start and the first local connection only. It does not cover
+an Azure Container Apps cold start, and `infra/azure/backend/main.bicep` sets
+`minReplicas` to 0, so a deployed first request after idle also waits for a container
+to be scheduled.
+
 ## Existing baseline evidence
 
 The first recorded large-corpus baseline is retained in
@@ -142,6 +189,18 @@ The API timing command above remains the authoritative response-time target
 measurement. The query-plan check is complementary database evidence and does
 not substitute for a networked API measurement.
 
+**Run this check on its own database.** The whole database suite shares one
+disposable PostgreSQL server and Vitest runs test files in parallel, so the
+performance test's 300-fixture ingest reaches tests that did not create those rows.
+Issue #599 recorded two flagged runs of the documented command failing differently,
+once on an assertion and once on two five-second timeouts in
+`tests/database/public-events.database.test.ts`; the suite is clean with the flag
+unset, and the performance file passes alone. Until the opt-in check is given its
+own database or the suite is forced sequential, run the file directly against a
+database nothing else is using, and treat a failure elsewhere in the suite under
+this flag as the interference rather than as a regression.
+`evidence/validation/issue-599/query-plans/README.md` records the detail.
+
 ## AI Declaration
 
 This performance-baseline procedure, generator-command documentation and target
@@ -149,3 +208,5 @@ table were created with the assistance of Codex[GPT-5]. The repeated fixture-sta
 measurement procedure was updated with the assistance of Codex[GPT-5].
 The Issue #297 aggregate performance procedure was reviewed and updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].
+The issue #599 additional workload commands, their targets, and the query-plan isolation
+note were added with the assistance of Claude-Code[Claude Opus 5].
