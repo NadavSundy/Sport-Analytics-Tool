@@ -376,7 +376,7 @@ describe('reviewer batch workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/reviews/batches');
 
-    expect(await screen.findByRole('heading', { name: 'Batch management' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Review queue' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Needs review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'All batches' })).toBeInTheDocument();
     expect(await screen.findAllByRole('link', { name: 'season.csv' })).toHaveLength(2);
@@ -441,7 +441,7 @@ describe('reviewer batch workspace', () => {
       await screen.findByRole('heading', { name: 'Administrator access required' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reject submission' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
   });
 
@@ -641,7 +641,7 @@ describe('reviewer batch workspace', () => {
 
     expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
 
-    expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reject submission' })).not.toBeInTheDocument();
 
     expect(
       screen.queryByText('The review decision could not be saved. Try again.'),
@@ -666,7 +666,7 @@ describe('reviewer batch workspace', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
     renderPage(`/reviews/batches/${reference}`);
-    const reject = await screen.findByRole('button', { name: 'Reject batch' });
+    const reject = await screen.findByRole('button', { name: 'Reject submission' });
     expect(screen.getByText('cricsheet:delivery:100-original')).toBeInTheDocument();
     expect(screen.getByText(/published delivery 88/)).toBeInTheDocument();
     fireEvent.click(reject);

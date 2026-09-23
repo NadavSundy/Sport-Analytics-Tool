@@ -8,6 +8,7 @@ import {
   CompetitorDetailPage,
   CompetitorsPage,
   FixtureDetailPage,
+  FixturePlayersPage,
   FixturesPage,
   NotFoundPage,
   ParticipantDetailPage,
@@ -27,6 +28,7 @@ import {
   FixtureStatisticsPage,
 } from './features/statistics/StatisticsPages';
 import { AdminUsersPage } from './features/admin/AdminUsersPage';
+import { AdministrationPage } from './features/admin/AdministrationPage';
 import { BatchReviewWorkspacePage } from './features/reviews/BatchReviewWorkspacePage';
 import {
   DatasetReleaseCataloguePage,
@@ -68,6 +70,7 @@ export function PublicApp() {
 
         <Route path="/fixtures" element={<FixturesPage />} />
         <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
+        <Route path="/fixtures/:fixtureId/players" element={<FixturePlayersPage />} />
         <Route path="/fixtures/:fixtureId/statistics" element={<FixtureStatisticsPage />} />
         <Route
           path="/fixtures/:fixtureId/statistics/:statisticId"
@@ -85,7 +88,8 @@ export function PublicApp() {
 
         <Route path="/sign-in" element={<AuthenticationPage />} />
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
-        <Route path="/account" element={<AccountPage />} />
+        <Route path="/account" element={<Navigate to="/account/overview" replace />} />
+        <Route path="/account/:section" element={<AccountPage />} />
         <Route path="/submissions/new" element={<SubmissionPage />} />
         <Route
           path="/submissions/batches/new"
@@ -93,6 +97,7 @@ export function PublicApp() {
         />
         <Route path="/submissions/batches" element={<BatchReportsPage />} />
         <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
+        <Route path="/admin" element={<AdministrationPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
         <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />

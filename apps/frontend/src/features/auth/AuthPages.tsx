@@ -1,10 +1,14 @@
 import type { AccountDeletionResponse } from '@sport-analytics/contracts';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { SubmitterAccessPanel } from '../submitter-access/SubmitterAccessPanel';
 import { useAuth } from './AuthProvider';
 import { useAuthenticatedApiClient } from './useAuthenticatedApiClient';
+import { getCurrentUserProfile } from './current-user-api';
+import { safeInternalReturnPath } from './auth-return';
+import { Breadcrumbs, LocalNavigation } from '../../components/NavigationPrimitives';
+import type { CurrentUserProfile } from '@sport-analytics/contracts';
 
 type OAuthCallbackError = 'cancelled' | 'provider-error';
 
@@ -199,6 +203,7 @@ function AccountDeletionForm() {
 
 export function AuthenticationPage() {
   const { signInWithGoogle } = useAuth();
+  const location = useLocation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const title = 'Login or Sign up';
@@ -210,7 +215,10 @@ export function AuthenticationPage() {
     setError(null);
 
     try {
-      await signInWithGoogle();
+      const returnPath = safeInternalReturnPath(
+        new URLSearchParams(location.search).get('returnTo'),
+      );
+      await signInWithGoogle(returnPath);
     } catch {
       setError('We could not connect to Google. Please try again.');
       setIsProcessing(false);
@@ -253,6 +261,7 @@ export function AuthenticationCallbackPage() {
   const [callbackError] = useState<OAuthCallbackError | null>(() =>
     getOAuthCallbackError(location.search, location.hash),
   );
+  const returnPath = safeInternalReturnPath(new URLSearchParams(location.search).get('returnTo'));
 
   usePageTitle('Completing Sign In');
 
@@ -263,9 +272,9 @@ export function AuthenticationCallbackPage() {
   }, [callbackError, location.hash, location.search, navigate]);
   useEffect(() => {
     if (!callbackError && !isLoading && isAuthenticated) {
-      navigate('/account', { replace: true });
+      navigate(returnPath ?? '/account', { replace: true });
     }
-  }, [callbackError, isAuthenticated, isLoading, navigate]);
+  }, [callbackError, isAuthenticated, isLoading, navigate, returnPath]);
 
   let callbackContent;
 
@@ -313,28 +322,125 @@ export function AuthenticationCallbackPage() {
   );
 }
 
+function AccountOverview({ identityEmail }: { identityEmail: string | undefined }) {
+  const client = useAuthenticatedApiClient();
+  const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void getCurrentUserProfile(client, controller.signal)
+      .then(setProfile)
+      .catch(() => {
+        if (!controller.signal.aborted) setError(true);
+      });
+    return () => controller.abort();
+  }, [client]);
+
+  return (
+    <section aria-labelledby="account-overview-title">
+      <h2 id="account-overview-title">Overview</h2>
+      <dl className="identity-details">
+        <div>
+          <dt>Email</dt>
+          <dd>{identityEmail ?? 'Not available'}</dd>
+        </div>
+        {profile ? (
+          <>
+            <div>
+              <dt>Role</dt>
+              <dd>{profile.role}</dd>
+            </div>
+            <div>
+              <dt>Submission access</dt>
+              <dd>{profile.approvalState.replaceAll('_', ' ')}</dd>
+            </div>
+            {profile.competitionIds.length > 0 ? (
+              <div>
+                <dt>Competition scopes</dt>
+                <dd>{profile.competitionIds.length}</dd>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </dl>
+      {error ? <p role="alert">Your access summary could not be loaded.</p> : null}
+      {!profile && !error ? <p role="status">Loading access summary...</p> : null}
+    </section>
+  );
+}
+
+function AccountSignOutAction() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  async function handleSignOut() {
+    setBusy(true);
+    setError(false);
+    try {
+      await signOut();
+      navigate('/', { replace: true });
+    } catch {
+      setError(true);
+      setBusy(false);
+    }
+  }
+  return (
+    <section aria-labelledby="sign-out-title">
+      <h2 id="sign-out-title">Sign out</h2>
+      <p>End your managed session on this device. Public browsing remains available.</p>
+      <button
+        className="button button--secondary"
+        type="button"
+        disabled={busy}
+        onClick={() => void handleSignOut()}
+      >
+        {busy ? 'Signing Out\u2026' : 'Sign out'}
+      </button>
+      {error ? <p role="alert">We could not sign you out. Please try again.</p> : null}
+    </section>
+  );
+}
+
 export function AccountPage() {
   const { identity, isAuthenticated, isLoading } = useAuth();
+  const { section = 'overview' } = useParams();
+  const activeSection = ['overview', 'access', 'security'].includes(section) ? section : 'overview';
 
   usePageTitle('Account');
 
   return (
-    <section className="auth-page content-boundary" aria-labelledby="account-page-title">
+    <section
+      className="auth-page account-page content-boundary"
+      aria-labelledby="account-page-title"
+    >
+      <Breadcrumbs items={[{ label: 'Account', to: `/account/${activeSection}` }]} />
       <div className="auth-card">
-        <p className="eyebrow">Supabase identity</p>
+        <p className="eyebrow">Identity and access</p>
         <h1 id="account-page-title">Account</h1>
         {isLoading ? (
           <p role="status">Loading account…</p>
         ) : isAuthenticated && identity ? (
           <>
-            <dl className="identity-details">
-              <div>
-                <dt>Email</dt>
-                <dd>{identity.email ?? 'Not available'}</dd>
-              </div>
-            </dl>
-            <SubmitterAccessPanel />
-            <AccountDeletionForm />
+            <LocalNavigation
+              label="Account sections"
+              items={[
+                { label: 'Overview', to: '/account/overview' },
+                { label: 'Access', to: '/account/access' },
+                { label: 'Settings', to: '/account/security' },
+              ]}
+            />
+            {activeSection === 'overview' ? (
+              <AccountOverview identityEmail={identity.email} />
+            ) : null}
+            {activeSection === 'access' ? <SubmitterAccessPanel /> : null}
+            {activeSection === 'security' ? (
+              <>
+                <AccountSignOutAction />
+                <AccountDeletionForm />
+              </>
+            ) : null}
           </>
         ) : (
           <p>

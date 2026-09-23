@@ -86,7 +86,7 @@ test(
       });
     });
 
-    await page.goto('/account');
+    await page.goto('/account/access');
 
     const accessPanel = page.getByRole('region', { name: 'Submitter access' });
     const competitionSelect = accessPanel.getByRole('combobox', { name: 'Competition' });
@@ -186,7 +186,7 @@ test(
       });
     });
 
-    await page.goto('/account');
+    await page.goto('/account/access');
 
     const accessPanel = page.getByRole('region', { name: 'Submitter access' });
     const currentScope = accessPanel.locator('p').filter({ hasText: 'Current competition scope:' });

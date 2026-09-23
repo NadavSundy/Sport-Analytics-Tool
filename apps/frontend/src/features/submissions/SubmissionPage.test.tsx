@@ -276,7 +276,7 @@ describe('role-gated event submission page', () => {
     expect(await screen.findByText('Submitter role required')).toBeInTheDocument();
     expect(screen.getByText(/pending approval/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Submit events' })).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not treat a legacy approved viewer as a submitter', async () => {
@@ -287,7 +287,7 @@ describe('role-gated event submission page', () => {
 
     expect(await screen.findByText('Submitter role required')).toBeInTheDocument();
     expect(screen.queryByLabelText('Fixture')).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('fails safely when the current-user response does not match the shared contract', async () => {
@@ -953,8 +953,12 @@ describe('role-gated event submission page', () => {
       screen.queryByRole('button', { name: 'Upload fixture package' }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('link', { name: 'View submission history' }).at(-1)!);
-    expect(await screen.findByRole('heading', { name: 'Your batch reports' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: batchReference })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'My submissions' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'fixture-package.json' })).toHaveAttribute(
+      'href',
+      `/submissions/batches/${batchReference}`,
+    );
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
     const uploadCall = fetchMock.mock.calls.find(([request]) =>
       String(request).endsWith('/batches'),
     );

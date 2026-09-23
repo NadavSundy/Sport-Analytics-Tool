@@ -165,7 +165,7 @@ describe('batch report view', () => {
   ])('shows a clear %s batch summary', async (_case, accepted, rejected, state) => {
     vi.stubGlobal('fetch', reportFetch(report(accepted, rejected)));
     await renderReport();
-    const summary = (await screen.findByRole('heading', { name: 'Batch summary' })).parentElement!;
+    const summary = (await screen.findByRole('heading', { name: 'Status summary' })).parentElement!;
     expect(summary).toHaveTextContent(state);
     expect(summary).toHaveTextContent(`Accepted${accepted}`);
     expect(summary).toHaveTextContent(`Rejected${rejected}`);
@@ -445,7 +445,7 @@ describe('batch report view', () => {
     awaiting.data.batch.status = 'awaiting_review';
     vi.stubGlobal('fetch', reportFetch(awaiting, profile('admin')));
     await renderReport();
-    expect(await screen.findByRole('heading', { name: 'Batch summary' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Status summary' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();

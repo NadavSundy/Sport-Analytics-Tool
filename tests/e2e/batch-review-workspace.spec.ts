@@ -214,9 +214,9 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
   });
 
   await page.goto('/reviews/batches');
-  await expect(page).toHaveTitle(/Batch management/);
+  await expect(page).toHaveTitle(/Review queue/);
   await page.getByRole('link', { name: 'season.csv' }).click();
-  await expect(page.getByRole('heading', { name: 'Review staged batch' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Review staged submission' })).toBeVisible();
   await expect(page.getByText('Data Submitter')).toBeVisible();
   await expect(page.getByText('cricsheet:delivery:100-original')).toBeVisible();
   await expect(page.getByText(/published delivery 88/)).toBeVisible();
