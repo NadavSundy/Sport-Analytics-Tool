@@ -1246,7 +1246,12 @@ describe.sequential('batch reference resolution database integration', () => {
       inningsCreated: 1,
       squadCreated: 2,
       unresolvedParticipants: [
-        { name: `${prefix} New584 Bowler`, teamName: `${prefix}-beta`, candidates: [] },
+        {
+          name: `${prefix} New584 Bowler`,
+          teamName: `${prefix}-beta`,
+          reason: 'no_durable_identifier',
+          candidates: [],
+        },
       ],
     });
 
