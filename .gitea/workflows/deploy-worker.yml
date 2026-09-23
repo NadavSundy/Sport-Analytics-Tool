@@ -65,7 +65,7 @@ jobs:
           --name worker-${{ github.sha }}-infra
           --resource-group "$RESOURCE_GROUP"
           --template-file infra/azure/worker/main.bicep
-          --parameters deployWorker=false
+          --parameters deployWorker=false minReplicas=1
           keyVaultName="$KEY_VAULT_NAME"
           databaseSecretUri="$DATABASE_SECRET_URI"
           storageAccountName=statsthegameblobdev
@@ -151,7 +151,7 @@ jobs:
           --name worker-${{ github.sha }}
           --resource-group "$RESOURCE_GROUP"
           --template-file infra/azure/worker/main.bicep
-          --parameters deployWorker=true
+          --parameters deployWorker=true minReplicas=1
           containerImage="$ACR_NAME.azurecr.io/sport-analytics-worker:${{ github.sha }}"
           keyVaultName="$KEY_VAULT_NAME"
           databaseSecretUri="$DATABASE_SECRET_URI"
@@ -162,8 +162,19 @@ jobs:
           RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
         run: |
           EXPECTED_IMAGE="$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+          LIVE_MIN_REPLICAS=$(az containerapp show \
+            --name statsthegame-dev-batch-worker \
+            --resource-group "$RESOURCE_GROUP" \
+            --query 'properties.template.scale.minReplicas' \
+            -o tsv)
+
+          if [ "$LIVE_MIN_REPLICAS" != "1" ]; then
+            echo "::error::Worker minimum replicas is $LIVE_MIN_REPLICAS; expected 1."
+            exit 1
+          fi
 
           echo "Expected worker image: $EXPECTED_IMAGE"
+          echo "Verified worker minimum replicas: $LIVE_MIN_REPLICAS"
 
           for attempt in {1..12}; do
             MATCHING_REVISION=$(az containerapp revision list \
