@@ -320,9 +320,12 @@ export class BatchReplacementConflictError extends Error {}
 
 interface ParticipantOnboardingDecisionInput {
   taskReference: string;
-  personId?: string;
-  sourceId?: string;
-  teamName?: string;
+  // Explicitly `| undefined`: the contract type these arrive as carries it, and
+  // exactOptionalPropertyTypes distinguishes an absent property from one set to
+  // undefined.
+  personId?: string | undefined;
+  sourceId?: string | undefined;
+  teamName?: string | undefined;
 }
 
 interface ParticipantOnboardingResult {

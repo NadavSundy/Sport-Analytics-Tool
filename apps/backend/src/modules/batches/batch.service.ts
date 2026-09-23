@@ -10,6 +10,8 @@ import {
   type BatchMetadata,
   type BatchReferenceMappingRequest,
   type BatchCanonicalFixtureRequest,
+  type BatchParticipantOnboardingRequest,
+  type BatchParticipantOnboardingResponse,
   type BatchReferenceMappingResponse,
   type BatchReferenceEntityType,
   type BatchReceiptResponse,
@@ -30,6 +32,7 @@ import type { ApplicationAccount } from '../accounts/account';
 import type { BatchPayloadStorageService } from '../object-storage/batch-payload-storage.service';
 import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/object-store';
 import {
+  BatchParticipantOnboardingConflictError,
   BatchReferenceMappingConflictError,
   BatchPublishedConflictResolutionError,
   BatchReviewConflictError,
@@ -38,7 +41,11 @@ import {
   createBatchRepository,
   type BatchRepository,
 } from './batch.repository';
-import type { BatchRecord, BatchReportItemRecord } from './batch.repository';
+import type {
+  BatchRecord,
+  BatchReportItemRecord,
+  ParticipantOnboardingDecisionFault,
+} from './batch.repository';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
 import { extractFixtureOnboardingContext } from './fixture-onboarding';
 import { storedOutcomes } from './reference-outcomes';
@@ -47,6 +54,18 @@ export class BatchForbiddenError extends Error {}
 export class BatchConflictError extends Error {}
 export class BatchUnavailableError extends Error {}
 export class BatchInputError extends Error {}
+
+/**
+ * A conflict carrying the fault in each decision that failed, so the reviewer
+ * is told about every broken decision at once rather than one resubmission at
+ * a time.
+ */
+export class BatchParticipantOnboardingError extends Error {
+  constructor(readonly faults: ParticipantOnboardingDecisionFault[]) {
+    super('One or more participant onboarding decisions could not be applied.');
+    this.name = 'BatchParticipantOnboardingError';
+  }
+}
 
 const batchListCursorSchema = z.object({
   createdAt: z.string().datetime(),
@@ -95,6 +114,11 @@ export interface BatchService {
     reference: string,
     request: BatchCanonicalFixtureRequest,
   ): Promise<BatchReferenceMappingResponse>;
+  decideParticipantOnboarding(
+    account: ApplicationAccount,
+    reference: string,
+    request: BatchParticipantOnboardingRequest,
+  ): Promise<BatchParticipantOnboardingResponse>;
 }
 
 function candidateReference(
@@ -721,6 +745,43 @@ export function createBatchService(
       } catch (error) {
         if (error instanceof BatchReferenceMappingConflictError) {
           throw new BatchConflictError(error.message);
+        }
+        throw error;
+      }
+    },
+
+    async decideParticipantOnboarding(account, reference, request) {
+      // The same authorisation as every other reviewer decision: administrators
+      // only, and a batch they cannot see is refused rather than reported as
+      // missing, so the endpoint does not disclose which references exist.
+      if (!canReviewBatch(account)) throw new BatchForbiddenError();
+      const batch = await repository.findBatchByReference(reference);
+      if (!batch) throw new BatchForbiddenError();
+
+      try {
+        const result = await repository.applyParticipantOnboardingDecisions({
+          batchId: batch.batchId,
+          actorId: account.accountId,
+          decisionKey: request.decisionKey,
+          decisions: request.decisions,
+        });
+        return {
+          data: {
+            batchReference: reference,
+            decisionReference: randomUUID(),
+            // Queued while the revalidation this request triggered is pending,
+            // and applied when there was nothing left to revalidate.
+            status: result.revalidationQueued ? ('queued' as const) : ('applied' as const),
+            statusUrl: `${API_BASE_PATH}/batches/${reference}`,
+            submittedAt: new Date().toISOString(),
+            onboarded: result.onboarded,
+            alreadyOnboarded: result.alreadyOnboarded,
+            revalidationQueued: result.revalidationQueued,
+          },
+        };
+      } catch (error) {
+        if (error instanceof BatchParticipantOnboardingConflictError) {
+          throw new BatchParticipantOnboardingError(error.faults);
         }
         throw error;
       }

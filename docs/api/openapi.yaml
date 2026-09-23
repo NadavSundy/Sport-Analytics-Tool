@@ -2599,6 +2599,63 @@ paths:
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
+  /api/v1/batches/{batchReference}/participants:
+    post:
+      tags: [Batches]
+      summary: Settle outstanding participant onboarding tasks for a batch
+      description: >-
+        An administrator answers the participant onboarding tasks a reviewer-created canonical
+        fixture could not settle deterministically. Each decision names the task it answers by
+        `taskReference` and gives exactly one answer: `personId` picks a candidate the task
+        offered, `sourceId` supplies a durable registry identifier, and `teamName` names which of
+        the fixture's two teams the participant belongs to. A participant is never matched on a
+        name, and no identifier outside the fixture's scope is accepted.
+
+        The whole array is applied in one transaction and the batch is revalidated once, so a
+        season-scale batch does not pay for one full revalidation per decision. If any decision is
+        invalid nothing is applied. Replay is safe: a decision against an already settled task is
+        a no-op, and when nothing changes no revalidation is queued.
+      operationId: createBatchParticipantOnboardingDecisions
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchParticipantOnboardingRequest' }
+      responses:
+        '202':
+          description: >-
+            The decisions were applied. `revalidationQueued` is false when every decision was
+            already settled, because then there is nothing to revalidate.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchParticipantOnboardingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The account is not an administrator, or the batch is not visible to it.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            A decision could not be applied: an unknown task, a candidate the task did not offer,
+            an identifier naming no person, or a team that is not one of the fixture's two
+            (`BATCH_PARTICIPANT_ONBOARDING_CONFLICT`). Nothing in the array was applied.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The decision array is invalid (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
   /api/v1/batches/{batchReference}/canonical-fixtures:
     post:
       tags: [Batches]
