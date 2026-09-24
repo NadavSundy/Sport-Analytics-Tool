@@ -11,6 +11,7 @@ import {
   createBatchReceiptController,
   createBatchReferenceMappingController,
   createBatchCanonicalFixtureController,
+  createBatchParticipantOnboardingController,
   createBatchConflictResolutionController,
   createBatchReportController,
   createBatchReportDownloadController,
@@ -30,6 +31,13 @@ export function createBatchRouter(
     requireAuthentication(verifyAccessToken, synchronizeAccount),
     requireAdministrator(),
     createAdminBatchListController(service),
+  );
+  router.post(
+    '/batches/:batchReference/participants',
+    json({ limit: '16kb' }),
+    requireAuthentication(verifyAccessToken, synchronizeAccount),
+    requireAdministrator(),
+    createBatchParticipantOnboardingController(service),
   );
   router.post(
     '/batches/:batchReference/canonical-fixtures',

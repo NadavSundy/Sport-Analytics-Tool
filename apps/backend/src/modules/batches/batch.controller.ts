@@ -3,6 +3,7 @@ import {
   batchMetadataSchema,
   batchReferenceMappingRequestSchema,
   batchCanonicalFixtureRequestSchema,
+  batchParticipantOnboardingRequestSchema,
   batchConflictResolutionRequestSchema,
   batchReferenceSchema,
   batchReportQuerySchema,
@@ -16,6 +17,7 @@ import { ObjectSizeLimitError, ObjectStorageError } from '../object-storage/obje
 import {
   BatchConflictError,
   BatchForbiddenError,
+  BatchParticipantOnboardingError,
   BatchInputError,
   BatchUnavailableError,
   type BatchService,
@@ -376,6 +378,49 @@ export function createBatchReferenceMappingController(service: BatchService): Re
         }
         next(error);
       });
+  };
+}
+
+export function createBatchParticipantOnboardingController(service: BatchService): RequestHandler {
+  return (request, response, next) => {
+    const reference = batchReferenceSchema.safeParse(request.params.batchReference);
+    const body = batchParticipantOnboardingRequestSchema.safeParse(request.body);
+    if (!reference.success) {
+      response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Batch not found.' } });
+      return;
+    }
+    if (!body.success) {
+      response.status(422).json({
+        error: { code: 'VALIDATION_FAILED', message: 'The onboarding decisions are invalid.' },
+      });
+      return;
+    }
+    try {
+      void service
+        .decideParticipantOnboarding(account(response), reference.data, body.data)
+        .then((result) => response.status(202).json(result))
+        .catch((error: unknown) => {
+          if (error instanceof BatchForbiddenError) {
+            rejectAuthorization(response);
+            return;
+          }
+          if (error instanceof BatchParticipantOnboardingError) {
+            // Every fault, not merely the first: the array is applied all or
+            // nothing, so the reviewer needs to correct all of them at once.
+            response.status(409).json({
+              error: {
+                code: 'BATCH_PARTICIPANT_ONBOARDING_CONFLICT',
+                message: error.message,
+                details: error.faults,
+              },
+            });
+            return;
+          }
+          next(error);
+        });
+    } catch (error) {
+      next(error);
+    }
   };
 }
 

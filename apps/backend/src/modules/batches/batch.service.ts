@@ -10,6 +10,8 @@ import {
   type BatchMetadata,
   type BatchReferenceMappingRequest,
   type BatchCanonicalFixtureRequest,
+  type BatchParticipantOnboardingRequest,
+  type BatchParticipantOnboardingResponse,
   type BatchReferenceMappingResponse,
   type BatchReferenceEntityType,
   type BatchReceiptResponse,
@@ -30,6 +32,7 @@ import type { ApplicationAccount } from '../accounts/account';
 import type { BatchPayloadStorageService } from '../object-storage/batch-payload-storage.service';
 import { ObjectStorageError, ObjectSizeLimitError } from '../object-storage/object-store';
 import {
+  BatchParticipantOnboardingConflictError,
   BatchReferenceMappingConflictError,
   BatchPublishedConflictResolutionError,
   BatchReviewConflictError,
@@ -38,7 +41,12 @@ import {
   createBatchRepository,
   type BatchRepository,
 } from './batch.repository';
-import type { BatchRecord, BatchReportItemRecord } from './batch.repository';
+import type {
+  BatchRecord,
+  BatchReportItemRecord,
+  ParticipantOnboardingDecisionFault,
+  ParticipantOnboardingTaskRecord,
+} from './batch.repository';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
 import { extractFixtureOnboardingContext } from './fixture-onboarding';
 import { storedOutcomes } from './reference-outcomes';
@@ -47,6 +55,18 @@ export class BatchForbiddenError extends Error {}
 export class BatchConflictError extends Error {}
 export class BatchUnavailableError extends Error {}
 export class BatchInputError extends Error {}
+
+/**
+ * A conflict carrying the fault in each decision that failed, so the reviewer
+ * is told about every broken decision at once rather than one resubmission at
+ * a time.
+ */
+export class BatchParticipantOnboardingError extends Error {
+  constructor(readonly faults: ParticipantOnboardingDecisionFault[]) {
+    super('One or more participant onboarding decisions could not be applied.');
+    this.name = 'BatchParticipantOnboardingError';
+  }
+}
 
 const batchListCursorSchema = z.object({
   createdAt: z.string().datetime(),
@@ -95,6 +115,11 @@ export interface BatchService {
     reference: string,
     request: BatchCanonicalFixtureRequest,
   ): Promise<BatchReferenceMappingResponse>;
+  decideParticipantOnboarding(
+    account: ApplicationAccount,
+    reference: string,
+    request: BatchParticipantOnboardingRequest,
+  ): Promise<BatchParticipantOnboardingResponse>;
 }
 
 function candidateReference(
@@ -113,10 +138,43 @@ function candidateReference(
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
+/**
+ * Finds the outstanding onboarding task a participant reference is waiting on.
+ *
+ * The task is matched on the identity fixture onboarding collected it by, read
+ * from the submitted reference. That is stable batch data, not anything a
+ * decision supplies, so this is not the forbidden re-derivation: a decision
+ * still addresses its task by `taskReference`.
+ */
+function onboardingTaskFor(
+  outcome: { entityType: string; submittedReference: unknown },
+  tasks: readonly ParticipantOnboardingTaskRecord[],
+) {
+  if (outcome.entityType !== 'participant' || tasks.length === 0) return undefined;
+  const submitted = outcome.submittedReference as
+    | { sourceId?: string; context?: { name?: string; team?: { context?: { name?: string } } } }
+    | undefined;
+  const name = submitted?.context?.name;
+  const teamName = submitted?.context?.team?.context?.name ?? null;
+  const match = tasks.find((task) =>
+    submitted?.sourceId
+      ? task.submittedName === submitted.sourceId || task.submittedName === name
+      : task.submittedName === name && task.submittedTeamName === teamName,
+  );
+  return match
+    ? {
+        taskReference: match.taskReference,
+        reason: match.reason,
+        candidates: match.candidates,
+      }
+    : undefined;
+}
+
 function reportReferenceResolutions(
   record: BatchReportItemRecord,
   batchReference: string,
   competitionId: string,
+  onboardingTasks: readonly ParticipantOnboardingTaskRecord[] = [],
 ) {
   const paths = new Set<string>();
   return storedOutcomes(record.resolvedReferences).flatMap((outcome) => {
@@ -137,6 +195,7 @@ function reportReferenceResolutions(
         ),
         label: candidate.label,
       }));
+    const onboardingTask = onboardingTaskFor(outcome, onboardingTasks);
     return [
       {
         referencePath: outcome.referencePath,
@@ -144,9 +203,15 @@ function reportReferenceResolutions(
         state: outcome.state,
         submittedReference: outcome.submittedReference,
         reason: outcome.reason,
-        requiredAction:
-          candidates.length > 0 ? ('select_candidate' as const) : ('contact_reviewer' as const),
+        // An onboarding task outranks the generic fallback: it is the action a
+        // reviewer can actually take, where contact_reviewer is a dead end.
+        requiredAction: onboardingTask
+          ? ('onboard_participant' as const)
+          : candidates.length > 0
+            ? ('select_candidate' as const)
+            : ('contact_reviewer' as const),
         candidates,
+        ...(onboardingTask ? { onboardingTask } : {}),
       },
     ];
   });
@@ -275,6 +340,7 @@ function mapReportItem(
   record: BatchReportItemRecord,
   batchReference: string,
   competitionId: string,
+  onboardingTasks: readonly ParticipantOnboardingTaskRecord[] = [],
 ): BatchReportItem {
   const context = reportContext(record);
   return {
@@ -293,7 +359,12 @@ function mapReportItem(
           }
         : null,
     publishedConflict: reportPublishedConflict(record),
-    referenceResolutions: reportReferenceResolutions(record, batchReference, competitionId),
+    referenceResolutions: reportReferenceResolutions(
+      record,
+      batchReference,
+      competitionId,
+      onboardingTasks,
+    ),
     errors: record.errors.map((error) => ({
       ruleCode: error.ruleCode,
       message: error.message,
@@ -488,14 +559,21 @@ export function createBatchService(
         repository.listBatchReportItems(batch.batchId, { blockingOnly: true, limit: 50_001 }),
       ]);
       const page = records.slice(0, query.limit);
-      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
-        await Promise.all([
-          status(batch),
-          repository.listBatchRuleGroups(batch.batchId),
-          repository.countBlockingValidationErrors(batch.batchId),
-          repository.getBatchResolutionCounts(batch.batchId),
-          repository.listBatchFixtureSummaries(batch.batchId),
-        ]);
+      const [
+        batchStatus,
+        errorGroups,
+        blockingValidationErrors,
+        resolution,
+        fixtureSummaries,
+        onboardingTasks,
+      ] = await Promise.all([
+        status(batch),
+        repository.listBatchRuleGroups(batch.batchId),
+        repository.countBlockingValidationErrors(batch.batchId),
+        repository.getBatchResolutionCounts(batch.batchId),
+        repository.listBatchFixtureSummaries(batch.batchId),
+        repository.listParticipantOnboardingTasks(batch.batchId),
+      ]);
       const blockingReasons: string[] = [];
       if (blockingValidationErrors > 0) blockingReasons.push('Blocking validation errors remain.');
       if (batchStatus.counts.conflicting > 0) blockingReasons.push('Conflicting records remain.');
@@ -519,14 +597,22 @@ export function createBatchService(
             blockingReasons,
           },
           fixtureSummaries,
+          // The same tasks the per-reference actions point at, listed once
+          // each. A player named in three hundred deliveries is three hundred
+          // actions but one decision.
+          participantOnboarding: onboardingTasks,
           acceptedSamples: acceptedRecords
             .filter((record) => reportOutcome(record) === 'accepted')
             .slice(0, 15)
-            .map((record) => mapReportItem(record, reference, batch.competitionId)),
+            .map((record) =>
+              mapReportItem(record, reference, batch.competitionId, onboardingTasks),
+            ),
           blockingItems: blockingRecords.map((record) =>
-            mapReportItem(record, reference, batch.competitionId),
+            mapReportItem(record, reference, batch.competitionId, onboardingTasks),
           ),
-          items: page.map((record) => mapReportItem(record, reference, batch.competitionId)),
+          items: page.map((record) =>
+            mapReportItem(record, reference, batch.competitionId, onboardingTasks),
+          ),
           pagination: {
             nextCursor:
               records.length > query.limit && page.length > 0
@@ -547,18 +633,29 @@ export function createBatchService(
           ...(afterOrdinal === undefined ? {} : { afterOrdinal }),
           limit: 1000,
         });
-        items.push(...page.map((record) => mapReportItem(record, reference, batch.competitionId)));
+        items.push(
+          ...page.map((record) =>
+            mapReportItem(record, reference, batch.competitionId, onboardingTasks),
+          ),
+        );
         if (page.length < 1000) break;
         afterOrdinal = page.at(-1)!.ordinal;
       }
-      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
-        await Promise.all([
-          status(batch),
-          repository.listBatchRuleGroups(batch.batchId),
-          repository.countBlockingValidationErrors(batch.batchId),
-          repository.getBatchResolutionCounts(batch.batchId),
-          repository.listBatchFixtureSummaries(batch.batchId),
-        ]);
+      const [
+        batchStatus,
+        errorGroups,
+        blockingValidationErrors,
+        resolution,
+        fixtureSummaries,
+        onboardingTasks,
+      ] = await Promise.all([
+        status(batch),
+        repository.listBatchRuleGroups(batch.batchId),
+        repository.countBlockingValidationErrors(batch.batchId),
+        repository.getBatchResolutionCounts(batch.batchId),
+        repository.listBatchFixtureSummaries(batch.batchId),
+        repository.listParticipantOnboardingTasks(batch.batchId),
+      ]);
       const blockingReasons = [
         ...(blockingValidationErrors > 0 ? ['Blocking validation errors remain.'] : []),
         ...(batchStatus.counts.conflicting > 0 ? ['Conflicting records remain.'] : []),
@@ -583,6 +680,10 @@ export function createBatchService(
             blockingReasons,
           },
           fixtureSummaries,
+          // The same tasks the per-reference actions point at, listed once
+          // each. A player named in three hundred deliveries is three hundred
+          // actions but one decision.
+          participantOnboarding: onboardingTasks,
           acceptedSamples: items.filter((item) => item.outcome === 'accepted').slice(0, 15),
           items,
         },
@@ -721,6 +822,43 @@ export function createBatchService(
       } catch (error) {
         if (error instanceof BatchReferenceMappingConflictError) {
           throw new BatchConflictError(error.message);
+        }
+        throw error;
+      }
+    },
+
+    async decideParticipantOnboarding(account, reference, request) {
+      // The same authorisation as every other reviewer decision: administrators
+      // only, and a batch they cannot see is refused rather than reported as
+      // missing, so the endpoint does not disclose which references exist.
+      if (!canReviewBatch(account)) throw new BatchForbiddenError();
+      const batch = await repository.findBatchByReference(reference);
+      if (!batch) throw new BatchForbiddenError();
+
+      try {
+        const result = await repository.applyParticipantOnboardingDecisions({
+          batchId: batch.batchId,
+          actorId: account.accountId,
+          decisionKey: request.decisionKey,
+          decisions: request.decisions,
+        });
+        return {
+          data: {
+            batchReference: reference,
+            decisionReference: randomUUID(),
+            // Queued while the revalidation this request triggered is pending,
+            // and applied when there was nothing left to revalidate.
+            status: result.revalidationQueued ? ('queued' as const) : ('applied' as const),
+            statusUrl: `${API_BASE_PATH}/batches/${reference}`,
+            submittedAt: new Date().toISOString(),
+            onboarded: result.onboarded,
+            alreadyOnboarded: result.alreadyOnboarded,
+            revalidationQueued: result.revalidationQueued,
+          },
+        };
+      } catch (error) {
+        if (error instanceof BatchParticipantOnboardingConflictError) {
+          throw new BatchParticipantOnboardingError(error.faults);
         }
         throw error;
       }

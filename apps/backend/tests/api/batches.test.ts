@@ -85,6 +85,20 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
         submittedAt: '2026-09-11T12:00:00.000Z',
       },
     }),
+    decideParticipantOnboarding: vi
+      .fn<BatchService['decideParticipantOnboarding']>()
+      .mockResolvedValue({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-23T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
     ...overrides,
   };
 }
@@ -817,5 +831,103 @@ describe('batch receipt API', () => {
       reference,
       requestBody,
     );
+  });
+
+  test('restricts participant onboarding decisions to administrators and routes a valid array', async () => {
+    const decideParticipantOnboarding = vi
+      .fn<BatchService['decideParticipantOnboarding']>()
+      .mockResolvedValue({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-23T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      });
+    const requestBody = {
+      decisionKey: 'onboard-participants',
+      decisions: [
+        { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11' },
+        {
+          taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+          sourceId: 'cricsheet:participant:abc123',
+        },
+      ],
+    };
+    const app = (role: 'admin' | 'submitter') =>
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role, competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        service({ decideParticipantOnboarding }),
+      );
+
+    // Same authorisation as every other reviewer decision.
+    await request(app('submitter'))
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(403);
+
+    await request(app('admin'))
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(202);
+
+    expect(decideParticipantOnboarding).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      reference,
+      requestBody,
+    );
+  });
+
+  test('refuses a participant onboarding decision that answers nothing', async () => {
+    const decideParticipantOnboarding = vi.fn<BatchService['decideParticipantOnboarding']>();
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ decideParticipantOnboarding }),
+    );
+
+    // Two answers to one task have no meaning, and none is not a decision.
+    for (const decision of [
+      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d' },
+      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11', teamName: 'North' },
+    ]) {
+      await request(adminApp)
+        .post(`/api/v1/batches/${reference}/participants`)
+        .set('Authorization', 'Bearer batch-token')
+        .send({ decisionKey: 'onboard', decisions: [decision] })
+        .expect(422);
+    }
+
+    // An empty array is not a request to do nothing; it is a malformed request.
+    await request(adminApp)
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ decisionKey: 'onboard', decisions: [] })
+      .expect(422);
+
+    expect(decideParticipantOnboarding).not.toHaveBeenCalled();
   });
 });

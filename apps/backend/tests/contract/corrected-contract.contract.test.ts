@@ -10,6 +10,7 @@ import {
   batchDecisionReceiptWithOnboarding,
   batchReceipt,
   batchReport,
+  batchReportAwaitingOnboarding,
   batchStatus,
   correctionPayload,
   correctionReceipt,
@@ -433,6 +434,23 @@ describe('batch errors, reports and canonical fixture decisions', () => {
         .expect(400),
       { requestIsInvalid: true },
     );
+  });
+
+  test('a batch report awaiting participant onboarding matches the contract', async () => {
+    // Issue #708. The onboard_participant action and the task it carries are
+    // what a reviewer acts on, so the contract has to describe them. Without
+    // the schema change this fails on the undocumented enum value.
+    const report = await request(
+      batchApp(administrator, { getReport: async () => batchReportAwaitingOnboarding as never }),
+    )
+      .get(`/api/v1/batches/${BATCH_REFERENCE}/report`)
+      .set('Authorization', token)
+      .expect(200);
+
+    contract.expectResponse(report);
+    const resolution = report.body.data.items[0].referenceResolutions[0];
+    expect(resolution.requiredAction).toBe('onboard_participant');
+    expect(resolution.onboardingTask.reason).toBe('ambiguous_name');
   });
 
   test.each(['review', 'conflicts/resolve', 'reference-mappings', 'canonical-fixtures'])(
