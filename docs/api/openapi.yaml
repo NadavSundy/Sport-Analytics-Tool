@@ -3791,6 +3791,14 @@ components:
           type: string
           enum: [error, warning]
           description: Business-rule severity when this detail comes from versioned validation.
+        taskReference:
+          type: string
+          format: uuid
+          description: >-
+            The item of a submitted array this failure belongs to, so a client can show it
+            against that item rather than against the request as a whole. Carried by every
+            fault of a participant onboarding array, which is applied all or nothing. This
+            names a task, not a property; `field` remains the field-level slot.
 
     ApiErrorResponse:
       type: object
