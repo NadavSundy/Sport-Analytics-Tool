@@ -54,6 +54,13 @@ export const apiErrorDetailSchema = z.object({
   // transport/schema failures are not required to carry rule metadata.
   ruleVersion: z.string().min(1).optional(),
   severity: z.enum(['error', 'warning']).optional(),
+
+  // Used when a failure belongs to one item of a submitted array rather than
+  // to the request as a whole, so a client can show it against that item. A
+  // participant onboarding array is applied all or nothing, and a reviewer who
+  // sent twenty-two decisions needs to see which ones broke, not merely that
+  // something did. This is not a field path: it names a task, not a property.
+  taskReference: z.string().uuid().optional(),
 });
 
 export const apiErrorResponseSchema = z.object({

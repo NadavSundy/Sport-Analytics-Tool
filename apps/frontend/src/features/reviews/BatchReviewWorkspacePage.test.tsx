@@ -862,6 +862,278 @@ describe('reviewer batch workspace', () => {
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
   });
 
+  /**
+   * One task, however many deliveries name the participant. The per-reference
+   * onboard_participant actions all point at the same decision, and listing
+   * those instead would show a player named in three hundred deliveries as
+   * three hundred pieces of work.
+   */
+  function onboardingReport(tasks: BatchReportResponse['data']['participantOnboarding']) {
+    const body = report(true);
+    body.data.participantOnboarding = tasks;
+    // The same task reached through three separate references, which is what
+    // the reviewer must not be shown three times.
+    body.data.blockingItems = tasks.flatMap((task) =>
+      [1, 2, 3].map((ordinal) => {
+        const item = structuredClone(body.data.blockingItems[0]!);
+        item.ordinal = ordinal;
+        item.location = { ...item.location, ordinal };
+        item.referenceResolutions = [
+          {
+            referencePath: `fixtures.0.innings.0.events.${ordinal}.striker`,
+            entityType: 'participant',
+            state: 'unresolved',
+            submittedReference: { context: { name: task.submittedName } },
+            reason: 'No member of the resolved fixture squad carries that name.',
+            requiredAction: 'onboard_participant',
+            candidates: [],
+            onboardingTask: {
+              taskReference: task.taskReference,
+              reason: task.reason,
+              candidates: task.candidates,
+            },
+          },
+        ];
+        return item;
+      }),
+    );
+    body.data.items = body.data.blockingItems;
+    return body;
+  }
+
+  const ambiguousTask = {
+    taskReference: '0b6f2f6e-6f6c-4a1a-9d0f-2a1d3c4b5e6f',
+    fixtureId: '22',
+    submittedName: 'A. Smith',
+    submittedTeamName: 'Lions',
+    reason: 'ambiguous_name' as const,
+    candidates: [
+      { personId: '11', displayName: 'Alan Smith' },
+      { personId: '12', displayName: 'Amy Smith' },
+    ],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  test('lists one onboarding card per decision, not one per reference naming it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(
+            String(input).includes('/auth/me') ? profile : onboardingReport([ambiguousTask]),
+          ),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const section = within(
+      (await screen.findByRole('region', { name: 'Participants to onboard' })) as HTMLElement,
+    );
+    expect(section.getAllByRole('heading', { name: 'A. Smith' })).toHaveLength(1);
+    expect(section.getByText('1 outstanding')).toBeInTheDocument();
+    expect(
+      section.getByText('More than one person on this platform carries this name.'),
+    ).toBeInTheDocument();
+  });
+
+  const teamTask = {
+    taskReference: '1c7f3a2b-4d5e-4f6a-8b9c-0d1e2f3a4b5c',
+    fixtureId: '22',
+    submittedName: 'C. Khumalo',
+    submittedTeamName: 'Wanderers',
+    reason: 'team_not_recognised' as const,
+    candidates: [{ personId: '13', displayName: 'Chris Khumalo' }],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  function onboardingFetch(
+    body: unknown,
+    post: (init: RequestInit) => Response,
+    settledBody?: unknown,
+  ) {
+    // Settling every task empties the list, exactly as the server would report
+    // it, so the reload that follows a receipt unmounts the section.
+    let settled = false;
+    return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/auth/me')) return Promise.resolve(response(profile));
+      if (init?.method === 'POST') {
+        const result = post(init);
+        if (settledBody !== undefined && result.status < 400) settled = true;
+        return Promise.resolve(result);
+      }
+      return Promise.resolve(response(settled ? settledBody : body));
+    });
+  }
+
+  test('answers a team task by choosing one of the fixture two teams, never by naming one', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(String(input).includes('/auth/me') ? profile : onboardingReport([teamTask])),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const card = within(
+      (await screen.findByRole('heading', { name: 'C. Khumalo' })).closest('article')!,
+    );
+    expect(card.getByRole('group', { name: 'Which team do they belong to?' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Lions' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Bears' })).toBeInTheDocument();
+
+    // The team is chosen from the two the fixture has, because the decision is
+    // checked by exact name against exactly those. Nothing here accepts a typed
+    // participant name: a name is never an answer.
+    expect(card.queryByRole('textbox', { name: /name/i })).not.toBeInTheDocument();
+  });
+
+  test('settles several tasks in one request and reports the receipt', async () => {
+    const post = vi.fn((_init: RequestInit) =>
+      response({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-24T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    );
+    const fetchMock = onboardingFetch(
+      onboardingReport([ambiguousTask, teamTask]),
+      post,
+      onboardingReport([]),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Alan Smith' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Chris Khumalo' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Bears' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 2 decisions' }));
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    // One request for the whole array, because the batch is revalidated once
+    // for it. Two requests would mean two full revalidation passes.
+    const body = JSON.parse(String(post.mock.calls[0]![0].body));
+    expect(body.decisions).toEqual([
+      { taskReference: ambiguousTask.taskReference, personId: '11' },
+      { taskReference: teamTask.taskReference, personId: '13', teamName: 'Bears' },
+    ]);
+    expect(body.decisionKey.length).toBeLessThanOrEqual(255);
+
+    // The receipt has to outlive the section that produced it. Settling the
+    // last task empties the list, which drops the needs-review count to zero,
+    // moves the workspace to the decision view and unmounts the section; a
+    // receipt rendered inside it would be gone before it could be read.
+    expect(await screen.findByText(/2 settled\./)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Participants to onboard' })).toBeNull(),
+    );
+    expect(screen.getByText(/2 settled\./)).toBeInTheDocument();
+  });
+
+  test('shows every onboarding fault against the task it belongs to', async () => {
+    const post = vi.fn(() =>
+      response(
+        {
+          error: {
+            code: 'BATCH_PARTICIPANT_ONBOARDING_CONFLICT',
+            message: 'One or more participant onboarding decisions could not be applied.',
+            details: [
+              {
+                taskReference: ambiguousTask.taskReference,
+                code: 'CANDIDATE_NOT_OFFERED',
+                message: 'Choose one of the candidates this task offered.',
+              },
+              {
+                taskReference: teamTask.taskReference,
+                code: 'TEAM_NOT_IN_FIXTURE',
+                message: 'Name one of the two teams of the fixture this task belongs to.',
+              },
+            ],
+          },
+        },
+        409,
+      ),
+    );
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([ambiguousTask, teamTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Alan Smith' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Chris Khumalo' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Bears' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 2 decisions' }));
+
+    // Both of them, each on its own card. The array is applied all or nothing,
+    // so a reviewer shown one fault at a time would resubmit once per broken
+    // decision to discover the rest.
+    const ambiguousCard = within(
+      screen.getByRole('heading', { name: 'A. Smith' }).closest('article')!,
+    );
+    expect(
+      await ambiguousCard.findByText('Choose one of the candidates this task offered.'),
+    ).toBeInTheDocument();
+    const teamCard = within(
+      screen.getByRole('heading', { name: 'C. Khumalo' }).closest('article')!,
+    );
+    expect(
+      teamCard.getByText('Name one of the two teams of the fixture this task belongs to.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Nothing was applied. 2 of 2 decisions could not be applied.'),
+    ).toBeInTheDocument();
+  });
+
+  test('cannot submit a team task until both who and which team are answered', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(String(input).includes('/auth/me') ? profile : onboardingReport([teamTask])),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    // An identity alone is not enough: the submitted team was not one of the
+    // fixture's two, so the team cannot be inferred from the identity.
+    fireEvent.click(screen.getByRole('radio', { name: 'Chris Khumalo' }));
+    expect(screen.getByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('radio', { name: 'Lions' }));
+    expect(screen.getByRole('button', { name: 'Submit 1 decision' })).toBeEnabled();
+  });
+
+  test('shows no onboarding section when no participant is waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : report(true))),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    // The needs-review panel lists work to do, the way it already treats
+    // published conflicts. A batch with no onboarding task has nothing to say
+    // here, so the section is absent rather than empty.
+    await screen.findByRole('tablist', { name: 'Batch review views' });
+    expect(screen.queryByRole('region', { name: 'Participants to onboard' })).toBeNull();
+  });
+
   test('shows a later unresolved reference from blocking items without loading ordinary results', async () => {
     const body = report(true);
     const blocker = body.data.blockingItems[0]!;

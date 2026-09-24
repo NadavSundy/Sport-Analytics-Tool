@@ -4,7 +4,11 @@ import { describe, expect, test, vi } from 'vitest';
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
 import type { BatchService } from '../../src/modules/batches/batch.service';
-import { BatchConflictError, BatchForbiddenError } from '../../src/modules/batches/batch.service';
+import {
+  BatchConflictError,
+  BatchForbiddenError,
+  BatchParticipantOnboardingError,
+} from '../../src/modules/batches/batch.service';
 import { createTestAccount, createTestApp } from '../test-app';
 
 const acceptToken: VerifyAccessToken = async () => ({
@@ -856,6 +860,13 @@ describe('batch receipt API', () => {
           taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
           sourceId: 'cricsheet:participant:abc123',
         },
+        // A team_not_recognised task: the team the reviewer named travels
+        // alongside the identity, because neither half implies the other.
+        {
+          taskReference: '4e6f8a0b-3c7d-4e9f-a1b2-5d7e9f1a3b5c',
+          sourceId: 'cricsheet:participant:def456',
+          teamName: 'North',
+        },
       ],
     };
     const app = (role: 'admin' | 'submitter') =>
@@ -893,6 +904,58 @@ describe('batch receipt API', () => {
     );
   });
 
+  test('reports every onboarding fault with the task it belongs to', async () => {
+    const faults = [
+      {
+        taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+        code: 'TEAM_NOT_IN_FIXTURE' as const,
+        message: 'Name one of the two teams of the fixture this task belongs to.',
+      },
+      {
+        taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+        code: 'CANDIDATE_NOT_OFFERED' as const,
+        message: 'Choose one of the candidates this task offered.',
+      },
+    ];
+    const decideParticipantOnboarding = vi
+      .fn<BatchService['decideParticipantOnboarding']>()
+      .mockRejectedValue(new BatchParticipantOnboardingError(faults));
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ decideParticipantOnboarding }),
+    );
+
+    const response = await request(adminApp)
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({
+        decisionKey: 'onboard',
+        decisions: [
+          { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11' },
+          {
+            taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+            sourceId: 'cricsheet:participant:abc123',
+          },
+        ],
+      })
+      .expect(409);
+
+    // Both of them, each naming its own task. The array is applied all or
+    // nothing, so a reviewer correcting one fault at a time would resubmit
+    // once per broken decision to discover the rest.
+    expect(response.body.error.code).toBe('BATCH_PARTICIPANT_ONBOARDING_CONFLICT');
+    expect(response.body.error.details).toEqual(faults);
+  });
+
   test('refuses a participant onboarding decision that answers nothing', async () => {
     const decideParticipantOnboarding = vi.fn<BatchService['decideParticipantOnboarding']>();
     const adminApp = createTestApp(
@@ -909,10 +972,17 @@ describe('batch receipt API', () => {
       service({ decideParticipantOnboarding }),
     );
 
-    // Two answers to one task have no meaning, and none is not a decision.
+    // A decision needs exactly one identity. Two identities for one participant
+    // have no meaning, none is not a decision, and a team is not an identity:
+    // it says where a participant belongs, never who they are.
     for (const decision of [
       { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d' },
-      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11', teamName: 'North' },
+      {
+        taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+        personId: '11',
+        sourceId: 'cricsheet:participant:abc123',
+      },
+      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', teamName: 'North' },
     ]) {
       await request(adminApp)
         .post(`/api/v1/batches/${reference}/participants`)

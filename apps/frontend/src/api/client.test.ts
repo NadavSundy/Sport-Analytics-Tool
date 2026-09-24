@@ -96,4 +96,51 @@ describe('authenticated API client', () => {
       details: [expect.objectContaining({ field: 'events.0.runs.total', eventIndex: 0 })],
     });
   });
+
+  it('carries every fault of an all-or-nothing array with the task each one belongs to', async () => {
+    // Error bodies are parsed by schema, and a plain object schema strips what
+    // it does not declare. Without taskReference declared, a reviewer who sent
+    // several decisions would be shown faults with nothing to attach them to.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(409, {
+          error: {
+            code: 'BATCH_PARTICIPANT_ONBOARDING_CONFLICT',
+            message: 'One or more participant onboarding decisions could not be applied.',
+            details: [
+              {
+                taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+                code: 'TEAM_NOT_IN_FIXTURE',
+                message: 'Name one of the two teams of the fixture this task belongs to.',
+              },
+              {
+                taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+                code: 'CANDIDATE_NOT_OFFERED',
+                message: 'Choose one of the candidates this task offered.',
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    const client = createAuthenticatedApiClient(() => 'current-access-token');
+
+    await expect(client.request('/batches/reference/participants')).rejects.toMatchObject({
+      status: 409,
+      code: 'BATCH_PARTICIPANT_ONBOARDING_CONFLICT',
+      details: [
+        {
+          taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+          code: 'TEAM_NOT_IN_FIXTURE',
+          message: 'Name one of the two teams of the fixture this task belongs to.',
+        },
+        {
+          taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+          code: 'CANDIDATE_NOT_OFFERED',
+          message: 'Choose one of the candidates this task offered.',
+        },
+      ],
+    });
+  });
 });

@@ -326,6 +326,8 @@ export interface ParticipantOnboardingTaskRecord {
   reason:
     'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
   candidates: { personId: string; displayName: string }[];
+  /** The two teams of this task's fixture, in fixture order. */
+  teams: { teamId: string; name: string }[];
 }
 
 interface ParticipantOnboardingDecisionInput {
@@ -2579,12 +2581,24 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       // should not be shown a decision they have already made.
       const result = await executeQuery<ParticipantOnboardingTaskRecord>(
         database(),
-        `SELECT task_reference::text AS "taskReference", fixture_id::text AS "fixtureId",
-                submitted_name AS "submittedName", submitted_team_name AS "submittedTeamName",
-                reason, candidates
-         FROM batch_participant_onboarding_task
-         WHERE batch_id = $1::bigint AND state = 'outstanding'
-         ORDER BY fixture_id, submitted_name, task_reference`,
+        `SELECT task.task_reference::text AS "taskReference", task.fixture_id::text AS "fixtureId",
+                task.submitted_name AS "submittedName",
+                task.submitted_team_name AS "submittedTeamName",
+                task.reason, task.candidates,
+                -- The team decision is checked by exact name against these two,
+                -- so the reviewer is offered exactly what will be accepted.
+                COALESCE((
+                  SELECT jsonb_agg(
+                           jsonb_build_object('teamId', team.team_id::text, 'name', team.name)
+                           ORDER BY fixture_team.ordinal
+                         )
+                  FROM fixture_team
+                  JOIN team ON team.team_id = fixture_team.team_id
+                  WHERE fixture_team.fixture_id = task.fixture_id
+                ), '[]'::jsonb) AS teams
+         FROM batch_participant_onboarding_task task
+         WHERE task.batch_id = $1::bigint AND task.state = 'outstanding'
+         ORDER BY task.fixture_id, task.submitted_name, task.task_reference`,
         [batchId],
       );
       return result.rows;

@@ -4,6 +4,7 @@ import {
   batchReceiptResponseSchema,
   batchReferenceMappingResponseSchema,
   batchListResponseSchema,
+  batchParticipantOnboardingResponseSchema,
   batchReportDownloadResponseSchema,
   batchReportResponseSchema,
   batchReviewResponseSchema,
@@ -12,6 +13,8 @@ import {
   type BatchReceiptResponse,
   type BatchReferenceMappingRequest,
   type BatchCanonicalFixtureRequest,
+  type BatchParticipantOnboardingRequest,
+  type BatchParticipantOnboardingResponse,
   type BatchReferenceMappingResponse,
   type BatchReportResponse,
   type BatchReviewRequest,
@@ -235,6 +238,26 @@ export async function resolvePublishedConflict(
       },
     ),
     batchStatusResponseSchema,
+  );
+}
+
+/**
+ * The whole array in one request, because the batch is revalidated once for it.
+ * A reviewer settling twenty-two tasks one at a time would pay for twenty-two
+ * full revalidation passes.
+ */
+export async function decideParticipantOnboarding(
+  client: AuthenticatedApiClient,
+  batchReference: string,
+  decisions: BatchParticipantOnboardingRequest,
+): Promise<BatchParticipantOnboardingResponse> {
+  return parse(
+    await client.request<unknown>(`/batches/${encodeURIComponent(batchReference)}/participants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(decisions),
+    }),
+    batchParticipantOnboardingResponseSchema,
   );
 }
 

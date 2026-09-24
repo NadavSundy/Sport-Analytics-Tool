@@ -1,4 +1,7 @@
 import type {
+  ApiErrorDetail,
+  BatchParticipantOnboardingDecision,
+  BatchParticipantOnboardingTask,
   BatchReportItem,
   BatchReportResponse,
   BatchReviewRequest,
@@ -31,6 +34,7 @@ import {
   listAdminBatches,
   mapBatchReference,
   createBatchCanonicalFixture,
+  decideParticipantOnboarding,
   resolvePublishedConflict,
   reviewBatch,
 } from '../submissions/batch-api';
@@ -1332,6 +1336,344 @@ function BatchOverview({
   );
 }
 
+/**
+ * What the platform could not settle for itself, said plainly. Every one of
+ * these is a decision rather than a guess it declined to make: a participant is
+ * never matched on a name, so an unrecognised name is not a near miss.
+ */
+const onboardingReasonCopy: Record<BatchParticipantOnboardingTask['reason'], string> = {
+  team_not_recognised:
+    'The team this player was listed under is not one of the two teams of this fixture.',
+  no_durable_identifier:
+    'No durable identifier was submitted for this player, and a name alone is not evidence of identity.',
+  ambiguous_name: 'More than one person on this platform carries this name.',
+  identifier_not_found: 'The submitted identifier names nobody on this platform.',
+};
+
+/**
+ * One reviewer answer, held until the whole array is submitted.
+ *
+ * Identity and team are separate because the endpoint treats them separately:
+ * exactly one of a candidate or a durable identifier says who the participant
+ * is, and an optional team says where they belong. Neither implies the other.
+ */
+type OnboardingIdentity =
+  { kind: 'candidate'; personId: string } | { kind: 'identifier'; sourceId: string };
+
+interface OnboardingAnswer {
+  identity: OnboardingIdentity | null;
+  teamName: string | null;
+}
+
+const emptyAnswer: OnboardingAnswer = { identity: null, teamName: null };
+
+/** A team is only asked for when the submitted one was not one of the two. */
+function needsTeam(task: BatchParticipantOnboardingTask): boolean {
+  return task.reason === 'team_not_recognised';
+}
+
+function toDecision(
+  task: BatchParticipantOnboardingTask,
+  answer: OnboardingAnswer | undefined,
+): BatchParticipantOnboardingDecision | null {
+  const identity = answer?.identity;
+  if (!identity) return null;
+  if (identity.kind === 'identifier' && identity.sourceId.trim().length === 0) return null;
+  if (needsTeam(task) && !answer?.teamName) return null;
+  return {
+    taskReference: task.taskReference,
+    ...(identity.kind === 'candidate'
+      ? { personId: identity.personId }
+      : { sourceId: identity.sourceId.trim() }),
+    ...(answer?.teamName ? { teamName: answer.teamName } : {}),
+  };
+}
+
+/**
+ * Bounded and stable for the same set of tasks, so a retry after a failed
+ * response is recognisable as the same submission. The references themselves
+ * would run past the 255 characters the contract allows once a season-scale
+ * batch has more than a handful of them.
+ */
+function onboardingDecisionKey(batchReference: string, taskReferences: string[]): string {
+  let hash = 0x811c9dc5;
+  for (const character of [...taskReferences].sort().join(',')) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `onboard-${batchReference}-${taskReferences.length}-${hash.toString(16)}`;
+}
+
+function ParticipantOnboardingTaskCard({
+  task,
+  answer,
+  fault,
+  disabled,
+  onAnswer,
+}: {
+  task: BatchParticipantOnboardingTask;
+  answer: OnboardingAnswer;
+  fault: string | undefined;
+  disabled: boolean;
+  onAnswer(next: OnboardingAnswer): void;
+}) {
+  const identityName = `onboarding-identity-${task.taskReference}`;
+  const teamName = `onboarding-team-${task.taskReference}`;
+  const identifierId = `onboarding-identifier-${task.taskReference}`;
+  const faultId = `onboarding-fault-${task.taskReference}`;
+  const answered = toDecision(task, answer) !== null;
+  return (
+    <article
+      className={`participant-onboarding__task${fault ? ' participant-onboarding__task--faulted' : ''}`}
+    >
+      <div className="participant-onboarding__task-header">
+        <h3>{task.submittedName}</h3>
+        <span className="participant-onboarding__submitted-team">
+          {task.submittedTeamName === null
+            ? 'No team was submitted'
+            : `Submitted as ${task.submittedTeamName}`}
+        </span>
+      </div>
+      <p className="participant-onboarding__reason">{onboardingReasonCopy[task.reason]}</p>
+
+      <fieldset className="participant-onboarding__question">
+        <legend>Who is this player?</legend>
+        {task.candidates.map((candidate) => (
+          <label key={candidate.personId}>
+            <input
+              type="radio"
+              name={identityName}
+              disabled={disabled}
+              checked={
+                answer.identity?.kind === 'candidate' &&
+                answer.identity.personId === candidate.personId
+              }
+              onChange={() =>
+                onAnswer({
+                  ...answer,
+                  identity: { kind: 'candidate', personId: candidate.personId },
+                })
+              }
+            />
+            <span>{candidate.displayName}</span>
+          </label>
+        ))}
+        <label>
+          <input
+            type="radio"
+            name={identityName}
+            disabled={disabled}
+            checked={answer.identity?.kind === 'identifier'}
+            onChange={() =>
+              onAnswer({
+                ...answer,
+                identity: {
+                  kind: 'identifier',
+                  sourceId: answer.identity?.kind === 'identifier' ? answer.identity.sourceId : '',
+                },
+              })
+            }
+          />
+          <span>Supply a durable identifier</span>
+        </label>
+        {answer.identity?.kind === 'identifier' ? (
+          <div className="participant-onboarding__identifier">
+            <label htmlFor={identifierId}>Durable identifier</label>
+            <input
+              id={identifierId}
+              type="text"
+              value={answer.identity.sourceId}
+              disabled={disabled}
+              aria-describedby={`${identifierId}-help`}
+              onChange={(event) =>
+                onAnswer({
+                  ...answer,
+                  identity: { kind: 'identifier', sourceId: event.target.value },
+                })
+              }
+            />
+            <p id={`${identifierId}-help`}>
+              A registry reference such as <code>cricsheet:participant:abc123</code>, or{' '}
+              <code>app:person:42</code> for someone already on this platform. A name is not an
+              identifier and is never accepted as one.
+            </p>
+          </div>
+        ) : null}
+        {task.candidates.length === 0 ? (
+          <p className="participant-onboarding__note">
+            This task offers no candidate, so only a durable identifier can settle it.
+          </p>
+        ) : null}
+      </fieldset>
+
+      {needsTeam(task) ? (
+        <fieldset className="participant-onboarding__question">
+          <legend>Which team do they belong to?</legend>
+          {task.teams.map((team) => (
+            <label key={team.teamId}>
+              <input
+                type="radio"
+                name={teamName}
+                disabled={disabled}
+                checked={answer.teamName === team.name}
+                onChange={() => onAnswer({ ...answer, teamName: team.name })}
+              />
+              <span>{team.name}</span>
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+
+      {fault ? (
+        <p className="participant-onboarding__fault" id={faultId} role="alert">
+          {fault}
+        </p>
+      ) : answered ? (
+        <p className="participant-onboarding__answered" role="status">
+          Answered. It is applied when you submit.
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function ParticipantOnboarding({
+  batchReference,
+  tasks,
+  decisionsAvailable,
+  refresh,
+  onSettled,
+}: {
+  batchReference: string;
+  tasks: BatchParticipantOnboardingTask[];
+  decisionsAvailable: boolean;
+  // Whatever the reload reports, the way the conflict card beside it declares
+  // this. Settling a task cannot be the thing that decides the batch.
+  refresh(): Promise<unknown>;
+  // Settling the last task empties this list, which drops the needs-review
+  // count to zero and moves the workspace to the decision view, unmounting this
+  // section. A receipt rendered here would go with it, so it is reported to the
+  // page-level status that sits outside the panels.
+  onSettled(message: string): void;
+}) {
+  const client = useAuthenticatedApiClient();
+  const [answers, setAnswers] = useState<Record<string, OnboardingAnswer>>({});
+  const [faults, setFaults] = useState<ApiErrorDetail[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const decisions = tasks
+    .map((task) => toDecision(task, answers[task.taskReference]))
+    .filter((decision): decision is BatchParticipantOnboardingDecision => decision !== null);
+  const faultByTask = new Map(
+    faults
+      .filter((detail) => detail.taskReference !== undefined)
+      .map((detail) => [detail.taskReference, detail.message]),
+  );
+
+  async function submit() {
+    if (decisions.length === 0) return;
+    setSaving(true);
+    setFeedback(null);
+    setFaults([]);
+    try {
+      const receipt = await decideParticipantOnboarding(client, batchReference, {
+        decisionKey: onboardingDecisionKey(
+          batchReference,
+          decisions.map((decision) => decision.taskReference),
+        ),
+        decisions,
+      });
+      const { onboarded, alreadyOnboarded, revalidationQueued } = receipt.data;
+      setAnswers({});
+      onSettled(
+        `${onboarded} settled${alreadyOnboarded > 0 ? `, ${alreadyOnboarded} already settled` : ''}. ` +
+          (revalidationQueued
+            ? 'The batch is being revalidated once for all of them.'
+            : 'Nothing changed, so there was nothing to revalidate.'),
+      );
+      await refresh();
+    } catch (error) {
+      if (error instanceof ApiResponseError && error.status === 409 && error.details) {
+        // Every fault, never only the first. The array is applied all or
+        // nothing, so a reviewer shown one at a time would resubmit once per
+        // broken decision to discover the rest.
+        setFaults(error.details);
+        setFeedback(
+          `Nothing was applied. ${error.details.length} of ${decisions.length} decisions could not be applied.`,
+        );
+      } else {
+        setFeedback('The onboarding decisions could not be submitted.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const unattributed = faults.filter((detail) => detail.taskReference === undefined);
+  return (
+    <section className="participant-onboarding" aria-labelledby="participant-onboarding-title">
+      <div className="participant-onboarding__heading">
+        <div>
+          <h2 id="participant-onboarding-title">Participants to onboard</h2>
+          <p>
+            One decision for each player, however many deliveries name them. Settle them together;
+            the batch is revalidated once.
+          </p>
+        </div>
+        <strong>{tasks.length} outstanding</strong>
+      </div>
+      {tasks.length === 0 ? (
+        <p>No participant is waiting to be onboarded.</p>
+      ) : (
+        <>
+          {tasks.map((task) => (
+            <ParticipantOnboardingTaskCard
+              key={task.taskReference}
+              task={task}
+              answer={answers[task.taskReference] ?? emptyAnswer}
+              fault={faultByTask.get(task.taskReference)}
+              disabled={saving || !decisionsAvailable}
+              onAnswer={(next) =>
+                setAnswers((current) => ({ ...current, [task.taskReference]: next }))
+              }
+            />
+          ))}
+          {unattributed.length > 0 ? (
+            <ul className="participant-onboarding__faults" role="alert">
+              {unattributed.map((detail) => (
+                <li key={`${detail.code}-${detail.message}`}>{detail.message}</li>
+              ))}
+            </ul>
+          ) : null}
+          {!decisionsAvailable ? (
+            <p className="participant-onboarding__note" role="status">
+              Onboarding decisions are available only while this batch is awaiting review.
+            </p>
+          ) : null}
+          <div className="participant-onboarding__actions">
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={saving || !decisionsAvailable || decisions.length === 0}
+              onClick={() => void submit()}
+            >
+              {saving
+                ? 'Submitting…'
+                : `Submit ${decisions.length} ${decisions.length === 1 ? 'decision' : 'decisions'}`}
+            </button>
+          </div>
+          {feedback ? (
+            <p className="participant-onboarding__feedback" role="status">
+              {feedback}
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
 type WorkspaceView = 'review' | 'references' | 'summary' | 'decision';
 
 const workspaceViews: WorkspaceView[] = ['review', 'references', 'summary', 'decision'];
@@ -1512,7 +1854,8 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   ).size;
   const actionableReferences = actionableReviewReferences(report);
   const conflictItems = report.blockingItems.filter((item) => item.publishedConflict);
-  const actionCount = actionableReferences.length + conflictItems.length;
+  const actionCount =
+    actionableReferences.length + conflictItems.length + report.participantOnboarding.length;
   const referenceCount = reviewReferences(report).length;
   const activeView: WorkspaceView =
     selectedView === 'auto'
@@ -1640,6 +1983,15 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               />
             ))}
           </section>
+        ) : null}
+        {report.participantOnboarding.length > 0 ? (
+          <ParticipantOnboarding
+            batchReference={batchReference}
+            tasks={report.participantOnboarding}
+            decisionsAvailable={report.batch.status === 'awaiting_review'}
+            refresh={load}
+            onSettled={setFeedback}
+          />
         ) : null}
         <ReferenceReview
           batchReference={batchReference}

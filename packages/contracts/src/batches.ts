@@ -343,6 +343,15 @@ export const batchParticipantOnboardingTaskSchema = z
     candidates: z.array(
       z.object({ personId: apiIdentifierSchema, displayName: z.string().min(1) }).strict(),
     ),
+    /**
+     * The two teams of this task's fixture, in fixture order.
+     *
+     * A team decision is checked by exact name against these, so without them
+     * a reviewer answering `team_not_recognised` would be typing a name the
+     * platform already knows and could simply have offered. Listing them makes
+     * that answer a choice between two, which is what it always was.
+     */
+    teams: z.array(z.object({ teamId: apiIdentifierSchema, name: z.string().min(1) }).strict()),
   })
   .strict();
 
@@ -387,9 +396,19 @@ export const batchReferenceMappingRequestSchema = z
  * the answer: supplying an identifier or a team changes what the task's
  * participant key would derive to, so a re-derived handle would match no task.
  *
- * Exactly one answer is given. `personId` picks one of the candidates the task
- * offered; `sourceId` supplies a durable registry identifier; `teamName` names
- * which of the fixture's two teams the participant belongs to.
+ * A decision answers two separate questions, and they are not interchangeable.
+ * Who the participant is comes from exactly one of `personId`, which picks a
+ * candidate the task itself offered, or `sourceId`, which supplies a durable
+ * registry identifier; two identities for one participant have no meaning, so
+ * both together are refused. Which of the fixture's two teams they belong to
+ * comes from `teamName`, which is optional because the submission usually
+ * carried a team the fixture recognises.
+ *
+ * A `team_not_recognised` task is the case that needs both at once: the team
+ * the submission carried is missing or is not one of the fixture's two, and the
+ * task holds no identity of its own, so neither half can be inferred from the
+ * other. That is why `teamName` is not itself an identity, and why a decision
+ * carrying it alone is refused rather than accepted and faulted later.
  */
 export const batchParticipantOnboardingDecisionSchema = z
   .object({
@@ -400,13 +419,13 @@ export const batchParticipantOnboardingDecisionSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    const answers = [value.personId, value.sourceId, value.teamName].filter(
-      (answer) => answer !== undefined,
+    const identities = [value.personId, value.sourceId].filter(
+      (identity) => identity !== undefined,
     );
-    if (answers.length !== 1) {
+    if (identities.length !== 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Give exactly one of personId, sourceId or teamName.',
+        message: 'Give exactly one of personId or sourceId.',
       });
     }
   });
@@ -504,6 +523,7 @@ export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResp
 export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
 export type BatchReferenceMappingRequest = z.infer<typeof batchReferenceMappingRequestSchema>;
 export type BatchCanonicalFixtureRequest = z.infer<typeof batchCanonicalFixtureRequestSchema>;
+export type BatchParticipantOnboardingTask = z.infer<typeof batchParticipantOnboardingTaskSchema>;
 export type BatchParticipantOnboardingDecision = z.infer<
   typeof batchParticipantOnboardingDecisionSchema
 >;
