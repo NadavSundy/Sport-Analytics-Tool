@@ -6627,11 +6627,20 @@ components:
       type: object
       additionalProperties: false
       required: [taskReference]
+      oneOf:
+        - required: [personId]
+        - required: [sourceId]
       description: >-
-        One decision settling one outstanding task. Exactly one of `personId`, `sourceId` or
-        `teamName` must be given. The task is addressed by `taskReference` and never by anything
-        derivable from the answer: supplying an identifier or a team changes what the task's
-        participant key would derive to, so a re-derived handle would match no task.
+        One decision settling one outstanding task. It answers two separate questions, and they
+        are not interchangeable. Who the participant is comes from exactly one of `personId` or
+        `sourceId`; two identities for one participant have no meaning, so both together are
+        refused. Which of the fixture's two teams they belong to comes from the optional
+        `teamName`, needed when the submission carried a team the fixture does not recognise.
+        A `team_not_recognised` task needs both at once, because the task holds no identity of
+        its own and neither half can be inferred from the other; `teamName` alone is therefore
+        refused. The task is addressed by `taskReference` and never by anything derivable from
+        the answer: supplying an identifier or a team changes what the task's participant key
+        would derive to, so a re-derived handle would match no task.
       properties:
         taskReference: { type: string, format: uuid }
         personId:

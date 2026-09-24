@@ -856,6 +856,13 @@ describe('batch receipt API', () => {
           taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
           sourceId: 'cricsheet:participant:abc123',
         },
+        // A team_not_recognised task: the team the reviewer named travels
+        // alongside the identity, because neither half implies the other.
+        {
+          taskReference: '4e6f8a0b-3c7d-4e9f-a1b2-5d7e9f1a3b5c',
+          sourceId: 'cricsheet:participant:def456',
+          teamName: 'North',
+        },
       ],
     };
     const app = (role: 'admin' | 'submitter') =>
@@ -909,10 +916,17 @@ describe('batch receipt API', () => {
       service({ decideParticipantOnboarding }),
     );
 
-    // Two answers to one task have no meaning, and none is not a decision.
+    // A decision needs exactly one identity. Two identities for one participant
+    // have no meaning, none is not a decision, and a team is not an identity:
+    // it says where a participant belongs, never who they are.
     for (const decision of [
       { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d' },
-      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11', teamName: 'North' },
+      {
+        taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+        personId: '11',
+        sourceId: 'cricsheet:participant:abc123',
+      },
+      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', teamName: 'North' },
     ]) {
       await request(adminApp)
         .post(`/api/v1/batches/${reference}/participants`)

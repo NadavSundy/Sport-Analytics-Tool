@@ -1,13 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import { Pool, type PoolClient } from 'pg';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
 import {
   BatchParticipantOnboardingConflictError,
   createBatchRepository,
 } from '../../src/modules/batches/batch.repository';
+import { createBatchService } from '../../src/modules/batches/batch.service';
+import { createTestAccount, createTestApp } from '../test-app';
 
 /**
  * Issue #708, Pull Request 2. A reviewer settles the participant onboarding
@@ -25,6 +29,7 @@ const sourcePrefix = `participant-onboarding-decisions-${process.pid}`;
 
 interface Seed {
   batchId: string;
+  batchReference: string;
   accountId: string;
   fixtureId: string;
   battingTeamName: string;
@@ -89,12 +94,13 @@ describe.sequential('participant onboarding decisions', () => {
       );
       teamIds.push(teamId);
     }
+    const batchReference = randomUUID();
     const { batchId } = await one<{ batchId: string }>(
       `INSERT INTO batch (batch_reference, submitter_id, competition_id, idempotency_key,
                           source_checksum, source_uri, source_size_bytes, state)
        VALUES ($1::uuid, $2::bigint, $3::bigint, $4, $5, $6, 64, 'awaiting_review')
        RETURNING batch_id::text AS "batchId"`,
-      [randomUUID(), accountId, competitionId, key, 'a'.repeat(64), `stored-object:${key}`],
+      [batchReference, accountId, competitionId, key, 'a'.repeat(64), `stored-object:${key}`],
     );
     // The revalidation tail resets this batch's validation job, so it must exist.
     await client.query(
@@ -121,7 +127,7 @@ describe.sequential('participant onboarding decisions', () => {
       `INSERT INTO fixture_team (fixture_id, team_id, ordinal) VALUES ($1, $2, 1), ($1, $3, 2)`,
       [fixtureId, teamIds[0], teamIds[1]],
     );
-    return { batchId, accountId, fixtureId, battingTeamName, bowlingTeamName };
+    return { batchId, batchReference, accountId, fixtureId, battingTeamName, bowlingTeamName };
   }
 
   async function addTask(
@@ -159,6 +165,33 @@ describe.sequential('participant onboarding decisions', () => {
       [`${sourcePrefix}-${label}-${randomUUID().slice(0, 8)}`, 'A Player'],
     );
     return rows[0]!.personId;
+  }
+
+  /**
+   * The real service and repository behind the real route, so a decision is
+   * judged by what the endpoint accepts rather than by what the repository
+   * would accept if the contract were not in the way.
+   */
+  function app(client: PoolClient, seeded: Seed) {
+    const account = createTestAccount({
+      accountId: seeded.accountId,
+      role: 'admin',
+      approvalState: 'approved',
+    });
+    const synchronizeAccount: SynchronizeAccount = async () => account;
+    return createTestApp(
+      undefined,
+      undefined,
+      synchronizeAccount,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      createBatchService(undefined, createBatchRepository(client)),
+    );
   }
 
   async function outboxCount(client: PoolClient, batchId: string): Promise<number> {
@@ -453,6 +486,54 @@ describe.sequential('participant onboarding decisions', () => {
         [seeded.fixtureId],
       );
       expect(squad.rows[0]!.count).toBe('0');
+    });
+  }, 60_000);
+
+  test('settles a team_not_recognised task through the endpoint', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const seeded = await seed(client, 'endpoint-team');
+
+      // The reason means the submitted team is missing or is not one of the
+      // fixture's two. Settling it therefore takes two things: which team the
+      // participant belongs to, and who the participant is. Neither is
+      // derivable from the other, and the task carries no identity of its own.
+      const taskReference = await addTask(client, seeded, {
+        participantKey: `source:cricsheet:participant:${sourcePrefix}-endpoint`,
+        reason: 'team_not_recognised',
+        teamName: null,
+      });
+
+      const response = await request(app(client, seeded))
+        .post(`/api/v1/batches/${seeded.batchReference}/participants`)
+        .set('Authorization', 'Bearer database-test-token')
+        .send({
+          decisionKey: 'onboard-through-endpoint',
+          decisions: [
+            {
+              taskReference,
+              teamName: seeded.bowlingTeamName,
+              sourceId: `cricsheet:participant:${sourcePrefix}-endpoint`,
+            },
+          ],
+        })
+        .expect(202);
+
+      expect(response.body.data).toMatchObject({
+        onboarded: 1,
+        alreadyOnboarded: 0,
+        revalidationQueued: true,
+      });
+
+      // Placed in the team the reviewer named, not the one the submission
+      // failed to carry.
+      const placed = await client.query<{ teamName: string }>(
+        `SELECT team.name AS "teamName" FROM fixture_squad
+         JOIN team ON team.team_id = fixture_squad.team_id
+         JOIN person ON person.person_id = fixture_squad.person_id
+         WHERE fixture_squad.fixture_id=$1::bigint AND person.source_ref=$2`,
+        [seeded.fixtureId, `${sourcePrefix}-endpoint`],
+      );
+      expect(placed.rows[0]!.teamName).toBe(seeded.bowlingTeamName);
     });
   }, 60_000);
 });
