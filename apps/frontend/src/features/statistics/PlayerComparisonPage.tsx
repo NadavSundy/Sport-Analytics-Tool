@@ -1,8 +1,4 @@
-import type {
-  Fixture,
-  FixtureStatistics,
-  ParticipantFixtureStatistic,
-} from '@sport-analytics/contracts';
+import type { Fixture, ParticipantFixtureStatistic } from '@sport-analytics/contracts';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { publicReadApi } from '../../api/public-read';
