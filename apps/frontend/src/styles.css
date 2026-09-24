@@ -4172,6 +4172,15 @@ h3 {
   margin-top: 2rem;
 }
 
+.browse-page__header-action {
+  margin-top: 1rem;
+}
+
+.player-comparison__controls {
+  align-items: end;
+  margin-top: 2rem;
+}
+
 .statistics-section-heading,
 .statistic-card__heading {
   display: flex;

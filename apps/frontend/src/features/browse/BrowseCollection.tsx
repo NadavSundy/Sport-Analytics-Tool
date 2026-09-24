@@ -35,6 +35,7 @@ interface BrowseCollectionProps<Resource> {
   emptyMessage: string;
   eyebrow: string;
   filters: FilterField[];
+  headerAction?: ReactNode;
   load: (search: string, signal: AbortSignal) => Promise<CollectionResponse<Resource>>;
   renderItem: (resource: Resource) => ReactNode;
   resourceLabel: string;
@@ -385,6 +386,7 @@ export function BrowseCollection<Resource>({
   emptyMessage,
   eyebrow,
   filters,
+  headerAction,
   load,
   renderItem,
   resourceLabel,
@@ -403,6 +405,7 @@ export function BrowseCollection<Resource>({
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
         <p>{description}</p>
+        {headerAction ? <div className="browse-page__header-action">{headerAction}</div> : null}
       </header>
 
       <div className="browse-page__content content-boundary">
