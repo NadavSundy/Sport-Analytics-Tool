@@ -91,6 +91,7 @@ function fakeDatabase(
       );
       return {
         rows: Array.from({ length: count }, (_, index) => ({
+          deliveryId: String((snapshotPage - 1) * size + index + 1),
           fixtureId: String((snapshotPage - 1) * size + index + 1),
           inningsOrdinal: 1,
           sequenceNumber: index + 1,
@@ -250,6 +251,11 @@ describe('dataset release worker job', () => {
         call.text.includes('INSERT INTO dataset_release_snapshot_event'),
       ),
     ).toHaveLength(2);
+    const snapshotCalls = database.calls.filter((call) =>
+      call.text.includes('INSERT INTO dataset_release_snapshot_event'),
+    );
+    expect(snapshotCalls[0]?.text).toContain('ORDER BY d.delivery_id LIMIT $2');
+    expect(snapshotCalls[1]?.text).toContain('WHERE d.delivery_id>$2::bigint');
   });
 
   it('materializes every delivery attribute needed to reproduce published statistics', async () => {

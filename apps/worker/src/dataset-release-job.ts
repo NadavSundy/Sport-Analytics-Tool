@@ -24,6 +24,9 @@ interface Cursor {
 interface EventRow extends Cursor {
   event: unknown;
 }
+interface SnapshotCursor {
+  deliveryId: string;
+}
 interface Claim {
   terminal: boolean;
   attemptCount: number;
@@ -175,30 +178,21 @@ export function createDatasetReleaseJobHandler(
         `UPDATE dataset_release_job SET snapshot_id=gen_random_uuid(),snapshot_as_of=transaction_timestamp() WHERE job_id=$1::uuid AND lease_owner=$2`,
         [jobId, options.workerId],
       );
-      let cursor: Cursor | null = null;
+      let cursor: SnapshotCursor | null = null;
       for (;;) {
-        const cursorPredicate: string = cursor
-          ? 'WHERE (i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id)>($2::bigint,$3::integer,$4::integer,$5::bigint)'
-          : '';
+        const cursorPredicate: string = cursor ? 'WHERE d.delivery_id>$2::bigint' : '';
         const parameters: unknown[] = cursor
-          ? [
-              jobId,
-              cursor.fixtureId,
-              cursor.inningsOrdinal,
-              cursor.sequenceNumber,
-              cursor.eventId,
-              snapshotPageSize,
-            ]
+          ? [jobId, cursor.deliveryId, snapshotPageSize]
           : [jobId, snapshotPageSize];
-        const limit: string = cursor ? '$6' : '$2';
-        const inserted = await client.query<Cursor>(
+        const limit: string = cursor ? '$3' : '$2';
+        const inserted = await client.query<SnapshotCursor>(
           `WITH snapshot_candidates AS (
              SELECT d.*,i.fixture_id AS snapshot_fixture_id,i.ordinal AS snapshot_innings_ordinal,
                i.innings_id AS snapshot_innings_id
              FROM delivery_current d INNER JOIN innings i ON i.innings_id=d.innings_id
              INNER JOIN submission s ON s.submission_id=d.submission_id AND s.status='accepted'
              ${cursorPredicate}
-             ORDER BY i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id LIMIT ${limit}
+             ORDER BY d.delivery_id LIMIT ${limit}
            ), inserted AS (
              INSERT INTO dataset_release_snapshot_event (job_id,fixture_id,innings_ordinal,sequence_number,event_id,event)
              SELECT $1::uuid,d.snapshot_fixture_id,d.snapshot_innings_ordinal,d.innings_sequence,d.delivery_id,jsonb_build_object(
@@ -219,13 +213,12 @@ export function createDatasetReleaseJobHandler(
                    FROM delivery_wicket_fielder f WHERE f.wicket_id=w.wicket_id),'[]'::jsonb)) ORDER BY w.ordinal)
                  FROM delivery_wicket w WHERE w.delivery_id=d.delivery_id),'[]'::jsonb))
              FROM snapshot_candidates d ON CONFLICT DO NOTHING
-             RETURNING fixture_id::text AS "fixtureId",innings_ordinal AS "inningsOrdinal",
-               sequence_number AS "sequenceNumber",event_id::text AS "eventId"
+             RETURNING event_id::text AS "deliveryId"
            )
-           SELECT * FROM inserted ORDER BY "fixtureId"::bigint,"inningsOrdinal","sequenceNumber","eventId"::bigint`,
+           SELECT * FROM inserted ORDER BY "deliveryId"::bigint`,
           parameters,
         );
-        const last: Cursor | undefined = inserted.rows.at(-1);
+        const last: SnapshotCursor | undefined = inserted.rows.at(-1);
         if (!last) break;
         cursor = last;
         if (inserted.rows.length < snapshotPageSize) break;
