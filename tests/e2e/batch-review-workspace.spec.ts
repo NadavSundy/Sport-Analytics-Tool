@@ -217,12 +217,29 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
   await expect(page).toHaveTitle(/Review queue/);
   await page.getByRole('link', { name: 'season.csv' }).click();
   await expect(page.getByRole('heading', { name: 'Review staged submission' })).toBeVisible();
-  await expect(page.getByText('Data Submitter')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'season.csv' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Review decision' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('list', { name: 'Batch lifecycle' })).toBeVisible();
+  const decisionTab = page.getByRole('tab', { name: 'Review decision' });
+  await decisionTab.focus();
+  await page.keyboard.press('Home');
+  await expect(page.getByRole('tab', { name: 'Needs review (0)' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'References (0)' })).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(decisionTab).toBeFocused();
+  await page.getByRole('tab', { name: 'Batch summary' }).click();
+  await expect(page.getByText('Data Submitter', { exact: true })).toBeVisible();
+  await page.getByText(/Show resolved content/).click();
   await expect(page.getByText('cricsheet:delivery:100-original')).toBeVisible();
   await expect(page.getByText(/published delivery 88/)).toBeVisible();
   await expect(page.getByText('Lions vs Bears · 2026-09-01')).toBeVisible();
   await page.getByText(/1 rejection/).click();
   await expect(page.getByText('Runs total does not match its components.')).toBeVisible();
+  await decisionTab.click();
   await expect(page.getByText('Only the accepted subset will publish')).toBeVisible();
   const approve = page.getByRole('button', { name: 'Approve and publish' });
   await expect(approve).toBeEnabled();
@@ -241,6 +258,7 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
   await approve.click();
   await dialog.getByRole('button', { name: 'Confirm approve and publish' }).click();
   await expect(page.getByText('Current state: Published')).toBeVisible();
+  await page.getByRole('tab', { name: 'Batch summary' }).click();
   await expect(page.getByText('Runs total does not match its components.')).toBeVisible();
 
   expect(
@@ -429,13 +447,13 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
   const differenceRow = conflictCard.getByRole('row', { name: /runs\.offBat/ });
   await expect(differenceRow).toContainText('4');
   await expect(differenceRow).toContainText('0');
-  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
 
   await page
     .getByLabel('Resolution reason')
     .fill('Correct the published score from the verified source.');
   await page.getByRole('button', { name: 'Approve submitted correction' }).click();
 
+  await page.getByRole('tab', { name: 'Review decision' }).click();
   await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
 });
 
@@ -591,7 +609,6 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
   await page.goto(`/reviews/batches/${reference}`);
   const conflictCard = page.locator('.published-conflict-resolution');
   await expect(conflictCard.getByRole('row', { name: /ballNumber/ })).toContainText('5.2');
-  await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
 
   await page.getByLabel('Resolution reason').fill('The published delivery is the verified record.');
   await page.getByRole('button', { name: 'Keep published delivery' }).click();
@@ -605,6 +622,7 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
   await page.getByRole('button', { name: 'Keep published delivery' }).click();
 
   await expect(conflictCard).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Review decision' }).click();
   await expect(page.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
   const expectedRequest = {
     itemOrdinal: 0,

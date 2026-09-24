@@ -231,6 +231,120 @@ describe('reviewer batch workspace', () => {
     vi.unstubAllGlobals();
   });
 
+  test('prioritises reviewer work and supports keyboard navigation between workspace views', async () => {
+    const body = report(true);
+    body.data.blockingItems[0]!.context.fixtureLabel = 'Lions vs Bears · 2026-09-01';
+    body.data.blockingItems[0]!.referenceResolutions.push({
+      referencePath: 'fixtures.0.innings.0.events.0.striker',
+      entityType: 'participant',
+      state: 'unresolved',
+      submittedReference: {
+        context: { name: 'A. Smith', team: { context: { name: 'Lions' } } },
+      },
+      reason: 'No matching participant.',
+      requiredAction: 'contact_reviewer',
+      candidates: [],
+    });
+    body.data.reviewSummary.resolution.unresolved = 1;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const reviewTab = await screen.findByRole('tab', { name: 'Needs review (1)' });
+    expect(reviewTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: 'Reviewer actions required' })).toBeInTheDocument();
+    const overview = screen.getByRole('region', { name: 'season.csv' });
+    expect(within(overview).getByText('Needs review')).toBeInTheDocument();
+    expect(within(overview).queryByText('1 needs review')).not.toBeInTheDocument();
+    expect(within(overview).queryByText('Unresolved references')).not.toBeInTheDocument();
+    expect(within(overview).queryByText('Blocking errors')).not.toBeInTheDocument();
+
+    reviewTab.focus();
+    fireEvent.keyDown(reviewTab, { key: 'ArrowRight' });
+    const referencesTab = screen.getByRole('tab', { name: 'References (2)' });
+    expect(referencesTab).toHaveFocus();
+    expect(referencesTab).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('heading', { name: 'Informational unresolved references' }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(referencesTab, { key: 'End' });
+    expect(screen.getByRole('tab', { name: 'Review decision' })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'Review decision' })).toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: 'Batch summary' }));
+    expect(screen.getByRole('heading', { name: 'Validation and reference summary' })).toBeVisible();
+  });
+
+  test('moves sequentially between unresolved actions without mixing fixture groups', async () => {
+    const body = report(true);
+    const firstItem = body.data.blockingItems[0]!;
+    firstItem.context.fixtureLabel = 'Lions vs Bears · 2026-09-01';
+    const secondItem = structuredClone(firstItem);
+    secondItem.ordinal = 2;
+    secondItem.context.fixtureLabel = 'Wits vs UCT · 2026-09-02';
+    secondItem.referenceResolutions[0]!.referencePath = 'fixtures.1';
+    secondItem.referenceResolutions[0]!.submittedReference = 'Wits final';
+    body.data.blockingItems = [firstItem, secondItem];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByText('Review item 1 of 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Fixture group: Lions vs Bears · 2026-09-01' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Fixture group: Wits vs UCT · 2026-09-02' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous unresolved' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next unresolved' }));
+    expect(screen.getByText('Review item 2 of 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Fixture group: Wits vs UCT · 2026-09-02' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Fixture group: Lions vs Bears · 2026-09-01' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next unresolved' })).toBeDisabled();
+  });
+
+  test('shows the actual lifecycle stage and keeps resolved content accessible from the summary', async () => {
+    const body = report(false);
+    body.data.batch.status = 'validating';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByRole('tab', { name: 'Batch summary' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('list', { name: 'Batch lifecycle' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Validating', { selector: '[aria-current="step"] strong' }),
+    ).toBeVisible();
+    const resolved = screen.getByText('Show resolved content (20000 resolved references)');
+    expect(resolved).toBeInTheDocument();
+    fireEvent.click(resolved);
+    expect(screen.getByText(/Target:/)).toBeInTheDocument();
+  });
+
   test('creates only a valid unresolved fixture proposal and refreshes the report', async () => {
     const body = report(true);
     body.data.batch.source.packageVersion = '1.1';
@@ -351,8 +465,10 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
 
+    fireEvent.click(await screen.findByRole('tab', { name: 'References (3)' }));
+
     expect(
-      await screen.findByRole('heading', {
+      screen.getByRole('heading', {
         name: 'Fixture: Wits vs UCT · 2026-01-01 · Season 2026',
       }),
     ).toBeInTheDocument();
@@ -391,7 +507,9 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
 
-    expect(await screen.findByText('45 unresolved references in total')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('tab', { name: 'References (45)' }));
+
+    expect(screen.getByText('45 unresolved references in total')).toBeInTheDocument();
     expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(20);
     fireEvent.click(screen.getByRole('button', { name: 'Show next unresolved references' }));
     expect(
@@ -406,6 +524,15 @@ describe('reviewer batch workspace', () => {
     expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(1);
     expect(
       screen.getByRole('heading', { name: 'Participant: Player 45 · Wits' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Resolution state'), { target: { value: 'all' } });
+    fireEvent.change(screen.getByLabelText('Search loaded references'), {
+      target: { value: 'Player 37' },
+    });
+    expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 37 · Wits' }),
     ).toBeInTheDocument();
   });
 
@@ -470,7 +597,7 @@ describe('reviewer batch workspace', () => {
 
     const actionSection = await screen.findByRole('region', { name: 'Reviewer actions required' });
     const proposalCards = within(actionSection).getAllByRole('article', { name: /Fixture:/ });
-    expect(proposalCards).toHaveLength(2);
+    expect(proposalCards).toHaveLength(1);
     fireEvent.click(
       within(proposalCards[0]!).getByRole('button', {
         name: 'Create canonical fixture from proposal',
@@ -482,16 +609,15 @@ describe('reviewer batch workspace', () => {
         'Canonical fixture decision queued for validation.',
       ),
     ).toBeInTheDocument();
-    expect(
-      within(proposalCards[1]!).queryByText('Canonical fixture decision queued for validation.'),
-    ).not.toBeInTheDocument();
     await waitFor(() => expect(queued).toBe(true));
     expect(screen.getByText(/Revalidation in progress/)).toBeInTheDocument();
-    for (const button of screen.getAllByRole('button', {
-      name: 'Create canonical fixture from proposal',
-    })) {
-      expect(button).toBeDisabled();
-    }
+    fireEvent.click(screen.getByRole('button', { name: 'Next unresolved' }));
+    expect(
+      screen.queryByText('Canonical fixture decision queued for validation.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create canonical fixture from proposal' }),
+    ).toBeDisabled();
   });
 
   test('scopes action errors to the reference whose mapping failed', async () => {
@@ -516,13 +642,14 @@ describe('reviewer batch workspace', () => {
     renderPage(`/reviews/batches/${reference}`);
 
     const actionSection = await screen.findByRole('region', { name: 'Reviewer actions required' });
-    const cards = within(actionSection).getAllByRole('article');
-    fireEvent.click(within(cards[0]!).getByRole('button', { name: /^Use Lions vs Bears/ }));
+    const card = within(actionSection).getByRole('article');
+    fireEvent.click(within(card).getByRole('button', { name: /^Use Lions vs Bears/ }));
 
-    expect(await within(cards[0]!).findByRole('alert')).toHaveTextContent(
+    expect(await within(card).findByRole('alert')).toHaveTextContent(
       'The mapping could not be saved.',
     );
-    expect(within(cards[1]!).queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next unresolved' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   test('explains overlapping counts and distinguishes candidate matches from fixture proposals', async () => {
@@ -544,7 +671,9 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
 
-    expect(await screen.findByText('Counts describe overlapping categories.')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('tab', { name: 'Batch summary' }));
+
+    expect(screen.getByText('Counts describe overlapping categories.')).toBeInTheDocument();
     expect(
       screen.getByText(
         'The same 4 submitted items can be both rejected and unresolved. Do not add these counts together.',
@@ -714,16 +843,21 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
     expect(await screen.findByText('Data Submitter')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Batch summary' }));
     expect(screen.getByText('a'.repeat(64))).toBeInTheDocument();
     expect(screen.getAllByText('Lions vs Bears · 2026-09-01')).toHaveLength(2);
     const group = screen.getByText('REFERENCE_AMBIGUOUS').closest('details')!;
     expect(group).toBeInTheDocument();
     fireEvent.click(within(group).getByText(/1 rejection/));
     expect(within(group).getByText(/Choose the intended fixture/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Review decision' }));
     expect(screen.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Needs review (1)' }));
     expect(
       screen.getByRole('button', { name: 'Use Lions vs Bears · 2026-09-01' }),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'References (1)' }));
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
   });
 
@@ -747,6 +881,7 @@ describe('reviewer batch workspace', () => {
 
     expect(await screen.findByRole('button', { name: /^Use Lions vs Bears/ })).toBeInTheDocument();
     expect(screen.queryByText('All displayed references are resolved.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'References (1)' }));
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
   });
 
@@ -817,6 +952,10 @@ describe('reviewer batch workspace', () => {
     renderPage(`/reviews/batches/${reference}`);
 
     expect(await screen.findByText(/Ready for publication/)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Review decision' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(await screen.findByText('Only the accepted subset will publish')).toBeInTheDocument();
     expect(
       screen.getByText(
