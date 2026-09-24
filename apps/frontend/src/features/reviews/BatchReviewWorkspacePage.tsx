@@ -6,7 +6,14 @@ import type {
   CurrentUserProfile,
 } from '@sport-analytics/contracts';
 import { fixtureProposalSchema } from '@sport-analytics/contracts';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
@@ -52,6 +59,125 @@ function hasFixtureProposal(value: unknown): boolean {
   return (
     typeof record.sourceId === 'string' && fixtureProposalSchema.safeParse(record.proposal).success
   );
+}
+
+type ReferenceResolutionValue = BatchReportItem['referenceResolutions'][number];
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function nestedContext(value: unknown): Record<string, unknown> | null {
+  return recordValue(recordValue(value)?.context);
+}
+
+function nestedName(value: unknown): string | null {
+  const name = nestedContext(value)?.name;
+  return typeof name === 'string' && name.trim() ? name : null;
+}
+
+function submittedReferenceLabel(
+  resolution: ReferenceResolutionValue,
+  item: BatchReportItem,
+): string {
+  const submitted = recordValue(resolution.submittedReference);
+  if (!submitted) {
+    return typeof resolution.submittedReference === 'string' && resolution.submittedReference.trim()
+      ? resolution.submittedReference
+      : 'Submitted reference without readable context';
+  }
+
+  const context = recordValue(submitted.context);
+  const sourceId = typeof submitted.sourceId === 'string' ? submitted.sourceId : null;
+  if (resolution.entityType === 'fixture') {
+    const teams = Array.isArray(context?.teams)
+      ? context.teams.map(nestedName).filter((name): name is string => Boolean(name))
+      : [];
+    const date = typeof context?.date === 'string' ? context.date : null;
+    const season = nestedName(submitted.season);
+    const details = [
+      teams.length === 2 ? teams.join(' vs ') : null,
+      date,
+      season ? `Season ${season}` : null,
+    ].filter((value): value is string => Boolean(value));
+    return details.join(' · ') || sourceId || item.context.fixtureLabel || 'Fixture reference';
+  }
+  if (resolution.entityType === 'participant') {
+    const name = typeof context?.name === 'string' ? context.name : null;
+    const team = nestedName(context?.team);
+    return (
+      [name, team].filter((value): value is string => Boolean(value)).join(' · ') ||
+      sourceId ||
+      'Participant reference'
+    );
+  }
+  if (resolution.entityType === 'innings') {
+    const ordinal = typeof context?.ordinal === 'number' ? `Innings ${context.ordinal + 1}` : null;
+    const battingTeam = nestedName(context?.battingTeam);
+    const fixture = item.context.fixtureLabel;
+    return (
+      [ordinal, battingTeam ? `${battingTeam} batting` : null, fixture]
+        .filter((value): value is string => Boolean(value))
+        .join(' · ') ||
+      sourceId ||
+      'Innings reference'
+    );
+  }
+
+  const name = typeof context?.name === 'string' ? context.name : null;
+  return name || sourceId || `${resolution.entityType} reference`;
+}
+
+function submittedReferenceSource(resolution: ReferenceResolutionValue): string | null {
+  const sourceId = recordValue(resolution.submittedReference)?.sourceId;
+  return typeof sourceId === 'string' ? sourceId : null;
+}
+
+function referenceHeading(resolution: ReferenceResolutionValue, item: BatchReportItem): string {
+  const entity = `${resolution.entityType[0]!.toUpperCase()}${resolution.entityType.slice(1)}`;
+  return `${entity}: ${submittedReferenceLabel(resolution, item)}`;
+}
+
+function isReviewerActionableReference(
+  resolution: ReferenceResolutionValue,
+  packageVersion: string,
+): boolean {
+  return (
+    resolution.candidates.length > 0 ||
+    (resolution.entityType === 'fixture' &&
+      packageVersion === '1.1' &&
+      hasFixtureProposal(resolution.submittedReference))
+  );
+}
+
+function lifecycleGuidance(report: BatchReportResponse['data']): string {
+  switch (report.batch.status) {
+    case 'received':
+    case 'stored':
+      return 'Queued for validation. Background processing has not started yet.';
+    case 'validating':
+      return 'Revalidation in progress. Reviewer actions are paused until processing finishes.';
+    case 'awaiting_review':
+      return report.reviewSummary.approvalBlocked
+        ? 'Awaiting further review. Resolve the highlighted reviewer actions before publication.'
+        : 'Ready for publication. Review the accepted content and record a decision.';
+    case 'publishing':
+      return 'Publication is in progress. No further reviewer action is currently possible.';
+    case 'published':
+      return 'Publication is complete. This submission is terminal.';
+    case 'partially_published':
+      return 'Publication is complete for the accepted subset. This submission is terminal.';
+    case 'rejected':
+      return 'Terminal rejection. No further reviewer action is possible for this submission.';
+    case 'correction_requested':
+      return 'Waiting for the submitter to provide a correction.';
+    case 'failed':
+      return 'Background processing failed. No reviewer action is currently possible.';
+    case 'superseded':
+      return 'This submission was superseded and is terminal. Follow its replacement batch.';
+  }
 }
 
 function ReviewerGate({ profile, children }: { profile: CurrentUserProfile; children: ReactNode }) {
@@ -507,105 +633,431 @@ function ErrorGroups({ report }: { report: BatchReportResponse['data'] }) {
   );
 }
 
-function ReferenceResolution({
+function ReferenceResolutionCard({
   batchReference,
   packageVersion,
   item,
+  resolution,
   refresh,
+  actionsAvailable,
+  onActionQueued,
+  onActionReady,
 }: {
   batchReference: string;
   packageVersion: string;
   item: BatchReportItem;
-  refresh(): Promise<void>;
+  resolution: ReferenceResolutionValue;
+  refresh(): Promise<BatchStatus['status']>;
+  actionsAvailable: boolean;
+  onActionQueued(): void;
+  onActionReady(): void;
 }) {
   const client = useAuthenticatedApiClient();
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'status' | 'alert'; text: string } | null>(null);
+  const heading = referenceHeading(resolution, item);
+  const sourceId = submittedReferenceSource(resolution);
+  async function refreshAfterQueuedAction(message: string) {
+    setFeedback({ kind: 'status', text: message });
+    try {
+      const status = await refresh();
+      if (status === 'awaiting_review') onActionReady();
+    } catch {
+      setFeedback({
+        kind: 'status',
+        text: `${message} The current batch status could not be refreshed.`,
+      });
+    }
+  }
   return (
-    <>
-      {item.referenceResolutions.map((resolution) => (
-        <div className="reference-resolution" key={resolution.referencePath}>
-          <h3>
-            {resolution.entityType}: {String(resolution.submittedReference ?? 'No submitted label')}
-          </h3>
-          <p>
-            <strong>{resolution.state}</strong>
-            {resolution.reason ? ` · ${resolution.reason}` : ''}
-          </p>
-          {resolution.candidates.length === 0 ? (
-            <>
-              <p>No proposed match is available.</p>
-              {resolution.entityType === 'fixture' &&
-              packageVersion === '1.1' &&
-              hasFixtureProposal(resolution.submittedReference) ? (
-                <button
-                  className="button button--primary"
-                  type="button"
-                  disabled={saving}
-                  onClick={() => {
-                    setSaving(true);
-                    setFeedback(null);
-                    void createBatchCanonicalFixture(client, batchReference, {
-                      itemOrdinal: item.ordinal,
-                      referencePath: resolution.referencePath,
-                      decisionKey: `create-${batchReference}-${item.ordinal}-${resolution.referencePath}`,
+    <article className="reference-resolution" aria-label={heading}>
+      <h3>{heading}</h3>
+      {sourceId ? <p className="reference-resolution__source">Source: {sourceId}</p> : null}
+      <p>
+        <strong>{resolution.state}</strong>
+        {resolution.reason ? ` · ${resolution.reason}` : ''}
+      </p>
+      {resolution.candidates.length === 0 ? (
+        <>
+          <p>No candidate match is available.</p>
+          {resolution.entityType === 'fixture' &&
+          packageVersion === '1.1' &&
+          hasFixtureProposal(resolution.submittedReference) ? (
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={saving || !actionsAvailable}
+              onClick={() => {
+                setSaving(true);
+                setFeedback(null);
+                onActionQueued();
+                void createBatchCanonicalFixture(client, batchReference, {
+                  itemOrdinal: item.ordinal,
+                  referencePath: resolution.referencePath,
+                  decisionKey: `create-${batchReference}-${item.ordinal}-${resolution.referencePath}`,
+                })
+                  .then(() => {
+                    return refreshAfterQueuedAction(
+                      'Canonical fixture decision queued for validation.',
+                    );
+                  })
+                  .catch(() => {
+                    setFeedback({
+                      kind: 'alert',
+                      text: 'The canonical fixture could not be created.',
+                    });
+                    onActionReady();
+                  })
+                  .finally(() => setSaving(false));
+              }}
+            >
+              Create canonical fixture from proposal
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <ul>
+          {resolution.candidates.map((candidate) => (
+            <li key={candidate.candidateReference}>
+              <span>{candidate.label}</span>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={saving || !actionsAvailable}
+                onClick={() => {
+                  setSaving(true);
+                  setFeedback(null);
+                  onActionQueued();
+                  void mapBatchReference(client, batchReference, {
+                    itemOrdinal: item.ordinal,
+                    referencePath: resolution.referencePath,
+                    candidateReference: candidate.candidateReference,
+                    decisionKey: `review-${batchReference}-${item.ordinal}-${resolution.referencePath}-${candidate.candidateReference}`,
+                  })
+                    .then((response) => {
+                      return refreshAfterQueuedAction(
+                        `Mapping ${response.data.status}. The batch will be reprocessed safely.`,
+                      );
                     })
-                      .then(() => {
-                        setFeedback('Canonical fixture decision queued for validation.');
-                        return refresh();
-                      })
-                      .catch(() => setFeedback('The canonical fixture could not be created.'))
-                      .finally(() => setSaving(false));
-                  }}
-                >
-                  Create canonical fixture from proposal
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <ul>
-              {resolution.candidates.map((candidate) => (
-                <li key={candidate.candidateReference}>
-                  <span>{candidate.label}</span>
-                  <button
-                    className="button button--secondary"
-                    type="button"
-                    disabled={saving}
-                    onClick={() => {
-                      setSaving(true);
-                      setFeedback(null);
-                      void mapBatchReference(client, batchReference, {
-                        itemOrdinal: item.ordinal,
-                        referencePath: resolution.referencePath,
-                        candidateReference: candidate.candidateReference,
-                        decisionKey: `review-${batchReference}-${item.ordinal}-${resolution.referencePath}-${candidate.candidateReference}`,
-                      })
-                        .then((response) => {
-                          setFeedback(
-                            `Mapping ${response.data.status}. The batch will be reprocessed safely.`,
-                          );
-                          return refresh();
-                        })
-                        .catch((error: unknown) =>
-                          setFeedback(
-                            error instanceof ApiResponseError && error.status === 409
-                              ? error.message
-                              : 'The mapping could not be saved.',
-                          ),
-                        )
-                        .finally(() => setSaving(false));
-                    }}
-                  >
-                    Use {candidate.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {feedback ? <p role="status">{feedback}</p> : null}
+                    .catch((error: unknown) => {
+                      setFeedback({
+                        kind: 'alert',
+                        text:
+                          error instanceof ApiResponseError && error.status === 409
+                            ? error.message
+                            : 'The mapping could not be saved.',
+                      });
+                      onActionReady();
+                    })
+                    .finally(() => setSaving(false));
+                }}
+              >
+                Use {candidate.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!actionsAvailable && isReviewerActionableReference(resolution, packageVersion) ? (
+        <p className="reference-resolution__notice">
+          Actions are unavailable while this batch is not awaiting review.
+        </p>
+      ) : null}
+      {feedback ? <p role={feedback.kind}>{feedback.text}</p> : null}
+    </article>
+  );
+}
+
+type ReviewReference = {
+  key: string;
+  item: BatchReportItem;
+  resolution: ReferenceResolutionValue;
+};
+
+const unresolvedPageSize = 20;
+
+function reviewReferences(report: BatchReportResponse['data']): ReviewReference[] {
+  return report.blockingItems.flatMap((item) =>
+    item.referenceResolutions.map((resolution) => ({
+      key: `${item.ordinal}-${resolution.referencePath}`,
+      item,
+      resolution,
+    })),
+  );
+}
+
+function actionableReviewReferences(report: BatchReportResponse['data']): ReviewReference[] {
+  return reviewReferences(report)
+    .filter(({ resolution }) =>
+      isReviewerActionableReference(resolution, report.batch.source.packageVersion),
+    )
+    .filter(
+      (reference, index, all) =>
+        all.findIndex(
+          (candidate) =>
+            candidate.resolution.entityType === reference.resolution.entityType &&
+            candidate.resolution.referencePath === reference.resolution.referencePath,
+        ) === index,
+    );
+}
+
+function unresolvedReferenceTotal(report: BatchReportResponse['data']): number {
+  return (
+    report.reviewSummary.resolution.ambiguous +
+    report.reviewSummary.resolution.unresolved +
+    report.reviewSummary.resolution.invalid
+  );
+}
+
+function fixtureGroupLabel(reference: ReviewReference): string {
+  return (
+    reference.item.context.fixtureLabel ??
+    (reference.resolution.entityType === 'fixture'
+      ? submittedReferenceLabel(reference.resolution, reference.item)
+      : null) ??
+    'Fixture context unavailable'
+  );
+}
+
+function ReferenceReview({
+  batchReference,
+  report,
+  refresh,
+  view,
+}: {
+  batchReference: string;
+  report: BatchReportResponse['data'];
+  refresh(): Promise<BatchStatus['status']>;
+  view: 'actions' | 'references';
+}) {
+  const [entityFilter, setEntityFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [fixtureFilter, setFixtureFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [actionIndex, setActionIndex] = useState(0);
+  const [actionQueued, setActionQueued] = useState(false);
+  const packageVersion = report.batch.source.packageVersion;
+  const references = reviewReferences(report);
+  const actionable = actionableReviewReferences(report);
+  const informational = references.filter(
+    ({ resolution }) => !isReviewerActionableReference(resolution, packageVersion),
+  );
+  const fixtureOptions = Array.from(
+    new Set(
+      informational
+        .map(({ item }) => item.context.fixtureLabel)
+        .filter((label): label is string => Boolean(label)),
+    ),
+  );
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filtered = references.filter(({ item, resolution }) => {
+    const searchable = [
+      referenceHeading(resolution, item),
+      resolution.reason,
+      item.context.fixtureLabel,
+      submittedReferenceSource(resolution),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(' ')
+      .toLocaleLowerCase();
+    return (
+      !isReviewerActionableReference(resolution, packageVersion) &&
+      (entityFilter === 'all' || resolution.entityType === entityFilter) &&
+      (stateFilter === 'all' || resolution.state === stateFilter) &&
+      (fixtureFilter === 'all' || item.context.fixtureLabel === fixtureFilter) &&
+      (!normalizedSearch || searchable.includes(normalizedSearch))
+    );
+  });
+  const pageCount = Math.max(1, Math.ceil(filtered.length / unresolvedPageSize));
+  const visible = filtered.slice(page * unresolvedPageSize, (page + 1) * unresolvedPageSize);
+  const total = unresolvedReferenceTotal(report);
+  const actionsAvailable = report.batch.status === 'awaiting_review' && !actionQueued;
+  const currentAction = actionable[Math.min(actionIndex, Math.max(actionable.length - 1, 0))];
+
+  useEffect(() => {
+    if (actionIndex >= actionable.length && actionable.length > 0) {
+      setActionIndex(actionable.length - 1);
+    }
+  }, [actionIndex, actionable.length]);
+
+  function resetPageAnd(update: () => void) {
+    update();
+    setPage(0);
+  }
+
+  if (view === 'actions') {
+    return (
+      <section className="reference-actions" aria-labelledby="reference-actions-title">
+        <div className="reference-review__heading">
+          <div>
+            <h2 id="reference-actions-title">Reviewer actions required</h2>
+            <p>Work through candidate mappings and new-fixture proposals one item at a time.</p>
+          </div>
+          <strong>{actionable.length} need review</strong>
         </div>
-      ))}
-    </>
+        {currentAction ? (
+          <>
+            <section
+              className="reference-action-group"
+              aria-label={`Fixture group: ${fixtureGroupLabel(currentAction)}`}
+            >
+              <div className="reference-action-group__heading">
+                <span>Fixture group</span>
+                <strong>{fixtureGroupLabel(currentAction)}</strong>
+              </div>
+              <ReferenceResolutionCard
+                key={currentAction.key}
+                batchReference={batchReference}
+                packageVersion={packageVersion}
+                item={currentAction.item}
+                resolution={currentAction.resolution}
+                refresh={refresh}
+                actionsAvailable={actionsAvailable}
+                onActionQueued={() => setActionQueued(true)}
+                onActionReady={() => setActionQueued(false)}
+              />
+            </section>
+            <nav className="reference-action-navigation" aria-label="Unresolved reviewer actions">
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={actionIndex === 0}
+                onClick={() => setActionIndex((current) => current - 1)}
+              >
+                Previous unresolved
+              </button>
+              <span aria-live="polite">
+                Review item {actionIndex + 1} of {actionable.length}
+              </span>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={actionIndex + 1 >= actionable.length}
+                onClick={() => setActionIndex((current) => current + 1)}
+              >
+                Next unresolved
+              </button>
+            </nav>
+          </>
+        ) : (
+          <div className="review-work-complete" role="status">
+            <strong>No reference decisions remain.</strong>
+            <p>Review the batch summary to continue toward publication.</p>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="reference-review" aria-labelledby="reference-review-title">
+      <div className="reference-review__heading">
+        <div>
+          <h2 id="reference-review-title">Informational unresolved references</h2>
+          <p>{total} unresolved references in total</p>
+        </div>
+        <strong>{filtered.length} shown by filters</strong>
+      </div>
+      <div className="reference-review__filters" aria-label="Unresolved reference filters">
+        <label>
+          Search loaded references
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => resetPageAnd(() => setSearch(event.target.value))}
+          />
+        </label>
+        <label>
+          Entity type
+          <select
+            value={entityFilter}
+            onChange={(event) => resetPageAnd(() => setEntityFilter(event.target.value))}
+          >
+            <option value="all">All entity types</option>
+            {['fixture', 'innings', 'participant', 'team', 'competition'].map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Resolution state
+          <select
+            value={stateFilter}
+            onChange={(event) => resetPageAnd(() => setStateFilter(event.target.value))}
+          >
+            <option value="all">All unresolved states</option>
+            <option value="ambiguous">Ambiguous</option>
+            <option value="unresolved">Unresolved</option>
+            <option value="invalid">Invalid</option>
+          </select>
+        </label>
+        {fixtureOptions.length > 0 ? (
+          <label>
+            Fixture
+            <select
+              value={fixtureFilter}
+              onChange={(event) => resetPageAnd(() => setFixtureFilter(event.target.value))}
+            >
+              <option value="all">All fixtures</option>
+              {fixtureOptions.map((fixture) => (
+                <option key={fixture} value={fixture}>
+                  {fixture}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+      {visible.length > 0 ? (
+        <div className="reference-review__list">
+          {visible.map(({ key, item, resolution }) => (
+            <ReferenceResolutionCard
+              key={key}
+              batchReference={batchReference}
+              packageVersion={packageVersion}
+              item={item}
+              resolution={resolution}
+              refresh={refresh}
+              actionsAvailable={actionsAvailable}
+              onActionQueued={() => setActionQueued(true)}
+              onActionReady={() => setActionQueued(false)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p>
+          {total > 0
+            ? 'No informational unresolved references match these filters.'
+            : 'All references are resolved.'}
+        </p>
+      )}
+      {filtered.length > unresolvedPageSize ? (
+        <nav className="reference-review__pagination" aria-label="Unresolved reference pages">
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={page === 0}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Show previous unresolved references
+          </button>
+          <span>
+            Page {page + 1} of {pageCount}
+          </span>
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={page + 1 >= pageCount}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Show next unresolved references
+          </button>
+        </nav>
+      ) : null}
+    </section>
   );
 }
 
@@ -617,7 +1069,7 @@ function PublishedConflictResolution({
 }: {
   batchReference: string;
   item: BatchReportItem;
-  refresh(): Promise<void>;
+  refresh(): Promise<unknown>;
   resolutionAvailable: boolean;
 }) {
   const client = useAuthenticatedApiClient();
@@ -766,6 +1218,124 @@ function PublishedConflictResolution({
   );
 }
 
+type LifecycleStep = {
+  label: string;
+  state: 'complete' | 'current' | 'upcoming';
+};
+
+function lifecycleSteps(report: BatchReportResponse['data']): LifecycleStep[] {
+  const status = report.batch.status;
+  const currentIndex =
+    status === 'received' || status === 'stored'
+      ? 0
+      : status === 'validating' || status === 'failed'
+        ? 1
+        : status === 'awaiting_review' ||
+            status === 'rejected' ||
+            status === 'correction_requested' ||
+            status === 'superseded'
+          ? 2
+          : status === 'publishing'
+            ? 3
+            : 4;
+  const currentLabel =
+    status === 'awaiting_review' && !report.reviewSummary.approvalBlocked
+      ? 'Ready to publish'
+      : statusLabels[status];
+  const labels = ['Queued', 'Validating', 'Awaiting review', 'Publishing', 'Published'];
+
+  return labels.map((label, index) => ({
+    label: index === currentIndex ? currentLabel : label,
+    state: index < currentIndex ? 'complete' : index === currentIndex ? 'current' : 'upcoming',
+  }));
+}
+
+function LifecycleIndicator({ report }: { report: BatchReportResponse['data'] }) {
+  return (
+    <section className="review-lifecycle" aria-labelledby="review-lifecycle-title">
+      <div className="review-lifecycle__heading">
+        <div>
+          <p className="eyebrow">Batch lifecycle</p>
+          <h2 id="review-lifecycle-title">{statusLabels[report.batch.status]}</h2>
+        </div>
+        <p role="status">{lifecycleGuidance(report)}</p>
+      </div>
+      <p className="review-lifecycle__current">
+        Current state: <strong>{statusLabels[report.batch.status]}</strong>
+      </p>
+      <ol className="review-lifecycle__steps" aria-label="Batch lifecycle">
+        {lifecycleSteps(report).map((step, index) => (
+          <li
+            key={`${index}-${step.label}`}
+            className={`review-lifecycle__step review-lifecycle__step--${step.state}`}
+            aria-current={step.state === 'current' ? 'step' : undefined}
+          >
+            <span className="review-lifecycle__marker" aria-hidden="true">
+              {index + 1}
+            </span>
+            <span>
+              <strong>{step.label}</strong>
+              <small>
+                {step.state === 'complete'
+                  ? 'Complete'
+                  : step.state === 'current'
+                    ? 'Current state'
+                    : 'Not reached'}
+              </small>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function BatchOverview({
+  report,
+  actionCount,
+}: {
+  report: BatchReportResponse['data'];
+  actionCount: number;
+}) {
+  return (
+    <section className="review-overview" aria-labelledby="review-overview-title">
+      <div className="review-overview__identity">
+        <div>
+          <p className="eyebrow">Batch under review</p>
+          <h2 id="review-overview-title">
+            {report.batch.source.fileName ?? report.batch.batchReference}
+          </h2>
+          <p>
+            Submitted by {batchSubmitterLabel(report.batch)} · Reference{' '}
+            <code>{report.batch.batchReference}</code>
+          </p>
+        </div>
+        <span className={`review-overview__status review-overview__status--${report.batch.status}`}>
+          {statusLabels[report.batch.status]}
+        </span>
+      </div>
+      <dl className="review-overview__metrics">
+        <div className={actionCount > 0 ? 'review-overview__metric--priority' : undefined}>
+          <dt>Needs review</dt>
+          <dd>{actionCount}</dd>
+        </div>
+        <div>
+          <dt>Fixtures</dt>
+          <dd>{report.fixtureSummaries.length}</dd>
+        </div>
+        <div>
+          <dt>Submitted items</dt>
+          <dd>{report.batch.progress.total}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+type WorkspaceView = 'review' | 'references' | 'summary' | 'decision';
+
+const workspaceViews: WorkspaceView[] = ['review', 'references', 'summary', 'decision'];
+
 function ReviewDetail({ batchReference }: { batchReference: string }) {
   const client = useAuthenticatedApiClient();
   const [state, setState] = useState<
@@ -776,13 +1346,16 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   const [saving, setSaving] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<WorkspaceView | 'auto'>('auto');
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const viewTabRefs = useRef<Partial<Record<WorkspaceView, HTMLButtonElement>>>({});
   const load = useCallback(async () => {
     const [profile, response] = await Promise.all([
       getCurrentUserProfile(client),
       getBatchReport(client, batchReference),
     ]);
     setState({ kind: 'ready', value: { profile, report: response.data } });
+    return response.data.batch.status;
   }, [batchReference, client]);
   async function loadMore() {
     if (state.kind !== 'ready' || !state.value.report.pagination.nextCursor) return;
@@ -925,24 +1498,212 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   if (state.kind === 'loading') return <p role="status">Loading review queue…</p>;
   if (state.kind === 'error') return <p role="alert">{state.message}</p>;
   const { profile, report } = state.value;
+  const newFixtureProposalCount = new Set(
+    report.blockingItems.flatMap((item) =>
+      item.referenceResolutions
+        .filter(
+          (resolution) =>
+            resolution.entityType === 'fixture' &&
+            report.batch.source.packageVersion === '1.1' &&
+            hasFixtureProposal(resolution.submittedReference),
+        )
+        .map((resolution) => resolution.referencePath),
+    ),
+  ).size;
+  const actionableReferences = actionableReviewReferences(report);
+  const conflictItems = report.blockingItems.filter((item) => item.publishedConflict);
+  const actionCount = actionableReferences.length + conflictItems.length;
+  const referenceCount = reviewReferences(report).length;
+  const activeView: WorkspaceView =
+    selectedView === 'auto'
+      ? actionCount > 0
+        ? 'review'
+        : report.batch.status === 'awaiting_review'
+          ? 'decision'
+          : 'summary'
+      : selectedView;
+
+  function selectView(view: WorkspaceView, focus = false) {
+    setSelectedView(view);
+    if (focus) viewTabRefs.current[view]?.focus();
+  }
+
+  function handleViewKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>, view: WorkspaceView) {
+    const currentIndex = workspaceViews.indexOf(view);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % workspaceViews.length;
+    if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + workspaceViews.length) % workspaceViews.length;
+    }
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = workspaceViews.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    selectView(workspaceViews[nextIndex]!, true);
+  }
+
   return (
     <ReviewerGate profile={profile}>
       <Link to="/reviews/batches">Back to review queue</Link>
-      <SectionNavigation
-        label="Review detail sections"
-        items={[
-          { label: 'Summary', to: '#summary' },
-          { label: 'Issues', to: '#issues' },
-          { label: 'Decision', to: '#decision' },
-        ]}
-      />
-      <AnchoredSection id="summary">
-        <p className={`batch-lifecycle batch-lifecycle--${report.batch.status}`} role="status">
-          Current state: <strong>{statusLabels[report.batch.status]}</strong>
-        </p>
+      <BatchOverview report={report} actionCount={actionCount} />
+      <LifecycleIndicator report={report} />
+      <div className="review-workspace-tabs" role="tablist" aria-label="Batch review views">
+        <button
+          ref={(node) => {
+            if (node) viewTabRefs.current.review = node;
+          }}
+          id="review-view-tab"
+          className="review-workspace-tabs__tab"
+          type="button"
+          role="tab"
+          aria-selected={activeView === 'review'}
+          aria-controls="review-view-panel"
+          tabIndex={activeView === 'review' ? 0 : -1}
+          onClick={() => selectView('review')}
+          onKeyDown={(event) => handleViewKeyDown(event, 'review')}
+        >
+          Needs review ({actionCount})
+        </button>
+        <button
+          ref={(node) => {
+            if (node) viewTabRefs.current.references = node;
+          }}
+          id="references-view-tab"
+          className="review-workspace-tabs__tab"
+          type="button"
+          role="tab"
+          aria-selected={activeView === 'references'}
+          aria-controls="references-view-panel"
+          tabIndex={activeView === 'references' ? 0 : -1}
+          onClick={() => selectView('references')}
+          onKeyDown={(event) => handleViewKeyDown(event, 'references')}
+        >
+          References ({referenceCount})
+        </button>
+        <button
+          ref={(node) => {
+            if (node) viewTabRefs.current.summary = node;
+          }}
+          id="summary-view-tab"
+          className="review-workspace-tabs__tab"
+          type="button"
+          role="tab"
+          aria-selected={activeView === 'summary'}
+          aria-controls="summary-view-panel"
+          tabIndex={activeView === 'summary' ? 0 : -1}
+          onClick={() => selectView('summary')}
+          onKeyDown={(event) => handleViewKeyDown(event, 'summary')}
+        >
+          Batch summary
+        </button>
+        <button
+          ref={(node) => {
+            if (node) viewTabRefs.current.decision = node;
+          }}
+          id="decision-view-tab"
+          className="review-workspace-tabs__tab"
+          type="button"
+          role="tab"
+          aria-selected={activeView === 'decision'}
+          aria-controls="decision-view-panel"
+          tabIndex={activeView === 'decision' ? 0 : -1}
+          onClick={() => selectView('decision')}
+          onKeyDown={(event) => handleViewKeyDown(event, 'decision')}
+        >
+          Review decision
+        </button>
+      </div>
+
+      <section
+        id="review-view-panel"
+        className="review-workspace-panel"
+        role="tabpanel"
+        aria-labelledby="review-view-tab"
+        hidden={activeView !== 'review'}
+      >
+        {conflictItems.length > 0 ? (
+          <section className="published-conflicts" aria-labelledby="published-conflicts-title">
+            <div className="published-conflicts__heading">
+              <div>
+                <h2 id="published-conflicts-title">Published delivery conflicts</h2>
+                <p>Resolve each conflict before the batch can be approved for publication.</p>
+              </div>
+              <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
+            </div>
+            {conflictItems.map((item) => (
+              <PublishedConflictResolution
+                key={item.ordinal}
+                batchReference={batchReference}
+                item={item}
+                refresh={load}
+                resolutionAvailable={report.batch.status === 'awaiting_review'}
+              />
+            ))}
+          </section>
+        ) : null}
+        <ReferenceReview
+          batchReference={batchReference}
+          report={report}
+          refresh={load}
+          view="actions"
+        />
+        {actionCount === 0 ? (
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => selectView('decision', true)}
+          >
+            Continue to review decision
+          </button>
+        ) : null}
+      </section>
+
+      <section
+        id="references-view-panel"
+        className="review-workspace-panel"
+        role="tabpanel"
+        aria-labelledby="references-view-tab"
+        hidden={activeView !== 'references'}
+      >
+        <ReferenceReview
+          batchReference={batchReference}
+          report={report}
+          refresh={load}
+          view="references"
+        />
+        {report.pagination.nextCursor ? (
+          <section aria-labelledby="report-results-title">
+            <h2 id="report-results-title">Report results</h2>
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={loadingMore}
+              onClick={() => void loadMore()}
+            >
+              {loadingMore ? 'Loading…' : 'Load more report results'}
+            </button>
+          </section>
+        ) : null}
+      </section>
+
+      <section
+        id="summary-view-panel"
+        className="review-workspace-panel"
+        role="tabpanel"
+        aria-labelledby="summary-view-tab"
+        hidden={activeView !== 'summary'}
+      >
         <SourceMetadata batch={report.batch} />
         <section aria-labelledby="review-summary-title">
           <h2 id="review-summary-title">Validation and reference summary</h2>
+          <div className="state-message batch-counts__explanation">
+            <strong>Counts describe overlapping categories.</strong>
+            <p>
+              The same {report.batch.progress.total} submitted{' '}
+              {report.batch.progress.total === 1 ? 'item' : 'items'} can be both rejected and{' '}
+              unresolved. Do not add these counts together.
+            </p>
+          </div>
           <dl className="batch-counts">
             <div>
               <dt>Accepted</dt>
@@ -981,38 +1742,16 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               <dd>{report.reviewSummary.resolution.invalid}</dd>
             </div>
             <div>
-              <dt>Proposed matches</dt>
+              <dt>Candidate matches</dt>
               <dd>{report.reviewSummary.resolution.proposed}</dd>
+            </div>
+            <div>
+              <dt>New-fixture proposals requiring review</dt>
+              <dd>{newFixtureProposalCount}</dd>
             </div>
           </dl>
         </section>
-      </AnchoredSection>
-      <AnchoredSection id="issues">
         <ErrorGroups report={report} />
-        <section className="published-conflicts" aria-labelledby="published-conflicts-title">
-          <div className="published-conflicts__heading">
-            <div>
-              <h2 id="published-conflicts-title">Published delivery conflicts</h2>
-              <p>Resolve each conflict before the batch can be approved for publication.</p>
-            </div>
-            <strong>{report.reviewSummary.validation.conflicting} unresolved</strong>
-          </div>
-          {report.blockingItems.some((item) => item.publishedConflict) ? (
-            report.blockingItems
-              .filter((item) => item.publishedConflict)
-              .map((item) => (
-                <PublishedConflictResolution
-                  key={item.ordinal}
-                  batchReference={batchReference}
-                  item={item}
-                  refresh={load}
-                  resolutionAvailable={report.batch.status === 'awaiting_review'}
-                />
-              ))
-          ) : (
-            <p>No unresolved published-delivery conflicts are shown.</p>
-          )}
-        </section>
         <section aria-labelledby="fixture-summary-title">
           <h2 id="fixture-summary-title">Fixture summaries</h2>
           {report.fixtureSummaries.length === 0 ? (
@@ -1030,69 +1769,50 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               ))}
             </ul>
           )}
-          <h3>Accepted content sample</h3>
-          <p>
-            Showing at most 15 accepted items; the full season-scale dataset is never rendered here.
+          <p className="review-scope-note">
+            Fixture totals are submitted items. Rejected and unresolved are overlapping labels, not
+            additional items.
           </p>
-          {report.acceptedSamples.length === 0 ? (
-            <p>No accepted samples are available.</p>
-          ) : (
-            <ol className="accepted-samples">
-              {report.acceptedSamples.map((item) => (
-                <li key={item.ordinal}>
-                  {item.context.description}
-                  {item.correctionTarget ? (
-                    <span>
-                      {' '}
-                      Target: <code>{item.correctionTarget.sourceEventId}</code>
-                      {item.correctionTarget.resolvedDeliveryId
-                        ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
-                        : ' (not resolved)'}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-        <section aria-labelledby="reference-review-title">
-          <h2 id="reference-review-title">References requiring attention</h2>
-          {report.blockingItems.some((item) => item.referenceResolutions.length > 0) ? (
-            report.blockingItems.map((item) => (
-              <ReferenceResolution
-                key={item.ordinal}
-                batchReference={batchReference}
-                packageVersion={report.batch.source.packageVersion}
-                item={item}
-                refresh={load}
-              />
-            ))
-          ) : (
+          <details className="resolved-content">
+            <summary>
+              Show resolved content ({report.reviewSummary.resolution.resolved} resolved references)
+            </summary>
+            <h3>Accepted content sample</h3>
             <p>
-              {report.reviewSummary.resolution.ambiguous +
-                report.reviewSummary.resolution.unresolved +
-                report.reviewSummary.resolution.invalid >
-              0
-                ? 'Reference details are temporarily unavailable. Refresh this review before approval.'
-                : 'All references are resolved.'}
+              Showing at most 15 accepted items; the full season-scale dataset is never rendered
+              here.
             </p>
-          )}
+            {report.acceptedSamples.length === 0 ? (
+              <p>No accepted samples are available.</p>
+            ) : (
+              <ol className="accepted-samples">
+                {report.acceptedSamples.map((item) => (
+                  <li key={item.ordinal}>
+                    {item.context.description}
+                    {item.correctionTarget ? (
+                      <span>
+                        {' '}
+                        Target: <code>{item.correctionTarget.sourceEventId}</code>
+                        {item.correctionTarget.resolvedDeliveryId
+                          ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
+                          : ' (not resolved)'}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </details>
         </section>
-        {report.pagination.nextCursor ? (
-          <section aria-labelledby="report-results-title">
-            <h2 id="report-results-title">Report results</h2>
-            <button
-              className="button button--secondary"
-              type="button"
-              disabled={loadingMore}
-              onClick={() => void loadMore()}
-            >
-              {loadingMore ? 'Loading…' : 'Load more report results'}
-            </button>
-          </section>
-        ) : null}
-      </AnchoredSection>
-      <AnchoredSection id="decision">
+      </section>
+
+      <section
+        id="decision-view-panel"
+        className="review-workspace-panel"
+        role="tabpanel"
+        aria-labelledby="decision-view-tab"
+        hidden={activeView !== 'decision'}
+      >
         {report.batch.status === 'awaiting_review' ? (
           <section className="batch-review" aria-labelledby="decision-title">
             <h2 id="decision-title">Review decision</h2>
@@ -1166,7 +1886,7 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
             </Link>
           </div>
         )}
-      </AnchoredSection>
+      </section>
       {feedback ? (
         <p role="status" aria-live="polite">
           {feedback}
