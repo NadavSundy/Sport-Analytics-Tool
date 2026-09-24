@@ -4,24 +4,24 @@
 
 ## User-Feedback Coverage
 
-| User-feedback issue | User goal                                                | Planned primary Task IDs                                               | Linked implementation issues | Formal session evidence | Testing status |
-| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------- | ----------------------- | -------------- |
+| User-feedback issue | User goal                                                | Planned primary Task IDs                                               | Linked implementation issues | Formal session evidence        | Testing status                       |
+| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------- | ------------------------------ | ------------------------------------ |
 | #601                | Navigation, authentication and overall frontend flow     | `AUTH-*` + representative navigation                                   | #580; #581                   | `2026-09-24-P07-multi-role.md` | Accepted with documented limitations |
-| #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      |                              |                         | Not started    |
-| #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                         | Not started    |
-| #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                         | Not started    |
-| #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                         | Not started    |
-| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |                              |                         | Not started    |
-| #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     |                              |                         | Not started    |
-| #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                         | Not started    |
+| #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      |                              |                                | Not started                          |
+| #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                                | Not started                          |
+| #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                                | Not started                          |
+| #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                                | Not started                          |
+| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |                              |                                | Not started                          |
+| #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     |                              |                                | Not started                          |
+| #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                                | Not started                          |
 
 `Testing status` must reflect retained user-testing evidence, not implementation-issue state.
 
 ## Participants
 
-| Participant ID | Role | Relevant experience | User-feedback issue(s) | Session evidence |
-| -------------- | ---- | ------------------- | ---------------------- | ---------------- |
-| P07 | Public/viewer; approved submitter; reviewer/admin | Not recorded | #601 | `2026-09-24-P07-multi-role.md` |
+| Participant ID | Role                                              | Relevant experience | User-feedback issue(s) | Session evidence               |
+| -------------- | ------------------------------------------------- | ------------------- | ---------------------- | ------------------------------ |
+| P07            | Public/viewer; approved submitter; reviewer/admin | Not recorded        | #601                   | `2026-09-24-P07-multi-role.md` |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -34,14 +34,14 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | AUTH-01 |        1 |       1 |       0 |       0 |             |
 | AUTH-02 |        1 |       1 |       0 |       0 |             |
 | AUTH-03 |        0 |       0 |       0 |       0 |             |
-| AUTH-04 |        1 |       0 |       1 |       0 | P07-F01      |
+| AUTH-04 |        1 |       0 |       1 |       0 | P07-F01     |
 | PUB-01  |        1 |       1 |       0 |       0 |             |
 | PUB-02  |        0 |       0 |       0 |       0 |             |
 | PUB-03  |        0 |       0 |       0 |       0 |             |
 | PUB-04  |        0 |       0 |       0 |       0 |             |
 | PUB-05  |        0 |       0 |       0 |       0 |             |
 | PUB-06  |        0 |       0 |       0 |       0 |             |
-| SUB-01  |        1 |       0 |       1 |       0 | P07-F02      |
+| SUB-01  |        1 |       0 |       1 |       0 | P07-F02     |
 | SUB-02  |        0 |       0 |       0 |       0 |             |
 | SUB-03  |        0 |       0 |       0 |       0 |             |
 | SUB-04  |        0 |       0 |       0 |       0 |             |
@@ -73,10 +73,10 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 
 Every S1/S2 or otherwise actionable finding must have a recorded decision.
 
-| Finding ID | Session | User-feedback issue | Task ID | Finding | Severity | Decision | Decision reason | Gitea issue | Fix PR / commit | Retest |
-| ---------- | ------- | ------------------- | ------- | ------- | -------- | -------- | --------------- | ----------- | --------------- | ------ |
-| P07-F01 | P07 | #601 | AUTH-04 | `Settings` did not clearly communicate its account purpose; participant suggested `Manage account`. | S3 | Accept | Non-blocking navigation improvement is tracked separately. | #713 | Not applicable | Not required for accepted S3 finding |
-| P07-F02 | P07 | #601 | SUB-01 | Participant wanted a clear way to view approved competition scopes. | S3 | Accept | Non-blocking scope-discoverability improvement is tracked separately. | #714 | Not applicable | Not required for accepted S3 finding |
+| Finding ID | Session | User-feedback issue | Task ID | Finding                                                                                             | Severity | Decision | Decision reason                                                       | Gitea issue | Fix PR / commit | Retest                               |
+| ---------- | ------- | ------------------- | ------- | --------------------------------------------------------------------------------------------------- | -------- | -------- | --------------------------------------------------------------------- | ----------- | --------------- | ------------------------------------ |
+| P07-F01    | P07     | #601                | AUTH-04 | `Settings` did not clearly communicate its account purpose; participant suggested `Manage account`. | S3       | Accept   | Non-blocking navigation improvement is tracked separately.            | #713        | Not applicable  | Not required for accepted S3 finding |
+| P07-F02    | P07     | #601                | SUB-01  | Participant wanted a clear way to view approved competition scopes.                                 | S3       | Accept   | Non-blocking scope-discoverability improvement is tracked separately. | #714        | Not applicable  | Not required for accepted S3 finding |
 
 Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents user-feedback issue close-out for an S1/S2 or otherwise actionable finding.
 
@@ -99,23 +99,23 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 
 ## Deferred / Rejected Findings
 
-| Finding ID | Decision | Reason | Revisit trigger, if any |
-| ---------- | -------- | ------ | ----------------------- |
-| P07-F01 | Accept | Non-blocking navigation improvement tracked in #713. | Issue #713 implementation/review |
-| P07-F02 | Accept | Non-blocking scope-discoverability improvement tracked in #714. | Issue #714 implementation/review |
+| Finding ID | Decision | Reason                                                          | Revisit trigger, if any          |
+| ---------- | -------- | --------------------------------------------------------------- | -------------------------------- |
+| P07-F01    | Accept   | Non-blocking navigation improvement tracked in #713.            | Issue #713 implementation/review |
+| P07-F02    | Accept   | Non-blocking scope-discoverability improvement tracked in #714. | Issue #714 implementation/review |
 
 ## User-Feedback Issue Close-Out Checklist
 
-| User-feedback issue | Readiness satisfied before testing | Formal session(s) linked | All attempted tasks scored | Actionable findings decided | Accepted S1/S2 retested | Summary current | Issue may close |
-| ------------------- | ---------------------------------- | ------------------------ | -------------------------- | --------------------------- | ----------------------- | --------------- | --------------- |
-| #601                | Deployed app recorded; exact URL/commit unavailable | `2026-09-24-P07-multi-role.md` | Yes | Yes | Not applicable; no accepted S1/S2 finding | Yes | Yes |
-| #602                |                                    |                          |                            |                             |                         |                 |                 |
-| #603                |                                    |                          |                            |                             |                         |                 |                 |
-| #604                |                                    |                          |                            |                             |                         |                 |                 |
-| #605                |                                    |                          |                            |                             |                         |                 |                 |
-| #606                |                                    |                          |                            |                             |                         |                 |                 |
-| #607                |                                    |                          |                            |                             |                         |                 |                 |
-| #612                |                                    |                          |                            |                             |                         |                 |                 |
+| User-feedback issue | Readiness satisfied before testing                  | Formal session(s) linked       | All attempted tasks scored | Actionable findings decided | Accepted S1/S2 retested                   | Summary current | Issue may close |
+| ------------------- | --------------------------------------------------- | ------------------------------ | -------------------------- | --------------------------- | ----------------------------------------- | --------------- | --------------- |
+| #601                | Deployed app recorded; exact URL/commit unavailable | `2026-09-24-P07-multi-role.md` | Yes                        | Yes                         | Not applicable; no accepted S1/S2 finding | Yes             | Yes             |
+| #602                |                                                     |                                |                            |                             |                                           |                 |                 |
+| #603                |                                                     |                                |                            |                             |                                           |                 |                 |
+| #604                |                                                     |                                |                            |                             |                                           |                 |                 |
+| #605                |                                                     |                                |                            |                             |                                           |                 |                 |
+| #606                |                                                     |                                |                            |                             |                                           |                 |                 |
+| #607                |                                                     |                                |                            |                             |                                           |                 |                 |
+| #612                |                                                     |                                |                            |                             |                                           |                 |                 |
 
 ## Remaining Concerns
 
