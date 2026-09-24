@@ -300,7 +300,27 @@ export function createDatasetReleaseJobHandler(
     const started = Date.now();
     const claimed = await claim(command);
     if (claimed.terminal) return;
-    await materializeSnapshot(command.jobId);
+    try {
+      logger.info('Dataset release snapshot materialization started.', {
+        jobId: command.jobId,
+        releaseVersion: command.releaseVersion,
+      });
+      await materializeSnapshot(command.jobId);
+      logger.info('Dataset release snapshot materialization completed.', {
+        jobId: command.jobId,
+        releaseVersion: command.releaseVersion,
+        elapsedMs: Date.now() - started,
+      });
+    } catch (error) {
+      logger.error('Dataset release snapshot materialization failed.', {
+        jobId: command.jobId,
+        releaseVersion: command.releaseVersion,
+        elapsedMs: Date.now() - started,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+      await markFailed(command.jobId, claimed.attemptCount, claimed.maxAttempts, error);
+      throw error;
+    }
     if (claimed.previousKey) {
       try {
         await objectStore.delete(claimed.previousKey);

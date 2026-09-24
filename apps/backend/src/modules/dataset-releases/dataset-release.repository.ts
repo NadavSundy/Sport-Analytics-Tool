@@ -227,12 +227,20 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
         const existingJob = await executeQuery<{
           jobId: string;
           state: DatasetReleaseJobRecord['state'];
+          leaseExpiresAt: Date | null;
         }>(
           client,
-          `SELECT j.job_id::text AS "jobId", j.state FROM dataset_release_job drj INNER JOIN background_job j ON j.job_id=drj.job_id WHERE drj.deployment_environment=$1 AND drj.requested_version=$2 FOR UPDATE OF j, drj`,
+          `SELECT j.job_id::text AS "jobId", j.state,drj.lease_expires_at AS "leaseExpiresAt" FROM dataset_release_job drj INNER JOIN background_job j ON j.job_id=drj.job_id WHERE drj.deployment_environment=$1 AND drj.requested_version=$2 FOR UPDATE OF j, drj`,
           [input.deploymentEnvironment, input.version],
         );
-        let jobId = existingJob.rows[0]?.jobId;
+        const priorJob = existingJob.rows[0];
+        const retryExpiredRunningJob =
+          priorJob?.state === 'running' &&
+          (!priorJob.leaseExpiresAt || priorJob.leaseExpiresAt.getTime() <= Date.now());
+        const retryExistingJob =
+          Boolean(priorJob && ['failed', 'dead_lettered'].includes(priorJob.state)) ||
+          retryExpiredRunningJob;
+        let jobId = priorJob?.jobId;
         if (!jobId) {
           jobId = randomUUID();
           await executeQuery(
@@ -249,7 +257,7 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
             `INSERT INTO dataset_release_job (job_id,requested_version,deployment_environment,storage_provider) VALUES ($1::uuid,$2,$3,$4)`,
             [jobId, input.version, input.deploymentEnvironment, input.storageProvider],
           );
-        } else if (['failed', 'dead_lettered'].includes(existingJob.rows[0]!.state)) {
+        } else if (retryExistingJob) {
           await executeQuery(
             client,
             `UPDATE background_job SET state='queued',progress_current=0,progress_total=NULL,attempt_count=0,started_at=NULL,completed_at=NULL,last_error_code=NULL,last_error_message=NULL WHERE job_id=$1::uuid`,
@@ -262,10 +270,7 @@ export function createDatasetReleaseRepository(executor?: QueryExecutor): Datase
           );
         }
 
-        if (
-          !existingJob.rows[0] ||
-          ['failed', 'dead_lettered'].includes(existingJob.rows[0].state)
-        ) {
+        if (!priorJob || retryExistingJob) {
           const messageId = randomUUID();
           await executeQuery(
             client,

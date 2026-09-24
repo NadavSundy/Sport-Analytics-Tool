@@ -45,6 +45,7 @@ class CountingStore implements ObjectStore {
 
 function fakeDatabase(
   options: {
+    failSnapshot?: boolean;
     failPage?: boolean;
     failMetadata?: boolean;
     state?: string;
@@ -74,8 +75,10 @@ function fakeDatabase(
         ],
         rowCount: 1,
       };
-    if (sql.includes('select snapshot_id::text'))
+    if (sql.includes('select snapshot_id::text')) {
+      if (options.failSnapshot) throw new Error('snapshot materialization failed');
       return { rows: [{ snapshotId: null }], rowCount: 1 };
+    }
     if (sql.includes('from dataset_release_snapshot_event')) {
       page += 1;
       if (options.failPage && page === 2) throw new Error('database page failed');
@@ -232,9 +235,10 @@ describe('dataset release worker job', () => {
   });
 
   it.each([
-    ['database page failure', { failPage: true }],
-    ['metadata insert failure', { failMetadata: true }],
-  ])('records failure and cleans unreferenced bytes after %s', async (_label, failure) => {
+    ['snapshot materialization failure', { failSnapshot: true }, 0],
+    ['database page failure', { failPage: true }, 1],
+    ['metadata insert failure', { failMetadata: true }, 1],
+  ])('records failure and cleans unreferenced bytes after %s', async (_label, failure, deletes) => {
     const database = fakeDatabase(failure);
     const store = new MemoryStore();
     const handler = createDatasetReleaseJobHandler(database.pool, store, logger, {
@@ -246,7 +250,7 @@ describe('dataset release worker job', () => {
     }).handler;
     await expect(handler(message, new AbortController().signal)).rejects.toThrow();
     expect(store.objects.size).toBe(0);
-    expect(store.deleted).toHaveLength(1);
+    expect(store.deleted).toHaveLength(deletes);
     expect(
       database.calls.some((call) => call.text.includes('state=$2::background_job_state')),
     ).toBe(true);
