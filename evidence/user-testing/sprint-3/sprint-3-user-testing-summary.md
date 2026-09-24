@@ -7,7 +7,7 @@
 | User-feedback issue | User goal                                                | Planned primary Task IDs                                               | Linked implementation issues | Formal session evidence        | Testing status                       |
 | ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------- | ------------------------------ | ------------------------------------ |
 | #601                | Navigation, authentication and overall frontend flow     | `AUTH-*` + representative navigation                                   | #580; #581                   | `2026-09-24-P07-multi-role.md` | Accepted with documented limitations |
-| #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      |                              |                                | Not started                          |
+| #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      | #582; #513; #590             | `2026-09-24-P08-public.md`     | In progress                          |
 | #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                                | Not started                          |
 | #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                                | Not started                          |
 | #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                                | Not started                          |
@@ -22,6 +22,7 @@
 | Participant ID | Role                                              | Relevant experience | User-feedback issue(s) | Session evidence               |
 | -------------- | ------------------------------------------------- | ------------------- | ---------------------- | ------------------------------ |
 | P07            | Public/viewer; approved submitter; reviewer/admin | Not recorded        | #601                   | `2026-09-24-P07-multi-role.md` |
+| P08            | Not recorded                                      | Not recorded        | #602                   | `2026-09-24-P08-public.md`     |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -35,12 +36,12 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | AUTH-02 |        1 |       1 |       0 |       0 |             |
 | AUTH-03 |        0 |       0 |       0 |       0 |             |
 | AUTH-04 |        1 |       0 |       1 |       0 | P07-F01     |
-| PUB-01  |        1 |       1 |       0 |       0 |             |
-| PUB-02  |        0 |       0 |       0 |       0 |             |
-| PUB-03  |        0 |       0 |       0 |       0 |             |
+| PUB-01  |        2 |       2 |       0 |       0 |             |
+| PUB-02  |        1 |       1 |       0 |       0 |             |
+| PUB-03  |        1 |       1 |       0 |       0 |             |
 | PUB-04  |        0 |       0 |       0 |       0 |             |
 | PUB-05  |        0 |       0 |       0 |       0 |             |
-| PUB-06  |        0 |       0 |       0 |       0 |             |
+| PUB-06  |        1 |       0 |       1 |       0 | P08-F01     |
 | SUB-01  |        1 |       0 |       1 |       0 | P07-F02     |
 | SUB-02  |        0 |       0 |       0 |       0 |             |
 | SUB-03  |        0 |       0 |       0 |       0 |             |
@@ -77,6 +78,7 @@ Every S1/S2 or otherwise actionable finding must have a recorded decision.
 | ---------- | ------- | ------------------- | ------- | --------------------------------------------------------------------------------------------------- | -------- | -------- | --------------------------------------------------------------------- | ----------- | --------------- | ------------------------------------ |
 | P07-F01    | P07     | #601                | AUTH-04 | `Settings` did not clearly communicate its account purpose; participant suggested `Manage account`. | S3       | Accept   | Non-blocking navigation improvement is tracked separately.            | #713        | Not applicable  | Not required for accepted S3 finding |
 | P07-F02    | P07     | #601                | SUB-01  | Participant wanted a clear way to view approved competition scopes.                                 | S3       | Accept   | Non-blocking scope-discoverability improvement is tracked separately. | #714        | Not applicable  | Not required for accepted S3 finding |
+| P08-F01    | P08     | #602                | PUB-06  | Participant could not identify an obvious workflow for comparing two players.                       | S2       | Accept   | Player-comparison improvement accepted and tracked separately.        | #716        | Not applicable  | Required after accepted change       |
 
 Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents user-feedback issue close-out for an S1/S2 or otherwise actionable finding.
 
@@ -85,7 +87,7 @@ Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is tempora
 | Severity | Count | Accepted | Deferred | Rejected | Pending | Resolved after retest |
 | -------- | ----: | -------: | -------: | -------: | ------: | --------------------: |
 | S1       |     0 |        0 |        0 |        0 |       0 |                     0 |
-| S2       |     0 |        0 |        0 |        0 |       0 |                     0 |
+| S2       |     1 |        1 |        0 |        0 |       0 |                     0 |
 | S3       |     2 |        2 |        0 |        0 |       0 |                     0 |
 | S4       |     0 |        0 |        0 |        0 |       0 |                     0 |
 
@@ -106,21 +108,22 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 
 ## User-Feedback Issue Close-Out Checklist
 
-| User-feedback issue | Readiness satisfied before testing                  | Formal session(s) linked       | All attempted tasks scored | Actionable findings decided | Accepted S1/S2 retested                   | Summary current | Issue may close |
-| ------------------- | --------------------------------------------------- | ------------------------------ | -------------------------- | --------------------------- | ----------------------------------------- | --------------- | --------------- |
-| #601                | Deployed app recorded; exact URL/commit unavailable | `2026-09-24-P07-multi-role.md` | Yes                        | Yes                         | Not applicable; no accepted S1/S2 finding | Yes             | Yes             |
-| #602                |                                                     |                                |                            |                             |                                           |                 |                 |
-| #603                |                                                     |                                |                            |                             |                                           |                 |                 |
-| #604                |                                                     |                                |                            |                             |                                           |                 |                 |
-| #605                |                                                     |                                |                            |                             |                                           |                 |                 |
-| #606                |                                                     |                                |                            |                             |                                           |                 |                 |
-| #607                |                                                     |                                |                            |                             |                                           |                 |                 |
-| #612                |                                                     |                                |                            |                             |                                           |                 |                 |
+| User-feedback issue | Readiness satisfied before testing                  | Formal session(s) linked       | All attempted tasks scored | Actionable findings decided | Accepted S1/S2 retested                            | Summary current | Issue may close                         |
+| ------------------- | --------------------------------------------------- | ------------------------------ | -------------------------- | --------------------------- | -------------------------------------------------- | --------------- | --------------------------------------- |
+| #601                | Deployed app recorded; exact URL/commit unavailable | `2026-09-24-P07-multi-role.md` | Yes                        | Yes                         | Not applicable; no accepted S1/S2 finding          | Yes             | Yes                                     |
+| #602                | Deployed app recorded; exact URL/commit unavailable | `2026-09-24-P08-public.md`     | Yes                        | Yes; P08-F01 accepted       | No; #716 implementation and PUB-06 retest required | Yes             | No; accepted S2 retest remains required |
+| #603                |                                                     |                                |                            |                             |                                                    |                 |                                         |
+| #604                |                                                     |                                |                            |                             |                                                    |                 |                                         |
+| #605                |                                                     |                                |                            |                             |                                                    |                 |                                         |
+| #606                |                                                     |                                |                            |                             |                                                    |                 |                                         |
+| #607                |                                                     |                                |                            |                             |                                                    |                 |                                         |
+| #612                |                                                     |                                |                            |                             |                                                    |                 |                                         |
 
 ## Remaining Concerns
 
 - #601 is accepted with documented limitations: P07 completed the selected multi-role navigation tasks; two non-blocking S3 improvements are tracked in #713 and #714.
 - #580 and #581 were already closed when this gate was finalised; this record notes their closed status and does not change either issue.
+- #602 has one retained public-statistics session. P08-F01 is an accepted S2 player-comparison finding tracked by #716; #602 cannot close until implementation and PUB-06 retest are complete.
 
 ## Issue #601 Final Gate Result
 
