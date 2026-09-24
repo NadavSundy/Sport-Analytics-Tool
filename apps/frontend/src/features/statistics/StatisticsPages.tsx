@@ -168,6 +168,12 @@ function StatisticsContent({
         <p className="eyebrow">Published match record</p>
         <h1>Match statistics</h1>
         <p>Cricket scorecards calculated from accepted delivery events.</p>
+        <Link
+          className="button button--secondary"
+          to={`/participants/compare?fixtureId=${encodeURIComponent(statistics.fixtureId)}`}
+        >
+          Compare player performances
+        </Link>
       </header>
       <LocalNavigation
         label="Fixture sections"

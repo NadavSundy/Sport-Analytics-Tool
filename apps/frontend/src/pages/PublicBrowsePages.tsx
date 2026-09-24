@@ -656,6 +656,11 @@ export function ParticipantsPage() {
       emptyMessage="No published players match the current filters."
       eyebrow="Players"
       filters={participantFilters}
+      headerAction={
+        <Link className="button button--primary" to="/participants/compare">
+          Compare players
+        </Link>
+      }
       load={publicReadApi.listParticipants}
       renderItem={(participant) => (
         <RecordListItem key={participant.participantId}>
@@ -1188,6 +1193,12 @@ export function ParticipantDetailPage() {
               { label: 'Match history', to: '#match-history' },
             ]}
           >
+            <Link
+              className="button button--secondary"
+              to={`/participants/compare?playerA=${encodeURIComponent(participant.participantId)}`}
+            >
+              Compare with another player
+            </Link>
             {/* Siblings, so both requests start in the same commit rather than one
                 waiting on the other; neither section's state can hide the other. */}
             <AnchoredSection id="overview">

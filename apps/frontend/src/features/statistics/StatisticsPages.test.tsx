@@ -364,6 +364,14 @@ describe('public fixture statistics pages', () => {
     expect(screen.queryByText('Balls faced')).not.toBeInTheDocument();
   });
 
+  it('links fixture statistics to the shared player-comparison journey', async () => {
+    renderFixtureStatistics([inningsStatistic, participantStatistic]);
+
+    expect(
+      await screen.findByRole('link', { name: 'Compare player performances' }),
+    ).toHaveAttribute('href', '/participants/compare?fixtureId=fixture-1');
+  });
+
   it('loads fixture statistics anonymously from the statistics deep link', async () => {
     let resolveStatistics!: (value: Response) => void;
     const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
