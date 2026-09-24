@@ -53,10 +53,13 @@ function fakeDatabase(
     releaseRace?: boolean;
     eventCount?: number;
     pageSize?: number;
+    snapshotEventCount?: number;
+    snapshotPageSize?: number;
   } = {},
 ) {
   const calls: Array<{ text: string; values?: unknown[] }> = [];
   let page = 0;
+  let snapshotPage = 0;
   const query = vi.fn(async (text: string, values?: unknown[]) => {
     calls.push({ text, values });
     const sql = text.replace(/\s+/g, ' ').toLowerCase();
@@ -78,6 +81,23 @@ function fakeDatabase(
     if (sql.includes('select snapshot_id::text')) {
       if (options.failSnapshot) throw new Error('snapshot materialization failed');
       return { rows: [{ snapshotId: null }], rowCount: 1 };
+    }
+    if (sql.includes('insert into dataset_release_snapshot_event')) {
+      snapshotPage += 1;
+      const size = options.snapshotPageSize ?? 10_000;
+      const count = Math.max(
+        0,
+        Math.min(size, (options.snapshotEventCount ?? size) - (snapshotPage - 1) * size),
+      );
+      return {
+        rows: Array.from({ length: count }, (_, index) => ({
+          fixtureId: String((snapshotPage - 1) * size + index + 1),
+          inningsOrdinal: 1,
+          sequenceNumber: index + 1,
+          eventId: String((snapshotPage - 1) * size + index + 1),
+        })),
+        rowCount: count,
+      };
     }
     if (sql.includes('from dataset_release_snapshot_event')) {
       page += 1;
@@ -209,6 +229,26 @@ describe('dataset release worker job', () => {
     ).toBe(true);
     expect(
       database.calls.filter((call) => call.text.includes('FROM dataset_release_snapshot_event')),
+    ).toHaveLength(2);
+  });
+
+  it('materializes a release snapshot in bounded ordered database statements', async () => {
+    const database = fakeDatabase({ snapshotEventCount: 3, snapshotPageSize: 2 });
+    const handler = createDatasetReleaseJobHandler(database.pool, new MemoryStore(), logger, {
+      workerId: 'worker-1',
+      leaseMs: 120000,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem',
+      pageSize: 2,
+      snapshotPageSize: 2,
+    }).handler;
+
+    await handler(message, new AbortController().signal);
+
+    expect(
+      database.calls.filter((call) =>
+        call.text.includes('INSERT INTO dataset_release_snapshot_event'),
+      ),
     ).toHaveLength(2);
   });
 

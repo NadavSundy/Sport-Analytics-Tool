@@ -13,6 +13,7 @@ import { PermanentJobError, type ReceivedJob } from './delivery-pump';
 import type { Logger } from './logger';
 
 const PAGE_SIZE = 10_000;
+const SNAPSHOT_PAGE_SIZE = 10_000;
 
 interface Cursor {
   fixtureId: string;
@@ -82,9 +83,11 @@ export function createDatasetReleaseJobHandler(
     deploymentEnvironment: string;
     storageProvider: 'azure' | 'filesystem';
     pageSize?: number;
+    snapshotPageSize?: number;
   },
 ) {
   const pageSize = options.pageSize ?? PAGE_SIZE;
+  const snapshotPageSize = options.snapshotPageSize ?? SNAPSHOT_PAGE_SIZE;
 
   async function claim(command: Command): Promise<Claim> {
     if (command.deploymentEnvironment !== options.deploymentEnvironment) {
@@ -172,30 +175,61 @@ export function createDatasetReleaseJobHandler(
         `UPDATE dataset_release_job SET snapshot_id=gen_random_uuid(),snapshot_as_of=transaction_timestamp() WHERE job_id=$1::uuid AND lease_owner=$2`,
         [jobId, options.workerId],
       );
-      await client.query(
-        `INSERT INTO dataset_release_snapshot_event (job_id,fixture_id,innings_ordinal,sequence_number,event_id,event)
-         SELECT $1::uuid,i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id,jsonb_build_object(
-           'eventId',d.source_event_id::text,'fixtureId',i.fixture_id::text,'inningsId',i.innings_id::text,
-           'inningsOrdinal',i.ordinal,'sequenceNumber',d.innings_sequence,'overNumber',d.over_number,
-           'positionInOver',d.position_in_over,'ballNumber',d.ball_number,'strikerParticipantId',d.striker_id::text,
-           'nonStrikerParticipantId',d.non_striker_id::text,'bowlerParticipantId',d.bowler_id::text,
-           'runsOffBat',d.runs_off_bat,'runsExtras',d.runs_extras,'runsTotal',d.runs_total,
-           'runsNonBoundary',d.non_boundary,
-           'extras',jsonb_strip_nulls(jsonb_build_object(
-             'wides',d.extra_wides,'noBalls',d.extra_noballs,'byes',d.extra_byes,
-             'legByes',d.extra_legbyes,'penalty',d.extra_penalty)),
-           'wickets',COALESCE((SELECT jsonb_agg(jsonb_build_object(
-             'wicketId',w.wicket_id::text,'kind',w.kind,'sourceKind',w.source_kind,
-             'playerOutParticipantId',w.player_out_id::text,
-             'fielders',COALESCE((SELECT jsonb_agg(jsonb_build_object(
-               'participantId',f.person_id::text,'isSubstitute',f.is_substitute) ORDER BY f.ordinal)
-               FROM delivery_wicket_fielder f WHERE f.wicket_id=w.wicket_id),'[]'::jsonb)) ORDER BY w.ordinal)
-             FROM delivery_wicket w WHERE w.delivery_id=d.delivery_id),'[]'::jsonb))
-         FROM delivery_current d INNER JOIN innings i ON i.innings_id=d.innings_id
-         INNER JOIN submission s ON s.submission_id=d.submission_id AND s.status='accepted'
-         ON CONFLICT DO NOTHING`,
-        [jobId],
-      );
+      let cursor: Cursor | null = null;
+      for (;;) {
+        const cursorPredicate: string = cursor
+          ? 'WHERE (i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id)>($2::bigint,$3::integer,$4::integer,$5::bigint)'
+          : '';
+        const parameters: unknown[] = cursor
+          ? [
+              jobId,
+              cursor.fixtureId,
+              cursor.inningsOrdinal,
+              cursor.sequenceNumber,
+              cursor.eventId,
+              snapshotPageSize,
+            ]
+          : [jobId, snapshotPageSize];
+        const limit: string = cursor ? '$6' : '$2';
+        const inserted = await client.query<Cursor>(
+          `WITH snapshot_candidates AS (
+             SELECT d.*,i.fixture_id AS snapshot_fixture_id,i.ordinal AS snapshot_innings_ordinal,
+               i.innings_id AS snapshot_innings_id
+             FROM delivery_current d INNER JOIN innings i ON i.innings_id=d.innings_id
+             INNER JOIN submission s ON s.submission_id=d.submission_id AND s.status='accepted'
+             ${cursorPredicate}
+             ORDER BY i.fixture_id,i.ordinal,d.innings_sequence,d.delivery_id LIMIT ${limit}
+           ), inserted AS (
+             INSERT INTO dataset_release_snapshot_event (job_id,fixture_id,innings_ordinal,sequence_number,event_id,event)
+             SELECT $1::uuid,d.snapshot_fixture_id,d.snapshot_innings_ordinal,d.innings_sequence,d.delivery_id,jsonb_build_object(
+               'eventId',d.source_event_id::text,'fixtureId',d.snapshot_fixture_id::text,'inningsId',d.snapshot_innings_id::text,
+               'inningsOrdinal',d.snapshot_innings_ordinal,'sequenceNumber',d.innings_sequence,'overNumber',d.over_number,
+               'positionInOver',d.position_in_over,'ballNumber',d.ball_number,'strikerParticipantId',d.striker_id::text,
+               'nonStrikerParticipantId',d.non_striker_id::text,'bowlerParticipantId',d.bowler_id::text,
+               'runsOffBat',d.runs_off_bat,'runsExtras',d.runs_extras,'runsTotal',d.runs_total,
+               'runsNonBoundary',d.non_boundary,
+               'extras',jsonb_strip_nulls(jsonb_build_object(
+                 'wides',d.extra_wides,'noBalls',d.extra_noballs,'byes',d.extra_byes,
+                 'legByes',d.extra_legbyes,'penalty',d.extra_penalty)),
+               'wickets',COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                 'wicketId',w.wicket_id::text,'kind',w.kind,'sourceKind',w.source_kind,
+                 'playerOutParticipantId',w.player_out_id::text,
+                 'fielders',COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                   'participantId',f.person_id::text,'isSubstitute',f.is_substitute) ORDER BY f.ordinal)
+                   FROM delivery_wicket_fielder f WHERE f.wicket_id=w.wicket_id),'[]'::jsonb)) ORDER BY w.ordinal)
+                 FROM delivery_wicket w WHERE w.delivery_id=d.delivery_id),'[]'::jsonb))
+             FROM snapshot_candidates d ON CONFLICT DO NOTHING
+             RETURNING fixture_id::text AS "fixtureId",innings_ordinal AS "inningsOrdinal",
+               sequence_number AS "sequenceNumber",event_id::text AS "eventId"
+           )
+           SELECT * FROM inserted ORDER BY "fixtureId"::bigint,"inningsOrdinal","sequenceNumber","eventId"::bigint`,
+          parameters,
+        );
+        const last: Cursor | undefined = inserted.rows.at(-1);
+        if (!last) break;
+        cursor = last;
+        if (inserted.rows.length < snapshotPageSize) break;
+      }
     });
   }
 
