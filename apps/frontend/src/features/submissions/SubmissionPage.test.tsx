@@ -353,6 +353,40 @@ describe('role-gated event submission page', () => {
     );
   });
 
+  it('lets an approved submitter view only their authorised competition scopes on demand', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5', '6']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Example Competition' } }),
+        );
+      }
+      if (url.endsWith('/competitions/6')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '6', name: 'Premier League' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View approved competition scopes' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Your approved competition scopes' });
+    expect(within(dialog).getByText('Example Competition')).toBeInTheDocument();
+    expect(within(dialog).getByText('Premier League')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Outside Scope')).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toHaveFocus();
+  });
+
   it('lists fixtures from every competition for an administrator without scopes', async () => {
     const unassignedFixture = { ...fixture, fixtureId: '99', competitionId: null };
     const otherCompetitionFixture = {
