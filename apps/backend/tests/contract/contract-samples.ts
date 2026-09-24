@@ -138,6 +138,10 @@ export const batchReportAwaitingOnboarding = {
           { personId: '11', displayName: 'A Player' },
           { personId: '12', displayName: 'A Player' },
         ],
+        teams: [
+          { teamId: '30', name: 'North XI' },
+          { teamId: '31', name: 'South XI' },
+        ],
       },
     ],
     blockingItems: [reportItemAwaitingOnboarding],

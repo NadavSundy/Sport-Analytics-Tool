@@ -6513,7 +6513,8 @@ components:
     BatchParticipantOnboardingTask:
       type: object
       additionalProperties: false
-      required: [taskReference, fixtureId, submittedName, submittedTeamName, reason, candidates]
+      required:
+        [taskReference, fixtureId, submittedName, submittedTeamName, reason, candidates, teams]
       description: >-
         One outstanding participant onboarding task, listed once for the batch. The same task
         also appears as an `onboard_participant` action on every reference waiting on it, which
@@ -6536,6 +6537,20 @@ components:
             properties:
               personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
               displayName: { type: string, minLength: 1 }
+        teams:
+          type: array
+          description: >-
+            The two teams of this task's fixture, in fixture order. A team decision is checked
+            by exact name against these, so without them a reviewer answering
+            `team_not_recognised` would be typing a name the platform already knows and could
+            simply have offered. Listing them makes that answer a choice between two.
+          items:
+            type: object
+            additionalProperties: false
+            required: [teamId, name]
+            properties:
+              teamId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              name: { type: string, minLength: 1 }
 
     BatchReport:
       type: object

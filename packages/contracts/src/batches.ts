@@ -343,6 +343,15 @@ export const batchParticipantOnboardingTaskSchema = z
     candidates: z.array(
       z.object({ personId: apiIdentifierSchema, displayName: z.string().min(1) }).strict(),
     ),
+    /**
+     * The two teams of this task's fixture, in fixture order.
+     *
+     * A team decision is checked by exact name against these, so without them
+     * a reviewer answering `team_not_recognised` would be typing a name the
+     * platform already knows and could simply have offered. Listing them makes
+     * that answer a choice between two, which is what it always was.
+     */
+    teams: z.array(z.object({ teamId: apiIdentifierSchema, name: z.string().min(1) }).strict()),
   })
   .strict();
 

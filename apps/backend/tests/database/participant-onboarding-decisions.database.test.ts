@@ -442,6 +442,15 @@ describe.sequential('participant onboarding decisions', () => {
         candidates: [{ personId: candidate, displayName: 'A Player' }],
       });
       expect(listed.map((task) => task.taskReference)).not.toContain(settled);
+
+      // Both teams of the fixture, in fixture order. A team decision is checked
+      // by exact name against these, so a reviewer answering team_not_recognised
+      // chooses between two rather than guessing a spelling the platform
+      // already holds.
+      expect(listed[0]!.teams).toEqual([
+        { teamId: expect.any(String), name: seeded.battingTeamName },
+        { teamId: expect.any(String), name: seeded.bowlingTeamName },
+      ]);
     });
   }, 60_000);
 
