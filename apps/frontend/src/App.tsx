@@ -27,6 +27,7 @@ import {
   FixtureStatisticDetailPage,
   FixtureStatisticsPage,
 } from './features/statistics/StatisticsPages';
+import { PlayerComparisonPage } from './features/statistics/PlayerComparisonPage';
 import { AdminUsersPage } from './features/admin/AdminUsersPage';
 import { AdministrationPage } from './features/admin/AdministrationPage';
 import { BatchReviewWorkspacePage } from './features/reviews/BatchReviewWorkspacePage';
@@ -81,6 +82,7 @@ export function PublicApp() {
         <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
 
         <Route path="/participants" element={<ParticipantsPage />} />
+        <Route path="/participants/compare" element={<PlayerComparisonPage />} />
         <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
 
         <Route path="/dataset-releases" element={<DatasetReleaseCataloguePage />} />

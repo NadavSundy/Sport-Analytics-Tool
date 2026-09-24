@@ -71,6 +71,10 @@ the shared section error boundary, which keeps an exception while displaying eit
 section with an actionable retry instead of unmounting the page. Aggregate averages, highest score,
 best bowling, appearances, and fielding figures are shown only because the current aggregate
 contract supplies them; the frontend does not reconstruct them from fixture history.
+The public Players journey also provides one fixture-level comparison route, discoverable from the
+Players collection, an individual player page, and fixture statistics. It reuses published fixture
+statistics, identifies both selected players and the current-fixture scope, and labels its batting
+and bowling metrics with units. It does not derive new statistics or request a comparison endpoint.
 
 ## Authentication routes
 
