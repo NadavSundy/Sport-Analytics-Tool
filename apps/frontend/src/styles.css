@@ -2247,6 +2247,145 @@ main {
   }
 }
 
+.participant-onboarding {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.participant-onboarding__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.participant-onboarding__heading > strong {
+  white-space: nowrap;
+}
+
+.participant-onboarding__task {
+  display: grid;
+  gap: var(--space-4);
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--colour-border);
+  border-inline-start: 4px solid var(--colour-data-accent);
+  border-radius: var(--radius-card);
+  background: var(--colour-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* A faulted card has to be findable without relying on the colour alone. */
+.participant-onboarding__task--faulted {
+  border-inline-start-color: var(--colour-error);
+}
+
+.participant-onboarding__task-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+}
+
+.participant-onboarding__task-header h3 {
+  margin: 0;
+}
+
+.participant-onboarding__submitted-team,
+.participant-onboarding__reason {
+  color: var(--colour-text-muted);
+}
+
+.participant-onboarding__reason {
+  margin: 0;
+}
+
+.participant-onboarding__question {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-card);
+}
+
+.participant-onboarding__question legend {
+  padding-inline: var(--space-2);
+  font-weight: 600;
+}
+
+.participant-onboarding__question label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.participant-onboarding__identifier {
+  display: grid;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-5);
+}
+
+.participant-onboarding__identifier input {
+  max-width: 28rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.participant-onboarding__identifier p,
+.participant-onboarding__note {
+  margin: 0;
+  color: var(--colour-text-muted);
+  font-size: 0.9375rem;
+}
+
+.participant-onboarding__answered,
+.participant-onboarding__feedback,
+.participant-onboarding__fault {
+  margin: 0;
+}
+
+.participant-onboarding__fault {
+  font-weight: 600;
+}
+
+.participant-onboarding__faults {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-6);
+}
+
+.participant-onboarding__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-1);
+}
+
+@media (max-width: 39.9375rem) {
+  .participant-onboarding__heading > strong {
+    white-space: normal;
+  }
+
+  .participant-onboarding__identifier {
+    padding-inline-start: 0;
+  }
+
+  .participant-onboarding__identifier input {
+    max-width: 100%;
+  }
+
+  .participant-onboarding__actions .button {
+    width: 100%;
+  }
+}
+
 .batch-guidance {
   display: grid;
   gap: 0.875rem;
