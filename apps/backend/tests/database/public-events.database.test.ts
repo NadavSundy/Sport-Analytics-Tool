@@ -498,6 +498,37 @@ describe.sequential('public events database API', () => {
     expect(outbox.rows[0]!.count).toBe('2');
   });
 
+  test('requeues an expired running dataset-release job without creating a second job', async () => {
+    const repository = createDatasetReleaseRepository(databasePool());
+    const owner = await databasePool().query<{ accountId: string }>(
+      `SELECT app_user_id::text AS "accountId" FROM app_user ORDER BY app_user_id LIMIT 1`,
+    );
+    const input = {
+      version: `${sourcePrefix}-expired-release-lease`,
+      requesterId: owner.rows[0]!.accountId,
+      deploymentEnvironment: 'test',
+      storageProvider: 'filesystem' as const,
+    };
+    const requested = await repository.requestGeneration(input);
+    const jobId = requested.job!.jobId;
+    await databasePool().query(`UPDATE background_job SET state='running' WHERE job_id=$1::uuid`, [
+      jobId,
+    ]);
+    await databasePool().query(
+      `UPDATE dataset_release_job SET lease_owner='interrupted-worker',lease_expires_at=now()-interval '1 minute' WHERE job_id=$1::uuid`,
+      [jobId],
+    );
+
+    const retried = await repository.requestGeneration(input);
+
+    expect(retried.job).toMatchObject({ jobId, state: 'queued', eventsProcessed: 0 });
+    const outbox = await databasePool().query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM outbox_message WHERE job_id=$1::uuid`,
+      [jobId],
+    );
+    expect(outbox.rows[0]!.count).toBe('2');
+  });
+
   test('keeps a release coherent when a correction is published between streamed pages', async () => {
     const current = testRecords();
     const repository = createDatasetReleaseRepository(databasePool());
