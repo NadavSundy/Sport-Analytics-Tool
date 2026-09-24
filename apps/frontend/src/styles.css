@@ -4194,12 +4194,33 @@ h3 {
 }
 
 .player-comparison > .statistics-section {
+  display: flex;
+  flex-direction: column;
   margin-top: 0;
 }
 
-.player-comparison .ui-data-table,
-.player-comparison .statistics-table {
+.player-comparison .ui-data-table {
+  display: flex;
+  flex: 1;
   width: 100%;
+}
+
+.player-comparison .statistics-table {
+  height: 100%;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.player-comparison .statistics-table th,
+.player-comparison .statistics-table td {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--colour-border);
+  vertical-align: middle;
+}
+
+.player-comparison .statistics-table th {
+  background: var(--colour-surface-raised);
 }
 
 .statistics-section-heading,
