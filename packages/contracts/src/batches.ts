@@ -523,6 +523,7 @@ export type BatchReportDownloadResponse = z.infer<typeof batchReportDownloadResp
 export type BatchReferenceEntityType = z.infer<typeof batchReferenceEntityTypeSchema>;
 export type BatchReferenceMappingRequest = z.infer<typeof batchReferenceMappingRequestSchema>;
 export type BatchCanonicalFixtureRequest = z.infer<typeof batchCanonicalFixtureRequestSchema>;
+export type BatchParticipantOnboardingTask = z.infer<typeof batchParticipantOnboardingTaskSchema>;
 export type BatchParticipantOnboardingDecision = z.infer<
   typeof batchParticipantOnboardingDecisionSchema
 >;

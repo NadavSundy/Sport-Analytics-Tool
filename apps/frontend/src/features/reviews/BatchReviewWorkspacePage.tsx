@@ -1,4 +1,5 @@
 import type {
+  BatchParticipantOnboardingTask,
   BatchReportItem,
   BatchReportResponse,
   BatchReviewRequest,
@@ -1332,6 +1333,58 @@ function BatchOverview({
   );
 }
 
+/**
+ * What the platform could not settle for itself, said plainly. Every one of
+ * these is a decision rather than a guess it declined to make: a participant is
+ * never matched on a name, so an unrecognised name is not a near miss.
+ */
+const onboardingReasonCopy: Record<BatchParticipantOnboardingTask['reason'], string> = {
+  team_not_recognised:
+    'The team this player was listed under is not one of the two teams of this fixture.',
+  no_durable_identifier:
+    'No durable identifier was submitted for this player, and a name alone is not evidence of identity.',
+  ambiguous_name: 'More than one person on this platform carries this name.',
+  identifier_not_found: 'The submitted identifier names nobody on this platform.',
+};
+
+function ParticipantOnboardingTaskCard({ task }: { task: BatchParticipantOnboardingTask }) {
+  return (
+    <article className="participant-onboarding__task">
+      <div className="participant-onboarding__task-header">
+        <h3>{task.submittedName}</h3>
+        <span className="participant-onboarding__submitted-team">
+          {task.submittedTeamName === null
+            ? 'No team was submitted'
+            : `Submitted as ${task.submittedTeamName}`}
+        </span>
+      </div>
+      <p className="participant-onboarding__reason">{onboardingReasonCopy[task.reason]}</p>
+    </article>
+  );
+}
+
+function ParticipantOnboarding({ tasks }: { tasks: BatchParticipantOnboardingTask[] }) {
+  return (
+    <section className="participant-onboarding" aria-labelledby="participant-onboarding-title">
+      <div className="participant-onboarding__heading">
+        <div>
+          <h2 id="participant-onboarding-title">Participants to onboard</h2>
+          <p>
+            One decision for each player, however many deliveries name them. Settle them together;
+            the batch is revalidated once.
+          </p>
+        </div>
+        <strong>{tasks.length} outstanding</strong>
+      </div>
+      {tasks.length === 0 ? (
+        <p>No participant is waiting to be onboarded.</p>
+      ) : (
+        tasks.map((task) => <ParticipantOnboardingTaskCard key={task.taskReference} task={task} />)
+      )}
+    </section>
+  );
+}
+
 type WorkspaceView = 'review' | 'references' | 'summary' | 'decision';
 
 const workspaceViews: WorkspaceView[] = ['review', 'references', 'summary', 'decision'];
@@ -1512,7 +1565,8 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   ).size;
   const actionableReferences = actionableReviewReferences(report);
   const conflictItems = report.blockingItems.filter((item) => item.publishedConflict);
-  const actionCount = actionableReferences.length + conflictItems.length;
+  const actionCount =
+    actionableReferences.length + conflictItems.length + report.participantOnboarding.length;
   const referenceCount = reviewReferences(report).length;
   const activeView: WorkspaceView =
     selectedView === 'auto'
@@ -1640,6 +1694,9 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
               />
             ))}
           </section>
+        ) : null}
+        {report.participantOnboarding.length > 0 ? (
+          <ParticipantOnboarding tasks={report.participantOnboarding} />
         ) : null}
         <ReferenceReview
           batchReference={batchReference}

@@ -862,6 +862,100 @@ describe('reviewer batch workspace', () => {
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
   });
 
+  /**
+   * One task, however many deliveries name the participant. The per-reference
+   * onboard_participant actions all point at the same decision, and listing
+   * those instead would show a player named in three hundred deliveries as
+   * three hundred pieces of work.
+   */
+  function onboardingReport(tasks: BatchReportResponse['data']['participantOnboarding']) {
+    const body = report(true);
+    body.data.participantOnboarding = tasks;
+    // The same task reached through three separate references, which is what
+    // the reviewer must not be shown three times.
+    body.data.blockingItems = tasks.flatMap((task) =>
+      [1, 2, 3].map((ordinal) => {
+        const item = structuredClone(body.data.blockingItems[0]!);
+        item.ordinal = ordinal;
+        item.location = { ...item.location, ordinal };
+        item.referenceResolutions = [
+          {
+            referencePath: `fixtures.0.innings.0.events.${ordinal}.striker`,
+            entityType: 'participant',
+            state: 'unresolved',
+            submittedReference: { context: { name: task.submittedName } },
+            reason: 'No member of the resolved fixture squad carries that name.',
+            requiredAction: 'onboard_participant',
+            candidates: [],
+            onboardingTask: {
+              taskReference: task.taskReference,
+              reason: task.reason,
+              candidates: task.candidates,
+            },
+          },
+        ];
+        return item;
+      }),
+    );
+    body.data.items = body.data.blockingItems;
+    return body;
+  }
+
+  const ambiguousTask = {
+    taskReference: '0b6f2f6e-6f6c-4a1a-9d0f-2a1d3c4b5e6f',
+    fixtureId: '22',
+    submittedName: 'A. Smith',
+    submittedTeamName: 'Lions',
+    reason: 'ambiguous_name' as const,
+    candidates: [
+      { personId: '11', displayName: 'Alan Smith' },
+      { personId: '12', displayName: 'Amy Smith' },
+    ],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  test('lists one onboarding card per decision, not one per reference naming it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(
+            String(input).includes('/auth/me') ? profile : onboardingReport([ambiguousTask]),
+          ),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const section = within(
+      (await screen.findByRole('region', { name: 'Participants to onboard' })) as HTMLElement,
+    );
+    expect(section.getAllByRole('heading', { name: 'A. Smith' })).toHaveLength(1);
+    expect(section.getByText('1 outstanding')).toBeInTheDocument();
+    expect(
+      section.getByText('More than one person on this platform carries this name.'),
+    ).toBeInTheDocument();
+  });
+
+  test('shows no onboarding section when no participant is waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : report(true))),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    // The needs-review panel lists work to do, the way it already treats
+    // published conflicts. A batch with no onboarding task has nothing to say
+    // here, so the section is absent rather than empty.
+    await screen.findByRole('tablist', { name: 'Batch review views' });
+    expect(screen.queryByRole('region', { name: 'Participants to onboard' })).toBeNull();
+  });
+
   test('shows a later unresolved reference from blocking items without loading ordinary results', async () => {
     const body = report(true);
     const blocker = body.data.blockingItems[0]!;
