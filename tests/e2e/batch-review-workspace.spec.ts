@@ -635,3 +635,221 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
   };
   expect(requests).toEqual([expectedRequest, expectedRequest]);
 });
+
+test('reviewer onboards participants in one submission and corrects every fault @mobile', async ({
+  page,
+}) => {
+  const ambiguous = '0b6f2f6e-6f6c-4a1a-9d0f-2a1d3c4b5e6f';
+  const teamTask = '1c7f3a2b-4d5e-4f6a-8b9c-0d1e2f3a4b5c';
+  let settled = false;
+
+  const report = () => ({
+    data: {
+      batch: {
+        batchReference: reference,
+        competitionId: '5',
+        status: 'awaiting_review',
+        statusUrl: `/api/v1/batches/${reference}`,
+        receivedAt: '2026-09-08T08:00:00.000Z',
+        updatedAt: '2026-09-08T08:05:00.000Z',
+        source: {
+          fileName: 'season.csv',
+          checksum: 'b'.repeat(64),
+          packageVersion: '1.1',
+          submitter: { accountId: '7', displayName: 'Data Submitter' },
+        },
+        progress: { total: 3, processed: 3, accepted: 0, rejected: 0 },
+        counts: { accepted: 0, rejected: 0, unresolved: 3, duplicate: 0, conflicting: 0 },
+        lineage: { replacesBatchReference: null, supersededByBatchReference: null },
+        review: null,
+      },
+      errorGroups: [],
+      reviewSummary: {
+        validation: { accepted: 0, rejected: 0, blockingErrors: 0, duplicate: 0, conflicting: 0 },
+        resolution: { resolved: 0, ambiguous: 0, unresolved: 3, invalid: 0, proposed: 0 },
+        approvalBlocked: true,
+        blockingReasons: ['Unresolved references remain.'],
+      },
+      fixtureSummaries: [
+        {
+          fixtureId: '22',
+          label: 'Lions vs Bears · 2026-09-01',
+          total: 3,
+          accepted: 0,
+          rejected: 0,
+          unresolved: 3,
+        },
+      ],
+      // Settled tasks leave the list, which is how the reviewer sees the work
+      // shrink rather than having to remember what they already answered.
+      participantOnboarding: settled
+        ? []
+        : [
+            {
+              taskReference: ambiguous,
+              fixtureId: '22',
+              submittedName: 'A. Smith',
+              submittedTeamName: 'Lions',
+              reason: 'ambiguous_name',
+              candidates: [
+                { personId: '11', displayName: 'Alan Smith' },
+                { personId: '12', displayName: 'Amy Smith' },
+              ],
+              teams: [
+                { teamId: '30', name: 'Lions' },
+                { teamId: '31', name: 'Bears' },
+              ],
+            },
+            {
+              taskReference: teamTask,
+              fixtureId: '22',
+              submittedName: 'C. Khumalo',
+              submittedTeamName: 'Wanderers',
+              reason: 'team_not_recognised',
+              candidates: [{ personId: '13', displayName: 'Chris Khumalo' }],
+              teams: [
+                { teamId: '30', name: 'Lions' },
+                { teamId: '31', name: 'Bears' },
+              ],
+            },
+          ],
+      acceptedSamples: [],
+      blockingItems: [],
+      items: [],
+      pagination: { nextCursor: null },
+      downloadUrl: `/api/v1/batches/${reference}/report/download`,
+    },
+  });
+
+  await page.route(/\/api\/v1\/admin\/batches(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [report().data.batch], pagination: { nextCursor: null } }),
+    });
+  });
+
+  await page.route(`**/api/v1/batches/${reference}/report`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(report()),
+    });
+  });
+
+  let attempts = 0;
+  await page.route(`**/api/v1/batches/${reference}/participants`, async (route) => {
+    attempts += 1;
+    const body = JSON.parse(route.request().postData() ?? '{}');
+    // The whole array in one request, always.
+    expect(body.decisions).toHaveLength(2);
+
+    if (attempts === 1) {
+      // All or nothing, with a fault for each decision that broke, so the
+      // reviewer corrects both at once rather than one resubmission at a time.
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'BATCH_PARTICIPANT_ONBOARDING_CONFLICT',
+            message: 'One or more participant onboarding decisions could not be applied.',
+            details: [
+              {
+                taskReference: ambiguous,
+                code: 'CANDIDATE_NOT_OFFERED',
+                message: 'Choose one of the candidates this task offered.',
+              },
+              {
+                taskReference: teamTask,
+                code: 'TEAM_NOT_IN_FIXTURE',
+                message: 'Name one of the two teams of the fixture this task belongs to.',
+              },
+            ],
+          },
+        }),
+      });
+      return;
+    }
+
+    settled = true;
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-24T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    });
+  });
+
+  await page.goto(`/reviews/batches/${reference}`);
+  await expect(page.getByRole('heading', { name: 'Participants to onboard' })).toBeVisible();
+
+  // One card per decision, not one per delivery naming the participant.
+  await expect(page.getByText('2 outstanding')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A. Smith' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'C. Khumalo' })).toBeVisible();
+
+  // The team is chosen from the fixture's two, never typed.
+  const teamCard = page.getByRole('article').filter({ hasText: 'C. Khumalo' });
+  await expect(
+    teamCard.getByRole('group', { name: 'Which team do they belong to?' }),
+  ).toBeVisible();
+
+  await page.getByRole('radio', { name: 'Alan Smith' }).check();
+  await page.getByRole('radio', { name: 'Chris Khumalo' }).check();
+  await teamCard.getByRole('radio', { name: 'Bears' }).check();
+
+  const submit = page.getByRole('button', { name: 'Submit 2 decisions' });
+  await expect(submit).toBeEnabled();
+  await submit.click();
+
+  // Every fault, each against its own card.
+  await expect(
+    page
+      .getByRole('article')
+      .filter({ hasText: 'A. Smith' })
+      .getByText('Choose one of the candidates this task offered.'),
+  ).toBeVisible();
+  await expect(
+    teamCard.getByText('Name one of the two teams of the fixture this task belongs to.'),
+  ).toBeVisible();
+  await expect(page.getByText('Nothing was applied.')).toBeVisible();
+
+  // Correct both and resubmit. Nothing was applied, so both are still open.
+  await page.getByRole('radio', { name: 'Amy Smith' }).check();
+  await teamCard.getByRole('radio', { name: 'Lions' }).check();
+  await page.getByRole('button', { name: 'Submit 2 decisions' }).click();
+
+  // Settling the last task empties the list, which drops the needs-review count
+  // to zero and moves the workspace to the decision view, taking the section
+  // with it. The receipt has to outlive that, or a reviewer is never told their
+  // decisions were applied.
+  await expect(page.getByRole('tab', { name: 'Review decision' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('heading', { name: 'Participants to onboard' })).toBeHidden();
+  await expect(page.getByText(/2 settled/)).toBeVisible();
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter(
+      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+    ),
+  ).toEqual([]);
+});
