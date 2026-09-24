@@ -129,8 +129,8 @@ describe('player comparison', () => {
 
     const comparison = await screen.findByRole('region', { name: 'Player performance comparison' });
     expect(within(comparison).getByText('Scope: Current fixture')).toBeVisible();
-    expect(within(comparison).getByRole('columnheader', { name: 'A Player' })).toBeVisible();
-    expect(within(comparison).getByRole('columnheader', { name: 'B Player' })).toBeVisible();
+    expect(within(comparison).getAllByRole('columnheader', { name: 'A Player' })).toHaveLength(2);
+    expect(within(comparison).getAllByRole('columnheader', { name: 'B Player' })).toHaveLength(2);
     expect(within(comparison).getByText('Runs (runs)')).toBeVisible();
     expect(within(comparison).getByText('Strike rate (%)')).toBeVisible();
     expect(within(comparison).getByText('72')).toBeVisible();
