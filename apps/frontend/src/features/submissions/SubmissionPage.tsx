@@ -72,6 +72,12 @@ type CompetitionState =
   | { kind: 'ready'; competitions: Competition[] }
   | { kind: 'error' };
 
+type ScopeDialogState =
+  | { kind: 'closed' }
+  | { kind: 'loading' }
+  | { kind: 'ready'; competitions: Competition[] }
+  | { kind: 'error' };
+
 type NewFixtureDraft = {
   competitionId: string;
   submittedCompetitionName: string;
@@ -356,6 +362,7 @@ function SubmissionForm({
     fixtures[0]?.fixtureId ?? (mode === 'file' ? NEW_FIXTURE_VALUE : ''),
   );
   const [competitionState, setCompetitionState] = useState<CompetitionState>({ kind: 'idle' });
+  const [scopeDialogState, setScopeDialogState] = useState<ScopeDialogState>({ kind: 'closed' });
   const [newFixture, setNewFixture] = useState<NewFixtureDraft>({
     competitionId: '',
     submittedCompetitionName: '',
@@ -378,6 +385,27 @@ function SubmissionForm({
   const [result, setResult] = useState<ResultState>({ kind: 'idle' });
 
   const resultRegionRef = useRef<HTMLDivElement>(null);
+  const scopeTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (scopeDialogState.kind === 'closed') return;
+
+    const controller = new AbortController();
+    setScopeDialogState({ kind: 'loading' });
+    void competitionOptions(profile, controller.signal)
+      .then((competitions) => {
+        if (!controller.signal.aborted) setScopeDialogState({ kind: 'ready', competitions });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setScopeDialogState({ kind: 'error' });
+      });
+    return () => controller.abort();
+  }, [profile, scopeDialogState.kind]);
+
+  function closeScopeDialog() {
+    setScopeDialogState({ kind: 'closed' });
+    scopeTriggerRef.current?.focus();
+  }
 
   useEffect(() => {
     if (mode !== 'file' || fixtureId !== NEW_FIXTURE_VALUE) return;
@@ -727,10 +755,20 @@ function SubmissionForm({
               role when it receives your submission.
             </p>
           ) : (
-            <p>
-              {competitions.join(', ')}. The backend checks this scope again when it receives your
-              submission.
-            </p>
+            <>
+              <p>
+                {competitions.join(', ')}. The backend checks this scope again when it receives your
+                submission.
+              </p>
+              <button
+                ref={scopeTriggerRef}
+                className="button button--secondary"
+                type="button"
+                onClick={() => setScopeDialogState({ kind: 'loading' })}
+              >
+                View approved competition scopes
+              </button>
+            </>
           )}
         </section>
 
@@ -1251,6 +1289,55 @@ function SubmissionForm({
           ) : null}
         </div>
       </form>
+
+      {scopeDialogState.kind !== 'closed' ? (
+        <div
+          className="submitter-access-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeScopeDialog();
+          }}
+        >
+          <div
+            className="submitter-access-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="approved-scopes-dialog-title"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                closeScopeDialog();
+              }
+            }}
+          >
+            <h2 id="approved-scopes-dialog-title">Your approved competition scopes</h2>
+            {scopeDialogState.kind === 'loading' ? (
+              <p role="status">Loading approved scopes…</p>
+            ) : null}
+            {scopeDialogState.kind === 'error' ? (
+              <p role="alert">
+                Your approved competition scopes could not be loaded. Please try again.
+              </p>
+            ) : null}
+            {scopeDialogState.kind === 'ready' ? (
+              <ul>
+                {scopeDialogState.competitions.map((competition) => (
+                  <li key={competition.competitionId}>{competition.name}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="submitter-access-dialog__actions">
+              <button
+                className="button button--secondary"
+                type="button"
+                autoFocus
+                onClick={closeScopeDialog}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {result.kind === 'accepted' && result.correctionContext ? (
         <CorrectionWorkspace
