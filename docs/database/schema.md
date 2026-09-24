@@ -324,12 +324,16 @@ Intermediate persistence, so they are no longer future schema concepts.
   work: while any is `outstanding`, the batch is kept `awaiting_review` rather than rejected, so a
   reviewer is never left with work to do and no batch to do it on.
 
-  **A decision must address a task by its `participant_key`, never by re-deriving a key from what
-  the decision supplies.** The key is the source identifier where one was submitted and the name
-  and team otherwise, so answering a `no_durable_identifier` task _with_ an identifier changes the
-  key that would be derived, from `name:…` to `source:…`. A decision that re-derived it would match
-  no existing task: the original would stay outstanding for ever and hold the batch in
-  `awaiting_review` permanently, which is the mirror image of the defect the table exists to fix.
+  **A decision addresses a task by its `task_reference`, never by a key derived from what the
+  decision supplies.** `participant_key` is the source identifier where one was submitted and the
+  name and team otherwise. It is how onboarding finds a task, not how a reviewer addresses one,
+  for two reasons. A decision mutates it: answering a `no_durable_identifier` task _with_ an
+  identifier changes the derived key from `name:…` to `source:…`, and answering a
+  `team_not_recognised` task _with_ a team changes `name:X::` to `name:X::North XI`. And it is not
+  unique within a batch, because two fixtures can each name the same person. A decision that
+  re-derived a key would match no existing task: the original would stay outstanding for ever and
+  hold the batch in `awaiting_review` permanently, which is the mirror image of the defect the
+  table exists to fix. `task_reference` is opaque and unique, so there is nothing to derive.
 
 The migration history under `database/migrations/` is authoritative for the exact columns,
 constraints and indexes added after the original model approval.

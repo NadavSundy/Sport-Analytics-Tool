@@ -122,6 +122,7 @@ function report(accepted: number, rejected: number): BatchReportResponse {
         blockingReasons: [],
       },
       fixtureSummaries: [],
+      participantOnboarding: [],
       acceptedSamples: [],
       blockingItems: [],
       items: [] as BatchReportItem[],

@@ -138,6 +138,7 @@ describe('batch reporting contracts', () => {
             unresolved: 1,
           },
         ],
+        participantOnboarding: [],
         acceptedSamples: [],
         blockingItems: [],
         items: [

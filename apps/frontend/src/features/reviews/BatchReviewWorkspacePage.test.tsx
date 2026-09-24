@@ -187,6 +187,7 @@ function report(blocked = true): BatchReportResponse {
           unresolved: blocked ? 1 : 0,
         },
       ],
+      participantOnboarding: [],
       acceptedSamples: blocked ? [] : [item],
       blockingItems: blocked ? [item] : [],
       items: [item],

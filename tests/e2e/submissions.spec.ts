@@ -598,6 +598,7 @@ test(
                 unresolved: 1,
               },
             ],
+            participantOnboarding: [],
             acceptedSamples: [],
             blockingItems: [],
             items: [

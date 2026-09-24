@@ -2599,6 +2599,63 @@ paths:
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
+  /api/v1/batches/{batchReference}/participants:
+    post:
+      tags: [Batches]
+      summary: Settle outstanding participant onboarding tasks for a batch
+      description: >-
+        An administrator answers the participant onboarding tasks a reviewer-created canonical
+        fixture could not settle deterministically. Each decision names the task it answers by
+        `taskReference` and gives exactly one answer: `personId` picks a candidate the task
+        offered, `sourceId` supplies a durable registry identifier, and `teamName` names which of
+        the fixture's two teams the participant belongs to. A participant is never matched on a
+        name, and no identifier outside the fixture's scope is accepted.
+
+        The whole array is applied in one transaction and the batch is revalidated once, so a
+        season-scale batch does not pay for one full revalidation per decision. If any decision is
+        invalid nothing is applied. Replay is safe: a decision against an already settled task is
+        a no-op, and when nothing changes no revalidation is queued.
+      operationId: createBatchParticipantOnboardingDecisions
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchParticipantOnboardingRequest' }
+      responses:
+        '202':
+          description: >-
+            The decisions were applied. `revalidationQueued` is false when every decision was
+            already settled, because then there is nothing to revalidate.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchParticipantOnboardingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The account is not an administrator, or the batch is not visible to it.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            A decision could not be applied: an unknown task, a candidate the task did not offer,
+            an identifier naming no person, or a team that is not one of the fixture's two
+            (`BATCH_PARTICIPANT_ONBOARDING_CONFLICT`). Nothing in the array was applied.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The decision array is invalid (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
   /api/v1/batches/{batchReference}/canonical-fixtures:
     post:
       tags: [Batches]
@@ -6288,8 +6345,36 @@ components:
         state: { type: string, enum: [ambiguous, unresolved, invalid] }
         submittedReference: {}
         reason: { type: [string, 'null'], minLength: 1 }
-        requiredAction: { type: string, enum: [select_candidate, contact_reviewer] }
+        requiredAction:
+          type: string
+          enum: [select_candidate, contact_reviewer, onboard_participant]
+          description: >-
+            `onboard_participant` means this reference is waiting on a participant onboarding
+            task that an administrator can settle at
+            `POST /api/v1/batches/{batchReference}/participants`.
         candidates: { type: array, items: { $ref: '#/components/schemas/BatchReferenceCandidate' } }
+        onboardingTask:
+          type: object
+          additionalProperties: false
+          required: [taskReference, reason, candidates]
+          description: >-
+            Present when `requiredAction` is `onboard_participant`. `taskReference` is the handle
+            a decision addresses, and is never derived from anything the decision supplies.
+          properties:
+            taskReference: { type: string, format: uuid }
+            reason:
+              type: string
+              enum:
+                [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+            candidates:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [personId, displayName]
+                properties:
+                  personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+                  displayName: { type: string, minLength: 1 }
 
     BatchPublishedConflict:
       type: object
@@ -6417,6 +6502,33 @@ components:
         approvalBlocked: { type: boolean }
         blockingReasons: { type: array, items: { type: string, minLength: 1 } }
 
+    BatchParticipantOnboardingTask:
+      type: object
+      additionalProperties: false
+      required: [taskReference, fixtureId, submittedName, submittedTeamName, reason, candidates]
+      description: >-
+        One outstanding participant onboarding task, listed once for the batch. The same task
+        also appears as an `onboard_participant` action on every reference waiting on it, which
+        for a player named in three hundred deliveries is three hundred appearances of one
+        decision. This list is that work deduplicated.
+      properties:
+        taskReference: { type: string, format: uuid }
+        fixtureId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        submittedName: { type: string, minLength: 1 }
+        submittedTeamName: { type: [string, 'null'], minLength: 1 }
+        reason:
+          type: string
+          enum: [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [personId, displayName]
+            properties:
+              personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              displayName: { type: string, minLength: 1 }
+
     BatchReport:
       type: object
       additionalProperties: false
@@ -6426,6 +6538,7 @@ components:
           errorGroups,
           reviewSummary,
           fixtureSummaries,
+          participantOnboarding,
           acceptedSamples,
           blockingItems,
           items,
@@ -6438,6 +6551,9 @@ components:
         reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
         fixtureSummaries:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        participantOnboarding:
+          type: array
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingTask' }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         blockingItems:
@@ -6458,13 +6574,25 @@ components:
     BatchReportDownload:
       type: object
       additionalProperties: false
-      required: [batch, errorGroups, reviewSummary, fixtureSummaries, acceptedSamples, items]
+      required:
+        [
+          batch,
+          errorGroups,
+          reviewSummary,
+          fixtureSummaries,
+          participantOnboarding,
+          acceptedSamples,
+          items,
+        ]
       properties:
         batch: { $ref: '#/components/schemas/BatchStatus' }
         errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
         reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
         fixtureSummaries:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        participantOnboarding:
+          type: array
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingTask' }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
@@ -6494,6 +6622,83 @@ components:
         itemOrdinal: { type: integer, minimum: 0 }
         referencePath: { type: string, minLength: 1, maxLength: 1000 }
         decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
+    BatchParticipantOnboardingDecision:
+      type: object
+      additionalProperties: false
+      required: [taskReference]
+      description: >-
+        One decision settling one outstanding task. Exactly one of `personId`, `sourceId` or
+        `teamName` must be given. The task is addressed by `taskReference` and never by anything
+        derivable from the answer: supplying an identifier or a team changes what the task's
+        participant key would derive to, so a re-derived handle would match no task.
+      properties:
+        taskReference: { type: string, format: uuid }
+        personId:
+          allOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }]
+          description: One of the candidates the task offered. Any other person is refused.
+        sourceId:
+          type: string
+          description: >-
+            A durable registry identifier, `namespace:entityType:value`. A `cricsheet`
+            participant is created or reused by source reference; an `app` participant must
+            already exist.
+        teamName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: One of the fixture's two teams. Any other team is refused.
+
+    BatchParticipantOnboardingRequest:
+      type: object
+      additionalProperties: false
+      required: [decisionKey, decisions]
+      properties:
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+        decisions:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingDecision' }
+
+    BatchParticipantOnboardingReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          batchReference,
+          decisionReference,
+          status,
+          statusUrl,
+          submittedAt,
+          onboarded,
+          alreadyOnboarded,
+          revalidationQueued,
+        ]
+      properties:
+        batchReference: { type: string, format: uuid }
+        decisionReference: { type: string, format: uuid }
+        status: { type: string, enum: [queued, applied] }
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        submittedAt: { type: string, format: date-time }
+        onboarded:
+          type: integer
+          minimum: 0
+          description: Tasks this request settled.
+        alreadyOnboarded:
+          type: integer
+          minimum: 0
+          description: Tasks already settled when it arrived. A replay reports its whole result here.
+        revalidationQueued:
+          type: boolean
+          description: False when nothing changed, because then there is nothing to revalidate.
+
+    BatchParticipantOnboardingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchParticipantOnboardingReceipt' }
 
     BatchFixtureOnboardingUnresolvedParticipant:
       type: object

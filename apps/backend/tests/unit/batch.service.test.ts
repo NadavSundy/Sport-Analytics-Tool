@@ -66,6 +66,7 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
       proposed: 0,
     }),
     listBatchFixtureSummaries: vi.fn().mockResolvedValue([]),
+    listParticipantOnboardingTasks: vi.fn().mockResolvedValue([]),
     getLatestReviewDecision: vi.fn().mockResolvedValue(null),
     applyReviewDecision: vi.fn(),
     resolvePublishedConflict: vi.fn(),

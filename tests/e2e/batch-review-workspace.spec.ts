@@ -125,6 +125,7 @@ test('reviewer publishes the accepted subset of a mixed batch @mobile', async ({
           unresolved: 0,
         },
       ],
+      participantOnboarding: [],
       acceptedSamples: [acceptedSample],
       blockingItems: [],
       items: [
@@ -341,6 +342,7 @@ test('reviewer reconciles a published delivery conflict as an immutable correcti
             unresolved: 0,
           },
         ],
+        participantOnboarding: [],
         acceptedSamples: [],
         items: [
           {
@@ -532,6 +534,7 @@ test('reviewer sees a generic failure, then keeps the published delivery', async
             unresolved: 0,
           },
         ],
+        participantOnboarding: [],
         acceptedSamples: [],
         items: [
           {
