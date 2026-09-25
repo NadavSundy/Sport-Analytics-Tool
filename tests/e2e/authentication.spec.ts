@@ -152,9 +152,13 @@ test('stored Supabase identity completes the callback and opens the account', as
 
   await expect(page.getByText('browser@example.com')).toBeVisible();
 
-  await expect(page.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Settings' })).toHaveAttribute(
     'href',
     '/account/security',
+  );
+  await expect(page.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
+    'href',
+    '/account',
   );
 });
 
@@ -170,8 +174,11 @@ test('stored Supabase identity updates navigation and can sign out', async ({ pa
 
   await page.goto('/account/security');
 
-  await expect(page.getByRole('link', { name: 'Account', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
+    'href',
+    '/account',
+  );
+  await expect(page.getByRole('link', { name: 'Settings' })).toHaveAttribute(
     'href',
     '/account/security',
   );

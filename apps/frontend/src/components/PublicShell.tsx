@@ -158,7 +158,7 @@ function AuthenticationNavigation({ profile }: { profile: CurrentUserProfile | n
       ) : null}
       {profile?.role === 'admin' ? <NavLink to="/admin">Administration</NavLink> : null}
       {isAuthenticated ? (
-        <NavLink to="/account">Account</NavLink>
+        <NavLink to="/account">Manage account</NavLink>
       ) : (
         <NavLink to="/sign-in">Sign in</NavLink>
       )}
@@ -249,7 +249,7 @@ function MobileNavigation({ profile }: { profile: CurrentUserProfile | null }) {
               <h2>Account</h2>
               {isAuthenticated ? (
                 <>
-                  <NavLink to="/account">Account</NavLink>
+                  <NavLink to="/account">Manage account</NavLink>
                   <button
                     type="button"
                     disabled={isSigningOut}
