@@ -48,7 +48,10 @@ import type {
   ParticipantOnboardingTaskRecord,
 } from './batch.repository';
 import { createCursor, InvalidCursorError, readCursor } from '../public-read/cursor';
-import { extractFixtureOnboardingContext } from './fixture-onboarding';
+import {
+  extractFixtureOnboardingContext,
+  extractParticipantReferenceSites,
+} from './fixture-onboarding';
 import { storedOutcomes } from './reference-outcomes';
 
 export class BatchForbiddenError extends Error {}
@@ -835,12 +838,41 @@ export function createBatchService(
       const batch = await repository.findBatchByReference(reference);
       if (!batch) throw new BatchForbiddenError();
 
+      /*
+       * Where each outstanding participant is named, so a settled decision can
+       * be recorded against the references it answers. Read before the
+       * decision so the whole thing applies in one transaction.
+       */
+      const outstanding = await repository.listParticipantOnboardingTasks(batch.batchId);
+      const fixtureIds = [...new Set(outstanding.map((task) => task.fixtureId))];
+      const referenceSites: Record<string, { itemOrdinal: number; referencePath: string }[]> = {};
+      if (fixtureIds.length > 0) {
+        const items: { ordinal: number; resolvedReferences: unknown }[] = [];
+        let afterOrdinal: number | undefined;
+        for (;;) {
+          const page = await repository.listBatchItems(batch.batchId, {
+            ...(afterOrdinal === undefined ? {} : { afterOrdinal }),
+            limit: 1000,
+          });
+          items.push(...page);
+          if (page.length < 1000) break;
+          afterOrdinal = page.at(-1)?.ordinal;
+          if (afterOrdinal === undefined) break;
+        }
+        for (const fixtureId of fixtureIds) {
+          for (const [key, sites] of extractParticipantReferenceSites(items, fixtureId)) {
+            referenceSites[key] = [...(referenceSites[key] ?? []), ...sites];
+          }
+        }
+      }
+
       try {
         const result = await repository.applyParticipantOnboardingDecisions({
           batchId: batch.batchId,
           actorId: account.accountId,
           decisionKey: request.decisionKey,
           decisions: request.decisions,
+          referenceSites,
         });
         return {
           data: {

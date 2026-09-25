@@ -1367,9 +1367,24 @@ interface OnboardingAnswer {
 
 const emptyAnswer: OnboardingAnswer = { identity: null, teamName: null };
 
-/** A team is only asked for when the submitted one was not one of the two. */
+/**
+ * A team is asked for when the submitted one is not one of the fixture's two.
+ *
+ * Keyed off the submitted team rather than the reason, because the server
+ * checks the team on every decision whatever its reason:
+ *
+ *   const teamName = decision.teamName ?? task.submittedTeamName;
+ *
+ * A task reported for some other reason whose submitted team is still not one
+ * of the two therefore fails on the team, and keying this off
+ * `team_not_recognised` alone left the reviewer reading that fault with no
+ * control to answer it. Issue #708, found in deployed acceptance testing.
+ */
 function needsTeam(task: BatchParticipantOnboardingTask): boolean {
-  return task.reason === 'team_not_recognised';
+  return (
+    task.submittedTeamName === null ||
+    !task.teams.some((team) => team.name === task.submittedTeamName)
+  );
 }
 
 function toDecision(

@@ -996,6 +996,95 @@ describe('reviewer batch workspace', () => {
     expect(card.queryByRole('textbox', { name: /name/i })).not.toBeInTheDocument();
   });
 
+  /**
+   * The case deployed acceptance testing found. The server checks the team on
+   * every decision, so a task reported for a different reason whose submitted
+   * team is still not one of the fixture's two fails on the team. Keying the
+   * control off the reason alone left that fault unanswerable.
+   */
+  const strandedTask = {
+    taskReference: '2d8e4b1c-5f6a-4b7c-9d0e-1f2a3b4c5d6e',
+    fixtureId: '22',
+    submittedName: 'onboarding-test-Sipho-Dlamini',
+    submittedTeamName: 'onboarding-test-Unlisted-Wanderers',
+    reason: 'no_durable_identifier' as const,
+    candidates: [],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  test('asks for a team whenever the submitted one is not the fixture, whatever the reason', async () => {
+    const post = vi.fn((_init: RequestInit) =>
+      response({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-25T12:00:00.000Z',
+          onboarded: 1,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([strandedTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    const card = within(
+      (await screen.findByRole('heading', { name: 'onboarding-test-Sipho-Dlamini' })).closest(
+        'article',
+      )!,
+    );
+    // The reason is no_durable_identifier, but the submitted team is not one of
+    // the fixture's two, so the team question has to be asked.
+    expect(card.getByRole('group', { name: 'Which team do they belong to?' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Lions' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Bears' })).toBeInTheDocument();
+
+    // And the task can actually be settled, which is what the deployed run
+    // could not do: an identifier alone was refused with nothing to answer.
+    fireEvent.click(card.getByRole('radio', { name: 'Supply a durable identifier' }));
+    fireEvent.change(card.getByLabelText('Durable identifier'), {
+      target: { value: 'cricsheet:participant:onboarding-test-sipho-1' },
+    });
+    fireEvent.click(card.getByRole('radio', { name: 'Bears' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(String(post.mock.calls[0]![0].body));
+    expect(body.decisions).toEqual([
+      {
+        taskReference: strandedTask.taskReference,
+        sourceId: 'cricsheet:participant:onboarding-test-sipho-1',
+        teamName: 'Bears',
+      },
+    ]);
+  });
+
+  test('does not ask for a team when the submitted one is already the fixture', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(
+            String(input).includes('/auth/me') ? profile : onboardingReport([ambiguousTask]),
+          ),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const card = within(
+      (await screen.findByRole('heading', { name: 'A. Smith' })).closest('article')!,
+    );
+    // Its submitted team is Lions, one of the fixture's two, so there is
+    // nothing to decide about the team.
+    expect(card.queryByRole('group', { name: 'Which team do they belong to?' })).toBeNull();
+  });
+
   test('settles several tasks in one request and reports the receipt', async () => {
     const post = vi.fn((_init: RequestInit) =>
       response({

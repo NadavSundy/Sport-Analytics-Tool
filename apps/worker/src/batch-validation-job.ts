@@ -119,6 +119,83 @@ export function finalBatchValidationState(
     : 'rejected';
 }
 
+type ParticipantOnboardingReason =
+  'team_not_recognised' | 'no_durable_identifier' | 'identifier_not_found';
+
+interface ReviewerActionableParticipantReference {
+  fixtureId: string;
+  participantKey: string;
+  submittedName: string;
+  submittedSourceId: string | null;
+  submittedTeamName: string | null;
+  reason: ParticipantOnboardingReason;
+}
+
+/**
+ * Finds the subset of unresolved references a reviewer can settle through the
+ * participant onboarding workflow. The resolver deliberately leaves a person
+ * outside a resolved fixture squad unresolved; that is not malformed input,
+ * because an authorised reviewer can associate the person with the fixture.
+ */
+export function reviewerActionableParticipantReferences(
+  resolvedReferences: Record<string, unknown>,
+): ReviewerActionableParticipantReference[] {
+  const outcomes: Array<Record<string, unknown>> = [];
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const record = value as Record<string, unknown>;
+    if (typeof record.entityType === 'string' && typeof record.state === 'string') {
+      outcomes.push(record);
+      return;
+    }
+    for (const nested of Object.values(record)) visit(nested);
+  };
+  visit(resolvedReferences);
+
+  const fixtureId = outcomes.find(
+    (outcome) =>
+      outcome.entityType === 'fixture' &&
+      outcome.state === 'resolved' &&
+      typeof outcome.canonicalId === 'string' &&
+      /^[1-9]\d*$/.test(outcome.canonicalId),
+  )?.canonicalId;
+  if (typeof fixtureId !== 'string') return [];
+
+  return outcomes.flatMap((outcome) => {
+    if (outcome.entityType !== 'participant' || outcome.state !== 'unresolved') return [];
+    const submitted = outcome.submittedReference;
+    if (!submitted || typeof submitted !== 'object' || Array.isArray(submitted)) return [];
+    const reference = submitted as {
+      sourceId?: unknown;
+      context?: { name?: unknown; team?: { context?: { name?: unknown } } };
+    };
+    const sourceId = typeof reference.sourceId === 'string' ? reference.sourceId : null;
+    const name = typeof reference.context?.name === 'string' ? reference.context.name : null;
+    const teamName =
+      typeof reference.context?.team?.context?.name === 'string'
+        ? reference.context.team.context.name
+        : null;
+    const submittedName = name ?? sourceId;
+    if (!submittedName) return [];
+    return [
+      {
+        fixtureId,
+        participantKey: sourceId
+          ? `source:${sourceId}`
+          : `name:${submittedName}::${teamName ?? ''}`,
+        submittedName,
+        submittedSourceId: sourceId,
+        submittedTeamName: teamName,
+        reason: teamName
+          ? sourceId
+            ? 'identifier_not_found'
+            : 'no_durable_identifier'
+          : 'team_not_recognised',
+      },
+    ];
+  });
+}
+
 export function referenceOverridesForChunk(
   mappings: readonly ReferenceMappingRow[],
   referencePathByOrdinal: ReadonlyMap<number, string>,
@@ -1419,6 +1496,81 @@ export function createBatchValidationJobHandler(
               values,
             );
       const idByOrdinal = new Map(inserted.rows.map((row) => [row.ordinal, row.batchItemId]));
+      // Issue #729. #708 recorded work that arose while creating a fixture, but
+      // a v1.1 back-catalogue can instead resolve an existing fixture first and
+      // discover unknown squad members during ordinary validation. Persist the
+      // same reviewer-owned work before finalisation so it remains reviewable.
+      const onboardingByKey = new Map<string, ReviewerActionableParticipantReference>();
+      for (const item of items) {
+        if (!idByOrdinal.has(item.ordinal)) continue;
+        for (const task of reviewerActionableParticipantReferences(item.resolvedReferences)) {
+          onboardingByKey.set(`${task.fixtureId}\0${task.participantKey}`, task);
+        }
+      }
+      const onboarding = [...onboardingByKey.values()];
+      if (onboarding.length > 0) {
+        const names = [...new Set(onboarding.map((task) => task.submittedName))];
+        const candidates = await client.query<{
+          submittedName: string;
+          personId: string;
+          displayName: string;
+        }>(
+          `SELECT requested.submitted_name AS "submittedName", p.person_id::text AS "personId",
+                  p.display_name AS "displayName"
+             FROM unnest($1::text[]) AS requested(submitted_name)
+             JOIN person p ON p.display_name = requested.submitted_name
+                OR EXISTS (
+                  SELECT 1 FROM person_alias alias
+                   WHERE alias.person_id = p.person_id AND alias.name = requested.submitted_name
+                )`,
+          [names],
+        );
+        const candidatesByName = new Map<
+          string,
+          Array<{ personId: string; displayName: string }>
+        >();
+        for (const candidate of candidates.rows) {
+          const matches = candidatesByName.get(candidate.submittedName) ?? [];
+          if (!matches.some((match) => match.personId === candidate.personId)) {
+            matches.push({ personId: candidate.personId, displayName: candidate.displayName });
+          }
+          candidatesByName.set(candidate.submittedName, matches);
+        }
+        await client.query(
+          `INSERT INTO batch_participant_onboarding_task (
+             batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
+             submitted_team_name, reason, candidates
+           )
+           SELECT $1::bigint, task."fixtureId"::bigint, task."participantKey", task."submittedName",
+                  task."submittedSourceId", task."submittedTeamName", task.reason,
+                  task.candidates::jsonb
+           FROM jsonb_to_recordset($2::jsonb) AS task(
+             "fixtureId" text, "participantKey" text, "submittedName" text,
+             "submittedSourceId" text, "submittedTeamName" text, reason text, candidates text
+           )
+           ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
+             submitted_name=EXCLUDED.submitted_name,
+             submitted_source_id=EXCLUDED.submitted_source_id,
+             submitted_team_name=EXCLUDED.submitted_team_name,
+             reason=EXCLUDED.reason,
+             candidates=EXCLUDED.candidates,
+             state='outstanding',
+             person_id=NULL,
+             onboarded_at=NULL,
+             decided_by=NULL,
+             decision_key=NULL,
+             last_reported_at=now()`,
+          [
+            claimResult.batchId,
+            JSON.stringify(
+              onboarding.map((task) => ({
+                ...task,
+                candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
+              })),
+            ),
+          ],
+        );
+      }
       const validationRows: Array<{
         batchItemId?: string | null;
         sourceOrdinal: number;

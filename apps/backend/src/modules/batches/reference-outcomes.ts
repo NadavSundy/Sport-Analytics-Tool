@@ -18,6 +18,8 @@ export interface StoredReferenceOutcome {
   entityType: BatchReferenceEntityType;
   state: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
   submittedReference: unknown;
+  /** The record the reference resolved to, where it resolved to one. */
+  canonicalId: string | null;
   candidates: StoredReferenceCandidate[];
   reason: string | null;
 }
@@ -58,6 +60,7 @@ export function storedOutcomes(value: unknown): StoredReferenceOutcome[] {
         entityType: record.entityType as BatchReferenceEntityType,
         state: record.state as StoredReferenceOutcome['state'],
         submittedReference: record.submittedReference,
+        canonicalId: typeof record.canonicalId === 'string' ? record.canonicalId : null,
         candidates,
         reason: typeof record.reason === 'string' ? record.reason : null,
       });

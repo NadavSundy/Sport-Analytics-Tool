@@ -60,6 +60,75 @@ export function participantKey(participant: FixtureOnboardingParticipant): strin
   return null;
 }
 
+function belongsToFixture(
+  outcomes: readonly { entityType: string; referencePath: string; submittedReference: unknown }[],
+  fixtureReferencePath: string,
+  fixtureSourceId: string,
+): boolean {
+  return outcomes.some((outcome) => {
+    if (outcome.entityType !== 'fixture' || outcome.referencePath !== fixtureReferencePath) {
+      return false;
+    }
+    const submitted = outcome.submittedReference as SubmittedFixtureReference | undefined;
+    return submitted?.sourceId === fixtureSourceId;
+  });
+}
+
+function participantFrom(submitted: SubmittedParticipantReference | undefined) {
+  return {
+    ...(submitted?.sourceId ? { sourceId: submitted.sourceId } : {}),
+    ...(submitted?.context?.name ? { name: submitted.context.name } : {}),
+    ...(submitted?.context?.team?.context?.name
+      ? { teamName: submitted.context.team.context.name }
+      : {}),
+  } satisfies FixtureOnboardingParticipant;
+}
+
+/** One place a participant is named: the item it is on, and the path within it. */
+export interface ParticipantReferenceSite {
+  itemOrdinal: number;
+  referencePath: string;
+}
+
+/**
+ * Every place each participant of this fixture is named, keyed by the same
+ * identity the onboarding task is keyed by.
+ *
+ * Settling a task puts the person in the squad, but that alone does not make
+ * the submission resolve: a participant submitted as a name is matched against
+ * squad display names and retained aliases, and a person created from a
+ * durable identifier carries that identifier as its display name. Without
+ * these paths the reviewer's answer cannot be recorded against the references
+ * it answers, and the deliveries stay unresolved for ever. Issue #708.
+ */
+export function extractParticipantReferenceSites(
+  items: readonly (FixtureOnboardingSourceItem & { ordinal: number })[],
+  fixtureId: string,
+): Map<string, ParticipantReferenceSite[]> {
+  const sitesByKey = new Map<string, ParticipantReferenceSite[]>();
+  for (const item of items) {
+    const outcomes = storedOutcomes(item.resolvedReferences);
+    // Scoped to the fixture the task belongs to. The fixture is canonical by
+    // the time a task can be settled, so its outcome names it.
+    const onThisFixture = outcomes.some(
+      (outcome) => outcome.entityType === 'fixture' && outcome.canonicalId === fixtureId,
+    );
+    if (!onThisFixture) continue;
+    for (const outcome of outcomes) {
+      if (outcome.entityType !== 'participant') continue;
+      const key = participantKey(
+        participantFrom(outcome.submittedReference as SubmittedParticipantReference | undefined),
+      );
+      if (!key) continue;
+      sitesByKey.set(key, [
+        ...(sitesByKey.get(key) ?? []),
+        { itemOrdinal: item.ordinal, referencePath: outcome.referencePath },
+      ]);
+    }
+  }
+  return sitesByKey;
+}
+
 /**
  * A reviewer-approved fixture proposal only carries fixture-level facts
  * (issue #584): the innings and the squad it needs still live, unresolved,
@@ -81,14 +150,7 @@ export function extractFixtureOnboardingContext(
   for (const item of items) {
     const outcomes = storedOutcomes(item.resolvedReferences);
 
-    const belongsToFixture = outcomes.some((outcome) => {
-      if (outcome.entityType !== 'fixture' || outcome.referencePath !== fixtureReferencePath) {
-        return false;
-      }
-      const submitted = outcome.submittedReference as SubmittedFixtureReference | undefined;
-      return submitted?.sourceId === fixtureSourceId;
-    });
-    if (!belongsToFixture) continue;
+    if (!belongsToFixture(outcomes, fixtureReferencePath, fixtureSourceId)) continue;
 
     for (const outcome of outcomes) {
       if (
@@ -105,14 +167,9 @@ export function extractFixtureOnboardingContext(
       }
 
       if (outcome.entityType === 'participant') {
-        const submitted = outcome.submittedReference as SubmittedParticipantReference | undefined;
-        const participant: FixtureOnboardingParticipant = {
-          ...(submitted?.sourceId ? { sourceId: submitted.sourceId } : {}),
-          ...(submitted?.context?.name ? { name: submitted.context.name } : {}),
-          ...(submitted?.context?.team?.context?.name
-            ? { teamName: submitted.context.team.context.name }
-            : {}),
-        };
+        const participant = participantFrom(
+          outcome.submittedReference as SubmittedParticipantReference | undefined,
+        );
         const key = participantKey(participant);
         if (key) participantsByKey.set(key, participant);
       }
