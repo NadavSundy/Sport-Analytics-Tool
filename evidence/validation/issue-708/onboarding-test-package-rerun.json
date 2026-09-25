@@ -1,0 +1,187 @@
+{
+  "contractVersion": "1.1",
+  "packageId": "cricsheet:package:onboarding-test-708-rerun",
+  "competition": { "context": { "name": "ACC Eastern Region T20" } },
+  "season": { "context": { "name": "onboarding-test-2032" } },
+  "fixtures": [
+    {
+      "sourceId": "cricsheet:fixture:onboarding-test-708-fixture-2",
+      "context": {
+        "date": "2032-04-18",
+        "teams": [{ "context": { "name": "Argentina" } }, { "context": { "name": "Austria" } }],
+        "venue": "onboarding-test-Swallowtail-Park"
+      },
+      "proposal": {
+        "endDate": "2032-04-18",
+        "matchType": "T20",
+        "teamType": "club",
+        "gender": "male",
+        "ballsPerOver": 6,
+        "outcome": "won",
+        "sourceVersion": "onboarding-test-1.0",
+        "sourceRevision": 1
+      },
+      "season": { "context": { "name": "onboarding-test-2032" } },
+      "innings": [
+        {
+          "context": {
+            "ordinal": 1,
+            "battingTeam": { "context": { "name": "Argentina" } }
+          },
+          "events": [
+            {
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i1-0.1",
+              "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
+              "ballLabel": "0.1",
+              "striker": {
+                "context": {
+                  "name": "onboarding-test-Priya-Naicker",
+                  "team": { "context": { "name": "Argentina" } }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "onboarding-test-Sipho-Dlamini",
+                  "team": { "context": { "name": "onboarding-test-Unlisted-Wanderers" } }
+                }
+              },
+              "bowler": {
+                "sourceId": "cricsheet:participant:onboarding-test-bowler-1",
+                "context": {
+                  "name": "onboarding-test-Thandi-Mokoena",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "runs": { "offBat": 1, "extras": 0, "total": 1 },
+              "extras": {}
+            },
+            {
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i1-0.2",
+              "occurrenceSequence": 2,
+              "overNumber": 0,
+              "positionInOver": 1,
+              "ballLabel": "0.2",
+              "striker": {
+                "context": {
+                  "name": "onboarding-test-Sipho-Dlamini",
+                  "team": { "context": { "name": "onboarding-test-Unlisted-Wanderers" } }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "onboarding-test-Priya-Naicker",
+                  "team": { "context": { "name": "Argentina" } }
+                }
+              },
+              "bowler": {
+                "sourceId": "cricsheet:participant:onboarding-test-bowler-1",
+                "context": {
+                  "name": "onboarding-test-Thandi-Mokoena",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "runs": { "offBat": 0, "extras": 1, "total": 1 },
+              "extras": { "wides": 1 }
+            },
+            {
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i1-0.3",
+              "occurrenceSequence": 3,
+              "overNumber": 0,
+              "positionInOver": 2,
+              "ballLabel": "0.3",
+              "striker": {
+                "context": {
+                  "name": "onboarding-test-Priya-Naicker",
+                  "team": { "context": { "name": "Argentina" } }
+                }
+              },
+              "nonStriker": {
+                "context": {
+                  "name": "onboarding-test-Sipho-Dlamini",
+                  "team": { "context": { "name": "onboarding-test-Unlisted-Wanderers" } }
+                }
+              },
+              "bowler": {
+                "sourceId": "cricsheet:participant:onboarding-test-bowler-1",
+                "context": {
+                  "name": "onboarding-test-Thandi-Mokoena",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "runs": { "offBat": 4, "extras": 0, "total": 4 },
+              "extras": {}
+            }
+          ]
+        },
+        {
+          "context": {
+            "ordinal": 2,
+            "battingTeam": { "context": { "name": "Austria" } }
+          },
+          "events": [
+            {
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i2-0.1",
+              "occurrenceSequence": 1,
+              "overNumber": 0,
+              "positionInOver": 0,
+              "ballLabel": "0.1",
+              "striker": {
+                "sourceId": "app:participant:2147483647",
+                "context": {
+                  "name": "onboarding-test-Lerato-Khumalo",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "nonStriker": {
+                "sourceId": "cricsheet:participant:onboarding-test-bowler-1",
+                "context": {
+                  "name": "onboarding-test-Thandi-Mokoena",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "bowler": {
+                "context": {
+                  "name": "onboarding-test-Priya-Naicker",
+                  "team": { "context": { "name": "Argentina" } }
+                }
+              },
+              "runs": { "offBat": 2, "extras": 0, "total": 2 },
+              "extras": {}
+            },
+            {
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i2-0.2",
+              "occurrenceSequence": 2,
+              "overNumber": 0,
+              "positionInOver": 1,
+              "ballLabel": "0.2",
+              "striker": {
+                "sourceId": "app:participant:2147483647",
+                "context": {
+                  "name": "onboarding-test-Lerato-Khumalo",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "nonStriker": {
+                "sourceId": "cricsheet:participant:onboarding-test-bowler-1",
+                "context": {
+                  "name": "onboarding-test-Thandi-Mokoena",
+                  "team": { "context": { "name": "Austria" } }
+                }
+              },
+              "bowler": {
+                "context": {
+                  "name": "onboarding-test-Priya-Naicker",
+                  "team": { "context": { "name": "Argentina" } }
+                }
+              },
+              "runs": { "offBat": 0, "extras": 0, "total": 0 },
+              "extras": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

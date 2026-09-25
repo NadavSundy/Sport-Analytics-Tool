@@ -1,20 +1,58 @@
-# Issue #708 deployed acceptance package
+# Issue #708 deployed acceptance packages
 
-`onboarding-test-package.json` is a version `1.1` JSON batch submission package for deployed
-acceptance testing of reviewer participant onboarding. Every record it introduces is fictional and
-prefixed `onboarding-test-`, so the data it creates is identifiable as test data.
+Two version `1.1` JSON batch submission packages for deployed acceptance testing of reviewer
+participant onboarding:
+
+| File                                 | Use                                                                                |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `onboarding-test-package.json`       | The first run, 25 September 2026. Recorded in `deployed-acceptance-2026-09-25.md`. |
+| `onboarding-test-package-rerun.json` | Every run after it.                                                                |
+
+Every record they introduce is fictional and prefixed `onboarding-test-`, so the data they create is
+identifiable as test data.
 
 The two fixture teams are the exception. They are `Argentina` and `Austria`, real canonical teams,
 because a v1.1 package cannot introduce a new one — see
 [Finding](#finding-a-v11-package-cannot-introduce-a-new-team). No database editing is needed at any
 point in this workflow.
 
-## Before you submit: one value to edit
+## Why there are two
 
-### `REPLACE-WITH-SELECTED-COMPETITION-NAME` — edit it in the file, before uploading
+**The first package can only be used once.** Its fixture is identified by the source reference
+`cricsheet:fixture:onboarding-test-708-fixture-1`, and the first run created that fixture as a
+canonical record. Submitting it again resolves to the fixture that already exists rather than
+arriving as a new proposal, so the reviewer is never offered **Create canonical fixture from
+proposal** and the journey this test exists to exercise never starts.
 
-It is **not** chosen in the upload form. The upload form chooses a `competitionId`; the package
-carries a competition _name_, and the two are resolved separately and must agree.
+The re-run package is the same package with a different identity. It is deliberately **identical in
+shape** — same teams, same four participants, same identifier situations, same expected outcomes —
+so a re-run tests the same behaviour rather than a new scenario. Only what identifies the fixture
+differs:
+
+|                     | First                                             | Re-run                             |
+| ------------------- | ------------------------------------------------- | ---------------------------------- |
+| `packageId`         | `cricsheet:package:onboarding-test-708`           | `…-708-rerun`                      |
+| fixture `sourceId`  | `cricsheet:fixture:onboarding-test-708-fixture-1` | `…-fixture-2`                      |
+| date and end date   | `2031-03-14`                                      | `2032-04-18`                       |
+| season              | `onboarding-test-2031`                            | `onboarding-test-2032`             |
+| the five `eventId`s | `…-708-i1-0.1` …                                  | `…-708-r2-i1-0.1` …                |
+| venue               | `onboarding-test-Kingfisher-Oval`                 | `onboarding-test-Swallowtail-Park` |
+
+The date matters as much as the source reference. A fixture reference carries both a source identity
+and readable context, so a new source reference with the old date and the same two teams could still
+resolve to the fixture the first run created.
+
+**A third run needs a third package**, made the same way: change the source reference, the date, the
+season and the five event references, and leave everything else alone.
+
+## Before you submit
+
+### The competition name is already set, for one environment
+
+Both packages carry `ACC Eastern Region T20`, the competition the first run used. **Change it if you
+are running anywhere else**, and note that it is not chosen in the upload form: the form chooses a
+`competitionId`, the package carries a competition _name_, and the two are resolved separately and
+must agree.
 
 `reference-resolver.ts` resolves the package's competition by exact name against the `competition`
 table and emits its own reference outcome:
@@ -53,14 +91,14 @@ Expect it to appear **twice** in the report, for two different reasons: once as 
 reference (teams also resolve by exact name), and once as the participant onboarding task this test
 is about. The first is not a defect.
 
-## What the package contains
+## What each package contains
 
-One fixture, two innings, five deliveries.
+One fixture, two innings, five deliveries. Identical in both, apart from the identity fields
+tabulated above.
 
-The fixture is genuinely new: source reference `cricsheet:fixture:onboarding-test-708-fixture-1`,
-date `2031-03-14`, season `onboarding-test-2031`, venue `onboarding-test-Kingfisher-Oval`. Nothing
-resolves it, so it arrives as a reviewer-actionable fixture proposal carrying the full `1.1`
-proposal metadata.
+The fixture is genuinely new in each: nothing on the platform resolves its source reference, date or
+season, so it arrives as a reviewer-actionable fixture proposal carrying the full `1.1` proposal
+metadata.
 
 Four distinct participants appear across nine role references. The deduplication that issue #708
 asks for means the reviewer should see one decision per participant, not one per reference.
@@ -145,17 +183,21 @@ submitted are `female` and `male`. This package uses `male`, matching the value,
 
 ## How this was validated
 
-The package was parsed with the real `seasonUploadPackageSchema` from
+**Both** packages were parsed with the real `seasonUploadPackageSchema` from
 `packages/contracts/src/season-upload.ts` (built output), the same schema the upload path applies.
-It reports `VALID`, `contractVersion 1.1`, one fixture, two innings, five deliveries. Re-validated
-after the team names were set to `Argentina` and `Austria`, and again after `gender` was changed
-from `mixed` to `male`; the same four participants and the same three onboarding tasks result.
+Each reports `VALID`, `contractVersion 1.1`, one fixture, two innings, five deliveries, and each
+yields the same four participants and the same three onboarding tasks.
+
+The first was re-validated after the team names were set to `Argentina` and `Austria`, and again
+after `gender` was changed from `mixed` to `male`. The re-run package was validated after it was
+derived from the first, and a structural diff of the two confirms that only the six identity fields
+tabulated above differ.
 
 The expected outcome column was then produced by replaying the backend's own classification order
 from `batch.repository.ts` — team first, then durable identifier, then name — over the participant
 references the package carries, using the `participantKey` derivation from `fixture-onboarding.ts`.
 That is a simulation of the deployed behaviour from current source, not a recording of it. The
-deployed run is what this package exists to capture.
+deployed run is what these packages exist to capture.
 
 ## Acceptance checklist
 
