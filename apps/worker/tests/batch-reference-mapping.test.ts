@@ -4,6 +4,7 @@ import {
   finalBatchValidationState,
   isReviewerActionableFixtureResolution,
   prepareItem,
+  reviewerActionableParticipantReferences,
   referenceOverridesForChunk,
 } from '../src/batch-validation-job';
 
@@ -213,5 +214,42 @@ describe('reviewer-actionable batch finalisation (#695)', () => {
         },
       }),
     ).toBe(false);
+  });
+});
+
+describe('reviewer-actionable participant references (#729)', () => {
+  test('stages an unknown submitted participant when its fixture resolves', () => {
+    expect(
+      reviewerActionableParticipantReferences({
+        fixture: {
+          entityType: 'fixture',
+          state: 'resolved',
+          canonicalId: '91',
+        },
+        striker: {
+          referencePath: 'striker',
+          entityType: 'participant',
+          state: 'unresolved',
+          submittedReference: {
+            context: { name: 'New Batter', team: { context: { name: 'Eastern' } } },
+          },
+        },
+        bowler: {
+          referencePath: 'bowler',
+          entityType: 'participant',
+          state: 'invalid',
+          submittedReference: { context: { name: 'Malformed Bowler' } },
+        },
+      }),
+    ).toEqual([
+      {
+        fixtureId: '91',
+        participantKey: 'name:New Batter::Eastern',
+        submittedName: 'New Batter',
+        submittedSourceId: null,
+        submittedTeamName: 'Eastern',
+        reason: 'no_durable_identifier',
+      },
+    ]);
   });
 });
