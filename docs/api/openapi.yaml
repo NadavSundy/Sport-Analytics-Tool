@@ -2665,7 +2665,9 @@ paths:
         was submitted with a complete fixture proposal in a version `1.1` batch package: a source
         identifier, date, season and two teams. The backend records the decision and queues normal
         reference resolution and validation; it does not publish any staged delivery. Teams,
-        participants and seasons must already be canonical records.
+        participants and seasons must already be canonical records. A proposal whose `outcome` is
+        `won` must also name the winning team in `winner`, and it must be one of the proposal's own
+        two teams.
       operationId: createBatchCanonicalFixture
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
@@ -2693,8 +2695,9 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: >-
-            The item does not carry a complete version 1.1 fixture proposal, or the decision
-            conflicts with a prior decision (`BATCH_CANONICAL_FIXTURE_CONFLICT`).
+            The item does not carry a complete version 1.1 fixture proposal, the proposed winner is
+            not one of the fixture's two teams, or the decision conflicts with a prior decision
+            (`BATCH_CANONICAL_FIXTURE_CONFLICT`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '413':
