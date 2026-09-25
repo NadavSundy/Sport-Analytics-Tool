@@ -7,7 +7,7 @@ import { useAuth } from './AuthProvider';
 import { useAuthenticatedApiClient } from './useAuthenticatedApiClient';
 import { getCurrentUserProfile } from './current-user-api';
 import { safeInternalReturnPath } from './auth-return';
-import { Breadcrumbs, LocalNavigation } from '../../components/NavigationPrimitives';
+import { LocalNavigation } from '../../components/NavigationPrimitives';
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
 
 type OAuthCallbackError = 'cancelled' | 'provider-error';
@@ -415,7 +415,6 @@ export function AccountPage() {
       className="auth-page account-page content-boundary"
       aria-labelledby="account-page-title"
     >
-      <Breadcrumbs items={[{ label: 'Account', to: `/account/${activeSection}` }]} />
       <div className="auth-card">
         <p className="eyebrow">Identity and access</p>
         <h1 id="account-page-title">Account</h1>

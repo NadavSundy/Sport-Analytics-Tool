@@ -275,6 +275,7 @@ describe('public application and authentication interface', () => {
     renderApp('/auth/callback', createSession());
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
       'href',
