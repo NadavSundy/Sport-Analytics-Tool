@@ -1033,6 +1033,12 @@ async function onboardFixtureCanonicalContext(
   teamIdByName: Map<string, string>,
   innings: FixtureOnboardingInnings[],
   participants: FixtureOnboardingParticipant[],
+  /**
+   * The reviewer whose canonical fixture decision caused this. An onboarded
+   * task must name them: the state constraint requires it, and provenance for
+   * a created squad membership is the point of the row.
+   */
+  actorId: string,
 ): Promise<FixtureOnboardingSummary> {
   let inningsCreated = 0;
   if (innings.length > 0) {
@@ -1104,6 +1110,9 @@ async function onboardFixtureCanonicalContext(
          state='outstanding',
          person_id=NULL,
          onboarded_at=NULL,
+         -- Cleared with the rest of the settled fields, so the row cannot land
+         -- outstanding while still naming a decider.
+         decided_by=NULL,
          last_reported_at=now()
        -- A settled task is a reviewer decision, and re-deriving the work must
        -- not undo one. Without this the row was reset to outstanding with its
@@ -1134,9 +1143,14 @@ async function onboardFixtureCanonicalContext(
     await executeQuery(
       executor,
       `UPDATE batch_participant_onboarding_task
-       SET state='onboarded', person_id=$4::bigint, onboarded_at=now(), last_reported_at=now()
+       SET state='onboarded', person_id=$4::bigint, onboarded_at=now(),
+           -- Required by batch_participant_onboarding_task_state_ck: an
+           -- onboarded task names the reviewer who decided it as well as the
+           -- person it became. Omitting it raised a check violation, which
+           -- reaches the endpoint as a 500.
+           decided_by=$5::bigint, last_reported_at=now()
        WHERE batch_id=$1::bigint AND fixture_id=$2::bigint AND participant_key=$3`,
-      [batchId, fixtureId, key, personId],
+      [batchId, fixtureId, key, personId, actorId],
     );
   };
 
@@ -2569,6 +2583,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         teamIdByName,
         input.innings ?? [],
         input.participants ?? [],
+        input.actorId,
       );
       await executeQuery(
         executor,
