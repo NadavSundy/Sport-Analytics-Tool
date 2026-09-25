@@ -1096,7 +1096,13 @@ async function onboardFixtureCanonicalContext(
          state='outstanding',
          person_id=NULL,
          onboarded_at=NULL,
-         last_reported_at=now()`,
+         last_reported_at=now()
+       -- A settled task is a reviewer decision, and re-deriving the work must
+       -- not undo one. Without this the row was reset to outstanding with its
+       -- person_id wiped, so a decision already applied came back as work to
+       -- do while the squad row it created stayed. Issue #708, found in
+       -- deployed acceptance testing.
+       WHERE batch_participant_onboarding_task.state <> 'onboarded'`,
       [
         batchId,
         fixtureId,

@@ -3530,6 +3530,136 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('a settled onboarding task stays settled when the work is derived again (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Settled Batting`;
+      const bowlingTeamName = `${sourcePrefix} Settled Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-settled`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      const sourceRef = `${sourcePrefix}-settled-fixture`;
+      // A participant with no durable identifier, so it is reported rather than
+      // onboarded and a reviewer has to settle it.
+      const participants = [{ name: `${sourcePrefix} Settled Player`, teamName: battingTeamName }];
+      const input = {
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        sourceRef,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [battingTeamName, bowlingTeamName],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'male',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+        innings: [{ ordinal: 0, battingTeamName }],
+        participants,
+      };
+
+      await repository.createCanonicalFixtureAndQueueMapping({
+        ...input,
+        decisionKey: 'settled-1',
+      });
+
+      const outstanding = await client.query<{ taskReference: string }>(
+        `SELECT task_reference::text AS "taskReference"
+         FROM batch_participant_onboarding_task
+         WHERE batch_id=$1::bigint AND state='outstanding'`,
+        [batch.batchId],
+      );
+      expect(outstanding.rows).toHaveLength(1);
+
+      // The decision queued revalidation, so stand the batch back up the way
+      // the worker would when that pass finishes.
+      await client.query(`UPDATE batch SET state='awaiting_review' WHERE batch_id=$1`, [
+        batch.batchId,
+      ]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      await repository.applyParticipantOnboardingDecisions({
+        batchId: batch.batchId,
+        actorId: current.accountId,
+        decisionKey: 'settle-it',
+        decisions: [
+          {
+            taskReference: outstanding.rows[0]!.taskReference,
+            sourceId: `cricsheet:participant:${sourcePrefix}-settled-player`,
+          },
+        ],
+      });
+
+      const settled = await client.query<{ state: string; personId: string | null }>(
+        `SELECT state, person_id::text AS "personId"
+         FROM batch_participant_onboarding_task WHERE batch_id=$1::bigint`,
+        [batch.batchId],
+      );
+      expect(settled.rows[0]!.state).toBe('onboarded');
+      const personId = settled.rows[0]!.personId;
+      expect(personId).not.toBeNull();
+
+      // Deriving the work again must not undo a decision already made. The
+      // upsert used to reset every row it touched to outstanding and wipe its
+      // person_id, so settled work came back as work to do while the squad row
+      // it created stayed behind. Issue #708, found in deployed acceptance
+      // testing.
+      await client.query(`UPDATE batch SET state='awaiting_review' WHERE batch_id=$1`, [
+        batch.batchId,
+      ]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+      await repository.createCanonicalFixtureAndQueueMapping({
+        ...input,
+        // The same key: this is a replay of the one decision, which the
+        // repository supports and which runs the onboarding derivation again.
+        decisionKey: 'settled-1',
+      });
+
+      const afterRederivation = await client.query<{ state: string; personId: string | null }>(
+        `SELECT state, person_id::text AS "personId"
+         FROM batch_participant_onboarding_task WHERE batch_id=$1::bigint`,
+        [batch.batchId],
+      );
+      expect(afterRederivation.rows).toHaveLength(1);
+      expect(afterRederivation.rows[0]!.state).toBe('onboarded');
+      expect(afterRederivation.rows[0]!.personId).toBe(personId);
+
+      // And the reviewer is not shown it again.
+      const listed = await repository.listParticipantOnboardingTasks(batch.batchId);
+      expect(listed).toHaveLength(0);
+    });
+  });
+
   test('a second decision onboards participants the first could not (issue #708)', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
