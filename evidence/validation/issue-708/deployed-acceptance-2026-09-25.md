@@ -225,15 +225,126 @@ is defect B again, through a path that did not exist when defect B was first fix
 then was on the backend's derivation, and this is a different statement in a different service. It
 now carries the same guard.
 
+## Local end-to-end run, 25 September 2026
+
+The deployed environment could not be re-verified: its Container App carries one revision, predating
+every fix above. The workflow was therefore driven locally against a real PostgreSQL, through the
+real service, repository and worker job handlers, by
+`apps/backend/tests/database/issue-708-onboarding-end-to-end.database.test.ts` and using
+`onboarding-test-package-run-3.json` unaltered. Every stage of the acceptance checklist that does
+not need a browser now passes. What it found is below.
+
+### Defect C's diagnosis above is wrong
+
+The 500s are reproduced exactly — `POST /api/v1/batches/{ref}/canonical-fixtures`, 23514, "The
+database rejected invalid data.", the whole transaction rolled back. But the constraint is
+`fixture_winner_ck`, not the onboarding task state constraint:
+
+```
+new row for relation "fixture" violates check constraint "fixture_winner_ck"
+Failing row contains (1, onboarding-test-708-fixture-3, ..., won, null, ...)
+```
+
+`fixture_winner_ck` is `CHECK ((outcome = 'won') = (winner_id IS NOT NULL))`. The proposal contract
+accepted `outcome: 'won'`, carried no winner, and the canonical fixture INSERT wrote no `winner_id`,
+so **every** v1.1 proposal declaring the commonest outcome in the sport was refused by the database.
+No test had ever created a canonical fixture with `outcome: 'won'` — every one of them used `tie`
+or `no result` — which is how it reached deployment.
+
+This happens at the fixture INSERT, before `onboardFixtureCanonicalContext` runs at all, so on this
+path `recordOnboarded` is never reached. That also **closes the open question** recorded above: no
+task row had to exist, because the transaction never got as far as writing or matching one.
+
+The `decided_by` fix committed as 81f52ea stands on its own merits — that UPDATE must satisfy the
+constraint whenever it matches — but it was not what stopped the re-run.
+
+### Defect D — a v1.1 proposal could not declare a winner
+
+The cause above, stated as its own defect. `fixtureProposalSchema` now carries `winner`, required
+when the outcome is `won` and refused otherwise, mirroring `fixture_winner_ck`; the canonical
+fixture INSERT resolves it against the proposal's own two teams and writes `winner_id`. A package
+naming a winner that is not one of them is refused with a `409` rather than a `500`.
+
+### Defect E — the reviewer was shown the wrong reason, which is what made Defect A unsettleable
+
+`onboarding-test-Sipho-Dlamini` was classified `no_durable_identifier` instead of
+`team_not_recognised` — the misclassification recorded above as "the cause is not established". It
+is established now.
+
+Two writers create these task rows and they disagreed. The backend derivation checks the submitted
+team against the fixture's own two. #729's worker writer read
+`teamName ? ... : 'team_not_recognised'` — a team counted as recognised whenever one was named at
+all — so a participant naming a team that is not one of the fixture's two was recorded as
+`no_durable_identifier`. Its upsert overwrites `reason` for any outstanding task, so the wrong
+answer replaced the right one on the first revalidation.
+
+This is also the whole of Defect A's symptom. The interface offers the team control only for a
+`team_not_recognised` task; the card said `no_durable_identifier`; so the one task that needed a
+team was the one task that could not be given one. They were recorded above as separate findings
+with an unexplained middle. They are one bug.
+
+The worker now settles the reason against the database by the backend's rule — team first, then
+identifier, then candidate count — and can report `ambiguous_name`, which it previously could not
+express at all.
+
+### Defect F — a settled decision left the batch unapprovable
+
+Found past the point the deployed run reached. All three tasks settle, the squad rows appear, the
+tasks stay settled — and every participant reference stays unresolved, so no item becomes
+acceptable and approval is refused with a `409`. The onboarding work completes and achieves nothing.
+
+A person created from a durable identifier carried that identifier as its display name, so the
+submitted name matched neither a squad display name nor an alias. The reference therefore offered no
+candidate, and `applyOverride` honours a mapping only for a candidate the resolver itself offered —
+so the reference mapping the decision writes, the mechanism its own code comment relies on, was
+rejected as "no longer available in the batch context" on every revalidation.
+
+Two changes, because there were two halves:
+
+- the decision now retains the submitted name as a `person_alias` of the person the reviewer named,
+  which is the literal content of the decision and what that table is for; and
+- `applyOverride` accepts a participant mapping onto a member of the resolved fixture's own squad
+  even where no candidate was offered. A task exists precisely because the resolver could offer
+  nothing — an identifier naming nobody offers no candidate — so without this a decision settling
+  one could never be applied. It is not a widening of matching: the person is in that squad because
+  a reviewer put them there by the decision the mapping records.
+
+### Defect G — a registry key was published as a player's name
+
+The decision path created people with `display_name` set to the identifier value, while the
+derivation path for the same situation uses the submitted name. The public fixture page therefore
+listed `onboarding-test-priya-1` as a player, which is what step 9 above observed without comment.
+The decision path now matches the derivation path; an existing person keeps its own name.
+
+### Two defects in the packages themselves
+
+Found by the same run, and corrected in all three packages:
+
+- `outcome: "won"` with no `winner` — the packages could not have created a canonical fixture on
+  any environment; and
+- the third delivery labelled `0.3` when the second is a wide. A printed ball number counts legal
+  deliveries, so the label does not advance across a wide. `BALL_NUMBER_PROGRESSION_INVALID`
+  rejected that delivery at publication, which the deployed run never reached.
+
 ## Status
 
-Issue #708 is **not** closed by this run. Three defects are now recorded against it, all fixed but
-none re-verified on a deployed environment:
+Issue #708 is **not** closed. Seven defects are now recorded against it:
 
-- **A**, a task the interface could not settle;
-- **B**, settled tasks that did not stay settled — fixed twice, once in the backend derivation and
-  again in the worker writer #729 added; and
-- **C**, the canonical fixture path returning 500 on a constraint violation, which stopped the
-  re-run before it began.
+| Defect | What                                                             | Fixed | Verified                          |
+| ------ | ---------------------------------------------------------------- | ----- | --------------------------------- |
+| A      | A task the interface could not settle                            | Yes   | Contract boundary only; see below |
+| B      | Settled tasks did not stay settled — fixed twice                 | Yes   | Local end-to-end                  |
+| C      | Canonical fixture path returned 500 on a constraint violation    | Yes   | Local end-to-end                  |
+| D      | A v1.1 proposal could not declare a winner — the real cause of C | Yes   | Local end-to-end                  |
+| E      | Two writers classified a task differently; the wrong one won     | Yes   | Local end-to-end                  |
+| F      | A settled decision left the batch unapprovable                   | Yes   | Local end-to-end                  |
+| G      | A registry key published as a player's name                      | Yes   | Local end-to-end                  |
 
-A further deployed run is needed, and the open question above about the task row remains.
+**A is the exception.** Its fix was in the reviewer interface, and the local run drives the API, not
+a browser. What is verified is that the endpoint accepts a decision carrying both an identity and a
+team for a task whose reason is not `team_not_recognised` — what the interface has to be able to
+send. That the card now renders the control still needs a browser. Defect E removes the condition
+that triggered A in the first place.
+
+A deployed run is still needed, and still blocked on the Container App. The open question recorded
+above is closed.

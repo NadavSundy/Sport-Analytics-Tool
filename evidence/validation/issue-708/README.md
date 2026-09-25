@@ -109,6 +109,17 @@ The fixture is genuinely new in each: nothing on the platform resolves its sourc
 season, so it arrives as a reviewer-actionable fixture proposal carrying the full `1.1` proposal
 metadata.
 
+The proposal's outcome is `won`, and it names `Argentina` as the `winner` — the team the deliveries
+themselves put ahead. Both are needed: `fixture_winner_ck` requires a winner exactly when the
+outcome is `won`, so a proposal that says `won` without saying by whom cannot become a canonical
+fixture. See [the local end-to-end run](#how-this-was-validated); a package written before the
+`winner` field existed is now refused at upload rather than accepted and failed at the reviewer's
+click.
+
+The two innings run 1, wide, 4 and then 2, 0. The wide is the third delivery's reason for being
+labelled `0.2` and not `0.3`: a printed ball number counts legal deliveries, so an illegal one does
+not advance it.
+
 Four distinct participants appear across nine role references. The deduplication that issue #708
 asks for means the reviewer should see one decision per participant, not one per reference.
 
@@ -203,11 +214,20 @@ derived from the one before it, and a structural diff against that predecessor c
 the identity fields tabulated above differ — six for the second, five for the third, which keeps the
 venue.
 
-The expected outcome column was then produced by replaying the backend's own classification order
-from `batch.repository.ts` — team first, then durable identifier, then name — over the participant
-references the package carries, using the `participantKey` derivation from `fixture-onboarding.ts`.
-That is a simulation of the deployed behaviour from current source, not a recording of it. The
-deployed run is what these packages exist to capture.
+The expected outcome column is no longer a simulation. `onboarding-test-package-run-3.json` is
+driven through the whole workflow against a real PostgreSQL by
+`apps/backend/tests/database/issue-708-onboarding-end-to-end.database.test.ts`, which submits the
+file as it stands, runs the real service, repository and worker job handlers, and asserts stages 1,
+2, 4, 5, 9, 10 and 11 of the checklist below. Run it with `npm run test:database`.
+
+That run is what corrected both packages: the `winner` field and the `0.2` ball label are defects it
+found in the packages themselves. It found four more in the product, and corrected the diagnosis of
+a fifth, recorded in
+[the local end-to-end section of the deployed acceptance note](deployed-acceptance-2026-09-25.md#local-end-to-end-run-25-september-2026).
+
+It is not a substitute for a deployed run. It does not exercise the reviewer interface, the queue
+transport, or the deployed environment's own data, and Defect A was an interface defect. The
+deployed run is still what these packages exist to capture.
 
 ## Acceptance checklist
 

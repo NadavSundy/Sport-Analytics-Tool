@@ -250,9 +250,34 @@ describe('reviewer-actionable participant references (#729)', () => {
         submittedName: 'New Batter',
         submittedSourceId: null,
         submittedTeamName: 'Eastern',
-        reason: 'no_durable_identifier',
       },
     ]);
+  });
+
+  /*
+   * Which decision a reviewer has to make is not decided here. It depends on
+   * the fixture's own two teams and on how many people answer to the submitted
+   * name, neither of which is in the resolved references. Deciding it from the
+   * reference alone is how this writer came to disagree with the backend
+   * derivation, reporting a participant whose team is not one of the fixture's
+   * two as `no_durable_identifier`. Issue #708.
+   */
+  test('does not decide the reason from the reference alone', () => {
+    const [staged] = reviewerActionableParticipantReferences({
+      fixture: { entityType: 'fixture', state: 'resolved', canonicalId: '91' },
+      striker: {
+        referencePath: 'striker',
+        entityType: 'participant',
+        state: 'unresolved',
+        submittedReference: {
+          context: { name: 'New Batter', team: { context: { name: 'Not In This Fixture' } } },
+        },
+      },
+    });
+
+    expect(staged).toBeDefined();
+    expect(staged).not.toHaveProperty('reason');
+    expect(staged!.submittedTeamName).toBe('Not In This Fixture');
   });
 });
 
@@ -311,5 +336,103 @@ describe('persistReviewerActionableOnboardingTasks', () => {
     await persistReviewerActionableOnboardingTasks(client, '7', []);
 
     expect(client.query).not.toHaveBeenCalled();
+  });
+
+  /*
+   * The reason is settled here, against the fixture's own two teams, by the
+   * same rule `onboardFixtureCanonicalContext` applies in the backend. This
+   * used to read "a team was named, so the team is recognised", so a
+   * participant naming a team that is not one of the fixture's two was written
+   * as `no_durable_identifier` — and because the upsert overwrites `reason` for
+   * an outstanding task, that replaced the backend's correct answer on the
+   * first revalidation. Issue #708.
+   */
+  describe('classifies against the fixture, not the reference alone', () => {
+    function classifyingClient(candidateRows: Array<Record<string, string>> = []) {
+      const written: unknown[] = [];
+      const client = {
+        query: vi.fn((text: string, values?: unknown[]) => {
+          if (text.includes('FROM fixture_team')) {
+            return Promise.resolve({
+              rows: [
+                { fixtureId: '22', name: 'Lions' },
+                { fixtureId: '22', name: 'Tigers' },
+              ],
+              rowCount: 2,
+            });
+          }
+          if (text.includes('FROM unnest')) {
+            return Promise.resolve({ rows: candidateRows, rowCount: candidateRows.length });
+          }
+          if (text.includes('INSERT INTO batch_participant_onboarding_task')) {
+            written.push(JSON.parse(String(values?.[1])));
+          }
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        }),
+      } as unknown as Pick<PoolClient, 'query'>;
+      return { client, reasons: () => (written[0] as Array<{ reason: string }>) ?? [] };
+    }
+
+    const staged = (overrides: Record<string, unknown>) => ({
+      fixtureId: '22',
+      participantKey: 'key',
+      submittedName: 'A Player',
+      submittedSourceId: null,
+      submittedTeamName: 'Lions',
+      ...overrides,
+    });
+
+    test('a team outside the fixture is team_not_recognised, not a missing identifier', async () => {
+      const { client, reasons } = classifyingClient();
+
+      await persistReviewerActionableOnboardingTasks(client, '7', [
+        staged({ submittedTeamName: 'Not In This Fixture' }),
+      ]);
+
+      expect(reasons()[0]!.reason).toBe('team_not_recognised');
+    });
+
+    test('no team named at all is team_not_recognised', async () => {
+      const { client, reasons } = classifyingClient();
+
+      await persistReviewerActionableOnboardingTasks(client, '7', [
+        staged({ submittedTeamName: null }),
+      ]);
+
+      expect(reasons()[0]!.reason).toBe('team_not_recognised');
+    });
+
+    test('an identifier that resolved to nobody is identifier_not_found', async () => {
+      const { client, reasons } = classifyingClient();
+
+      await persistReviewerActionableOnboardingTasks(client, '7', [
+        staged({ submittedSourceId: 'app:participant:2147483647' }),
+      ]);
+
+      expect(reasons()[0]!.reason).toBe('identifier_not_found');
+    });
+
+    test('one person answering to the name is no_durable_identifier', async () => {
+      const { client, reasons } = classifyingClient([
+        { submittedName: 'A Player', personId: '1', displayName: 'A Player' },
+      ]);
+
+      await persistReviewerActionableOnboardingTasks(client, '7', [staged({})]);
+
+      expect(reasons()[0]!.reason).toBe('no_durable_identifier');
+    });
+
+    test('more than one person answering to the name is ambiguous_name', async () => {
+      const { client, reasons } = classifyingClient([
+        { submittedName: 'A Player', personId: '1', displayName: 'A Player' },
+        { submittedName: 'A Player', personId: '2', displayName: 'A Player' },
+      ]);
+
+      await persistReviewerActionableOnboardingTasks(client, '7', [staged({})]);
+
+      // Choosing between two people is a different decision from supplying an
+      // identifier, and this writer could not report it at all before.
+      expect(reasons()[0]!.reason).toBe('ambiguous_name');
+    });
   });
 });

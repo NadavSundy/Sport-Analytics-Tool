@@ -120,15 +120,25 @@ export function finalBatchValidationState(
 }
 
 type ParticipantOnboardingReason =
-  'team_not_recognised' | 'no_durable_identifier' | 'identifier_not_found';
+  'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
 
+/**
+ * What a validation pass observed about a participant it could not resolve.
+ *
+ * It deliberately carries no `reason`. Which decision a reviewer has to make
+ * depends on the fixture's own two teams and on how many existing people
+ * answer to the submitted name, neither of which is in the resolved references
+ * this is read from. Deciding it from the reference alone is how this writer
+ * came to disagree with the backend's derivation; the reason is settled in
+ * `persistReviewerActionableOnboardingTasks`, against the database, by the
+ * same rule.
+ */
 interface ReviewerActionableParticipantReference {
   fixtureId: string;
   participantKey: string;
   submittedName: string;
   submittedSourceId: string | null;
   submittedTeamName: string | null;
-  reason: ParticipantOnboardingReason;
 }
 
 /**
@@ -174,6 +184,54 @@ export async function persistReviewerActionableOnboardingTasks(
       }
       candidatesByName.set(candidate.submittedName, matches);
     }
+
+    /*
+     * Issue #708. Which team a participant belongs to is checked against the
+     * two teams of its own fixture, exactly as `onboardFixtureCanonicalContext`
+     * checks it in the backend.
+     *
+     * This used to read `teamName ? ... : 'team_not_recognised'` — a team was
+     * "recognised" whenever one was named at all. A participant naming a team
+     * that is not one of the fixture's two was therefore reported as
+     * `no_durable_identifier`, and because the upsert below overwrites `reason`
+     * for any outstanding task, that wrong answer replaced the backend's right
+     * one on the first revalidation. The reviewer was then shown a reason that
+     * did not match the decision the backend would demand, and the interface,
+     * which offers a team control only for `team_not_recognised`, gave them no
+     * way to supply the team the decision was refused for.
+     */
+    const fixtureIds = [...new Set(onboarding.map((task) => task.fixtureId))];
+    const fixtureTeams = await client.query<{ fixtureId: string; name: string }>(
+      `SELECT ft.fixture_id::text AS "fixtureId", t.name
+         FROM fixture_team ft
+         JOIN team t ON t.team_id = ft.team_id
+        WHERE ft.fixture_id = ANY($1::bigint[])`,
+      [fixtureIds],
+    );
+    const teamNamesByFixture = new Map<string, Set<string>>();
+    for (const row of fixtureTeams.rows) {
+      const names = teamNamesByFixture.get(row.fixtureId) ?? new Set<string>();
+      names.add(row.name);
+      teamNamesByFixture.set(row.fixtureId, names);
+    }
+
+    const reasonFor = (
+      task: ReviewerActionableParticipantReference,
+    ): ParticipantOnboardingReason => {
+      const teams = teamNamesByFixture.get(task.fixtureId);
+      if (!task.submittedTeamName || !teams?.has(task.submittedTeamName)) {
+        return 'team_not_recognised';
+      }
+      // An identifier was submitted and the reference still did not resolve, so
+      // it names nobody this platform holds.
+      if (task.submittedSourceId) return 'identifier_not_found';
+      // More than one person answering to the name is a different decision from
+      // none or one: the reviewer chooses between them rather than supplying an
+      // identifier.
+      return (candidatesByName.get(task.submittedName)?.length ?? 0) > 1
+        ? 'ambiguous_name'
+        : 'no_durable_identifier';
+    };
     await client.query(
       `INSERT INTO batch_participant_onboarding_task (
          batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
@@ -210,6 +268,7 @@ export async function persistReviewerActionableOnboardingTasks(
         JSON.stringify(
           onboarding.map((task) => ({
             ...task,
+            reason: reasonFor(task),
             candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
           })),
         ),
@@ -267,11 +326,6 @@ export function reviewerActionableParticipantReferences(
         submittedName,
         submittedSourceId: sourceId,
         submittedTeamName: teamName,
-        reason: teamName
-          ? sourceId
-            ? 'identifier_not_found'
-            : 'no_durable_identifier'
-          : 'team_not_recognised',
       },
     ];
   });

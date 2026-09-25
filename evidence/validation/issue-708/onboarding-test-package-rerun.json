@@ -18,6 +18,7 @@
         "gender": "male",
         "ballsPerOver": 6,
         "outcome": "won",
+        "winner": "Argentina",
         "sourceVersion": "onboarding-test-1.0",
         "sourceRevision": 1
       },
@@ -90,7 +91,7 @@
               "occurrenceSequence": 3,
               "overNumber": 0,
               "positionInOver": 2,
-              "ballLabel": "0.3",
+              "ballLabel": "0.2",
               "striker": {
                 "context": {
                   "name": "onboarding-test-Priya-Naicker",

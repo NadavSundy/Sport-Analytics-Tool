@@ -2526,10 +2526,26 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             'Both proposed fixture teams must already be canonical records.',
           );
         const proposal = input.proposal;
+        /*
+         * Issue #708. `fixture_winner_ck` requires a winner exactly when the
+         * outcome is `won`, and this INSERT used to write neither, so every
+         * proposal carrying the commonest outcome of all raised a check
+         * violation that reached the reviewer as a 500. The contract now
+         * requires the winner alongside the outcome; it is resolved here
+         * against the fixture's own two teams, so this can neither introduce a
+         * team nor name one from outside the fixture.
+         */
+        const winnerId =
+          proposal.outcome === 'won' ? teamIdByName.get(proposal.winner ?? '') : undefined;
+        if (proposal.outcome === 'won' && !winnerId) {
+          throw new BatchReferenceMappingConflictError(
+            'The proposed winner must be one of the two teams of the fixture it won.',
+          );
+        }
         const inserted = await executeQuery<{ fixtureId: string }>(
           executor,
-          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,source_version,source_revision)
-           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11,$12::int)
+          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,winner_id,source_version,source_revision)
+           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11::bigint,$12,$13::int)
            ON CONFLICT (source_ref) DO NOTHING RETURNING fixture_id::text AS "fixtureId"`,
           [
             input.sourceRef,
@@ -2542,6 +2558,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             input.startDate,
             proposal.endDate,
             proposal.outcome,
+            winnerId ?? null,
             proposal.sourceVersion,
             proposal.sourceRevision,
           ],
@@ -2781,11 +2798,18 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             // onboarding performs for a participant that arrived carrying one.
             const upserted = await executeQuery<{ personId: string }>(
               executor,
+              // The submitted name as the display name, exactly as the
+              // derivation above does it for a participant that arrived with an
+              // identifier. Writing the identifier instead left the registry
+              // key standing as the player's name on the public fixture page,
+              // and made two paths that create the same person from the same
+              // kind of identifier disagree. An existing person keeps its own
+              // name: ON CONFLICT DO NOTHING.
               `INSERT INTO person (source_ref, display_name)
-               VALUES ($1, $1)
+               VALUES ($1, COALESCE($2, $1))
                ON CONFLICT (source_ref) DO NOTHING
                RETURNING person_id::text AS "personId"`,
-              [value],
+              [value, task.submittedName],
             );
             personId =
               upserted.rows[0]?.personId ??
@@ -2838,6 +2862,29 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
            VALUES ($1::bigint, $2::bigint, $3::bigint)
            ON CONFLICT (fixture_id, person_id) DO NOTHING`,
           [entry.fixtureId, entry.personId, entry.teamId],
+        );
+        /*
+         * Issue #708. The name the submission used, retained against the person
+         * the reviewer says it denotes — which is the literal content of the
+         * decision, and what `person_alias` is for: "every name ever observed
+         * for a person".
+         *
+         * Without it the decision settled the task and still left the batch
+         * unapprovable. A person created from a durable identifier carries that
+         * identifier as its display name, so the submitted name matched neither
+         * a squad display name nor an alias; the reference therefore offered no
+         * candidate, and `applyOverride` only honours a mapping whose candidate
+         * the resolver itself offered. The reference mapping written below —
+         * the mechanism the comment there relies on — was rejected as "no
+         * longer available in the batch context" on every revalidation, so the
+         * deliveries stayed unresolved however many tasks were settled.
+         */
+        await executeQuery(
+          executor,
+          `INSERT INTO person_alias (person_id, name)
+           VALUES ($1::bigint, $2)
+           ON CONFLICT (person_id, name) DO NOTHING`,
+          [entry.personId, entry.submittedName],
         );
         await executeQuery(
           executor,
