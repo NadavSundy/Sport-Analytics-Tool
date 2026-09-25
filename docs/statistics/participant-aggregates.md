@@ -283,6 +283,14 @@ and verifies scope isolation, qualifications, tie-breaking and a corrected curre
 }
 ```
 
+### Public frontend
+
+Competition and season detail pages show the server-ranked top five run scorers and wicket takers
+for their exact scope. Each table is requested independently from the bounded leaderboard endpoint,
+so an unavailable or empty batting ranking does not hide a valid bowling ranking, and vice versa.
+The interface links each entry to the participant record and states that rankings use accepted
+standard-innings events, exclude super overs and are not reconstructed in the browser.
+
 ## Performance
 
 Issue #105 measured the fixture statistics endpoints at roughly 2,400 ms, from about thirteen
@@ -386,5 +394,7 @@ The issue #632 appearance, batting, bowling and fielding aggregate rules and exa
 with the assistance of Codex[GPT-5].
 The issue #635 leaderboard API, qualification rules and performance documentation were implemented
 with the assistance of Codex[GPT-5].
+The issue #582 public season and competition leaderboard presentation was documented with the
+assistance of Codex[GPT-5].
 The issue #592 correction dependency participant set was corrected, and participant statistics data
 versions and stored aggregates documented, with the assistance of Claude-Code[Claude Opus 5].

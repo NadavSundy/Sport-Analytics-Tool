@@ -21,6 +21,26 @@ function collection(data: unknown[], nextCursor: string | null = null, totalPage
   return response(200, { data, pagination: { nextCursor, totalPages } });
 }
 
+function leaderboard(
+  scope: { competitionId: string; competitionName: string; seasonId?: string; season?: string },
+  metric: 'most_runs' | 'most_wickets',
+  entries: Array<{ rank: number; participantId: string; participantName: string; value: number }>,
+) {
+  return response(200, {
+    data: {
+      scope: scope.seasonId ? 'season' : 'competition',
+      competitionId: scope.competitionId,
+      competitionName: scope.competitionName,
+      ...(scope.seasonId ? { seasonId: scope.seasonId, season: scope.season } : {}),
+      metric,
+      limit: 5,
+      qualification: null,
+      tieBreakers: ['metricValue', 'participantName', 'participantId'],
+      entries,
+    },
+  });
+}
+
 function playerMatch(
   fixtureId: string,
   options: {
@@ -982,6 +1002,26 @@ describe('public browsing pages', () => {
         if (url.pathname.endsWith('/fixtures')) {
           return Promise.resolve(collection([fixture]));
         }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          const metric = url.searchParams.get('metric') as 'most_runs' | 'most_wickets';
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+              },
+              metric,
+              [
+                {
+                  rank: 1,
+                  participantId: metric === 'most_runs' ? 'batter-1' : 'bowler-1',
+                  participantName: metric === 'most_runs' ? 'Leading Batter' : 'Leading Bowler',
+                  value: metric === 'most_runs' ? 312 : 9,
+                },
+              ],
+            ),
+          );
+        }
         return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
       }),
     );
@@ -1006,10 +1046,25 @@ describe('public browsing pages', () => {
       'href',
       '/competitors/team-1',
     );
+    expect(await screen.findByRole('link', { name: 'Leading Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
+    expect(screen.getByRole('link', { name: 'Leading Bowler' })).toHaveAttribute(
+      'href',
+      '/participants/bowler-1',
+    );
     expect(document.querySelector('main')).not.toHaveTextContent('competition-1');
     expect(document.querySelector('main')).not.toHaveTextContent(/competitor|participant/i);
     expect(
       requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=10')),
+    ).toBe(true);
+    expect(
+      requestedUrls.some((url) =>
+        url.includes(
+          '/statistics/leaderboards?scope=competition&metric=most_runs&limit=5&competitionId=competition-1',
+        ),
+      ),
     ).toBe(true);
   });
 
@@ -1051,6 +1106,28 @@ describe('public browsing pages', () => {
             }),
           );
         }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          const metric = url.searchParams.get('metric') as 'most_runs' | 'most_wickets';
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                seasonId: 'season-1',
+                season: '2026 season',
+              },
+              metric,
+              [
+                {
+                  rank: 1,
+                  participantId: metric === 'most_runs' ? 'batter-1' : 'bowler-1',
+                  participantName: metric === 'most_runs' ? 'Season Batter' : 'Season Bowler',
+                  value: metric === 'most_runs' ? 200 : 7,
+                },
+              ],
+            ),
+          );
+        }
         if (url.pathname.endsWith('/fixtures')) {
           return Promise.resolve(collection([fixture]));
         }
@@ -1062,7 +1139,11 @@ describe('public browsing pages', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: '2026 season' })).toBeVisible();
     const relatedHeadings = screen.getAllByRole('heading', { level: 2 });
-    expect(relatedHeadings.map((heading) => heading.textContent)).toEqual(['Fixtures', 'Teams']);
+    expect(relatedHeadings.map((heading) => heading.textContent)).toEqual([
+      'Season leaders',
+      'Fixtures',
+      'Teams',
+    ]);
     expect(screen.getByRole('link', { name: 'Premier Cricket League' })).toHaveAttribute(
       'href',
       '/competitions/competition-1',
@@ -1075,7 +1156,92 @@ describe('public browsing pages', () => {
       'href',
       '/competitors/team-1',
     );
+    expect(await screen.findByRole('link', { name: 'Season Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
     expect(document.querySelector('main')).not.toHaveTextContent('season-1');
+  });
+
+  it('keeps leaderboard failures and empty results independent and preserves zero values on retry', async () => {
+    let runRequests = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/seasons/season-1')) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026 season',
+                seasonId: 'season-1',
+              },
+            }),
+          );
+        }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          const metric = url.searchParams.get('metric') as 'most_runs' | 'most_wickets';
+          if (metric === 'most_runs') {
+            runRequests += 1;
+            if (runRequests === 1) {
+              return Promise.resolve(
+                response(503, {
+                  error: {
+                    code: 'SERVICE_UNAVAILABLE',
+                    message: 'Ranking is temporarily unavailable.',
+                  },
+                }),
+              );
+            }
+            return Promise.resolve(
+              leaderboard(
+                {
+                  competitionId: 'competition-1',
+                  competitionName: 'Premier Cricket League',
+                  seasonId: 'season-1',
+                  season: '2026 season',
+                },
+                metric,
+                [{ rank: 1, participantId: 'batter-1', participantName: 'Zero Batter', value: 0 }],
+              ),
+            );
+          }
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                seasonId: 'season-1',
+                season: '2026 season',
+              },
+              metric,
+              [],
+            ),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/seasons/season-1');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Leading run scorers could not be loaded' }),
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'No ranked players available' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry leading run scorers' }));
+
+    const table = await screen.findByRole('table', {
+      name: 'Leading run scorers for 2026 season',
+    });
+    expect(within(table).getByRole('link', { name: 'Zero Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
+    expect(within(table).getByRole('cell', { name: '0' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'No ranked players available' })).toBeVisible();
   });
 
   it('displays a team fixture history and readable players', async () => {
@@ -1183,6 +1349,18 @@ describe('public browsing pages', () => {
                 seasonId: 'season-1',
               },
             ]),
+          );
+        }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+              },
+              url.searchParams.get('metric') as 'most_runs' | 'most_wickets',
+              [],
+            ),
           );
         }
         if (url.pathname.endsWith('/fixtures')) {

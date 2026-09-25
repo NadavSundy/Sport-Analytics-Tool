@@ -598,3 +598,86 @@ test(
     expect(hasHorizontalOverflow).toBe(false);
   },
 );
+
+test(
+  'season batting and bowling leaders remain accessible and responsive',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    await page.route('**/api/v1/**', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/seasons/season-1')) {
+        await route.fulfill({
+          json: {
+            data: {
+              competitionId: 'competition-1',
+              competitionName: 'Premier Cricket League',
+              label: '2026 season',
+              seasonId: 'season-1',
+            },
+          },
+        });
+        return;
+      }
+      if (url.pathname.endsWith('/statistics/leaderboards')) {
+        const metric = url.searchParams.get('metric');
+        await route.fulfill({
+          json: {
+            data: {
+              scope: 'season',
+              seasonId: 'season-1',
+              season: '2026 season',
+              competitionId: 'competition-1',
+              competitionName: 'Premier Cricket League',
+              metric,
+              limit: 5,
+              qualification: null,
+              tieBreakers: ['metricValue', 'participantName', 'participantId'],
+              entries: [
+                {
+                  rank: 1,
+                  participantId: metric === 'most_runs' ? 'batter-1' : 'bowler-1',
+                  participantName: metric === 'most_runs' ? 'Leading Batter' : 'Leading Bowler',
+                  value: metric === 'most_runs' ? 312 : 9,
+                },
+              ],
+            },
+          },
+        });
+        return;
+      }
+      await route.fulfill({ json: { data: [], pagination: { nextCursor: null } } });
+    });
+
+    await page.goto('/seasons/season-1');
+
+    await expect(page.getByRole('heading', { level: 1, name: '2026 season' })).toBeVisible();
+    const leaders = page.getByRole('region', { name: 'Season leaders' });
+    await expect(leaders.getByRole('link', { name: 'Leading Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
+    await expect(leaders.getByRole('link', { name: 'Leading Bowler' })).toHaveAttribute(
+      'href',
+      '/participants/bowler-1',
+    );
+    await expect(leaders.getByRole('table')).toHaveCount(2);
+    const firstTableWrapper = leaders.getByRole('table').first().locator('..');
+    await firstTableWrapper.focus();
+    await expect(firstTableWrapper).toBeFocused();
+
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
+    await page.getByLabel('Switch to Night Match theme').check();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+
+    const accessibilityResults = await new AxeBuilder({ page }).analyze();
+    expect(
+      accessibilityResults.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
+  },
+);
