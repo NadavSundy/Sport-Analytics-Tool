@@ -705,7 +705,11 @@ test('reviewer onboards participants in one submission and corrects every fault 
               fixtureId: '22',
               submittedName: 'C. Khumalo',
               submittedTeamName: 'Wanderers',
-              reason: 'team_not_recognised',
+              // The case deployed acceptance testing could not settle: the
+              // reason is not team_not_recognised, but the submitted team is
+              // still not one of the fixture's two, so the decision fails on
+              // the team and the card has to offer that choice anyway.
+              reason: 'no_durable_identifier',
               candidates: [{ personId: '13', displayName: 'Chris Khumalo' }],
               teams: [
                 { teamId: '30', name: 'Lions' },

@@ -240,7 +240,13 @@ describe.sequential('participant onboarding decisions', () => {
         ],
       });
 
-      expect(result).toEqual({ onboarded: 3, alreadyOnboarded: 0, revalidationQueued: true });
+      expect(result).toEqual({
+        onboarded: 3,
+        alreadyOnboarded: 0,
+        revalidationQueued: true,
+        // No reference sites were supplied by this caller.
+        referencesMapped: 0,
+      });
 
       // Three decisions, one revalidation. This is the property the array form
       // exists for.
@@ -295,7 +301,12 @@ describe.sequential('participant onboarding decisions', () => {
         decisionKey: 'onboard-replay',
         decisions,
       });
-      expect(first).toEqual({ onboarded: 1, alreadyOnboarded: 0, revalidationQueued: true });
+      expect(first).toEqual({
+        onboarded: 1,
+        alreadyOnboarded: 0,
+        revalidationQueued: true,
+        referencesMapped: 0,
+      });
 
       await client.query(`UPDATE batch SET state='awaiting_review' WHERE batch_id=$1::bigint`, [
         seeded.batchId,
@@ -309,7 +320,12 @@ describe.sequential('participant onboarding decisions', () => {
 
       // The earlier decision stands and is reported as already settled. A
       // replay must not cost a second full revalidation pass.
-      expect(second).toEqual({ onboarded: 0, alreadyOnboarded: 1, revalidationQueued: false });
+      expect(second).toEqual({
+        onboarded: 0,
+        alreadyOnboarded: 1,
+        revalidationQueued: false,
+        referencesMapped: 0,
+      });
       expect(await outboxCount(client, seeded.batchId)).toBe(1);
       const squad = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count FROM fixture_squad WHERE fixture_id=$1::bigint`,
@@ -495,6 +511,72 @@ describe.sequential('participant onboarding decisions', () => {
         [seeded.fixtureId],
       );
       expect(squad.rows[0]!.count).toBe('0');
+    });
+  }, 60_000);
+
+  test('records a settled decision against the references it answers', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const seeded = await seed(client, 'maps-references');
+      const repository = createBatchRepository(client);
+
+      const taskReference = await addTask(client, seeded, {
+        participantKey: `name:A Player::${seeded.battingTeamName}`,
+        reason: 'no_durable_identifier',
+      });
+
+      const result = await repository.applyParticipantOnboardingDecisions({
+        batchId: seeded.batchId,
+        actorId: seeded.accountId,
+        decisionKey: 'map-the-references',
+        decisions: [{ taskReference, sourceId: `cricsheet:participant:${sourcePrefix}-mapped` }],
+        referenceSites: {
+          [`name:A Player::${seeded.battingTeamName}`]: [
+            { itemOrdinal: 0, referencePath: 'fixtures.0.innings.0.events.0.striker' },
+            { itemOrdinal: 1, referencePath: 'fixtures.0.innings.0.events.1.nonStriker' },
+          ],
+        },
+      });
+
+      expect(result.onboarded).toBe(1);
+      // One per place the participant was named. Squad membership alone does
+      // not make the submission resolve: a participant submitted as a name is
+      // matched against squad display names and retained aliases, and a person
+      // created from a durable identifier carries that identifier as its
+      // display name, so the submitted name still matches nothing.
+      expect(result.referencesMapped).toBe(2);
+
+      const mapped = await client.query<{
+        referencePath: string;
+        entityType: string;
+        candidateId: string;
+      }>(
+        `SELECT reference_path AS "referencePath", entity_type AS "entityType",
+                candidate_id::text AS "candidateId"
+         FROM batch_reference_mapping_decision
+         WHERE batch_id=$1::bigint ORDER BY item_ordinal`,
+        [seeded.batchId],
+      );
+      expect(mapped.rows.map((row) => row.referencePath)).toEqual([
+        'fixtures.0.innings.0.events.0.striker',
+        'fixtures.0.innings.0.events.1.nonStriker',
+      ]);
+      expect(new Set(mapped.rows.map((row) => row.entityType))).toEqual(new Set(['participant']));
+
+      // Both point at the person the reviewer's identifier resolved to, which
+      // is also the person now in the squad. No name was matched to get there.
+      const person = await client.query<{ personId: string }>(
+        `SELECT person_id::text AS "personId" FROM person WHERE source_ref=$1`,
+        [`${sourcePrefix}-mapped`],
+      );
+      const personId = person.rows[0]!.personId;
+      expect(new Set(mapped.rows.map((row) => row.candidateId))).toEqual(new Set([personId]));
+
+      const squad = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM fixture_squad
+         WHERE fixture_id=$1::bigint AND person_id=$2::bigint`,
+        [seeded.fixtureId, personId],
+      );
+      expect(squad.rows[0]!.count).toBe('1');
     });
   }, 60_000);
 
