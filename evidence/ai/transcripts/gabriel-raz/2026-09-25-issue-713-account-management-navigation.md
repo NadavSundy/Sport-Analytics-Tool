@@ -22,10 +22,15 @@ records only the assistance and verification actually used for issue #713.
   `Manage account` was not present, then passed (18 tests) after the change.
 - Frontend lint and typecheck passed.
 - Prettier passed for the changed frontend files.
-- The full frontend suite and frontend production build were attempted but are
-  blocked by existing contract/frontend incompatibilities on the updated main
-  baseline. Their failures are unrelated to the two changed files and include
-  missing contract exports and fixture-statistics type mismatches.
+- The supplied CI `Verify frontend workspace` output ran lint, typecheck, and
+  the root frontend test command. It reported 3 failed and 24 passed test
+  files; 4 failed and 244 passed tests. The focused `App.test.tsx` suite passed
+  all 18 tests. The failures were one admin dataset-release expectation and
+  three unrelated reviewer/submission test timeouts.
+- The local linked worktree resolves Vitest 2.1.9 while `package-lock.json`
+  specifies Vitest 4.1.11, so its full-suite output is not directly comparable
+  with CI. Its frontend production build also fails on existing contract and
+  fixture-statistics type mismatches outside the changed files.
 
 ## Privacy review
 
