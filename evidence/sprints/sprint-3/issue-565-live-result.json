@@ -1,0 +1,399 @@
+{
+  "completedAt": "2026-09-25T09:43:50.330Z",
+  "health": {
+    "status": "ok",
+    "service": "sport-analytics-api",
+    "timestamp": "2026-09-25T09:24:04.543Z"
+  },
+  "readSamples": [
+    {
+      "durationMs": 441.91579999999885,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1265.0092999999997,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 429.9985000000015,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1249.0498999999982,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 377.53740000000107,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1266.229100000004,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 474.69840000000113,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1228.837900000006,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 504.58610000000044,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1291.3178000000044,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 695.7768999999971,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1236.2290999999968,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 443.3914000000077,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1324.5158999999985,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 374.17080000000715,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1240.6098999999958,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 426.12089999999444,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1255.804099999994,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 365.44190000000526,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1251.4696000000113,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 506.8182000000088,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1243.9806999999855,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 341.7173999999941,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1285.8136999999988,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 383.71710000000894,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1266.335699999996,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 856.7315999999992,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1244.4792000000016,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 437.29270000002,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1270.250400000019,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 394.569599999988,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1251.6571000000113,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 463.9174000000057,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1225.5292999999947,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 387.2703000000038,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1249.7247999999963,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 365.7494000000006,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1306.7537000000011,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 598.9401999999536,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1359.4732000000076,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 479.6460000000079,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1239.5280000000494,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 374.3689000000013,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1284.380999999994,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 414.3300000000163,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1252.1630000000005,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 327.719700000016,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1243.6469999999972,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 365.57909999997355,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1312.6393999999855,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 436.34639999998035,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1230.1546999999555,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 372.08519999997225,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1280.0839999999735,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 376.3516000000527,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1254.99099999998,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 521.8525999999838,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1357.9503999999724,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 462.0802000000258,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1223.5879999999888,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 353.30530000000726,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1245.0851000000257,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 373.80850000004284,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1240.5985999999684,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 360.9406000000308,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1258.7717999999877,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 333.343200000003,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1288.7244000000064,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 415.5705999999773,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1265.3115000000107,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 362.5903999999864,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1298.900399999984,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 326.413499999966,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1280.614200000011,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 411.6536999999662,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1234.6714000000502,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 340.4533999999403,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1235.3906000000425,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 411.19960000005085,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1226.7405000000726,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 318.3530000000028,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1219.5426000000443,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 455.93390000006184,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1250.750699999975,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 407.09110000007786,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1224.8479999999981,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 323.1988999999594,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1218.6689999999944,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 356.1271999999881,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1239.1763999999966,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 346.0372999999672,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1217.1620000000112,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 526.1975000000093,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1252.018100000103,
+      "endpoint": "/fixtures/8937/statistics"
+    },
+    {
+      "durationMs": 398.0609000000404,
+      "endpoint": "/fixtures?limit=1"
+    },
+    {
+      "durationMs": 1254.125800000038,
+      "endpoint": "/fixtures/8937/statistics"
+    }
+  ],
+  "release": {
+    "checksum": "e28271dca680cd69e5aca34cc47efed4bf18be9db7967a6014b1a1a916aad8b2",
+    "eventCount": 3207110,
+    "version": "2026.09.25-issue-565-acceptance-1"
+  }
+}
