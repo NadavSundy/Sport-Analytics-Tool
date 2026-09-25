@@ -276,10 +276,11 @@ describe('public application and authentication interface', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
       'href',
       '/account/security',
     );
+    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Submit Events' })).not.toBeInTheDocument();
   });
 

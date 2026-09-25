@@ -428,7 +428,7 @@ export function AccountPage() {
               items={[
                 { label: 'Overview', to: '/account/overview' },
                 { label: 'Access', to: '/account/access' },
-                { label: 'Settings', to: '/account/security' },
+                { label: 'Manage account', to: '/account/security' },
               ]}
             />
             {activeSection === 'overview' ? (
