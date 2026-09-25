@@ -1,18 +1,18 @@
 {
   "contractVersion": "1.1",
-  "packageId": "cricsheet:package:onboarding-test-708",
+  "packageId": "cricsheet:package:onboarding-test-708-rerun",
   "competition": { "context": { "name": "ACC Eastern Region T20" } },
-  "season": { "context": { "name": "onboarding-test-2031" } },
+  "season": { "context": { "name": "onboarding-test-2032" } },
   "fixtures": [
     {
-      "sourceId": "cricsheet:fixture:onboarding-test-708-fixture-1",
+      "sourceId": "cricsheet:fixture:onboarding-test-708-fixture-2",
       "context": {
-        "date": "2031-03-14",
+        "date": "2032-04-18",
         "teams": [{ "context": { "name": "Argentina" } }, { "context": { "name": "Austria" } }],
-        "venue": "onboarding-test-Kingfisher-Oval"
+        "venue": "onboarding-test-Swallowtail-Park"
       },
       "proposal": {
-        "endDate": "2031-03-14",
+        "endDate": "2032-04-18",
         "matchType": "T20",
         "teamType": "club",
         "gender": "male",
@@ -22,7 +22,7 @@
         "sourceVersion": "onboarding-test-1.0",
         "sourceRevision": 1
       },
-      "season": { "context": { "name": "onboarding-test-2031" } },
+      "season": { "context": { "name": "onboarding-test-2032" } },
       "innings": [
         {
           "context": {
@@ -31,7 +31,7 @@
           },
           "events": [
             {
-              "eventId": "cricsheet:delivery:onboarding-test-708-i1-0.1",
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i1-0.1",
               "occurrenceSequence": 1,
               "overNumber": 0,
               "positionInOver": 0,
@@ -59,7 +59,7 @@
               "extras": {}
             },
             {
-              "eventId": "cricsheet:delivery:onboarding-test-708-i1-0.2",
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i1-0.2",
               "occurrenceSequence": 2,
               "overNumber": 0,
               "positionInOver": 1,
@@ -87,7 +87,7 @@
               "extras": { "wides": 1 }
             },
             {
-              "eventId": "cricsheet:delivery:onboarding-test-708-i1-0.3",
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i1-0.3",
               "occurrenceSequence": 3,
               "overNumber": 0,
               "positionInOver": 2,
@@ -123,7 +123,7 @@
           },
           "events": [
             {
-              "eventId": "cricsheet:delivery:onboarding-test-708-i2-0.1",
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i2-0.1",
               "occurrenceSequence": 1,
               "overNumber": 0,
               "positionInOver": 0,
@@ -152,7 +152,7 @@
               "extras": {}
             },
             {
-              "eventId": "cricsheet:delivery:onboarding-test-708-i2-0.2",
+              "eventId": "cricsheet:delivery:onboarding-test-708-r2-i2-0.2",
               "occurrenceSequence": 2,
               "overNumber": 0,
               "positionInOver": 1,
