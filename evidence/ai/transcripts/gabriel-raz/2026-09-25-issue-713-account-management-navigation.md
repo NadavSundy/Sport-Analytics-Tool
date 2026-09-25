@@ -31,6 +31,14 @@ records only the assistance and verification actually used for issue #713.
   specifies Vitest 4.1.11, so its full-suite output is not directly comparable
   with CI. Its frontend production build also fails on existing contract and
   fixture-statistics type mismatches outside the changed files.
+- The supplied CI browser run initially failed two desktop authentication
+  expectations after this label change: one expected `Settings`, and one used
+  a non-exact `Account` locator that also matched `Manage account`. Updated
+  the Playwright coverage to assert `Manage account` with its unchanged
+  `/account/security` destination and make the `Account` locator exact.
+- The repaired authentication Playwright file was discovered as six configured
+  desktop/mobile tests. A post-change local browser execution remains blocked
+  by the stale local build/dependency state described above.
 
 ## Privacy review
 
