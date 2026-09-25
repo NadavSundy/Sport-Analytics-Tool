@@ -11,6 +11,7 @@ import {
   fixtureWeatherResponseSchema,
   fixtureStatisticResponseSchema,
   fixtureStatisticsResponseSchema,
+  leaderboardResponseSchema,
   participantAggregatesResponseSchema,
   participantCollectionResponseSchema,
   participantFixtureCollectionResponseSchema,
@@ -25,6 +26,8 @@ import {
   type FixtureWeather,
   type FixtureStatistic,
   type FixtureStatistics,
+  type Leaderboard,
+  type LeaderboardQuery,
   type PaginationMetadata,
   type Participant,
   type ParticipantAggregateScope,
@@ -270,6 +273,21 @@ export const publicReadApi = {
     return requestPublicApi<{ data: ParticipantAggregates }>(
       `/participants/${encodeURIComponent(participantId)}/statistics${scope ? `?scope=${scope}` : ''}`,
       participantAggregatesResponseSchema,
+      signal,
+    );
+  },
+  getLeaderboard(query: LeaderboardQuery, signal?: AbortSignal) {
+    const params = new URLSearchParams({
+      scope: query.scope,
+      metric: query.metric,
+      limit: String(query.limit),
+      ...(query.scope === 'season'
+        ? { seasonId: query.seasonId }
+        : { competitionId: query.competitionId }),
+    });
+    return requestPublicApi<{ data: Leaderboard }>(
+      `/statistics/leaderboards?${params.toString()}`,
+      leaderboardResponseSchema,
       signal,
     );
   },

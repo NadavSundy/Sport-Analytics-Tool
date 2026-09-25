@@ -4679,6 +4679,33 @@ h3 {
   font-weight: 700;
 }
 
+.scope-leaderboards__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-5);
+}
+
+.scope-leaderboard {
+  min-width: 0;
+}
+
+.scope-leaderboard h3,
+.scope-leaderboard h4 {
+  margin: 0;
+}
+
+.scope-leaderboard .ui-data-table,
+.scope-leaderboard .statistics-note,
+.scope-leaderboard > .state-message,
+.scope-leaderboard > .statistics-section__empty {
+  margin-top: var(--space-3);
+}
+
+.scope-leaderboard .ui-data-table__table {
+  font-variant-numeric: tabular-nums;
+}
+
 .calculation-details > details,
 .statistics-definitions,
 .innings-extras {
@@ -5470,6 +5497,10 @@ h3 {
   .participant-statistics {
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .scope-leaderboards__grid {
+    grid-template-columns: 1fr;
   }
 
   .fixture-weather__heading {

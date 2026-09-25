@@ -27,6 +27,7 @@ import {
   ParticipantCareerOverview,
   PlayerPerformance,
 } from '../features/statistics/StatisticsPages';
+import { ScopeLeaderboards } from '../features/statistics/ScopeLeaderboards';
 
 function optionSearch(filters: URLSearchParams, name: string): string {
   const params = new URLSearchParams(filters);
@@ -841,6 +842,7 @@ export function CompetitionDetailPage() {
             ]}
             sections={[
               { label: 'Seasons', to: '#seasons' },
+              { label: 'Leaders', to: '#leaders' },
               { label: 'Fixtures', to: '#fixtures' },
               { label: 'Teams', to: '#teams' },
             ]}
@@ -853,6 +855,11 @@ export function CompetitionDetailPage() {
                 renderRecords={(seasons) => <SeasonRecords seasons={seasons} />}
                 resourceLabel="seasons"
                 title="Seasons"
+              />
+            </AnchoredSection>
+            <AnchoredSection id="leaders">
+              <ScopeLeaderboards
+                scope={{ scope: 'competition', competitionId: competition.competitionId }}
               />
             </AnchoredSection>
             <AnchoredSection id="fixtures">
@@ -908,6 +915,7 @@ export function SeasonDetailPage() {
             ]}
             sections={[
               { label: 'Overview', to: '#overview' },
+              { label: 'Leaders', to: '#leaders' },
               { label: 'Fixtures', to: '#fixtures' },
               { label: 'Teams', to: '#teams' },
             ]}
@@ -923,6 +931,9 @@ export function SeasonDetailPage() {
                   }
                 />
               </RecordFacts>
+            </AnchoredSection>
+            <AnchoredSection id="leaders">
+              <ScopeLeaderboards scope={{ scope: 'season', seasonId: season.seasonId }} />
             </AnchoredSection>
             <AnchoredSection id="fixtures">
               <RelatedCollection
