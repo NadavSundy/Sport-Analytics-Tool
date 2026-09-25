@@ -87,10 +87,10 @@ plan's quota.
 
 ### 3.2 Temporary additional compute vs. the architectural fix
 
-| | What it changes | What it does not change |
-|---|---|---|
-| **Temporary compute increase** (the Sprint 2 B2 upgrade) | Gives the *same* request-serving process more CPU/quota headroom | The API process is still the one doing CPU-intensive dataset/analytics work; a large enough job can still starve it |
-| **Architectural fix** (the Sprint 3 design) | Moves CPU-intensive dataset release/publication work **out of** the request-serving API entirely, into a separate worker process consuming a durable queue | The API's job shrinks back down to what a request/response process is actually sized for |
+|                                                          | What it changes                                                                                                                                            | What it does not change                                                                                             |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Temporary compute increase** (the Sprint 2 B2 upgrade) | Gives the _same_ request-serving process more CPU/quota headroom                                                                                           | The API process is still the one doing CPU-intensive dataset/analytics work; a large enough job can still starve it |
+| **Architectural fix** (the Sprint 3 design)              | Moves CPU-intensive dataset release/publication work **out of** the request-serving API entirely, into a separate worker process consuming a durable queue | The API's job shrinks back down to what a request/response process is actually sized for                            |
 
 Adding compute buys time. Removing the expensive work from the request path is what makes the fix
 durable — it is why the B2 upgrade is documented here as a recovery step, not as the Sprint 3 design.
@@ -137,7 +137,7 @@ post-merge quality gate. Superseded App Service hosting is documented as histori
 **Backend API — Azure Container Apps (`statsthegame-dev-api`).**
 Runs the compiled Express backend as a Node 22 container (`apps/backend/Dockerfile`), non-root, listening
 on port 3000. Owns request/response work only: authenticated CRUD, public reads, submission intake, and
-*enqueuing* dataset-release jobs — it does not perform the CPU-intensive release generation itself. Uses
+_enqueuing_ dataset-release jobs — it does not perform the CPU-intensive release generation itself. Uses
 separate pull/runtime managed identities (no ACR admin credentials, no Blob keys, no connection strings
 in configuration). Startup/liveness/readiness probes call `/api/v1/health`. `statsthegame-api-dev` (App
 Service) is retained as a manual rollback target only, per
@@ -169,10 +169,10 @@ recovery procedure summarised in section 6 below.
 These are the values actually configured in the merged Bicep templates
 (`infra/azure/backend/main.bicep`, `infra/azure/worker/main.bicep`), not estimates:
 
-| Component | vCPU / memory | `minReplicas` | `maxReplicas` | Scaling trigger |
-| --- | --- | --- | --- | --- |
-| Backend API Container App | 0.5 vCPU / 1Gi | 0 (scale to zero while idle) | **1** | HTTP ingress (implicit) |
-| Worker Container App | 0.5 vCPU / 1Gi | 0 (scale to zero while queue idle) | 3 | KEDA `azure-servicebus` rule, `messageCount: 1`, 15 s polling interval, 60 s cooldown |
+| Component                 | vCPU / memory  | `minReplicas`                      | `maxReplicas` | Scaling trigger                                                                       |
+| ------------------------- | -------------- | ---------------------------------- | ------------- | ------------------------------------------------------------------------------------- |
+| Backend API Container App | 0.5 vCPU / 1Gi | 0 (scale to zero while idle)       | **1**         | HTTP ingress (implicit)                                                               |
+| Worker Container App      | 0.5 vCPU / 1Gi | 0 (scale to zero while queue idle) | 3             | KEDA `azure-servicebus` rule, `messageCount: 1`, 15 s polling interval, 60 s cooldown |
 
 Two capacity assumptions are load-bearing and must not be silently changed:
 
@@ -194,10 +194,10 @@ against the same database and Blob account, per `infra/azure/worker/main.bicep`.
 published release `2026.09.25-issue-565-acceptance-1` (3,207,110 events), Azure Metrics reported, for a
 morning SAST window whose exact portal range was not retained:
 
-| Component | Average CPU | Average memory | Max replicas observed | Restart count |
-| --- | --- | --- | --- | --- |
-| `statsthegame-dev-api` | 0.02 cores | 4.4071% | 1 | 0 |
-| `statsthegame-dev-batch-worker` | 7.01 millicores | 4.5717% | 1 | 0 |
+| Component                       | Average CPU     | Average memory | Max replicas observed | Restart count |
+| ------------------------------- | --------------- | -------------- | --------------------- | ------------- |
+| `statsthegame-dev-api`          | 0.02 cores      | 4.4071%        | 1                     | 0             |
+| `statsthegame-dev-batch-worker` | 7.01 millicores | 4.5717%        | 1                     | 0             |
 
 Both components stayed at a single replica throughout, well inside their configured `maxReplicas`
 (1 and 3 respectively), and average utilisation is far below the 0.5 vCPU / 1Gi allocated to each —
@@ -283,7 +283,7 @@ layer actually under investigation (this generalises the Sprint 2 diagnostic seq
 
 - Confirm CORS is set to the exact deployed frontend origin (not a wildcard, given credentialed
   requests) — see `azure-app-service-recovery.md` §16–18 for the verification pattern (`curl -H "Origin:
-  <origin>"`, checking for `Access-Control-Allow-Origin` in the response).
+<origin>"`, checking for `Access-Control-Allow-Origin` in the response).
 - Confirm Supabase Auth redirect settings match the currently live frontend URL, especially after any
   rollback to the App Service fallback (`azure-backend.md` §App Service fallback) — a rollback does not
   automatically reverse the frontend API base URL or CORS configuration.
@@ -311,7 +311,7 @@ for the same job ID afterward and the release completed, with the public catalog
 immutable entry for that version alongside the prior `2026.09.14v1Public` snapshot (no duplicate
 canonical artifact). That is genuine evidence that the durable checkpoint/resume path in
 `azure-worker.md` §Batch recovery procedure works against a real fault, but it is evidence of
-*fault-driven* recovery, not of the literal controlled-interruption exercise in
+_fault-driven_ recovery, not of the literal controlled-interruption exercise in
 [`production-scale-acceptance.md` §Recovery and duplicate-publication exercise](production-scale-acceptance.md#recovery-and-duplicate-publication-exercise).
 A deliberate, clean mid-job worker restart with no underlying bug involved — to confirm the recovery
 path in isolation, without a remediation step in between — has not been separately run and remains a
@@ -321,15 +321,15 @@ gap. The worker's revision name for this event was also not separately captured.
 
 Do not describe any of this as simply "free." The actual hosting model, per component:
 
-| Component | Hosting model | Compute cost behaviour |
-| --- | --- | --- |
-| Frontend (static) | Cloudflare Pages | Static asset hosting; no server-side compute, so no compute cost regardless of traffic. |
-| Backend API | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=0`/`maxReplicas=1` | Billed for active vCPU-seconds/GiB-seconds while a replica is running; scales to zero and incurs no compute charge while idle. Azure Container Apps includes a monthly consumption-plan free grant before metered billing applies — the exact remaining grant/usage is an account-level figure, not a static one, and should be read from the Azure subscription rather than assumed. |
-| Background worker | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=0`/`maxReplicas=3` | Same billing model as the API; scales to zero between queued jobs, so cost tracks actual dataset-release/validation activity rather than being continuous. |
-| Service Bus | Standard namespace (required for sessions/duplicate detection used by the queue) | Namespace-level charge independent of the API/worker's own scale-to-zero behaviour — this is the one component in the async path that is not scale-to-zero. |
-| Azure Container Registry | Basic tier | Fixed low-cost tier for private image storage; not scale-to-zero, but flat and low. |
-| PostgreSQL / Auth | Supabase-managed | Managed-service plan; not part of the Azure resource group and not affected by Container Apps scaling. |
-| App Service (`statsthegame-api-dev`) — **rollback target only** | Currently provisioned at the Sprint 2 mitigation tier | **This is the component most likely to be left running unnecessarily.** Unlike the Container Apps path, App Service does not scale to zero — it is billed continuously at whatever plan tier it is set to for as long as the plan exists, whether or not it is receiving traffic. |
+| Component                                                       | Hosting model                                                                         | Compute cost behaviour                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend (static)                                               | Cloudflare Pages                                                                      | Static asset hosting; no server-side compute, so no compute cost regardless of traffic.                                                                                                                                                                                                                                                                                               |
+| Backend API                                                     | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=0`/`maxReplicas=1` | Billed for active vCPU-seconds/GiB-seconds while a replica is running; scales to zero and incurs no compute charge while idle. Azure Container Apps includes a monthly consumption-plan free grant before metered billing applies — the exact remaining grant/usage is an account-level figure, not a static one, and should be read from the Azure subscription rather than assumed. |
+| Background worker                                               | Azure Container Apps, consumption plan, 0.5 vCPU/1Gi, `minReplicas=0`/`maxReplicas=3` | Same billing model as the API; scales to zero between queued jobs, so cost tracks actual dataset-release/validation activity rather than being continuous.                                                                                                                                                                                                                            |
+| Service Bus                                                     | Standard namespace (required for sessions/duplicate detection used by the queue)      | Namespace-level charge independent of the API/worker's own scale-to-zero behaviour — this is the one component in the async path that is not scale-to-zero.                                                                                                                                                                                                                           |
+| Azure Container Registry                                        | Basic tier                                                                            | Fixed low-cost tier for private image storage; not scale-to-zero, but flat and low.                                                                                                                                                                                                                                                                                                   |
+| PostgreSQL / Auth                                               | Supabase-managed                                                                      | Managed-service plan; not part of the Azure resource group and not affected by Container Apps scaling.                                                                                                                                                                                                                                                                                |
+| App Service (`statsthegame-api-dev`) — **rollback target only** | Currently provisioned at the Sprint 2 mitigation tier                                 | **This is the component most likely to be left running unnecessarily.** Unlike the Container Apps path, App Service does not scale to zero — it is billed continuously at whatever plan tier it is set to for as long as the plan exists, whether or not it is receiving traffic.                                                                                                     |
 
 ### Avoiding accidental ongoing cost from the temporary mitigation
 
@@ -386,7 +386,7 @@ have been captured against.
   fault mid-generation and published one immutable artifact with no duplicate — see section 6.
 - Capacity metrics for both the API and worker Container Apps were captured — see section 5.
 
-**What was explicitly *not* separately captured, per the evidence file itself (these are documented
+**What was explicitly _not_ separately captured, per the evidence file itself (these are documented
 gaps, not silent assumptions):**
 
 - A browser-rendered screenshot of the fixture/statistics screen while generation was in progress (the
