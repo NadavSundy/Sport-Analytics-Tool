@@ -4,14 +4,18 @@
 
 **Read this before quoting any figure in this document.**
 
-1. **Every figure here is a local measurement.** The backend ran on the measuring
-   host and reached a disposable embedded PostgreSQL server over loopback. A warm
-   public read costs roughly **5 ms** that way. The same warm read from a locally
-   running backend to the team's hosted development database is recorded at
-   **183 ms**, and its first request after start-up at 2,863 ms
+1. **Every figure here is a local measurement, except section 10.** Sections 1 to 9
+   ran on the measuring host and reached a disposable embedded PostgreSQL server over
+   loopback. A warm public read costs roughly **5 ms** that way. The same warm read
+   from a locally running backend to the team's hosted development database is
+   recorded at **183 ms**, and its first request after start-up at 2,863 ms
    (`evidence/validation/issue-369-idle-backend-latency.md`). These figures show
    whether a code path does unnecessary work at representative data volume. They are
    **not** deployed response times.
+
+   **Section 10 is deployed, and every operation in it fails its target.** It was
+   added after the local work, on 25 September 2026. Read it before quoting any local
+   figure as evidence that the system is fast enough.
 
 2. **The Sprint 3 topology is described from repository definitions, not observed.**
    Section 4 is read out of `infra/azure/backend/main.bicep`,
@@ -75,10 +79,17 @@ row — the asynchronous release lifecycle, public reads during generation, arti
 checksum, recovery and duplicate safety, and all capacity, replica and CPU signals — is
 `pending`. Its own conclusion reads "Pending a live run."
 
-**Issue #599 does not include a deployed re-run.** It could not: the runner requires a
-deployed API and worker, a deployed frontend origin and a short-lived administrator
-bearer token, none of which are available to a local measurement session. Deployed
-acceptance remains outstanding under #565 and is not discharged by anything here.
+**The #565 acceptance procedure has still not been run**, and is not discharged by
+anything here: it requires a deployed worker, a deployed frontend origin and a
+short-lived administrator bearer token, and covers the release lifecycle, recovery,
+duplicate safety and the capacity signals, none of which are exercised below.
+
+What has since been run is narrower and is recorded in section 10: the five #289
+read operations, measured twice against the deployed API. That is enough to answer
+whether the deployed system meets its response-time targets. It does not.
+
+Sections 2 to 9 were written before that measurement existed and describe the local
+runs. They are left as they were.
 
 ## 2. Build and environment under measurement
 
@@ -628,6 +639,119 @@ shared test infrastructure, and issue #599 is a measurement exercise.
 4. The embedded-PostgreSQL-and-corpus setup block is now duplicated across five
    measurement scripts, about 170 lines each. Extracting it was deliberately not done
    in the change whose own output is this evidence.
+
+## 10. Deployed measurement, 25 September 2026
+
+Added after sections 2 to 9. Everything above this point is local; this section is
+not.
+
+### 10.1 What was measured
+
+The five #289 read operations against the **deployed** Container Apps API,
+`https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io`,
+backed by the hosted Supabase database. Fixture 8937, participant 56 (BB McCullum).
+Ten samples per operation, one warm-up discarded, measured from a laptop in South
+Africa, so the figures include client-to-region network time. Two runs:
+`evidence/validation/issue-599/deployed-api-response-times.md` and
+`deployed-api-response-times-run2.md`.
+
+### 10.2 Results: five of five fail
+
+| Operation             | Target | Run 1 P50 | Run 1 P95 | Run 2 P50 | Run 2 P95 | Result |
+| --------------------- | -----: | --------: | --------: | --------: | --------: | ------ |
+| public fixture page   |    500 |     637.8 |     900.5 |     668.1 |     941.2 | fail   |
+| fixture event page    |    750 |     643.5 |     793.8 |     805.5 |   1,228.0 | fail   |
+| fixture statistics    |  1,500 |   2,397.8 |   3,788.8 |   2,353.5 |   2,441.9 | fail   |
+| participant aggregate |  1,500 |   1,229.6 |   5,588.1 |   1,235.0 |   3,181.2 | fail   |
+| CSV event export      |  1,000 |   1,160.7 |   1,959.5 |   1,177.8 |   1,398.4 | fail   |
+
+Every operation fails on P50 in both runs, except the participant aggregate, whose
+P50 is inside its target in both runs while its P95 is 2.1 to 3.7 times over.
+
+**These are steady-state figures, not cold start.** The P50s of the two runs are
+within 5% of each other on four of five operations, and within 25% on the fifth. A
+cold-start effect would not reproduce that closely across two separate runs, and each
+run already discards a warm-up request. The P95s vary far more between runs — the
+participant aggregate moves from 5,588.1 ms to 3,181.2 ms — which is what a single
+shared instance under variable load looks like, but the central tendency is stable.
+
+### 10.3 Against the local figures
+
+Local run 3, the least favourable of the three local runs, alongside deployed run 2:
+
+| Operation             | Local P50 | Deployed P50 | Deployed ÷ local |
+| --------------------- | --------: | -----------: | ---------------: |
+| public fixture page   |       8.1 |        668.1 |             ~82× |
+| fixture event page    |      24.9 |        805.5 |             ~32× |
+| fixture statistics    |       3.1 |      2,353.5 |            ~759× |
+| participant aggregate |       3.3 |      1,235.0 |            ~374× |
+| CSV event export      |      57.8 |      1,177.8 |             ~20× |
+
+Fifteen of fifteen local measurements passed. Ten of ten deployed measurements fail.
+
+The two sets are not in conflict, because they measure different things. The local
+figures answer whether a code path does unnecessary work at representative data
+volume, and they still say it does not. They say nothing about the deployed
+architecture, and by construction they could not: a backend on the measuring host
+reaching an embedded database over loopback does not exercise the replica cap, the
+CPU allocation, or the network between the API and its database.
+
+### 10.4 Two candidate causes, neither measured
+
+**Neither of the following is a measured cause.** Nothing in this run isolated where
+the time is spent: there is no server-side timing breakdown, no database query
+timing from inside the deployed API, and no measurement with the client in the same
+region. Both are candidates consistent with the figures, and both are testable.
+
+1. **The API is capped at one replica with 0.5 CPU.** `infra/azure/backend/main.bicep`
+   sets `cpu: 0.5` and bounds `maxReplicas` to `1`, deliberately: "Keep at one until
+   shared rate-limit state is implemented." Section 4.2 records that issue #595 has
+   since added shared rate-limit state in
+   `database/migrations/20260919100000000_api-consumer-shared-rate-limits.sql`, with
+   `consumer-authentication.ts` consuming the limit through `repository.consumeRateLimit(...)`
+   against that shared table rather than from process-local memory. If that is so, the
+   stated reason for the cap no longer holds, and the deployment is running on a single
+   half-CPU instance for a reason that may have been obsolete since Sprint 3.
+
+2. **Network latency between the API and the hosted database.** A warm public read from
+   a locally running backend to the same hosted development database is recorded at
+   **183 ms**, against roughly **5 ms** over loopback to an embedded server
+   (`evidence/validation/issue-369-idle-backend-latency.md`). The deployed API is not
+   the same client as that measurement, so 183 ms is not the deployed figure; it is
+   evidence that a round trip to this database is expensive enough to matter, and that
+   an operation making several of them will accumulate.
+
+These are not exclusive, and the figures do not separate them. The fixture-statistics
+operation is the worst offender at ~759× its local P50 and 1.6× its target; whether
+that is CPU, round trips, or both, this run cannot say.
+
+### 10.5 The plain statement
+
+**The deployed architecture does not currently meet the stated performance targets.**
+Five of five operations fail, on two independent runs, at steady state.
+
+**The local figures did not show this, and could not have.** Every local run in
+sections 2 to 9 passed every target with margins of one to three orders of magnitude.
+A measurement whose backend and database share a host cannot detect a replica cap, a
+CPU allocation or a network round trip, because none of them is present. Taking the
+local passes as evidence that the system meets its targets would have been wrong, and
+section 1 of this document already said so before these figures existed.
+
+What this does **not** establish: which of the two candidate causes is responsible, in
+what proportion, or what the figures would be with the cap lifted or the client in
+region. Those need their own measurement.
+
+### 10.6 Follow-ups
+
+- Measure again with a server-side timing breakdown, so API time and database time are
+  separated rather than inferred.
+- Measure from inside `southafricanorth` to remove client-to-region time from the
+  figures.
+- Resolve the replica cap question raised in section 4.2 — whether #595 has obsoleted
+  the rationale — and if it has, measure again with the cap lifted. Changing
+  infrastructure to improve a measurement remains out of scope here.
+- The #565 deployed acceptance procedure is still outstanding and is unaffected by this
+  section.
 
 ## AI Declaration
 
