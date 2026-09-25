@@ -98,6 +98,7 @@ nav:
       - Azure Hosting Decision Record: adr/0003-azure-hosting.md
       - Azure Backend: deployment/azure-backend.md
       - Azure Batch Worker: deployment/azure-worker.md
+      - Hosting Capacity & Recovery Strategy: deployment/hosting-capacity-and-recovery-strategy.md
       - Production-scale Acceptance: deployment/production-scale-acceptance.md
       - Private Object Storage Operations: deployment/object-storage-operations.md
       - Frontend (Cloudflare Pages): deployment/frontend-cloudflare-pages.md
