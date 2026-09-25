@@ -344,6 +344,8 @@ interface ParticipantOnboardingResult {
   onboarded: number;
   alreadyOnboarded: number;
   revalidationQueued: boolean;
+  /** Reference sites a settled decision was recorded against. */
+  referencesMapped: number;
 }
 
 /** Why one decision in a participant onboarding array could not be applied. */
@@ -457,6 +459,12 @@ export interface BatchRepository {
     actorId: string;
     decisionKey: string;
     decisions: ParticipantOnboardingDecisionInput[];
+    /**
+     * Where each participant is named, keyed by the identity its task is keyed
+     * by, so a settled decision can be recorded against the references it
+     * answers. Omitted only where a caller has no items to read.
+     */
+    referenceSites?: Record<string, { itemOrdinal: number; referencePath: string }[]>;
   }): Promise<ParticipantOnboardingResult>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
@@ -2639,13 +2647,16 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       const taskRows = await executeQuery<{
         taskReference: string;
         fixtureId: string;
+        participantKey: string;
+        submittedName: string;
         state: string;
         submittedTeamName: string | null;
         candidates: { personId: string; displayName: string }[];
       }>(
         executor,
         `SELECT task_reference::text AS "taskReference", fixture_id::text AS "fixtureId",
-                state, submitted_team_name AS "submittedTeamName", candidates
+                state, submitted_team_name AS "submittedTeamName", candidates,
+                participant_key AS "participantKey", submitted_name AS "submittedName"
          FROM batch_participant_onboarding_task
          WHERE batch_id = $1::bigint AND task_reference = ANY($2::uuid[])
          FOR UPDATE`,
@@ -2667,6 +2678,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         fixtureId: string;
         personId: string;
         teamId: string;
+        participantKey: string;
+        submittedName: string;
       }> = [];
       let alreadyOnboarded = 0;
 
@@ -2788,7 +2801,14 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           );
           continue;
         }
-        applicable.push({ decision, fixtureId: task.fixtureId, personId, teamId });
+        applicable.push({
+          decision,
+          fixtureId: task.fixtureId,
+          personId,
+          teamId,
+          participantKey: task.participantKey,
+          submittedName: task.submittedName,
+        });
       }
 
       // All or nothing. A partly applied array would leave the reviewer
@@ -2820,6 +2840,46 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
 
+      /*
+       * Putting the person in the squad does not make the submission resolve.
+       * A participant submitted as a name is matched against squad display
+       * names and retained aliases, and a person created from a durable
+       * identifier carries that identifier as its display name, so the name the
+       * submission used still matches nothing. Without this the deliveries stay
+       * unresolved however many tasks are settled, and the batch can never be
+       * approved: the decision is recorded against every reference it answers,
+       * the same mechanism selecting a candidate already uses.
+       *
+       * This maps a reference the reviewer has already decided. It is not a
+       * name match: the person came from an offered candidate or a durable
+       * identifier, and the paths are the ones that named this exact submitted
+       * identity.
+       */
+      let referencesMapped = 0;
+      for (const entry of applicable) {
+        for (const site of input.referenceSites?.[entry.participantKey] ?? []) {
+          const mapped = await executeQuery(
+            executor,
+            `INSERT INTO batch_reference_mapping_decision (
+               decision_reference, batch_id, item_ordinal, reference_path, entity_type,
+               candidate_id, candidate_label, actor_id, decision_key
+             ) VALUES ($1::uuid,$2::bigint,$3::integer,$4,'participant',$5::bigint,$6,$7::bigint,$8)
+             ON CONFLICT DO NOTHING`,
+            [
+              randomUUID(),
+              input.batchId,
+              site.itemOrdinal,
+              site.referencePath,
+              entry.personId,
+              entry.submittedName,
+              input.actorId,
+              `onboarding:${entry.decision.taskReference}:${String(site.itemOrdinal)}:${site.referencePath}`,
+            ],
+          );
+          referencesMapped += mapped.rowCount ?? 0;
+        }
+      }
+
       // Once for the whole array, and not at all when nothing changed: a replay
       // must not cost a full revalidation pass.
       if (applicable.length > 0) {
@@ -2832,6 +2892,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       }
 
       return {
+        referencesMapped,
         onboarded: applicable.length,
         alreadyOnboarded,
         revalidationQueued: applicable.length > 0,
