@@ -1,7 +1,9 @@
-import { describe, expect, test } from 'vitest';
+import type { PoolClient } from 'pg';
+import { describe, expect, test, vi } from 'vitest';
 
 import {
   finalBatchValidationState,
+  persistReviewerActionableOnboardingTasks,
   isReviewerActionableFixtureResolution,
   prepareItem,
   reviewerActionableParticipantReferences,
@@ -251,5 +253,63 @@ describe('reviewer-actionable participant references (#729)', () => {
         reason: 'no_durable_identifier',
       },
     ]);
+  });
+});
+
+describe('persistReviewerActionableOnboardingTasks', () => {
+  const task = {
+    fixtureId: '22',
+    participantKey: 'name:A Player::Lions',
+    submittedName: 'A Player',
+    submittedSourceId: null,
+    submittedTeamName: 'Lions',
+    reason: 'no_durable_identifier' as const,
+  };
+
+  function recordingClient() {
+    const statements: string[] = [];
+    return {
+      statements,
+      client: {
+        query: vi.fn((text: string) => {
+          statements.push(text);
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        }),
+      } as unknown as Pick<PoolClient, 'query'>,
+    };
+  }
+
+  test('leaves a settled task alone when the work is derived again', async () => {
+    const { statements, client } = recordingClient();
+
+    await persistReviewerActionableOnboardingTasks(client, '7', [task]);
+
+    const upsert = statements.find((statement) =>
+      statement.includes('INSERT INTO batch_participant_onboarding_task'),
+    );
+    expect(upsert).toBeDefined();
+
+    /*
+     * Every revalidation runs this, and settling a task queues a revalidation,
+     * so an unguarded reset undid a reviewer's answers on the very next pass
+     * while the squad rows they created stayed. Issue #708, found in deployed
+     * acceptance testing. The guard's behaviour against the real table is
+     * covered by the backend's equivalent derivation test.
+     */
+    expect(upsert).toContain("WHERE batch_participant_onboarding_task.state <> 'onboarded'");
+
+    // The reset it guards still clears every settled field, so a row that is
+    // reopened cannot keep naming a decider.
+    for (const cleared of ['person_id=NULL', 'onboarded_at=NULL', 'decided_by=NULL']) {
+      expect(upsert).toContain(cleared);
+    }
+  });
+
+  test('writes nothing when a pass found no reviewer-owned work', async () => {
+    const { client } = recordingClient();
+
+    await persistReviewerActionableOnboardingTasks(client, '7', []);
+
+    expect(client.query).not.toHaveBeenCalled();
   });
 });

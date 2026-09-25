@@ -137,6 +137,87 @@ interface ReviewerActionableParticipantReference {
  * outside a resolved fixture squad unresolved; that is not malformed input,
  * because an authorised reviewer can associate the person with the fixture.
  */
+/**
+ * Persists the reviewer-owned onboarding work a validation pass discovered.
+ *
+ * Exported so the guard below can be exercised on its own: every revalidation
+ * runs this, and settling a task queues a revalidation, so an unguarded reset
+ * would undo a reviewer's answers on the very next pass.
+ */
+export async function persistReviewerActionableOnboardingTasks(
+  client: Pick<PoolClient, 'query'>,
+  batchId: string,
+  onboarding: readonly ReviewerActionableParticipantReference[],
+): Promise<void> {
+  if (onboarding.length > 0) {
+    const names = [...new Set(onboarding.map((task) => task.submittedName))];
+    const candidates = await client.query<{
+      submittedName: string;
+      personId: string;
+      displayName: string;
+    }>(
+      `SELECT requested.submitted_name AS "submittedName", p.person_id::text AS "personId",
+              p.display_name AS "displayName"
+         FROM unnest($1::text[]) AS requested(submitted_name)
+         JOIN person p ON p.display_name = requested.submitted_name
+            OR EXISTS (
+              SELECT 1 FROM person_alias alias
+               WHERE alias.person_id = p.person_id AND alias.name = requested.submitted_name
+            )`,
+      [names],
+    );
+    const candidatesByName = new Map<string, Array<{ personId: string; displayName: string }>>();
+    for (const candidate of candidates.rows) {
+      const matches = candidatesByName.get(candidate.submittedName) ?? [];
+      if (!matches.some((match) => match.personId === candidate.personId)) {
+        matches.push({ personId: candidate.personId, displayName: candidate.displayName });
+      }
+      candidatesByName.set(candidate.submittedName, matches);
+    }
+    await client.query(
+      `INSERT INTO batch_participant_onboarding_task (
+         batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
+         submitted_team_name, reason, candidates
+       )
+       SELECT $1::bigint, task."fixtureId"::bigint, task."participantKey", task."submittedName",
+              task."submittedSourceId", task."submittedTeamName", task.reason,
+              task.candidates::jsonb
+       FROM jsonb_to_recordset($2::jsonb) AS task(
+         "fixtureId" text, "participantKey" text, "submittedName" text,
+         "submittedSourceId" text, "submittedTeamName" text, reason text, candidates text
+       )
+       ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
+         submitted_name=EXCLUDED.submitted_name,
+         submitted_source_id=EXCLUDED.submitted_source_id,
+         submitted_team_name=EXCLUDED.submitted_team_name,
+         reason=EXCLUDED.reason,
+         candidates=EXCLUDED.candidates,
+         state='outstanding',
+         person_id=NULL,
+         onboarded_at=NULL,
+         decided_by=NULL,
+         decision_key=NULL,
+         last_reported_at=now()
+       -- A settled task is a reviewer decision, and re-deriving the work
+       -- must not undo one. Every revalidation runs this, and a settled
+       -- decision queues a revalidation, so without the guard a reviewer's
+       -- answers came back as outstanding work on the very next pass while
+       -- the squad rows they created stayed. Issue #708; the same guard the
+       -- backend derivation carries.
+       WHERE batch_participant_onboarding_task.state <> 'onboarded'`,
+      [
+        batchId,
+        JSON.stringify(
+          onboarding.map((task) => ({
+            ...task,
+            candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
+          })),
+        ),
+      ],
+    );
+  }
+}
+
 export function reviewerActionableParticipantReferences(
   resolvedReferences: Record<string, unknown>,
 ): ReviewerActionableParticipantReference[] {
@@ -1507,70 +1588,9 @@ export function createBatchValidationJobHandler(
           onboardingByKey.set(`${task.fixtureId}\0${task.participantKey}`, task);
         }
       }
-      const onboarding = [...onboardingByKey.values()];
-      if (onboarding.length > 0) {
-        const names = [...new Set(onboarding.map((task) => task.submittedName))];
-        const candidates = await client.query<{
-          submittedName: string;
-          personId: string;
-          displayName: string;
-        }>(
-          `SELECT requested.submitted_name AS "submittedName", p.person_id::text AS "personId",
-                  p.display_name AS "displayName"
-             FROM unnest($1::text[]) AS requested(submitted_name)
-             JOIN person p ON p.display_name = requested.submitted_name
-                OR EXISTS (
-                  SELECT 1 FROM person_alias alias
-                   WHERE alias.person_id = p.person_id AND alias.name = requested.submitted_name
-                )`,
-          [names],
-        );
-        const candidatesByName = new Map<
-          string,
-          Array<{ personId: string; displayName: string }>
-        >();
-        for (const candidate of candidates.rows) {
-          const matches = candidatesByName.get(candidate.submittedName) ?? [];
-          if (!matches.some((match) => match.personId === candidate.personId)) {
-            matches.push({ personId: candidate.personId, displayName: candidate.displayName });
-          }
-          candidatesByName.set(candidate.submittedName, matches);
-        }
-        await client.query(
-          `INSERT INTO batch_participant_onboarding_task (
-             batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
-             submitted_team_name, reason, candidates
-           )
-           SELECT $1::bigint, task."fixtureId"::bigint, task."participantKey", task."submittedName",
-                  task."submittedSourceId", task."submittedTeamName", task.reason,
-                  task.candidates::jsonb
-           FROM jsonb_to_recordset($2::jsonb) AS task(
-             "fixtureId" text, "participantKey" text, "submittedName" text,
-             "submittedSourceId" text, "submittedTeamName" text, reason text, candidates text
-           )
-           ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
-             submitted_name=EXCLUDED.submitted_name,
-             submitted_source_id=EXCLUDED.submitted_source_id,
-             submitted_team_name=EXCLUDED.submitted_team_name,
-             reason=EXCLUDED.reason,
-             candidates=EXCLUDED.candidates,
-             state='outstanding',
-             person_id=NULL,
-             onboarded_at=NULL,
-             decided_by=NULL,
-             decision_key=NULL,
-             last_reported_at=now()`,
-          [
-            claimResult.batchId,
-            JSON.stringify(
-              onboarding.map((task) => ({
-                ...task,
-                candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
-              })),
-            ),
-          ],
-        );
-      }
+      await persistReviewerActionableOnboardingTasks(client, claimResult.batchId, [
+        ...onboardingByKey.values(),
+      ]);
       const validationRows: Array<{
         batchItemId?: string | null;
         sourceOrdinal: number;
