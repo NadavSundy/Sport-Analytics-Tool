@@ -2798,13 +2798,25 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             // onboarding performs for a participant that arrived carrying one.
             const upserted = await executeQuery<{ personId: string }>(
               executor,
-              // The submitted name as the display name, exactly as the
-              // derivation above does it for a participant that arrived with an
-              // identifier. Writing the identifier instead left the registry
-              // key standing as the player's name on the public fixture page,
-              // and made two paths that create the same person from the same
-              // kind of identifier disagree. An existing person keeps its own
-              // name: ON CONFLICT DO NOTHING.
+              /*
+               * Issue #708. The submitted name as the display name, exactly as
+               * the derivation above does it for a participant that arrived
+               * carrying an identifier. Writing the identifier instead made two
+               * paths that create the same person from the same kind of
+               * identifier disagree, and it was not cosmetic: a squad is matched
+               * by display name, so a person named after the registry key could
+               * not be found by the name the submission used. Every reference
+               * that named the participant stayed unresolved, no item became
+               * acceptable, and the batch could not be approved however many
+               * tasks the reviewer settled. It also published the registry key
+               * as the player's name.
+               *
+               * No alias is written for the submitted name. A name must not
+               * become a resolution key of its own; this is the person's name,
+               * which the squad scope already makes safe to match within.
+               *
+               * An existing person keeps its own name: ON CONFLICT DO NOTHING.
+               */
               `INSERT INTO person (source_ref, display_name)
                VALUES ($1, COALESCE($2, $1))
                ON CONFLICT (source_ref) DO NOTHING
@@ -2862,29 +2874,6 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
            VALUES ($1::bigint, $2::bigint, $3::bigint)
            ON CONFLICT (fixture_id, person_id) DO NOTHING`,
           [entry.fixtureId, entry.personId, entry.teamId],
-        );
-        /*
-         * Issue #708. The name the submission used, retained against the person
-         * the reviewer says it denotes — which is the literal content of the
-         * decision, and what `person_alias` is for: "every name ever observed
-         * for a person".
-         *
-         * Without it the decision settled the task and still left the batch
-         * unapprovable. A person created from a durable identifier carries that
-         * identifier as its display name, so the submitted name matched neither
-         * a squad display name nor an alias; the reference therefore offered no
-         * candidate, and `applyOverride` only honours a mapping whose candidate
-         * the resolver itself offered. The reference mapping written below —
-         * the mechanism the comment there relies on — was rejected as "no
-         * longer available in the batch context" on every revalidation, so the
-         * deliveries stayed unresolved however many tasks were settled.
-         */
-        await executeQuery(
-          executor,
-          `INSERT INTO person_alias (person_id, name)
-           VALUES ($1::bigint, $2)
-           ON CONFLICT (person_id, name) DO NOTHING`,
-          [entry.personId, entry.submittedName],
         );
         await executeQuery(
           executor,

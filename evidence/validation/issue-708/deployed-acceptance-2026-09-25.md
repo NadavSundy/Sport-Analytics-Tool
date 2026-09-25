@@ -293,28 +293,37 @@ Found past the point the deployed run reached. All three tasks settle, the squad
 tasks stay settled — and every participant reference stays unresolved, so no item becomes
 acceptable and approval is refused with a `409`. The onboarding work completes and achieves nothing.
 
-A person created from a durable identifier carried that identifier as its display name, so the
-submitted name matched neither a squad display name nor an alias. The reference therefore offered no
-candidate, and `applyOverride` honours a mapping only for a candidate the resolver itself offered —
-so the reference mapping the decision writes, the mechanism its own code comment relies on, was
-rejected as "no longer available in the batch context" on every revalidation.
+The decision path created a person with `display_name` set to the identifier value. A squad is
+matched by display name, so the name the submission used matched nothing, and the reference offered
+no candidate. That is also what step 9 above observed without comment: the public fixture page
+listing `onboarding-test-priya-1` as a player. The registry key standing in for a player's name was
+the visible half of a defect whose other half was that the batch could never be approved.
 
-Two changes, because there were two halves:
+The decision path now uses the submitted name, exactly as the derivation path for the same situation
+already did. An existing person keeps its own name.
 
-- the decision now retains the submitted name as a `person_alias` of the person the reviewer named,
-  which is the literal content of the decision and what that table is for; and
-- `applyOverride` accepts a participant mapping onto a member of the resolved fixture's own squad
-  even where no candidate was offered. A task exists precisely because the resolver could offer
-  nothing — an identifier naming nobody offers no candidate — so without this a decision settling
-  one could never be applied. It is not a widening of matching: the person is in that squad because
-  a reviewer put them there by the decision the mapping records.
+**No alias is written for a submitted name.** Pull Request #731 recorded that as a deliberate
+decision — a name must not become a resolution key of its own — and it still holds. This is the
+person's own name, and squad scope is what makes matching on it safe. The end-to-end test asserts
+`person_alias` is empty after all three decisions, so the property cannot be lost silently.
 
-### Defect G — a registry key was published as a player's name
+### Defect G — a reviewer's decision could not be applied to an identifier that named nobody
 
-The decision path created people with `display_name` set to the identifier value, while the
-derivation path for the same situation uses the submitted name. The public fixture page therefore
-listed `onboarding-test-priya-1` as a player, which is what step 9 above observed without comment.
-The decision path now matches the derivation path; an existing person keeps its own name.
+The remaining half of F, and a separate mechanism. `onboarding-test-Lerato-Khumalo` is submitted with
+`app:participant:2147483647`. An identifier naming nobody can never be name-matched — correctly —
+so no display name fix can reach it. It can only be settled by the reviewer's own recorded mapping,
+and `applyOverride` honoured a mapping only for a candidate the resolver itself had offered. A task
+exists precisely because the resolver could offer nothing, so a decision settling one could never be
+applied, and the reference mapping the decision writes — the mechanism its own code comment relies
+on — was rejected as "no longer available in the batch context" on every revalidation.
+
+`applyOverride` now accepts a participant mapping onto a member of the resolved fixture's own squad
+even where no candidate was offered. It is not a widening of matching: the person is in that squad
+because a reviewer put them there by the decision the mapping records.
+
+The end-to-end test asserts which mechanism settles each of the fifteen role references, so the two
+cannot be confused: five resolve by the durable identifier the package carried, eight by squad-scoped
+exact name, and two — Lerato's — by the reviewer's mapping and by nothing else.
 
 ### Two defects in the packages themselves
 
@@ -338,7 +347,7 @@ Issue #708 is **not** closed. Seven defects are now recorded against it:
 | D      | A v1.1 proposal could not declare a winner — the real cause of C | Yes   | Local end-to-end                  |
 | E      | Two writers classified a task differently; the wrong one won     | Yes   | Local end-to-end                  |
 | F      | A settled decision left the batch unapprovable                   | Yes   | Local end-to-end                  |
-| G      | A registry key published as a player's name                      | Yes   | Local end-to-end                  |
+| G      | A mapping could not settle an identifier that named nobody       | Yes   | Local end-to-end                  |
 
 **A is the exception.** Its fix was in the reviewer interface, and the local run drives the API, not
 a browser. What is verified is that the endpoint accepts a decision carrying both an identity and a

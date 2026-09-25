@@ -604,9 +604,7 @@ describe.sequential('issue #708 participant onboarding, end to end', () => {
     expect(settled.every((task) => task.state === 'onboarded')).toBe(true);
     expect(settled.every((task) => task.decidedBy === seed().reviewerId)).toBe(true);
 
-    // The reviewer's team, not the one the submission carried. Found through
-    // the task's own person rather than by name: a person created from a
-    // durable identifier carries the identifier as its display name.
+    // The reviewer's team, not the one the submission carried.
     const unlistedTask = settled.find((task) => task.submittedName === PARTICIPANTS.unlistedTeam)!;
     const placed = await databasePool().query<{ teamName: string }>(
       `SELECT t.name AS "teamName" FROM fixture_squad fs
@@ -616,14 +614,23 @@ describe.sequential('issue #708 participant onboarding, end to end', () => {
     );
     expect(placed.rows[0]!.teamName).toBe(packageIdentity().teamNames[0]);
 
-    // The submitted name is retained against the person the reviewer named, so
-    // the references that used it can resolve.
-    const alias = await databasePool().query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM person_alias
-        WHERE person_id=$1::bigint AND name=$2`,
-      [unlistedTask.personId, PARTICIPANTS.unlistedTeam],
+    // The person a decision creates carries the submitted name, not the
+    // registry key. It is what the squad is matched by, so it decides whether
+    // the references that used that name can ever resolve.
+    const created = await databasePool().query<{ displayName: string; sourceRef: string }>(
+      `SELECT display_name AS "displayName", source_ref AS "sourceRef"
+         FROM person WHERE person_id=$1::bigint`,
+      [unlistedTask.personId],
     );
-    expect(alias.rows[0]!.count).toBe('1');
+    expect(created.rows[0]!.displayName).toBe(PARTICIPANTS.unlistedTeam);
+    expect(created.rows[0]!.sourceRef).toBe('onboarding-test-sipho-1');
+
+    // A name is still not a resolution key: nothing writes an alias for a
+    // submitted name, so no name gained matching power anywhere.
+    const aliases = await databasePool().query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM person_alias`,
+    );
+    expect(aliases.rows[0]!.count).toBe('0');
   }, 180_000);
 
   test('6. revalidation leaves every settled task settled', async () => {
@@ -664,6 +671,51 @@ describe.sequential('issue #708 participant onboarding, end to end', () => {
         .map((resolution) => resolution.referencePath),
     );
     expect(unresolvedParticipants).toEqual([]);
+
+    /*
+     * How each one resolved, because the two settled cases resolve by
+     * different mechanisms and only one of them needed the override.
+     *
+     * A participant submitted as a name resolves by squad-scoped exact name,
+     * the platform's ordinary rule, now that the person the decision created
+     * carries that name. A participant submitted with an identifier naming
+     * nobody can never be name-matched and would resolve by nothing at all, so
+     * it resolves by the reviewer's own recorded mapping.
+     */
+    const stored = await databasePool().query<{ resolvedReferences: unknown }>(
+      `SELECT resolved_references AS "resolvedReferences" FROM batch_item
+        WHERE batch_id=$1::bigint ORDER BY ordinal`,
+      [batchId()],
+    );
+    const matchedBy: Record<string, number> = {};
+    const visit = (value: unknown): void => {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) {
+        for (const nested of value) visit(nested);
+        return;
+      }
+      const record = value as Record<string, unknown>;
+      if (record.entityType === 'participant' && typeof record.matchedBy === 'string') {
+        matchedBy[record.matchedBy] = (matchedBy[record.matchedBy] ?? 0) + 1;
+        return;
+      }
+      for (const nested of Object.values(record)) visit(nested);
+    };
+    for (const row of stored.rows) visit(row.resolvedReferences);
+
+    expect(matchedBy).toEqual({
+      // Thandi's five references: the durable identifier the package carried,
+      // which needed no decision at all.
+      'source-identifier': 5,
+      // Priya's five and Sipho's three, by name within the fixture squad —
+      // the platform's ordinary rule, reached because the person each
+      // decision created carries the submitted name.
+      'exact-name': 8,
+      // Lerato's two. A submitted identifier naming nobody can never be
+      // name-matched, so these resolve by the reviewer's recorded mapping and
+      // by nothing else.
+      manual: 2,
+    });
 
     expect(items.map((item) => item.outcome)).toEqual([
       'accepted',
