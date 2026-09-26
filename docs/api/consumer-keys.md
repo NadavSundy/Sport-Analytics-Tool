@@ -65,6 +65,16 @@ the raw consumer key into the `apiKeyAuth` **Value** field. Do not include
 
 Missing, malformed, unknown and revoked secrets return `401`, `WWW-Authenticate: ApiKey`, and no information about the matching consumer or key state.
 
+### Using a consumer key from WSL
+
+If the issued consumer key is already stored in the `API_KEY` environment
+variable in WSL, it can be copied directly to the Windows clipboard without
+printing the secret in the terminal:
+
+```bash
+printf '%s' "$API_KEY" | clip.exe
+```
+
 ## Policy and response metadata
 
 Each consumer has a configurable fixed UTC-minute window (default **60 requests per minute**) and a durable UTC daily quota (default **10,000 limit-admitted requests per day**). Per-minute counter rows are held in PostgreSQL and atomically admitted, so one consumer limit applies across all active backend replicas, survives an individual replica restart, and resets at the next UTC minute boundary. Limits apply across all of a consumer's keys, so rotation cannot evade the policy. A request that exceeds either policy returns `429` with the `RateLimit-*` headers. A per-minute limit response (`RATE_LIMIT_EXCEEDED`) also includes `Retry-After`; a daily quota response (`QUOTA_EXCEEDED`) includes the `X-Quota-*` headers instead.
