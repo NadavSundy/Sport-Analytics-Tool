@@ -32,6 +32,10 @@ changed to `Security & sign out`; its `/account/security` URL and every
 available action remain unchanged. Focused unit and Playwright assertions now
 cover the clearer label and the same URL.
 
+The user then selected the broader, final label `Account management`. It better
+describes the destination's complete scope without changing the security URL or
+any action. The focused unit and Playwright assertions were updated accordingly.
+
 ## Verification performed
 
 - The focused `App.test.tsx` test failed before the final production change:
@@ -76,4 +80,5 @@ cookies, private URLs, or unnecessary personal information.
 - Implementation commit: `325f6d39ed66edc9170d67fe2635f26e90833aa9`
 - Final corrective implementation commit: `62f1ee40`
 - Follow-up implementation commit: `780e7db1f94564a973ac89bde35e73f04bf593a1`
+- Final label implementation commit: `6289da2874270745a9cf356b08f14d96561d34eb`
 - Pull request: pending
