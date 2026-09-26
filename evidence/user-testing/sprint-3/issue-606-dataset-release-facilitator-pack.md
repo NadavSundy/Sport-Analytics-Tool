@@ -14,12 +14,12 @@
 | Scenario ID                  | `S3-DATA-01`                                               |
 | Participant role             | Analyst or data-oriented user                              |
 | Task IDs                     | `DATA-01`; `DATA-02`                                       |
-| Session evidence path        | `evidence/user-testing/sprint-3/YYYY-MM-DD-PXX-analyst.md` |
+| Future session evidence path | `evidence/user-testing/sprint-3/YYYY-MM-DD-PXX-analyst.md` |
 
 ## Readiness record
 
-Record the actual values immediately before the session. Do not begin if the
-release catalogue or any required release artefact is unavailable.
+Record actual values immediately before the session. Do not begin if the release
+catalogue or any required release artefact is unavailable.
 
 | Check                                    | Actual value / result |
 | ---------------------------------------- | --------------------- |
@@ -40,7 +40,7 @@ release catalogue or any required release artefact is unavailable.
 - [ ] The release detail presents its version, scope, schema/field descriptions and checksum.
 - [ ] The participant can obtain/read the JSON artefact without authentication or mutation.
 - [ ] The chosen question can be answered from the release's documented event fields.
-- [ ] No participant name, email address, credential, token or API key appears in this pack or the future session evidence.
+- [ ] No participant name, email address, credential, token or API key appears in this pack or future session evidence.
 
 ## Facilitator introduction
 
@@ -51,12 +51,12 @@ Read this before the tasks:
 > not normally tell you where to click because we want to see whether the
 > application communicates the workflow clearly.
 
-Clarify the wording if needed, but do not explain navigation, point to controls,
-or identify the expected fields while a task is in progress.
+Clarify wording if needed, but do not explain navigation, point to controls, or
+identify expected fields while a task is in progress.
 
 ## Task cards
 
-### DATA-01 — Find and understand a versioned dataset release
+### DATA-01 - Find and understand a versioned dataset release
 
 Give the participant only this task:
 
@@ -69,7 +69,7 @@ field descriptions and checksum are findable; whether the participant
 distinguishes the release from an ad-hoc export; and whether download/use
 instructions are sufficient.
 
-### DATA-02 — Judge reproducibility
+### DATA-02 - Judge reproducibility
 
 Use the prepared question from the readiness record. Give the participant only:
 
@@ -77,34 +77,34 @@ Use the prepared question from the readiness record. Give the participant only:
 > information to reproduce the requested statistic later. Explain which release
 > artefacts or fields you would rely on.
 
-Observe whether documentation answers their questions; whether they identify the
-needed event data; whether version/checksum establish confidence in the snapshot;
-and whether undocumented assumptions block reproducibility.
+Observe whether documentation answers questions; whether the participant
+identifies needed event data; whether version/checksum establishes confidence in
+the snapshot; and whether undocumented assumptions block reproducibility.
 
 ## Capture requirements
 
-After the session, copy the actual notes into the session template and retain a
+After the session, copy actual notes into the session template and retain a
 separate `Success`, `Partial`, or `Failure` outcome for each attempted Task ID.
-For each finding, record its Task ID, impact-based `S1`–`S4` severity and final
+For each finding, record its Task ID, impact-based `S1`-`S4` severity and final
 `Accept`, `Defer`, or `Reject` disposition. An accepted `S1` or `S2` requires a
 retest on the corrected build before #606 can close.
 
 Update the Sprint 3 summary only after evidence has been reviewed for personal
 information and credentials.
 
-## What must be supplied to complete the documentation
+## What must be supplied to complete the issue
 
 1. The live environment URL and deployed commit/release.
 2. A working public catalogue entry and one selected release's version, scope,
    schema/field-documentation location, checksum and artefact path.
-3. One small reproducibility question plus the source fields that the facilitator
+3. One small reproducibility question and the source fields the facilitator
    expects to be relevant.
-4. An anonymous participant identifier, their broad role/relevant experience,
-   browser/device, and the date.
+4. An anonymous participant ID, broad role/relevant experience, browser/device,
+   and session date.
 5. The participant's uncoached observations and separate outcome for `DATA-01`
    and `DATA-02`.
-6. For every finding: severity, decision and reason; any linked issue/PR; and,
-   for accepted `S1`/`S2`, retest results.
+6. For every finding: severity, decision and reason; linked issue/PR; and, for
+   accepted `S1`/`S2`, retest results.
 
 ## AI Declaration
 
