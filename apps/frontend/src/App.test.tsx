@@ -277,10 +277,16 @@ describe('public application and authentication interface', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-      'href',
-      '/account/security',
-    );
+    expect(
+      within(screen.getByRole('navigation', { name: 'Account sections' })).getByRole('link', {
+        name: 'Settings',
+      }),
+    ).toHaveAttribute('href', '/account/security');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Account' })).getByRole('link', {
+        name: 'Manage account',
+      }),
+    ).toHaveAttribute('href', '/account');
     expect(screen.queryByRole('link', { name: 'Submit Events' })).not.toBeInTheDocument();
   });
 
@@ -332,7 +338,10 @@ describe('public application and authentication interface', () => {
 
     act(() => auth.emit('SIGNED_IN', session));
 
-    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(screen.queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument();
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
     expect(await screen.findByText('viewer')).toBeInTheDocument();
@@ -534,7 +543,7 @@ describe('public application and authentication interface', () => {
       'We could not sign you out. Please try again.',
     );
     expect(screen.queryByText(/token internals/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Manage account' })).toBeInTheDocument();
   });
 
   it('persists a manual theme selection', async () => {
