@@ -77,9 +77,16 @@ The OpenAPI document includes the metadata needed by interactive API clients.
 - Authenticated application operations use `bearerAuth`; the value supplied by
   a client is the raw Supabase access token.
 - External consumer operations use `apiKeyAuth`, sent in the `X-API-Key`
-  request header.
+  request header. In an interactive OpenAPI client, paste only the raw consumer
+  API key into the `apiKeyAuth` **Value** field; the client adds the
+  `X-API-Key` header automatically.
 - Request parameters and response media types are documented on the operations
   that expose them, including JSON and CSV exports.
+
+Approved browser origins can read the documented consumer rate-limit and quota
+response metadata through CORS, including `RateLimit-*`, `X-Quota-*` and
+`Retry-After`. This allows interactive API clients to show the same safe
+consumer-state metadata that direct HTTP clients receive.
 
 Real bearer tokens, API keys and credentials must never be committed to the
 OpenAPI file as examples. Authentication values entered into an interactive
@@ -113,3 +120,4 @@ The preceding document was planned, generated, reviewed and edited with the assi
 The issue #609 contract-test section was added with the assistance of Claude-Code[Claude Opus 5].
 The Issue #658 public-specification endpoint and deployment-packaging documentation was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #659 OpenAPI contract hardening and regression tests were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #743 browser-visible consumer response-header documentation was generated and reviewed with the assistance of ChatGPT-Web[GPT-5.6 Sol].

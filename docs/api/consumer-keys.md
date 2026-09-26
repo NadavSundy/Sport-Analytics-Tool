@@ -59,6 +59,10 @@ GET /api/v1/consumer/fixtures
 X-API-Key: sat_live_<secret>
 ```
 
+When using the interactive OpenAPI client, select **Authorize** and paste only
+the raw consumer key into the `apiKeyAuth` **Value** field. Do not include
+`X-API-Key:` in the value; the client adds that request header automatically.
+
 Missing, malformed, unknown and revoked secrets return `401`, `WWW-Authenticate: ApiKey`, and no information about the matching consumer or key state.
 
 ### Using a consumer key from WSL
@@ -84,9 +88,14 @@ Every accepted keyed request exposes these safe values:
 
 The metadata contains counts and reset times only; it does not expose raw keys, hashes, consumer names or internal account identifiers.
 
+These safe response headers are exposed through CORS to approved browser
+origins so browser-based API consumers can read the same rate-limit, quota and
+retry metadata as direct HTTP clients.
+
 ## AI Declaration
 
 The preceding consumer-key documentation was generated and edited with the assistance of Codex[GPT-5].
 The issue #609 consumer filter and limit-header details were added with the assistance of Claude-Code[Claude Opus 5].
 The issue #594 consumer-surface classification and protected aliases were added with the assistance of Codex[GPT-5].
 The issue #595 shared rate-limit counter and failure-mode documentation was added with the assistance of Codex[GPT-5].
+The issue #743 browser-client authentication and CORS response-header clarification was added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
