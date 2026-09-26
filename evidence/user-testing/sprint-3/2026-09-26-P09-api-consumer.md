@@ -2,19 +2,19 @@
 
 ## Session details
 
-| Field               | Record |
-| ------------------- | ------ |
-| User-feedback issue | #607 — API consumer keys, quotas and rate limits |
-| Date                | 2026-09-26 |
-| Participant         | P09 (anonymous) |
-| Role                | Technically competent API consumer |
-| Environment         | Deployed frontend, public documentation site and deployed development API |
-| Frontend            | `https://sport-analytics-tool-web.pages.dev` |
-| Documentation       | `https://sports-analytics-tool.pages.dev/api/overview/` |
-| API                 | `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1` |
-| Commit              | `eb106e4dada8b767635d90cf63a257b2ab28fbba` |
-| Browser/device      | Google Chrome on Windows |
-| Facilitation        | A bearer token was supplied after the participant requested one during PUB-05; no further coaching was recorded for API-01 |
+| Field               | Record                                                                                                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| User-feedback issue | #607 — API consumer keys, quotas and rate limits                                                                                                                                                   |
+| Date                | 2026-09-26                                                                                                                                                                                         |
+| Participant         | P09 (anonymous)                                                                                                                                                                                    |
+| Role                | Technically competent API consumer                                                                                                                                                                 |
+| Environment         | Deployed frontend, public documentation site and deployed development API                                                                                                                          |
+| Frontend            | `https://sport-analytics-tool-web.pages.dev`                                                                                                                                                       |
+| Documentation       | `https://sports-analytics-tool.pages.dev/api/overview/`                                                                                                                                            |
+| API                 | `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1`                                                                                                   |
+| Commit              | `eb106e4dada8b767635d90cf63a257b2ab28fbba`                                                                                                                                                         |
+| Browser/device      | Google Chrome on Windows                                                                                                                                                                           |
+| Facilitation        | No coaching was provided during PUB-05. A bearer token was supplied only after PUB-05 had already been completed, during later authenticated testing; no further coaching was recorded for API-01. |
 
 The participant's identity, raw API key, bearer token and other credentials are not retained in this record.
 
@@ -37,23 +37,23 @@ Pre-session technical checks confirmed:
 
 ## Task outcomes
 
-| Task ID | Outcome | Observation |
-| ------- | ------- | ----------- |
-| PUB-05 | Partial | The participant selected the API entry point, found the API documentation easily and understood how to begin using the API, including the distinction between public and consumer-controlled routes. The participant requested a bearer token and the facilitator supplied one, so the task is retained as Partial under the project's no-coaching outcome rule. |
-| API-01 | Partial | The participant independently found the `apiKeyAuth` / `X-API-Key` instructions, used the Authorize control, successfully called `GET /api/v1/consumer/competitions`, and understood the short-term and daily quota concepts. The participant triggered `429 RATE_LIMIT_EXCEEDED` in the interactive OpenAPI client, but the browser client did not expose the response reset/retry headers, preventing the participant from determining the exact retry interval from Swagger alone. |
+| Task ID | Outcome | Observation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PUB-05  | Success | The participant selected the API entry point, found the API documentation easily and understood how to begin using the API, including the distinction between public and consumer-controlled routes. The later bearer-token assistance occurred only after PUB-05 had already been completed, so it does not change the unassisted PUB-05 outcome.                                                                                                                                                                                                                                                                                                                                                                    |
+| API-01  | Partial | The participant independently found the `apiKeyAuth` / `X-API-Key` instructions, used the Authorize control, successfully called `GET /api/v1/consumer/competitions`, and understood the short-term and daily quota concepts. The participant triggered `429 RATE_LIMIT_EXCEEDED` in the interactive OpenAPI client, but the browser client did not expose the response reset/retry headers during the original session, preventing the participant from determining the exact retry interval from Swagger alone. The defect was subsequently fixed in #743 and passed deployed facilitator retest; the original participant outcome remains Partial because no participant rerun on the corrected build is recorded. |
 
 ## API-01 observed response state
 
 The successful consumer request exposed:
 
-| Header | Observed value |
-| ------ | -------------- |
-| `RateLimit-Limit` | `5` |
-| `RateLimit-Remaining` | `4` |
-| `RateLimit-Reset` | `13` |
-| `X-Quota-Limit` | `20` |
-| `X-Quota-Remaining` | `18` |
-| `X-Quota-Reset` | `54612` |
+| Header                | Observed value |
+| --------------------- | -------------- |
+| `RateLimit-Limit`     | `5`            |
+| `RateLimit-Remaining` | `4`            |
+| `RateLimit-Reset`     | `13`           |
+| `X-Quota-Limit`       | `20`           |
+| `X-Quota-Remaining`   | `18`           |
+| `X-Quota-Reset`       | `54612`        |
 
 The participant understood the meaning of the short-term remaining/reset values and the daily quota before the limit-exceeded check.
 
@@ -115,15 +115,15 @@ This confirms that changing consumer analytics routes did not bypass the shared 
 
 ## Findings and decisions
 
-| Finding ID | Task ID | Observation | Severity | Decision | Decision reason | Gitea issue | Retest |
-| ---------- | ------- | ----------- | -------- | -------- | --------------- | ----------- | ------ |
-| P09-F01 | API-01 | The interactive OpenAPI client showed `RATE_LIMIT_EXCEEDED` but did not expose `RateLimit-*` / `Retry-After` response headers to the browser participant, so exact retry timing could not be determined from Swagger alone. Direct HTTP verification confirmed that the backend did return those headers. | S3 | Accept | Non-blocking API-consumer usability defect. The backend behaviour is correct over direct HTTP, but browser-based consumers need the safe rate/quota headers exposed through CORS. Track separately as a bug. | Pending creation after evidence commit | Recommended after fix; not required for accepted S3 finding |
+| Finding ID | Task ID | Observation                                                                                                                                                                                                                                                                                               | Severity | Decision | Decision reason                                                                                                                       | Gitea issue | Retest                                                                                                                      |
+| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| P09-F01    | API-01  | The interactive OpenAPI client showed `RATE_LIMIT_EXCEEDED` but did not expose `RateLimit-*` / `Retry-After` response headers to the browser participant, so exact retry timing could not be determined from Swagger alone. Direct HTTP verification confirmed that the backend did return those headers. | S3       | Accept   | Non-blocking API-consumer usability defect. Browser-based consumers needed the safe rate/quota response headers exposed through CORS. | #743        | Passed on the deployed fix: Swagger visibly exposed rate/quota headers on `200` and `RateLimit-*` / `Retry-After` on `429`. |
 
-## Technical diagnosis for follow-up
+## Technical diagnosis and resolution
 
-The repository's OpenAPI contract documents `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` and `Retry-After` on consumer `429` responses. The backend also returns those headers over direct HTTP.
+The repository's OpenAPI contract documents `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` and `Retry-After` on consumer `429` responses. Direct HTTP verification showed that the backend already returned those headers, but the original deployed browser client could not read them because the safe custom response headers were not exposed through CORS.
 
-The deployed browser client cannot read them because the backend CORS configuration currently enables allowed origins and credentials but does not expose the custom safe response headers. The follow-up bug should consider exposing the consumer metadata headers required by browser-based API explorers:
+Finding `P09-F01` was tracked as bug #743. The deployed fix exposes the browser-safe consumer metadata headers required by interactive API clients:
 
 - `RateLimit-Limit`
 - `RateLimit-Remaining`
@@ -132,6 +132,49 @@ The deployed browser client cannot read them because the backend CORS configurat
 - `X-Quota-Remaining`
 - `X-Quota-Reset`
 - `Retry-After`
+
+### Deployed #743 retest — 2026-09-26
+
+A fresh disposable retest consumer was issued with consumer ID `2`, key ID `2`, a `5` requests/minute short-term limit and a `20` requests/day quota. The raw key is not retained in evidence.
+
+The deployed Swagger/OpenAPI client visibly exposed the rate/quota response metadata on a successful request:
+
+```text
+HTTP 200
+RateLimit-Limit: 5
+RateLimit-Remaining: 4
+RateLimit-Reset: 38
+X-Quota-Limit: 20
+X-Quota-Remaining: 13
+X-Quota-Reset: 47198
+```
+
+Evidence screenshot:
+
+`2026-09-26-P09-api-consumer-retest-200.png`
+
+The deployed Swagger/OpenAPI client was then driven to the configured short-term limit. The browser-visible response showed:
+
+```text
+HTTP 429
+RATE_LIMIT_EXCEEDED
+RateLimit-Limit: 5
+RateLimit-Remaining: 0
+RateLimit-Reset: 50
+Retry-After: 50
+```
+
+Evidence screenshot:
+
+`2026-09-26-P09-api-consumer-retest-429.png`
+
+A direct browser-origin HTTP verification also confirmed that the deployed API emits:
+
+```text
+Access-Control-Expose-Headers: RateLimit-Limit,RateLimit-Remaining,RateLimit-Reset,X-Quota-Limit,X-Quota-Remaining,X-Quota-Reset,Retry-After
+```
+
+The #743 remediation therefore passed deployed technical retest. No raw API key, bearer token or other credential is retained in the screenshots or this record.
 
 ## Positive observations
 
@@ -144,11 +187,13 @@ The deployed browser client cannot read them because the backend CORS configurat
 
 ## Post-session assessment
 
-The #607 workflow is substantially exercised, but the gate should remain open at this evidence commit.
+**Final gate result: Accepted with documented limitations.**
 
-`API-01` produced one accepted S3 finding, `P09-F01`, which must be linked to a Gitea bug (or another explicit disposition) before #607 closes. No S1 or S2 finding was observed, so the project's mandatory accepted-S1/S2 retest rule does not apply to this finding.
+`PUB-05` is recorded as Success. The facilitator clarified that the bearer-token assistance occurred only after the participant had already completed PUB-05, so no coaching was required to discover the API documentation or distinguish the public and consumer-controlled surfaces.
 
-`PUB-05` is retained as Partial because facilitator assistance was recorded. A short unassisted PUB-05 retest is required before the gate can truthfully satisfy the issue's no-coaching acceptance criterion. If the bearer token was actually supplied only after PUB-05 had already completed, the facilitator should correct that session note before changing the outcome.
+`API-01` remains Partial as the historical participant-session outcome because the participant could not determine the exact retry interval from Swagger during the original session. That limitation produced accepted S3 finding `P09-F01`. The defect was tracked in #743, fixed, deployed, and passed facilitator technical retest in the interactive OpenAPI client: successful responses visibly exposed rate/quota metadata and the `429 RATE_LIMIT_EXCEEDED` response visibly exposed `RateLimit-*` and `Retry-After`.
+
+No S1 or S2 finding was observed, so the project's mandatory accepted-S1/S2 retest rule does not apply. No participant rerun on the corrected build is recorded; that is the documented limitation retained by this gate result.
 
 ## Evidence review
 
@@ -156,10 +201,11 @@ The #607 workflow is substantially exercised, but the gate should remain open at
 - [x] Raw API key, bearer token and personal information are absent.
 - [x] Each attempted Task ID has an individual outcome.
 - [x] The actionable finding is linked to its Task ID and severity-rated.
-- [x] Direct HTTP verification is clearly separated from participant observation.
+- [x] Direct HTTP/facilitator verification is clearly separated from participant observation.
 - [x] The actionable S3 finding has an accepted decision.
-- [ ] The accepted finding is linked to its follow-up Gitea issue.
-- [ ] PUB-05 has an unassisted retest, unless the recorded bearer-token assistance is corrected as having occurred after PUB-05 completion.
+- [x] The accepted finding is linked to follow-up bug #743.
+- [x] The deployed #743 fix passed browser/OpenAPI technical retest.
+- [x] PUB-05 is correctly recorded as unassisted because the bearer-token assistance occurred after that task had already completed.
 
 ## AI Declaration
 
