@@ -190,6 +190,94 @@ describe('API consumer key lifecycle and protections', () => {
     expect(limited.body.error.code).toBe('RATE_LIMIT_EXCEEDED');
   });
 
+  test('exposes consumer rate-limit and quota headers to approved browser origins', async () => {
+    const repo = repository({
+      consumeRateLimit: vi
+        .fn()
+        .mockResolvedValueOnce({
+          allowed: true,
+          used: 1,
+          resetAt: new Date('2026-09-19T10:01:00.000Z'),
+        })
+        .mockResolvedValueOnce({
+          allowed: false,
+          used: 2,
+          resetAt: new Date('2026-09-19T10:01:00.000Z'),
+        }),
+    });
+
+    const app = createTestApp(
+      undefined,
+      {
+        async listCompetitions() {
+          return { data: [], pagination: { nextCursor: null } };
+        },
+      } as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      repo,
+    );
+
+    const apiKey = 'sat_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const origin = 'http://localhost:5173';
+
+    const success = await request(app)
+      .get('/api/v1/consumer/competitions')
+      .set('Origin', origin)
+      .set('X-API-Key', apiKey)
+      .expect(200);
+
+    const exposedOnSuccess = (success.headers['access-control-expose-headers'] ?? '')
+      .split(',')
+      .map((header: string) => header.trim().toLowerCase());
+
+    expect(exposedOnSuccess).toEqual(
+      expect.arrayContaining([
+        'ratelimit-limit',
+        'ratelimit-remaining',
+        'ratelimit-reset',
+        'x-quota-limit',
+        'x-quota-remaining',
+        'x-quota-reset',
+        'retry-after',
+      ]),
+    );
+
+    const limited = await request(app)
+      .get('/api/v1/consumer/competitions')
+      .set('Origin', origin)
+      .set('X-API-Key', apiKey)
+      .expect(429);
+
+    expect(limited.body.error.code).toBe('RATE_LIMIT_EXCEEDED');
+    expect(limited.headers['retry-after']).toBeDefined();
+
+    const exposedOnLimit = (limited.headers['access-control-expose-headers'] ?? '')
+      .split(',')
+      .map((header: string) => header.trim().toLowerCase());
+
+    expect(exposedOnLimit).toEqual(
+      expect.arrayContaining([
+        'ratelimit-limit',
+        'ratelimit-remaining',
+        'ratelimit-reset',
+        'x-quota-limit',
+        'x-quota-remaining',
+        'x-quota-reset',
+        'retry-after',
+      ]),
+    );
+  });
+
   test('returns quota exceeded when the durable counter refuses another request', async () => {
     const repo = repository({
       consumeDailyQuota: vi.fn().mockResolvedValue({ allowed: false, used: 3 }),

@@ -114,6 +114,16 @@ export interface AppDependencies {
   provenanceService?: ProvenanceService;
 }
 
+const BROWSER_EXPOSED_RESPONSE_HEADERS = [
+  'RateLimit-Limit',
+  'RateLimit-Remaining',
+  'RateLimit-Reset',
+  'X-Quota-Limit',
+  'X-Quota-Remaining',
+  'X-Quota-Reset',
+  'Retry-After',
+];
+
 export function createApp(dependencies: AppDependencies = {}) {
   const environment = dependencies.environment ?? loadEnvironment();
   const verifyAccessToken =
@@ -191,6 +201,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     cors({
       origin: allowedOrigins,
       credentials: true,
+      exposedHeaders: BROWSER_EXPOSED_RESPONSE_HEADERS,
     }),
   );
   app.use(
