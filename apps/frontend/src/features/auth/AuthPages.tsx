@@ -7,8 +7,9 @@ import { useAuth } from './AuthProvider';
 import { useAuthenticatedApiClient } from './useAuthenticatedApiClient';
 import { getCurrentUserProfile } from './current-user-api';
 import { safeInternalReturnPath } from './auth-return';
-import { Breadcrumbs, LocalNavigation } from '../../components/NavigationPrimitives';
-import type { CurrentUserProfile } from '@sport-analytics/contracts';
+import { LocalNavigation } from '../../components/NavigationPrimitives';
+import type { Competition, CurrentUserProfile } from '@sport-analytics/contracts';
+import { competitionOptions } from '../submissions/BatchUploadPage';
 
 type OAuthCallbackError = 'cancelled' | 'provider-error';
 
@@ -326,6 +327,13 @@ function AccountOverview({ identityEmail }: { identityEmail: string | undefined 
   const client = useAuthenticatedApiClient();
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [error, setError] = useState(false);
+  const [scopeDialogState, setScopeDialogState] = useState<
+    | { kind: 'closed' }
+    | { kind: 'loading' }
+    | { kind: 'ready'; competitions: Competition[] }
+    | { kind: 'error' }
+  >({ kind: 'closed' });
+  const scopeTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -336,6 +344,24 @@ function AccountOverview({ identityEmail }: { identityEmail: string | undefined 
       });
     return () => controller.abort();
   }, [client]);
+
+  useEffect(() => {
+    if (scopeDialogState.kind === 'closed' || !profile) return;
+    const controller = new AbortController();
+    void competitionOptions(profile, controller.signal)
+      .then((competitions) => {
+        if (!controller.signal.aborted) setScopeDialogState({ kind: 'ready', competitions });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setScopeDialogState({ kind: 'error' });
+      });
+    return () => controller.abort();
+  }, [profile, scopeDialogState.kind]);
+
+  function closeScopeDialog() {
+    setScopeDialogState({ kind: 'closed' });
+    scopeTriggerRef.current?.focus();
+  }
 
   return (
     <section aria-labelledby="account-overview-title">
@@ -359,6 +385,16 @@ function AccountOverview({ identityEmail }: { identityEmail: string | undefined 
               <div>
                 <dt>Competition scopes</dt>
                 <dd>{profile.competitionIds.length}</dd>
+                {profile.role === 'submitter' && profile.approvalState === 'approved' ? (
+                  <button
+                    ref={scopeTriggerRef}
+                    className="button button--secondary"
+                    type="button"
+                    onClick={() => setScopeDialogState({ kind: 'loading' })}
+                  >
+                    View approved competition scopes
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </>
@@ -366,6 +402,54 @@ function AccountOverview({ identityEmail }: { identityEmail: string | undefined 
       </dl>
       {error ? <p role="alert">Your access summary could not be loaded.</p> : null}
       {!profile && !error ? <p role="status">Loading access summary...</p> : null}
+      {scopeDialogState.kind !== 'closed' ? (
+        <div
+          className="submitter-access-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeScopeDialog();
+          }}
+        >
+          <div
+            className="submitter-access-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="approved-scopes-dialog-title"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                closeScopeDialog();
+              }
+            }}
+          >
+            <h2 id="approved-scopes-dialog-title">Your approved competition scopes</h2>
+            {scopeDialogState.kind === 'loading' ? (
+              <p role="status">Loading approved scopes…</p>
+            ) : null}
+            {scopeDialogState.kind === 'error' ? (
+              <p role="alert">
+                Your approved competition scopes could not be loaded. Please try again.
+              </p>
+            ) : null}
+            {scopeDialogState.kind === 'ready' ? (
+              <ul>
+                {scopeDialogState.competitions.map((competition) => (
+                  <li key={competition.competitionId}>{competition.name}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="submitter-access-dialog__actions">
+              <button
+                className="button button--secondary"
+                type="button"
+                autoFocus
+                onClick={closeScopeDialog}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -415,7 +499,6 @@ export function AccountPage() {
       className="auth-page account-page content-boundary"
       aria-labelledby="account-page-title"
     >
-      <Breadcrumbs items={[{ label: 'Account', to: `/account/${activeSection}` }]} />
       <div className="auth-card">
         <p className="eyebrow">Identity and access</p>
         <h1 id="account-page-title">Account</h1>
