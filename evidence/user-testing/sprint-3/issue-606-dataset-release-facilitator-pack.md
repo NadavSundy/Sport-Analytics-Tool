@@ -21,26 +21,36 @@
 Record actual values immediately before the session. Do not begin if the release
 catalogue or any required release artefact is unavailable.
 
-| Check                                    | Actual value / result |
-| ---------------------------------------- | --------------------- |
-| Deployed environment URL                 |                       |
-| Deployed commit or release               |                       |
-| Catalogue URL                            |                       |
-| Selected release version                 |                       |
-| Release scope                            |                       |
-| Schema and field-description location    |                       |
-| SHA-256 checksum                         |                       |
-| Artifact download/read path              |                       |
-| Browser and device                       |                       |
-| Anonymous participant ID                 | `PXX`                 |
-| Prepared reproducibility question        |                       |
-| Expected source fields for that question |                       |
+| Check                                    | Actual value / result                                                                           |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Deployed environment URL                 | `https://sport-analytics-tool-web.pages.dev/`                                                   |
+| Deployed commit or release               | Not supplied                                                                                    |
+| Catalogue URL                            | `https://sport-analytics-tool-web.pages.dev/dataset-releases`                                   |
+| Selected release detail URL              | `https://sport-analytics-tool-web.pages.dev/dataset-releases/2026.09.25-issue-565-acceptance-1` |
+| Selected release version                 | `2026.09.25-issue-565-acceptance-1`                                                             |
+| Artifact format version                  | `1.1`                                                                                           |
+| Release scope                            | Published accepted deliveries                                                                   |
+| Schema and field-description location    |                                                                                                 |
+| SHA-256 checksum                         |                                                                                                 |
+| Artifact download/read path              | Not supplied; the provided URL is the release detail page                                       |
+| Browser and device                       | Windows; Chrome                                                                                 |
+| Anonymous participant ID                 | `P10`                                                                                           |
+| Prepared reproducibility question        |                                                                                                 |
+| Expected source fields for that question |                                                                                                 |
 
 - [ ] The catalogue lists the selected immutable release.
 - [ ] The release detail presents its version, scope, schema/field descriptions and checksum.
 - [ ] The participant can obtain/read the JSON artefact without authentication or mutation.
 - [ ] The chosen question can be answered from the release's documented event fields.
 - [ ] No participant name, email address, credential, token or API key appears in this pack or future session evidence.
+
+### Current preparation status
+
+On 2026-09-26, the supplied release-detail URL remained on the public
+application's **Loading dataset release** state while requesting its API data.
+Therefore the required schema/field descriptions, SHA-256 checksum and direct
+artifact read path have not been verified and the formal participant session
+must not start yet.
 
 ## Facilitator introduction
 
