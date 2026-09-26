@@ -278,7 +278,7 @@ describe('public application and authentication interface', () => {
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
     expect(
       within(screen.getByRole('navigation', { name: 'Account sections' })).getByRole('link', {
-        name: 'Security & sign out',
+        name: 'Account management',
       }),
     ).toHaveAttribute('href', '/account/security');
     expect(
