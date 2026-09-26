@@ -23,6 +23,15 @@ records only the assistance and verification actually used for issue #713.
 - Updated focused unit and Playwright coverage to assert both labels and their
   unchanged destinations.
 
+## Follow-up: security destination clarity
+
+Subsequent user feedback identified the local `Settings` tab as the remaining
+confusing part of the flow: its destination contains session-ending and
+account-deletion controls, rather than general preferences. The label was
+changed to `Security & sign out`; its `/account/security` URL and every
+available action remain unchanged. Focused unit and Playwright assertions now
+cover the clearer label and the same URL.
+
 ## Verification performed
 
 - The focused `App.test.tsx` test failed before the final production change:
@@ -48,6 +57,12 @@ records only the assistance and verification actually used for issue #713.
 - The repaired authentication Playwright file was discovered as six configured
   desktop/mobile tests. A post-change local browser execution remains blocked
   by the stale local build/dependency state described above.
+- The follow-up focused test first failed with the new expected label and then
+  passed all 18 tests after the implementation. Frontend lint, typecheck,
+  Prettier, and `git diff --check` passed. Rendered Playwright execution could
+  not start because the production build still fails on unrelated contract
+  mismatches and a missing `swagger-ui-react` dependency; a Vite development
+  server was blocked by that same missing dependency.
 
 ## Privacy review
 
@@ -60,4 +75,5 @@ cookies, private URLs, or unnecessary personal information.
 - Branch: `fix/713-clarify-account-management-navigation`
 - Implementation commit: `325f6d39ed66edc9170d67fe2635f26e90833aa9`
 - Final corrective implementation commit: `62f1ee40`
+- Follow-up implementation commit: `780e7db1f94564a973ac89bde35e73f04bf593a1`
 - Pull request: pending
