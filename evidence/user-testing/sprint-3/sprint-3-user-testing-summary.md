@@ -11,7 +11,7 @@
 | #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                                  | Not started                          |
 | #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                                  | Not started                          |
 | #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                                  | Not started                          |
-| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |                              |                                  | Not started                          |
+| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   | #562; #596; #597             | `2026-09-25-P10-admin.md`        | In progress                          |
 | #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     | #594; #595; #743             | `2026-09-26-P09-api-consumer.md` | Accepted with documented limitations |
 | #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                                  | Not started                          |
 
@@ -19,11 +19,12 @@
 
 ## Participants
 
-| Participant ID | Role                                              | Relevant experience    | User-feedback issue(s) | Session evidence                 |
-| -------------- | ------------------------------------------------- | ---------------------- | ---------------------- | -------------------------------- |
-| P07            | Public/viewer; approved submitter; reviewer/admin | Not recorded           | #601                   | `2026-09-24-P07-multi-role.md`   |
-| P08            | Not recorded                                      | Not recorded           | #602                   | `2026-09-24-P08-public.md`       |
-| P09            | Technically competent API consumer                | Competent API consumer | #607                   | `2026-09-26-P09-api-consumer.md` |
+| Participant ID | Role                                              | Relevant experience     | User-feedback issue(s) | Session evidence                 |
+| -------------- | ------------------------------------------------- | ----------------------- | ---------------------- | -------------------------------- |
+| P07            | Public/viewer; approved submitter; reviewer/admin | Not recorded            | #601                   | `2026-09-24-P07-multi-role.md`   |
+| P08            | Not recorded                                      | Not recorded            | #602                   | `2026-09-24-P08-public.md`       |
+| P09            | Technically competent API consumer                | Competent API consumer  | #607                   | `2026-09-26-P09-api-consumer.md` |
+| P10            | Administrator                                     | Not separately recorded | #606                   | `2026-09-25-P10-admin.md`        |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -64,8 +65,8 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | REV-06  |        0 |       0 |       0 |       0 |             |
 | ADM-01  |        0 |       0 |       0 |       0 |             |
 | ADM-02  |        0 |       0 |       0 |       0 |             |
-| DATA-01 |        0 |       0 |       0 |       0 |             |
-| DATA-02 |        0 |       0 |       0 |       0 |             |
+| DATA-01 |        1 |       1 |       0 |       0 |             |
+| DATA-02 |        1 |       1 |       0 |       0 |             |
 | API-01  |        1 |       0 |       1 |       0 | P09-F01     |
 | API-02  |        0 |       0 |       0 |       0 |             |
 | API-03  |        0 |       0 |       0 |       0 |             |
@@ -110,16 +111,16 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 
 ## User-Feedback Issue Close-Out Checklist
 
-| User-feedback issue | Readiness satisfied before testing                          | Formal session(s) linked         | All attempted tasks scored | Actionable findings decided               | Accepted S1/S2 retested                            | Summary current | Issue may close                                               |
-| ------------------- | ----------------------------------------------------------- | -------------------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------- | --------------- | ------------------------------------------------------------- |
-| #601                | Deployed app recorded; exact URL/commit unavailable         | `2026-09-24-P07-multi-role.md`   | Yes                        | Yes                                       | Not applicable; no accepted S1/S2 finding          | Yes             | Yes                                                           |
-| #602                | Deployed app recorded; exact URL/commit unavailable         | `2026-09-24-P08-public.md`       | Yes                        | Yes; P08-F01 accepted                     | No; #716 implementation and PUB-06 retest required | Yes             | No; accepted S2 retest remains required                       |
-| #603                |                                                             |                                  |                            |                                           |                                                    |                 |                                                               |
-| #604                |                                                             |                                  |                            |                                           |                                                    |                 |                                                               |
-| #605                |                                                             |                                  |                            |                                           |                                                    |                 |                                                               |
-| #606                |                                                             |                                  |                            |                                           |                                                    |                 |                                                               |
-| #607                | Deployed API/docs and commit recorded; `S3-API-01` prepared | `2026-09-26-P09-api-consumer.md` | Yes                        | Yes; P09-F01 accepted, issue link pending | Not applicable; no accepted S1/S2 finding          | Yes             | No; follow-up issue link and unassisted PUB-05 retest pending |
-| #612                |                                                             |                                  |                            |                                           |                                                    |                 |                                                               |
+| User-feedback issue | Readiness satisfied before testing                                               | Formal session(s) linked         | All attempted tasks scored | Actionable findings decided               | Accepted S1/S2 retested                            | Summary current                                                                                   | Issue may close                                               |
+| ------------------- | -------------------------------------------------------------------------------- | -------------------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| #601                | Deployed app recorded; exact URL/commit unavailable                              | `2026-09-24-P07-multi-role.md`   | Yes                        | Yes                                       | Not applicable; no accepted S1/S2 finding          | Yes                                                                                               | Yes                                                           |
+| #602                | Deployed app recorded; exact URL/commit unavailable                              | `2026-09-24-P08-public.md`       | Yes                        | Yes; P08-F01 accepted                     | No; #716 implementation and PUB-06 retest required | Yes                                                                                               | No; accepted S2 retest remains required                       |
+| #603                |                                                                                  |                                  |                            |                                           |                                                    |                                                                                                   |                                                               |
+| #604                |                                                                                  |                                  |                            |                                           |                                                    |                                                                                                   |                                                               |
+| #605                |                                                                                  |                                  |                            |                                           |                                                    |                                                                                                   |                                                               |
+| #606                | Version/checksum and selected release recorded; schema/artifact location pending | `2026-09-25-P10-admin.md`        | Yes                        | No findings reported                      | Not applicable                                     | No; reproducibility question/source fields; schema/artifact location; and deployed commit pending | No; retained setup metadata is incomplete                     |
+| #607                | Deployed API/docs and commit recorded; `S3-API-01` prepared                      | `2026-09-26-P09-api-consumer.md` | Yes                        | Yes; P09-F01 accepted, issue link pending | Not applicable; no accepted S1/S2 finding          | Yes                                                                                               | No; follow-up issue link and unassisted PUB-05 retest pending |
+| #612                |                                                                                  |                                  |                            |                                           |                                                    |                                                                                                   |                                                               |
 
 ## Remaining Concerns
 
