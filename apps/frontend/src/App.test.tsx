@@ -351,6 +351,42 @@ describe('public application and authentication interface', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('lets an approved submitter view named competition scopes from Account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith('/auth/me')) {
+          return Promise.resolve(
+            apiResponse(200, {
+              user: {
+                id: '17',
+                subject: 'user-123',
+                displayName: 'Example User',
+                role: 'submitter',
+                approvalState: 'approved',
+                requestedCompetition: null,
+                competitionIds: ['5'],
+              },
+            }),
+          );
+        }
+        if (path.endsWith('/competitions/5'))
+          return Promise.resolve(
+            apiResponse(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+          );
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    renderApp('/account', createSession());
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View approved competition scopes' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Your approved competition scopes' }),
+    ).toHaveTextContent('Premier T20');
+  });
+
   it('requires deliberate account-deletion confirmation', async () => {
     vi.stubGlobal('fetch', accountPageFetch('not_requested'));
     renderApp('/account/security', createSession());

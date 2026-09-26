@@ -760,14 +760,6 @@ function SubmissionForm({
                 {competitions.join(', ')}. The backend checks this scope again when it receives your
                 submission.
               </p>
-              <button
-                ref={scopeTriggerRef}
-                className="button button--secondary"
-                type="button"
-                onClick={() => setScopeDialogState({ kind: 'loading' })}
-              >
-                View approved competition scopes
-              </button>
             </>
           )}
         </section>
