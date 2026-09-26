@@ -12,7 +12,7 @@
 | #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                                | Not started                          |
 | #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                                | Not started                          |
 | #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   |                              |                                | Not started                          |
-| #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     |                              |                                | Not started                          |
+| #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     | #594; #595                   | `2026-09-26-P09-api-consumer.md` | In progress                          |
 | #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                                | Not started                          |
 
 `Testing status` must reflect retained user-testing evidence, not implementation-issue state.
@@ -23,6 +23,7 @@
 | -------------- | ------------------------------------------------- | ------------------- | ---------------------- | ------------------------------ |
 | P07            | Public/viewer; approved submitter; reviewer/admin | Not recorded        | #601                   | `2026-09-24-P07-multi-role.md` |
 | P08            | Not recorded                                      | Not recorded        | #602                   | `2026-09-24-P08-public.md`     |
+| P09            | Technically competent API consumer                 | Competent API consumer | #607                 | `2026-09-26-P09-api-consumer.md` |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -40,7 +41,7 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | PUB-02  |        1 |       1 |       0 |       0 |             |
 | PUB-03  |        1 |       1 |       0 |       0 |             |
 | PUB-04  |        0 |       0 |       0 |       0 |             |
-| PUB-05  |        0 |       0 |       0 |       0 |             |
+| PUB-05  |        1 |       0 |       1 |       0 |             |
 | PUB-06  |        1 |       0 |       1 |       0 | P08-F01     |
 | SUB-01  |        1 |       0 |       1 |       0 | P07-F02     |
 | SUB-02  |        0 |       0 |       0 |       0 |             |
@@ -65,7 +66,7 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | ADM-02  |        0 |       0 |       0 |       0 |             |
 | DATA-01 |        0 |       0 |       0 |       0 |             |
 | DATA-02 |        0 |       0 |       0 |       0 |             |
-| API-01  |        0 |       0 |       0 |       0 |             |
+| API-01  |        1 |       0 |       1 |       0 | P09-F01     |
 | API-02  |        0 |       0 |       0 |       0 |             |
 | API-03  |        0 |       0 |       0 |       0 |             |
 | API-04  |        0 |       0 |       0 |       0 |             |
@@ -79,6 +80,7 @@ Every S1/S2 or otherwise actionable finding must have a recorded decision.
 | P07-F01    | P07     | #601                | AUTH-04 | `Settings` did not clearly communicate its account purpose; participant suggested `Manage account`. | S3       | Accept   | Non-blocking navigation improvement is tracked separately.            | #713        | Not applicable  | Not required for accepted S3 finding |
 | P07-F02    | P07     | #601                | SUB-01  | Participant wanted a clear way to view approved competition scopes.                                 | S3       | Accept   | Non-blocking scope-discoverability improvement is tracked separately. | #714        | Not applicable  | Not required for accepted S3 finding |
 | P08-F01    | P08     | #602                | PUB-06  | Participant could not identify an obvious workflow for comparing two players.                       | S2       | Accept   | Player-comparison improvement accepted and tracked separately.        | #716        | Not applicable  | Required after accepted change       |
+| P09-F01    | P09     | #607                | API-01  | Interactive OpenAPI showed `RATE_LIMIT_EXCEEDED` but did not expose `RateLimit-*` / `Retry-After` headers to the browser participant. | S3       | Accept   | Backend returns the headers over direct HTTP; browser-based consumers need the safe response headers exposed through CORS. | Pending creation | Not applicable | Recommended after fix; not required for accepted S3 finding |
 
 Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents user-feedback issue close-out for an S1/S2 or otherwise actionable finding.
 
@@ -88,7 +90,7 @@ Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is tempora
 | -------- | ----: | -------: | -------: | -------: | ------: | --------------------: |
 | S1       |     0 |        0 |        0 |        0 |       0 |                     0 |
 | S2       |     1 |        1 |        0 |        0 |       0 |                     0 |
-| S3       |     2 |        2 |        0 |        0 |       0 |                     0 |
+| S3       |     3 |        3 |        0 |        0 |       0 |                     0 |
 | S4       |     0 |        0 |        0 |        0 |       0 |                     0 |
 
 ## Integrated Changes and Retests
@@ -116,7 +118,7 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 | #604                |                                                     |                                |                            |                             |                                                    |                 |                                         |
 | #605                |                                                     |                                |                            |                             |                                                    |                 |                                         |
 | #606                |                                                     |                                |                            |                             |                                                    |                 |                                         |
-| #607                |                                                     |                                |                            |                             |                                                    |                 |                                         |
+| #607                | Deployed API/docs and commit recorded; `S3-API-01` prepared | `2026-09-26-P09-api-consumer.md` | Yes | Yes; P09-F01 accepted, issue link pending | Not applicable; no accepted S1/S2 finding | Yes | No; follow-up issue link and unassisted PUB-05 retest pending |
 | #612                |                                                     |                                |                            |                             |                                                    |                 |                                         |
 
 ## Remaining Concerns
@@ -124,6 +126,7 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 - #601 is accepted with documented limitations: P07 completed the selected multi-role navigation tasks; two non-blocking S3 improvements are tracked in #713 and #714.
 - #580 and #581 were already closed when this gate was finalised; this record notes their closed status and does not change either issue.
 - #602 has one retained public-statistics session. P08-F01 is an accepted S2 player-comparison finding tracked by #716; #602 cannot close until implementation and PUB-06 retest are complete.
+- #607 has one retained API-consumer session. P09-F01 is an accepted S3 browser/OpenAPI response-header visibility finding awaiting a Gitea bug link. PUB-05 also needs a short unassisted retest because bearer-token assistance was recorded during the task.
 
 ## Issue #601 Final Gate Result
 
