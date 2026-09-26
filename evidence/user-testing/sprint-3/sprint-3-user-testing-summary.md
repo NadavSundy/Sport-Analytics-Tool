@@ -11,7 +11,7 @@
 | #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` |                              |                                  | Not started                          |
 | #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                              |                                  | Not started                          |
 | #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                              |                                  | Not started                          |
-| #606                | Versioned dataset release and reproducibility            | `DATA-01`, `DATA-02`                                                   | #562; #596; #597             | `2026-09-25-P10-admin.md`        | Accepted                             |
+| #606                | Versioned dataset release and reproducibility            | `PUB-04`, `DATA-01`, `DATA-02`                                         | #562; #596; #597             | `2026-09-25-P10-admin.md`        | Accepted                             |
 | #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     | #594; #595; #743             | `2026-09-26-P09-api-consumer.md` | Accepted with documented limitations |
 | #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                              |                                  | Not started                          |
 
@@ -41,7 +41,7 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | PUB-01  |        2 |       2 |       0 |       0 |             |
 | PUB-02  |        1 |       1 |       0 |       0 |             |
 | PUB-03  |        1 |       1 |       0 |       0 |             |
-| PUB-04  |        0 |       0 |       0 |       0 |             |
+| PUB-04  |        1 |       1 |       0 |       0 |             |
 | PUB-05  |        1 |       1 |       0 |       0 |             |
 | PUB-06  |        1 |       0 |       1 |       0 | P08-F01     |
 | SUB-01  |        1 |       0 |       1 |       0 | P07-F02     |
