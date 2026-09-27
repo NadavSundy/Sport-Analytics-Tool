@@ -220,6 +220,45 @@ export const apiConsumerRotateResponseSchema = z
   .object({ data: apiConsumerSchema.extend({ apiKey: z.string().min(1) }) })
   .strict();
 
+const usageDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const consumerUsageQuerySchema = z
+  .object({
+    from: usageDateSchema.optional(),
+    to: usageDateSchema.optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+
+export const consumerUsageEntrySchema = z
+  .object({
+    date: usageDateSchema,
+    endpoint: z.string().min(1),
+    statusClass: z.enum(['2xx', '3xx', '4xx', '5xx']),
+    requestCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const consumerUsageResponseSchema = z
+  .object({
+    data: z
+      .object({
+        from: usageDateSchema,
+        to: usageDateSchema,
+        totalRequests: z.number().int().nonnegative(),
+        quota: z
+          .object({
+            limit: consumerLimitSchema,
+            used: z.number().int().nonnegative(),
+            remaining: z.number().int().nonnegative(),
+          })
+          .strict(),
+        entries: z.array(consumerUsageEntrySchema),
+      })
+      .strict(),
+  })
+  .strict();
+
 export type ApplicationRole = z.infer<typeof applicationRoleSchema>;
 /** @deprecated Request-workflow state only. Use ApplicationRole for authorization. */
 export type SubmitterApprovalState = z.infer<typeof submitterApprovalStateSchema>;
@@ -248,3 +287,5 @@ export type ApiConsumer = z.infer<typeof apiConsumerSchema>;
 export type ApiConsumerIssueResponse = z.infer<typeof apiConsumerIssueResponseSchema>;
 export type ApiConsumerListResponse = z.infer<typeof apiConsumerListResponseSchema>;
 export type ApiConsumerRotateResponse = z.infer<typeof apiConsumerRotateResponseSchema>;
+export type ConsumerUsageQuery = z.infer<typeof consumerUsageQuerySchema>;
+export type ConsumerUsageResponse = z.infer<typeof consumerUsageResponseSchema>;

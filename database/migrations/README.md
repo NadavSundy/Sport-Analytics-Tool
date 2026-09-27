@@ -68,6 +68,7 @@ schema change. The main Sprint 2 migration groups are:
 | `20260917120000000_dataset-release-snapshots.sql` | Durable point-in-time source snapshots for asynchronous dataset releases |
 | `20260917180000000_powerplay-provenance.sql` | Reviewed source-batch provenance for authoritative innings powerplay markers |
 | `20260919100000000_api-consumer-shared-rate-limits.sql` | Atomic shared UTC-minute counters for consumer limits across backend replicas |
+| `20260927180000000_api-consumer-request-usage.sql` | Privacy-bounded per-consumer normalized request telemetry for the usage API |
 
 Apply migrations only through the documented `node-pg-migrate` commands. Integration tests rebuild
 an isolated test database from the complete ordered migration set, which makes missing dependencies

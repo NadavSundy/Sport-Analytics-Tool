@@ -10,12 +10,15 @@ import { createFixtureStatisticsController } from '../statistics/fixture-statist
 import type { FixtureStatisticsService } from '../statistics/fixture-statistics.service';
 import { createParticipantAggregatesController } from '../statistics/participant-aggregates.controller';
 import type { ParticipantAggregatesService } from '../statistics/participant-aggregates.service';
+import { createConsumerUsageController } from './consumer-usage.controller';
+import type { ApiConsumerRepository } from './api-consumer.repository';
 
 export function createConsumerRouter(
   service: PublicReadService,
   fixtureStatisticsService: FixtureStatisticsService,
   participantAggregatesService: ParticipantAggregatesService,
   authenticate: RequestHandler,
+  repository: ApiConsumerRepository,
 ): Router {
   const router = Router();
   const publicReadController = createPublicReadController(service);
@@ -27,6 +30,8 @@ export function createConsumerRouter(
     service,
     fixtureStatisticsService,
   );
+
+  router.get('/consumer/usage', authenticate, createConsumerUsageController(repository));
 
   router.get('/consumer/competitions', authenticate, publicReadController.listCompetitions);
   router.get('/consumer/fixtures', authenticate, publicReadController.listFixtures);
