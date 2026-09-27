@@ -1,5 +1,5 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -99,9 +99,13 @@ describe('administrator dataset release page', () => {
   it('redirects signed-out visitors and denies non-administrators before showing the form', async () => {
     const signedOutFetch = vi.fn();
     vi.stubGlobal('fetch', signedOutFetch);
-    renderPage(null);
-    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    let signedOutPage!: ReturnType<typeof renderPage>;
+    await act(async () => {
+      signedOutPage = renderPage(null);
+    });
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(signedOutFetch).not.toHaveBeenCalled();
+    signedOutPage.unmount();
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(currentUser('viewer')));
     renderPage();

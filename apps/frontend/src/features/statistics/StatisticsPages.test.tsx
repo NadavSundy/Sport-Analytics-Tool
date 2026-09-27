@@ -519,6 +519,37 @@ describe('public fixture statistics pages', () => {
     ).toBeInTheDocument();
   });
 
+  it('treats a fixture with no published statistics as an intentional empty state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/fixtures/fixture-empty')) {
+          return Promise.resolve(
+            response(200, { data: { ...fixture, fixtureId: 'fixture-empty' } }),
+          );
+        }
+        if (url.endsWith('/fixtures/fixture-empty/statistics')) {
+          return Promise.resolve(
+            response(404, {
+              error: { code: 'NOT_FOUND', message: 'Fixture statistics not found.' },
+            }),
+          );
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-empty/statistics');
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'No published statistics are available for this fixture yet',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('communicates API failure and retries the public request', async () => {
     let statisticsRequestCount = 0;
 

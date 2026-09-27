@@ -663,6 +663,9 @@ async function* csvCandidates(
                 gender: optional(row.fixtureGender),
                 ballsPerOver: numeric(row.fixtureBallsPerOver),
                 outcome: optional(row.fixtureOutcome),
+                ...(optional(row.fixtureWinner) === undefined
+                  ? {}
+                  : { winner: optional(row.fixtureWinner) }),
                 sourceVersion: optional(row.fixtureSourceVersion),
                 sourceRevision: numeric(row.fixtureSourceRevision),
               },

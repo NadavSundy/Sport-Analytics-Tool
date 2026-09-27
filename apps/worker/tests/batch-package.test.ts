@@ -349,6 +349,47 @@ describe('shipped guided templates (#500)', () => {
     });
   });
 
+  it('preserves the winning team in a won version 1.1 fixture proposal from CSV', async () => {
+    const [headerLine = '', rowLine = ''] = shippedTemplateWithReadableNames(
+      'season-upload-template.csv',
+    ).split(/\r?\n/);
+    const columns = headerLine.split(',');
+    const cells = rowLine.split(',');
+    cells[columns.indexOf('contractVersion')] = '1.1';
+    cells[columns.indexOf('fixtureSourceId')] = 'submitter:fixture:csv-winner-package';
+    const proposalColumns: Record<string, string> = {
+      fixtureEndDate: '2026-03-14',
+      fixtureMatchType: 'T20',
+      fixtureTeamType: 'club',
+      fixtureGender: 'female',
+      fixtureBallsPerOver: '6',
+      fixtureOutcome: 'won',
+      fixtureWinner: 'Wanderers',
+      fixtureSourceVersion: '1',
+      fixtureSourceRevision: '0',
+    };
+    for (const [column, value] of Object.entries(proposalColumns)) {
+      const index = columns.indexOf(column);
+      expect(index, `template column ${column}`).toBeGreaterThanOrEqual(0);
+      cells[index] = value;
+    }
+    const source = `${columns.join(',')}\n${cells.join(',')}\n`;
+
+    const referenceChunk = await referenceChunkFor(source, 'text/csv');
+
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual({
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'won',
+      winner: 'Wanderers',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    });
+  });
+
   it('preserves a version 1.1 fixture proposal from NDJSON', async () => {
     const proposal = {
       endDate: '2026-03-14',

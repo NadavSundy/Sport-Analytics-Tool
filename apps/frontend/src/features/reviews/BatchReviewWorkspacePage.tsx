@@ -1558,6 +1558,7 @@ function ParticipantOnboarding({
   decisionsAvailable,
   refresh,
   onSettled,
+  onRevalidationQueued,
 }: {
   batchReference: string;
   tasks: BatchParticipantOnboardingTask[];
@@ -1570,6 +1571,7 @@ function ParticipantOnboarding({
   // section. A receipt rendered here would go with it, so it is reported to the
   // page-level status that sits outside the panels.
   onSettled(message: string): void;
+  onRevalidationQueued(): void;
 }) {
   const client = useAuthenticatedApiClient();
   const [answers, setAnswers] = useState<Record<string, OnboardingAnswer>>({});
@@ -1601,6 +1603,7 @@ function ParticipantOnboarding({
       });
       const { onboarded, alreadyOnboarded, revalidationQueued } = receipt.data;
       setAnswers({});
+      if (revalidationQueued) onRevalidationQueued();
       onSettled(
         `${onboarded} settled${alreadyOnboarded > 0 ? `, ${alreadyOnboarded} already settled` : ''}. ` +
           (revalidationQueued
@@ -1703,6 +1706,7 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
   const [saving, setSaving] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [revalidationPolling, setRevalidationPolling] = useState(false);
   const [selectedView, setSelectedView] = useState<WorkspaceView | 'auto'>('auto');
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const viewTabRefs = useRef<Partial<Record<WorkspaceView, HTMLButtonElement>>>({});
@@ -1746,6 +1750,21 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
       setState({ kind: 'error', message: 'This review could not be loaded.' }),
     );
   }, [load]);
+  useEffect(() => {
+    if (!revalidationPolling || state.kind !== 'ready') return;
+    const status = state.value.report.batch.status;
+    if (status !== 'stored' && status !== 'validating') {
+      setRevalidationPolling(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void load().catch(() => {
+        // Keep the last known lifecycle state visible if this refresh cannot complete.
+      });
+    }, 2_000);
+    return () => window.clearTimeout(timeout);
+  }, [load, revalidationPolling, state]);
   function cancel() {
     setPending(null);
     queueMicrotask(() => triggerRef.current?.focus());
@@ -2006,6 +2025,7 @@ function ReviewDetail({ batchReference }: { batchReference: string }) {
             decisionsAvailable={report.batch.status === 'awaiting_review'}
             refresh={load}
             onSettled={setFeedback}
+            onRevalidationQueued={() => setRevalidationPolling(true)}
           />
         ) : null}
         <ReferenceReview

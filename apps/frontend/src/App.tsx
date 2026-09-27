@@ -36,6 +36,7 @@ import {
   DatasetReleaseDetailPage,
 } from './features/dataset-releases/DatasetReleasePages';
 import { AdminDatasetReleasePage } from './features/dataset-releases/AdminDatasetReleasePage';
+import { ApiExplorerLoadingIndicator } from './features/api-explorer/ApiExplorerLoadingIndicator';
 
 const ApiExplorerPage = lazy(() =>
   import('./features/api-explorer/ApiExplorerPage').then(({ ApiExplorerPage }) => ({
@@ -54,6 +55,7 @@ export function PublicApp() {
             <Suspense
               fallback={
                 <div className="content-boundary api-explorer-route-loading" role="status">
+                  <ApiExplorerLoadingIndicator label="Loading API Explorer" />
                   Loading API Explorer…
                 </div>
               }
