@@ -313,20 +313,23 @@ export function ParticipantCareerOverview({ participantId }: { participantId: st
 
 export function FixtureStatisticsPage() {
   const { fixtureId = '' } = useParams();
-  const load = useCallback(async (signal: AbortSignal) => {
-    try {
-      const response = await publicReadApi.getFixtureStatistics(fixtureId, signal);
-      return { kind: 'available' as const, statistics: response.data };
-    } catch (error) {
-      if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
+  const load = useCallback(
+    async (signal: AbortSignal) => {
+      try {
+        const response = await publicReadApi.getFixtureStatistics(fixtureId, signal);
+        return { kind: 'available' as const, statistics: response.data };
+      } catch (error) {
+        if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
 
-      // The statistics endpoint deliberately returns 404 when its fixture source
-      // has not been published yet. Confirm the fixture itself exists before
-      // presenting that expected no-data state rather than masking a bad fixture URL.
-      await publicReadApi.getFixture(fixtureId, signal);
-      return { kind: 'unavailable' as const };
-    }
-  }, [fixtureId]);
+        // The statistics endpoint deliberately returns 404 when its fixture source
+        // has not been published yet. Confirm the fixture itself exists before
+        // presenting that expected no-data state rather than masking a bad fixture URL.
+        await publicReadApi.getFixture(fixtureId, signal);
+        return { kind: 'unavailable' as const };
+      }
+    },
+    [fixtureId],
+  );
   const state = usePublicData(load, fixtureId);
   if (state.status === 'loading')
     return (
