@@ -1187,17 +1187,29 @@ describe('reviewer batch workspace', () => {
     renderPage(`/reviews/batches/${reference}`);
 
     const candidate = await screen.findByRole('radio', { name: 'Alan Smith' });
-    vi.spyOn(globalThis, 'setTimeout').mockImplementation((handler) => {
-      if (typeof handler === 'function') handler();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
+    let scheduledPoll: (() => void) | null = null;
+    const setTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation((handler, timeout, ...args) => {
+      if (timeout === 2_000 && typeof handler === 'function') {
+        scheduledPoll = handler;
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return setTimeout(handler, timeout, ...args);
     });
     fireEvent.click(candidate);
     fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
 
+    expect(await screen.findByText(/1 settled\./)).toBeInTheDocument();
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Stored');
+    expect(scheduledPoll).not.toBeNull();
     await act(async () => {
+      scheduledPoll?.();
       await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+    });
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Validating');
+    expect(scheduledPoll).not.toBeNull();
+    await act(async () => {
+      scheduledPoll?.();
       await Promise.resolve();
     });
     expect(screen.getByText(/Current state:/)).toHaveTextContent('Awaiting review');
