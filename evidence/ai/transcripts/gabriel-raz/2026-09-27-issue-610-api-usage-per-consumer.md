@@ -20,8 +20,9 @@ request telemetry, a stable safe key identifier, and no administrator read path.
 | `npm.cmd run test:contract --workspace=@sport-analytics/backend` | Passed: 73 tests. |
 | `npm.cmd run openapi:lint` | Passed. |
 | `npm.cmd run lint` | Passed. |
-| `npm.cmd run typecheck` | Backend completed successfully; the command's remaining workspace output was interrupted by the local runner before a final aggregate result. |
-| `npm.cmd run build` | Started successfully but the local runner interrupted it during dependency preparation; no full-build pass is claimed. |
+| `npm.cmd run typecheck` | Passed across backend, frontend, worker, batch-processing, contracts and object-storage. |
+| `npm.cmd run build` | Passed across contracts, batch-processing, object-storage, backend, frontend and worker. |
+| `npm.cmd run test:api --workspace=@sport-analytics/backend` | Passed: 20 files, 199 tests. |
 | `npm.cmd exec vitest run --workspace=@sport-analytics/backend -- tests/database/api-consumers.database.test.ts` | Passed: 1 test after a Docker-backed isolated PostgreSQL reset, migration and seed. |
 | `git diff --check` | Pending final pre-commit check. |
 
@@ -41,3 +42,5 @@ page), with a maximum 31-day range and 100 aggregate groups; it does not make pe
 - Implementation commit: `3839a7fe` (`feat(api): expose consumer usage`).
 - Database verification was supplied by the user from the isolated Docker test database; the
   `20260927180000000_api-consumer-request-usage` migration applied before the passing test.
+- Full typecheck, production build and backend API verification were supplied by the user from the
+  #610 worktree. Expected-error logs and frontend bundle-size warnings did not fail the commands.
