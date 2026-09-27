@@ -99,7 +99,7 @@ describe('administrator dataset release page', () => {
   it('redirects signed-out visitors and denies non-administrators before showing the form', async () => {
     const signedOutFetch = vi.fn();
     vi.stubGlobal('fetch', signedOutFetch);
-    let signedOutPage: ReturnType<typeof renderPage>;
+    let signedOutPage!: ReturnType<typeof renderPage>;
     await act(async () => {
       signedOutPage = renderPage(null);
     });
