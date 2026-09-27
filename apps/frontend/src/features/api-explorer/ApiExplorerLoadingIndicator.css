@@ -1,0 +1,29 @@
+.api-explorer-loading-indicator {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.api-explorer-loading-indicator__spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0.1875rem solid var(--colour-border);
+  border-top-color: var(--colour-brand);
+  border-radius: 50%;
+  animation: api-explorer-loading-spin 0.8s linear infinite;
+}
+
+@keyframes api-explorer-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-explorer-loading-indicator__spinner {
+    animation: none;
+  }
+}
