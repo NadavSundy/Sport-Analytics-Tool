@@ -119,16 +119,47 @@ export function finalBatchValidationState(
     : 'rejected';
 }
 
-type ParticipantOnboardingReason =
-  'team_not_recognised' | 'no_durable_identifier' | 'identifier_not_found';
+/**
+ * A worker failure is terminal only when it leaves no persisted reviewer work.
+ * The background job still records its failure; this state merely keeps an
+ * otherwise-actionable batch available to a reviewer.
+ */
+export function finalBatchStateAfterValidationFailure(
+  hasReviewerActionableWork: boolean,
+): 'awaiting_review' | 'failed' {
+  return hasReviewerActionableWork ? 'awaiting_review' : 'failed';
+}
 
+export function safeBatchValidationFailureDetails(error: unknown): {
+  errorName: string;
+  errorMessage: string;
+} {
+  if (error instanceof Error) {
+    return { errorName: error.name, errorMessage: error.message.slice(0, 500) };
+  }
+  return { errorName: 'UnknownError', errorMessage: 'Non-Error value thrown.' };
+}
+
+type ParticipantOnboardingReason =
+  'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
+
+/**
+ * What a validation pass observed about a participant it could not resolve.
+ *
+ * It deliberately carries no `reason`. Which decision a reviewer has to make
+ * depends on the fixture's own two teams and on how many existing people
+ * answer to the submitted name, neither of which is in the resolved references
+ * this is read from. Deciding it from the reference alone is how this writer
+ * came to disagree with the backend's derivation; the reason is settled in
+ * `persistReviewerActionableOnboardingTasks`, against the database, by the
+ * same rule.
+ */
 interface ReviewerActionableParticipantReference {
   fixtureId: string;
   participantKey: string;
   submittedName: string;
   submittedSourceId: string | null;
   submittedTeamName: string | null;
-  reason: ParticipantOnboardingReason;
 }
 
 /**
@@ -137,6 +168,136 @@ interface ReviewerActionableParticipantReference {
  * outside a resolved fixture squad unresolved; that is not malformed input,
  * because an authorised reviewer can associate the person with the fixture.
  */
+/**
+ * Persists the reviewer-owned onboarding work a validation pass discovered.
+ *
+ * Exported so the guard below can be exercised on its own: every revalidation
+ * runs this, and settling a task queues a revalidation, so an unguarded reset
+ * would undo a reviewer's answers on the very next pass.
+ */
+export async function persistReviewerActionableOnboardingTasks(
+  client: Pick<PoolClient, 'query'>,
+  batchId: string,
+  onboarding: readonly ReviewerActionableParticipantReference[],
+): Promise<void> {
+  if (onboarding.length > 0) {
+    const names = [...new Set(onboarding.map((task) => task.submittedName))];
+    const candidates = await client.query<{
+      submittedName: string;
+      personId: string;
+      displayName: string;
+    }>(
+      `SELECT requested.submitted_name AS "submittedName", p.person_id::text AS "personId",
+              p.display_name AS "displayName"
+         FROM unnest($1::text[]) AS requested(submitted_name)
+         JOIN person p ON p.display_name = requested.submitted_name
+            OR EXISTS (
+              SELECT 1 FROM person_alias alias
+               WHERE alias.person_id = p.person_id AND alias.name = requested.submitted_name
+            )`,
+      [names],
+    );
+    const candidatesByName = new Map<string, Array<{ personId: string; displayName: string }>>();
+    for (const candidate of candidates.rows) {
+      const matches = candidatesByName.get(candidate.submittedName) ?? [];
+      if (!matches.some((match) => match.personId === candidate.personId)) {
+        matches.push({ personId: candidate.personId, displayName: candidate.displayName });
+      }
+      candidatesByName.set(candidate.submittedName, matches);
+    }
+
+    /*
+     * Issue #708. Which team a participant belongs to is checked against the
+     * two teams of its own fixture, exactly as `onboardFixtureCanonicalContext`
+     * checks it in the backend.
+     *
+     * This used to read `teamName ? ... : 'team_not_recognised'` — a team was
+     * "recognised" whenever one was named at all. A participant naming a team
+     * that is not one of the fixture's two was therefore reported as
+     * `no_durable_identifier`, and because the upsert below overwrites `reason`
+     * for any outstanding task, that wrong answer replaced the backend's right
+     * one on the first revalidation. The reviewer was then shown a reason that
+     * did not match the decision the backend would demand, and the interface,
+     * which offers a team control only for `team_not_recognised`, gave them no
+     * way to supply the team the decision was refused for.
+     */
+    const fixtureIds = [...new Set(onboarding.map((task) => task.fixtureId))];
+    const fixtureTeams = await client.query<{ fixtureId: string; name: string }>(
+      `SELECT ft.fixture_id::text AS "fixtureId", t.name
+         FROM fixture_team ft
+         JOIN team t ON t.team_id = ft.team_id
+        WHERE ft.fixture_id = ANY($1::bigint[])`,
+      [fixtureIds],
+    );
+    const teamNamesByFixture = new Map<string, Set<string>>();
+    for (const row of fixtureTeams.rows) {
+      const names = teamNamesByFixture.get(row.fixtureId) ?? new Set<string>();
+      names.add(row.name);
+      teamNamesByFixture.set(row.fixtureId, names);
+    }
+
+    const reasonFor = (
+      task: ReviewerActionableParticipantReference,
+    ): ParticipantOnboardingReason => {
+      const teams = teamNamesByFixture.get(task.fixtureId);
+      if (!task.submittedTeamName || !teams?.has(task.submittedTeamName)) {
+        return 'team_not_recognised';
+      }
+      // An identifier was submitted and the reference still did not resolve, so
+      // it names nobody this platform holds.
+      if (task.submittedSourceId) return 'identifier_not_found';
+      // More than one person answering to the name is a different decision from
+      // none or one: the reviewer chooses between them rather than supplying an
+      // identifier.
+      return (candidatesByName.get(task.submittedName)?.length ?? 0) > 1
+        ? 'ambiguous_name'
+        : 'no_durable_identifier';
+    };
+    await client.query(
+      `INSERT INTO batch_participant_onboarding_task (
+         batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
+         submitted_team_name, reason, candidates
+       )
+       SELECT $1::bigint, task."fixtureId"::bigint, task."participantKey", task."submittedName",
+              task."submittedSourceId", task."submittedTeamName", task.reason,
+              task.candidates::jsonb
+       FROM jsonb_to_recordset($2::jsonb) AS task(
+         "fixtureId" text, "participantKey" text, "submittedName" text,
+         "submittedSourceId" text, "submittedTeamName" text, reason text, candidates text
+       )
+       ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
+         submitted_name=EXCLUDED.submitted_name,
+         submitted_source_id=EXCLUDED.submitted_source_id,
+         submitted_team_name=EXCLUDED.submitted_team_name,
+         reason=EXCLUDED.reason,
+         candidates=EXCLUDED.candidates,
+         state='outstanding',
+         person_id=NULL,
+         onboarded_at=NULL,
+         decided_by=NULL,
+         decision_key=NULL,
+         last_reported_at=now()
+       -- A settled task is a reviewer decision, and re-deriving the work
+       -- must not undo one. Every revalidation runs this, and a settled
+       -- decision queues a revalidation, so without the guard a reviewer's
+       -- answers came back as outstanding work on the very next pass while
+       -- the squad rows they created stayed. Issue #708; the same guard the
+       -- backend derivation carries.
+       WHERE batch_participant_onboarding_task.state <> 'onboarded'`,
+      [
+        batchId,
+        JSON.stringify(
+          onboarding.map((task) => ({
+            ...task,
+            reason: reasonFor(task),
+            candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
+          })),
+        ),
+      ],
+    );
+  }
+}
+
 export function reviewerActionableParticipantReferences(
   resolvedReferences: Record<string, unknown>,
 ): ReviewerActionableParticipantReference[] {
@@ -186,11 +347,6 @@ export function reviewerActionableParticipantReferences(
         submittedName,
         submittedSourceId: sourceId,
         submittedTeamName: teamName,
-        reason: teamName
-          ? sourceId
-            ? 'identifier_not_found'
-            : 'no_durable_identifier'
-          : 'team_not_recognised',
       },
     ];
   });
@@ -1507,70 +1663,9 @@ export function createBatchValidationJobHandler(
           onboardingByKey.set(`${task.fixtureId}\0${task.participantKey}`, task);
         }
       }
-      const onboarding = [...onboardingByKey.values()];
-      if (onboarding.length > 0) {
-        const names = [...new Set(onboarding.map((task) => task.submittedName))];
-        const candidates = await client.query<{
-          submittedName: string;
-          personId: string;
-          displayName: string;
-        }>(
-          `SELECT requested.submitted_name AS "submittedName", p.person_id::text AS "personId",
-                  p.display_name AS "displayName"
-             FROM unnest($1::text[]) AS requested(submitted_name)
-             JOIN person p ON p.display_name = requested.submitted_name
-                OR EXISTS (
-                  SELECT 1 FROM person_alias alias
-                   WHERE alias.person_id = p.person_id AND alias.name = requested.submitted_name
-                )`,
-          [names],
-        );
-        const candidatesByName = new Map<
-          string,
-          Array<{ personId: string; displayName: string }>
-        >();
-        for (const candidate of candidates.rows) {
-          const matches = candidatesByName.get(candidate.submittedName) ?? [];
-          if (!matches.some((match) => match.personId === candidate.personId)) {
-            matches.push({ personId: candidate.personId, displayName: candidate.displayName });
-          }
-          candidatesByName.set(candidate.submittedName, matches);
-        }
-        await client.query(
-          `INSERT INTO batch_participant_onboarding_task (
-             batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
-             submitted_team_name, reason, candidates
-           )
-           SELECT $1::bigint, task."fixtureId"::bigint, task."participantKey", task."submittedName",
-                  task."submittedSourceId", task."submittedTeamName", task.reason,
-                  task.candidates::jsonb
-           FROM jsonb_to_recordset($2::jsonb) AS task(
-             "fixtureId" text, "participantKey" text, "submittedName" text,
-             "submittedSourceId" text, "submittedTeamName" text, reason text, candidates text
-           )
-           ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
-             submitted_name=EXCLUDED.submitted_name,
-             submitted_source_id=EXCLUDED.submitted_source_id,
-             submitted_team_name=EXCLUDED.submitted_team_name,
-             reason=EXCLUDED.reason,
-             candidates=EXCLUDED.candidates,
-             state='outstanding',
-             person_id=NULL,
-             onboarded_at=NULL,
-             decided_by=NULL,
-             decision_key=NULL,
-             last_reported_at=now()`,
-          [
-            claimResult.batchId,
-            JSON.stringify(
-              onboarding.map((task) => ({
-                ...task,
-                candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
-              })),
-            ),
-          ],
-        );
-      }
+      await persistReviewerActionableOnboardingTasks(client, claimResult.batchId, [
+        ...onboardingByKey.values(),
+      ]);
       const validationRows: Array<{
         batchItemId?: string | null;
         sourceOrdinal: number;
@@ -1750,6 +1845,38 @@ export function createBatchValidationJobHandler(
     });
   }
 
+  async function hasReviewerActionableWork(
+    client: Pick<PoolClient, 'query'>,
+    batchId: string,
+  ): Promise<boolean> {
+    const proposalResult = await client.query<{ fixtureResolution: unknown }>(
+      `SELECT DISTINCT resolved_references->'fixture' AS "fixtureResolution"
+         FROM batch_item
+        WHERE batch_id=$1::bigint
+          AND state='rejected'
+          AND rejection_code='REFERENCE_RESOLUTION_FAILED'
+          AND reference_resolution_state='unresolved'
+          AND resolved_references ? 'fixture'`,
+      [batchId],
+    );
+    if (
+      proposalResult.rows.some(({ fixtureResolution }) =>
+        isReviewerActionableFixtureResolution(fixtureResolution),
+      )
+    ) {
+      return true;
+    }
+
+    const taskResult = await client.query<{ outstanding: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM batch_participant_onboarding_task
+          WHERE batch_id=$1::bigint AND state='outstanding'
+       ) AS outstanding`,
+      [batchId],
+    );
+    return taskResult.rows[0]?.outstanding ?? false;
+  }
+
   async function fail(
     claimResult: ClaimResult,
     error: unknown,
@@ -1769,6 +1896,12 @@ export function createBatchValidationJobHandler(
         [claimResult.batchId],
       );
       const currentState = batch.rows[0]?.state;
+      const target =
+        currentState === 'validating'
+          ? finalBatchStateAfterValidationFailure(
+              await hasReviewerActionableWork(client, claimResult.batchId),
+            )
+          : 'failed';
       await client.query(
         `UPDATE background_job SET state=$2::background_job_state,last_error_code=$3,last_error_message=$4,
            completed_at=CASE WHEN $2='failed' THEN now() ELSE NULL END WHERE job_id=$1::uuid`,
@@ -1780,18 +1913,22 @@ export function createBatchValidationJobHandler(
         ],
       );
       if (currentState === 'validating') {
-        await client.query(`UPDATE batch SET state='failed' WHERE batch_id=$1::bigint`, [
+        await client.query(`UPDATE batch SET state=$2::batch_state WHERE batch_id=$1::bigint`, [
           claimResult.batchId,
+          target,
         ]);
         await client.query(
           `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
-           VALUES ($1::bigint,'validating','failed','worker',$2,$3)`,
+           VALUES ($1::bigint,'validating',$2::batch_state,'worker',$3,$4)`,
           [
             claimResult.batchId,
+            target,
             options.workerId,
-            exhausted
-              ? 'Validation retry budget exhausted.'
-              : 'Transient validation infrastructure failure.',
+            target === 'awaiting_review'
+              ? 'Validation failed after reviewer-actionable work was staged.'
+              : exhausted
+                ? 'Validation retry budget exhausted.'
+                : 'Transient validation infrastructure failure.',
           ],
         );
       }
@@ -2045,12 +2182,13 @@ export function createBatchValidationJobHandler(
       if (error instanceof LeaseBusyError) throw error;
       const permanent = error instanceof PermanentBatchFailure;
       const exhausted = await fail(claimResult, error, permanent);
+      const failure = safeBatchValidationFailureDetails(error);
       logger.warn('Batch validation processing failed.', {
         batchReference: claimResult.batchReference,
         jobId: claimResult.jobId,
         attempt: claimResult.attemptCount,
         exhausted,
-        errorName: error instanceof Error ? error.name : 'UnknownError',
+        ...failure,
         durationMs: Date.now() - startedAt,
       });
       if (exhausted) {

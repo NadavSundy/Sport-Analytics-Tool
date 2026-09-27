@@ -162,6 +162,33 @@ test('Manage Submission opens the unified submission workflow', async ({ page })
   await expect(page.getByLabel('Delivery events JSON')).toHaveCount(0);
 });
 
+test('submission workspace uses the centred responsive content boundary', async ({ page }) => {
+  await page.goto('/submissions/new');
+
+  for (const viewport of [
+    { width: 375, expectedWidth: 351 },
+    { width: 768, expectedWidth: 720 },
+    { width: 1440, expectedWidth: 1200 },
+    { width: 1920, expectedWidth: 1200 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: 900 });
+
+    const layout = await page.locator('.submission-page').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        right: Math.round(window.innerWidth - rect.right),
+        width: Math.round(rect.width),
+        overflows: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+
+    expect(layout.width).toBe(viewport.expectedWidth);
+    expect(Math.abs(layout.left - layout.right)).toBeLessThanOrEqual(1);
+    expect(layout.overflows).toBe(false);
+  }
+});
+
 test('submitter originates a new fixture proposal for reviewer resolution', async ({ page }) => {
   await page.route('**/api/v1/batches', async (route) => {
     const request = route.request();
@@ -185,7 +212,8 @@ test('submitter originates a new fixture proposal for reviewer resolution', asyn
             teamType: 'club',
             gender: 'female',
             ballsPerOver: 6,
-            outcome: 'no result',
+            outcome: 'won',
+            winner: 'Wanderers',
             sourceVersion: '1',
             sourceRevision: 0,
           },
@@ -217,6 +245,8 @@ test('submitter originates a new fixture proposal for reviewer resolution', asyn
   await expect(page.getByLabel('Match type')).toHaveValue('T20');
   await page.getByLabel('Team type').selectOption('club');
   await page.getByLabel('Gender').selectOption('female');
+  await page.getByLabel('Outcome').selectOption('won');
+  await page.getByLabel('Winning team').selectOption('Wanderers');
   await page.getByLabel('Fixture package').setInputFiles({
     name: 'new-fixture.json',
     mimeType: 'application/json',

@@ -1082,6 +1082,7 @@ main {
 }
 
 .submission-page {
+  width: min(100% - 3rem, 75rem);
   min-height: 38rem;
   padding-bottom: 5rem;
 }

@@ -121,10 +121,47 @@ export const fixtureProposalSchema = z
     gender: readableNameSchema,
     ballsPerOver: z.number().int().min(1).max(36),
     outcome: z.enum(['won', 'tie', 'draw', 'no result']),
+    /**
+     * The team that won, by name, and one of the fixture's two. Required when
+     * the outcome is `won` and refused otherwise, which is the rule the
+     * `fixture` table has always enforced:
+     *
+     *     CONSTRAINT fixture_winner_ck CHECK ((outcome = 'won') = (winner_id IS NOT NULL))
+     *
+     * Without it a proposal could say a fixture was won without saying by whom,
+     * and nothing below the contract could honour that: the canonical fixture
+     * INSERT has no winner to write, so the constraint refused the row and the
+     * reviewer's **Create canonical fixture from proposal** returned a 500. The
+     * outcome and the winner travel together everywhere else in this codebase —
+     * corpus ingestion derives `won` from the presence of a winner — and they
+     * travel together here too.
+     *
+     * It is a name rather than an identifier for the same reason the fixture's
+     * two teams are names: a v1.1 package carries no canonical identifiers, and
+     * the name is resolved against the two teams the proposal itself names, so
+     * no team can be introduced or inferred by way of this field.
+     */
+    winner: readableNameSchema.optional(),
     sourceVersion: readableNameSchema,
     sourceRevision: z.number().int().nonnegative(),
   })
-  .strict();
+  .strict()
+  .superRefine((proposal, context) => {
+    if (proposal.outcome === 'won' && proposal.winner === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['winner'],
+        message: 'Name the winning team when the outcome is won.',
+      });
+    }
+    if (proposal.outcome !== 'won' && proposal.winner !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['winner'],
+        message: 'A winner may only be named when the outcome is won.',
+      });
+    }
+  });
 
 const inningsContextSchema = z
   .object({

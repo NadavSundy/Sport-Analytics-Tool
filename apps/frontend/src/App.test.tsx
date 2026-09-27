@@ -275,11 +275,18 @@ describe('public application and authentication interface', () => {
     renderApp('/auth/callback', createSession());
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-      'href',
-      '/account/security',
-    );
+    expect(
+      within(screen.getByRole('navigation', { name: 'Account sections' })).getByRole('link', {
+        name: 'Account management',
+      }),
+    ).toHaveAttribute('href', '/account/security');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Account' })).getByRole('link', {
+        name: 'Manage account',
+      }),
+    ).toHaveAttribute('href', '/account');
     expect(screen.queryByRole('link', { name: 'Submit Events' })).not.toBeInTheDocument();
   });
 
@@ -331,7 +338,10 @@ describe('public application and authentication interface', () => {
 
     act(() => auth.emit('SIGNED_IN', session));
 
-    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(screen.queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument();
     expect(await screen.findByText('person@example.com')).toBeInTheDocument();
     expect(await screen.findByText('viewer')).toBeInTheDocument();
@@ -339,6 +349,42 @@ describe('public application and authentication interface', () => {
     expect(
       screen.queryByRole('heading', { level: 2, name: 'Delete account' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('lets an approved submitter view named competition scopes from Account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith('/auth/me')) {
+          return Promise.resolve(
+            apiResponse(200, {
+              user: {
+                id: '17',
+                subject: 'user-123',
+                displayName: 'Example User',
+                role: 'submitter',
+                approvalState: 'approved',
+                requestedCompetition: null,
+                competitionIds: ['5'],
+              },
+            }),
+          );
+        }
+        if (path.endsWith('/competitions/5'))
+          return Promise.resolve(
+            apiResponse(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+          );
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    renderApp('/account', createSession());
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View approved competition scopes' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Your approved competition scopes' }),
+    ).toHaveTextContent('Premier T20');
   });
 
   it('requires deliberate account-deletion confirmation', async () => {
@@ -533,7 +579,7 @@ describe('public application and authentication interface', () => {
       'We could not sign you out. Please try again.',
     );
     expect(screen.queryByText(/token internals/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Manage account' })).toBeInTheDocument();
   });
 
   it('persists a manual theme selection', async () => {

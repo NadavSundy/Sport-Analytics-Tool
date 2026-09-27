@@ -1033,6 +1033,12 @@ async function onboardFixtureCanonicalContext(
   teamIdByName: Map<string, string>,
   innings: FixtureOnboardingInnings[],
   participants: FixtureOnboardingParticipant[],
+  /**
+   * The reviewer whose canonical fixture decision caused this. An onboarded
+   * task must name them: the state constraint requires it, and provenance for
+   * a created squad membership is the point of the row.
+   */
+  actorId: string,
 ): Promise<FixtureOnboardingSummary> {
   let inningsCreated = 0;
   if (innings.length > 0) {
@@ -1104,6 +1110,9 @@ async function onboardFixtureCanonicalContext(
          state='outstanding',
          person_id=NULL,
          onboarded_at=NULL,
+         -- Cleared with the rest of the settled fields, so the row cannot land
+         -- outstanding while still naming a decider.
+         decided_by=NULL,
          last_reported_at=now()
        -- A settled task is a reviewer decision, and re-deriving the work must
        -- not undo one. Without this the row was reset to outstanding with its
@@ -1134,9 +1143,14 @@ async function onboardFixtureCanonicalContext(
     await executeQuery(
       executor,
       `UPDATE batch_participant_onboarding_task
-       SET state='onboarded', person_id=$4::bigint, onboarded_at=now(), last_reported_at=now()
+       SET state='onboarded', person_id=$4::bigint, onboarded_at=now(),
+           -- Required by batch_participant_onboarding_task_state_ck: an
+           -- onboarded task names the reviewer who decided it as well as the
+           -- person it became. Omitting it raised a check violation, which
+           -- reaches the endpoint as a 500.
+           decided_by=$5::bigint, last_reported_at=now()
        WHERE batch_id=$1::bigint AND fixture_id=$2::bigint AND participant_key=$3`,
-      [batchId, fixtureId, key, personId],
+      [batchId, fixtureId, key, personId, actorId],
     );
   };
 
@@ -2512,10 +2526,26 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             'Both proposed fixture teams must already be canonical records.',
           );
         const proposal = input.proposal;
+        /*
+         * Issue #708. `fixture_winner_ck` requires a winner exactly when the
+         * outcome is `won`, and this INSERT used to write neither, so every
+         * proposal carrying the commonest outcome of all raised a check
+         * violation that reached the reviewer as a 500. The contract now
+         * requires the winner alongside the outcome; it is resolved here
+         * against the fixture's own two teams, so this can neither introduce a
+         * team nor name one from outside the fixture.
+         */
+        const winnerId =
+          proposal.outcome === 'won' ? teamIdByName.get(proposal.winner ?? '') : undefined;
+        if (proposal.outcome === 'won' && !winnerId) {
+          throw new BatchReferenceMappingConflictError(
+            'The proposed winner must be one of the two teams of the fixture it won.',
+          );
+        }
         const inserted = await executeQuery<{ fixtureId: string }>(
           executor,
-          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,source_version,source_revision)
-           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11,$12::int)
+          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,winner_id,source_version,source_revision)
+           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11::bigint,$12,$13::int)
            ON CONFLICT (source_ref) DO NOTHING RETURNING fixture_id::text AS "fixtureId"`,
           [
             input.sourceRef,
@@ -2528,6 +2558,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             input.startDate,
             proposal.endDate,
             proposal.outcome,
+            winnerId ?? null,
             proposal.sourceVersion,
             proposal.sourceRevision,
           ],
@@ -2569,6 +2600,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         teamIdByName,
         input.innings ?? [],
         input.participants ?? [],
+        input.actorId,
       );
       await executeQuery(
         executor,
@@ -2766,11 +2798,30 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             // onboarding performs for a participant that arrived carrying one.
             const upserted = await executeQuery<{ personId: string }>(
               executor,
+              /*
+               * Issue #708. The submitted name as the display name, exactly as
+               * the derivation above does it for a participant that arrived
+               * carrying an identifier. Writing the identifier instead made two
+               * paths that create the same person from the same kind of
+               * identifier disagree, and it was not cosmetic: a squad is matched
+               * by display name, so a person named after the registry key could
+               * not be found by the name the submission used. Every reference
+               * that named the participant stayed unresolved, no item became
+               * acceptable, and the batch could not be approved however many
+               * tasks the reviewer settled. It also published the registry key
+               * as the player's name.
+               *
+               * No alias is written for the submitted name. A name must not
+               * become a resolution key of its own; this is the person's name,
+               * which the squad scope already makes safe to match within.
+               *
+               * An existing person keeps its own name: ON CONFLICT DO NOTHING.
+               */
               `INSERT INTO person (source_ref, display_name)
-               VALUES ($1, $1)
+               VALUES ($1, COALESCE($2, $1))
                ON CONFLICT (source_ref) DO NOTHING
                RETURNING person_id::text AS "personId"`,
-              [value],
+              [value, task.submittedName],
             );
             personId =
               upserted.rows[0]?.personId ??

@@ -5,6 +5,7 @@ import { parse } from 'yaml';
 import 'swagger-ui-react/swagger-ui.css';
 
 import { PageLayout } from '../../components/PageLayout';
+import { ApiExplorerLoadingIndicator } from './ApiExplorerLoadingIndicator';
 import './ApiExplorerPage.css';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/v1';
@@ -214,6 +215,7 @@ export function ApiExplorerPage() {
 
       {loadState.kind === 'loading' ? (
         <div className="api-explorer__state ui-card" role="status" aria-live="polite">
+          <ApiExplorerLoadingIndicator label="Loading API specification" />
           <h2>Loading API specification</h2>
           <p>Fetching the current contract from the backend…</p>
         </div>

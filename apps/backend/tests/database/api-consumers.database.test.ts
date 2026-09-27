@@ -31,7 +31,7 @@ describe.sequential('API consumer key persistence', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await pool?.end();
   });
 
   test('stores only hashes, rotates/revokes active key lookup, and atomically enforces the daily quota', async () => {
@@ -69,6 +69,38 @@ describe.sequential('API consumer key persistence', () => {
     expect(await repository.findActiveConsumer(hashApiKey(second))).toMatchObject({
       consumerId: issued.id,
     });
+
+    const active = await repository.findActiveConsumer(hashApiKey(second));
+    await repository.recordUsage!({
+      consumerId: issued.id,
+      keyId: active!.keyId!,
+      endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+      statusClass: '2xx',
+      at: new Date('2026-09-27T10:00:00.000Z'),
+    });
+    const usage = await repository.listUsage!(issued.id, {
+      from: '2026-09-27',
+      to: '2026-09-27',
+      limit: 10,
+    });
+    expect(usage).toEqual({
+      totalRequests: 1,
+      entries: [
+        {
+          date: '2026-09-27',
+          endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+          statusClass: '2xx',
+          requestCount: 1,
+        },
+      ],
+    });
+    const telemetry = await executeQuery<{ rawKey: string | null; query: string | null }>(
+      pool,
+      `SELECT null::text AS "rawKey", null::text AS query FROM api_consumer_request_usage
+       WHERE api_consumer_id = $1`,
+      [issued.id],
+    );
+    expect(telemetry.rows[0]).toEqual({ rawKey: null, query: null });
 
     await expect(repository.consumeDailyQuota(issued.id, 2)).resolves.toEqual({
       allowed: true,

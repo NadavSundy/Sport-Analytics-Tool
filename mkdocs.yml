@@ -43,91 +43,111 @@ extra_javascript:
 nav:
   - Home: index.md
   - Getting Started:
+      - Overview: getting-started.md
       - Local Setup: development/setup.md
       - Technology Stack: development/technology-stack.md
       - Environment Variables: environment.md
       - Repository Structure: architecture/repository-structure.md
-      - Reference Fixtures: development/reference-fixtures.md
-      - Dependencies: development/dependencies.md
-      - Gitea Issue Export: development/gitea-issue-export.md
-  - Design:
-      - Brand Guidelines: design/brand-guidelines.md
-      - Frontend Component Baseline: design/frontend-component-baseline.md
-      - Information Architecture and Wireframes: design/information-architecture-and-wireframes.md
-      - Architecture: architecture/overview.md
-      - System Architecture and Roadmap: architecture/system-architecture.md
-      - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
+  - Product & API:
+      - Overview: product-and-api.md
       - API:
-          - Overview: api/overview.md
-          - Shared Contracts: api/contracts.md
-          - Public Read API: api/public-read.md
-          - Weather API: api/weather.md
-          - Direct Event Submissions: api/submissions.md
-          - Provenance and Audit API: api/provenance.md
-          - Batch Ingestion Receipt API: api/batches.md
-          - Consumer API Keys and Limits: api/consumer-keys.md
-          - Season-upload contract: api/season-upload-contract.md
-          - Fixture Statistic Calculations: statistics/fixture-statistics.md
-          - Participant Aggregate Calculations: statistics/participant-aggregates.md
+          - API Overview: api/overview.md
           - OpenAPI Specification: api/openapi.md
           - OpenAPI Contract Testing: api/contract-testing.md
-          - Versioning and Deprecation: api/versioning.md
-      - Submission field mapping: api/submission-field-mapping.md
-      - Event to statistic mapping: api/event-statistic-mapping.md
-      - Dataset Exports: data/dataset-exports.md
-      - Batch Submission Packages: data/batch-submission-packages.md
-      - Sport Domain Definition: requirements/sport-domain-definition.md
-      - Cricsheet Data Source: data/cricsheet.md
+          - Public Read API: api/public-read.md
+          - Direct Event Submissions: api/submissions.md
+          - Batch Ingestion & Review: api/batches.md
+          - Consumer API Keys & Limits: api/consumer-keys.md
+          - Weather API: api/weather.md
+          - Versioning & Deprecation: api/versioning.md
+      - Statistics & Exports:
+          - Fixture Statistics: statistics/fixture-statistics.md
+          - Participant Aggregates: statistics/participant-aggregates.md
+          - Dataset Exports & Releases: data/dataset-exports.md
+      - Contracts & Mapping:
+          - Shared Contracts: api/contracts.md
+          - Provenance & Audit: api/provenance.md
+          - Season-upload Contract: api/season-upload-contract.md
+          - Submission Field Mapping: api/submission-field-mapping.md
+          - Event-to-statistic Mapping: api/event-statistic-mapping.md
+          - Batch Submission Packages: data/batch-submission-packages.md
+      - Domain & Source Data:
+          - Sport Domain Definition: requirements/sport-domain-definition.md
+          - Cricsheet Data Source: data/cricsheet.md
+  - Architecture & Data:
+      - Overview: architecture-and-data.md
+      - Architecture:
+          - Architecture Overview: architecture/overview.md
+          - System Architecture & Roadmap: architecture/system-architecture.md
+          - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
       - Database:
           - Database Architecture Guide: database/guide.md
-          - Overview: database/overview.md
-          - Access and Transactions: database/access.md
-          - Batch Persistence Extensions: database/batch-persistence.md
-      - Event Model: database/schema.md
-      - Entity Relationships: database/erd.md
+          - Database Overview: database/overview.md
+          - Event Model: database/schema.md
+          - Entity Relationships: database/erd.md
+          - Access & Transactions: database/access.md
+          - Batch Persistence: database/batch-persistence.md
       - Security:
-          - Overview: security/overview.md
-          - Authentication and Authorisation: security/authentication.md
+          - Security Overview: security/overview.md
+          - Authentication & Authorisation: security/authentication.md
+          - Roles & Permissions: security/roles-and-permissions.md
+          - Privacy & Retention: security/privacy-retention.md
           - Password Recovery Ownership: security/password-recovery.md
-          - Privacy and Retention: security/privacy-retention.md
-          - Roles and Permissions: security/roles-and-permissions.md
-          - Provider Comparison: security/auth-provider-comparison.md
-  - Deployment:
+          - Authentication Provider Comparison: security/auth-provider-comparison.md
+  - Development:
+      - Overview: development/index.md
+      - Workflow & Tooling:
+          - Git Methodology: git-methodology.md
+          - Dependencies: development/dependencies.md
+          - Reference Fixtures: development/reference-fixtures.md
+          - Gitea Issue Export: development/gitea-issue-export.md
+      - Design & UX:
+          - Brand Guidelines: design/brand-guidelines.md
+          - Frontend Component Baseline: design/frontend-component-baseline.md
+          - Information Architecture & Wireframes: design/information-architecture-and-wireframes.md
+      - CI/CD:
+          - CI/CD & Quality Gates: development/ci-cd.md
+          - Local CI: development/local-ci.md
+  - Deployment & Operations:
       - Overview: deployment/overview.md
-      - Azure Application Hosting: deployment/azure.md
-      - Azure Hosting Decision Record: adr/0003-azure-hosting.md
-      - Azure Backend: deployment/azure-backend.md
-      - Azure Batch Worker: deployment/azure-worker.md
-      - Production-scale Acceptance: deployment/production-scale-acceptance.md
-      - Private Object Storage Operations: deployment/object-storage-operations.md
-      - Frontend (Cloudflare Pages): deployment/frontend-cloudflare-pages.md
-      - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
-      - Dedicated CI Runner Operations: deployment/runner-operations.md
-      - Cloudflare Documentation: deployment/cloudflare_pages.md
-  - Methodology:
-      - Git Methodology: git-methodology.md
-      - Project Methodology: project_methodology.md
-      - Project Backlog and Milestone Plan: planning/project-backlog.md
-      - Sprint 1 Requirements Traceability: planning/sprint-1-requirements-traceability.md
-      - Sprint 2 Requirements & Rubric Traceability: planning/sprint-2-requirements-traceability.md
-  - Testing:
+      - Hosting:
+          - Azure Application Hosting: deployment/azure.md
+          - Azure Hosting Decision Record: adr/0003-azure-hosting.md
+          - Backend Container Apps: deployment/azure-backend.md
+          - Frontend Cloudflare Pages: deployment/frontend-cloudflare-pages.md
+          - Asynchronous Worker: deployment/azure-worker.md
+          - Documentation Cloudflare Pages: deployment/cloudflare_pages.md
+      - Capacity, Acceptance & Recovery:
+          - Hosting Capacity & Recovery Strategy: deployment/hosting-capacity-and-recovery-strategy.md
+          - Production-scale Acceptance: deployment/production-scale-acceptance.md
+          - Azure Deployment Recovery: deployment/azure-app-service-recovery.md
+          - Private Object Storage Operations: deployment/object-storage-operations.md
+          - Dedicated CI Runner Operations: deployment/runner-operations.md
+  - Testing & Quality:
+      - Overview: testing/index.md
       - Automated Testing Strategy: development/testing.md
       - Repository-wide Code Coverage: testing/code-coverage.md
-      - CI/CD & Quality Gates: development/ci-cd.md
-      - Local CI: development/local-ci.md
-      - User Testing Overview: testing/user-testing-overview.md
-      - User Testing Protocol: testing/user-testing-protocol.md
-      - User Testing Task Bank: testing/user-testing-task-bank.md
+      - Representative-scale Performance: development/performance-baseline.md
+      - User Testing:
+          - User Testing Overview: testing/user-testing-overview.md
+          - User Testing Protocol: testing/user-testing-protocol.md
+          - User Testing Task Bank: testing/user-testing-task-bank.md
       - Intermediate Ingestion Acceptance: testing/intermediate-ingestion-acceptance.md
       - Bug Tracking: testing/bug-tracking.md
-      - Representative-scale Performance Baseline: development/performance-baseline.md
-  - AI Use: ai/usage.md
   - Project Process & Evidence:
       - Overview: process/index.md
+      - Project Methodology: project_methodology.md
+      - Project Backlog & Milestone Plan: planning/project-backlog.md
       - Sprint Evidence: process/sprint-evidence.md
+      - Team Meeting Transcripts: process/team-meeting-transcripts.md
+      - Requirements Traceability:
+          - Sprint 1: planning/sprint-1-requirements-traceability.md
+          - Sprint 2: planning/sprint-2-requirements-traceability.md
       - Decisions Index: process/decisions.md
       - Testing & Validation Evidence: process/validation-and-user-testing.md
-      - AI Use & Evidence: process/ai-use-evidence.md
+      - AI Use:
+          - Process & Policy: ai/usage.md
+          - AI Use & Evidence: process/ai-use-evidence.md
 
 markdown_extensions:
   - admonition

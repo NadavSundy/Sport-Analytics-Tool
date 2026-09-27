@@ -91,6 +91,7 @@ type NewFixtureDraft = {
   gender: string;
   ballsPerOver: string;
   outcome: 'won' | 'tie' | 'draw' | 'no result';
+  winner: string;
   sourceVersion: string;
   sourceRevision: string;
 };
@@ -376,6 +377,7 @@ function SubmissionForm({
     gender: '',
     ballsPerOver: '6',
     outcome: 'no result',
+    winner: '',
     sourceVersion: '1',
     sourceRevision: '0',
   });
@@ -567,6 +569,7 @@ function SubmissionForm({
               gender: newFixture.gender,
               ballsPerOver: Number(newFixture.ballsPerOver),
               outcome: newFixture.outcome,
+              ...(newFixture.outcome === 'won' ? { winner: newFixture.winner } : {}),
               sourceVersion: newFixture.sourceVersion,
               sourceRevision: Number(newFixture.sourceRevision),
             },
@@ -760,14 +763,6 @@ function SubmissionForm({
                 {competitions.join(', ')}. The backend checks this scope again when it receives your
                 submission.
               </p>
-              <button
-                ref={scopeTriggerRef}
-                className="button button--secondary"
-                type="button"
-                onClick={() => setScopeDialogState({ kind: 'loading' })}
-              >
-                View approved competition scopes
-              </button>
             </>
           )}
         </section>
@@ -1057,6 +1052,7 @@ function SubmissionForm({
                   setNewFixture((draft) => ({
                     ...draft,
                     outcome: event.target.value as NewFixtureDraft['outcome'],
+                    winner: event.target.value === 'won' ? draft.winner : '',
                   }));
                   resetResult();
                 }}
@@ -1067,6 +1063,31 @@ function SubmissionForm({
                 <option value="draw">Draw</option>
               </select>
             </div>
+
+            {newFixture.outcome === 'won' ? (
+              <div className="submission-field">
+                <label htmlFor="new-fixture-winner">Winning team</label>
+                <select
+                  id="new-fixture-winner"
+                  value={newFixture.winner}
+                  required
+                  disabled={result.kind === 'submitting' || completed}
+                  onChange={(event) => {
+                    setNewFixture((draft) => ({ ...draft, winner: event.target.value }));
+                    resetResult();
+                  }}
+                >
+                  <option value="">Select winning team</option>
+                  {[newFixture.homeTeamName, newFixture.awayTeamName]
+                    .filter((team, index, teams) => team && teams.indexOf(team) === index)
+                    .map((team) => (
+                      <option key={team} value={team}>
+                        {team}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : null}
 
             <div className="submission-field">
               <label htmlFor="new-fixture-source-revision">Source revision</label>

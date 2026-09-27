@@ -53,6 +53,11 @@ The Explorer is discoverable from the Stat'sTheGame primary public navigation as
 bottom-of-page API entry opens the in-app Explorer, while a separate **API Documentation** link
 continues to expose the extended MkDocs documentation.
 
+The Explorer makes both deferred stages visible: the route-level lazy module and the backend
+OpenAPI specification request each show the same labelled progress indicator until their associated
+content is ready. A specification failure replaces that indicator with an explicit retryable error
+state, so an unfinished or failed Explorer is not presented as a blank page.
+
 ## Current endpoints
 
 ```http
@@ -373,6 +378,12 @@ The following belong to later Advanced-tier work rather than the implemented Int
 - larger asynchronous analytical jobs and change-feed functionality where not already implemented
   for dataset-release generation.
 
+## Related reading paths
+
+- [Product & API](../product-and-api.md) — human-facing entry point for API, submission, statistics and export documentation.
+- [Architecture & Data](../architecture-and-data.md) — persistence, ingestion and security boundaries behind the API.
+- [Testing & Quality](../testing/index.md) — API contract, browser and performance verification.
+
 ## AI Declaration
 
 The preceding API overview was reviewed and updated for the Intermediate implementation with the
@@ -381,3 +392,5 @@ The issue #635 public leaderboard endpoint and qualification summary were docume
 assistance of Codex[GPT-5].
 The Issue #660 public API Explorer workflow was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #661 public API Explorer discoverability and production UX guidance was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #726 API Explorer loading-feedback guidance was updated with the assistance of Codex[GPT-5].
+The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].

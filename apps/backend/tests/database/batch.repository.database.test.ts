@@ -3660,6 +3660,122 @@ describe.sequential('batch repository database integration', () => {
     });
   });
 
+  test('onboards a participant that was reported by an earlier derivation (issue #708)', async () => {
+    await withRolledBackTransaction(async (client) => {
+      const current = testRecords();
+      const repository = createBatchRepository(client);
+      const battingTeamName = `${sourcePrefix} Reonboard Batting`;
+      const bowlingTeamName = `${sourcePrefix} Reonboard Bowling`;
+      for (const name of [battingTeamName, bowlingTeamName]) {
+        await client.query(`INSERT INTO team (name) VALUES ($1)`, [name]);
+      }
+
+      const batch = await repository.createBatchAndQueueValidation({
+        batchReference: randomUUID(),
+        submitterId: current.accountId,
+        competitionId: current.competitionId,
+        idempotencyKey: `${sourcePrefix}-reonboard`,
+        source: { checksum, uri: `stored-object:${randomUUID()}`, sizeBytes: 64 },
+      });
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      // An application identifier naming nobody: reported on the first
+      // derivation, onboardable on the second once that person exists.
+      const personId = '2147483601';
+      const participants = [
+        {
+          sourceId: `app:participant:${personId}`,
+          name: `${sourcePrefix} Reonboard Player`,
+          teamName: battingTeamName,
+        },
+      ];
+      const input = {
+        batchId: batch.batchId,
+        batchReference: batch.batchReference,
+        competitionId: current.competitionId,
+        actorId: current.accountId,
+        itemOrdinal: 0,
+        referencePath: 'fixtures.0',
+        decisionKey: 'reonboard',
+        sourceRef: `${sourcePrefix}-reonboard-fixture`,
+        season: '2026',
+        startDate: '2026-01-01',
+        teamNames: [battingTeamName, bowlingTeamName],
+        proposal: {
+          endDate: '2026-01-01',
+          matchType: 'T20',
+          teamType: 'club',
+          gender: 'male',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+        innings: [{ ordinal: 0, battingTeamName }],
+        participants,
+      };
+
+      const first = await repository.createCanonicalFixtureAndQueueMapping(input);
+      expect(first.onboarding?.unresolvedParticipants).toEqual([
+        {
+          name: `${sourcePrefix} Reonboard Player`,
+          teamName: battingTeamName,
+          reason: 'identifier_not_found',
+          candidates: [],
+        },
+      ]);
+
+      const reported = await client.query<{ state: string; decidedBy: string | null }>(
+        `SELECT state, decided_by::text AS "decidedBy"
+         FROM batch_participant_onboarding_task WHERE batch_id=$1::bigint`,
+        [batch.batchId],
+      );
+      expect(reported.rows[0]!.state).toBe('outstanding');
+      expect(reported.rows[0]!.decidedBy).toBeNull();
+
+      // The person the identifier names now exists, so the repeat derivation
+      // can onboard the participant it previously reported.
+      await client.query(
+        `INSERT INTO person (person_id, source_ref, display_name)
+         OVERRIDING SYSTEM VALUE VALUES ($1::bigint, $2, $3)`,
+        [personId, `${sourcePrefix}-reonboard-person`, `${sourcePrefix} Reonboard Player`],
+      );
+      await client.query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [batch.batchId]);
+      await client.query(
+        `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+        [batch.batchId],
+      );
+
+      // Closing the task must satisfy the state constraint issue #708 Pull
+      // Request 2 tightened: an onboarded task names the reviewer who decided
+      // it as well as the person it became. Without decided_by this raised a
+      // check violation, which reaches the endpoint as a 500.
+      const second = await repository.createCanonicalFixtureAndQueueMapping(input);
+      expect(second.onboarding?.squadCreated).toBe(1);
+      expect(second.onboarding?.unresolvedParticipants).toEqual([]);
+
+      const settled = await client.query<{
+        state: string;
+        personId: string | null;
+        decidedBy: string | null;
+      }>(
+        `SELECT state, person_id::text AS "personId", decided_by::text AS "decidedBy"
+         FROM batch_participant_onboarding_task WHERE batch_id=$1::bigint`,
+        [batch.batchId],
+      );
+      expect(settled.rows[0]!.state).toBe('onboarded');
+      expect(settled.rows[0]!.personId).toBe(personId);
+      expect(settled.rows[0]!.decidedBy).toBe(current.accountId);
+
+      // And the reviewer is no longer shown it.
+      expect(await repository.listParticipantOnboardingTasks(batch.batchId)).toHaveLength(0);
+    });
+  });
+
   test('a second decision onboards participants the first could not (issue #708)', async () => {
     await withRolledBackTransaction(async (client) => {
       const current = testRecords();
