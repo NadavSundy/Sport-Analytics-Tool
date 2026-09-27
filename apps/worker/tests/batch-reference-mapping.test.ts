@@ -1,8 +1,12 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, test, vi } from 'vitest';
 
+import { canonicaliseCandidates } from '../src/batch-package';
+
 import {
   finalBatchValidationState,
+  finalBatchStateAfterValidationFailure,
+  safeBatchValidationFailureDetails,
   persistReviewerActionableOnboardingTasks,
   isReviewerActionableFixtureResolution,
   prepareItem,
@@ -217,6 +221,49 @@ describe('reviewer-actionable batch finalisation (#695)', () => {
       }),
     ).toBe(false);
   });
+});
+
+describe('reviewer-actionable validation failure recovery (#757)', () => {
+  test('keeps staged reviewer work reviewable when asynchronous validation cannot finish', () => {
+    expect(finalBatchStateAfterValidationFailure(true)).toBe('awaiting_review');
+    expect(finalBatchStateAfterValidationFailure(false)).toBe('failed');
+  });
+});
+
+describe('batch validation diagnostics (#763)', () => {
+  test('keeps the failure class and bounded message without serialising a stack', () => {
+    const detail = safeBatchValidationFailureDetails(
+      new Error(`first-chunk query failed: ${'x'.repeat(600)}`),
+    );
+
+    expect(detail.errorName).toBe('Error');
+    expect(detail.errorMessage).toHaveLength(500);
+    expect(detail).not.toHaveProperty('stack');
+  });
+});
+
+test('assigns distinct persisted positions to repeated legal-ball labels in one over (#763)', () => {
+  const candidates = canonicaliseCandidates([
+    {
+      ordinal: 0,
+      fixtureKey: 'f',
+      inningsKey: 'i',
+      event: { overNumber: 0, positionInOver: 0, occurrenceSequence: 1 },
+    },
+    {
+      ordinal: 1,
+      fixtureKey: 'f',
+      inningsKey: 'i',
+      event: { overNumber: 0, positionInOver: 1, occurrenceSequence: 2 },
+    },
+    {
+      ordinal: 2,
+      fixtureKey: 'f',
+      inningsKey: 'i',
+      event: { overNumber: 0, positionInOver: 1, occurrenceSequence: 3 },
+    },
+  ] as never);
+  expect(candidates.map((candidate) => candidate.event.positionInOver)).toEqual([0, 1, 2]);
 });
 
 describe('reviewer-actionable participant references (#729)', () => {

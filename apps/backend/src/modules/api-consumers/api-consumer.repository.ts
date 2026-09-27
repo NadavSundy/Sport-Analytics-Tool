@@ -22,8 +22,16 @@ interface KeyRow {
 
 export interface ActiveConsumer {
   consumerId: string;
+  keyId?: string;
   rateLimitPerMinute: number;
   dailyQuota: number;
+}
+
+interface ConsumerUsageEntry {
+  date: string;
+  endpoint: string;
+  statusClass: '2xx' | '3xx' | '4xx' | '5xx';
+  requestCount: number;
 }
 
 export interface ApiConsumerRepository {
@@ -38,6 +46,17 @@ export interface ApiConsumerRepository {
     at: Date,
   ): Promise<{ allowed: boolean; used: number; resetAt: Date }>;
   consumeDailyQuota(consumerId: string, quota: number): Promise<{ allowed: boolean; used: number }>;
+  recordUsage?(input: {
+    consumerId: string;
+    keyId: string;
+    endpoint: string;
+    statusClass: '2xx' | '3xx' | '4xx' | '5xx';
+    at: Date;
+  }): Promise<void>;
+  listUsage?(
+    consumerId: string,
+    query: { from: string; to: string; limit: number },
+  ): Promise<{ totalRequests: number; entries: ConsumerUsageEntry[] }>;
 }
 
 interface GeneratedKey {
@@ -161,6 +180,7 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
       const result = await executeQuery<ActiveConsumer>(
         pool,
         `SELECT consumer.api_consumer_id::text AS "consumerId",
+          key.api_consumer_key_id::text AS "keyId",
           consumer.rate_limit_per_minute AS "rateLimitPerMinute", consumer.daily_quota AS "dailyQuota"
          FROM api_consumer_key key
          JOIN api_consumer consumer ON consumer.api_consumer_id = key.api_consumer_id
@@ -213,6 +233,38 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
       const used = result.rows[0]?.requestCount;
       return used === undefined ? { allowed: false, used: quota } : { allowed: true, used };
     },
+    async recordUsage({ consumerId, keyId, endpoint, statusClass, at }) {
+      await executeQuery(
+        pool,
+        `INSERT INTO api_consumer_request_usage
+          (api_consumer_id, api_consumer_key_id, occurred_at, endpoint, status_class)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [consumerId, keyId, at, endpoint, statusClass],
+      );
+    },
+    async listUsage(consumerId, query) {
+      const total = await executeQuery<{ totalRequests: number }>(
+        pool,
+        `SELECT count(*)::int AS "totalRequests"
+         FROM api_consumer_request_usage
+         WHERE api_consumer_id = $1 AND occurred_at >= $2::date
+           AND occurred_at < ($3::date + INTERVAL '1 day')`,
+        [consumerId, query.from, query.to],
+      );
+      const entries = await executeQuery<ConsumerUsageEntry>(
+        pool,
+        `SELECT occurred_at::date::text AS date, endpoint,
+          status_class AS "statusClass", count(*)::int AS "requestCount"
+         FROM api_consumer_request_usage
+         WHERE api_consumer_id = $1 AND occurred_at >= $2::date
+           AND occurred_at < ($3::date + INTERVAL '1 day')
+         GROUP BY occurred_at::date, endpoint, status_class
+         ORDER BY occurred_at::date DESC, endpoint ASC, status_class ASC
+         LIMIT $4`,
+        [consumerId, query.from, query.to, query.limit],
+      );
+      return { totalRequests: total.rows[0]?.totalRequests ?? 0, entries: entries.rows };
+    },
   };
 }
 
@@ -228,6 +280,8 @@ export function createLazyApiConsumerRepository(): ApiConsumerRepository {
     findActiveConsumer: (...args) => resolved().findActiveConsumer(...args),
     consumeRateLimit: (...args) => resolved().consumeRateLimit(...args),
     consumeDailyQuota: (...args) => resolved().consumeDailyQuota(...args),
+    recordUsage: (...args) => resolved().recordUsage!(...args),
+    listUsage: (...args) => resolved().listUsage!(...args),
   };
 }
 

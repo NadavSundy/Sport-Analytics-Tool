@@ -1335,14 +1335,16 @@ That starts Docker PostgreSQL at:
 127.0.0.1:55432
 database: sport_analytics_test
 user: test_user
-password: test_password
+password: [REDACTED: test database password]
 ```
 
 It resets, migrates, seeds, runs the database tests, and leaves the Docker database available afterward. You can connect with pgAdmin, DBeaver, or `psql` using:
 
 ```text
-postgresql://test_user:test_password@127.0.0.1:55432/sport_analytics_test
+postgresql://test_user:[REDACTED: test database password]@127.0.0.1:55432/sport_analytics_test
 ```
+
+The test database password was redacted before this transcript was committed, in accordance with the repository AI-evidence privacy policy.
 
 Important: this is ideal for checking the SQL/state assertions, but it is not automatically a browser UI environment. The repository documentation does not identify a hosted staging/test URL. For a browser upload test, ask the team for the deployed test/staging URL and a submitter test account; do not repoint your normal local `.env` or shared development database at the test database without team guidance.
 

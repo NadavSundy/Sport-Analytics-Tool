@@ -1,72 +1,56 @@
 # Project Process & Evidence
 
-This section is the primary discovery point for the project's methodology, Sprint
-evidence, decisions, testing/validation evidence, and AI-use evidence. Where authoritative
-evidence already exists elsewhere in the repository or in this documentation site, the pages
-below link to that source rather than duplicating it, so the two cannot drift apart.
+This section is the assessment/evidence entry point. Product and developer documentation explain how
+the system works; this section shows how the team planned, reviewed, tested and documented the work.
+Authoritative evidence remains under `evidence/` and is linked rather than copied into MkDocs.
 
-## Repository and developer guides
+## Start by evidence type
 
-Every component's getting-started guide, including the root, frontend, backend, database,
-shared-contracts, docs, tests, infra and scripts `README.md` files, is indexed in one table on
-the [Local Development Setup](../development/setup.md#component-getting-started-audit) page.
+| Need                                                           | Start here                                                                                                                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sprint planning, stand-ups, stakeholder records and close-outs | [Sprint Evidence](sprint-evidence.md)                                                                                                                   |
+| Original Teams meeting transcripts and readable PDF copies     | [Team Meeting Transcripts](team-meeting-transcripts.md)                                                                                                 |
+| Requirements/rubric traceability                               | [Sprint 1 traceability](../planning/sprint-1-requirements-traceability.md) / [Sprint 2 traceability](../planning/sprint-2-requirements-traceability.md) |
+| Testing, validation and formal user-testing evidence           | [Testing & Validation Evidence](validation-and-user-testing.md)                                                                                         |
+| Architecture and project decisions                             | [Decisions Index](decisions.md)                                                                                                                         |
+| AI registers and AI transcript evidence                        | [AI Use & Evidence](ai-use-evidence.md)                                                                                                                 |
+| Project workflow and ceremonies                                | [Project Methodology](../project_methodology.md)                                                                                                        |
+| Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                      |
 
-## Project and technical documentation
+## Methodology
 
-- [Architecture overview](../architecture/overview.md) and
-  [System architecture and roadmap](../architecture/system-architecture.md)
-- [Repository structure](../architecture/repository-structure.md)
-- [Technology stack](../development/technology-stack.md) and
-  [Dependency policy](../development/dependencies.md) — third-party technology and the
-  motivation for each dependency
-- [API overview](../api/overview.md), [OpenAPI specification](../api/openapi.md) and the rest of
-  the [API section](../api/overview.md)
-- [Authentication and authorisation](../security/authentication.md) and
-  [roles and permissions](../security/roles-and-permissions.md)
-- [Database overview](../database/overview.md), [event model](../database/schema.md) and
-  [entity relationships](../database/erd.md)
-- [Fixture statistic calculations](../statistics/fixture-statistics.md)
-- [Deployment overview](../deployment/overview.md)
-- [Sport domain definition](../requirements/sport-domain-definition.md) — including the
-  requirements the sport had to satisfy
-- Known limitations are documented on each feature's own page under its **Status** line, per the
-  note on the [documentation home page](../index.md)
-
-## Project methodology and Sprint evidence
-
-- [Project methodology](../project_methodology.md)
-- [Git methodology](../git-methodology.md)
-- [Project backlog and milestone plan](../planning/project-backlog.md)
-- [**Sprint Evidence**](sprint-evidence.md) — planning, stakeholder meetings, stand-ups,
-  close-outs and retrospectives, grouped by Sprint
-
-## Decisions
-
-- [**Decisions Index**](decisions.md) — every recorded Architecture Decision Record and other
-  project-level decision, in one place
+The project uses the [Project Methodology](../project_methodology.md) for Sprint planning, workflow,
+reviews and retrospectives. Source-control practice is documented separately in the
+[Git Methodology](../git-methodology.md). The [Sprint Evidence](sprint-evidence.md) page is the
+chronological route from those methods to retained records.
 
 ## Testing and validation
 
-- [**Testing & Validation Evidence**](validation-and-user-testing.md) — requirements
-  traceability, verification evidence and formal user-testing evidence
-- [Automated & end-to-end testing strategy](../development/testing.md)
-- [User testing protocol](../testing/user-testing-protocol.md) and
-  [task bank](../testing/user-testing-task-bank.md)
-- [Bug tracking](../testing/bug-tracking.md)
-- [Sprint 1 requirements traceability](../planning/sprint-1-requirements-traceability.md)
-- [Sprint 2 requirements and rubric traceability](../planning/sprint-2-requirements-traceability.md)
+Use [Testing & Quality](../testing/index.md) for the testing _method_. Use
+[Testing & Validation Evidence](validation-and-user-testing.md) for the retained evidence and
+traceability produced by that method.
+
+## Decisions
+
+[Decisions Index](decisions.md) is the single navigation point for Architecture Decision Records and
+other project-level decisions. Architecture pages link back to the relevant records instead of
+repeating the decision history.
 
 ## AI use and compliance
 
-- [**AI Use & Evidence**](ai-use-evidence.md) — the central usage register, individual
-  team-member registers and transcript evidence
-- [AI use policy/process](../ai/usage.md)
+[AI Use](../ai/usage.md) explains the repository process. [AI Use & Evidence](ai-use-evidence.md)
+links the per-member registers and AI interaction transcripts. These AI interaction transcripts are
+separate from the Microsoft Teams meeting transcripts indexed under
+[Team Meeting Transcripts](team-meeting-transcripts.md).
 
-## Third-party dependencies
+## Repository evidence root
 
-Every direct dependency and its motivation is listed in
-[Technology Stack](../development/technology-stack.md); the policy for adding and reviewing
-dependencies is in [Dependencies](../development/dependencies.md).
+The repository-level [evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md)
+explains the evidence directories and integrity rules. Normal product documentation should not be
+used as a substitute for retained evidence, and retained evidence should not be duplicated into the
+public docs merely to make it visible.
 
-The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5],
-resolving issue #254.
+## AI Declaration
+
+The process/evidence information architecture and evidence-type routing were reorganised with the
+assistance of ChatGPT-Web[GPT-5.6 Sol].

@@ -107,12 +107,30 @@ describe('ApiExplorerPage', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
-  it('shows an accessible loading state while fetching the backend specification', () => {
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => undefined)));
+  it('keeps a visible accessible loading indicator until the specification is ready', async () => {
+    let resolveSpecification: ((response: Response) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockReturnValue(
+        new Promise<Response>((resolve) => {
+          resolveSpecification = resolve;
+        }),
+      ),
+    );
 
     renderPage();
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading API specification');
+    expect(
+      screen.getByRole('progressbar', { name: 'Loading API specification' }),
+    ).toBeInTheDocument();
+
+    resolveSpecification?.(okSpecification());
+
+    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('progressbar', { name: 'Loading API specification' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders Swagger from the fetched contract and excludes planned operations', async () => {
@@ -170,6 +188,9 @@ describe('ApiExplorerPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'We could not load the API specification',
     );
+    expect(
+      screen.queryByRole('progressbar', { name: 'Loading API specification' }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading specification' }));
 

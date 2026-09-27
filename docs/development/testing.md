@@ -688,6 +688,12 @@ The Sprint 2 Basic audit for Issue #273 is retained in
 Serious or critical product findings discovered during an audit must be fixed within scope or tracked
 as separate issues with an explicit rationale.
 
+## Related reading paths
+
+- [Testing & Quality](../testing/index.md) — testing/quality entry point and progressive-disclosure index.
+- [Testing & Validation Evidence](../process/validation-and-user-testing.md) — retained validation and user-testing evidence.
+- [CI/CD & quality gates](ci-cd.md) — hosted merge/deployment gate behaviour.
+
 ## AI Declaration
 
 The account and authorization testing section was generated with the assistance of
@@ -727,3 +733,4 @@ The issue #458 administrator dataset-release coverage was documented with the as
 Codex[GPT-5.6 Sol].
 The issue #609 OpenAPI contract-test command was documented with the assistance of
 Claude-Code[Claude Opus 5].
+The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].

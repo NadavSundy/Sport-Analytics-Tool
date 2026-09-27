@@ -1000,6 +1000,39 @@ describe('role-gated event submission page', () => {
     expect(await screen.findByLabelText('Fixture')).toHaveValue('7');
   });
 
+  it('only retains a winner while a new fixture outcome is won', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Example Competition' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    await screen.findByLabelText('Fixture');
+    fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
+    await screen.findByRole('option', { name: 'Example Competition' });
+    fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'won' } });
+    fireEvent.change(await screen.findByLabelText('Winning team'), {
+      target: { value: 'Wanderers' },
+    });
+
+    for (const outcome of ['tie', 'draw', 'no result']) {
+      fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: outcome } });
+      await waitFor(() => expect(screen.queryByLabelText('Winning team')).toBeNull());
+      fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'won' } });
+      await waitFor(() => expect(screen.getByLabelText('Winning team')).toHaveValue(''));
+    }
+  });
+
   it('generates a version 1.1 proposal when the submitter clicks Propose a new fixture', async () => {
     const batchReference = '423e4567-e89b-42d3-a456-426614174000';
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
@@ -1055,6 +1088,8 @@ describe('role-gated event submission page', () => {
 
     fireEvent.change(screen.getByLabelText('Team type'), { target: { value: 'club' } });
     fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } });
+    fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'won' } });
+    fireEvent.change(screen.getByLabelText('Winning team'), { target: { value: 'Wanderers' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
@@ -1094,7 +1129,8 @@ describe('role-gated event submission page', () => {
             teamType: 'club',
             gender: 'female',
             ballsPerOver: 6,
-            outcome: 'no result',
+            outcome: 'won',
+            winner: 'Wanderers',
             sourceVersion: '1',
             sourceRevision: 0,
           },

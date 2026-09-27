@@ -18,6 +18,7 @@ import {
 import { loadEnvironment, type Environment } from './config/env';
 import { loadOpenApiSpecification } from './openapi/openapi-spec';
 import { errorHandler } from './middleware/error-handler';
+import { apiDeprecationMiddleware } from './middleware/api-deprecation';
 import { notFoundHandler } from './middleware/not-found';
 import {
   createAccountSynchronizer,
@@ -122,6 +123,9 @@ const BROWSER_EXPOSED_RESPONSE_HEADERS = [
   'X-Quota-Remaining',
   'X-Quota-Reset',
   'Retry-After',
+  'Deprecation',
+  'Sunset',
+  'Link',
 ];
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -239,6 +243,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     response.setHeader('API-Version', CURRENT_API_VERSION);
     next();
   });
+  app.use(apiDeprecationMiddleware);
 
   app.use(`${API_BASE_PATH}/health`, healthRouter);
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));
@@ -274,6 +279,7 @@ export function createApp(dependencies: AppDependencies = {}) {
       fixtureStatisticsService,
       participantAggregatesService,
       consumerAuthentication,
+      apiConsumerRepository,
     ),
   );
   app.use(
