@@ -3,7 +3,11 @@
   "treatConfigHintsAsErrors": true,
   "workspaces": {
     ".": {
-      "entry": ["scripts/smoke-check-backend-artifact.mjs", "docs/javascripts/external-links.js"],
+      "entry": [
+        "scripts/smoke-check-backend-artifact.mjs",
+        "scripts/guide-issue-598-deployed-acceptance.mjs",
+        "docs/javascripts/external-links.js"
+      ],
       "ignoreDependencies": ["wrangler"]
     }
   }
