@@ -115,7 +115,7 @@ physical-delivery-position persistence collisions. The #763 diagnostic receipt
 tasks; all 23 decisions entered. Canonical-reference completion, publication,
 statistics, replay and correction remain unexecuted.
 
-**Current blocker:** submitting all 23 onboarding decisions made an authenticated
+**Historical onboarding failure:** submitting all 23 onboarding decisions made an authenticated
 POST to `/api/v1/batches/ed797e8a-9645-4a39-b1b1-228250e00e43/participants` and
 returned HTTP 422:
 
@@ -124,9 +124,44 @@ returned HTTP 422:
 ```
 
 The deployed API revision observed was `statsthegame-dev-api--0000015`. The request
-reached the API; its exact payload and the invalid decision/rule have not yet been
-captured. This is an Intermediate blocker; root cause and owning issue are pending
-investigation. No package, database, or deployed data was altered to bypass it.
+reached the API; its exact payload and the invalid decision/rule were not captured.
+No package, database, or deployed data was altered to bypass it.
+
+### Participant onboarding and revalidation
+
+**Receipt:** `ed797e8a-9645-4a39-b1b1-228250e00e43`
+
+**Result:** PASS
+
+- All 23 participant onboarding tasks settled.
+- Batch revalidation completed.
+- Needs review: 0; References: 0; Validating: Complete.
+- Lifecycle returned to `Awaiting review` and the batch reports `Ready to publish`.
+
+**Next checkpoint:** reviewer publication approval, followed by verification that
+all 251 authoritative deliveries publish rather than being duplicate-skipped.
+
+### Supplied PDF evidence review
+
+The following evidence was supplied outside the repository and was reviewed on
+27 September 2026; it has not been copied into this acceptance directory:
+
+- `Review submission _ Stat'sTheGame1.pdf` shows receipt
+  `ed797e8a-9645-4a39-b1b1-228250e00e43` in `Publishing`, with 251 accepted,
+  zero rejected/blocking/duplicate/conflict items, and 251 resolved references.
+- `Review submission _ Stat'sTheGam2.pdf` shows corrected receipt
+  `e1707304-da3a-4ad7-aa16-e9cd3084d1b2` in `Publishing` with 251 submitted
+  items and no remaining review actions or references.
+- `Stat'sTheGame.pdf` and `Stat'sTheGame1.pdf` evidence the earlier conversion
+  metadata defect: `ballsPerOver` was 2, producing incorrect 22.0-innings and
+  12.0-bowler-over displays. The statistics PDF does support the source batting
+  values including DM Gondaria 93 from 52 and M Kasselman 74 from 47.
+
+These PDFs do **not** show a terminal `Published` state, a corrected
+`ballsPerOver: 6` fixture/statistics view, replay/idempotency results, formal
+correction history, stable identity, aggregate provenance, or selective
+recomputation. The tester's reported manual verification of those outcomes is
+not substituted for durable repository evidence.
 
 ## Failure protocol
 
@@ -137,10 +172,11 @@ production behaviour or weaken its assertion.
 
 ## Final outcome
 
-**OPEN / IN PROGRESS.** Scenario A passes through authoritative 251-event staging,
-validation and `Awaiting review`, but is blocked at participant-onboarding submission.
-Do not claim reference completion, publication, statistics, replay, correction or
-final #598 acceptance until the 422 is diagnosed, fixed if product-owned, and rerun.
+**CLOSEOUT BLOCKED - EVIDENCE GAP.** Scenario A has durable evidence through
+authoritative staging, validation, onboarding, revalidation and publication approval
+entering `Publishing`. Do not claim final publication, corrected statistics, replay,
+correction history, stable identity, aggregate provenance or final #598 acceptance
+until the corresponding final-state evidence is stored in the repository.
 
 ## AI declaration
 
