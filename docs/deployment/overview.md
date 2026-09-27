@@ -121,6 +121,12 @@ The established hosted baseline confirms:
 5. Playwright can execute in the hosted environment
 6. affected frontend, backend, worker and documentation deployment paths can execute after validated `main` quality
 
+## Related reading paths
+
+- [Architecture & Data](../architecture-and-data.md) — component authority, database and security boundaries.
+- [Testing & Quality](../testing/index.md) — automated, performance and acceptance verification.
+- [Project Process & Evidence](../process/index.md) — retained deployment/validation evidence and Sprint context.
+
 ## AI Declaration
 
 The preceding document was reviewed and aligned with the current repository architecture with the assistance of ChatGPT-Web[GPT-5.6 Sol].
@@ -130,3 +136,4 @@ The issue #365 versioned worker target and deployment control were documented wi
 of Codex[GPT-5].
 The Issue #563 backend Container Apps deployment and rollback boundary was documented with the
 assistance of Codex[GPT-5].
+The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].

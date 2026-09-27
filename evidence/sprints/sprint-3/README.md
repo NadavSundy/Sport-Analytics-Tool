@@ -1,51 +1,43 @@
 # Sprint 3 evidence
 
-Index of the evidence held in this directory. Sprint 3 requirements traceability is
-issue #613's close-out deliverable and is not duplicated here.
+This directory indexes Sprint 3 planning, stand-up, stakeholder, performance and deployment
+acceptance evidence. Gitea remains authoritative for live issue status and dependencies.
 
-| Record                                                                                                       | Issue | Status                                                                                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`2026-09-15-planning.md`](2026-09-15-planning.md)                                                           | #577  | Complete                                                                                                                                                                                                                                                                          |
-| [`2026-09-17-standup.md`](2026-09-17-standup.md)                                                             | #577  | Complete                                                                                                                                                                                                                                                                          |
-| [`issue-565-production-scale-deployment-acceptance.md`](issue-565-production-scale-deployment-acceptance.md) | #565  | **Partially complete.** The deployed asynchronous lifecycle completed on 2026-09-24 for `2026.09.24-issue-565-live` with 3,207,110 events. Automated-run output, artifact checksum, browser/authenticated journey, controlled restart and Azure capacity evidence remain pending. |
-| [`issue-599-performance-revalidation.md`](issue-599-performance-revalidation.md)                             | #599  | Complete for local measurement. Does **not** include a deployed re-run.                                                                                                                                                                                                           |
-| [`issue-726-api-explorer-loading-feedback.md`](issue-726-api-explorer-loading-feedback.md)                   | #726  | Implementation evidence records the supplied client feedback, identified deferred stages and automated component checks. Manual throttling, mobile screenshots and stakeholder retest remain pending.                                                                             |
+## Sprint records
+
+| Record | Issue | Status / context |
+| --- | --- | --- |
+| [`2026-09-15-planning.md`](2026-09-15-planning.md) | #577 | Complete — Sprint planning and refined Sprint 3 scope |
+| [`2026-09-17-standup.md`](2026-09-17-standup.md) | #577 | Complete — team stand-up |
+| [`2026-09-22 Asynch Stakeholder meeting/`](2026-09-22%20Asynch%20Stakeholder%20meeting/) | — | Asynchronous stakeholder message and response evidence |
+| [`2026-09-24 Standup.jpeg`](2026-09-24%20Standup.jpeg) | — | Stand-up evidence image |
+| [`issue-565-production-scale-deployment-acceptance.md`](issue-565-production-scale-deployment-acceptance.md) | #565 | **Partially complete.** The deployed asynchronous lifecycle completed on 2026-09-24 for `2026.09.24-issue-565-live` with 3,207,110 events. Automated-run output, artifact checksum, browser/authenticated journey, controlled restart and Azure capacity evidence remain pending. |
+| [`issue-565-live-result.json`](issue-565-live-result.json) | #565 | Raw Issue #565 live-run result |
+| [`issue-599-performance-revalidation.md`](issue-599-performance-revalidation.md) | #599 | Complete for local measurement. Does **not** include a deployed re-run. |
+| [`issue-726-api-explorer-loading-feedback.md`](issue-726-api-explorer-loading-feedback.md) | #726 | Implementation evidence records the supplied client feedback, identified deferred stages and automated component checks. Manual throttling, mobile screenshots and stakeholder retest remain pending. |
+
+## Original Teams meeting transcript
+
+The Word document remains the authoritative source. The PDF is a browser-friendly presentation copy.
+
+| Date | Meeting | Read | Original |
+| --- | --- | --- | --- |
+| 17 Sep 2026 | Stand-up | [PDF](Teams%20Transcripts/17-09-2026-Standup.pdf) | [Word](Teams%20Transcripts/17-09-2026-Standup.docx) |
 
 ## Performance re-validation, issue #599
 
-The full record is
-[`issue-599-performance-revalidation.md`](issue-599-performance-revalidation.md), and
-the raw measurement output is in
-[`../../validation/issue-599/`](../../validation/issue-599/).
+The full record is [issue-599-performance-revalidation.md](issue-599-performance-revalidation.md),
+with raw measurement output under [`../../validation/issue-599/`](../../validation/issue-599/).
+Consult that record for the measured environment, results, limitations and follow-up findings rather
+than copying individual figures out of context.
 
-Every stated target was met and nothing regressed against the prior local evidence
-for issues #290, #410 and #592. Nine workloads were measured, five of them for the
-first time: filtered and deeply paginated reads, API consumer enforcement overhead,
-batch report reads, dataset release generation, and the documented cold-run
-observation.
+## Related documentation
 
-**These are local measurements** taken against a disposable embedded PostgreSQL
-server over loopback. They are comparable to the earlier local runs, and they do
-**not** measure the Azure Container Apps and Cloudflare Pages topology introduced in
-Sprint 3 by issues #563 and #564. The recorded gap between the two is roughly 5 ms
-against 183 ms on the warm path. Read section 1 of the report before quoting any
-figure from it.
+- [Public Sprint evidence index](../../../docs/process/sprint-evidence.md)
+- [Testing & Validation Evidence](../../../docs/process/validation-and-user-testing.md)
+- [Deployment & Operations](../../../docs/deployment/overview.md)
 
-Three results are not simple passes and are the ones worth carrying into the #613
-close-out:
+## AI Declaration
 
-1. **Deployed production-scale acceptance is still outstanding under #565.** Issue
-   #599 could not discharge it: the runner needs a deployed API and worker, a
-   deployed frontend origin and an administrator token. Report section 1.1.
-2. **Dataset release generation is not yet repeatable.** Three runs produced
-   byte-identical artefacts between 4.3 and 16.2 seconds, a 3.8x spread that was not
-   explained. No target can be set for that workload until it is. Report section 8.6.
-3. **The documented query-plan command does not run cleanly.** The opt-in check
-   shares a database with the rest of the suite, so its 300-fixture ingest reaches
-   unrelated tests. It was run in isolation and the procedure now says to do that.
-   Report section 8.10.
-
-Two findings were recorded for separate issues and deliberately not acted on: the API
-is capped at one replica for a reason that #595 appears to have made obsolete (report
-section 4.2), and the embedded-PostgreSQL setup block is now duplicated across five
-measurement scripts (report section 9.4).
+The Sprint 3 repository evidence index was reorganised for discoverability with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].GPT-Web[GPT-5.6 Sol].

@@ -234,6 +234,7 @@ python -m mkdocs serve
 
 - [Frontend application](apps/frontend/README.md)
 - [Backend API](apps/backend/README.md)
+- [Asynchronous worker](apps/worker/README.md)
 - [Database](database/README.md)
 - [Shared contracts](packages/contracts/README.md)
 - [Documentation site](docs/README.md)
@@ -242,23 +243,15 @@ python -m mkdocs serve
 - [Repository scripts](scripts/README.md)
 - [Project evidence](evidence/README.md)
 
-Important detailed documentation:
+Documentation paths:
 
-- [Git Methodology](docs/git-methodology.md)
-- [Project Methodology](docs/project_methodology.md)
-- [Architecture Overview](docs/architecture/overview.md)
-- [Local Development Setup](docs/development/setup.md)
-- [Technology Stack](docs/development/technology-stack.md)
-- [Environment Variables](docs/environment.md)
-- [Testing Strategy](docs/development/testing.md)
-- [API Overview](docs/api/overview.md)
-- [OpenAPI Specification](docs/api/openapi.md)
-- [Public Read API](docs/api/public-read.md)
-- [Direct Event Submissions](docs/api/submissions.md)
-- [Weather API](docs/api/weather.md)
-- [Authentication Foundation](docs/security/authentication.md)
-- [Password Recovery Ownership](docs/security/password-recovery.md)
-- [Authentication Provider Comparison](docs/security/auth-provider-comparison.md)
+- [Getting Started](docs/getting-started.md) — setup, environment, repository structure and component guides
+- [Product & API](docs/product-and-api.md) — public API, submissions, statistics, exports and contracts
+- [Architecture & Data](docs/architecture-and-data.md) — architecture, database, event model and security
+- [Development](docs/development/index.md) — contributor workflow, tooling, CI/CD and design references
+- [Deployment & Operations](docs/deployment/overview.md) — hosting, recovery, capacity and deployment
+- [Testing & Quality](docs/testing/index.md) — automated testing, coverage, performance and user testing
+- [Project Process & Evidence](docs/process/index.md) — Sprint evidence, decisions, validation and AI evidence
 
 The project documentation is publicly available at:
 
@@ -301,5 +294,6 @@ See [`evidence/ai/registers/`](evidence/ai/registers/) for current task-level re
 shared register remains available while its entries are migrated.
 
 The preceding README was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The documentation information architecture was reorganised and cross-linked with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The asynchronous worker setup and deployment summary were added with the assistance of Codex[GPT-5].
 The Issue #563 backend Container Apps deployment summary was updated with the assistance of Codex[GPT-5].

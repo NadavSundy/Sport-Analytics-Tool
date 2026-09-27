@@ -378,6 +378,12 @@ The following belong to later Advanced-tier work rather than the implemented Int
 - larger asynchronous analytical jobs and change-feed functionality where not already implemented
   for dataset-release generation.
 
+## Related reading paths
+
+- [Product & API](../product-and-api.md) — human-facing entry point for API, submission, statistics and export documentation.
+- [Architecture & Data](../architecture-and-data.md) — persistence, ingestion and security boundaries behind the API.
+- [Testing & Quality](../testing/index.md) — API contract, browser and performance verification.
+
 ## AI Declaration
 
 The preceding API overview was reviewed and updated for the Intermediate implementation with the
@@ -387,3 +393,4 @@ assistance of Codex[GPT-5].
 The Issue #660 public API Explorer workflow was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #661 public API Explorer discoverability and production UX guidance was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #726 API Explorer loading-feedback guidance was updated with the assistance of Codex[GPT-5].
+The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
