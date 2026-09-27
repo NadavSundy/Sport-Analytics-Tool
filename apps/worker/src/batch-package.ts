@@ -1237,7 +1237,20 @@ export function canonicaliseCandidates(
         left.event.occurrenceSequence - right.event.occurrenceSequence ||
         left.ordinal - right.ordinal,
     );
-    ordered.push(...group);
+    const nextPositionByOver = new Map<number, number>();
+    for (const candidate of group) {
+      const { overNumber, positionInOver } = candidate.event;
+      if (overNumber === undefined || positionInOver === undefined) {
+        ordered.push(candidate);
+        continue;
+      }
+      const nextPosition = nextPositionByOver.get(overNumber) ?? 0;
+      nextPositionByOver.set(overNumber, nextPosition + 1);
+      ordered.push({
+        ...candidate,
+        event: { ...candidate.event, positionInOver: nextPosition },
+      });
+    }
   }
   return ordered;
 }
