@@ -27,7 +27,7 @@ export interface ActiveConsumer {
   dailyQuota: number;
 }
 
-export interface ConsumerUsageEntry {
+interface ConsumerUsageEntry {
   date: string;
   endpoint: string;
   statusClass: '2xx' | '3xx' | '4xx' | '5xx';
