@@ -9,6 +9,7 @@ import type {
 import { useCallback, useId, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Breadcrumbs, LocalNavigation } from '../../components/NavigationPrimitives';
+import { ApiResponseError } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
 import { DetailError, DetailLoading, RelatedLinks } from '../browse/RecordDetail';
 import { SectionBoundary, SectionError } from '../browse/SectionBoundary';
@@ -312,10 +313,20 @@ export function ParticipantCareerOverview({ participantId }: { participantId: st
 
 export function FixtureStatisticsPage() {
   const { fixtureId = '' } = useParams();
-  const load = useCallback(
-    (signal: AbortSignal) => publicReadApi.getFixtureStatistics(fixtureId, signal),
-    [fixtureId],
-  );
+  const load = useCallback(async (signal: AbortSignal) => {
+    try {
+      const response = await publicReadApi.getFixtureStatistics(fixtureId, signal);
+      return { kind: 'available' as const, statistics: response.data };
+    } catch (error) {
+      if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
+
+      // The statistics endpoint deliberately returns 404 when its fixture source
+      // has not been published yet. Confirm the fixture itself exists before
+      // presenting that expected no-data state rather than masking a bad fixture URL.
+      await publicReadApi.getFixture(fixtureId, signal);
+      return { kind: 'unavailable' as const };
+    }
+  }, [fixtureId]);
   const state = usePublicData(load, fixtureId);
   if (state.status === 'loading')
     return (
@@ -329,7 +340,16 @@ export function FixtureStatisticsPage() {
         <DetailError error={state.error} label="Fixture statistics" reload={state.reload} />
       </div>
     );
-  return <StatisticsContent statistics={state.data.data} retry={state.reload} />;
+  if (state.data.kind === 'unavailable')
+    return (
+      <div className="detail-page content-boundary">
+        <div className="state-message state-message--detail" role="status">
+          <h1>No published statistics are available for this fixture yet</h1>
+          <p>The fixture is available, but its accepted event data has not been published yet.</p>
+        </div>
+      </div>
+    );
+  return <StatisticsContent statistics={state.data.statistics} retry={state.reload} />;
 }
 
 function EventTrace({ event }: { event: StatisticContributingEvent }) {
