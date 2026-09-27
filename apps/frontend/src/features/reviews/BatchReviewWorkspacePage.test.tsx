@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import type { BatchReportResponse } from '@sport-analytics/contracts';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -1133,6 +1133,75 @@ describe('reviewer batch workspace', () => {
       expect(screen.queryByRole('region', { name: 'Participants to onboard' })).toBeNull(),
     );
     expect(screen.getByText(/2 settled\./)).toBeInTheDocument();
+  });
+
+  test('refreshes a revalidated batch through validating to awaiting review', async () => {
+    const initial = onboardingReport([ambiguousTask]);
+    const validating = onboardingReport([]);
+    validating.data.batch.status = 'validating';
+    const awaitingReview = onboardingReport([]);
+    awaitingReview.data.batch.status = 'awaiting_review';
+    let revalidationStarted = false;
+    let refreshesAfterDecision = 0;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes('/auth/me')) return Promise.resolve(response(profile));
+        if (init?.method === 'POST') {
+          revalidationStarted = true;
+          return Promise.resolve(
+            response({
+              data: {
+                batchReference: reference,
+                decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+                status: 'queued',
+                statusUrl: `/api/v1/batches/${reference}`,
+                submittedAt: '2026-09-27T12:00:00.000Z',
+                onboarded: 1,
+                alreadyOnboarded: 0,
+                revalidationQueued: true,
+              },
+            }),
+          );
+        }
+        if (!revalidationStarted) return Promise.resolve(response(initial));
+        refreshesAfterDecision += 1;
+        return Promise.resolve(
+          response(
+            refreshesAfterDecision === 1
+              ? {
+                  ...initial,
+                  data: {
+                    ...initial.data,
+                    batch: { ...initial.data.batch, status: 'stored' },
+                  },
+                }
+              : refreshesAfterDecision === 2
+                ? validating
+                : awaitingReview,
+          ),
+        );
+      }),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const candidate = await screen.findByRole('radio', { name: 'Alan Smith' });
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation((handler) => {
+      if (typeof handler === 'function') handler();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    });
+    fireEvent.click(candidate);
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Awaiting review');
+    expect(refreshesAfterDecision).toBe(3);
   });
 
   test('shows every onboarding fault against the task it belongs to', async () => {
