@@ -31,6 +31,7 @@ screenshots); they are not duplicated here. Notable examples include:
 - [Issue #329 — Vite/Vitest toolchain migration](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-329-vite-vitest-toolchain-migration.md)
 - [Issue #578 — repository-wide code coverage](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-578-repository-code-coverage.md)
 - [Issue #648 — coverage post-deployment ordering and stability](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-648-coverage-post-deployment-stability.md)
+- [Issue #589 — multi-season back-catalogue deployed acceptance](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-589-multi-season-back-catalogue.md)
 
 Browse the [full validation folder](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation)
 for a record tied to a specific issue number.
