@@ -40,6 +40,20 @@ does not reconstruct a raw conversation transcript.
 | `npm.cmd run typecheck` | Failed in existing backend object-storage imports because the local `@sport-analytics/object-storage` workspace link is absent. |
 | `npm.cmd run build --workspace=@sport-analytics/backend` | Failed at the same existing backend object-storage import errors after contracts preparation. |
 
+## Environment repair and final verification
+
+After the local dependency installation was repaired with `npm.cmd ci`, the
+workspace link was present and the previously blocked verification completed:
+
+| Command | Outcome |
+| --- | --- |
+| `npm.cmd exec vitest run --workspace=@sport-analytics/backend -- tests/api/leaderboards.test.ts` | Passed: 1 file, 8 tests, using the locked Vitest 4.1.11 installation. |
+| `npm.cmd run typecheck` | Passed across all workspaces. |
+| `npm.cmd run build --workspace=@sport-analytics/backend` | Passed; copied the OpenAPI specification to the backend distribution. |
+
+The earlier failures were therefore caused by the incomplete local
+`node_modules` workspace installation, not by the #611 leaderboard capability.
+
 No new failing test was added because the evidence-based audit found no missing
 aggregate behavior for a valid red test to specify.
 
@@ -57,3 +71,4 @@ aggregate behavior for a valid red test to specify.
 - Gap-analysis document:
   `docs/validation/issue-611-advanced-aggregate-query-gap-analysis.md`
 - Documentation audit commit: `f4edc689`
+- Evidence update commit: pending commit creation
