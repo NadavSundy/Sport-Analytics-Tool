@@ -212,7 +212,8 @@ test('submitter originates a new fixture proposal for reviewer resolution', asyn
             teamType: 'club',
             gender: 'female',
             ballsPerOver: 6,
-            outcome: 'no result',
+            outcome: 'won',
+            winner: 'Wanderers',
             sourceVersion: '1',
             sourceRevision: 0,
           },
@@ -244,6 +245,8 @@ test('submitter originates a new fixture proposal for reviewer resolution', asyn
   await expect(page.getByLabel('Match type')).toHaveValue('T20');
   await page.getByLabel('Team type').selectOption('club');
   await page.getByLabel('Gender').selectOption('female');
+  await page.getByLabel('Outcome').selectOption('won');
+  await page.getByLabel('Winning team').selectOption('Wanderers');
   await page.getByLabel('Fixture package').setInputFiles({
     name: 'new-fixture.json',
     mimeType: 'application/json',
