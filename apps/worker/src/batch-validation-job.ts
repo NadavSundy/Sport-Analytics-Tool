@@ -24,6 +24,7 @@ import { z } from 'zod';
 
 import {
   buildReferenceChunk,
+  canonicaliseCandidates,
   normalisedBatchCandidates,
   scanBatchReferences,
   type NormalisedCandidate,
@@ -49,6 +50,285 @@ interface ReferenceMappingRow {
   referencePath: string;
   entityType: ReferenceResolutionOverride['entityType'];
   canonicalId: string;
+}
+
+export function isReviewerActionableFixtureResolution(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  const resolution = value as {
+    entityType?: unknown;
+    state?: unknown;
+    submittedReference?: unknown;
+  };
+  if (resolution.entityType !== 'fixture' || resolution.state !== 'unresolved') return false;
+
+  const submitted = resolution.submittedReference;
+  if (!submitted || typeof submitted !== 'object') return false;
+
+  const fixture = submitted as { sourceId?: unknown; proposal?: unknown };
+  if (
+    typeof fixture.sourceId !== 'string' ||
+    !fixture.proposal ||
+    typeof fixture.proposal !== 'object'
+  ) {
+    return false;
+  }
+
+  // Proposal metadata has already crossed the package contract boundary before
+  // reaching resolved_references. This guard rejects legacy/malformed evidence
+  // without duplicating the complete upload contract in the worker.
+  const proposal = fixture.proposal as Record<string, unknown>;
+  return (
+    typeof proposal.endDate === 'string' &&
+    typeof proposal.matchType === 'string' &&
+    typeof proposal.teamType === 'string' &&
+    typeof proposal.gender === 'string' &&
+    typeof proposal.ballsPerOver === 'number' &&
+    Number.isInteger(proposal.ballsPerOver) &&
+    proposal.ballsPerOver > 0 &&
+    typeof proposal.outcome === 'string' &&
+    typeof proposal.sourceVersion === 'string' &&
+    typeof proposal.sourceRevision === 'number' &&
+    Number.isInteger(proposal.sourceRevision) &&
+    proposal.sourceRevision >= 0
+  );
+}
+
+/**
+ * A batch with nothing publishable is rejected, unless a reviewer still has
+ * something they can do about it.
+ *
+ * Two kinds of outstanding work qualify. Issue #695 added the first: unresolved
+ * fixture evidence carrying a complete proposal, which an administrator can turn
+ * into a canonical fixture. Issue #708 adds the second: participants that
+ * fixture creation could not onboard, recorded as tasks against the batch.
+ *
+ * The second exists because the first cures itself. Once the reviewer creates
+ * the fixture it resolves, so the #695 guard stops applying — and if the new
+ * fixture's squad is incomplete, every delivery still fails to resolve and the
+ * batch was rejected terminally at the exact moment the reviewer had most
+ * recently acted on it.
+ */
+export function finalBatchValidationState(
+  accepted: number,
+  hasReviewerActionableProposal: boolean,
+  hasOutstandingOnboardingTask = false,
+): 'awaiting_review' | 'rejected' {
+  return accepted > 0 || hasReviewerActionableProposal || hasOutstandingOnboardingTask
+    ? 'awaiting_review'
+    : 'rejected';
+}
+
+type ParticipantOnboardingReason =
+  'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
+
+/**
+ * What a validation pass observed about a participant it could not resolve.
+ *
+ * It deliberately carries no `reason`. Which decision a reviewer has to make
+ * depends on the fixture's own two teams and on how many existing people
+ * answer to the submitted name, neither of which is in the resolved references
+ * this is read from. Deciding it from the reference alone is how this writer
+ * came to disagree with the backend's derivation; the reason is settled in
+ * `persistReviewerActionableOnboardingTasks`, against the database, by the
+ * same rule.
+ */
+interface ReviewerActionableParticipantReference {
+  fixtureId: string;
+  participantKey: string;
+  submittedName: string;
+  submittedSourceId: string | null;
+  submittedTeamName: string | null;
+}
+
+/**
+ * Finds the subset of unresolved references a reviewer can settle through the
+ * participant onboarding workflow. The resolver deliberately leaves a person
+ * outside a resolved fixture squad unresolved; that is not malformed input,
+ * because an authorised reviewer can associate the person with the fixture.
+ */
+/**
+ * Persists the reviewer-owned onboarding work a validation pass discovered.
+ *
+ * Exported so the guard below can be exercised on its own: every revalidation
+ * runs this, and settling a task queues a revalidation, so an unguarded reset
+ * would undo a reviewer's answers on the very next pass.
+ */
+export async function persistReviewerActionableOnboardingTasks(
+  client: Pick<PoolClient, 'query'>,
+  batchId: string,
+  onboarding: readonly ReviewerActionableParticipantReference[],
+): Promise<void> {
+  if (onboarding.length > 0) {
+    const names = [...new Set(onboarding.map((task) => task.submittedName))];
+    const candidates = await client.query<{
+      submittedName: string;
+      personId: string;
+      displayName: string;
+    }>(
+      `SELECT requested.submitted_name AS "submittedName", p.person_id::text AS "personId",
+              p.display_name AS "displayName"
+         FROM unnest($1::text[]) AS requested(submitted_name)
+         JOIN person p ON p.display_name = requested.submitted_name
+            OR EXISTS (
+              SELECT 1 FROM person_alias alias
+               WHERE alias.person_id = p.person_id AND alias.name = requested.submitted_name
+            )`,
+      [names],
+    );
+    const candidatesByName = new Map<string, Array<{ personId: string; displayName: string }>>();
+    for (const candidate of candidates.rows) {
+      const matches = candidatesByName.get(candidate.submittedName) ?? [];
+      if (!matches.some((match) => match.personId === candidate.personId)) {
+        matches.push({ personId: candidate.personId, displayName: candidate.displayName });
+      }
+      candidatesByName.set(candidate.submittedName, matches);
+    }
+
+    /*
+     * Issue #708. Which team a participant belongs to is checked against the
+     * two teams of its own fixture, exactly as `onboardFixtureCanonicalContext`
+     * checks it in the backend.
+     *
+     * This used to read `teamName ? ... : 'team_not_recognised'` — a team was
+     * "recognised" whenever one was named at all. A participant naming a team
+     * that is not one of the fixture's two was therefore reported as
+     * `no_durable_identifier`, and because the upsert below overwrites `reason`
+     * for any outstanding task, that wrong answer replaced the backend's right
+     * one on the first revalidation. The reviewer was then shown a reason that
+     * did not match the decision the backend would demand, and the interface,
+     * which offers a team control only for `team_not_recognised`, gave them no
+     * way to supply the team the decision was refused for.
+     */
+    const fixtureIds = [...new Set(onboarding.map((task) => task.fixtureId))];
+    const fixtureTeams = await client.query<{ fixtureId: string; name: string }>(
+      `SELECT ft.fixture_id::text AS "fixtureId", t.name
+         FROM fixture_team ft
+         JOIN team t ON t.team_id = ft.team_id
+        WHERE ft.fixture_id = ANY($1::bigint[])`,
+      [fixtureIds],
+    );
+    const teamNamesByFixture = new Map<string, Set<string>>();
+    for (const row of fixtureTeams.rows) {
+      const names = teamNamesByFixture.get(row.fixtureId) ?? new Set<string>();
+      names.add(row.name);
+      teamNamesByFixture.set(row.fixtureId, names);
+    }
+
+    const reasonFor = (
+      task: ReviewerActionableParticipantReference,
+    ): ParticipantOnboardingReason => {
+      const teams = teamNamesByFixture.get(task.fixtureId);
+      if (!task.submittedTeamName || !teams?.has(task.submittedTeamName)) {
+        return 'team_not_recognised';
+      }
+      // An identifier was submitted and the reference still did not resolve, so
+      // it names nobody this platform holds.
+      if (task.submittedSourceId) return 'identifier_not_found';
+      // More than one person answering to the name is a different decision from
+      // none or one: the reviewer chooses between them rather than supplying an
+      // identifier.
+      return (candidatesByName.get(task.submittedName)?.length ?? 0) > 1
+        ? 'ambiguous_name'
+        : 'no_durable_identifier';
+    };
+    await client.query(
+      `INSERT INTO batch_participant_onboarding_task (
+         batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
+         submitted_team_name, reason, candidates
+       )
+       SELECT $1::bigint, task."fixtureId"::bigint, task."participantKey", task."submittedName",
+              task."submittedSourceId", task."submittedTeamName", task.reason,
+              task.candidates::jsonb
+       FROM jsonb_to_recordset($2::jsonb) AS task(
+         "fixtureId" text, "participantKey" text, "submittedName" text,
+         "submittedSourceId" text, "submittedTeamName" text, reason text, candidates text
+       )
+       ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
+         submitted_name=EXCLUDED.submitted_name,
+         submitted_source_id=EXCLUDED.submitted_source_id,
+         submitted_team_name=EXCLUDED.submitted_team_name,
+         reason=EXCLUDED.reason,
+         candidates=EXCLUDED.candidates,
+         state='outstanding',
+         person_id=NULL,
+         onboarded_at=NULL,
+         decided_by=NULL,
+         decision_key=NULL,
+         last_reported_at=now()
+       -- A settled task is a reviewer decision, and re-deriving the work
+       -- must not undo one. Every revalidation runs this, and a settled
+       -- decision queues a revalidation, so without the guard a reviewer's
+       -- answers came back as outstanding work on the very next pass while
+       -- the squad rows they created stayed. Issue #708; the same guard the
+       -- backend derivation carries.
+       WHERE batch_participant_onboarding_task.state <> 'onboarded'`,
+      [
+        batchId,
+        JSON.stringify(
+          onboarding.map((task) => ({
+            ...task,
+            reason: reasonFor(task),
+            candidates: JSON.stringify(candidatesByName.get(task.submittedName) ?? []),
+          })),
+        ),
+      ],
+    );
+  }
+}
+
+export function reviewerActionableParticipantReferences(
+  resolvedReferences: Record<string, unknown>,
+): ReviewerActionableParticipantReference[] {
+  const outcomes: Array<Record<string, unknown>> = [];
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const record = value as Record<string, unknown>;
+    if (typeof record.entityType === 'string' && typeof record.state === 'string') {
+      outcomes.push(record);
+      return;
+    }
+    for (const nested of Object.values(record)) visit(nested);
+  };
+  visit(resolvedReferences);
+
+  const fixtureId = outcomes.find(
+    (outcome) =>
+      outcome.entityType === 'fixture' &&
+      outcome.state === 'resolved' &&
+      typeof outcome.canonicalId === 'string' &&
+      /^[1-9]\d*$/.test(outcome.canonicalId),
+  )?.canonicalId;
+  if (typeof fixtureId !== 'string') return [];
+
+  return outcomes.flatMap((outcome) => {
+    if (outcome.entityType !== 'participant' || outcome.state !== 'unresolved') return [];
+    const submitted = outcome.submittedReference;
+    if (!submitted || typeof submitted !== 'object' || Array.isArray(submitted)) return [];
+    const reference = submitted as {
+      sourceId?: unknown;
+      context?: { name?: unknown; team?: { context?: { name?: unknown } } };
+    };
+    const sourceId = typeof reference.sourceId === 'string' ? reference.sourceId : null;
+    const name = typeof reference.context?.name === 'string' ? reference.context.name : null;
+    const teamName =
+      typeof reference.context?.team?.context?.name === 'string'
+        ? reference.context.team.context.name
+        : null;
+    const submittedName = name ?? sourceId;
+    if (!submittedName) return [];
+    return [
+      {
+        fixtureId,
+        participantKey: sourceId
+          ? `source:${sourceId}`
+          : `name:${submittedName}::${teamName ?? ''}`,
+        submittedName,
+        submittedSourceId: sourceId,
+        submittedTeamName: teamName,
+      },
+    ];
+  });
 }
 
 export function referenceOverridesForChunk(
@@ -264,29 +544,11 @@ function canonicalWickets(candidate: NormalisedCandidate, references: Record<str
 
 function deriveCoordinates(
   candidate: NormalisedCandidate,
-  counters: Map<string, number>,
 ): { overNumber: number; positionInOver: number } | null {
-  const explicitOver = candidate.event.overNumber;
-  const labelMatch = candidate.event.ballLabel
-    ? /^(\d{1,5})\./.exec(candidate.event.ballLabel)
-    : null;
-  const overNumber = explicitOver ?? (labelMatch ? Number(labelMatch[1]) : undefined);
-  if (
-    overNumber === undefined ||
-    !Number.isInteger(overNumber) ||
-    overNumber < 0 ||
-    overNumber > 32_767
-  ) {
-    return null;
-  }
-
-  const key = `${candidate.inningsKey}|${String(overNumber)}`;
-  const next = counters.get(key) ?? 0;
-  const positionInOver = candidate.event.positionInOver ?? next;
-  counters.set(key, Math.max(next, positionInOver + 1));
-  if (!Number.isInteger(positionInOver) || positionInOver < 0 || positionInOver > 32_767)
-    return null;
-  return { overNumber, positionInOver };
+  const { overNumber, positionInOver } = candidate.event;
+  return overNumber === undefined || positionInOver === undefined
+    ? null
+    : { overNumber, positionInOver };
 }
 
 function referenceResolutionFailureCode(resolvedReferences: Record<string, unknown>): string {
@@ -351,7 +613,7 @@ export function prepareItem(
     sequenceNumber: candidate.event.occurrenceSequence,
     overNumber: coordinates.overNumber,
     positionInOver: coordinates.positionInOver,
-    ballNumber: candidate.event.ballLabel,
+    ...(candidate.event.ballLabel === undefined ? {} : { ballNumber: candidate.event.ballLabel }),
     strikerId,
     nonStrikerId,
     bowlerId,
@@ -510,6 +772,68 @@ function correctionValidationResult(
     fieldPath: 'correctsEventId',
     message,
   };
+}
+
+function resolvedCompetitionScopeValidationResult(
+  item: PreparedItem,
+  batchCompetitionId: string,
+): CricketValidationResult {
+  const code = 'RESOLVED_COMPETITION_OUT_OF_SCOPE';
+  const message = 'Resolved fixture is outside the batch competition scope.';
+  item.state = 'rejected';
+  item.rejectionCode = code;
+  item.rejectionMessage = message;
+  // Do not expose the resolved competition: the submitter may not be authorised to see it.
+  item.rejectionDetail = { batchCompetitionId };
+  return {
+    code,
+    ruleVersion: '1.0',
+    severity: 'error',
+    eventIndex: item.ordinal,
+    fieldPath: 'fixture',
+    message,
+  };
+}
+
+/**
+ * Authorisation at receipt covers the batch's declared competition. Recheck every
+ * resolved event against its canonical fixture so package contents cannot cross
+ * that boundary after reference resolution or reviewer mapping.
+ */
+export async function enforceResolvedCompetitionScope(
+  client: Pick<PoolClient, 'query'>,
+  items: PreparedItem[],
+  batchCompetitionId: string,
+): Promise<Map<number, CricketValidationResult[]>> {
+  const accepted = items.filter((item) => item.state === 'accepted' && item.inningsId !== null);
+  const results = new Map<number, CricketValidationResult[]>();
+  if (accepted.length === 0) return results;
+
+  const values: unknown[] = [];
+  const tuples = accepted.map((item) => {
+    const first = values.length + 1;
+    values.push(item.ordinal, item.inningsId);
+    return `($${first}::integer,$${first + 1}::bigint)`;
+  });
+  const resolved = await client.query<{ ordinal: number; competitionId: string }>(
+    `
+      WITH staged (ordinal, innings_id) AS (VALUES ${tuples.join(',')})
+      SELECT staged.ordinal, fixture.competition_id::text AS "competitionId"
+      FROM staged
+      JOIN innings ON innings.innings_id=staged.innings_id
+      JOIN fixture ON fixture.fixture_id=innings.fixture_id
+    `,
+    values,
+  );
+  const competitionByOrdinal = new Map(
+    resolved.rows.map((row) => [row.ordinal, row.competitionId]),
+  );
+
+  for (const item of accepted) {
+    if (competitionByOrdinal.get(item.ordinal) === batchCompetitionId) continue;
+    results.set(item.ordinal, [resolvedCompetitionScopeValidationResult(item, batchCompetitionId)]);
+  }
+  return results;
 }
 
 export async function resolveCorrectionTargets(
@@ -1307,6 +1631,20 @@ export function createBatchValidationJobHandler(
               values,
             );
       const idByOrdinal = new Map(inserted.rows.map((row) => [row.ordinal, row.batchItemId]));
+      // Issue #729. #708 recorded work that arose while creating a fixture, but
+      // a v1.1 back-catalogue can instead resolve an existing fixture first and
+      // discover unknown squad members during ordinary validation. Persist the
+      // same reviewer-owned work before finalisation so it remains reviewable.
+      const onboardingByKey = new Map<string, ReviewerActionableParticipantReference>();
+      for (const item of items) {
+        if (!idByOrdinal.has(item.ordinal)) continue;
+        for (const task of reviewerActionableParticipantReferences(item.resolvedReferences)) {
+          onboardingByKey.set(`${task.fixtureId}\0${task.participantKey}`, task);
+        }
+      }
+      await persistReviewerActionableOnboardingTasks(client, claimResult.batchId, [
+        ...onboardingByKey.values(),
+      ]);
       const validationRows: Array<{
         batchItemId?: string | null;
         sourceOrdinal: number;
@@ -1404,11 +1742,50 @@ export function createBatchValidationJobHandler(
       );
       if (lease.rowCount !== 1) throw new LeaseBusyError();
       const countResult = await client.query<{ accepted: string }>(
-        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM batch_item WHERE batch_id=$1::bigint`,
+        `SELECT count(*) FILTER (WHERE state='accepted')::text AS accepted FROM
+         batch_item WHERE batch_id=$1::bigint`,
         [claimResult.batchId],
       );
       const accepted = Number(countResult.rows[0]?.accepted ?? 0);
-      const target = accepted > 0 ? 'awaiting_review' : 'rejected';
+
+      let hasReviewerActionableProposal = false;
+      if (accepted === 0) {
+        const proposalResult = await client.query<{ fixtureResolution: unknown }>(
+          `SELECT DISTINCT resolved_references->'fixture' AS "fixtureResolution"
+             FROM batch_item
+            WHERE batch_id=$1::bigint
+              AND state='rejected'
+              AND rejection_code='REFERENCE_RESOLUTION_FAILED'
+              AND reference_resolution_state='unresolved'
+              AND resolved_references ? 'fixture'`,
+          [claimResult.batchId],
+        );
+        hasReviewerActionableProposal = proposalResult.rows.some(({ fixtureResolution }) =>
+          isReviewerActionableFixtureResolution(fixtureResolution),
+        );
+      }
+
+      let hasOutstandingOnboardingTask = false;
+      if (accepted === 0 && !hasReviewerActionableProposal) {
+        // Issue #708. Participants a reviewer-created fixture could not onboard
+        // are recorded against the batch. While any remains outstanding there is
+        // a decision left to make, so the batch is not terminally rejected.
+        // Answered by the partial index on this table.
+        const taskResult = await client.query<{ outstanding: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM batch_participant_onboarding_task
+              WHERE batch_id=$1::bigint AND state='outstanding'
+           ) AS outstanding`,
+          [claimResult.batchId],
+        );
+        hasOutstandingOnboardingTask = taskResult.rows[0]?.outstanding ?? false;
+      }
+
+      const target = finalBatchValidationState(
+        accepted,
+        hasReviewerActionableProposal,
+        hasOutstandingOnboardingTask,
+      );
       await client.query(
         `UPDATE batch SET state=$2::batch_state,item_count=$3::integer WHERE batch_id=$1::bigint`,
         [claimResult.batchId, target, eventCount],
@@ -1547,7 +1924,6 @@ export function createBatchValidationJobHandler(
       await recordSourceFaults(claimResult, scan.sourceFaults, scan.eventCount);
       if (signal.aborted) throw new Error('Worker shutdown interrupted batch validation.');
 
-      const counters = new Map<string, number>();
       const cricketValidationState = createCricketValidationState();
       const dismissalKinds = await loadDismissalKinds();
       await rehydrateCricketValidationState(
@@ -1563,7 +1939,21 @@ export function createBatchValidationJobHandler(
 
       const processCandidateChunk = async (): Promise<void> => {
         if (candidateChunk.length === 0) return;
-        const referenceChunk = buildReferenceChunk(candidateChunk);
+        // The checkpoint watermark must stay tied to the chunk's arrival-order
+        // boundary (the source position we have read up to), independent of
+        // how the chunk's contents are ordered for processing below. Computing
+        // it before reordering keeps resumability unaffected by #588.
+        const lastCandidateOrdinal = Math.max(
+          ...candidateChunk.map((candidate) => candidate.ordinal),
+        );
+        // Business-rule sequencing checks are order-sensitive: they must see events in occurrence order
+        // (occurrenceSequence), not the order they happened to arrive in the
+        // source file or stream (#588). Reordering is scoped to one chunk, so
+        // a shuffled innings whose events span more than one chunk boundary
+        // is not yet fully covered here; see the coordinate-validation
+        // alignment follow-up referenced on the issue.
+        const orderedChunk = canonicaliseCandidates(candidateChunk);
+        const referenceChunk = buildReferenceChunk(orderedChunk);
         const { overrides: referenceOverrides, decisionReferencesByPath } =
           referenceOverridesForChunk(mappingRows.rows, referenceChunk.referencePathByOrdinal);
         const resolution = referenceChunk.referencePackage
@@ -1586,8 +1976,8 @@ export function createBatchValidationJobHandler(
         );
         const prepared: PreparedItem[] = [];
 
-        for (const candidate of candidateChunk) {
-          const coordinates = deriveCoordinates(candidate, counters);
+        for (const candidate of orderedChunk) {
+          const coordinates = deriveCoordinates(candidate);
           const path = referenceChunk.referencePathByOrdinal.get(candidate.ordinal);
           const resolved = path ? resolutionByPath.get(path) : undefined;
           if (!coordinates) {
@@ -1597,7 +1987,8 @@ export function createBatchValidationJobHandler(
               filePath: candidate.filePath,
               rowNumber: candidate.rowNumber,
               fieldPath: 'overNumber',
-              message: 'Event needs an over number and deterministic position within the over.',
+              message:
+                'Event requires explicit overNumber and positionInOver canonical coordinates.',
             });
             continue;
           }
@@ -1616,9 +2007,19 @@ export function createBatchValidationJobHandler(
           if (item) prepared.push(item);
         }
 
-        const businessResultsByOrdinal = await transaction(database, (client) =>
-          resolveCorrectionTargets(client, prepared, claimResult.competitionId),
-        );
+        const businessResultsByOrdinal = await transaction(database, async (client) => {
+          const scopeResults = await enforceResolvedCompetitionScope(
+            client,
+            prepared,
+            claimResult.competitionId,
+          );
+          const correctionResults = await resolveCorrectionTargets(
+            client,
+            prepared,
+            claimResult.competitionId,
+          );
+          return new Map([...scopeResults, ...correctionResults]);
+        });
         const canonicalItems = prepared
           .filter((item) => item.state === 'accepted')
           .map((item) => {
@@ -1666,7 +2067,6 @@ export function createBatchValidationJobHandler(
           }
         }
 
-        const lastCandidateOrdinal = candidateChunk[candidateChunk.length - 1]!.ordinal;
         await writeChunk(
           claimResult,
           prepared,
@@ -1680,13 +2080,7 @@ export function createBatchValidationJobHandler(
 
       if (!scan.fatal) {
         for await (const candidate of normalisedBatchCandidates(openSource, source.mediaType)) {
-          // Rebuild deterministic in-over counters across the already completed
-          // prefix before skipping it. This makes resume produce the same
-          // coordinates as an uninterrupted run.
           if (candidate.ordinal <= claimResult.lastOrdinal) {
-            if (!scan.rejectedOrdinals.has(candidate.ordinal)) {
-              deriveCoordinates(candidate, counters);
-            }
             continue;
           }
           if (scan.rejectedOrdinals.has(candidate.ordinal)) {

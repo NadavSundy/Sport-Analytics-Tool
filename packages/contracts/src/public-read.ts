@@ -40,6 +40,17 @@ export const fixtureCompetitorSummarySchema = z.object({
   name: z.string().min(1),
 });
 
+export const fixtureVenueSchema = z.object({
+  name: z.string().min(1),
+  city: z.string().min(1).nullable(),
+});
+
+export const fixtureTossSchema = z.object({
+  winnerCompetitorId: apiIdentifierSchema.nullable(),
+  winnerCompetitorName: z.string().min(1).nullable(),
+  decision: z.enum(['bat', 'field']).nullable(),
+});
+
 export const fixtureSchema = z.object({
   fixtureId: apiIdentifierSchema,
   competitionId: apiIdentifierSchema.nullable(),
@@ -53,14 +64,13 @@ export const fixtureSchema = z.object({
   gender: z.string().min(1),
   ballsPerOver: z.number().int().positive(),
   scheduledOvers: z.number().int().positive().nullable(),
+  venue: fixtureVenueSchema.nullable(),
+  toss: fixtureTossSchema.nullable(),
   startDate: apiDateSchema,
   endDate: apiDateSchema,
 });
 
-export const fixtureWeatherVenueSchema = z.object({
-  name: z.string().min(1),
-  city: z.string().min(1).nullable(),
-});
+const fixtureWeatherVenueSchema = fixtureVenueSchema;
 
 export const weatherDataSchema = z.object({
   date: apiDateSchema,
@@ -185,6 +195,7 @@ export const statisticContributingEventSchema = z.object({
   }),
   nonBoundary: z.boolean(),
   bowlerWickets: z.number().int().nonnegative(),
+  wicketsLost: z.number().int().nonnegative(),
 });
 
 const fixtureStatisticCommonSchema = z.object({
@@ -205,6 +216,36 @@ export const inningsTeamStatisticSchema = fixtureStatisticCommonSchema.extend({
     deliveryRuns: z.number().int().nonnegative(),
     penaltyRuns: z.number().int().nonnegative(),
     totalRuns: z.number().int().nonnegative(),
+    wicketsLost: z.number().int().nonnegative(),
+    legalBalls: z.number().int().nonnegative(),
+    overs: z.string().regex(/^\d+\.\d+$/),
+    runRate: z.number().nonnegative().nullable(),
+    powerplay: z
+      .object({
+        ranges: z.array(
+          z.object({
+            fromBall: z.number().nonnegative(),
+            toBall: z.number().nonnegative(),
+            type: z.string().min(1),
+          }),
+        ),
+        runs: z.number().int().nonnegative(),
+        wicketsLost: z.number().int().nonnegative(),
+        legalBalls: z.number().int().nonnegative(),
+        overs: z.string().regex(/^\d+\.\d+$/),
+        runRate: z.number().nonnegative().nullable(),
+        sourceEventCount: z.number().int().nonnegative(),
+        contributingEvents: z.array(statisticContributingEventSchema).optional(),
+      })
+      .nullable(),
+    extras: z.object({
+      total: z.number().int().nonnegative(),
+      wides: z.number().int().nonnegative(),
+      noBalls: z.number().int().nonnegative(),
+      byes: z.number().int().nonnegative(),
+      legByes: z.number().int().nonnegative(),
+      penaltyRuns: z.number().int().nonnegative(),
+    }),
   }),
 });
 
@@ -281,6 +322,17 @@ export const fixtureOutcomeSchema = z.object({
   decidedByBowlOut: z.boolean(),
 });
 
+export const fixtureHighestScorerSchema = z.object({
+  participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
+  competitorId: apiIdentifierSchema,
+  competitorName: z.string().min(1),
+  inningsId: apiIdentifierSchema,
+  inningsOrdinal: z.number().int().nonnegative(),
+  runsScored: z.number().int().nonnegative(),
+  notOut: z.boolean(),
+});
+
 export const fixtureStatisticsSchema = z.object({
   fixtureId: apiIdentifierSchema,
   status: z.enum(['complete', 'partial']),
@@ -288,6 +340,7 @@ export const fixtureStatisticsSchema = z.object({
     superOversIncluded: z.literal(false),
   }),
   outcome: fixtureOutcomeSchema,
+  highestScorers: z.array(fixtureHighestScorerSchema),
   warnings: z.array(fixtureStatisticsWarningSchema),
   statistics: z.array(fixtureStatisticSchema),
 });
@@ -394,7 +447,8 @@ export const participantFixtureBattingSchema = z.object({
 
 export const participantFixtureBowlingSchema = z.object({
   runsConceded: z.number().int().nonnegative(),
-  // These are the bowler-attributable extras included in runsConceded. Byes,
+  // These are the bowler-attributable extras included in runsConceded, with
+  // byes and leg-byes run off a wide counted as wides (Law 22.6). Other byes,
   // leg-byes and innings-level penalty runs belong to the fielding team, not
   // the bowler's analysis.
   wides: z.number().int().nonnegative(),
@@ -448,21 +502,41 @@ export const participantFixtureCollectionResponseSchema =
 // ---------------------------------------------------------------------------
 
 export const participantAggregateBattingSchema = z.object({
+  innings: z.number().int().nonnegative(),
   runsScored: z.number().int().nonnegative(),
   ballsFaced: z.number().int().nonnegative(),
+  dismissals: z.number().int().nonnegative(),
+  notOuts: z.number().int().nonnegative(),
+  battingAverage: z.number().nonnegative().nullable(),
   fours: z.number().int().nonnegative(),
   sixes: z.number().int().nonnegative(),
+  fifties: z.number().int().nonnegative(),
+  hundreds: z.number().int().nonnegative(),
+  highestScore: z.number().int().nonnegative(),
+  highestScoreNotOut: z.boolean(),
   strikeRate: z.number().nonnegative().nullable(),
 });
 
-export const participantAggregateBowlingSchema = z.object({
+export const participantAggregateBestBowlingSchema = z.object({
+  wicketsTaken: z.number().int().nonnegative(),
   runsConceded: z.number().int().nonnegative(),
-  // Wides and no-balls are charged to the bowler. Other extras are deliberately
-  // not presented as a bowler figure.
+});
+
+export const participantAggregateBowlingSchema = z.object({
+  innings: z.number().int().nonnegative(),
+  runsConceded: z.number().int().nonnegative(),
+  // Wides and no-balls are charged to the bowler, including byes and leg-byes
+  // run off a wide (Law 22.6). Other extras are deliberately not presented as a
+  // bowler figure.
   wides: z.number().int().nonnegative(),
   noBalls: z.number().int().nonnegative(),
   legalBallsBowled: z.number().int().nonnegative(),
   wicketsTaken: z.number().int().nonnegative(),
+  bowlingAverage: z.number().nonnegative().nullable(),
+  bowlingStrikeRate: z.number().nonnegative().nullable(),
+  bestBowling: participantAggregateBestBowlingSchema,
+  fourWicketHauls: z.number().int().nonnegative(),
+  fiveWicketHauls: z.number().int().nonnegative(),
   // Legal balls are counted from delivery rows. Overs and economy rate need a
   // balls-per-over divisor, which is a fixture-level fact: §10 forbids assuming
   // six. Where a group spans fixtures with different values there is no single
@@ -475,10 +549,17 @@ export const participantAggregateBowlingSchema = z.object({
   economyRate: z.number().nonnegative().nullable(),
 });
 
+export const participantAggregateFieldingSchema = z.object({
+  catches: z.number().int().nonnegative(),
+  stumpings: z.number().int().nonnegative(),
+  runOutInvolvements: z.number().int().nonnegative(),
+});
+
 const participantAggregateCommonSchema = z.object({
   statisticId: apiIdentifierSchema,
   participantId: apiIdentifierSchema,
   participantName: z.string().min(1),
+  appearances: z.number().int().nonnegative(),
   // Fixtures the participant actually appeared in as striker or bowler. This is
   // deliberately narrower than the fixture history at
   // /participants/{id}/fixtures, where participation is squad selection and a
@@ -490,6 +571,7 @@ const participantAggregateCommonSchema = z.object({
   // used to stand in for an absent one.
   batting: participantAggregateBattingSchema.nullable(),
   bowling: participantAggregateBowlingSchema.nullable(),
+  fielding: participantAggregateFieldingSchema,
 });
 
 export const participantSeasonAggregateSchema = participantAggregateCommonSchema.extend({
@@ -552,6 +634,86 @@ export const participantAggregatesResponseSchema = createResourceResponseSchema(
 export const participantAggregateResponseSchema = createResourceResponseSchema(
   participantAggregateSchema,
 );
+
+// ---------------------------------------------------------------------------
+// Season and competition leaderboards
+// ---------------------------------------------------------------------------
+
+export const leaderboardMetricSchema = z.enum([
+  'most_runs',
+  'most_wickets',
+  'most_fours',
+  'most_sixes',
+  'highest_batting_average',
+  'highest_strike_rate',
+  'best_bowling_average',
+  'best_economy_rate',
+  'best_bowling_strike_rate',
+]);
+
+const leaderboardQueryCommonSchema = z.object({
+  metric: leaderboardMetricSchema,
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const leaderboardQuerySchema = z.discriminatedUnion('scope', [
+  leaderboardQueryCommonSchema
+    .extend({
+      scope: z.literal('season'),
+      seasonId: apiIdentifierSchema,
+    })
+    .strict(),
+  leaderboardQueryCommonSchema
+    .extend({
+      scope: z.literal('competition'),
+      competitionId: apiIdentifierSchema,
+    })
+    .strict(),
+]);
+
+export const leaderboardQualificationSchema = z
+  .object({
+    field: z.enum(['dismissals', 'ballsFaced', 'wicketsTaken', 'legalBallsBowled']),
+    minimum: z.number().int().positive(),
+    rationale: z.string().min(1),
+  })
+  .nullable();
+
+export const leaderboardEntrySchema = z.object({
+  rank: z.number().int().positive(),
+  participantId: apiIdentifierSchema,
+  participantName: z.string().min(1),
+  value: z.number().nonnegative(),
+});
+
+const leaderboardCommonSchema = z.object({
+  metric: leaderboardMetricSchema,
+  limit: z.number().int().min(1).max(50),
+  qualification: leaderboardQualificationSchema,
+  tieBreakers: z.tuple([
+    z.literal('metricValue'),
+    z.literal('participantName'),
+    z.literal('participantId'),
+  ]),
+  entries: z.array(leaderboardEntrySchema).max(50),
+});
+
+export const leaderboardSchema = z.discriminatedUnion('scope', [
+  leaderboardCommonSchema.extend({
+    scope: z.literal('season'),
+    seasonId: apiIdentifierSchema,
+    competitionId: apiIdentifierSchema,
+    competitionName: z.string().min(1),
+    season: z.string().min(1),
+  }),
+  leaderboardCommonSchema.extend({
+    scope: z.literal('competition'),
+    competitionId: apiIdentifierSchema,
+    competitionName: z.string().min(1),
+  }),
+]);
+
+export const leaderboardResponseSchema = createResourceResponseSchema(leaderboardSchema);
 export const participantCollectionResponseSchema =
   createCollectionResponseSchema(participantSchema);
 
@@ -578,6 +740,7 @@ export type ParticipantFixtureStatistic = z.infer<typeof participantFixtureStati
 export type FixtureStatistic = z.infer<typeof fixtureStatisticSchema>;
 export type FixtureStatisticsWarning = z.infer<typeof fixtureStatisticsWarningSchema>;
 export type FixtureOutcome = z.infer<typeof fixtureOutcomeSchema>;
+export type FixtureHighestScorer = z.infer<typeof fixtureHighestScorerSchema>;
 export type FixtureStatistics = z.infer<typeof fixtureStatisticsSchema>;
 
 export type CompetitionListQuery = z.infer<typeof competitionListQuerySchema>;
@@ -599,7 +762,9 @@ export type ParticipantFixtureCollectionResponse = z.infer<
 >;
 
 export type ParticipantAggregateBatting = z.infer<typeof participantAggregateBattingSchema>;
+export type ParticipantAggregateBestBowling = z.infer<typeof participantAggregateBestBowlingSchema>;
 export type ParticipantAggregateBowling = z.infer<typeof participantAggregateBowlingSchema>;
+export type ParticipantAggregateFielding = z.infer<typeof participantAggregateFieldingSchema>;
 export type ParticipantSeasonAggregate = z.infer<typeof participantSeasonAggregateSchema>;
 export type ParticipantCompetitionAggregate = z.infer<typeof participantCompetitionAggregateSchema>;
 export type ParticipantCareerAggregate = z.infer<typeof participantCareerAggregateSchema>;
@@ -608,3 +773,8 @@ export type ParticipantAggregatesWarning = z.infer<typeof participantAggregatesW
 export type ParticipantAggregates = z.infer<typeof participantAggregatesSchema>;
 export type ParticipantAggregateScope = z.infer<typeof participantAggregateScopeSchema>;
 export type ParticipantAggregatesQuery = z.infer<typeof participantAggregatesQuerySchema>;
+export type LeaderboardMetric = z.infer<typeof leaderboardMetricSchema>;
+export type LeaderboardQuery = z.infer<typeof leaderboardQuerySchema>;
+export type LeaderboardQualification = z.infer<typeof leaderboardQualificationSchema>;
+export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
+export type Leaderboard = z.infer<typeof leaderboardSchema>;

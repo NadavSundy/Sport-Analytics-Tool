@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   LocationGeocodingTimeoutError,
   LocationGeocodingUpstreamError,
+  NominatimPoiGeocodingService,
   OpenMeteoLocationGeocodingService,
 } from '../../src/modules/weather/location-geocoding.service';
 
@@ -57,5 +58,45 @@ describe('OpenMeteoLocationGeocodingService', () => {
     const rejection = expect(request).rejects.toBeInstanceOf(LocationGeocodingTimeoutError);
     await vi.advanceTimersByTimeAsync(5000);
     await rejection;
+  });
+});
+
+describe('NominatimPoiGeocodingService', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('requests a single JSON POI result with an application user agent', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify([{ lat: '-37.8199', lon: '144.9834' }])));
+
+    await expect(
+      new NominatimPoiGeocodingService().resolve('Example Cricket Ground'),
+    ).resolves.toEqual({
+      latitude: -37.8199,
+      longitude: 144.9834,
+    });
+
+    const [requestUrl, options] = fetchMock.mock.calls[0]!;
+    const url = new URL(String(requestUrl));
+    expect(url.origin + url.pathname).toBe('https://nominatim.openstreetmap.org/search');
+    expect(url.searchParams.get('q')).toBe('Example Cricket Ground');
+    expect(url.searchParams.get('format')).toBe('jsonv2');
+    expect(url.searchParams.get('limit')).toBe('1');
+    expect(options?.headers).toMatchObject({
+      Accept: 'application/json',
+      'User-Agent': 'Sport-Analytics-Tool/1.0 (weather geocoding)',
+    });
+  });
+
+  test('rejects invalid POI coordinates', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{ lat: '91', lon: '144.9834' }])),
+    );
+
+    await expect(
+      new NominatimPoiGeocodingService().resolve('Example Cricket Ground'),
+    ).resolves.toBeNull();
   });
 });

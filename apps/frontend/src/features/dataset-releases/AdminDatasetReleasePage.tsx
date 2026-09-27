@@ -1,15 +1,22 @@
-import { datasetReleaseVersionSchema, type DatasetRelease } from '@sport-analytics/contracts';
+import {
+  datasetReleaseVersionSchema,
+  type DatasetRelease,
+  type DatasetReleaseJob,
+} from '@sport-analytics/contracts';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { datasetReleaseArtifactUrl } from '../../api/public-read';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
+import { signInPathFor } from '../auth/auth-return';
+import { Breadcrumbs } from '../../components/NavigationPrimitives';
 import {
   AdminDatasetReleaseContractError,
   createAdministratorDatasetRelease,
+  getAdministratorDatasetReleaseJob,
 } from './admin-dataset-release-api';
 
 type AccessState =
@@ -43,6 +50,7 @@ function errorMessage(error: unknown): string {
 
 export function AdminDatasetReleasePage() {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   const client = useAuthenticatedApiClient();
   const [accessState, setAccessState] = useState<AccessState>({ kind: 'loading' });
   const [version, setVersion] = useState('');
@@ -50,6 +58,7 @@ export function AdminDatasetReleasePage() {
   const [submissionError, setSubmissionError] = useState<string>();
   const [isPublishing, setIsPublishing] = useState(false);
   const [release, setRelease] = useState<DatasetRelease>();
+  const [job, setJob] = useState<DatasetReleaseJob>();
   const feedbackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,6 +96,30 @@ export function AdminDatasetReleasePage() {
     }
   }, [release, submissionError, versionError]);
 
+  useEffect(() => {
+    if (!job || !['pending', 'generating'].includes(job.status)) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void getAdministratorDatasetReleaseJob(client, job.jobId, controller.signal)
+        .then((next) => {
+          setJob(next);
+          if (next.status === 'completed' && next.release) setRelease(next.release);
+          if (next.status === 'failed') {
+            setSubmissionError(
+              next.failureMessage ?? 'Dataset release generation failed and can be retried.',
+            );
+          }
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) setSubmissionError(errorMessage(error));
+        });
+    }, 1000);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [client, job]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isPublishing || accessState.kind !== 'ready') return;
@@ -96,15 +129,21 @@ export function AdminDatasetReleasePage() {
       setVersionError(versionGuidance);
       setSubmissionError(undefined);
       setRelease(undefined);
+      setJob(undefined);
       return;
     }
 
     setVersionError(undefined);
     setSubmissionError(undefined);
     setRelease(undefined);
+    setJob(undefined);
     setIsPublishing(true);
     try {
-      setRelease(await createAdministratorDatasetRelease(client, { version: parsedVersion.data }));
+      const result = await createAdministratorDatasetRelease(client, {
+        version: parsedVersion.data,
+      });
+      if (result.kind === 'generation-job') setJob(result.job);
+      else setRelease(result.release);
     } catch (error) {
       setSubmissionError(errorMessage(error));
     } finally {
@@ -112,12 +151,20 @@ export function AdminDatasetReleasePage() {
     }
   }
 
-  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isLoading && !isAuthenticated)
+    return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
 
   return (
     <section className="admin-release-page content-boundary" aria-labelledby="admin-release-title">
+      <Breadcrumbs
+        items={[
+          { label: 'Administration', to: '/admin' },
+          { label: 'Data governance', to: '/admin' },
+          { label: 'Publish dataset release', to: '#' },
+        ]}
+      />
       <header className="page-heading admin-release-page__heading">
-        <p className="eyebrow">Administrator workspace</p>
+        <p className="eyebrow">Administration</p>
         <h1 id="admin-release-title">Publish dataset release</h1>
         <p>
           Generate a versioned snapshot of published accepted deliveries and make it available to
@@ -153,9 +200,9 @@ export function AdminDatasetReleasePage() {
             <p className="eyebrow">Permanent public action</p>
             <h2>Review the version before publishing</h2>
             <p>
-              Publishing immediately creates an immutable snapshot in the public dataset-release
-              catalogue. An existing version cannot be overwritten; corrections require a new
-              version.
+              Publishing queues generation outside this page. The release appears in the public
+              catalogue only after its immutable artifact is complete. An existing version cannot be
+              overwritten; corrections require a new version.
             </p>
           </div>
 
@@ -173,13 +220,16 @@ export function AdminDatasetReleasePage() {
                 autoComplete="off"
                 aria-describedby={`dataset-release-version-help${versionError ? ' dataset-release-version-error' : ''}`}
                 aria-invalid={versionError ? 'true' : undefined}
-                disabled={isPublishing}
+                disabled={
+                  isPublishing || Boolean(job && ['pending', 'generating'].includes(job.status))
+                }
                 value={version}
                 onChange={(event) => {
                   setVersion(event.target.value);
                   setVersionError(undefined);
                   setSubmissionError(undefined);
                   setRelease(undefined);
+                  setJob(undefined);
                 }}
               />
               <p id="dataset-release-version-help" className="field-help">
@@ -191,8 +241,14 @@ export function AdminDatasetReleasePage() {
                 </p>
               ) : null}
             </div>
-            <button className="button button--primary" type="submit" disabled={isPublishing}>
-              {isPublishing ? 'Publishing release…' : 'Generate and publish snapshot'}
+            <button
+              className="button button--primary"
+              type="submit"
+              disabled={
+                isPublishing || Boolean(job && ['pending', 'generating'].includes(job.status))
+              }
+            >
+              {isPublishing ? 'Queueing release…' : 'Generate and publish snapshot'}
             </button>
           </form>
 
@@ -205,6 +261,28 @@ export function AdminDatasetReleasePage() {
             >
               <h2>Dataset release was not published</h2>
               <p>{versionError ?? submissionError}</p>
+            </div>
+          ) : null}
+
+          {job && ['pending', 'generating'].includes(job.status) ? (
+            <div ref={feedbackRef} className="admin-release-feedback" role="status" tabIndex={-1}>
+              <p className="eyebrow">Generation {job.status}</p>
+              <h2>Dataset {job.version}</h2>
+              <p>The worker is creating the immutable artifact. You can leave this page safely.</p>
+              <dl className="admin-release-facts">
+                <div>
+                  <dt>Pages</dt>
+                  <dd>{job.pageNumber}</dd>
+                </div>
+                <div>
+                  <dt>Events</dt>
+                  <dd>{job.eventsProcessed.toLocaleString('en-ZA')}</dd>
+                </div>
+                <div>
+                  <dt>Bytes</dt>
+                  <dd>{job.bytesWritten.toLocaleString('en-ZA')}</dd>
+                </div>
+              </dl>
             </div>
           ) : null}
 

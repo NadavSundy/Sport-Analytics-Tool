@@ -82,5 +82,23 @@ describe.sequential('API consumer key persistence', () => {
       allowed: false,
       used: 2,
     });
+
+    const firstWindow = new Date('2026-09-19T10:00:59.900Z');
+    const firstWindowResults = await Promise.all(
+      Array.from({ length: 4 }, () => repository.consumeRateLimit(issued.id, 2, firstWindow)),
+    );
+    expect(firstWindowResults.filter((result) => result.allowed)).toHaveLength(2);
+    expect(firstWindowResults.filter((result) => !result.allowed)).toHaveLength(2);
+    expect(firstWindowResults.map((result) => result.resetAt.toISOString())).toEqual(
+      Array(4).fill('2026-09-19T10:01:00.000Z'),
+    );
+
+    await expect(
+      repository.consumeRateLimit(issued.id, 2, new Date('2026-09-19T10:01:00.000Z')),
+    ).resolves.toMatchObject({
+      allowed: true,
+      used: 1,
+      resetAt: new Date('2026-09-19T10:02:00.000Z'),
+    });
   });
 });

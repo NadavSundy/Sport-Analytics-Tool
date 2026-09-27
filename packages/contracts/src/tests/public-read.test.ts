@@ -7,8 +7,11 @@ import {
   fixtureStatisticsQuerySchema,
   fixtureStatisticsResponseSchema,
   fixtureWeatherResponseSchema,
+  inningsTeamStatisticSchema,
   participantAggregatesQuerySchema,
   participantAggregatesResponseSchema,
+  leaderboardQuerySchema,
+  leaderboardResponseSchema,
   participantFixtureCollectionResponseSchema,
   participantFixtureListQuerySchema,
   participantListQuerySchema,
@@ -18,6 +21,46 @@ import {
 } from '../public-read';
 
 describe('public read contracts', () => {
+  test('requires and preserves innings scorecard context', () => {
+    const base = {
+      statisticId: 'stat-team',
+      fixtureId: '9',
+      scope: 'innings' as const,
+      statisticCode: 'team_total' as const,
+      inningsId: '30',
+      inningsOrdinal: 0,
+      competitorId: '20',
+      competitorName: 'Joburg Super Kings',
+      sourceEventCount: 0,
+    };
+    const metrics = {
+      deliveryRuns: 0,
+      penaltyRuns: 0,
+      totalRuns: 0,
+      wicketsLost: 0,
+      legalBalls: 0,
+      overs: '0.0',
+      runRate: null,
+      powerplay: null,
+      extras: {
+        total: 0,
+        wides: 0,
+        noBalls: 0,
+        byes: 0,
+        legByes: 0,
+        penaltyRuns: 0,
+      },
+    };
+
+    expect(inningsTeamStatisticSchema.parse({ ...base, metrics }).metrics).toEqual(metrics);
+    expect(
+      inningsTeamStatisticSchema.safeParse({
+        ...base,
+        metrics: { deliveryRuns: 0, penaltyRuns: 0, totalRuns: 0 },
+      }).success,
+    ).toBe(false);
+  });
+
   test('validates a season with readable competition context', () => {
     expect(
       seasonSchema.safeParse({
@@ -53,6 +96,35 @@ describe('public read contracts', () => {
         gender: 'male',
         ballsPerOver: 6,
         scheduledOvers: 20,
+        venue: { name: 'Wanderers Stadium', city: 'Johannesburg' },
+        toss: {
+          winnerCompetitorId: '20',
+          winnerCompetitorName: 'Joburg Super Kings',
+          decision: 'bat',
+        },
+        startDate: '2026-01-10',
+        endDate: '2026-01-10',
+      }).success,
+    ).toBe(true);
+  });
+
+  test('validates a fixture with unavailable venue and toss metadata', () => {
+    expect(
+      fixtureSchema.safeParse({
+        fixtureId: '100',
+        competitionId: '12',
+        competitionName: 'SA20',
+        seasonId: 'season_opaque-value',
+        season: '2025/26',
+        seasonLabel: '2025/26',
+        competitors: [],
+        matchType: 'T20',
+        teamType: 'club',
+        gender: 'male',
+        ballsPerOver: 6,
+        scheduledOvers: 20,
+        venue: null,
+        toss: null,
         startDate: '2026-01-10',
         endDate: '2026-01-10',
       }).success,
@@ -132,6 +204,8 @@ describe('public read contracts', () => {
             gender: 'male',
             ballsPerOver: 6,
             scheduledOvers: 20,
+            venue: null,
+            toss: null,
             startDate: '2026-08-09',
             endDate: '2026-08-09',
           },
@@ -178,6 +252,8 @@ describe('public read contracts', () => {
             gender: 'mixed',
             ballsPerOver: 6,
             scheduledOvers: null,
+            venue: null,
+            toss: null,
             startDate: '2026-08-09',
             endDate: '2026-08-09',
           },
@@ -322,6 +398,71 @@ describe('public read contracts', () => {
     expect(participantAggregatesQuerySchema.safeParse({ scope: 'super-over' }).success).toBe(false);
   });
 
+  test('requires one explicit leaderboard scope and enforces the top-N bound', () => {
+    expect(
+      leaderboardQuerySchema.parse({
+        scope: 'season',
+        seasonId: 'season_opaque',
+        metric: 'most_runs',
+      }),
+    ).toEqual({
+      scope: 'season',
+      seasonId: 'season_opaque',
+      metric: 'most_runs',
+      limit: 10,
+    });
+    expect(
+      leaderboardQuerySchema.parse({
+        scope: 'competition',
+        competitionId: '10',
+        metric: 'best_economy_rate',
+        limit: '50',
+      }),
+    ).toMatchObject({ scope: 'competition', competitionId: '10', limit: 50 });
+    expect(
+      leaderboardQuerySchema.safeParse({
+        scope: 'competition',
+        competitionId: '10',
+        metric: 'most_runs',
+        limit: 51,
+      }).success,
+    ).toBe(false);
+    expect(leaderboardQuerySchema.safeParse({ scope: 'season', metric: 'most_runs' }).success).toBe(
+      false,
+    );
+    expect(
+      leaderboardQuerySchema.safeParse({
+        scope: 'season',
+        seasonId: 'season_opaque',
+        competitionId: '10',
+        metric: 'most_runs',
+      }).success,
+    ).toBe(false);
+  });
+
+  test('validates total and qualified-rate leaderboard responses', () => {
+    expect(
+      leaderboardResponseSchema.safeParse({
+        data: {
+          scope: 'season',
+          seasonId: 'season_opaque',
+          competitionId: '10',
+          competitionName: 'Example League',
+          season: '2026',
+          metric: 'highest_strike_rate',
+          limit: 10,
+          qualification: {
+            field: 'ballsFaced',
+            minimum: 100,
+            rationale: 'Prevents a very small batting sample from leading a rate table.',
+          },
+          tieBreakers: ['metricValue', 'participantName', 'participantId'],
+          entries: [{ rank: 1, participantId: '7', participantName: 'A Batter', value: 142.5 }],
+        },
+      }).success,
+    ).toBe(true);
+  });
+
   test('validates season, competition and career aggregates for one participant', () => {
     const result = participantAggregatesResponseSchema.safeParse({
       data: {
@@ -341,16 +482,26 @@ describe('public read contracts', () => {
             competitionName: 'Australia in New Zealand T20I Series',
             seasonId: 'season_opaque',
             season: '2009/10',
+            appearances: 1,
             fixtureCount: 1,
             sourceEventCount: 60,
             batting: {
+              innings: 1,
               runsScored: 116,
               ballsFaced: 56,
+              dismissals: 0,
+              notOuts: 1,
+              battingAverage: null,
               fours: 12,
               sixes: 8,
+              fifties: 0,
+              hundreds: 1,
+              highestScore: 116,
+              highestScoreNotOut: true,
               strikeRate: 207.14,
             },
             bowling: null,
+            fielding: { catches: 1, stumpings: 0, runOutInvolvements: 1 },
           },
           {
             statisticId: 'stat-competition',
@@ -360,19 +511,27 @@ describe('public read contracts', () => {
             statisticCode: 'participant_competition',
             competitionId: '10',
             competitionName: 'Australia in New Zealand T20I Series',
+            appearances: 1,
             fixtureCount: 1,
             sourceEventCount: 60,
             batting: null,
             bowling: {
+              innings: 1,
               runsConceded: 44,
               wides: 2,
               noBalls: 1,
               legalBallsBowled: 24,
               wicketsTaken: 0,
+              bowlingAverage: null,
+              bowlingStrikeRate: null,
+              bestBowling: { wicketsTaken: 0, runsConceded: 44 },
+              fourWicketHauls: 0,
+              fiveWicketHauls: 0,
               ballsPerOver: 6,
               oversBowled: '4.0',
               economyRate: 11,
             },
+            fielding: { catches: 0, stumpings: 0, runOutInvolvements: 0 },
           },
           {
             statisticId: 'stat-career',
@@ -380,21 +539,29 @@ describe('public read contracts', () => {
             participantName: 'BB McCullum',
             scope: 'career',
             statisticCode: 'participant_career',
+            appearances: 2,
             fixtureCount: 1,
             sourceEventCount: 60,
             batting: null,
             // A career spanning fixtures with different balls-per-over has no
             // single divisor, so neither rate is invented.
             bowling: {
+              innings: 1,
               runsConceded: 44,
               wides: 2,
               noBalls: 1,
               legalBallsBowled: 24,
               wicketsTaken: 0,
+              bowlingAverage: null,
+              bowlingStrikeRate: null,
+              bestBowling: { wicketsTaken: 0, runsConceded: 44 },
+              fourWicketHauls: 0,
+              fiveWicketHauls: 0,
               ballsPerOver: null,
               oversBowled: null,
               economyRate: null,
             },
+            fielding: { catches: 0, stumpings: 0, runOutInvolvements: 0 },
           },
         ],
       },
@@ -422,10 +589,12 @@ describe('public read contracts', () => {
             competitionName: 'Test League',
             seasonId: 'season_opaque',
             // The season label is what distinguishes this level and is required.
+            appearances: 1,
             fixtureCount: 1,
             sourceEventCount: 60,
             batting: null,
             bowling: null,
+            fielding: { catches: 0, stumpings: 0, runOutInvolvements: 0 },
           },
         ],
       },
@@ -454,6 +623,18 @@ describe('public read contracts', () => {
             method: null,
             decidedByBowlOut: false,
           },
+          highestScorers: [
+            {
+              participantId: '50',
+              participantName: 'Example Batter',
+              competitorId: '20',
+              competitorName: 'Joburg Super Kings',
+              inningsId: '30',
+              inningsOrdinal: 0,
+              runsScored: 4,
+              notOut: true,
+            },
+          ],
           warnings: [],
           statistics: [
             {
@@ -470,6 +651,27 @@ describe('public read contracts', () => {
                 deliveryRuns: 4,
                 penaltyRuns: 0,
                 totalRuns: 4,
+                wicketsLost: 0,
+                legalBalls: 1,
+                overs: '0.1',
+                runRate: 24,
+                powerplay: {
+                  ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+                  runs: 4,
+                  wicketsLost: 0,
+                  legalBalls: 1,
+                  overs: '0.1',
+                  runRate: 24,
+                  sourceEventCount: 1,
+                },
+                extras: {
+                  total: 0,
+                  wides: 0,
+                  noBalls: 0,
+                  byes: 0,
+                  legByes: 0,
+                  penaltyRuns: 0,
+                },
               },
               contributingEvents: [
                 {
@@ -498,6 +700,7 @@ describe('public read contracts', () => {
                   },
                   nonBoundary: false,
                   bowlerWickets: 0,
+                  wicketsLost: 0,
                 },
               ],
             },

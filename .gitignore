@@ -11,6 +11,7 @@ coverage/
 .vscode/
 .idea/
 *.local
+/.local/object-storage/
 
 playwright-report/
 test-results/
@@ -183,3 +184,7 @@ __pycache__/
 # Local Codex instructions
 /AGENTS.md
 AGENTS.md
+
+# Coverage tooling source is tracked; generated coverage output remains ignored.
+!scripts/coverage/
+!scripts/coverage/aggregate-coverage.mjs

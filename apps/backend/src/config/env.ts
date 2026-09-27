@@ -4,6 +4,15 @@ const optionalNonEmptyString = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
   z.string().trim().min(1).optional(),
 );
+const optionalAzureContainerName = optionalNonEmptyString.pipe(
+  z
+    .string()
+    .regex(
+      /^(?!.*--)[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/,
+      'Azure storage container name must be 3-63 lowercase letters, numbers or single hyphens',
+    )
+    .optional(),
+);
 
 const environmentSchema = z
   .object({
@@ -13,6 +22,13 @@ const environmentSchema = z
     SUPABASE_URL: z.string().trim().url('Supabase URL must be a valid URL'),
     SUPABASE_PUBLISHABLE_KEY: z.string().trim().min(1, 'Supabase publishable key is required'),
     SUPABASE_SECRET_KEY: optionalNonEmptyString,
+    OBJECT_STORAGE_PROVIDER: z.enum(['azure', 'filesystem']).optional(),
+    OBJECT_STORAGE_FILESYSTEM_ROOT: optionalNonEmptyString,
+    DEPLOYMENT_ENVIRONMENT: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9-]{0,31}$/)
+      .default('local'),
     AZURE_STORAGE_ACCOUNT_NAME: optionalNonEmptyString.pipe(
       z
         .string()
@@ -22,34 +38,70 @@ const environmentSchema = z
         )
         .optional(),
     ),
-    AZURE_STORAGE_CONTAINER_NAME: optionalNonEmptyString.pipe(
-      z
-        .string()
-        .regex(
-          /^(?!.*--)[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/,
-          'Azure storage container name must be 3-63 lowercase letters, numbers or single hyphens',
-        )
-        .optional(),
-    ),
+    AZURE_STORAGE_CONTAINER_NAME: optionalAzureContainerName,
+    AZURE_STORAGE_INGESTION_CONTAINER_NAME: optionalAzureContainerName,
+    AZURE_STORAGE_RELEASE_CONTAINER_NAME: optionalAzureContainerName,
   })
   .superRefine((environment, context) => {
-    if (environment.NODE_ENV !== 'production') {
-      return;
+    if (environment.NODE_ENV === 'production') {
+      if (!environment.OBJECT_STORAGE_PROVIDER) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['OBJECT_STORAGE_PROVIDER'],
+          message: 'Object storage provider is required in production',
+        });
+      } else if (environment.OBJECT_STORAGE_PROVIDER !== 'azure') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['OBJECT_STORAGE_PROVIDER'],
+          message: 'Production object storage provider must be azure',
+        });
+      }
     }
 
-    if (!environment.AZURE_STORAGE_ACCOUNT_NAME) {
+    if (
+      environment.OBJECT_STORAGE_PROVIDER === 'filesystem' &&
+      !environment.OBJECT_STORAGE_FILESYSTEM_ROOT
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['AZURE_STORAGE_ACCOUNT_NAME'],
-        message: 'Azure storage account name is required in production',
+        path: ['OBJECT_STORAGE_FILESYSTEM_ROOT'],
+        message: 'Filesystem object storage root is required for the filesystem provider',
       });
     }
 
-    if (!environment.AZURE_STORAGE_CONTAINER_NAME) {
+    if (environment.OBJECT_STORAGE_PROVIDER === 'azure') {
+      if (!environment.AZURE_STORAGE_ACCOUNT_NAME) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['AZURE_STORAGE_ACCOUNT_NAME'],
+          message: 'Azure storage account name is required for the Azure provider',
+        });
+      }
+
+      if (!environment.AZURE_STORAGE_CONTAINER_NAME) {
+        if (!environment.AZURE_STORAGE_INGESTION_CONTAINER_NAME) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['AZURE_STORAGE_CONTAINER_NAME'],
+            message: 'Azure storage container name is required for the Azure provider',
+          });
+        }
+      }
+      if (!environment.AZURE_STORAGE_RELEASE_CONTAINER_NAME) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['AZURE_STORAGE_RELEASE_CONTAINER_NAME'],
+          message: 'Azure release storage container name is required for the Azure provider',
+        });
+      }
+    }
+
+    if (environment.NODE_ENV === 'production' && environment.DEPLOYMENT_ENVIRONMENT === 'local') {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['AZURE_STORAGE_CONTAINER_NAME'],
-        message: 'Azure storage container name is required in production',
+        path: ['DEPLOYMENT_ENVIRONMENT'],
+        message: 'Production requires a non-local deployment environment',
       });
     }
   });

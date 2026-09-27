@@ -17,6 +17,12 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+  toss: {
+    winnerCompetitorId: 'competitor-1',
+    winnerCompetitorName: 'Wanderers',
+    decision: 'field',
+  },
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
@@ -31,7 +37,17 @@ const inningsStatistic = {
   competitorId: 'competitor-1',
   competitorName: 'Wanderers',
   sourceEventCount: 12,
-  metrics: { deliveryRuns: 104, penaltyRuns: 0, totalRuns: 104 },
+  metrics: {
+    deliveryRuns: 104,
+    penaltyRuns: 0,
+    totalRuns: 104,
+    wicketsLost: 3,
+    legalBalls: 72,
+    overs: '12.0',
+    runRate: 8.67,
+    powerplay: null,
+    extras: { total: 7, wides: 3, noBalls: 1, byes: 0, legByes: 3, penaltyRuns: 0 },
+  },
 };
 
 const playerStatistic = {
@@ -140,6 +156,18 @@ test('competition, season, and team overviews embed readable related records', a
               method: null,
               decidedByBowlOut: false,
             },
+            highestScorers: [
+              {
+                participantId: 'participant-1',
+                participantName: 'A Player',
+                competitorId: 'competitor-1',
+                competitorName: 'Wanderers',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                runsScored: 42,
+                notOut: true,
+              },
+            ],
             warnings: [],
             statistics: [inningsStatistic, playerStatistic],
           },
@@ -274,7 +302,7 @@ test('competition, season, and team overviews embed readable related records', a
   await expect(page.getByRole('heading', { level: 2, name: 'Fixtures' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Teams' })).toBeVisible();
   await expectReadableAccessibleView(page, internalValues);
-  await page.getByRole('link', { name: 'Wanderers vs Strikers' }).focus();
+  await page.getByRole('link', { name: 'Wanderers vs Strikers', exact: true }).focus();
   await page.keyboard.press('Enter');
   purposefulInteractions += 1;
 
@@ -286,11 +314,16 @@ test('competition, season, and team overviews embed readable related records', a
   await expect(page.getByText('24 °C')).toBeVisible();
   await expect(page.getByText('0 mm')).toBeVisible();
   await expect(page.getByText('17 km/h')).toBeVisible();
+  await expect(page.getByText('Wanderers won the toss and chose to field.')).toBeVisible();
+  await page.getByRole('link', { name: 'Statistics', exact: true }).click();
+  purposefulInteractions += 1;
   await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Innings totals' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
+  await expect(page.getByText('Highest individual innings score')).toBeVisible();
+  await expect(page.getByText('42* runs · innings 1')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Innings summary' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Batting scorecard' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'A Player' }).first()).toBeVisible();
-  expect(purposefulInteractions).toBe(3);
+  expect(purposefulInteractions).toBe(4);
 
   const isMobile = (page.viewportSize()?.width ?? 0) < 900;
   await selectTheme(page, 'day');
@@ -312,7 +345,11 @@ test('competition, season, and team overviews embed readable related records', a
     });
   }
 
-  await page.getByRole('link', { name: 'Teams', exact: true }).click();
+  await page.getByRole('button', { name: 'Explore Data' }).click();
+  await page
+    .getByRole('navigation', { name: 'Public records' })
+    .getByRole('link', { name: 'Teams', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/competitors$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Teams' })).toBeVisible();
   let teamInteractions = 0;
@@ -320,14 +357,18 @@ test('competition, season, and team overviews embed readable related records', a
   await page.keyboard.press('Enter');
   teamInteractions += 1;
   await expect(page.getByRole('heading', { level: 1, name: 'Wanderers' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Wanderers vs Strikers', exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('link', { name: 'A Player' })).toBeVisible();
   await expectReadableAccessibleView(page, internalValues);
-  await page.getByRole('link', { name: 'Wanderers vs Strikers' }).focus();
+  await page.getByRole('link', { name: 'Wanderers vs Strikers', exact: true }).focus();
   await page.keyboard.press('Enter');
   teamInteractions += 1;
+  await page.getByRole('link', { name: 'Statistics', exact: true }).click();
+  teamInteractions += 1;
   await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
-  expect(teamInteractions).toBe(2);
+  expect(teamInteractions).toBe(3);
 });
 
 test('readable filter combobox supports routed selection and keyboard use', async ({ page }) => {
@@ -355,6 +396,18 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
               method: null,
               decidedByBowlOut: false,
             },
+            highestScorers: [
+              {
+                participantId: 'participant-1',
+                participantName: 'A Player',
+                competitorId: 'competitor-1',
+                competitorName: 'Wanderers',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                runsScored: 42,
+                notOut: true,
+              },
+            ],
             warnings: [],
             statistics: [inningsStatistic, playerStatistic],
           },
@@ -499,7 +552,10 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
     requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=50')),
   ).toBe(true);
 
-  const filteredFixture = page.getByRole('link', { name: 'Wanderers vs Strikers' });
+  const filteredFixture = page.getByRole('link', {
+    name: 'Wanderers vs Strikers',
+    exact: true,
+  });
   await filteredFixture.focus();
   await expect(filteredFixture).toBeFocused();
   await page.keyboard.press('Enter');
@@ -507,8 +563,10 @@ test('readable filter combobox supports routed selection and keyboard use', asyn
   await expect(
     page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
   ).toBeVisible();
+  await page.getByRole('link', { name: 'Statistics', exact: true }).click();
+  searchJourneyInteractions += 1;
   await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
-  expect(searchJourneyInteractions).toBe(3);
+  expect(searchJourneyInteractions).toBe(4);
   await expectReadableAccessibleView(page, [
     'competition-1',
     'season-1',
@@ -570,14 +628,24 @@ test(
     await expect(page.getByLabel('Gender')).toHaveValue('female');
     await expect(page.getByLabel('Records per page')).toHaveValue('25');
     await expect(page).toHaveURL(/\/fixtures\?gender=female&limit=25/);
-    await expect(page.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible({
+    await expect(
+      page.getByRole('link', { name: 'Wanderers vs Strikers', exact: true }),
+    ).toBeVisible({
       timeout: 15_000,
     });
-    await expect(
-      page
-        .getByRole('navigation', { name: 'Account' })
-        .getByRole('link', { name: 'Login or Sign up' }),
-    ).toHaveAttribute('href', '/sign-in');
+    if ((page.viewportSize()?.width ?? 0) < 900) {
+      await page.getByRole('button', { name: 'Menu' }).click();
+      await expect(
+        page
+          .getByRole('navigation', { name: 'Mobile navigation' })
+          .getByRole('link', { name: 'Sign in' }),
+      ).toHaveAttribute('href', '/sign-in');
+      await page.getByRole('button', { name: 'Menu' }).click();
+    } else {
+      await expect(
+        page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Sign in' }),
+      ).toHaveAttribute('href', '/sign-in');
+    }
 
     const compactCollectionLayout = await page.evaluate(() => {
       const heading = document.querySelector<HTMLElement>('.page-heading');
@@ -649,7 +717,16 @@ test(
     await expect(page.getByText('No fixtures found')).toBeVisible();
     expect(requestedUrls.some((url) => url.includes('cursor=next-fixture-cursor'))).toBe(true);
 
-    const competitorsLink = page.getByRole('link', { name: 'Teams', exact: true });
+    if (isMobile) {
+      await page.getByRole('button', { name: 'Menu' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Explore Data' }).click();
+    }
+    const competitorsLink = page
+      .getByRole('navigation', {
+        name: isMobile ? 'Mobile navigation' : 'Public records',
+      })
+      .getByRole('link', { name: 'Teams', exact: true });
     await competitorsLink.focus();
     await expect(competitorsLink).toBeFocused();
     await page.keyboard.press('Enter');

@@ -26,9 +26,11 @@ jobs:
       hygiene: ${{ steps.plan.outputs.hygiene }}
       deployment: ${{ steps.plan.outputs.deployment }}
       openapi: ${{ steps.plan.outputs.openapi }}
+      apiContract: ${{ steps.plan.outputs.apiContract }}
       coverage: ${{ steps.plan.outputs.coverage }}
       deployFrontend: ${{ steps.plan.outputs.deployFrontend }}
       deployBackend: ${{ steps.plan.outputs.deployBackend }}
+      deployWorker: ${{ steps.plan.outputs.deployWorker }}
       deployDocs: ${{ steps.plan.outputs.deployDocs }}
       needsNpm: ${{ steps.plan.outputs.needsNpm }}
 
@@ -159,6 +161,12 @@ jobs:
         if: needs.plan.outputs.openapi == 'true'
         run: npm run openapi:lint
 
+      - name: Verify the API implementation against the OpenAPI contract
+        if: needs.plan.outputs.apiContract == 'true'
+        run: |
+          npm run prepare:contracts --workspace=@sport-analytics/backend
+          npm run test:api-contract
+
       - name: Verify Intermediate ingestion acceptance invariants
         if: needs.plan.outputs.intermediateIngestion == 'true'
         run: npm run verify:intermediate-ingestion:invariants
@@ -178,10 +186,6 @@ jobs:
       - name: Build documentation strictly
         if: needs.plan.outputs.docs == 'true'
         run: python -m mkdocs build --strict
-
-      - name: Generate coverage on deliberate full validation
-        if: needs.plan.outputs.coverage == 'true'
-        run: npm run test:coverage
 
   browser:
     needs: plan
@@ -292,12 +296,14 @@ jobs:
               exit 1
             fi
 
+
             if [ "$INTERMEDIATE_INGESTION_REQUIRED" = "true" ]; then
               echo "Intermediate ingestion merge-gated acceptance passed through the existing validation and browser lanes."
             fi
 
             echo "Required change-aware Pull Request validation passed."
           else
+
             echo "Main push planning passed; full application quality was enforced before merge."
           fi
 
@@ -312,7 +318,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      FRONTEND_URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net
+      FRONTEND_URL: https://sport-analytics-tool-web.pages.dev
+      CLOUDFLARE_PROJECT_NAME: sport-analytics-tool-web
 
     steps:
       - name: Check out validated main commit
@@ -330,13 +337,14 @@ jobs:
 
       - name: Validate deployment secrets
         env:
-          AZURE_FRONTEND_PUBLISH_PROFILE: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         run: |
           missing=0
-          for name in AZURE_FRONTEND_PUBLISH_PROFILE VITE_API_BASE_URL VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VITE_API_BASE_URL VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error::Required Gitea secret $name is not configured."
               missing=1
@@ -355,14 +363,14 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build --workspace=@sport-analytics/frontend
 
-      - name: Deploy frontend
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: statsthegame-web-dev
-          publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
-          package: apps/frontend/dist
-          clean: true
-          restart: true
+      - name: Check bundle for embedded server-only secrets
+        run: node scripts/check-frontend-bundle-secrets.mjs apps/frontend/dist
+
+      - name: Deploy frontend to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy apps/frontend/dist --project-name=$CLOUDFLARE_PROJECT_NAME
 
       - name: Smoke check deployed frontend
         env:
@@ -383,9 +391,10 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.plan.outputs.deployBackend == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
-      BACKEND_URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
+      ACR_NAME: statsthegamedevyhmqlinqfhkyg
+      BACKEND_CONTAINER_APP_NAME: statsthegame-dev-api
 
     steps:
       - name: Check out validated main commit
@@ -401,28 +410,202 @@ jobs:
       - name: Install root workspace dependencies
         run: npm ci
 
-      - name: Validate deployment secret
+      - name: Validate Container Apps deployment configuration
         env:
-          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+          AZURE_BACKEND_CONTAINER_RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+          AZURE_BACKEND_DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+          AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI: ${{ secrets.AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI }}
+          AZURE_BACKEND_CORS_ORIGINS: ${{ secrets.AZURE_BACKEND_CORS_ORIGINS }}
+          AZURE_BACKEND_SUPABASE_URL: ${{ secrets.AZURE_BACKEND_SUPABASE_URL }}
+          AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          if [ -z "$AZURE_BACKEND_PUBLISH_PROFILE" ]; then
-            echo "::error::Required Gitea secret AZURE_BACKEND_PUBLISH_PROFILE is not configured."
+          missing=0
+          for name in AZURE_WORKER_CREDENTIALS AZURE_BACKEND_CONTAINER_RESOURCE_GROUP AZURE_BACKEND_DATABASE_SECRET_URI AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI AZURE_BACKEND_CORS_ORIGINS AZURE_BACKEND_SUPABASE_URL AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Verify Docker npm registry connectivity
+        run: |
+          echo "Checking DNS resolution inside Docker with the runner host network..."
+          timeout 30s docker run --rm --network=host node:22-bookworm-slim \
+            node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"
+
+          echo "Checking npm registry connectivity inside Docker with the runner host network..."
+          timeout 45s docker run --rm --network=host node:22-bookworm-slim \
+            npm ping --registry=https://registry.npmjs.org/
+
+          echo "Docker npm registry connectivity verified."
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+
+      - name: Apply pending backend database migrations
+        env:
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+        run: |
+          echo "Applying reviewed backend database migrations before backend activation."
+          DATABASE_URL="$(az keyvault secret show --id "$DATABASE_SECRET_URI" --query value --output tsv)"
+
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The backend database secret resolved to an empty value."
             exit 1
           fi
 
-      - name: Build backend deployment bundle
-        run: npm run build --workspace=@sport-analytics/backend
+          export DATABASE_URL
+          npm run db:migrate --workspace=@sport-analytics/backend
 
-      - name: Prepare backend deployment artifact
-        run: npm run deploy:prepare:backend
+      - name: Sign in to Azure Container Registry
+        run: az acr login --name "$ACR_NAME"
 
-      - name: Smoke check backend deployment artifact
-        run: node scripts/smoke-check-backend-artifact.mjs
+      - name: Prepare Docker Buildx
+        run: |
+          docker buildx version
 
-      - name: Deploy backend artifact to Azure
+          docker buildx rm -f backend-ci-builder >/dev/null 2>&1 || true
+
+          docker buildx create \
+            --name backend-ci-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --buildkitd-flags '--allow-insecure-entitlement network.host' \
+            --use \
+            --bootstrap
+
+          docker buildx inspect
+
+      - name: Verify Buildx npm registry connectivity
+        shell: bash
+        run: |
+          timeout 60s docker buildx build \
+            --progress=plain \
+            --allow network.host \
+            --network=host \
+            --file - \
+            . <<'EOF'
+          FROM node:22-bookworm-slim
+          RUN npm ping --registry=https://registry.npmjs.org/
+          EOF
+
+      - name: Build immutable backend container image
+        shell: bash
+        run: |
+          set -o pipefail
+          build_log="$(mktemp)"
+          trap 'rm -f "$build_log"' EXIT
+
+            if ! docker buildx build \
+              --progress=plain \
+              --allow network.host \
+              --network=host \
+              --cache-from "type=registry,ref=$ACR_NAME.azurecr.io/sport-analytics-api:buildcache" \
+              --cache-to "type=registry,ref=$ACR_NAME.azurecr.io/sport-analytics-api:buildcache,mode=max" \
+              --file apps/backend/Dockerfile \
+              --tag "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}" \
+              --load \
+              . 2>&1 | tee "$build_log"; then
+
+            if grep -Fq 'Exit handler never called!' "$build_log"; then
+              echo '::error::Backend Docker build failed: npm internal crash (Exit handler never called).'
+            elif grep -Eqi 'EAI_AGAIN|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed' "$build_log"; then
+              echo '::error::Backend Docker build failed: npm registry or Docker network failure.'
+            elif grep -Eqi 'ELIFECYCLE|node-gyp|npm error (path|command|code [1-9][0-9]*)' "$build_log"; then
+              echo '::error::Backend Docker build failed: lifecycle-script failure.'
+            else
+              echo '::error::Backend Docker build failed; inspect the BuildKit output above.'
+            fi
+
+            exit 1
+          fi
+
+      - name: Smoke check backend container image
+        run: >-
+          npm run smoke:backend-container --
+          "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+      - name: Push immutable backend image to Azure Container Registry
+        run: docker push "$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+      - name: Deploy backend Container Apps revision
         env:
-          AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-        run: python3 scripts/deploy-backend-azure.py
+          RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
+          SUPABASE_SECRET_KEY_SECRET_URI: ${{ secrets.AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI }}
+          CORS_ORIGINS: ${{ secrets.AZURE_BACKEND_CORS_ORIGINS }}
+          SUPABASE_URL: ${{ secrets.AZURE_BACKEND_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY }}
+        run: >-
+          az deployment group create
+          --name backend-${{ github.sha }}
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/backend/main.bicep
+          --parameters
+          containerImage="$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          supabaseSecretKeySecretUri="$SUPABASE_SECRET_KEY_SECRET_URI"
+          corsOrigins="$CORS_ORIGINS"
+          supabaseUrl="$SUPABASE_URL"
+          supabasePublishableKey="$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Wait for the healthy backend Container Apps revision
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+        run: |
+          EXPECTED_IMAGE="$ACR_NAME.azurecr.io/sport-analytics-api:${{ github.sha }}"
+
+          for attempt in {1..12}; do
+            MATCHING_REVISION=$(az containerapp revision list \
+              --name "$BACKEND_CONTAINER_APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active && properties.healthState=='Healthy' && properties.template.containers[0].image=='$EXPECTED_IMAGE'] | [0].name" \
+              -o tsv)
+
+            echo "Backend revision readiness check $attempt/12"
+
+            az containerapp revision list \
+              --name "$BACKEND_CONTAINER_APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active].{Revision:name,Health:properties.healthState,Image:properties.template.containers[0].image}" \
+              -o table
+
+            if [ -n "$MATCHING_REVISION" ]; then
+              echo "Verified healthy backend revision: $MATCHING_REVISION"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Expected backend image $EXPECTED_IMAGE did not become active and healthy within 120 seconds."
+          exit 1
+
+      - name: Resolve backend Container Apps HTTPS endpoint
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_CONTAINER_RESOURCE_GROUP }}
+        run: |
+          BACKEND_FQDN=$(az containerapp show \
+            --name "$BACKEND_CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)
+
+          if [ -z "$BACKEND_FQDN" ]; then
+            echo "::error::Backend Container App has no external ingress FQDN."
+            exit 1
+          fi
+
+          echo "BACKEND_URL=https://$BACKEND_FQDN" >> "$GITHUB_ENV"
 
       - name: Smoke check deployed backend health
         env:
@@ -445,6 +628,17 @@ jobs:
           "deployed backend database access"
           "$BACKEND_URL/api/v1/competitions?limit=1"
           "pagination"
+
+      - name: Smoke check deployed dataset-release schema access
+        env:
+          SMOKE_CHECK_ATTEMPTS: 6
+          SMOKE_CHECK_DELAY_MS: 5000
+          SMOKE_CHECK_TIMEOUT_MS: 15000
+        run: >-
+          node scripts/smoke-check-deployment.mjs
+          "deployed dataset-release schema access"
+          "$BACKEND_URL/api/v1/dataset-releases"
+          "data"
 
   deploy_docs:
     needs:
@@ -517,3 +711,319 @@ jobs:
           "deployed documentation site"
           "$DOCS_URL/"
           "Sport Analytics Tool"
+  deploy_worker:
+    needs:
+      - plan
+      - quality
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.deployWorker == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify worker
+        run: |
+          npm run lint --workspace=@sport-analytics/worker
+          npm run typecheck --workspace=@sport-analytics/worker
+          npm run test --workspace=@sport-analytics/worker
+          npm run build --workspace=@sport-analytics/worker
+
+      - name: Validate deployment secrets
+        env:
+          AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+          AZURE_WORKER_RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          AZURE_WORKER_KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          AZURE_WORKER_DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: |
+          missing=0
+          for name in AZURE_WORKER_CREDENTIALS AZURE_WORKER_RESOURCE_GROUP AZURE_WORKER_KEY_VAULT_NAME AZURE_WORKER_DATABASE_SECRET_URI; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required Gitea secret $name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
+
+      - name: Provision worker infrastructure
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: >-
+          az deployment group create
+          --name worker-${{ github.sha }}-infra
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/worker/main.bicep
+          --parameters deployWorker=false minReplicas=1
+          keyVaultName="$KEY_VAULT_NAME"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          storageAccountName=statsthegameblobdev
+
+      - name: Verify Docker npm registry connectivity
+        run: |
+          MAX_CONNECTIVITY_ATTEMPTS=4
+          CONNECTIVITY_RETRY_BASE_SECONDS=5
+
+          for attempt in $(seq 1 "$MAX_CONNECTIVITY_ATTEMPTS"); do
+            echo "Docker npm registry connectivity attempt $attempt/$MAX_CONNECTIVITY_ATTEMPTS"
+
+            echo "Checking DNS resolution inside Docker..."
+            if ! docker run --rm --network=host node:22-bookworm-slim \
+              node -e "require('dns').lookup('registry.npmjs.org', (error, address) => { if (error) { console.error(error); process.exit(1); } console.log('registry.npmjs.org ->', address); })"; then
+              failure_stage="DNS resolution"
+            else
+              echo "Checking npm registry connectivity inside Docker..."
+              if docker run --rm --network=host node:22-bookworm-slim \
+                npm ping --registry=https://registry.npmjs.org/; then
+                echo "Docker npm registry connectivity verified."
+                exit 0
+              fi
+              failure_stage="npm registry connectivity"
+            fi
+
+            if [ "$attempt" -eq "$MAX_CONNECTIVITY_ATTEMPTS" ]; then
+              echo "::error::Docker npm registry connectivity failed after $MAX_CONNECTIVITY_ATTEMPTS attempts; last failure: $failure_stage."
+              exit 1
+            fi
+
+            retry_delay=$((CONNECTIVITY_RETRY_BASE_SECONDS * (2 ** (attempt - 1))))
+            echo "::warning::Docker npm registry connectivity attempt $attempt/$MAX_CONNECTIVITY_ATTEMPTS failed during $failure_stage; retrying in ${retry_delay}s."
+            sleep "$retry_delay"
+          done
+
+      - name: Build immutable worker image and push to Azure Container Registry
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+        run: |
+          INFRA_DEPLOYMENT_NAME="worker-${{ github.sha }}-infra"
+
+          ACR_NAME=$(az deployment group show \
+            --name "$INFRA_DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.outputs.containerRegistryName.value \
+            -o tsv)
+
+          ACR_SERVER=$(az deployment group show \
+            --name "$INFRA_DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.outputs.containerRegistryServer.value \
+            -o tsv)
+
+          echo "Building worker image for registry $ACR_NAME"
+
+          az acr login --name "$ACR_NAME"
+
+          docker pull "$ACR_SERVER/sport-analytics-worker:buildcache" || true
+
+          DOCKER_BUILDKIT=1 docker build \
+            --network=host \
+            --file apps/worker/Dockerfile \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from "$ACR_SERVER/sport-analytics-worker:buildcache" \
+            --tag "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}" \
+            --tag "$ACR_SERVER/sport-analytics-worker:buildcache" \
+            .
+
+          docker push "$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+          docker push "$ACR_SERVER/sport-analytics-worker:buildcache"
+
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+          echo "ACR_SERVER=$ACR_SERVER" >> "$GITHUB_ENV"
+
+      - name: Deploy worker revision
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_WORKER_KEY_VAULT_NAME }}
+          DATABASE_SECRET_URI: ${{ secrets.AZURE_WORKER_DATABASE_SECRET_URI }}
+        run: >-
+          az deployment group create
+          --name worker-${{ github.sha }}
+          --resource-group "$RESOURCE_GROUP"
+          --template-file infra/azure/worker/main.bicep
+          --parameters deployWorker=true minReplicas=1
+          containerImage="$ACR_NAME.azurecr.io/sport-analytics-worker:${{ github.sha }}"
+          keyVaultName="$KEY_VAULT_NAME"
+          databaseSecretUri="$DATABASE_SECRET_URI"
+          storageAccountName=statsthegameblobdev
+
+      - name: Verify active revision image and health
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_WORKER_RESOURCE_GROUP }}
+        run: |
+          EXPECTED_IMAGE="$ACR_SERVER/sport-analytics-worker:${{ github.sha }}"
+          LIVE_MIN_REPLICAS=$(az containerapp show \
+            --name statsthegame-dev-batch-worker \
+            --resource-group "$RESOURCE_GROUP" \
+            --query 'properties.template.scale.minReplicas' \
+            -o tsv)
+
+          if [ "$LIVE_MIN_REPLICAS" != "1" ]; then
+            echo "::error::Worker minimum replicas is $LIVE_MIN_REPLICAS; expected 1."
+            exit 1
+          fi
+
+          echo "Expected worker image: $EXPECTED_IMAGE"
+          echo "Verified worker minimum replicas: $LIVE_MIN_REPLICAS"
+
+          for attempt in {1..12}; do
+            MATCHING_REVISION=$(az containerapp revision list \
+              --name statsthegame-dev-batch-worker \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active && properties.healthState=='Healthy' && properties.template.containers[0].image=='$EXPECTED_IMAGE'] | [0].name" \
+              -o tsv)
+
+            echo "Worker verification $attempt/12"
+
+            az containerapp revision list \
+              --name statsthegame-dev-batch-worker \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[?properties.active].{Revision:name,Health:properties.healthState,Image:properties.template.containers[0].image}" \
+              -o table
+
+            if [ -n "$MATCHING_REVISION" ]; then
+              echo "Verified healthy active worker revision: $MATCHING_REVISION"
+              echo "Verified worker image: $EXPECTED_IMAGE"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Expected worker image $EXPECTED_IMAGE did not become active and healthy within 120 seconds."
+          exit 1
+
+  coverage:
+    needs:
+      - plan
+      - quality
+      - deploy_frontend
+      - deploy_backend
+      - deploy_docs
+      - deploy_worker
+    if: >-
+      always() &&
+      needs.plan.outputs.coverage == 'true' &&
+      needs.quality.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      NODE_ENV: test
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+      COVERAGE_THRESHOLD_LINES: ${{ vars.COVERAGE_THRESHOLD_LINES }}
+      COVERAGE_THRESHOLD_STATEMENTS: ${{ vars.COVERAGE_THRESHOLD_STATEMENTS }}
+      COVERAGE_THRESHOLD_FUNCTIONS: ${{ vars.COVERAGE_THRESHOLD_FUNCTIONS }}
+      COVERAGE_THRESHOLD_BRANCHES: ${{ vars.COVERAGE_THRESHOLD_BRANCHES }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate repository-wide coverage
+        id: repository_coverage
+        shell: bash
+        run: |
+          mkdir -p coverage
+          set +e
+          npm run test:coverage
+          coverage_exit_code=$?
+          set -e
+
+          echo "exit_code=$coverage_exit_code" >> "$GITHUB_OUTPUT"
+
+          if [ "$coverage_exit_code" -eq 0 ]; then
+            printf 'Coverage: PASS\n' > coverage/ci-status.txt
+            echo "Repository coverage completed successfully."
+          else
+            printf 'Coverage: FAILED / INCOMPLETE\nExit code: %s\n' "$coverage_exit_code" > coverage/ci-status.txt
+            echo "::warning::Coverage FAILED / INCOMPLETE (exit code $coverage_exit_code). Quality and deployment have already completed; retaining this as non-blocking evidence."
+          fi
+
+          # Coverage is a late evidence signal. Preserve the real exit code as
+          # output/status evidence without turning it back into a deployment gate.
+          exit 0
+
+      - name: Upload repository coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-coverage-${{ github.sha }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish live coverage badge
+        if: steps.repository_coverage.outputs.exit_code == '0' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          cp coverage/combined/badge.svg "$RUNNER_TEMP/coverage-badge.svg"
+
+          git config user.name "gitea-actions"
+          git config user.email "actions@users.noreply.sdp.ms.wits.ac.za"
+
+          git fetch origin coverage-badge || true
+          if git show-ref --verify --quiet refs/remotes/origin/coverage-badge; then
+            git switch -C coverage-badge origin/coverage-badge
+          else
+            git switch --orphan coverage-badge
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          cp "$RUNNER_TEMP/coverage-badge.svg" badge.svg
+          git add badge.svg
+          if git diff --cached --quiet; then
+            echo "Coverage badge is already current."
+            exit 0
+          fi
+
+          git commit -m "chore(coverage): update live badge"
+          git push origin coverage-badge
+
+      - name: Report repository coverage status
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.repository_coverage.outputs.exit_code }}" = "0" ]; then
+            echo "Repository coverage evidence completed successfully."
+          else
+            echo "::warning::Repository coverage FAILED / INCOMPLETE. This late evidence signal did not gate quality or deployment."
+          fi

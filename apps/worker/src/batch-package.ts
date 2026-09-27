@@ -3,6 +3,7 @@ import type { Readable } from 'node:stream';
 
 import {
   competitionReferenceSchema,
+  FIXTURE_PROPOSAL_CONTRACT_VERSION,
   participantReferenceSchema,
   seasonReferenceSchema,
   seasonUploadPackageSchema,
@@ -40,8 +41,8 @@ interface BatchCandidate {
     competition: unknown;
     season: unknown;
   };
-  fixture: { sourceId?: unknown; context?: unknown };
-  innings: { sourceId?: unknown; context?: unknown };
+  fixture: { sourceId?: unknown; context?: unknown; proposal?: unknown; season?: unknown };
+  innings: { sourceId?: unknown; context?: unknown; powerplays?: unknown };
   event: unknown;
 }
 
@@ -55,8 +56,14 @@ export interface NormalisedCandidate {
     SeasonUploadPackage,
     'contractVersion' | 'packageId' | 'competition' | 'season'
   >;
-  fixture: Pick<SeasonUploadPackage['fixtures'][number], 'sourceId' | 'context'>;
-  innings: Pick<SeasonUploadPackage['fixtures'][number]['innings'][number], 'sourceId' | 'context'>;
+  fixture: Pick<
+    SeasonUploadPackage['fixtures'][number],
+    'sourceId' | 'context' | 'proposal' | 'season'
+  >;
+  innings: Pick<
+    SeasonUploadPackage['fixtures'][number]['innings'][number],
+    'sourceId' | 'context' | 'powerplays'
+  >;
   event: SeasonUploadEvent;
 }
 
@@ -315,8 +322,17 @@ async function* jsonCandidates(
               competition: envelope.competition,
               season: envelope.season,
             },
-            fixture: { sourceId: fixture.sourceId, context: fixture.context },
-            innings: { sourceId: innings.sourceId, context: innings.context },
+            fixture: {
+              sourceId: fixture.sourceId,
+              context: fixture.context,
+              proposal: fixture.proposal,
+              season: fixture.season,
+            },
+            innings: {
+              sourceId: innings.sourceId,
+              context: innings.context,
+              powerplays: innings.powerplays,
+            },
             event,
           };
         }
@@ -437,6 +453,60 @@ function reference(sourceId: string | undefined, name: string | undefined): Json
   return result;
 }
 
+// The direct-submission CSV's boolean spelling (booleanValue in submission-upload.ts):
+// blank is absent, exactly "true" or "false" is a boolean, and any other spelling is
+// passed through so the package contract rejects it rather than the parser guessing.
+function csvBoolean(value: string | undefined): boolean | string | undefined {
+  const text = optional(value);
+  if (text === 'true') return true;
+  if (text === 'false') return false;
+  return text;
+}
+
+const CSV_FIELDER_SLOTS = [1, 2, 3] as const;
+
+/**
+ * The dismissal columns of one CSV row in the season-upload wicket shape. A row can
+ * express one dismissal with up to three fielders; anything more needs the JSON
+ * package. Which dismissal kinds need a fielder is the contract's rule, not this one.
+ */
+function csvWickets(row: Record<string, string>): JsonObject[] | undefined {
+  const kind = optional(row.wicketKind);
+  if (kind === undefined) return undefined;
+
+  const fielders: JsonObject[] = [];
+  for (const slot of CSV_FIELDER_SLOTS) {
+    const participant = reference(row[`fielder${slot}SourceId`], row[`fielder${slot}Name`]);
+    const substitute = csvBoolean(row[`fielder${slot}Substitute`]);
+    const identified = Object.keys(participant).length > 0;
+    // An empty slot is skipped, so a filled slot after an empty one moves up and the
+    // fielders keep their order without a gap.
+    if (!identified && (substitute === undefined || substitute === false)) continue;
+    fielders.push({
+      ...(identified ? { participant } : {}),
+      ...(substitute === undefined ? {} : { substitute }),
+    });
+  }
+
+  return [{ kind, playerOut: reference(row.playerOutSourceId, row.playerOutName), fielders }];
+}
+
+const CSV_DISMISSAL_DETAIL_COLUMNS = [
+  'playerOutSourceId',
+  'playerOutName',
+  ...CSV_FIELDER_SLOTS.flatMap((slot) => [
+    `fielder${slot}SourceId`,
+    `fielder${slot}Name`,
+    `fielder${slot}Substitute`,
+  ]),
+];
+
+/** The dismissal columns filled in on a row whose wicketKind is blank. */
+function csvDismissalColumnsWithoutKind(row: Record<string, string>): string[] {
+  if (optional(row.wicketKind) !== undefined) return [];
+  return CSV_DISMISSAL_DETAIL_COLUMNS.filter((column) => optional(row[column]) !== undefined);
+}
+
 const REQUIRED_CSV_COLUMNS = [
   'contractVersion',
   'packageId',
@@ -449,7 +519,8 @@ const REQUIRED_CSV_COLUMNS = [
   'battingTeamName',
   'eventId',
   'occurrenceSequence',
-  'ballLabel',
+  'overNumber',
+  'positionInOver',
   'strikerName',
   'nonStrikerName',
   'bowlerName',
@@ -511,16 +582,35 @@ async function* csvCandidates(
     const row = Object.fromEntries(
       header.map((key, index) => [key, fields[index] ?? '']),
     ) as Record<string, string>;
+    const strayDismissalColumns = csvDismissalColumnsWithoutKind(row);
+    if (strayDismissalColumns.length > 0) {
+      // Reported rather than dropped: a dismissal whose kind was left out would
+      // otherwise reach publication as a delivery without its wicket.
+      faults.push({
+        sourceOrdinal: ordinal,
+        ruleCode: 'CSV_WICKET_KIND_MISSING',
+        filePath: 'batch.csv',
+        rowNumber,
+        fieldPath: 'wicketKind',
+        message: `wicketKind is blank but ${strayDismissalColumns.join(', ')} ${strayDismissalColumns.length === 1 ? 'is' : 'are'} filled in. Enter the dismissal kind, or clear the dismissal columns.`,
+        countsAsItem: true,
+      });
+      ordinal += 1;
+      if (ordinal > MAX_BATCH_ITEMS)
+        throw new Error(`Batch exceeds the ${String(MAX_BATCH_ITEMS)}-item limit.`);
+      continue;
+    }
     const fixtureKey =
       optional(row.fixtureSourceId) ?? `${row.fixtureDate}|${row.homeTeamName}|${row.awayTeamName}`;
     const inningsKey =
       optional(row.inningsSourceId) ?? `${fixtureKey}|${row.inningsOrdinal}|${row.battingTeamName}`;
+    const wickets = csvWickets(row);
     const event: JsonObject = {
       eventId: optional(row.eventId),
       occurrenceSequence: numeric(row.occurrenceSequence),
       overNumber: numeric(row.overNumber),
       positionInOver: numeric(row.positionInOver),
-      ballLabel: optional(row.ballLabel),
+      ...(optional(row.ballLabel) === undefined ? {} : { ballLabel: optional(row.ballLabel) }),
       operation: optional(row.operation) ?? 'upsert',
       correctsEventId: optional(row.correctsEventId),
       striker: reference(row.strikerSourceId, row.strikerName),
@@ -538,6 +628,7 @@ async function* csvCandidates(
         ...(optional(row.extraLegByes) ? { legByes: numeric(row.extraLegByes) } : {}),
         ...(optional(row.extraPenalty) ? { penalty: numeric(row.extraPenalty) } : {}),
       },
+      ...(wickets ? { wickets } : {}),
     };
     const currentOrdinal = ordinal++;
     if (ordinal > MAX_BATCH_ITEMS)
@@ -563,6 +654,20 @@ async function* csvCandidates(
             reference(row.awayTeamSourceId, row.awayTeamName),
           ],
         },
+        ...(optional(row.contractVersion) === FIXTURE_PROPOSAL_CONTRACT_VERSION
+          ? {
+              proposal: {
+                endDate: optional(row.fixtureEndDate),
+                matchType: optional(row.fixtureMatchType),
+                teamType: optional(row.fixtureTeamType),
+                gender: optional(row.fixtureGender),
+                ballsPerOver: numeric(row.fixtureBallsPerOver),
+                outcome: optional(row.fixtureOutcome),
+                sourceVersion: optional(row.fixtureSourceVersion),
+                sourceRevision: numeric(row.fixtureSourceRevision),
+              },
+            }
+          : {}),
       },
       innings: {
         sourceId: optional(row.inningsSourceId),
@@ -592,6 +697,8 @@ const ndjsonFixtureSchema = z
     fixtureKey: z.string().trim().min(1),
     sourceId: z.unknown().optional(),
     context: z.unknown().optional(),
+    season: z.unknown().optional(),
+    powerplays: z.unknown().optional(),
   })
   .passthrough();
 const ndjsonInningsSchema = z
@@ -785,8 +892,17 @@ async function* ndjsonCandidates(
           competition: manifest.competition,
           season: manifest.season,
         },
-        fixture: { sourceId: fixture.sourceId, context: fixture.context },
-        innings: { sourceId: inningsRecord.sourceId, context: inningsRecord.context },
+        fixture: {
+          sourceId: fixture.sourceId,
+          context: fixture.context,
+          proposal: fixture.proposal,
+          season: fixture.season,
+        },
+        innings: {
+          sourceId: inningsRecord.sourceId,
+          context: inningsRecord.context,
+          powerplays: inningsRecord.powerplays,
+        },
         event,
       };
       continue;
@@ -865,10 +981,16 @@ function normaliseCandidate(candidate: BatchCandidate): {
         competition: parsed.competition,
         season: parsed.season,
       },
-      fixture: { sourceId: parsed.fixtures[0]!.sourceId, context: parsed.fixtures[0]!.context },
+      fixture: {
+        sourceId: parsed.fixtures[0]!.sourceId,
+        context: parsed.fixtures[0]!.context,
+        proposal: parsed.fixtures[0]!.proposal,
+        season: parsed.fixtures[0]!.season,
+      },
       innings: {
         sourceId: parsed.fixtures[0]!.innings[0]!.sourceId,
         context: parsed.fixtures[0]!.innings[0]!.context,
+        powerplays: parsed.fixtures[0]!.innings[0]!.powerplays,
       },
       event: parsed.fixtures[0]!.innings[0]!.events[0]!,
     },
@@ -881,7 +1003,11 @@ class BatchIntegrityScanner {
   private readonly sequencesByInnings = new Map<string, Set<number>>();
 
   add(candidate: NormalisedCandidate): SourceFault | null {
-    const fingerprint = JSON.stringify(candidate.packageEnvelope);
+    const fingerprint = JSON.stringify({
+      contractVersion: candidate.packageEnvelope.contractVersion,
+      packageId: candidate.packageEnvelope.packageId,
+      competition: candidate.packageEnvelope.competition,
+    });
     if (this.envelopeFingerprint === null) {
       this.envelopeFingerprint = fingerprint;
     } else if (this.envelopeFingerprint !== fingerprint) {
@@ -942,8 +1068,7 @@ class ReferencePackageBuilder {
       this.packageValue.contractVersion !== candidate.packageEnvelope.contractVersion ||
       this.packageValue.packageId !== candidate.packageEnvelope.packageId ||
       JSON.stringify(this.packageValue.competition) !==
-        JSON.stringify(candidate.packageEnvelope.competition) ||
-      JSON.stringify(this.packageValue.season) !== JSON.stringify(candidate.packageEnvelope.season)
+        JSON.stringify(candidate.packageEnvelope.competition)
     ) {
       return {
         fault: {
@@ -1073,10 +1198,51 @@ export async function scanBatchReferences(
   return { rejectedOrdinals, sourceFaults: faults, eventCount, fatal };
 }
 
+/**
+ * Reorders normalised candidates so that, within each fixture/innings, events
+ * are ordered by `occurrenceSequence` rather than by their position in the
+ * source file or stream (#588). Fixtures and innings themselves keep the
+ * order in which they were first encountered; only the events within one
+ * innings are reordered, so a reversed or shuffled but logically valid
+ * innings settles on the same canonical order as an already-ordered one.
+ *
+ * `occurrenceSequence` values are unique within an innings by contract
+ * (rejected earlier as `DUPLICATE_OCCURRENCE_SEQUENCE` otherwise); the
+ * original arrival ordinal is used only as a deterministic tiebreaker and
+ * should never actually apply to accepted input.
+ */
+export function canonicaliseCandidates(
+  candidates: readonly NormalisedCandidate[],
+): NormalisedCandidate[] {
+  const groupOrder: string[] = [];
+  const groups = new Map<string, NormalisedCandidate[]>();
+  for (const candidate of candidates) {
+    const key = `${candidate.fixtureKey}|${candidate.inningsKey}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = [];
+      groups.set(key, group);
+      groupOrder.push(key);
+    }
+    group.push(candidate);
+  }
+  const ordered: NormalisedCandidate[] = [];
+  for (const key of groupOrder) {
+    const group = groups.get(key)!;
+    group.sort(
+      (left, right) =>
+        left.event.occurrenceSequence - right.event.occurrenceSequence ||
+        left.ordinal - right.ordinal,
+    );
+    ordered.push(...group);
+  }
+  return ordered;
+}
+
 export function buildReferenceChunk(candidates: NormalisedCandidate[]): ReferenceChunk {
   const builder = new ReferencePackageBuilder();
   const referencePathByOrdinal = new Map<number, string>();
-  for (const candidate of candidates) {
+  for (const candidate of canonicaliseCandidates(candidates)) {
     const added = builder.add(candidate);
     if (added.fault || !added.path) {
       throw new Error(

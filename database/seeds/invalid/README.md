@@ -8,11 +8,12 @@ leaves no partial data behind.
 They are produced by `scripts/make_invalid_seeds.py` from the valid file under
 `../matches`, so the defect is the only difference.
 
-| File                              | Defect                                                                         | Rejected by                                                                                                                |
-| --------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `unregistered-name.json`          | The batter on the first delivery is a name absent from `info.registry.people`. | Application check in `ingest-match.ts`. Names are not identifiers; a name the registry omits cannot be resolved to anyone. |
-| `inconsistent-runs.json`          | `runs.total` on the first delivery is 6 where batter plus extras is 4.         | `delivery_runs_ck`.                                                                                                        |
-| `striker-equals-non-striker.json` | The non-striker on the first delivery is the same person as the batter.        | `delivery_striker_ck`.                                                                                                     |
+| File                              | Defect                                                                         | Rejected by                                                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `unregistered-name.json`          | The batter on the first delivery is a name absent from `info.registry.people`. | Application check in `ingest-match.ts`. Names are not identifiers; a name the registry omits cannot be resolved to anyone.                                   |
+| `inconsistent-runs.json`          | `runs.total` on the first delivery is 6 where batter plus extras is 4.         | `delivery_runs_ck`.                                                                                                                                          |
+| `striker-equals-non-striker.json` | The non-striker on the first delivery is the same person as the batter.        | `delivery_striker_ck`.                                                                                                                                       |
+| `negative-extra.json`             | `extras.wides` on the first delivery is -1.                                    | Contract validation in `ingest-match-data.ts`, before any row is written. `delivery_extra_wides_nonnegative_ck` would reject it if that check were bypassed. |
 
 Rejection happens at two layers: the application refuses input it cannot resolve,
 and the database refuses rows that violate its own rules. Neither layer is relied
@@ -29,3 +30,4 @@ Run it with `npm run test:database` from the repository root.
 
 The preceding document was generated with the assistance of Claude-Web[Claude Opus 5]
 and reviewed and edited with the assistance of Codex[GPT-5].
+The issue #623 negative-extra example was added with the assistance of Claude-Code[Claude Opus 5].

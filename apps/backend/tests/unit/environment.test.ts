@@ -36,10 +36,13 @@ describe('backend environment', () => {
       loadEnvironment({
         ...requiredEnvironment,
         NODE_ENV: 'production',
+        OBJECT_STORAGE_PROVIDER: 'azure',
         AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+        AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
       }),
     ).toThrow(
-      'Invalid environment configuration: AZURE_STORAGE_ACCOUNT_NAME: Azure storage account name is required in production',
+      'Invalid environment configuration: AZURE_STORAGE_ACCOUNT_NAME: Azure storage account name is required for the Azure provider',
     );
   });
 
@@ -48,10 +51,51 @@ describe('backend environment', () => {
       loadEnvironment({
         ...requiredEnvironment,
         NODE_ENV: 'production',
+        OBJECT_STORAGE_PROVIDER: 'azure',
         AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+        AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
       }),
     ).toThrow(
-      'Invalid environment configuration: AZURE_STORAGE_CONTAINER_NAME: Azure storage container name is required in production',
+      'Invalid environment configuration: AZURE_STORAGE_CONTAINER_NAME: Azure storage container name is required for the Azure provider',
+    );
+  });
+
+  it('requires an explicit object-storage provider in production', () => {
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        NODE_ENV: 'production',
+        AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+        AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: OBJECT_STORAGE_PROVIDER: Object storage provider is required in production',
+    );
+  });
+
+  it('rejects filesystem object storage in production', () => {
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        NODE_ENV: 'production',
+        OBJECT_STORAGE_PROVIDER: 'filesystem',
+        OBJECT_STORAGE_FILESYSTEM_ROOT: '.local/object-storage',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: OBJECT_STORAGE_PROVIDER: Production object storage provider must be azure',
+    );
+  });
+
+  it('requires a root when the filesystem provider is selected', () => {
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        OBJECT_STORAGE_PROVIDER: 'filesystem',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: OBJECT_STORAGE_FILESYSTEM_ROOT: Filesystem object storage root is required for the filesystem provider',
     );
   });
 
@@ -59,8 +103,11 @@ describe('backend environment', () => {
     const environment = loadEnvironment({
       ...requiredEnvironment,
       NODE_ENV: 'production',
+      OBJECT_STORAGE_PROVIDER: 'azure',
       AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
       AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+      AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+      DEPLOYMENT_ENVIRONMENT: 'dev',
       AZURE_STORAGE_CONNECTION_STRING: 'unsupported',
       AZURE_STORAGE_ACCOUNT_KEY: 'unsupported',
       AZURE_STORAGE_SAS_TOKEN: 'unsupported',

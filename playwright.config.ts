@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const testPort = process.env.PLAYWRIGHT_PORT ?? '4173';
-const baseURL = `http://127.0.0.1:${testPort}`;
+const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
+const baseURL = externalBaseURL ?? `http://127.0.0.1:${testPort}`;
 const reuseProductionBuild = process.env.PLAYWRIGHT_REUSE_BUILD === '1';
 const ciWorkers = Number.parseInt(process.env.PLAYWRIGHT_WORKERS ?? '2', 10);
 
@@ -28,17 +29,20 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: webServerCommand,
-    env: {
-      ...process.env,
-      VITE_SUPABASE_URL: 'https://e2e.supabase.co',
-      VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-public-key',
-    },
-    url: baseURL,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: webServerCommand,
+        env: {
+          ...process.env,
+          VITE_API_BASE_URL: process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://localhost:3000/api/v1',
+          VITE_SUPABASE_URL: 'https://e2e.supabase.co',
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-public-key',
+        },
+        url: baseURL,
+        reuseExistingServer: false,
+        timeout: 120_000,
+      },
   projects: [
     {
       name: 'desktop-chromium',

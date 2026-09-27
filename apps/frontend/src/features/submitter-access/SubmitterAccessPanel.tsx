@@ -1,5 +1,5 @@
 import type { Competition, CurrentUserProfile } from '@sport-analytics/contracts';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
 import { CurrentUserContractError, getCurrentUserProfile } from '../auth/current-user-api';
@@ -59,12 +59,138 @@ function requestErrorMessage(error: unknown): string {
   return 'Your request could not be submitted. Please try again.';
 }
 
+interface RequestCompetitionDialogProps {
+  competitions: Competition[];
+  selectedCompetitionId: string;
+  isSubmitting: boolean;
+  error: string | null;
+  onSelect: (competitionId: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onClose: () => void;
+}
+
+function RequestCompetitionDialog({
+  competitions,
+  selectedCompetitionId,
+  isSubmitting,
+  error,
+  onSelect,
+  onSubmit,
+  onClose,
+}: RequestCompetitionDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    selectRef.current?.focus();
+  }, []);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      if (isSubmitting) return;
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), select:not(:disabled)',
+    );
+    if (!controls?.length) return;
+    const first = controls[0]!;
+    const last = controls[controls.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  return (
+    <div
+      className="submitter-access-dialog-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !isSubmitting) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="submitter-access-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="request-competition-dialog-title"
+        onKeyDown={handleKeyDown}
+      >
+        <h2 id="request-competition-dialog-title">Request additional competition</h2>
+        <form className="submitter-access-request" onSubmit={onSubmit}>
+          <label htmlFor="submitter-access-competition">Additional competition</label>
+          <select
+            id="submitter-access-competition"
+            ref={selectRef}
+            value={selectedCompetitionId}
+            onChange={(event) => onSelect(event.target.value)}
+            disabled={isSubmitting}
+          >
+            {competitions.map((competition) => (
+              <option key={competition.competitionId} value={competition.competitionId}>
+                {competition.name}
+              </option>
+            ))}
+          </select>
+          <p className="field-help">
+            Requesting another competition does not grant access immediately. An administrator must
+            approve it.
+          </p>
+          {error ? (
+            <p className="submitter-access-feedback submitter-access-feedback--error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="submitter-access-dialog__actions">
+            <button
+              className="button button--secondary"
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              className="button button--primary"
+              type="submit"
+              disabled={isSubmitting || !selectedCompetitionId}
+            >
+              {isSubmitting ? 'Requesting scope…' : 'Request competition'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function SubmitterAccessPanel() {
   const client = useAuthenticatedApiClient();
   const [profileState, setProfileState] = useState<ProfileState>({ kind: 'loading' });
   const [selectedCompetitionId, setSelectedCompetitionId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const requestTriggerRef = useRef<HTMLButtonElement>(null);
+
+  function openRequestModal() {
+    setModalError(null);
+    setIsRequestModalOpen(true);
+  }
+
+  function closeRequestModal() {
+    setIsRequestModalOpen(false);
+    setModalError(null);
+    requestTriggerRef.current?.focus();
+  }
 
   const loadProfile = useCallback(
     async (signal?: AbortSignal) => {
@@ -135,6 +261,7 @@ export function SubmitterAccessPanel() {
     const additionalScope = existingProfile.role === 'submitter';
     setIsSubmitting(true);
     setFeedback(null);
+    if (additionalScope) setModalError(null);
 
     try {
       if (additionalScope) {
@@ -148,6 +275,7 @@ export function SubmitterAccessPanel() {
           kind: 'success',
           message: `Your request for ${result.data.requestedCompetition.name} was submitted. Your current competition access is unchanged while an administrator reviews it.`,
         });
+        closeRequestModal();
       } else {
         const result = await requestSubmitterAccess(client, selectedCompetitionId);
         setProfileState({
@@ -181,9 +309,18 @@ export function SubmitterAccessPanel() {
       }
     } catch (error) {
       if (error instanceof ApiResponseError && error.status === 409) {
-        if (await refreshAfterConflict(existingCompetitions)) return;
+        if (await refreshAfterConflict(existingCompetitions)) {
+          if (additionalScope) closeRequestModal();
+          return;
+        }
       }
-      setFeedback({ kind: 'error', message: requestErrorMessage(error) });
+      const message = requestErrorMessage(error);
+      if (additionalScope) {
+        // Keep the modal open on failure so the user can retry without re-opening it.
+        setModalError(message);
+      } else {
+        setFeedback({ kind: 'error', message });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -291,35 +428,14 @@ export function SubmitterAccessPanel() {
               submission access is unchanged until an administrator approves it.
             </p>
           ) : scopeView?.availableAdditional.length ? (
-            <form
-              className="submitter-access-request"
-              onSubmit={(event) => void handleRequest(event)}
+            <button
+              ref={requestTriggerRef}
+              className="button button--secondary"
+              type="button"
+              onClick={openRequestModal}
             >
-              <label htmlFor="submitter-access-competition">Additional competition</label>
-              <select
-                id="submitter-access-competition"
-                value={selectedCompetitionId}
-                onChange={(event) => setSelectedCompetitionId(event.target.value)}
-                disabled={isSubmitting}
-              >
-                {scopeView.availableAdditional.map((competition) => (
-                  <option key={competition.competitionId} value={competition.competitionId}>
-                    {competition.name}
-                  </option>
-                ))}
-              </select>
-              <p className="field-help">
-                Requesting another competition does not grant access immediately. An administrator
-                must approve it.
-              </p>
-              <button
-                className="button button--secondary"
-                type="submit"
-                disabled={isSubmitting || !selectedCompetitionId}
-              >
-                {isSubmitting ? 'Requesting scope…' : 'Request additional competition'}
-              </button>
-            </form>
+              Request additional competition
+            </button>
           ) : (
             <p className="submitter-access-panel__empty" role="status">
               No additional competitions are currently available to request.
@@ -397,6 +513,18 @@ export function SubmitterAccessPanel() {
         >
           {feedback.message}
         </p>
+      ) : null}
+
+      {isRequestModalOpen && scopeView?.availableAdditional.length ? (
+        <RequestCompetitionDialog
+          competitions={scopeView.availableAdditional}
+          selectedCompetitionId={selectedCompetitionId}
+          isSubmitting={isSubmitting}
+          error={modalError}
+          onSelect={setSelectedCompetitionId}
+          onSubmit={(event) => void handleRequest(event)}
+          onClose={closeRequestModal}
+        />
       ) : null}
     </section>
   );

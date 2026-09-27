@@ -34,59 +34,71 @@ export type AccessTokenProvider = () => string | null;
 
 export interface AuthenticatedApiClient {
   request<ResponseBody>(path: string, init?: RequestInit): Promise<ResponseBody>;
+  requestWithStatus<ResponseBody>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<{ status: number; body: ResponseBody }>;
 }
 
 export function createAuthenticatedApiClient(
   getAccessToken: AccessTokenProvider,
 ): AuthenticatedApiClient {
+  async function requestWithStatus<ResponseBody>(
+    path: string,
+    init: RequestInit = {},
+  ): Promise<{ status: number; body: ResponseBody }> {
+    const headers = new Headers(init.headers);
+    const accessToken = getAccessToken();
+
+    if (!headers.has('Accept')) {
+      headers.set('Accept', 'application/json');
+    }
+
+    if (accessToken) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+    } else {
+      headers.delete('Authorization');
+    }
+
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const response = await fetch(`${apiBaseUrl}${normalizedPath}`, {
+      ...init,
+      headers,
+    });
+
+    if (!response.ok) {
+      let body: unknown = null;
+
+      try {
+        body = await response.json();
+      } catch {
+        // Some infrastructure failures have no JSON body. The status-based
+        // fallback below still gives the interface a safe error state.
+      }
+
+      const errorResponse = apiErrorResponseSchema.safeParse(body);
+
+      if (errorResponse.success) {
+        throw new ApiResponseError(response.status, errorResponse.data.error.message, {
+          code: errorResponse.data.error.code,
+          details: errorResponse.data.error.details,
+        });
+      }
+
+      throw new ApiResponseError(response.status);
+    }
+
+    const body =
+      response.status === 204
+        ? (undefined as ResponseBody)
+        : ((await response.json()) as ResponseBody);
+    return { status: response.status, body };
+  }
+
   return {
     async request<ResponseBody>(path: string, init: RequestInit = {}): Promise<ResponseBody> {
-      const headers = new Headers(init.headers);
-      const accessToken = getAccessToken();
-
-      if (!headers.has('Accept')) {
-        headers.set('Accept', 'application/json');
-      }
-
-      if (accessToken) {
-        headers.set('Authorization', `Bearer ${accessToken}`);
-      } else {
-        headers.delete('Authorization');
-      }
-
-      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-      const response = await fetch(`${apiBaseUrl}${normalizedPath}`, {
-        ...init,
-        headers,
-      });
-
-      if (!response.ok) {
-        let body: unknown = null;
-
-        try {
-          body = await response.json();
-        } catch {
-          // Some infrastructure failures have no JSON body. The status-based
-          // fallback below still gives the interface a safe error state.
-        }
-
-        const errorResponse = apiErrorResponseSchema.safeParse(body);
-
-        if (errorResponse.success) {
-          throw new ApiResponseError(response.status, errorResponse.data.error.message, {
-            code: errorResponse.data.error.code,
-            details: errorResponse.data.error.details,
-          });
-        }
-
-        throw new ApiResponseError(response.status);
-      }
-
-      if (response.status === 204) {
-        return undefined as ResponseBody;
-      }
-
-      return (await response.json()) as ResponseBody;
+      return (await requestWithStatus<ResponseBody>(path, init)).body;
     },
+    requestWithStatus,
   };
 }

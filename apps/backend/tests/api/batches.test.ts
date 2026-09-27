@@ -4,7 +4,11 @@ import { describe, expect, test, vi } from 'vitest';
 import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { SynchronizeAccount } from '../../src/modules/accounts/account.service';
 import type { BatchService } from '../../src/modules/batches/batch.service';
-import { BatchConflictError, BatchForbiddenError } from '../../src/modules/batches/batch.service';
+import {
+  BatchConflictError,
+  BatchForbiddenError,
+  BatchParticipantOnboardingError,
+} from '../../src/modules/batches/batch.service';
 import { createTestAccount, createTestApp } from '../test-app';
 
 const acceptToken: VerifyAccessToken = async () => ({
@@ -31,6 +35,7 @@ const status = {
     updatedAt: '2026-09-03T10:00:00.000Z',
     progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
     counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+    lineage: { replacesBatchReference: null, supersededByBatchReference: null },
     review: null,
   },
 };
@@ -84,6 +89,20 @@ function service(overrides: Partial<BatchService> = {}): BatchService {
         submittedAt: '2026-09-11T12:00:00.000Z',
       },
     }),
+    decideParticipantOnboarding: vi
+      .fn<BatchService['decideParticipantOnboarding']>()
+      .mockResolvedValue({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-23T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
     ...overrides,
   };
 }
@@ -139,6 +158,34 @@ describe('batch receipt API', () => {
     expect(batchService.receive).toHaveBeenCalledWith(
       account,
       expect.objectContaining({ competitionId: '5', mediaType: 'application/x-ndjson' }),
+      expect.anything(),
+    );
+  });
+
+  test('passes an explicit correction replacement reference to the receipt service', async () => {
+    const receive = vi.fn<BatchService['receive']>().mockResolvedValue(receipt);
+    const batchService = service({ receive });
+    const account = createTestAccount({ role: 'submitter', competitionIds: ['5'] });
+    await post(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(account),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        batchService,
+      ),
+    )
+      .set('X-Replaces-Batch-Reference', reference)
+      .expect(202);
+    expect(receive).toHaveBeenCalledWith(
+      account,
+      expect.objectContaining({ replacesBatchReference: reference }),
       expect.anything(),
     );
   });
@@ -657,6 +704,79 @@ describe('batch receipt API', () => {
       .expect(403);
   });
 
+  test('returns a generic error for an unexpected conflict-resolution failure and keeps 409 wording', async () => {
+    // #529: the deployed failure was a raw database error inside resolution. It must
+    // reach the reviewer as a generic 500 with no database or constraint detail,
+    // while a known conflict keeps its actionable 409 message.
+    const requestBody = {
+      itemOrdinal: 0,
+      existingDeliveryId: '2342246',
+      decision: 'use_existing' as const,
+      reason: 'The published delivery is the verified record.',
+    };
+    const app = (resolvePublishedConflict: BatchService['resolvePublishedConflict']) =>
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        service({ resolvePublishedConflict }),
+      );
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    try {
+      const failed = await request(
+        app(
+          vi
+            .fn<BatchService['resolvePublishedConflict']>()
+            .mockRejectedValue(
+              new Error('column "source_event_id" does not exist in delivery_current'),
+            ),
+        ),
+      )
+        .post(`/api/v1/batches/${reference}/conflicts/resolve`)
+        .set('Authorization', 'Bearer batch-token')
+        .send(requestBody)
+        .expect(500);
+      expect(failed.body).toEqual({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected server error occurred.',
+        },
+      });
+      expect(JSON.stringify(failed.body)).not.toMatch(/source_event_id|delivery_current|column/);
+
+      const conflicted = await request(
+        app(
+          vi
+            .fn<BatchService['resolvePublishedConflict']>()
+            .mockRejectedValue(
+              new BatchConflictError(
+                'The published conflict changed or is ambiguous. Refresh the report before deciding.',
+              ),
+            ),
+        ),
+      )
+        .post(`/api/v1/batches/${reference}/conflicts/resolve`)
+        .set('Authorization', 'Bearer batch-token')
+        .send(requestBody)
+        .expect(409);
+      expect(conflicted.body.error).toEqual({
+        code: 'BATCH_CONFLICT_RESOLUTION_CONFLICT',
+        message:
+          'The published conflict changed or is ambiguous. Refresh the report before deciding.',
+      });
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   test('restricts canonical fixture creation to administrators and routes a valid decision', async () => {
     const createCanonicalFixture = vi
       .fn<BatchService['createCanonicalFixture']>()
@@ -715,5 +835,169 @@ describe('batch receipt API', () => {
       reference,
       requestBody,
     );
+  });
+
+  test('restricts participant onboarding decisions to administrators and routes a valid array', async () => {
+    const decideParticipantOnboarding = vi
+      .fn<BatchService['decideParticipantOnboarding']>()
+      .mockResolvedValue({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-23T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      });
+    const requestBody = {
+      decisionKey: 'onboard-participants',
+      decisions: [
+        { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11' },
+        {
+          taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+          sourceId: 'cricsheet:participant:abc123',
+        },
+        // A team_not_recognised task: the team the reviewer named travels
+        // alongside the identity, because neither half implies the other.
+        {
+          taskReference: '4e6f8a0b-3c7d-4e9f-a1b2-5d7e9f1a3b5c',
+          sourceId: 'cricsheet:participant:def456',
+          teamName: 'North',
+        },
+      ],
+    };
+    const app = (role: 'admin' | 'submitter') =>
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronize(createTestAccount({ role, competitionIds: ['5'] })),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        service({ decideParticipantOnboarding }),
+      );
+
+    // Same authorisation as every other reviewer decision.
+    await request(app('submitter'))
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(403);
+
+    await request(app('admin'))
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send(requestBody)
+      .expect(202);
+
+    expect(decideParticipantOnboarding).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      reference,
+      requestBody,
+    );
+  });
+
+  test('reports every onboarding fault with the task it belongs to', async () => {
+    const faults = [
+      {
+        taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+        code: 'TEAM_NOT_IN_FIXTURE' as const,
+        message: 'Name one of the two teams of the fixture this task belongs to.',
+      },
+      {
+        taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+        code: 'CANDIDATE_NOT_OFFERED' as const,
+        message: 'Choose one of the candidates this task offered.',
+      },
+    ];
+    const decideParticipantOnboarding = vi
+      .fn<BatchService['decideParticipantOnboarding']>()
+      .mockRejectedValue(new BatchParticipantOnboardingError(faults));
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ decideParticipantOnboarding }),
+    );
+
+    const response = await request(adminApp)
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({
+        decisionKey: 'onboard',
+        decisions: [
+          { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', personId: '11' },
+          {
+            taskReference: '9d2b7e5f-2a6b-4c3d-8e4f-3b5c7d9e1f2a',
+            sourceId: 'cricsheet:participant:abc123',
+          },
+        ],
+      })
+      .expect(409);
+
+    // Both of them, each naming its own task. The array is applied all or
+    // nothing, so a reviewer correcting one fault at a time would resubmit
+    // once per broken decision to discover the rest.
+    expect(response.body.error.code).toBe('BATCH_PARTICIPANT_ONBOARDING_CONFLICT');
+    expect(response.body.error.details).toEqual(faults);
+  });
+
+  test('refuses a participant onboarding decision that answers nothing', async () => {
+    const decideParticipantOnboarding = vi.fn<BatchService['decideParticipantOnboarding']>();
+    const adminApp = createTestApp(
+      acceptToken,
+      undefined,
+      synchronize(createTestAccount({ role: 'admin', competitionIds: ['5'] })),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      service({ decideParticipantOnboarding }),
+    );
+
+    // A decision needs exactly one identity. Two identities for one participant
+    // have no meaning, none is not a decision, and a team is not an identity:
+    // it says where a participant belongs, never who they are.
+    for (const decision of [
+      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d' },
+      {
+        taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d',
+        personId: '11',
+        sourceId: 'cricsheet:participant:abc123',
+      },
+      { taskReference: '7c1a8f4e-1f5a-4f2b-9c3d-2e4f6a8b0c1d', teamName: 'North' },
+    ]) {
+      await request(adminApp)
+        .post(`/api/v1/batches/${reference}/participants`)
+        .set('Authorization', 'Bearer batch-token')
+        .send({ decisionKey: 'onboard', decisions: [decision] })
+        .expect(422);
+    }
+
+    // An empty array is not a request to do nothing; it is a malformed request.
+    await request(adminApp)
+      .post(`/api/v1/batches/${reference}/participants`)
+      .set('Authorization', 'Bearer batch-token')
+      .send({ decisionKey: 'onboard', decisions: [] })
+      .expect(422);
+
+    expect(decideParticipantOnboarding).not.toHaveBeenCalled();
   });
 });

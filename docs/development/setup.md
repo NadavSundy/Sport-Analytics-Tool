@@ -23,13 +23,13 @@ Each listed README is the component's getting-started entry point. Separate `GET
 
 ## 1. Required software
 
-| Tool    | Project requirement                                      | Why it is needed                                                                            |
-| ------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Git     | Git 2.x                                                  | Clone, branch, commit and Pull Request workflow.                                            |
-| Node.js | 20 or later                                              | Backend runtime and all JavaScript/TypeScript tooling. Azure currently uses Node.js 22 LTS. |
-| npm     | 10 or later                                              | Workspace installation and repository scripts.                                              |
-| Python  | 3.10 or later                                            | MkDocs documentation and the Cricsheet downloader.                                          |
-| Docker  | Docker Desktop or compatible Docker runtime with Compose | Optional explicit PostgreSQL integration-test workflow.                                     |
+| Tool    | Project requirement                                      | Why it is needed                                                                                                       |
+| ------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Git     | Git 2.x                                                  | Clone, branch, commit and Pull Request workflow.                                                                       |
+| Node.js | 20.19+ (20.x) or 22.12+                                  | Backend runtime and all JavaScript/TypeScript tooling. Vite 7 sets this floor; Azure and hosted CI use Node.js 22 LTS. |
+| npm     | 10 or later                                              | Workspace installation and repository scripts.                                                                         |
+| Python  | 3.10 or later                                            | MkDocs documentation and the Cricsheet downloader.                                                                     |
+| Docker  | Docker Desktop or compatible Docker runtime with Compose | Optional explicit PostgreSQL integration-test workflow.                                                                |
 
 Optional:
 
@@ -459,7 +459,7 @@ node --version
 npm --version
 ```
 
-Use Node.js 20+ and npm 10+.
+Use Node.js 20.19+ (20.x) or Node.js 22.12+ and npm 10+.
 
 ### PowerShell blocks virtual-environment activation
 

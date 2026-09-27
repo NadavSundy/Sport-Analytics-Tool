@@ -10,6 +10,8 @@ import { PlayerPerformance } from './StatisticsPages';
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 function response(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -51,6 +53,7 @@ function traceEvents(count: number) {
     extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
     nonBoundary: false,
     bowlerWickets: 0,
+    wicketsLost: 0,
   }));
 }
 
@@ -116,7 +119,17 @@ const inningsStatistic = {
   competitorId: 'team-1',
   competitorName: 'Wanderers',
   sourceEventCount: 120,
-  metrics: { deliveryRuns: 154, penaltyRuns: 5, totalRuns: 159 },
+  metrics: {
+    deliveryRuns: 154,
+    penaltyRuns: 5,
+    totalRuns: 159,
+    wicketsLost: 6,
+    legalBalls: 120,
+    overs: '20.0',
+    runRate: 7.95,
+    powerplay: null,
+    extras: { total: 9, wides: 2, noBalls: 1, byes: 0, legByes: 1, penaltyRuns: 5 },
+  },
 };
 
 const participantStatistic = {
@@ -169,9 +182,104 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
+
+const teamNames: Record<string, string> = { 'team-1': 'Wanderers', 'team-2': 'Strikers' };
+
+function inningsFor(competitorId: string, inningsOrdinal: number) {
+  return {
+    ...inningsStatistic,
+    statisticId: `stat-innings-${inningsOrdinal}`,
+    inningsId: `innings-${inningsOrdinal}`,
+    inningsOrdinal,
+    competitorId,
+    competitorName: teamNames[competitorId],
+  };
+}
+
+// A player statistic as the endpoint returns it. A null batting position is a
+// player who was selected but did not bat.
+function playerStatistic(
+  participantId: string,
+  participantName: string,
+  competitorId: string | null,
+  battingPosition: number | null,
+) {
+  return {
+    ...participantStatistic,
+    statisticId: `stat-participant-${participantId}`,
+    participantId,
+    participantName,
+    competitorId,
+    competitorName: competitorId === null ? null : teamNames[competitorId],
+    battingPosition,
+    ...(battingPosition === null
+      ? { battingParticipation: 'did_not_bat' as const, dismissal: null, batting: null }
+      : {}),
+  };
+}
+
+function renderFixtureStatistics(statistics: unknown[]) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/fixtures/fixture-1')) {
+        return Promise.resolve(response(200, { data: fixture }));
+      }
+      if (url.endsWith('/fixtures/fixture-1/weather')) {
+        return Promise.resolve(response(200, { data: unavailableWeather }));
+      }
+      if (url.includes('/participants?')) {
+        return Promise.resolve(collection([]));
+      }
+      if (url.endsWith('/fixtures/fixture-1/statistics')) {
+        return Promise.resolve(
+          response(200, {
+            data: {
+              fixtureId: 'fixture-1',
+              status: 'complete',
+              scope: { superOversIncluded: false },
+              outcome,
+              highestScorers: [
+                {
+                  participantId: 'player-1',
+                  participantName: 'A Player',
+                  competitorId: 'team-1',
+                  competitorName: 'Wanderers',
+                  inningsId: 'innings-1',
+                  inningsOrdinal: 0,
+                  runsScored: 42,
+                  notOut: true,
+                },
+              ],
+              warnings: [],
+              statistics,
+            },
+          }),
+        );
+      }
+      return Promise.resolve(notMocked());
+    }),
+  );
+  renderRoute('/fixtures/fixture-1/statistics');
+}
+
+// Every team group in the order it is rendered, with the player named on each of
+// its cards in the order those cards are rendered.
+async function renderedPlayerGroups() {
+  await screen.findByRole('heading', { name: 'Batting scorecard' });
+  return screen.getAllByRole('table', { name: /batting scorecard$/ }).map((table) => ({
+    team: table.querySelector('caption')?.textContent?.replace(' batting scorecard', ''),
+    players: within(table)
+      .getAllByRole('rowheader')
+      .map((heading) => heading.textContent),
+  }));
+}
 
 describe('public fixture statistics pages', () => {
   beforeEach(() => {
@@ -256,7 +364,15 @@ describe('public fixture statistics pages', () => {
     expect(screen.queryByText('Balls faced')).not.toBeInTheDocument();
   });
 
-  it('automatically loads the match overview, statistics, and participating players anonymously', async () => {
+  it('links fixture statistics to the shared player-comparison journey', async () => {
+    renderFixtureStatistics([inningsStatistic, participantStatistic]);
+
+    expect(
+      await screen.findByRole('link', { name: 'Compare player performances' }),
+    ).toHaveAttribute('href', '/participants/compare?fixtureId=fixture-1');
+  });
+
+  it('loads fixture statistics anonymously from the statistics deep link', async () => {
     let resolveStatistics!: (value: Response) => void;
     const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
@@ -274,16 +390,15 @@ describe('public fixture statistics pages', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
+      await screen.findByRole('heading', { level: 1, name: 'Loading fixture statistics' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Loading match statistics' })).toBeInTheDocument();
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+        `${testApiBaseUrl}/fixtures/fixture-1/statistics`,
         expect.objectContaining({ headers: { Accept: 'application/json' } }),
       ),
     );
@@ -295,42 +410,61 @@ describe('public fixture statistics pages', () => {
           status: 'complete',
           scope: { superOversIncluded: false },
           outcome,
+          highestScorers: [
+            {
+              participantId: 'player-1',
+              participantName: 'A Player',
+              competitorId: 'team-1',
+              competitorName: 'Wanderers',
+              inningsId: 'innings-1',
+              inningsOrdinal: 0,
+              runsScored: 42,
+              notOut: true,
+            },
+          ],
           warnings: [],
           statistics: [inningsStatistic, participantStatistic],
         },
       }),
     );
 
-    expect(await screen.findByText('Complete data')).toBeInTheDocument();
-    expect(screen.getByText('Wanderers won by 5 wickets.')).toBeInTheDocument();
-
-    const teamSection = screen.getByRole('heading', { name: 'Innings totals' }).parentElement
-      ?.parentElement?.parentElement;
-    expect(teamSection).toBeTruthy();
-    expect(within(teamSection as HTMLElement).getByText('159')).toBeInTheDocument();
     expect(
-      within(teamSection as HTMLElement).getByRole('link', { name: 'Wanderers' }),
-    ).toHaveAttribute('href', '/competitors/team-1');
-
-    const participantSection = screen.getByRole('heading', {
-      name: 'Player statistics',
-    }).parentElement?.parentElement?.parentElement;
-    expect(participantSection).toBeTruthy();
-    expect(
-      within(participantSection as HTMLElement).getByLabelText('42 not out'),
+      await screen.findByRole('heading', { level: 1, name: 'Match statistics' }),
     ).toBeInTheDocument();
-    expect(within(participantSection as HTMLElement).getByText('Wides')).toBeInTheDocument();
-    expect(within(participantSection as HTMLElement).getByText('No-balls')).toBeInTheDocument();
+    expect(await screen.findByText('Complete statistics')).toBeInTheDocument();
+    expect(screen.getByText('Wanderers won by 5 wickets.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Match leaders' })).toBeInTheDocument();
+
+    const teamSection = screen.getByRole('table', {
+      name: 'Score, progress, run rate and extras for each standard innings',
+    });
+    expect(within(teamSection).getByText('159/6')).toBeInTheDocument();
+    expect(within(teamSection).queryByText('Delivery runs')).not.toBeInTheDocument();
+    expect(within(teamSection).getByRole('link', { name: 'Wanderers' })).toHaveAttribute(
+      'href',
+      '/competitors/team-1',
+    );
+
+    const participantSection = screen.getByRole('table', {
+      name: 'Wanderers batting scorecard',
+    });
+    const bowlingSection = screen.getByRole('table', { name: 'Wanderers bowling scorecard' });
+    expect(within(participantSection).getByLabelText('42 not out')).toBeInTheDocument();
+    expect(within(bowlingSection).getByText('WD')).toBeInTheDocument();
+    expect(within(bowlingSection).getByText('NB')).toBeInTheDocument();
     expect(
-      within(participantSection as HTMLElement).getByRole('link', {
+      within(participantSection).getByRole('link', {
         name: 'A Player',
       }),
     ).toHaveAttribute('href', '/participants/player-1');
-    expect(screen.getByRole('heading', { name: 'Participating players' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Players' })).toHaveAttribute(
+      'href',
+      '/fixtures/fixture-1/players',
+    );
     expect(screen.queryByRole('link', { name: 'View fixture statistics' })).not.toBeInTheDocument();
 
     const statisticsCall = fetchMock.mock.calls.find(
-      ([url]) => String(url) === 'http://localhost:3000/api/v1/fixtures/fixture-1/statistics',
+      ([url]) => String(url) === `${testApiBaseUrl}/fixtures/fixture-1/statistics`,
     );
     const request = statisticsCall?.[1] as RequestInit;
     expect(new Headers(request.headers).has('Authorization')).toBe(false);
@@ -362,6 +496,7 @@ describe('public fixture statistics pages', () => {
                 winnerCompetitorName: null,
                 margin: null,
               },
+              highestScorers: [],
               warnings: [
                 {
                   code: 'NO_ACCEPTED_EVENTS',
@@ -375,13 +510,44 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    renderRoute('/fixtures/fixture-empty');
+    renderRoute('/fixtures/fixture-empty/statistics');
 
-    expect(await screen.findByText('Partial data')).toBeInTheDocument();
+    expect(await screen.findByText('Partial statistics')).toBeInTheDocument();
     expect(screen.getByText('No accepted delivery events are available.')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'No match statistics available' }),
     ).toBeInTheDocument();
+  });
+
+  it('treats a fixture with no published statistics as an intentional empty state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/fixtures/fixture-empty')) {
+          return Promise.resolve(
+            response(200, { data: { ...fixture, fixtureId: 'fixture-empty' } }),
+          );
+        }
+        if (url.endsWith('/fixtures/fixture-empty/statistics')) {
+          return Promise.resolve(
+            response(404, {
+              error: { code: 'NOT_FOUND', message: 'Fixture statistics not found.' },
+            }),
+          );
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-empty/statistics');
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'No published statistics are available for this fixture yet',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('communicates API failure and retries the public request', async () => {
@@ -415,6 +581,7 @@ describe('public fixture statistics pages', () => {
                   status: 'complete',
                   scope: { superOversIncluded: false },
                   outcome,
+                  highestScorers: [],
                   warnings: [],
                   statistics: [],
                 },
@@ -431,24 +598,13 @@ describe('public fixture statistics pages', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     expect(
-      await screen.findByText(
-        'Published match statistics could not be requested. Try this section again.',
-      ),
+      await screen.findByRole('heading', { name: 'Fixture statistics could not be loaded' }),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Wanderers vs Strikers',
-      }),
-    ).toBeVisible();
-
-    expect(screen.getByText('Premier Cricket League')).toBeVisible();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Retry match statistics' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(
       await screen.findByRole('heading', {
@@ -489,6 +645,7 @@ describe('public fixture statistics pages', () => {
                 },
                 nonBoundary: false,
                 bowlerWickets: 0,
+                wicketsLost: 0,
               },
             ],
           },
@@ -517,10 +674,58 @@ describe('public fixture statistics pages', () => {
     );
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true',
+        `${testApiBaseUrl}/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true`,
         expect.any(Object),
       ),
     );
+  });
+
+  // Issue #475 (P01-F12 / P02-F22): "Non-boundary: No" was shown on every delivery and
+  // neither participant could interpret it. The row now appears only on a delivery whose
+  // runs were run rather than hit to the boundary, and on no other delivery.
+  it('marks only the deliveries whose runs were run rather than hit to the boundary', async () => {
+    const [struck, run] = traceEvents(2);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (
+          url.endsWith('/fixtures/fixture-1/statistics/stat-innings-1?includeContributors=true')
+        ) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                ...inningsStatistic,
+                contributingEvents: [
+                  { ...struck, runs: { offBat: 4, extras: 0, total: 4 }, nonBoundary: false },
+                  { ...run, runs: { offBat: 4, extras: 0, total: 4 }, nonBoundary: true },
+                ],
+              },
+            }),
+          );
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
+
+    const struckDelivery = (await screen.findByRole('heading', { name: 'Delivery 1' })).closest(
+      'li',
+    ) as HTMLElement;
+    const runDelivery = screen
+      .getByRole('heading', { name: 'Delivery 2' })
+      .closest('li') as HTMLElement;
+
+    expect(within(struckDelivery).queryByText('Boundary')).not.toBeInTheDocument();
+    expect(within(struckDelivery).queryByText(/not hit to the boundary/)).not.toBeInTheDocument();
+
+    const boundaryTerm = within(runDelivery).getByText('Boundary');
+    expect(boundaryTerm.tagName).toBe('DT');
+    expect(boundaryTerm.nextElementSibling).toHaveTextContent(
+      'No — the runs were run, not hit to the boundary',
+    );
+    expect(screen.queryByText('Non-boundary')).not.toBeInTheDocument();
   });
 
   // Issue #467: the control exported a filtered slice read as one page of 100,
@@ -581,7 +786,7 @@ describe('public fixture statistics pages', () => {
 
     const requestedUrls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(requestedUrls).toContain(
-      'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-innings-1/events/export.csv',
+      `${testApiBaseUrl}/fixtures/fixture-1/statistics/stat-innings-1/events/export.csv`,
     );
     // Neither the filtered slice nor a client-chosen page is requested.
     expect(requestedUrls.some((url) => url.includes('/fixtures/fixture-1/events/export'))).toBe(
@@ -624,9 +829,58 @@ describe('public fixture statistics pages', () => {
     expect(await screen.findByText('CSV export of 6 events downloaded.')).toBeInTheDocument();
     const requestedUrls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(requestedUrls).toContain(
-      'http://localhost:3000/api/v1/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv',
+      `${testApiBaseUrl}/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv`,
     );
     expect(requestedUrls.some((url) => url.includes('participantId='))).toBe(false);
+    expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
+  });
+
+  // Issue #475 (P01-F24 / P02-F18): in Sprint 2 user testing neither participant could
+  // tell that a download had happened. The confirmation is asserted on the export
+  // section's own status region, so text elsewhere on the page cannot satisfy it, and
+  // it must be absent until the file has been produced.
+  it('confirms on screen that a completed CSV download produced a file', async () => {
+    let resolveCsv!: (value: unknown) => void;
+    const downloadedFilenames: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (
+          url.endsWith('/fixtures/fixture-1/statistics/stat-participant-1?includeContributors=true')
+        ) {
+          return Promise.resolve(
+            response(200, {
+              data: { ...participantStatistic, contributingEvents: traceEvents(6) },
+            }),
+          );
+        }
+        if (url.endsWith('/fixtures/fixture-1/statistics/stat-participant-1/events/export.csv')) {
+          return new Promise((resolve) => {
+            resolveCsv = resolve;
+          });
+        }
+        return Promise.resolve(notMocked());
+      }),
+    );
+    stubDownloads(downloadedFilenames);
+
+    renderRoute('/fixtures/fixture-1/statistics/stat-participant-1');
+
+    const exportSection = (
+      await screen.findByRole('heading', { name: 'Export this trace' })
+    ).closest('section') as HTMLElement;
+    const status = within(exportSection).getByRole('status');
+    expect(status).toBeEmptyDOMElement();
+
+    fireEvent.click(within(exportSection).getByRole('button', { name: 'Download CSV' }));
+    await waitFor(() => expect(status).toHaveTextContent('Preparing the CSV export of 6 events…'));
+    expect(status).not.toHaveTextContent('downloaded');
+    expect(downloadedFilenames).toEqual([]);
+
+    resolveCsv(exportDownload('text/csv'));
+
+    await waitFor(() => expect(status).toHaveTextContent('CSV export of 6 events downloaded.'));
     expect(downloadedFilenames).toEqual(['fixture-fixture-1-player-player-1-events.csv']);
   });
 
@@ -739,19 +993,14 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(
-      'Published match statistics could not be requested. Try this section again.',
-    );
+    expect(alert).toHaveTextContent('Fixture statistics could not be loaded');
     // The section previously discarded the reason, so every distinct failure
     // reached the reader as the same sentence.
     expect(alert).toHaveTextContent('Failed to fetch');
-    expect(screen.getByRole('button', { name: 'Retry match statistics' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   // The application mounts no error boundary, so before this guard an exception
@@ -780,6 +1029,7 @@ describe('public fixture statistics pages', () => {
               status: 'complete',
               scope: { superOversIncluded: false },
               outcome,
+              highestScorers: [],
               warnings: [],
               // The published contract accepts any non-empty identifier, so a
               // value the record links cannot encode is a contract-valid
@@ -791,16 +1041,58 @@ describe('public fixture statistics pages', () => {
       }),
     );
 
-    renderRoute('/fixtures/fixture-1');
+    renderRoute('/fixtures/fixture-1/statistics');
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Match statistics could not be loaded');
     expect(alert).toHaveTextContent('The published statistics could not be displayed.');
     expect(screen.getByRole('button', { name: 'Retry match statistics' })).toBeInTheDocument();
     // The rest of the match overview must survive the failed section.
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Premier Cricket League')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Match statistics' })).toBeInTheDocument();
+  });
+
+  // Issue #475 (P01-F09 / P02-F06): the endpoint returns player statistics in person-ID
+  // order and the cards were rendered in that order, so the two sides interleaved and
+  // neither was in batting order. The players below are listed as the endpoint lists
+  // them: Strikers are named first although Wanderers batted first. The assertion reads
+  // every group heading and card in rendered order, so cards that are merely present,
+  // or grouped but misordered, cannot pass.
+  it('groups player cards by team in innings order, each team in batting order', async () => {
+    renderFixtureStatistics([
+      inningsFor('team-1', 0),
+      inningsFor('team-2', 1),
+      playerStatistic('9', 'Ravi Dean', 'team-2', 1),
+      playerStatistic('12', 'Kai Moss', 'team-1', 2),
+      playerStatistic('14', 'Owen Hart', 'team-2', 2),
+      playerStatistic('15', 'Ben Ash', 'team-1', 1),
+      playerStatistic('21', 'Zed Park', 'team-1', null),
+      playerStatistic('27', 'Lee Grant', 'team-2', 3),
+      playerStatistic('30', 'Carl Bell', 'team-2', null),
+      playerStatistic('33', 'Adam Cole', 'team-1', null),
+    ]);
+
+    expect(await renderedPlayerGroups()).toEqual([
+      { team: 'Wanderers', players: ['Ben Ash', 'Kai Moss', 'Adam Cole', 'Zed Park'] },
+      { team: 'Strikers', players: ['Ravi Dean', 'Owen Hart', 'Lee Grant', 'Carl Bell'] },
+    ]);
+  });
+
+  // A team with no innings statistic has no innings to be placed by: here Strikers never
+  // batted, and one player could not be associated with a team. Those groups follow the
+  // team that batted, in the order the response first names them.
+  it('places teams with no innings after the teams that batted, in response order', async () => {
+    renderFixtureStatistics([
+      inningsFor('team-1', 0),
+      playerStatistic('5', 'Nia Ford', null, null),
+      playerStatistic('8', 'Tom Reid', 'team-2', null),
+      playerStatistic('10', 'Ann Lowe', 'team-1', 1),
+      playerStatistic('11', 'Jo Marsh', 'team-1', 2),
+    ]);
+
+    expect(await renderedPlayerGroups()).toEqual([
+      { team: 'Wanderers', players: ['Ann Lowe', 'Jo Marsh'] },
+      { team: 'Team unavailable', players: ['Nia Ford'] },
+      { team: 'Strikers', players: ['Tom Reid'] },
+    ]);
   });
 });

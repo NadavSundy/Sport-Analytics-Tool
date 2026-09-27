@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 
 import { seasonUploadPackageSchema, type SeasonUploadPackage } from '@sport-analytics/contracts';
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
@@ -306,6 +307,8 @@ describe.sequential('batch reference resolution database integration', () => {
     return {
       eventId: `cricsheet:delivery:${prefix}-e${String(ordinal)}`,
       occurrenceSequence: ordinal,
+      overNumber: 0,
+      positionInOver: ordinal - 1,
       striker,
       nonStriker,
       bowler,
@@ -376,6 +379,7 @@ describe.sequential('batch reference resolution database integration', () => {
       ['"Striker"', JSON.stringify(CURRENT_NAME)],
       ['"Non-striker"', JSON.stringify(`${prefix} Alias Holder A`)],
       ['"Bowler"', JSON.stringify(BOWLER_NAME)],
+      ['"Fielder"', JSON.stringify(`${prefix} Alias Holder B`)],
     ];
 
     for (const [placeholder, value] of readableValues) {
@@ -415,10 +419,37 @@ describe.sequential('batch reference resolution database integration', () => {
     );
   }
 
-  async function countRows(table: string): Promise<number> {
-    const result = await databaseClient().query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM ${table}`,
-    );
+  /**
+   * Counts only rows this suite could have created. Every name and source
+   * reference it submits carries `prefix`, so a row the resolver wrongly created
+   * from one of its packages would carry it too, or belong to one of its
+   * competitions or teams. A whole-table count would also see rows committed in
+   * the meantime by database test files running in parallel.
+   */
+  async function countTestOwnedRows(table: 'fixture' | 'team' | 'person'): Promise<number> {
+    const ownedRows = {
+      fixture: `
+        SELECT count(*)::text AS count
+        FROM fixture f
+        WHERE starts_with(f.source_ref, $1)
+           OR f.competition_id IN (
+             SELECT competition_id FROM competition WHERE starts_with(name, $1)
+           )
+           OR EXISTS (
+             SELECT 1
+             FROM fixture_team ft
+             JOIN team t ON t.team_id = ft.team_id
+             WHERE ft.fixture_id = f.fixture_id AND starts_with(t.name, $1)
+           )
+      `,
+      team: 'SELECT count(*)::text AS count FROM team WHERE starts_with(name, $1)',
+      person: `
+        SELECT count(*)::text AS count
+        FROM person
+        WHERE starts_with(display_name, $1) OR starts_with(source_ref, $1)
+      `,
+    }[table];
+    const result = await databaseClient().query<{ count: string }>(ownedRows, [prefix]);
     return Number(result.rows[0]?.count ?? '0');
   }
 
@@ -814,8 +845,8 @@ describe.sequential('batch reference resolution database integration', () => {
     ).toThrow();
   });
 
-  test('says a competition source identifier is unsupported rather than merely not found', async () => {
-    const uploadPackage = seasonUploadPackageSchema.parse({
+  test('rejects a source-only competition identifier before resolution', () => {
+    const result = seasonUploadPackageSchema.safeParse({
       contractVersion: '1.0',
       packageId: `cricsheet:package:${prefix}`,
       // A source identifier only, with no readable competition name.
@@ -841,18 +872,11 @@ describe.sequential('batch reference resolution database integration', () => {
       ],
     });
 
-    const resolution = await resolvePackageReferences(databaseClient(), uploadPackage);
-
-    const competition = outcomeAt(resolution, 'competition');
-    expect(competition.state).toBe('unresolved');
-    expect(competition.reason).toContain('not supported');
-    expect(competition.reason).toContain('can never resolve');
-    expect(competition.reason).toContain('the competition name');
+    expect(result.success).toBe(false);
   });
 
-  test('says a team source identifier is unsupported and names the key that works', async () => {
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+  test('rejects a source-only team identifier before resolution', () => {
+    expect(() =>
       singleEventPackage(
         {
           context: {
@@ -867,21 +891,11 @@ describe.sequential('batch reference resolution database integration', () => {
         participantByName(CURRENT_NAME),
         participantByName(BOWLER_NAME),
       ),
-    );
-
-    const team = outcomeAt(resolution, 'fixtures.0.context.teams.0');
-    expect(team.state).toBe('unresolved');
-    expect(team.reason).toContain('not supported');
-    expect(team.reason).toContain('the team name');
-
-    // The team it could not resolve is part of the fixture natural key, so the
-    // fixture stages too rather than resolving on one team.
-    expect(outcomeAt(resolution, 'fixtures.0').state).toBe('unresolved');
+    ).toThrow('team sourceId cannot resolve without readable context');
   });
 
-  test('says an innings source identifier alone is unsupported', async () => {
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+  test('rejects a source-only innings identifier without a durable mapping', () => {
+    expect(() =>
       buildPackage(`${prefix}-competition`, [
         {
           sourceId: `cricsheet:fixture:${records().singleFixtureSourceRef}`,
@@ -900,12 +914,7 @@ describe.sequential('batch reference resolution database integration', () => {
           ],
         },
       ]),
-    );
-
-    const innings = outcomeAt(resolution, 'fixtures.0.innings.0');
-    expect(innings.state).toBe('unresolved');
-    expect(innings.reason).toContain('not supported');
-    expect(innings.reason).toContain('the innings ordinal and batting team');
+    ).toThrow('innings sourceId without context must use a supported durable mapping');
   });
 
   test('ignores an unsupported innings source identifier when readable context is also supplied', async () => {
@@ -1093,9 +1102,13 @@ describe.sequential('batch reference resolution database integration', () => {
   });
 
   test('stages a new fixture as unresolved with no candidates, and creates nothing', async () => {
-    const fixturesBefore = await countRows('fixture');
-    const teamsBefore = await countRows('team');
-    const peopleBefore = await countRows('person');
+    const fixturesBefore = await countTestOwnedRows('fixture');
+    const teamsBefore = await countTestOwnedRows('team');
+    const peopleBefore = await countTestOwnedRows('person');
+    // The seeded suite rows must be visible, or an unchanged count proves nothing.
+    for (const count of [fixturesBefore, teamsBefore, peopleBefore]) {
+      expect(count).toBeGreaterThan(0);
+    }
 
     const resolution = await resolvePackageReferences(
       databaseClient(),
@@ -1121,9 +1134,148 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(fixture.candidates).toHaveLength(0);
     expect(fixture.reason).toContain('review decision');
 
-    expect(await countRows('fixture')).toBe(fixturesBefore);
-    expect(await countRows('team')).toBe(teamsBefore);
-    expect(await countRows('person')).toBe(peopleBefore);
+    expect(await countTestOwnedRows('fixture')).toBe(fixturesBefore);
+    expect(await countTestOwnedRows('team')).toBe(teamsBefore);
+    expect(await countTestOwnedRows('person')).toBe(peopleBefore);
+  });
+
+  test('resolves innings and squad for a genuinely new fixture once it is canonically onboarded (issue #584)', async () => {
+    const seed = records();
+    const sourceRef = `${prefix}-new-fixture-584`;
+    const newDurablePersonSourceId = `cricsheet:participant:${prefix}-new584-striker`;
+
+    const uploadPackage = singleEventPackage(
+      { sourceId: `cricsheet:fixture:${sourceRef}` },
+      {
+        sourceId: `cricsheet:participant:${prefix}-bowler`,
+        context: { name: BOWLER_NAME, team: { context: { name: `${prefix}-alpha` } } },
+      },
+      {
+        sourceId: newDurablePersonSourceId,
+        context: {
+          name: `${prefix} New584 Striker`,
+          team: { context: { name: `${prefix}-alpha` } },
+        },
+      },
+      {
+        context: {
+          name: `${prefix} New584 Bowler`,
+          team: { context: { name: `${prefix}-beta` } },
+        },
+      },
+    );
+
+    // Before onboarding: exactly the bug in issue #584. The fixture, its
+    // innings and its participants are all permanently unresolved because
+    // nothing about this fixture exists yet.
+    const before = await resolvePackageReferences(databaseClient(), uploadPackage);
+    expect(outcomeAt(before, 'fixtures.0').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0.events.0.striker').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0.events.0.nonStriker').state).toBe('unresolved');
+    expect(outcomeAt(before, 'fixtures.0.innings.0.events.0.bowler').state).toBe('unresolved');
+
+    const repository = createBatchRepository(databaseClient());
+    const batch = await repository.createBatchAndQueueValidation({
+      batchReference: randomUUID(),
+      submitterId: seed.submitterId,
+      competitionId: seed.competitionId,
+      idempotencyKey: `${prefix}-584-idempotency`,
+      source: { checksum: 'b'.repeat(64), uri: `stored-object:${prefix}-584`, sizeBytes: 1 },
+    });
+    await repository.insertBatchItems(batch.batchId, [
+      {
+        ordinal: 0,
+        overNumber: 0,
+        positionInOver: 0,
+        payload: {},
+        referenceResolutionState: 'unresolved',
+        state: 'rejected',
+        rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+      },
+    ]);
+    await databaseClient().query(`UPDATE batch SET state='rejected' WHERE batch_id=$1`, [
+      batch.batchId,
+    ]);
+    await databaseClient().query(
+      `UPDATE background_job SET state='succeeded', completed_at=now() WHERE batch_id=$1`,
+      [batch.batchId],
+    );
+
+    // This is the fix: creating the canonical fixture also onboards the
+    // innings and whatever squad members carry a durable identity.
+    const decision = await repository.createCanonicalFixtureAndQueueMapping({
+      batchId: batch.batchId,
+      batchReference: batch.batchReference,
+      competitionId: seed.competitionId,
+      actorId: seed.submitterId,
+      itemOrdinal: 0,
+      referencePath: 'fixtures.0',
+      decisionKey: '584-onboard',
+      sourceRef,
+      season: SEASON_NAME,
+      startDate: '2026-09-09',
+      teamNames: [`${prefix}-alpha`, `${prefix}-beta`],
+      proposal: {
+        endDate: '2026-09-09',
+        matchType: 'T20',
+        teamType: 'club',
+        gender: 'mixed',
+        ballsPerOver: 6,
+        outcome: 'tie',
+        sourceVersion: '1.1',
+        sourceRevision: 1,
+      },
+      innings: [{ ordinal: 0, battingTeamName: `${prefix}-alpha` }],
+      participants: [
+        {
+          sourceId: `cricsheet:participant:${prefix}-bowler`,
+          name: BOWLER_NAME,
+          teamName: `${prefix}-alpha`,
+        },
+        {
+          sourceId: newDurablePersonSourceId,
+          name: `${prefix} New584 Striker`,
+          teamName: `${prefix}-alpha`,
+        },
+        { name: `${prefix} New584 Bowler`, teamName: `${prefix}-beta` },
+      ],
+    });
+
+    expect(decision.onboarding).toEqual({
+      inningsCreated: 1,
+      squadCreated: 2,
+      unresolvedParticipants: [
+        {
+          name: `${prefix} New584 Bowler`,
+          teamName: `${prefix}-beta`,
+          reason: 'no_durable_identifier',
+          candidates: [],
+        },
+      ],
+    });
+
+    // The existing durable person was reused, not duplicated.
+    expect(
+      await scalar(`SELECT count(*)::text FROM person WHERE source_ref=$1`, [`${prefix}-bowler`]),
+    ).toBe('1');
+    expect(seed.bowlerPersonId).toEqual(
+      await scalar(`SELECT person_id::text FROM person WHERE source_ref=$1`, [`${prefix}-bowler`]),
+    );
+
+    // After onboarding: re-running the exact same, untouched reference
+    // resolver against the exact same package now resolves the fixture, its
+    // innings and its identified squad members - exactly what issue #584
+    // requires ("A newly created fixture can therefore exist while its
+    // events still fail to resolve or publish" must no longer be true). The
+    // one participant with no durable identity is correctly left unresolved
+    // rather than silently guessed at.
+    const after = await resolvePackageReferences(databaseClient(), uploadPackage);
+    expect(outcomeAt(after, 'fixtures.0').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0.events.0.striker').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0.events.0.nonStriker').state).toBe('resolved');
+    expect(outcomeAt(after, 'fixtures.0.innings.0.events.0.bowler').state).toBe('unresolved');
   });
 
   test('treats a fixture in another competition as invalid rather than resolving across the declared scope', async () => {
@@ -1171,24 +1323,19 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(striker.canonicalId).toBeNull();
   });
 
-  test('never matches a source identifier from another namespace against a stored reference', async () => {
+  test('rejects a source-only fixture identifier from another namespace before resolution', () => {
     const seed = records();
-    const resolution = await resolvePackageReferences(
-      databaseClient(),
+
+    expect(() =>
       singleEventPackage(
-        // The value is exactly the stored source reference; only the namespace
-        // differs.
+        // The identifier matches a stored source-reference value, but the
+        // unsupported namespace has no deterministic canonical mapping.
         { sourceId: `otherprovider:fixture:${seed.singleFixtureSourceRef}` },
         participantByName(BOWLER_NAME),
         participantByName(CURRENT_NAME),
         participantByName(DUPLICATE_NAME),
       ),
-    );
-
-    const fixture = outcomeAt(resolution, 'fixtures.0');
-    expect(fixture.state).toBe('unresolved');
-    expect(fixture.canonicalId).toBeNull();
-    expect(fixture.reason).toContain('otherprovider');
+    ).toThrowError(/fixture sourceId without context must use a supported durable mapping/i);
   });
 
   /**
@@ -1209,8 +1356,15 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(fixture.matchedBy).toBe('natural-key');
 
     expect(outcomeAt(resolution, 'fixtures.0.innings.0').canonicalId).toBe(seed.firstInningsId);
-    expect(resolution.items).toHaveLength(1);
-    expect(resolution.items[0]?.state).toBe('resolved');
+    // The template's second event demonstrates a caught dismissal (#536), and its
+    // dismissed player and fielder resolve by name like every other participant.
+    expect(resolution.items.map((item) => item.state)).toEqual(['resolved', 'resolved']);
+    expect(outcomeAt(resolution, 'fixtures.0.innings.0.events.1.wickets.0.playerOut').state).toBe(
+      'resolved',
+    );
+    expect(
+      outcomeAt(resolution, 'fixtures.0.innings.0.events.1.wickets.0.fielders.0.participant').state,
+    ).toBe('resolved');
   });
 
   /**
@@ -1438,6 +1592,74 @@ describe.sequential('batch reference resolution database integration', () => {
     expect(persisted.participants.striker.candidates.map((c) => c.canonicalId).sort()).toEqual(
       [...seed.duplicateNamePersonIds].sort(),
     );
+  });
+
+  test('persists complete version 1.1 fixture-proposal evidence for reviewer creation', async () => {
+    const seed = records();
+    const repository = createBatchRepository(databaseClient());
+    const batchId = await insertBatch(`${prefix}-proposal-persistence`);
+    const proposal = {
+      endDate: '2026-01-01',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'male',
+      ballsPerOver: 6,
+      outcome: 'draw',
+      sourceVersion: 'source-v1',
+      sourceRevision: 7,
+    };
+    const uploadPackage = seasonUploadPackageSchema.parse({
+      contractVersion: '1.1',
+      packageId: `cricsheet:package:${prefix}-proposal-persistence`,
+      competition: { context: { name: `${prefix}-competition` } },
+      season: { context: { name: SEASON_NAME } },
+      fixtures: [
+        {
+          sourceId: `cricsheet:fixture:${seed.singleFixtureSourceRef}`,
+          context: {
+            date: '2026-01-01',
+            teams: [
+              { context: { name: `${prefix}-alpha` } },
+              { context: { name: `${prefix}-beta` } },
+            ],
+          },
+          proposal,
+          innings: [
+            {
+              context: {
+                ordinal: 0,
+                battingTeam: { context: { name: `${prefix}-alpha` } },
+              },
+              events: [
+                event(
+                  1,
+                  participantByName(CURRENT_NAME),
+                  participantByName(BOWLER_NAME),
+                  participantByName(`${prefix} Alias Holder A`),
+                ),
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const [staged] = await repository.insertBatchItems(batchId, [
+      { ordinal: 0, overNumber: 0, positionInOver: 0, payload: { note: 'staged' } },
+    ]);
+    const [resolved] = await repository.applyReferenceResolution(
+      (await resolvePackageReferences(databaseClient(), uploadPackage)).items.map((item) => ({
+        batchItemId: staged!.batchItemId,
+        inningsId: item.inningsId,
+        sourceIdentity: item.sourceIdentity,
+        referenceResolutionState: item.state,
+        resolvedReferences: item.resolvedReferences as never,
+      })),
+    );
+
+    const persisted = resolved?.resolvedReferences as {
+      fixture: { submittedReference: { proposal: unknown } };
+    };
+    expect(persisted.fixture.submittedReference.proposal).toEqual(proposal);
   });
 
   test('resolves a resolvable item to a canonical innings when nothing is ambiguous', async () => {

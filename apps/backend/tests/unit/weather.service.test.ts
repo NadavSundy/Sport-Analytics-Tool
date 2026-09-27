@@ -75,8 +75,34 @@ describe('WeatherService', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('handles an external API failure', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+  it('retries one transient provider failure and returns weather without a caller retry', async () => {
+    const mockResponse = {
+      daily: {
+        time: ['2026-08-19'],
+        temperature_2m_max: [23.4],
+        temperature_2m_min: [10.2],
+        precipitation_sum: [0],
+        wind_speed_10m_max: [18.5],
+      },
+    };
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('Service unavailable', { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(mockResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    const result = await new WeatherService().getWeather(-26.2041, 28.0473, '2026-08-19');
+
+    expect(result.temperatureMax).toBe(23.4);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns the existing provider failure after two transient attempts', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('Service unavailable', {
         status: 503,
       }),
@@ -87,6 +113,33 @@ describe('WeatherService', () => {
     await expect(service.getWeather(-26.2041, 28.0473, '2026-08-19')).rejects.toThrow(
       'Open-Meteo request failed with status 503',
     );
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a permanent provider response', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Bad request', {
+        status: 400,
+      }),
+    );
+
+    await expect(new WeatherService().getWeather(-26.2041, 28.0473, '2026-08-19')).rejects.toThrow(
+      'Open-Meteo request failed with status 400',
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a transient network failure once before preserving the safe error path', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new TypeError('connection reset'));
+
+    await expect(new WeatherService().getWeather(-26.2041, 28.0473, '2026-08-19')).rejects.toThrow(
+      'Unable to reach Open-Meteo',
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('handles invalid JSON from the external API', async () => {

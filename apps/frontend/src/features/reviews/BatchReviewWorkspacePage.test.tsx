@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import type { BatchReportResponse } from '@sport-analytics/contracts';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -153,6 +153,7 @@ function report(blocked = true): BatchReportResponse {
           duplicate: 0,
           conflicting: 0,
         },
+        lineage: { replacesBatchReference: null, supersededByBatchReference: null },
         review: null,
       },
       errorGroups: blocked ? [{ ruleCode: 'REFERENCE_AMBIGUOUS', count: 1 }] : [],
@@ -186,7 +187,9 @@ function report(blocked = true): BatchReportResponse {
           unresolved: blocked ? 1 : 0,
         },
       ],
+      participantOnboarding: [],
       acceptedSamples: blocked ? [] : [item],
+      blockingItems: blocked ? [item] : [],
       items: [item],
       pagination: { nextCursor: 'bounded-next-page' },
       downloadUrl: `/api/v1/batches/${reference}/report/download`,
@@ -227,6 +230,120 @@ describe('reviewer batch workspace', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  test('prioritises reviewer work and supports keyboard navigation between workspace views', async () => {
+    const body = report(true);
+    body.data.blockingItems[0]!.context.fixtureLabel = 'Lions vs Bears · 2026-09-01';
+    body.data.blockingItems[0]!.referenceResolutions.push({
+      referencePath: 'fixtures.0.innings.0.events.0.striker',
+      entityType: 'participant',
+      state: 'unresolved',
+      submittedReference: {
+        context: { name: 'A. Smith', team: { context: { name: 'Lions' } } },
+      },
+      reason: 'No matching participant.',
+      requiredAction: 'contact_reviewer',
+      candidates: [],
+    });
+    body.data.reviewSummary.resolution.unresolved = 1;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const reviewTab = await screen.findByRole('tab', { name: 'Needs review (1)' });
+    expect(reviewTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: 'Reviewer actions required' })).toBeInTheDocument();
+    const overview = screen.getByRole('region', { name: 'season.csv' });
+    expect(within(overview).getByText('Needs review')).toBeInTheDocument();
+    expect(within(overview).queryByText('1 needs review')).not.toBeInTheDocument();
+    expect(within(overview).queryByText('Unresolved references')).not.toBeInTheDocument();
+    expect(within(overview).queryByText('Blocking errors')).not.toBeInTheDocument();
+
+    reviewTab.focus();
+    fireEvent.keyDown(reviewTab, { key: 'ArrowRight' });
+    const referencesTab = screen.getByRole('tab', { name: 'References (2)' });
+    expect(referencesTab).toHaveFocus();
+    expect(referencesTab).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('heading', { name: 'Informational unresolved references' }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(referencesTab, { key: 'End' });
+    expect(screen.getByRole('tab', { name: 'Review decision' })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'Review decision' })).toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: 'Batch summary' }));
+    expect(screen.getByRole('heading', { name: 'Validation and reference summary' })).toBeVisible();
+  });
+
+  test('moves sequentially between unresolved actions without mixing fixture groups', async () => {
+    const body = report(true);
+    const firstItem = body.data.blockingItems[0]!;
+    firstItem.context.fixtureLabel = 'Lions vs Bears · 2026-09-01';
+    const secondItem = structuredClone(firstItem);
+    secondItem.ordinal = 2;
+    secondItem.context.fixtureLabel = 'Wits vs UCT · 2026-09-02';
+    secondItem.referenceResolutions[0]!.referencePath = 'fixtures.1';
+    secondItem.referenceResolutions[0]!.submittedReference = 'Wits final';
+    body.data.blockingItems = [firstItem, secondItem];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByText('Review item 1 of 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Fixture group: Lions vs Bears · 2026-09-01' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Fixture group: Wits vs UCT · 2026-09-02' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous unresolved' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next unresolved' }));
+    expect(screen.getByText('Review item 2 of 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Fixture group: Wits vs UCT · 2026-09-02' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Fixture group: Lions vs Bears · 2026-09-01' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next unresolved' })).toBeDisabled();
+  });
+
+  test('shows the actual lifecycle stage and keeps resolved content accessible from the summary', async () => {
+    const body = report(false);
+    body.data.batch.status = 'validating';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByRole('tab', { name: 'Batch summary' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('list', { name: 'Batch lifecycle' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Validating', { selector: '[aria-current="step"] strong' }),
+    ).toBeVisible();
+    const resolved = screen.getByText('Show resolved content (20000 resolved references)');
+    expect(resolved).toBeInTheDocument();
+    fireEvent.click(resolved);
+    expect(screen.getByText(/Target:/)).toBeInTheDocument();
   });
 
   test('creates only a valid unresolved fixture proposal and refreshes the report', async () => {
@@ -293,6 +410,279 @@ describe('reviewer batch workspace', () => {
       ).toBe(true),
     );
     expect(screen.queryByText('Create canonical fixture from proposal')).toBeInTheDocument();
+  });
+
+  test('renders structured fixture, innings and participant references as cricket context', async () => {
+    const body = report(true);
+    body.data.blockingItems[0]!.referenceResolutions = [
+      {
+        referencePath: 'fixtures.0',
+        entityType: 'fixture',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'cricsheet:fixture:12345',
+          season: { context: { name: '2026' } },
+          context: {
+            date: '2026-01-01',
+            teams: [{ context: { name: 'Wits' } }, { context: { name: 'UCT' } }],
+          },
+        },
+        reason: 'No matching fixture.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+      {
+        referencePath: 'fixtures.0.innings.0',
+        entityType: 'innings',
+        state: 'unresolved',
+        submittedReference: {
+          context: { ordinal: 0, battingTeam: { context: { name: 'Wits' } } },
+        },
+        reason: 'Fixture must be resolved first.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+      {
+        referencePath: 'fixtures.0.innings.0.events.0.striker',
+        entityType: 'participant',
+        state: 'unresolved',
+        submittedReference: {
+          sourceId: 'cricsheet:participant:a-smith',
+          context: { name: 'A. Smith', team: { context: { name: 'Wits' } } },
+        },
+        reason: 'No matching participant.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+    ];
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 3;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'References (3)' }));
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Fixture: Wits vs UCT · 2026-01-01 · Season 2026',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Source: cricsheet:fixture:12345')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Innings: Innings 1 · Wits batting' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Participant: A. Smith · Wits' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
+  });
+
+  test('bounds large unresolved collections and filters every reference by review attributes', async () => {
+    const body = report(true);
+    body.data.blockingItems[0]!.referenceResolutions = Array.from({ length: 45 }, (_, index) => ({
+      referencePath: `fixtures.0.innings.0.events.${index}.striker`,
+      entityType: 'participant' as const,
+      state: index === 44 ? ('invalid' as const) : ('unresolved' as const),
+      submittedReference: {
+        context: { name: `Player ${index + 1}`, team: { context: { name: 'Wits' } } },
+      },
+      reason: 'No matching participant.',
+      requiredAction: 'contact_reviewer' as const,
+      candidates: [],
+    }));
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 44;
+    body.data.reviewSummary.resolution.invalid = 1;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'References (45)' }));
+
+    expect(screen.getByText('45 unresolved references in total')).toBeInTheDocument();
+    expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(20);
+    fireEvent.click(screen.getByRole('button', { name: 'Show next unresolved references' }));
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 21 · Wits' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show next unresolved references' }));
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 45 · Wits' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Resolution state'), { target: { value: 'invalid' } });
+    expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 45 · Wits' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Resolution state'), { target: { value: 'all' } });
+    fireEvent.change(screen.getByLabelText('Search loaded references'), {
+      target: { value: 'Player 37' },
+    });
+    expect(screen.getAllByRole('article', { name: /Participant:/ })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', { name: 'Participant: Player 37 · Wits' }),
+    ).toBeInTheDocument();
+  });
+
+  test('surfaces multiple fixture proposals and scopes queued feedback to the chosen proposal', async () => {
+    const body = report(true);
+    body.data.batch.source.packageVersion = '1.1';
+    const fixtureResolution = (index: number, left: string, right: string) => ({
+      referencePath: `fixtures.${index}`,
+      entityType: 'fixture' as const,
+      state: 'unresolved' as const,
+      submittedReference: {
+        sourceId: `cricsheet:fixture:new-${index}`,
+        season: { context: { name: '2026' } },
+        context: {
+          date: `2026-01-0${index + 1}`,
+          teams: [{ context: { name: left } }, { context: { name: right } }],
+        },
+        proposal: {
+          endDate: `2026-01-0${index + 1}`,
+          matchType: 'T20',
+          teamType: 'university',
+          gender: 'mixed',
+          ballsPerOver: 6,
+          outcome: 'tie' as const,
+          sourceVersion: '1.1',
+          sourceRevision: 1,
+        },
+      },
+      reason: 'New fixture.',
+      requiredAction: 'contact_reviewer' as const,
+      candidates: [],
+    });
+    body.data.blockingItems[0]!.referenceResolutions = [
+      fixtureResolution(0, 'Wits', 'UCT'),
+      fixtureResolution(1, 'Lions', 'Bears'),
+    ];
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 2;
+    let queued = false;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/auth/me')) return Promise.resolve(response(profile));
+      if (init?.method === 'POST' && url.includes('/canonical-fixtures')) {
+        queued = true;
+        body.data.batch.status = 'validating';
+        return Promise.resolve(
+          response({
+            data: {
+              batchReference: reference,
+              decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+              status: 'queued',
+              statusUrl: `/api/v1/batches/${reference}`,
+              submittedAt: '2026-09-11T12:00:00.000Z',
+            },
+          }),
+        );
+      }
+      return Promise.resolve(response(body));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+
+    const actionSection = await screen.findByRole('region', { name: 'Reviewer actions required' });
+    const proposalCards = within(actionSection).getAllByRole('article', { name: /Fixture:/ });
+    expect(proposalCards).toHaveLength(1);
+    fireEvent.click(
+      within(proposalCards[0]!).getByRole('button', {
+        name: 'Create canonical fixture from proposal',
+      }),
+    );
+
+    expect(
+      await within(proposalCards[0]!).findByText(
+        'Canonical fixture decision queued for validation.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(queued).toBe(true));
+    expect(screen.getByText(/Revalidation in progress/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next unresolved' }));
+    expect(
+      screen.queryByText('Canonical fixture decision queued for validation.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create canonical fixture from proposal' }),
+    ).toBeDisabled();
+  });
+
+  test('scopes action errors to the reference whose mapping failed', async () => {
+    const body = report(true);
+    const first = body.data.blockingItems[0]!.referenceResolutions[0]!;
+    body.data.blockingItems[0]!.referenceResolutions = [
+      first,
+      {
+        ...structuredClone(first),
+        referencePath: 'fixtures.0.innings.0.events.1.striker',
+        submittedReference: 'Second participant',
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes('/auth/me')) return Promise.resolve(response(profile));
+        if (init?.method === 'POST') return Promise.resolve(response({}, 500));
+        return Promise.resolve(response(body));
+      }),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const actionSection = await screen.findByRole('region', { name: 'Reviewer actions required' });
+    const card = within(actionSection).getByRole('article');
+    fireEvent.click(within(card).getByRole('button', { name: /^Use Lions vs Bears/ }));
+
+    expect(await within(card).findByRole('alert')).toHaveTextContent(
+      'The mapping could not be saved.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Next unresolved' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('explains overlapping counts and distinguishes candidate matches from fixture proposals', async () => {
+    const body = report(true);
+    body.data.batch.progress.total = 4;
+    body.data.batch.progress.rejected = 4;
+    body.data.batch.counts.rejected = 4;
+    body.data.batch.counts.unresolved = 4;
+    body.data.reviewSummary.validation.rejected = 4;
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 4;
+    body.data.reviewSummary.resolution.proposed = 0;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Batch summary' }));
+
+    expect(screen.getByText('Counts describe overlapping categories.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The same 4 submitted items can be both rejected and unresolved. Do not add these counts together.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Candidate matches')).toBeInTheDocument();
+    expect(screen.getByText('New-fixture proposals requiring review')).toBeInTheDocument();
+    expect(screen.queryByText('Proposed matches')).not.toBeInTheDocument();
   });
 
   test('does not offer creation for an unresolved fixture without a proposal', async () => {
@@ -374,7 +764,7 @@ describe('reviewer batch workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/reviews/batches');
 
-    expect(await screen.findByRole('heading', { name: 'Batch management' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Review queue' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Needs review' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'All batches' })).toBeInTheDocument();
     expect(await screen.findAllByRole('link', { name: 'season.csv' })).toHaveLength(2);
@@ -439,7 +829,7 @@ describe('reviewer batch workspace', () => {
       await screen.findByRole('heading', { name: 'Administrator access required' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Reject batch' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reject submission' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
   });
 
@@ -454,17 +844,541 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
     expect(await screen.findByText('Data Submitter')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Batch summary' }));
     expect(screen.getByText('a'.repeat(64))).toBeInTheDocument();
     expect(screen.getAllByText('Lions vs Bears · 2026-09-01')).toHaveLength(2);
     const group = screen.getByText('REFERENCE_AMBIGUOUS').closest('details')!;
     expect(group).toBeInTheDocument();
     fireEvent.click(within(group).getByText(/1 rejection/));
     expect(within(group).getByText(/Choose the intended fixture/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Review decision' }));
     expect(screen.getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Needs review (1)' }));
     expect(
       screen.getByRole('button', { name: 'Use Lions vs Bears · 2026-09-01' }),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'References (1)' }));
     expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
+  });
+
+  /**
+   * One task, however many deliveries name the participant. The per-reference
+   * onboard_participant actions all point at the same decision, and listing
+   * those instead would show a player named in three hundred deliveries as
+   * three hundred pieces of work.
+   */
+  function onboardingReport(tasks: BatchReportResponse['data']['participantOnboarding']) {
+    const body = report(true);
+    body.data.participantOnboarding = tasks;
+    // The same task reached through three separate references, which is what
+    // the reviewer must not be shown three times.
+    body.data.blockingItems = tasks.flatMap((task) =>
+      [1, 2, 3].map((ordinal) => {
+        const item = structuredClone(body.data.blockingItems[0]!);
+        item.ordinal = ordinal;
+        item.location = { ...item.location, ordinal };
+        item.referenceResolutions = [
+          {
+            referencePath: `fixtures.0.innings.0.events.${ordinal}.striker`,
+            entityType: 'participant',
+            state: 'unresolved',
+            submittedReference: { context: { name: task.submittedName } },
+            reason: 'No member of the resolved fixture squad carries that name.',
+            requiredAction: 'onboard_participant',
+            candidates: [],
+            onboardingTask: {
+              taskReference: task.taskReference,
+              reason: task.reason,
+              candidates: task.candidates,
+            },
+          },
+        ];
+        return item;
+      }),
+    );
+    body.data.items = body.data.blockingItems;
+    return body;
+  }
+
+  const ambiguousTask = {
+    taskReference: '0b6f2f6e-6f6c-4a1a-9d0f-2a1d3c4b5e6f',
+    fixtureId: '22',
+    submittedName: 'A. Smith',
+    submittedTeamName: 'Lions',
+    reason: 'ambiguous_name' as const,
+    candidates: [
+      { personId: '11', displayName: 'Alan Smith' },
+      { personId: '12', displayName: 'Amy Smith' },
+    ],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  test('lists one onboarding card per decision, not one per reference naming it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(
+            String(input).includes('/auth/me') ? profile : onboardingReport([ambiguousTask]),
+          ),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const section = within(
+      (await screen.findByRole('region', { name: 'Participants to onboard' })) as HTMLElement,
+    );
+    expect(section.getAllByRole('heading', { name: 'A. Smith' })).toHaveLength(1);
+    expect(section.getByText('1 outstanding')).toBeInTheDocument();
+    expect(
+      section.getByText('More than one person on this platform carries this name.'),
+    ).toBeInTheDocument();
+  });
+
+  const teamTask = {
+    taskReference: '1c7f3a2b-4d5e-4f6a-8b9c-0d1e2f3a4b5c',
+    fixtureId: '22',
+    submittedName: 'C. Khumalo',
+    submittedTeamName: 'Wanderers',
+    reason: 'team_not_recognised' as const,
+    candidates: [{ personId: '13', displayName: 'Chris Khumalo' }],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  function onboardingFetch(
+    body: unknown,
+    post: (init: RequestInit) => Response,
+    settledBody?: unknown,
+  ) {
+    // Settling every task empties the list, exactly as the server would report
+    // it, so the reload that follows a receipt unmounts the section.
+    let settled = false;
+    return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/auth/me')) return Promise.resolve(response(profile));
+      if (init?.method === 'POST') {
+        const result = post(init);
+        if (settledBody !== undefined && result.status < 400) settled = true;
+        return Promise.resolve(result);
+      }
+      return Promise.resolve(response(settled ? settledBody : body));
+    });
+  }
+
+  test('answers a team task by choosing one of the fixture two teams, never by naming one', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(String(input).includes('/auth/me') ? profile : onboardingReport([teamTask])),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const card = within(
+      (await screen.findByRole('heading', { name: 'C. Khumalo' })).closest('article')!,
+    );
+    expect(card.getByRole('group', { name: 'Which team do they belong to?' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Lions' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Bears' })).toBeInTheDocument();
+
+    // The team is chosen from the two the fixture has, because the decision is
+    // checked by exact name against exactly those. Nothing here accepts a typed
+    // participant name: a name is never an answer.
+    expect(card.queryByRole('textbox', { name: /name/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * The case deployed acceptance testing found. The server checks the team on
+   * every decision, so a task reported for a different reason whose submitted
+   * team is still not one of the fixture's two fails on the team. Keying the
+   * control off the reason alone left that fault unanswerable.
+   */
+  const strandedTask = {
+    taskReference: '2d8e4b1c-5f6a-4b7c-9d0e-1f2a3b4c5d6e',
+    fixtureId: '22',
+    submittedName: 'onboarding-test-Sipho-Dlamini',
+    submittedTeamName: 'onboarding-test-Unlisted-Wanderers',
+    reason: 'no_durable_identifier' as const,
+    candidates: [],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  test('asks for a team whenever the submitted one is not the fixture, whatever the reason', async () => {
+    const post = vi.fn((_init: RequestInit) =>
+      response({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-25T12:00:00.000Z',
+          onboarded: 1,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([strandedTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    const card = within(
+      (await screen.findByRole('heading', { name: 'onboarding-test-Sipho-Dlamini' })).closest(
+        'article',
+      )!,
+    );
+    // The reason is no_durable_identifier, but the submitted team is not one of
+    // the fixture's two, so the team question has to be asked.
+    expect(card.getByRole('group', { name: 'Which team do they belong to?' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Lions' })).toBeInTheDocument();
+    expect(card.getByRole('radio', { name: 'Bears' })).toBeInTheDocument();
+
+    // And the task can actually be settled, which is what the deployed run
+    // could not do: an identifier alone was refused with nothing to answer.
+    fireEvent.click(card.getByRole('radio', { name: 'Supply a durable identifier' }));
+    fireEvent.change(card.getByLabelText('Durable identifier'), {
+      target: { value: 'cricsheet:participant:onboarding-test-sipho-1' },
+    });
+    fireEvent.click(card.getByRole('radio', { name: 'Bears' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(String(post.mock.calls[0]![0].body));
+    expect(body.decisions).toEqual([
+      {
+        taskReference: strandedTask.taskReference,
+        sourceId: 'cricsheet:participant:onboarding-test-sipho-1',
+        teamName: 'Bears',
+      },
+    ]);
+  });
+
+  test('does not ask for a team when the submitted one is already the fixture', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(
+            String(input).includes('/auth/me') ? profile : onboardingReport([ambiguousTask]),
+          ),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const card = within(
+      (await screen.findByRole('heading', { name: 'A. Smith' })).closest('article')!,
+    );
+    // Its submitted team is Lions, one of the fixture's two, so there is
+    // nothing to decide about the team.
+    expect(card.queryByRole('group', { name: 'Which team do they belong to?' })).toBeNull();
+  });
+
+  test('settles several tasks in one request and reports the receipt', async () => {
+    const post = vi.fn((_init: RequestInit) =>
+      response({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-24T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    );
+    const fetchMock = onboardingFetch(
+      onboardingReport([ambiguousTask, teamTask]),
+      post,
+      onboardingReport([]),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Alan Smith' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Chris Khumalo' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Bears' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 2 decisions' }));
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    // One request for the whole array, because the batch is revalidated once
+    // for it. Two requests would mean two full revalidation passes.
+    const body = JSON.parse(String(post.mock.calls[0]![0].body));
+    expect(body.decisions).toEqual([
+      { taskReference: ambiguousTask.taskReference, personId: '11' },
+      { taskReference: teamTask.taskReference, personId: '13', teamName: 'Bears' },
+    ]);
+    expect(body.decisionKey.length).toBeLessThanOrEqual(255);
+
+    // The receipt has to outlive the section that produced it. Settling the
+    // last task empties the list, which drops the needs-review count to zero,
+    // moves the workspace to the decision view and unmounts the section; a
+    // receipt rendered inside it would be gone before it could be read.
+    expect(await screen.findByText(/2 settled\./)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Participants to onboard' })).toBeNull(),
+    );
+    expect(screen.getByText(/2 settled\./)).toBeInTheDocument();
+  });
+
+  test('refreshes a revalidated batch through validating to awaiting review', async () => {
+    const initial = onboardingReport([ambiguousTask]);
+    const validating = onboardingReport([]);
+    validating.data.batch.status = 'validating';
+    const awaitingReview = onboardingReport([]);
+    awaitingReview.data.batch.status = 'awaiting_review';
+    let revalidationStarted = false;
+    let refreshesAfterDecision = 0;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes('/auth/me')) return Promise.resolve(response(profile));
+        if (init?.method === 'POST') {
+          revalidationStarted = true;
+          return Promise.resolve(
+            response({
+              data: {
+                batchReference: reference,
+                decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+                status: 'queued',
+                statusUrl: `/api/v1/batches/${reference}`,
+                submittedAt: '2026-09-27T12:00:00.000Z',
+                onboarded: 1,
+                alreadyOnboarded: 0,
+                revalidationQueued: true,
+              },
+            }),
+          );
+        }
+        if (!revalidationStarted) return Promise.resolve(response(initial));
+        refreshesAfterDecision += 1;
+        return Promise.resolve(
+          response(
+            refreshesAfterDecision === 1
+              ? {
+                  ...initial,
+                  data: {
+                    ...initial.data,
+                    batch: { ...initial.data.batch, status: 'stored' },
+                  },
+                }
+              : refreshesAfterDecision === 2
+                ? validating
+                : awaitingReview,
+          ),
+        );
+      }),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    const candidate = await screen.findByRole('radio', { name: 'Alan Smith' });
+    let scheduledPoll: (() => void) | null = null;
+    const setTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation((handler, timeout, ...args) => {
+      if (timeout === 2_000 && typeof handler === 'function') {
+        scheduledPoll = handler;
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return setTimeout(handler, timeout, ...args);
+    });
+    fireEvent.click(candidate);
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+
+    expect(await screen.findByText(/1 settled\./)).toBeInTheDocument();
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Stored');
+    expect(scheduledPoll).not.toBeNull();
+    await act(async () => {
+      scheduledPoll?.();
+      await Promise.resolve();
+    });
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Validating');
+    expect(scheduledPoll).not.toBeNull();
+    await act(async () => {
+      scheduledPoll?.();
+      await Promise.resolve();
+    });
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Awaiting review');
+    expect(refreshesAfterDecision).toBe(3);
+  });
+
+  test('shows every onboarding fault against the task it belongs to', async () => {
+    const post = vi.fn(() =>
+      response(
+        {
+          error: {
+            code: 'BATCH_PARTICIPANT_ONBOARDING_CONFLICT',
+            message: 'One or more participant onboarding decisions could not be applied.',
+            details: [
+              {
+                taskReference: ambiguousTask.taskReference,
+                code: 'CANDIDATE_NOT_OFFERED',
+                message: 'Choose one of the candidates this task offered.',
+              },
+              {
+                taskReference: teamTask.taskReference,
+                code: 'TEAM_NOT_IN_FIXTURE',
+                message: 'Name one of the two teams of the fixture this task belongs to.',
+              },
+            ],
+          },
+        },
+        409,
+      ),
+    );
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([ambiguousTask, teamTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Alan Smith' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Chris Khumalo' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Bears' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 2 decisions' }));
+
+    // Both of them, each on its own card. The array is applied all or nothing,
+    // so a reviewer shown one fault at a time would resubmit once per broken
+    // decision to discover the rest.
+    const ambiguousCard = within(
+      screen.getByRole('heading', { name: 'A. Smith' }).closest('article')!,
+    );
+    expect(
+      await ambiguousCard.findByText('Choose one of the candidates this task offered.'),
+    ).toBeInTheDocument();
+    const teamCard = within(
+      screen.getByRole('heading', { name: 'C. Khumalo' }).closest('article')!,
+    );
+    expect(
+      teamCard.getByText('Name one of the two teams of the fixture this task belongs to.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Nothing was applied. 2 of 2 decisions could not be applied.'),
+    ).toBeInTheDocument();
+  });
+
+  test('cannot submit a team task until both who and which team are answered', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          response(String(input).includes('/auth/me') ? profile : onboardingReport([teamTask])),
+        ),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    // An identity alone is not enough: the submitted team was not one of the
+    // fixture's two, so the team cannot be inferred from the identity.
+    fireEvent.click(screen.getByRole('radio', { name: 'Chris Khumalo' }));
+    expect(screen.getByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('radio', { name: 'Lions' }));
+    expect(screen.getByRole('button', { name: 'Submit 1 decision' })).toBeEnabled();
+  });
+
+  test('shows no onboarding section when no participant is waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : report(true))),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    // The needs-review panel lists work to do, the way it already treats
+    // published conflicts. A batch with no onboarding task has nothing to say
+    // here, so the section is absent rather than empty.
+    await screen.findByRole('tablist', { name: 'Batch review views' });
+    expect(screen.queryByRole('region', { name: 'Participants to onboard' })).toBeNull();
+  });
+
+  test('shows a later unresolved reference from blocking items without loading ordinary results', async () => {
+    const body = report(true);
+    const blocker = body.data.blockingItems[0]!;
+    blocker.ordinal = 99;
+    blocker.location.ordinal = 99;
+    blocker.referenceResolutions[0]!.state = 'unresolved';
+    body.data.reviewSummary.resolution.ambiguous = 0;
+    body.data.reviewSummary.resolution.unresolved = 1;
+    body.data.items = report(false).data.items;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+      ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(await screen.findByRole('button', { name: /^Use Lions vs Bears/ })).toBeInTheDocument();
+    expect(screen.queryByText('All displayed references are resolved.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'References (1)' }));
+    expect(screen.getByRole('button', { name: 'Load more report results' })).toBeInTheDocument();
+  });
+
+  test('shows and refreshes a later published conflict independently of ordinary results', async () => {
+    const initial = report(false);
+    const conflict = { ...initial.data.items[0]!, ordinal: 99, outcome: 'conflicting' as const };
+    conflict.location = { ...conflict.location, ordinal: 99 };
+    conflict.publishedConflict = {
+      existingDeliveryId: '88',
+      existingSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
+      correctionPermitted: true,
+      differences: [{ fieldPath: 'runs.batter', submittedValue: 4, publishedValue: 1 }],
+    };
+    initial.data.blockingItems = [conflict];
+    initial.data.reviewSummary.validation.conflicting = 1;
+    initial.data.reviewSummary.approvalBlocked = true;
+    initial.data.reviewSummary.blockingReasons = ['Conflicting records remain.'];
+    initial.data.batch.counts.conflicting = 1;
+    const refreshed = structuredClone(initial);
+    refreshed.data.blockingItems = [];
+    refreshed.data.reviewSummary.validation.conflicting = 0;
+    refreshed.data.batch.counts.conflicting = 0;
+    let resolved = false;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/auth/me')) return Promise.resolve(response(profile));
+      if (init?.method === 'POST') {
+        resolved = true;
+        return Promise.resolve(response({ data: initial.data.batch }));
+      }
+      return Promise.resolve(response(resolved ? refreshed : initial));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(`/reviews/batches/${reference}`);
+
+    expect(
+      await screen.findByRole('button', { name: 'Keep published delivery' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Approve submitted correction' }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Resolution reason'), {
+      target: { value: 'Keep the verified published delivery.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Keep published delivery' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Keep published delivery' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/conflicts/resolve'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   test('allows approval of a mixed batch and explains that rejected records stay unpublished', async () => {
@@ -480,6 +1394,11 @@ describe('reviewer batch workspace', () => {
     );
     renderPage(`/reviews/batches/${reference}`);
 
+    expect(await screen.findByText(/Ready for publication/)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Review decision' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(await screen.findByText('Only the accepted subset will publish')).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -488,7 +1407,89 @@ describe('reviewer batch workspace', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
   });
+  test('reconciles an ambiguous approval request failure against durable backend state', async () => {
+    const initial = report(false);
+    const publishing = report(false);
+    const approvalReason = 'Ready for background publication.';
 
+    publishing.data.batch.status = 'publishing';
+    publishing.data.batch.updatedAt = '2026-09-14T14:00:00.000Z';
+    publishing.data.batch.review = {
+      decision: 'approved',
+      actor: {
+        accountId: profile.user.id,
+        displayName: profile.user.displayName,
+      },
+      decidedAt: '2026-09-14T14:00:00.000Z',
+      reason: approvalReason,
+    };
+
+    let reportReads = 0;
+
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.includes('/auth/me')) {
+        return Promise.resolve(response(profile));
+      }
+
+      if (init?.method === 'POST' && url.includes('/review')) {
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }
+
+      if (url.includes(`/batches/${reference}/report`)) {
+        reportReads += 1;
+
+        return Promise.resolve(response(reportReads === 1 ? initial : publishing));
+      }
+
+      return Promise.resolve(response({}, 404));
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage(`/reviews/batches/${reference}`);
+
+    const approve = await screen.findByRole('button', {
+      name: 'Approve and publish',
+    });
+
+    fireEvent.change(screen.getByLabelText(/Reason/), {
+      target: { value: approvalReason },
+    });
+
+    fireEvent.click(approve);
+
+    const dialog = screen.getByRole('dialog', {
+      name: /Confirm approve and publish/,
+    });
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'Confirm approve and publish',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Approval recorded. Publication is continuing in the background. You may leave this page safely.',
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText(/Current state:/)).toHaveTextContent('Publishing');
+
+    expect(screen.queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Return for correction' })).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Reject submission' })).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText('The review decision could not be saved. Try again.'),
+    ).not.toBeInTheDocument();
+
+    expect(reportReads).toBeGreaterThanOrEqual(2);
+  });
   test('requires a meaningful reason and explicit confirmation before a decision', async () => {
     const body = report(false);
     const fetchMock = vi
@@ -506,7 +1507,7 @@ describe('reviewer batch workspace', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
     renderPage(`/reviews/batches/${reference}`);
-    const reject = await screen.findByRole('button', { name: 'Reject batch' });
+    const reject = await screen.findByRole('button', { name: 'Reject submission' });
     expect(screen.getByText('cricsheet:delivery:100-original')).toBeInTheDocument();
     expect(screen.getByText(/published delivery 88/)).toBeInTheDocument();
     fireEvent.click(reject);
@@ -526,5 +1527,30 @@ describe('reviewer batch workspace', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     );
+  });
+
+  test('lets reviewers navigate both directions of a correction chain', async () => {
+    const body = report(false);
+    body.data.batch.status = 'superseded';
+    body.data.batch.lineage = {
+      replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
+      supersededByBatchReference: '323e4567-e89b-42d3-a456-426614174000',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL) =>
+          Promise.resolve(response(String(input).includes('/auth/me') ? profile : body)),
+        ),
+    );
+    renderPage(`/reviews/batches/${reference}`);
+    expect(await screen.findByText(/superseded and is terminal/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: body.data.batch.lineage.replacesBatchReference! }),
+    ).toHaveAttribute('href', '/reviews/batches/223e4567-e89b-42d3-a456-426614174000');
+    expect(
+      screen.getByRole('link', { name: body.data.batch.lineage.supersededByBatchReference! }),
+    ).toHaveAttribute('href', '/reviews/batches/323e4567-e89b-42d3-a456-426614174000');
   });
 });

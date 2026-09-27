@@ -31,6 +31,8 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-20',
   endDate: '2026-08-20',
 };
@@ -100,10 +102,13 @@ function createAuthClient(session: Session | null) {
   } as unknown as AuthClient;
 }
 
-function renderSubmissionPage(session: Session | null = createSession()) {
+function renderSubmissionPage(
+  session: Session | null = createSession(),
+  path = '/submissions/new',
+) {
   return render(
     <AuthProvider client={createAuthClient(session)}>
-      <MemoryRouter initialEntries={['/submissions/new']}>
+      <MemoryRouter initialEntries={[path]}>
         <PublicApp />
       </MemoryRouter>
     </AuthProvider>,
@@ -194,6 +199,7 @@ function fixtureStatistics(totalRuns: number) {
         method: null,
         decidedByBowlOut: false,
       },
+      highestScorers: [],
       warnings: [],
       statistics: [
         {
@@ -206,7 +212,24 @@ function fixtureStatistics(totalRuns: number) {
           competitorId: '20',
           competitorName: 'Wanderers',
           sourceEventCount: 1,
-          metrics: { deliveryRuns: totalRuns, penaltyRuns: 0, totalRuns },
+          metrics: {
+            deliveryRuns: totalRuns,
+            penaltyRuns: 0,
+            totalRuns,
+            wicketsLost: 0,
+            legalBalls: 1,
+            overs: '0.1',
+            runRate: totalRuns * 6,
+            powerplay: null,
+            extras: {
+              total: 0,
+              wides: 0,
+              noBalls: 0,
+              byes: 0,
+              legByes: 0,
+              penaltyRuns: 0,
+            },
+          },
         },
       ],
     },
@@ -253,7 +276,7 @@ describe('role-gated event submission page', () => {
     expect(await screen.findByText('Submitter role required')).toBeInTheDocument();
     expect(screen.getByText(/pending approval/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Submit events' })).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not treat a legacy approved viewer as a submitter', async () => {
@@ -264,7 +287,7 @@ describe('role-gated event submission page', () => {
 
     expect(await screen.findByText('Submitter role required')).toBeInTheDocument();
     expect(screen.queryByLabelText('Fixture')).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('fails safely when the current-user response does not match the shared contract', async () => {
@@ -404,6 +427,8 @@ describe('role-gated event submission page', () => {
     expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent(/validation and review/i);
 
+    await waitFor(() => expect(resolveBatch).toBeTypeOf('function'));
+
     await act(async () => {
       resolveBatch(
         response(202, {
@@ -538,7 +563,7 @@ describe('role-gated event submission page', () => {
     expect(screen.getByText(/Revision 2 is now current/)).toBeInTheDocument();
     await waitFor(() => expect(statisticsRequests).toBe(2));
     expect(screen.getByText('Delivery total').nextElementSibling).toHaveTextContent('6');
-    expect(screen.getAllByText('6').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('6/0').length).toBeGreaterThan(0);
   });
 
   it.each([
@@ -858,6 +883,7 @@ describe('role-gated event submission page', () => {
                 },
                 progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
                 counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+                lineage: { replacesBatchReference: null, supersededByBatchReference: null },
                 review: null,
               },
             ],
@@ -884,9 +910,15 @@ describe('role-gated event submission page', () => {
     ).toBeVisible();
     expect(screen.queryByRole('link', { name: /Upload a season or back catalogue/ })).toBeNull();
     expect(fixtureSelect).toHaveAccessibleDescription(/never need to enter a database ID/i);
-    expect(within(fixtureSelect).getByRole('option')).toHaveTextContent(
-      '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
-    );
+    expect(
+      within(fixtureSelect).getByRole('option', {
+        name: '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(fixtureSelect).queryByRole('option', { name: 'New fixture' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     expect(
       screen.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
     ).toBeVisible();
@@ -923,8 +955,12 @@ describe('role-gated event submission page', () => {
       screen.queryByRole('button', { name: 'Upload fixture package' }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('link', { name: 'View submission history' }).at(-1)!);
-    expect(await screen.findByRole('heading', { name: 'Your batch reports' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: batchReference })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'My submissions' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'fixture-package.json' })).toHaveAttribute(
+      'href',
+      `/submissions/batches/${batchReference}`,
+    );
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
     const uploadCall = fetchMock.mock.calls.find(([request]) =>
       String(request).endsWith('/batches'),
     );
@@ -934,6 +970,165 @@ describe('role-gated event submission page', () => {
     expect(uploadHeaders.get('X-Batch-Package-Version')).toBe('1.0');
     expect(uploadHeaders.get('X-Competition-Id')).toBe('5');
     expect(uploadHeaders.get('X-File-Name')).toBe('fixture-package.json');
+  });
+
+  it('keeps new-fixture proposals separate from existing fixture selection', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Example Competition' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    expect(await screen.findByLabelText('Fixture')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
+
+    expect(screen.queryByLabelText('Fixture')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Choose an existing fixture' })).toBeVisible();
+    expect(screen.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose an existing fixture' }));
+    expect(await screen.findByLabelText('Fixture')).toHaveValue('7');
+  });
+
+  it('generates a version 1.1 proposal when the submitter clicks Propose a new fixture', async () => {
+    const batchReference = '423e4567-e89b-42d3-a456-426614174000';
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Example Competition' } }),
+        );
+      }
+      if (url.endsWith('/batches') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(202, {
+            data: {
+              batchReference,
+              status: 'stored',
+              statusUrl: `/api/v1/batches/${batchReference}`,
+              receivedAt: '2026-09-15T09:30:00.000Z',
+            },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+
+    await screen.findByLabelText('Fixture');
+    fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
+    expect(await screen.findByRole('option', { name: 'Example Competition' })).toBeInTheDocument();
+    expect(screen.getByText(/version 1.1 fixture proposal/i)).toBeVisible();
+
+    const readablePackage = readableFixturePackage();
+    const file = new File([JSON.stringify(readablePackage)], 'new-fixture.json', {
+      type: 'application/json',
+    });
+    fireEvent.change(screen.getByLabelText('Fixture package'), { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByLabelText('Season name')).toHaveValue('2026'));
+    expect(screen.getByLabelText('Fixture date')).toHaveValue(fixture.startDate);
+    expect(screen.getByLabelText('Home team name')).toHaveValue('Wanderers');
+    expect(screen.getByLabelText('Away team name')).toHaveValue('Strikers');
+    expect(screen.getByText(/This proposal matches the existing fixture/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Use existing fixture' })).toBeVisible();
+    expect(screen.getByLabelText('Match type')).toHaveValue('T20');
+    expect(screen.getByLabelText('Match type')).toHaveRole('combobox');
+    expect(screen.getByRole('option', { name: 'Club / domestic' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'International' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Women' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Men' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Team type'), { target: { value: 'club' } });
+    fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
+
+    expect(await screen.findByRole('heading', { name: 'Fixture upload received' })).toHaveFocus();
+    expect(screen.getByText(batchReference)).toBeInTheDocument();
+    const uploadCall = fetchMock.mock.calls.find(
+      ([request, init]) => String(request).endsWith('/batches') && init?.method === 'POST',
+    );
+    const uploadHeaders = new Headers((uploadCall?.[1] as RequestInit).headers);
+    expect(uploadHeaders.get('X-Batch-Package-Version')).toBe('1.1');
+    expect(uploadHeaders.get('X-Competition-Id')).toBe('5');
+    expect(uploadHeaders.get('X-File-Name')).toBe('fixture-proposal.json');
+
+    const uploadedFile = (uploadCall?.[1] as RequestInit).body as File;
+    const uploadedText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(String(reader.result)));
+      reader.addEventListener('error', reject);
+      reader.readAsText(uploadedFile);
+    });
+    const proposalPackage = JSON.parse(uploadedText) as unknown;
+    expect(seasonUploadPackageSchema.safeParse(proposalPackage).success).toBe(true);
+    expect(proposalPackage).toMatchObject({
+      contractVersion: '1.1',
+      competition: { context: { name: 'Example Competition' } },
+      season: { context: { name: '2026' } },
+      fixtures: [
+        {
+          sourceId: expect.stringMatching(/^submitter:fixture:/),
+          context: {
+            date: fixture.startDate,
+            teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+          },
+          proposal: {
+            endDate: fixture.startDate,
+            matchType: 'T20',
+            teamType: 'club',
+            gender: 'female',
+            ballsPerOver: 6,
+            outcome: 'no result',
+            sourceVersion: '1',
+            sourceRevision: 0,
+          },
+        },
+      ],
+    });
+  });
+
+  it('opens the linked season replacement workflow from submission history', async () => {
+    const originalReference = '223e4567-e89b-42d3-a456-426614174000';
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      if (url.endsWith('/competitions/5')) {
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage(
+      createSession(),
+      `/submissions/new?workflow=season&replaces=${originalReference}&competitionId=5`,
+    );
+    expect(await screen.findByRole('radio', { name: /Season/ })).toBeChecked();
+    expect(
+      await screen.findByRole('heading', { name: 'Corrected replacement upload' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(originalReference)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toBeDisabled();
   });
 
   it('keeps the guided single-fixture path free of identifiers and advanced mode set apart', async () => {

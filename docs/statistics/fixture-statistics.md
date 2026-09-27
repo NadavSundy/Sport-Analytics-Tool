@@ -11,13 +11,14 @@ Issue #293 adds a bounded cache-aside projection for the public
 expensive statistic path measured in the representative workload. Contributor traces are deliberately
 excluded: they are explicit audit requests, can be much larger, and are not a repeated browse path.
 
-The cache key is `sat:v1:fixture-statistics:fixture:{fixtureId}:v{dataVersion}`. The API contract,
+The cache key is `sat:v2:fixture-statistics:fixture:{fixtureId}:v{dataVersion}`. The API contract,
 fixture scope, and authoritative data version are therefore all part of the key; this public-only
 cache has no bearer token, account, or consumer identity in either keys or values. Entries contain
 only the same public response returned by the API and expire after 60 seconds.
 
 `fixture_statistics_cache_version` is advanced in the same database transaction as an accepted
-direct submission, correction, or batch publication. An entry for a prior version becomes unreachable
+direct submission, correction, batch publication, or Cricsheet match ingest (ingest since issue
+#592). An entry for a prior version becomes unreachable
 immediately, and the transaction also removes it. Cache expiry is a recovery bound: if an unexpected
 writer misses version advancement, a later read derives the current PostgreSQL value within 60 seconds.
 PostgreSQL delivery rows remain authoritative; cache rows are disposable and are never edited as
@@ -42,17 +43,20 @@ makes the stored entry unreachable.
 ## Correction refresh dependencies
 
 Issue #286 makes correction refresh behaviour explicit without changing that authoritative
-live-derivation model. A correction transaction records one `fixture` dependency and only the
-participant aggregate dependencies whose inputs changed. The participant set is the union of the
-previous and replacement striker and bowler, so a role correction refreshes both people while a
-non-striker-only correction does not cause an unrelated aggregate refresh. For each affected
+live-derivation model. A correction transaction records one `fixture` dependency and the
+participant aggregate dependencies whose inputs the corrected delivery feeds. The participant set is
+the union of every previous and replacement striker, non-striker, bowler, dismissed player and
+identified fielder, because participant aggregates consume all of those relationships. A role
+correction therefore records both the previous and the replacement person. For each affected
 participant, the journal records the fixture's season, competition, and career scopes; it never
-records another fixture, season, competition, or participant.
+records another fixture, season, competition, or participant. Direct corrections through the API and
+batch corrections published by the worker derive this set with the same shared functions in
+`@sport-analytics/batch-processing` (issue #592).
 
 The immutable `statistics_refresh_dependency` rows are committed with the replacement delivery and
-are returned as `refreshedScopes` by the correction API. They are operational evidence of the
-selective behaviour and the precise invalidation/recalculation input for a future materialized
-projection or cache. The current public endpoints still calculate from `delivery_current`, so their
+are returned as `refreshedScopes` by the direct correction API. They record exactly which scopes a
+correction affects and are the invalidation input for a future materialized projection or cache.
+Nothing reads them yet, and no statistic is stored or recomputed from them. The current public endpoints still calculate from `delivery_current`, so their
 values are immediately the same values a full recomputation would produce.
 
 ## Publication input
@@ -96,22 +100,39 @@ rather than repeated at each call site.
 
 ## Basic calculations
 
-| Result             | Calculation                                                             |
-| ------------------ | ----------------------------------------------------------------------- |
-| Team total         | Sum `runs_total` for the innings, plus `penalty_pre` and `penalty_post` |
-| Batter runs        | Sum `runs_off_bat` for deliveries where the participant is striker      |
-| Balls faced        | Count striker deliveries with no wide; a no-ball still counts as faced  |
-| Strike rate        | Batter runs / balls faced × 100, rounded to two decimal places          |
-| Fours and sixes    | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries        |
-| Runs conceded      | `runs_off_bat + wides + no-balls`; byes and leg-byes are excluded       |
-| Legal balls bowled | Count deliveries with neither wides nor no-balls                        |
-| Overs bowled       | `completeOvers.remainingBalls`, using the fixture's `balls_per_over`    |
-| Economy rate       | Runs conceded / legal balls × `balls_per_over`, rounded to two decimals |
-| Bowler wickets     | Count wickets whose `dismissal_kind.credits_bowler` value is true       |
-| Fixture outcome    | Accepted fixture outcome fact, represented as a typed result and margin |
+| Result              | Calculation                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Team total          | Sum `runs_total` for the innings, plus `penalty_pre` and `penalty_post`                                              |
+| Wickets lost        | Count terminal dismissals; `retired hurt` and `retired not out` do not count                                         |
+| Innings legal balls | Count deliveries with neither wides nor no-balls                                                                     |
+| Innings overs       | Format progress from delivery over identity, legal balls, fixture `balls_per_over`, and any miscounted-over override |
+| Innings run rate    | Team total / legal balls × `balls_per_over`, rounded to two decimals                                                 |
+| Total extras        | Sum delivery `runs_extras` plus innings pre/post penalty runs                                                        |
+| Extras breakdown    | Wides, no-balls, byes, leg-byes, and delivery plus innings penalty runs                                              |
+| Batter runs         | Sum `runs_off_bat` for deliveries where the participant is striker                                                   |
+| Balls faced         | Count striker deliveries with no wide; a no-ball still counts as faced                                               |
+| Strike rate         | Batter runs / balls faced × 100, rounded to two decimal places                                                       |
+| Fours and sixes     | Count 4 or 6 `runs_off_bat`, excluding `non_boundary` deliveries                                                     |
+| Runs conceded       | `runs_off_bat + wides + no-balls`; byes and leg-byes only off a wide                                                 |
+| Legal balls bowled  | Count deliveries with neither wides nor no-balls                                                                     |
+| Overs bowled        | `completeOvers.remainingBalls`, using the fixture's `balls_per_over`                                                 |
+| Economy rate        | Runs conceded / legal balls × `balls_per_over`, rounded to two decimals                                              |
+| Bowler wickets      | Count wickets whose `dismissal_kind.credits_bowler` value is true                                                    |
+| Fixture outcome     | Accepted fixture outcome fact, represented as a typed result and margin                                              |
 
 Strike rate and economy rate are `null` when their denominator is zero. This distinguishes an
 undefined rate from a real rate of zero.
+
+Innings run rate follows the same rule and is `null` until a legal ball has been bowled. Extras are
+always present, including when every component is zero. Runs recorded as byes or leg-byes on a wide
+are reported as wides under Law 22.6; byes off a no-ball remain byes. The extras `penaltyRuns`
+component combines delivery-level penalties with the innings-level pre/post penalties already
+included in `totalRuns`.
+
+The `legalBalls` count is the denominator for run rate, while `overs` is the presentation value.
+They are intentionally separate: a five- or seven-ball over recorded in `innings_miscounted_over`
+can advance the human-readable over without pretending the fixture always uses six balls or losing
+the exact number of legal deliveries.
 
 ## Statistic resources and traceability
 
@@ -136,6 +157,35 @@ data.
 For an innings total, `metrics.deliveryRuns` is traceable to delivery event IDs while
 `metrics.penaltyRuns` is traceable to the returned `inningsId`, because the approved schema records
 pre/post penalties at innings level rather than inventing a delivery for them.
+The same trace exposes the deliveries behind wickets, legal balls, run rate, and delivery extras;
+miscounted-over and innings-penalty context remains authoritative innings metadata.
+
+Each innings statistic also returns a required `metrics.powerplay` field. It is `null` when the
+standard innings has no authoritative marker metadata. Otherwise it contains the retained ranges,
+runs, terminal wickets lost, legal balls, formatted overs and run rate calculated from accepted
+current deliveries whose source ball label lies inside any inclusive range. Wides and no-balls add
+runs but not legal balls, the fixture's balls-per-over controls overs and rate, and a zero-legal-ball
+rate is `null`. When contributors are requested, the nested powerplay trace contains only those
+accepted events. This makes an absent marker observably different from a real marked range that
+produces zeros. Super-over innings remain excluded before either standard or powerplay derivation.
+
+Example response fragment:
+
+```json
+{
+  "metrics": {
+    "powerplay": {
+      "ranges": [{ "fromBall": 0.1, "toBall": 5.6, "type": "mandatory" }],
+      "runs": 62,
+      "wicketsLost": 1,
+      "legalBalls": 36,
+      "overs": "6.0",
+      "runRate": 10.33,
+      "sourceEventCount": 37
+    }
+  }
+}
+```
 
 ## Public frontend
 
@@ -144,6 +194,12 @@ below its named teams and match metadata. The combined overview shows the typed 
 completeness state, warnings, innings totals, available player batting and bowling metrics, and
 participating players without a separate statistics action. The previous
 `/fixtures/{fixtureId}/statistics` route remains available for compatible deep links.
+
+The Powerplay section compares the API-supplied runs, wickets, formatted overs and run rate for each
+innings with authoritative marker metadata. It labels the team and one-based innings number, keeps
+the phase distinct from full-innings totals, and explains that the interface never assumes the first
+six overs. An innings whose `metrics.powerplay` value is `null` receives an explicit unavailable
+message; the frontend does not reconstruct a range or replace missing metadata with zeroes.
 
 The statistics API exposes readable team and player names alongside stable identifiers so public
 interfaces can present cricket identities without additional name-resolution requests. Identifiers
@@ -191,4 +247,10 @@ The preceding calculation, API and public-interface documentation was generated,
 with the assistance of Codex[GPT-5.6 Sol] and ChatGPT-Web[GPT-5.6 Sol].
 The live-revision correction rule and selective refresh dependencies were updated with the assistance
 of Codex[GPT-5]. The versioned public fixture-statistics cache was documented with the assistance of
-Codex[GPT-5].
+Codex[GPT-5]. The issue #623 wide-run rule was documented with the assistance of
+Claude-Code[Claude Opus 5].
+The innings scorecard context for issue #631 was documented with the assistance of Codex[GPT-5].
+The issue #592 correction dependency participant set and ingest version advancement were documented
+with the assistance of Claude-Code[Claude Opus 5].
+The issue #633 powerplay derivation was documented with the assistance of Codex[GPT-5].
+The issue #634 public powerplay presentation was documented with the assistance of Codex[GPT-5].

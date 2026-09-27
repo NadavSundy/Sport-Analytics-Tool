@@ -4,12 +4,19 @@ The selected deployment architecture is:
 
 | Component              | Hosting / service          | Deployment tool                                 |
 | ---------------------- | -------------------------- | ----------------------------------------------- |
-| React frontend         | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
-| Express backend API    | Azure App Service (Linux)  | Gitea Actions / Azure deployment action         |
+| React frontend         | Cloudflare Pages           | Gitea Actions / Wrangler CLI                    |
+| Express backend API    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions            |
 | Asynchronous worker    | Azure Container Apps       | Bicep / Docker + ACR / Gitea Actions            |
 | PostgreSQL database    | Supabase-hosted PostgreSQL | Database migrations through the backend tooling |
 | Managed authentication | Supabase Auth              | Supabase/Google provider configuration          |
 | Public documentation   | Cloudflare Pages           | Wrangler CLI                                    |
+
+The current public application endpoints are:
+
+| Component   | URL                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Frontend    | <https://sport-analytics-tool-web.pages.dev/>                                                    |
+| Backend API | <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1> |
 
 The Intermediate deployment boundaries are:
 
@@ -19,12 +26,20 @@ The Intermediate deployment boundaries are:
 | Durable job delivery   | PostgreSQL transactional outbox and Azure Service Bus Standard | Issue #365 provisions the broker; #278 implements job creation and relay behavior     |
 | Batch worker           | Separate Node.js Azure Container App                           | Issue #365 provides the host, IaC and deployment workflow; #278 adds batch processing |
 
-ADR-010 and ADR-011 select these targets for Intermediate implementation. The versioned Bicep target
-and manual deployment workflow are defined under `infra/azure/worker/` and
-`.gitea/workflows/deploy-worker.yml`; repository definitions are not evidence that a live Azure
-deployment has succeeded.
+ADR-010 and ADR-011 select these targets for Intermediate implementation. The versioned Bicep target is defined under `infra/azure/worker/`. Worker-affecting changes merged to
+`main` are deployed automatically by the change-aware `Sport Analytics CI` workflow, while
+`.gitea/workflows/deploy-worker.yml` remains available for manual recovery or deliberate redeployment.
+Repository definitions are not evidence that a live Azure deployment has succeeded; the deployed
+revision and exact commit-SHA image must still be verified.
 
-Azure App Service was accepted in ADR 0003 for the frontend and backend. The documentation site is deliberately hosted separately on Cloudflare Pages and deployed from the generated MkDocs `site/` directory with Wrangler.
+Azure App Service was originally accepted in ADR 0003 for the frontend and backend. Both have since
+moved off it: the backend now runs on Azure Container Apps (issue #563), with `statsthegame-api-dev`
+retained as a manual App Service fallback during acceptance; the frontend has moved to Cloudflare Pages
+(issue #564, see `docs/deployment/frontend-cloudflare-pages.md`) because its built output is static and
+does not need continuously running compute, with the Azure frontend deployment retained in parallel
+until Cloudflare Pages acceptance succeeds, then retired. The documentation site was already hosted
+separately on Cloudflare Pages, deployed from the generated MkDocs `site/` directory with Wrangler, and
+both migrations follow that same pattern.
 
 ## Minimum environments
 
@@ -41,15 +56,19 @@ Azure App Service was accepted in ADR 0003 for the frontend and backend. The doc
 - Keep Supabase generated data endpoints outside the application API boundary.
 - Verify HTTPS, CORS, logs, authentication callbacks and health endpoints after deployment changes.
 - Deploy frontend, backend and documentation independently by production impact, but only after the shared post-merge quality and deployment gate.
-- Deploy the worker manually from a reviewed commit; verify its active revision, dependencies,
-  recovery and scaling before recording it as operational.
+- Automatically deploy the worker after a validated worker-affecting change reaches `main`; require the
+  active healthy Container Apps revision to use the exact commit-SHA image. Retain the manual worker
+  workflow for recovery and deliberate operational redeployment.
+- Automatically deploy backend-affecting main commits to Container Apps only after quality succeeds;
+  require the active healthy revision to use the exact commit-SHA image, then run health and
+  database-backed smoke checks. Retain the manual App Service workflow for acceptance rollback.
 
 See:
 
 - `docs/adr/0003-azure-hosting.md`
 - `docs/deployment/azure-backend.md`
 - `docs/deployment/azure-worker.md`
-- `docs/deployment/azure-fronted.md`
+- `docs/deployment/frontend-cloudflare-pages.md`
 - `docs/deployment/cloudflare_pages.md`
 - `docs/development/technology-stack.md`
 
@@ -71,7 +90,10 @@ Using a fixed runner label provides a more reproducible CI environment than
 `ubuntu-latest`, while targeting an environment currently supported by the
 university-hosted runners.
 
-The automatic validation and affected-target deployments run through `Sport Analytics CI`. The standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Deploy Backend` and `Sport Analytics - Deploy Docs` workflows use the same runner only for manual recovery/redeployment.
+The automatic validation and affected-target deployments run through `Sport Analytics CI`. The
+standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Redeploy App Service Backend
+(Rollback)`, `Sport Analytics - Deploy Docs` and `Sport Analytics - Provision and Deploy Batch Worker`
+workflows use the same runner for manual recovery/redeployment.
 
 The Pull Request CI workflow is change-aware and preserves a stable required `quality` status. Cheap
 structure, whitespace, routing and lockfile checks run during planning; application validation and the
@@ -97,7 +119,7 @@ The established hosted baseline confirms:
 3. PostgreSQL service-container networking works
 4. linting, type checking, tests and builds succeed
 5. Playwright can execute in the hosted environment
-6. affected frontend, backend and documentation deployment paths can execute after validated `main` quality
+6. affected frontend, backend, worker and documentation deployment paths can execute after validated `main` quality
 
 ## AI Declaration
 
@@ -106,3 +128,5 @@ The issue #356 approved Intermediate deployment targets were documented with the
 Codex[GPT-5].
 The issue #365 versioned worker target and deployment control were documented with the assistance
 of Codex[GPT-5].
+The Issue #563 backend Container Apps deployment and rollback boundary was documented with the
+assistance of Codex[GPT-5].

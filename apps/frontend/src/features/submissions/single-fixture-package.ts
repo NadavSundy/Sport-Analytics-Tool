@@ -7,7 +7,11 @@ export class SingleFixturePackageError extends Error {
   }
 }
 
-type FixtureContext = { date: string; teams: string[] };
+export type FixtureContext = { date: string; teams: string[] };
+export type SingleFixturePackageContext = FixtureContext & {
+  competitionName: string;
+  seasonName: string;
+};
 
 function normalise(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
@@ -20,23 +24,20 @@ function expectedContext(fixture: Fixture): FixtureContext {
   };
 }
 
-function matchesFixture(actual: FixtureContext, fixture: Fixture): boolean {
-  const expected = expectedContext(fixture);
-  return (
-    actual.date === expected.date &&
-    actual.teams.length === 2 &&
-    [...actual.teams].map(normalise).sort().join('|') ===
-      [...expected.teams].map(normalise).sort().join('|')
-  );
-}
-
-function assertMatchesFixture(contexts: FixtureContext[], fixture: Fixture): void {
+function assertMatchesFixture(contexts: FixtureContext[], expected: FixtureContext): void {
   if (contexts.length === 0 || contexts.some((context) => context.teams.length !== 2)) {
     throw new SingleFixturePackageError(
       'Include the fixture date and both team names so the selected fixture can be verified.',
     );
   }
-  if (contexts.some((context) => !matchesFixture(context, fixture))) {
+  if (
+    contexts.some(
+      (context) =>
+        context.date !== expected.date ||
+        [...context.teams].map(normalise).sort().join('|') !==
+          [...expected.teams].map(normalise).sort().join('|'),
+    )
+  ) {
     throw new SingleFixturePackageError(
       'The package does not match the selected fixture. Check its date and both team names.',
     );
@@ -75,7 +76,7 @@ function fixtureContextsFromJson(contents: string): FixtureContext[] {
   ];
 }
 
-function csvRecords(contents: string): string[][] {
+export function parseCsvRecords(contents: string): string[][] {
   const records: string[][] = [];
   let record: string[] = [];
   let field = '';
@@ -110,7 +111,7 @@ function csvRecords(contents: string): string[][] {
 }
 
 function fixtureContextsFromCsv(contents: string): FixtureContext[] {
-  const [header, ...rows] = csvRecords(contents);
+  const [header, ...rows] = parseCsvRecords(contents);
   if (!header || rows.length === 0) {
     throw new SingleFixturePackageError(
       'The CSV package must include a header and at least one row.',
@@ -135,8 +136,68 @@ export function validateSingleFixturePackage(
   contents: string,
   fixture: Fixture,
 ): void {
+  validateSingleFixturePackageContext(fileName, contents, expectedContext(fixture));
+}
+
+export function validateSingleFixturePackageContext(
+  fileName: string,
+  contents: string,
+  expected: FixtureContext,
+): void {
   const contexts = fileName.toLocaleLowerCase().endsWith('.json')
     ? fixtureContextsFromJson(contents)
     : fixtureContextsFromCsv(contents);
-  assertMatchesFixture(contexts, fixture);
+  assertMatchesFixture(contexts, expected);
+}
+
+export function readSingleFixturePackageContext(
+  fileName: string,
+  contents: string,
+): SingleFixturePackageContext {
+  if (fileName.toLocaleLowerCase().endsWith('.json')) {
+    let value: unknown;
+    try {
+      value = JSON.parse(contents) as unknown;
+    } catch {
+      throw new SingleFixturePackageError('The JSON package could not be read. Check its syntax.');
+    }
+    const upload = value as {
+      competition?: { context?: { name?: unknown } };
+      season?: { context?: { name?: unknown } };
+    } | null;
+    const [fixture] = fixtureContextsFromJson(contents);
+    const competitionName = upload?.competition?.context?.name;
+    const seasonName = upload?.season?.context?.name;
+    if (!fixture || typeof competitionName !== 'string' || typeof seasonName !== 'string') {
+      throw new SingleFixturePackageError(
+        'Include competition, season, fixture date and both team names in the package.',
+      );
+    }
+    return { ...fixture, competitionName, seasonName };
+  }
+
+  const [header, firstRow] = parseCsvRecords(contents);
+  if (!header || !firstRow) {
+    throw new SingleFixturePackageError(
+      'The CSV package must include a header and at least one row.',
+    );
+  }
+  const value = (field: string) => firstRow[header.indexOf(field)]?.trim() ?? '';
+  const context = {
+    competitionName: value('competitionName'),
+    seasonName: value('seasonName'),
+    date: value('fixtureDate'),
+    teams: [value('homeTeamName'), value('awayTeamName')],
+  };
+  if (
+    !context.competitionName ||
+    !context.seasonName ||
+    !context.date ||
+    context.teams.some((team) => !team)
+  ) {
+    throw new SingleFixturePackageError(
+      'Include competition, season, fixture date and both team names in the package.',
+    );
+  }
+  return context;
 }

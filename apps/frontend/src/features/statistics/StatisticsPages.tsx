@@ -1,55 +1,33 @@
 import type {
-  FixtureOutcome,
   FixtureStatistic,
   FixtureStatistics,
   ParticipantAggregateBowling,
-  ParticipantAggregates,
-  ParticipantCareerAggregate,
   ParticipantFixtureBatting,
   ParticipantFixtureBowling,
   StatisticContributingEvent,
 } from '@sport-analytics/contracts';
-import { useCallback, useId, type ElementType, type ReactNode } from 'react';
+import { useCallback, useId, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Breadcrumbs, LocalNavigation } from '../../components/NavigationPrimitives';
+import { ApiResponseError } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
-import {
-  DetailError,
-  DetailLoading,
-  RecordFact,
-  RecordFacts,
-  RelatedLinks,
-} from '../browse/RecordDetail';
+import { DetailError, DetailLoading, RelatedLinks } from '../browse/RecordDetail';
 import { SectionBoundary, SectionError } from '../browse/SectionBoundary';
 import { usePublicData } from '../browse/usePublicData';
 import { EventExportControls } from './EventExportControls';
+import { FixtureAnalytics } from './FixtureScorecards';
+import { ParticipantAggregateView } from './ParticipantAggregateView';
 
 function recordPath(resource: 'competitors' | 'participants', identifier: string) {
   return `/${resource}/${encodeURIComponent(identifier)}`;
 }
 
-function formatOutcome(outcome: FixtureOutcome): string {
-  if (outcome.kind === 'won') {
-    const margin = outcome.margin ? ` by ${outcome.margin.value} ${outcome.margin.type}` : '';
-    const method = outcome.method ? ` (${outcome.method})` : '';
-    return `${outcome.winnerCompetitorName ?? 'Winning team name unavailable'} won${margin}${method}.`;
-  }
-
-  if (outcome.kind === 'no_result') {
-    return 'No result.';
-  }
-
-  if (outcome.kind === 'tie') {
-    const deciderWinner = outcome.eliminatorCompetitorName ?? outcome.winnerCompetitorName;
-    if (outcome.decidedByBowlOut && deciderWinner) {
-      return `Match tied; ${deciderWinner} won the bowl-out.`;
-    }
-    if (outcome.eliminatorCompetitorName) {
-      return `Match tied; ${outcome.eliminatorCompetitorName} won the eliminator.`;
-    }
-    return 'Match tied.';
-  }
-
-  return 'Match drawn.';
+function fixtureLabel(statistics: FixtureStatistics): string {
+  const names = statistics.statistics
+    .map((statistic) => statistic.competitorName)
+    .filter((name): name is string => Boolean(name));
+  const distinctNames = [...new Set(names)];
+  return distinctNames.length > 0 ? distinctNames.join(' vs ') : 'Fixture';
 }
 
 function StatisticMetric({ label, value }: { label: string; value: ReactNode }) {
@@ -104,7 +82,7 @@ export function PlayerPerformance({
               }
             />
             <StatisticMetric label="Balls faced" value={batting.ballsFaced} />
-            <StatisticMetric label="Strike rate" value={batting.strikeRate ?? 'Not available'} />
+            <StatisticMetric label="Strike rate" value={batting.strikeRate ?? '—'} />
             <StatisticMetric label="Fours" value={batting.fours} />
             <StatisticMetric label="Sixes" value={batting.sixes} />
             {dismissal?.status === 'dismissed' ? (
@@ -130,16 +108,15 @@ export function PlayerPerformance({
             <StatisticMetric label="Runs conceded" value={bowling.runsConceded} />
             <StatisticMetric label="Wides" value={bowling.wides} />
             <StatisticMetric label="No-balls" value={bowling.noBalls} />
-            <StatisticMetric label="Legal balls" value={bowling.legalBallsBowled} />
-            <StatisticMetric label="Overs" value={bowling.oversBowled ?? 'Not available'} />
-            <StatisticMetric label="Economy rate" value={bowling.economyRate ?? 'Not available'} />
+            <StatisticMetric label="Overs" value={bowling.oversBowled ?? '—'} />
+            <StatisticMetric label="Economy rate" value={bowling.economyRate ?? '—'} />
             <StatisticMetric label="Wickets" value={bowling.wicketsTaken} />
           </MetricList>
         </section>
       ) : showUnavailable ? (
         <section aria-label="Bowling statistics">
           <h4>Bowling</h4>
-          <p className="statistics-section__empty">No bowling figures are available.</p>
+          <p className="statistics-section__empty">Did not bowl</p>
         </section>
       ) : null}
     </div>
@@ -150,13 +127,13 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
   if (statistic.scope === 'innings') {
     return (
       <MetricList>
-        <StatisticMetric label="Total runs" value={statistic.metrics.totalRuns} />
-        <StatisticMetric label="Delivery runs" value={statistic.metrics.deliveryRuns} />
-        <StatisticMetric label="Penalty runs" value={statistic.metrics.penaltyRuns} />
+        <StatisticMetric label="Runs" value={statistic.metrics.totalRuns} />
+        {statistic.metrics.penaltyRuns > 0 ? (
+          <StatisticMetric label="Penalty runs" value={statistic.metrics.penaltyRuns} />
+        ) : null}
       </MetricList>
     );
   }
-
   return (
     <PlayerPerformance
       batting={statistic.batting}
@@ -168,160 +145,58 @@ function StatisticValues({ statistic }: { statistic: FixtureStatistic }) {
   );
 }
 
-function StatisticCard({ statistic }: { statistic: FixtureStatistic }) {
-  const fixtureId = encodeURIComponent(statistic.fixtureId);
-  const statisticId = encodeURIComponent(statistic.statisticId);
-
-  return (
-    <li className="statistic-card">
-      <header className="statistic-card__heading">
-        <div>
-          <p className="record-list__meta">
-            {statistic.scope === 'innings'
-              ? `Innings ${statistic.inningsOrdinal}`
-              : 'Player performance'}
-          </p>
-          <h3>
-            {statistic.scope === 'innings' ? (
-              <Link to={recordPath('competitors', statistic.competitorId)}>
-                {statistic.competitorName}
-              </Link>
-            ) : (
-              <Link to={recordPath('participants', statistic.participantId)}>
-                {statistic.participantName}
-              </Link>
-            )}
-          </h3>
-          {statistic.scope === 'participant' &&
-          statistic.competitorId &&
-          statistic.competitorName ? (
-            <p className="statistic-card__association">
-              Team:{' '}
-              <Link to={recordPath('competitors', statistic.competitorId)}>
-                {statistic.competitorName}
-              </Link>
-            </p>
-          ) : null}
-        </div>
-        <Link className="text-link" to={`/fixtures/${fixtureId}/statistics/${statisticId}`}>
-          View calculation trace
-        </Link>
-      </header>
-      <StatisticValues statistic={statistic} />
-      <p className="statistic-card__source-count">
-        Based on {statistic.sourceEventCount}{' '}
-        {statistic.sourceEventCount === 1 ? 'accepted event' : 'accepted events'}.
-      </p>
-    </li>
-  );
-}
-
-function StatisticsResults({
-  headingLevel = 'h2',
+function StatisticsContent({
   statistics,
+  retry,
 }: {
-  headingLevel?: 'h2' | 'h3';
   statistics: FixtureStatistics;
+  retry(): void;
 }) {
-  const Heading: ElementType = headingLevel;
-  const inningsStatistics = statistics.statistics.filter(
-    (statistic) => statistic.scope === 'innings',
-  );
-  const participantStatistics = statistics.statistics.filter(
-    (statistic) => statistic.scope === 'participant',
-  );
-
-  return (
-    <>
-      <section aria-labelledby="fixture-summary-heading" className="statistics-summary">
-        <div className="statistics-section-heading">
-          <Heading id="fixture-summary-heading">Match result</Heading>
-          <p className={`statistics-status statistics-status--${statistics.status}`}>
-            {statistics.status === 'complete' ? 'Complete data' : 'Partial data'}
-          </p>
-        </div>
-        <RecordFacts>
-          <RecordFact label="Outcome" value={formatOutcome(statistics.outcome)} />
-          <RecordFact label="Super overs included" value="No" />
-        </RecordFacts>
-      </section>
-
-      {statistics.warnings.length > 0 ? (
-        <section aria-labelledby="statistics-warnings-heading" className="statistics-warnings">
-          <Heading id="statistics-warnings-heading">Data notices</Heading>
-          <ul>
-            {statistics.warnings.map((warning, index) => (
-              <li key={`${warning.code}-${index}`}>{warning.message}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {statistics.statistics.length === 0 ? (
-        <div className="state-message" role="status">
-          <Heading>No match statistics available</Heading>
-          <p>No published standard-innings statistics are currently available for this match.</p>
-        </div>
-      ) : (
-        <>
-          <section aria-labelledby="team-statistics-heading" className="statistics-section">
-            <div className="statistics-section-heading">
-              <div>
-                <p className="eyebrow">By innings</p>
-                <Heading id="team-statistics-heading">Innings totals</Heading>
-              </div>
-              <p>{inningsStatistics.length} published</p>
-            </div>
-            {inningsStatistics.length > 0 ? (
-              <ul className="statistics-list">
-                {inningsStatistics.map((statistic) => (
-                  <StatisticCard key={statistic.statisticId} statistic={statistic} />
-                ))}
-              </ul>
-            ) : (
-              <p className="statistics-section__empty">No innings totals are available.</p>
-            )}
-          </section>
-
-          <section aria-labelledby="participant-statistics-heading" className="statistics-section">
-            <div className="statistics-section-heading">
-              <div>
-                <p className="eyebrow">By player</p>
-                <Heading id="participant-statistics-heading">Player statistics</Heading>
-              </div>
-              <p>{participantStatistics.length} published</p>
-            </div>
-            {participantStatistics.length > 0 ? (
-              <ul className="statistics-list">
-                {participantStatistics.map((statistic) => (
-                  <StatisticCard key={statistic.statisticId} statistic={statistic} />
-                ))}
-              </ul>
-            ) : (
-              <p className="statistics-section__empty">No player statistics are available.</p>
-            )}
-          </section>
-        </>
-      )}
-    </>
-  );
-}
-
-function StatisticsContent({ statistics }: { statistics: FixtureStatistics }) {
+  const fixturePath = `/fixtures/${encodeURIComponent(statistics.fixtureId)}`;
   return (
     <article className="detail-page statistics-page content-boundary">
-      <Link className="back-link" to={`/fixtures/${encodeURIComponent(statistics.fixtureId)}`}>
+      <Breadcrumbs
+        items={[
+          { label: 'Fixtures', to: '/fixtures' },
+          { label: fixtureLabel(statistics), to: fixturePath },
+          { label: 'Statistics', to: '#' },
+        ]}
+      />
+      <Link className="back-link" to={fixturePath}>
         Back to match overview
       </Link>
       <header className="page-heading page-heading--detail">
         <p className="eyebrow">Published match record</p>
         <h1>Match statistics</h1>
-        <p>
-          Basic totals calculated from accepted delivery events. Standard match statistics exclude
-          super overs.
-        </p>
+        <p>Cricket scorecards calculated from accepted delivery events.</p>
+        <Link
+          className="button button--secondary"
+          to={`/participants/compare?fixtureId=${encodeURIComponent(statistics.fixtureId)}`}
+        >
+          Compare player performances
+        </Link>
       </header>
-      <StatisticsResults statistics={statistics} />
+      <LocalNavigation
+        label="Fixture sections"
+        items={[
+          { label: 'Overview', to: fixturePath },
+          { label: 'Statistics', to: `${fixturePath}/statistics` },
+          { label: 'Players', to: `${fixturePath}/players` },
+        ]}
+      />
+      <div className="fixture-statistics-overview">
+        <SectionBoundary
+          onRetry={retry}
+          renderError={(boundaryRetry) => (
+            <StatisticsSectionError
+              reason="The published statistics could not be displayed."
+              retry={boundaryRetry}
+            />
+          )}
+        >
+          <FixtureAnalytics statistics={statistics} />
+        </SectionBoundary>
+      </div>
     </article>
   );
 }
@@ -345,7 +220,6 @@ export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) 
     [fixtureId],
   );
   const state = usePublicData(load, fixtureId);
-
   return (
     <section aria-labelledby={headingId} className="related-collection fixture-statistics-overview">
       <div className="statistics-section-heading">
@@ -354,18 +228,15 @@ export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) 
           <h2 id={headingId}>Match statistics</h2>
         </div>
       </div>
-
       {state.status === 'loading' ? (
         <div className="state-message" role="status">
           <h3>Loading match statistics</h3>
           <p>The published outcome and player performances are being requested.</p>
         </div>
       ) : null}
-
       {state.status === 'error' ? (
         <StatisticsSectionError reason={state.error.message} retry={state.reload} />
       ) : null}
-
       {state.status === 'ready' ? (
         <SectionBoundary
           onRetry={state.reload}
@@ -376,118 +247,14 @@ export function FixtureStatisticsOverview({ fixtureId }: { fixtureId: string }) 
             />
           )}
         >
-          <StatisticsResults headingLevel="h3" statistics={state.data.data} />
+          <FixtureAnalytics statistics={state.data.data} />
         </SectionBoundary>
       ) : null}
     </section>
   );
 }
 
-function ParticipantCareerResults({ aggregates }: { aggregates: ParticipantAggregates }) {
-  const noticesHeadingId = useId();
-  // Selected, not calculated: every figure below is the career level exactly as
-  // the aggregate endpoint derived it.
-  const career = aggregates.statistics.find(
-    (statistic): statistic is ParticipantCareerAggregate => statistic.scope === 'career',
-  );
-
-  return (
-    <>
-      {aggregates.warnings.length > 0 ? (
-        <section aria-labelledby={noticesHeadingId} className="statistics-warnings">
-          <h3 id={noticesHeadingId}>Data notices</h3>
-          <ul>
-            {aggregates.warnings.map((warning, index) => (
-              <li key={`${warning.code}-${index}`}>{warning.message}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {career ? (
-        <div className="statistic-card participant-career-card">
-          <header className="statistic-card__heading">
-            <div>
-              <p className="record-list__meta">Super overs excluded</p>
-              <h3>Across all published matches</h3>
-            </div>
-            <p className={`statistics-status statistics-status--${aggregates.status}`}>
-              {aggregates.status === 'complete' ? 'Complete data' : 'Partial data'}
-            </p>
-          </header>
-          <PlayerPerformance batting={career.batting} bowling={career.bowling} showUnavailable />
-          <p className="statistic-card__source-count">
-            Based on {career.sourceEventCount}{' '}
-            {career.sourceEventCount === 1 ? 'accepted event' : 'accepted events'} from{' '}
-            {career.fixtureCount} {career.fixtureCount === 1 ? 'match' : 'matches'} in which this
-            player batted or bowled.
-          </p>
-        </div>
-      ) : (
-        <div className="state-message" role="status">
-          <h3>No career totals available</h3>
-          <p>No career batting or bowling figures are published for this player.</p>
-        </div>
-      )}
-    </>
-  );
-}
-
-/**
- * Career figures for the player page, from the participant aggregate endpoint.
- *
- * The request is independent of the match history beside it: each section owns
- * its loading, empty and error states, so a failure in one never hides the
- * other. The endpoint returns every requested level in one response and does
- * not page, so there is no cursor to follow.
- */
-export function ParticipantCareerOverview({ participantId }: { participantId: string }) {
-  const headingId = useId();
-  const load = useCallback(
-    (signal: AbortSignal) =>
-      publicReadApi.getParticipantAggregates(participantId, 'career', signal),
-    [participantId],
-  );
-  const state = usePublicData(load, participantId);
-
-  return (
-    <section aria-labelledby={headingId} className="related-collection">
-      <div className="statistics-section-heading">
-        <div>
-          <p className="eyebrow">Published player record</p>
-          <h2 id={headingId}>Career totals</h2>
-        </div>
-      </div>
-
-      {state.status === 'loading' ? (
-        <div className="state-message" role="status">
-          <h3>Loading career totals</h3>
-          <p>The published career batting and bowling figures are being requested.</p>
-        </div>
-      ) : null}
-
-      {state.status === 'error' ? (
-        <CareerSectionError reason={state.error.message} retry={state.reload} />
-      ) : null}
-
-      {state.status === 'ready' ? (
-        <SectionBoundary
-          onRetry={state.reload}
-          renderError={(retry) => (
-            <CareerSectionError
-              reason="The published career totals could not be displayed."
-              retry={retry}
-            />
-          )}
-        >
-          <ParticipantCareerResults aggregates={state.data.data} />
-        </SectionBoundary>
-      ) : null}
-    </section>
-  );
-}
-
-function CareerSectionError({ reason, retry }: { reason: string; retry(): void }) {
+function ParticipantStatisticsError({ reason, retry }: { reason: string; retry(): void }) {
   return (
     <SectionError
       description="Published career totals could not be requested. Try this section again."
@@ -499,31 +266,93 @@ function CareerSectionError({ reason, retry }: { reason: string; retry(): void }
   );
 }
 
+export function ParticipantCareerOverview({ participantId }: { participantId: string }) {
+  const headingId = useId();
+  const load = useCallback(
+    (signal: AbortSignal) =>
+      publicReadApi.getParticipantAggregates(participantId, undefined, signal),
+    [participantId],
+  );
+  const state = usePublicData(load, participantId);
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="related-collection participant-aggregate-overview"
+    >
+      <div className="statistics-section-heading">
+        <div>
+          <p className="eyebrow">Published player statistics</p>
+          <h2 id={headingId}>Career totals</h2>
+        </div>
+      </div>
+      {state.status === 'loading' ? (
+        <div className="state-message" role="status">
+          <h3>Loading career totals</h3>
+          <p>The career, competition and season records are being requested.</p>
+        </div>
+      ) : null}
+      {state.status === 'error' ? (
+        <ParticipantStatisticsError reason={state.error.message} retry={state.reload} />
+      ) : null}
+      {state.status === 'ready' ? (
+        <SectionBoundary
+          onRetry={state.reload}
+          renderError={(retry) => (
+            <ParticipantStatisticsError
+              reason="The published player statistics could not be displayed."
+              retry={retry}
+            />
+          )}
+        >
+          <ParticipantAggregateView aggregates={state.data.data} />
+        </SectionBoundary>
+      ) : null}
+    </section>
+  );
+}
+
 export function FixtureStatisticsPage() {
   const { fixtureId = '' } = useParams();
   const load = useCallback(
-    (signal: AbortSignal) => publicReadApi.getFixtureStatistics(fixtureId, signal),
+    async (signal: AbortSignal) => {
+      try {
+        const response = await publicReadApi.getFixtureStatistics(fixtureId, signal);
+        return { kind: 'available' as const, statistics: response.data };
+      } catch (error) {
+        if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
+
+        // The statistics endpoint deliberately returns 404 when its fixture source
+        // has not been published yet. Confirm the fixture itself exists before
+        // presenting that expected no-data state rather than masking a bad fixture URL.
+        await publicReadApi.getFixture(fixtureId, signal);
+        return { kind: 'unavailable' as const };
+      }
+    },
     [fixtureId],
   );
   const state = usePublicData(load, fixtureId);
-
-  if (state.status === 'loading') {
+  if (state.status === 'loading')
     return (
       <div className="detail-page content-boundary">
         <DetailLoading label="fixture statistics" />
       </div>
     );
-  }
-
-  if (state.status === 'error') {
+  if (state.status === 'error')
     return (
       <div className="detail-page content-boundary">
         <DetailError error={state.error} label="Fixture statistics" reload={state.reload} />
       </div>
     );
-  }
-
-  return <StatisticsContent statistics={state.data.data} />;
+  if (state.data.kind === 'unavailable')
+    return (
+      <div className="detail-page content-boundary">
+        <div className="state-message state-message--detail" role="status">
+          <h1>No published statistics are available for this fixture yet</h1>
+          <p>The fixture is available, but its accepted event data has not been published yet.</p>
+        </div>
+      </div>
+    );
+  return <StatisticsContent statistics={state.data.statistics} retry={state.reload} />;
 }
 
 function EventTrace({ event }: { event: StatisticContributingEvent }) {
@@ -543,7 +372,12 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
         <StatisticMetric label="Leg-byes" value={event.extras.legByes ?? 0} />
         <StatisticMetric label="Penalty extras" value={event.extras.penalty ?? 0} />
         <StatisticMetric label="Bowler wickets" value={event.bowlerWickets} />
-        <StatisticMetric label="Non-boundary" value={event.nonBoundary ? 'Yes' : 'No'} />
+        {event.nonBoundary ? (
+          <StatisticMetric
+            label="Boundary"
+            value="No — the runs were run, not hit to the boundary"
+          />
+        ) : null}
         <StatisticMetric
           label="Striker"
           value={
@@ -572,24 +406,28 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
       ? `${statistic.competitorName} innings ${statistic.inningsOrdinal} total`
       : `${statistic.participantName} performance`;
   const contributingEvents = statistic.contributingEvents ?? [];
-  // Names the downloaded file only. The exported events come from the
-  // statistic itself, so they are exactly the contributing events listed below.
   const exportFilenameFilters =
     statistic.scope === 'innings'
       ? { inningsId: statistic.inningsId, competitorId: statistic.competitorId }
       : { participantId: statistic.participantId };
-
   return (
     <article className="detail-page statistics-page content-boundary">
-      <Link className="back-link" to={`/fixtures/${fixtureId}`}>
-        Back to match overview
+      <Breadcrumbs
+        items={[
+          { label: 'Fixtures', to: '/fixtures' },
+          { label: 'Fixture', to: `/fixtures/${fixtureId}` },
+          { label: 'Statistics', to: `/fixtures/${fixtureId}/statistics` },
+          { label: title, to: '#' },
+        ]}
+      />
+      <Link className="back-link" to={`/fixtures/${fixtureId}/statistics`}>
+        Back to match statistics
       </Link>
       <header className="page-heading page-heading--detail">
         <p className="eyebrow">Calculation trace</p>
         <h1>{title}</h1>
         <p>This published result is calculated from accepted events in their match order.</p>
       </header>
-
       <section aria-labelledby="published-result-heading" className="statistics-section">
         <div className="statistics-section-heading">
           <h2 id="published-result-heading">Published result</h2>
@@ -600,7 +438,6 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
         </div>
         <StatisticValues statistic={statistic} />
       </section>
-
       <section aria-labelledby="contributing-events-heading" className="statistics-section">
         <div className="statistics-section-heading">
           <div>
@@ -634,7 +471,6 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
           </div>
         )}
       </section>
-
       <RelatedLinks>
         <Link to={`/fixtures/${fixtureId}`}>Open match overview</Link>
         {statistic.scope === 'innings' ? (
@@ -665,22 +501,17 @@ export function FixtureStatisticDetailPage() {
     [fixtureId, statisticId],
   );
   const state = usePublicData(load, `${fixtureId}:${statisticId}`);
-
-  if (state.status === 'loading') {
+  if (state.status === 'loading')
     return (
       <div className="detail-page content-boundary">
         <DetailLoading label="statistic calculation" />
       </div>
     );
-  }
-
-  if (state.status === 'error') {
+  if (state.status === 'error')
     return (
       <div className="detail-page content-boundary">
         <DetailError error={state.error} label="Statistic calculation" reload={state.reload} />
       </div>
     );
-  }
-
   return <StatisticDetailContent statistic={state.data.data} />;
 }

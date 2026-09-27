@@ -36,3 +36,9 @@ first = d["innings"][0]["overs"][0]["deliveries"][0]
 first["non_striker"] = first["batter"]
 write("striker-equals-non-striker.json", d,
       "non_striker set equal to batter")
+# 4. A negative extras count.
+d = load()
+first = d["innings"][0]["overs"][0]["deliveries"][0]
+first["extras"] = {"wides": -1}
+write("negative-extra.json", d,
+      "extras.wides set to -1 on the first delivery")

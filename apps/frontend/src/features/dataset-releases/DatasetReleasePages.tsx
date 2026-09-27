@@ -134,6 +134,18 @@ export function DatasetReleaseDetailPage() {
       </p>
       <RecordFacts>
         <RecordFact label="Created" value={formatCreationTime(release.createdAt)} />
+        <RecordFact
+          label="Snapshot identity"
+          value={release.snapshotId ?? 'Legacy release; snapshot identity unavailable'}
+        />
+        <RecordFact
+          label="Snapshot as of"
+          value={
+            release.snapshotAsOf
+              ? formatCreationTime(release.snapshotAsOf)
+              : 'Legacy release; snapshot time unavailable'
+          }
+        />
         <RecordFact label="Scope" value={scopeLabel(release.scope)} />
         <RecordFact label="Format version" value={release.formatVersion} />
         <RecordFact label="Event count" value={release.eventCount.toLocaleString('en-ZA')} />

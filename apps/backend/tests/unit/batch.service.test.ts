@@ -2,6 +2,7 @@ import { Readable } from 'node:stream';
 import { describe, expect, test, vi } from 'vitest';
 
 import {
+  BatchReplacementConflictError,
   BatchReviewResolutionError,
   type BatchRepository,
 } from '../../src/modules/batches/batch.repository';
@@ -50,6 +51,10 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
     getBatchCounts: vi
       .fn()
       .mockResolvedValue({ accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 }),
+    getBatchLineage: vi.fn().mockResolvedValue({
+      replacesBatchReference: null,
+      supersededByBatchReference: null,
+    }),
     listBatchReportItems: vi.fn().mockResolvedValue([]),
     listBatchRuleGroups: vi.fn().mockResolvedValue([]),
     countBlockingValidationErrors: vi.fn().mockResolvedValue(0),
@@ -61,6 +66,7 @@ function repository(overrides: Partial<BatchRepository> = {}): BatchRepository {
       proposed: 0,
     }),
     listBatchFixtureSummaries: vi.fn().mockResolvedValue([]),
+    listParticipantOnboardingTasks: vi.fn().mockResolvedValue([]),
     getLatestReviewDecision: vi.fn().mockResolvedValue(null),
     applyReviewDecision: vi.fn(),
     resolvePublishedConflict: vi.fn(),
@@ -134,6 +140,34 @@ describe('batch receipt service', () => {
     );
   });
 
+  test('passes correction provenance to atomic receipt creation and reports stale targets as conflicts', async () => {
+    const storage = {
+      upload: vi.fn().mockResolvedValue({
+        objectId: '123e4567-e89b-42d3-a456-426614174001',
+        sha256: 'b'.repeat(64),
+        byteSize: 21,
+      }),
+    } as unknown as BatchPayloadStorageService;
+    const createReplacement = vi
+      .fn<BatchRepository['createOrFindBatchAndQueueValidation']>()
+      .mockRejectedValue(new BatchReplacementConflictError('The correction request is stale.'));
+    const replacement = createBatchService(
+      storage,
+      repository({ createOrFindBatchAndQueueValidation: createReplacement }),
+    ).receive(
+      createTestAccount({ role: 'submitter', competitionIds: ['5'] }),
+      { ...metadata, replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000' },
+      Readable.from('corrected payload'),
+    );
+    await expect(replacement).rejects.toBeInstanceOf(BatchConflictError);
+    await expect(replacement).rejects.toThrow('The correction request is stale.');
+    expect(createReplacement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
+      }),
+    );
+  });
+
   test('limits a submitter to three non-terminal batches atomically', async () => {
     const storage = {
       upload: vi.fn().mockResolvedValue({
@@ -157,7 +191,7 @@ describe('batch receipt service', () => {
         metadata,
         Readable.from('payload'),
       ),
-    ).rejects.toBeInstanceOf(BatchConflictError);
+    ).rejects.toThrow('The submitter already has three active batches.');
   });
 
   test('returns the existing batch only when the idempotency key has the same checksum', async () => {
@@ -261,6 +295,22 @@ describe('batch result reporting service', () => {
     expect(response.data.counts).toMatchObject(result);
   });
 
+  test('reports both directions of correction replacement lineage', async () => {
+    const lineage = {
+      replacesBatchReference: '223e4567-e89b-42d3-a456-426614174000',
+      supersededByBatchReference: '323e4567-e89b-42d3-a456-426614174000',
+    };
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
+      getBatchLineage: vi.fn().mockResolvedValue(lineage),
+    });
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getStatus(
+      createTestAccount({ role: 'submitter' }),
+      persistedBatch.batchReference,
+    );
+    expect(response.data.lineage).toEqual(lineage);
+  });
+
   test('reports legacy published conflicts as correction-capable via lazy lineage bootstrap', async () => {
     const baseItem = {
       batchItemId: '41',
@@ -350,6 +400,109 @@ describe('batch result reporting service', () => {
       existingSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
       correctionPermitted: true,
     });
+  });
+
+  test('returns approval blockers independently of the bounded ordinary report page', async () => {
+    const ordinaryItem = {
+      batchItemId: '41',
+      ordinal: 0,
+      inningsId: '8',
+      overNumber: 1,
+      positionInOver: 1,
+      sourceIdentity: 'event-1',
+      sourceLocation: { filePath: 'season.csv', rowNumber: 2 },
+      referenceResolutionState: 'resolved' as const,
+      resolvedReferences: {},
+      state: 'accepted' as const,
+      rejectionCode: null,
+      publishedEventId: null,
+      operation: 'upsert' as const,
+      correctsSourceIdentity: null,
+      correctionTargetDeliveryId: null,
+      errors: [],
+    };
+    const laterBlocker = {
+      ...ordinaryItem,
+      batchItemId: '99',
+      ordinal: 99,
+      inningsId: null,
+      sourceIdentity: 'event-100',
+      referenceResolutionState: 'unresolved' as const,
+      resolvedReferences: {
+        fixture: {
+          referencePath: 'fixture',
+          entityType: 'fixture',
+          state: 'unresolved',
+          submittedReference: 'Unknown fixture',
+          candidates: [],
+          reason: 'No fixture matches.',
+        },
+      },
+      state: 'rejected' as const,
+      rejectionCode: 'REFERENCE_RESOLUTION_FAILED',
+    };
+    const laterConflict = {
+      ...ordinaryItem,
+      batchItemId: '100',
+      ordinal: 100,
+      state: 'rejected' as const,
+      rejectionCode: 'PUBLISHED_DELIVERY_CONFLICT',
+      rejectionDetail: {
+        existingDeliveryId: '88',
+        differences: [{ fieldPath: 'runs.batter', submittedValue: 4, publishedValue: 1 }],
+      },
+      publishedConflictSourceEventId: '123e4567-e89b-42d3-a456-426614174099',
+    };
+    const listBatchReportItems = vi
+      .fn()
+      .mockImplementation(
+        (_batchId: string, options: { acceptedOnly?: boolean; blockingOnly?: boolean }) => {
+          if (options.blockingOnly) return Promise.resolve([laterBlocker, laterConflict]);
+          if (options.acceptedOnly) return Promise.resolve([ordinaryItem]);
+          return Promise.resolve([ordinaryItem]);
+        },
+      );
+    const batches = repository({
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, state: 'awaiting_review' }),
+      listBatchReportItems,
+      getBatchProgress: vi
+        .fn()
+        .mockResolvedValue({ total: 100, processed: 100, accepted: 99, rejected: 1 }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        accepted: 99,
+        rejected: 1,
+        unresolved: 1,
+        duplicate: 0,
+        conflicting: 0,
+      }),
+      getBatchResolutionCounts: vi.fn().mockResolvedValue({
+        resolved: 99,
+        ambiguous: 0,
+        unresolved: 1,
+        invalid: 0,
+        proposed: 0,
+      }),
+    });
+
+    const response = await createBatchService({} as BatchPayloadStorageService, batches).getReport(
+      createTestAccount({ role: 'admin' }),
+      persistedBatch.batchReference,
+      { limit: 1 },
+    );
+
+    expect(response.data.items.map((item) => item.ordinal)).toEqual([0]);
+    expect(response.data.blockingItems).toMatchObject([
+      { ordinal: 99, outcome: 'unresolved', referenceResolutions: [{ state: 'unresolved' }] },
+      {
+        ordinal: 100,
+        outcome: 'conflicting',
+        publishedConflict: { existingDeliveryId: '88', correctionPermitted: true },
+      },
+    ]);
+    expect(listBatchReportItems).toHaveBeenCalledWith('20', { limit: 2 });
+    expect(listBatchReportItems).toHaveBeenCalledWith('20', { blockingOnly: true, limit: 50_001 });
   });
 
   test('reports ordinary rejected records without blocking approval of the accepted subset', async () => {
@@ -751,9 +904,91 @@ describe('canonical fixture creation', () => {
         competitionId: persistedBatch.competitionId,
         actorId: '1',
         referencePath: 'fixtures.0',
+        proposal: unresolvedFixture.resolvedReferences.fixture.submittedReference.proposal,
       }),
     );
     expect(batches.publishAcceptedItems).not.toHaveBeenCalled();
+  });
+
+  test('gathers innings and squad context from every delivery of the new fixture, and surfaces onboarding results', async () => {
+    const secondDelivery = {
+      ...unresolvedFixture,
+      batchItemId: '43',
+      ordinal: 2,
+      resolvedReferences: {
+        fixture: unresolvedFixture.resolvedReferences.fixture,
+        innings: {
+          referencePath: 'fixtures.0.innings.0',
+          entityType: 'innings',
+          state: 'unresolved',
+          candidates: [],
+          reason: null,
+          submittedReference: {
+            context: { ordinal: 0, battingTeam: { context: { name: 'Wits' } } },
+          },
+        },
+        striker: {
+          referencePath: 'fixtures.0.innings.0.events.0.striker',
+          entityType: 'participant',
+          state: 'unresolved',
+          candidates: [],
+          reason: null,
+          submittedReference: {
+            context: { name: 'A. Smith', team: { context: { name: 'Wits' } } },
+          },
+        },
+        bowler: {
+          referencePath: 'fixtures.0.innings.0.events.0.bowler',
+          entityType: 'participant',
+          state: 'unresolved',
+          candidates: [],
+          reason: null,
+          submittedReference: {
+            context: { name: 'C. Khumalo', team: { context: { name: 'UCT' } } },
+          },
+        },
+      },
+    };
+    const createCanonicalFixtureAndQueueMapping = vi.fn().mockResolvedValue({
+      decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+      state: 'applied',
+      decidedAt: '2026-09-11T12:00:00.000Z',
+      onboarding: {
+        inningsCreated: 1,
+        squadCreated: 2,
+        unresolvedParticipants: [],
+      },
+    });
+    const batches = repository({
+      findBatchByReference: vi
+        .fn()
+        .mockResolvedValue({ ...persistedBatch, packageVersion: '1.1', state: 'rejected' }),
+      listBatchItems: vi.fn().mockResolvedValue([unresolvedFixture, secondDelivery]),
+      createCanonicalFixtureAndQueueMapping,
+    });
+    const result = await createBatchService(
+      {} as BatchPayloadStorageService,
+      batches,
+    ).createCanonicalFixture(createTestAccount({ role: 'admin' }), persistedBatch.batchReference, {
+      itemOrdinal: 1,
+      referencePath: 'fixtures.0',
+      decisionKey: 'create-fixture',
+    });
+
+    expect(createCanonicalFixtureAndQueueMapping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        innings: [{ ordinal: 0, battingTeamName: 'Wits' }],
+        participants: expect.arrayContaining([
+          { name: 'A. Smith', teamName: 'Wits' },
+          { name: 'C. Khumalo', teamName: 'UCT' },
+        ]),
+      }),
+    );
+    expect(result.data.onboarding).toEqual({
+      inningsCreated: 1,
+      squadCreated: 2,
+      unresolvedParticipants: [],
+    });
   });
 
   test('rejects non-administrators, legacy packages, and incomplete proposals', async () => {
@@ -792,7 +1027,6 @@ describe('canonical fixture creation', () => {
 
 describe('batch review service', () => {
   const awaitingReview = { ...persistedBatch, state: 'awaiting_review' as const };
-  const published = { ...persistedBatch, state: 'published' as const };
   const decision = {
     decision: 'approved' as const,
     actorId: '1',
@@ -801,20 +1035,23 @@ describe('batch review service', () => {
     reason: 'Validation report is acceptable.',
   };
 
-  test('allows a global administrator approval and resumes publication before responding', async () => {
+  test('returns publishing state after approval without running publication inside the review request', async () => {
     const applyReviewDecision = vi.fn().mockResolvedValue({
       batch: { ...awaitingReview, state: 'publishing' },
       review: decision,
       resumePublication: true,
     });
-    const publishAcceptedItems = vi.fn().mockResolvedValue({
-      published: 3,
-      duplicateSkipped: 0,
-      conflicts: 0,
-    });
+
+    const publishAcceptedItems = vi
+      .fn()
+      .mockRejectedValue(new Error('Publication must not run inside the reviewer HTTP request.'));
+
     const batches = repository({
       findBatchByReference: vi.fn().mockResolvedValue(awaitingReview),
-      findBatchById: vi.fn().mockResolvedValue(published),
+      findBatchById: vi.fn().mockResolvedValue({
+        ...awaitingReview,
+        state: 'publishing',
+      }),
       applyReviewDecision,
       publishAcceptedItems,
       getLatestReviewDecision: vi.fn().mockResolvedValue(decision),
@@ -832,8 +1069,15 @@ describe('batch review service', () => {
       decision: 'approved',
       reason: decision.reason,
     });
-    expect(publishAcceptedItems).toHaveBeenCalledWith(awaitingReview.batchId, 'reviewer:1');
-    expect(response.data).toMatchObject({ status: 'published', review: { decision: 'approved' } });
+
+    expect(publishAcceptedItems).not.toHaveBeenCalled();
+
+    expect(response.data).toMatchObject({
+      status: 'publishing',
+      review: {
+        decision: 'approved',
+      },
+    });
   });
 
   test.each(['rejected', 'returned_for_correction'] as const)(

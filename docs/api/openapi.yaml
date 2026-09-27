@@ -6,8 +6,10 @@ info:
   description: |
     Version-controlled contract for the handwritten Sport Analytics backend API.
 
-    The supported API major version is `v1`; every documented path is served
-    beneath `/api/v1`. URI paths are the only version-selection mechanism.
+    The supported business API major version is `v1`; application-data paths are
+    served beneath `/api/v1`. Public documentation resources such as `/openapi.yaml`
+    sit outside that versioned business surface. URI paths are the only
+    version-selection mechanism for the business API.
     Unsupported major-version paths return `404` with
     `UNSUPPORTED_API_VERSION`; request headers do not negotiate another API version.
 
@@ -26,12 +28,16 @@ x-api-versioning:
     status: 404
     code: UNSUPPORTED_API_VERSION
 servers:
-  - url: statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net
-    description: Development API
-
+  - url: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io
+    description: Deployed development API
+  - url: http://127.0.0.1:3000
+    description: Local development API
 security: []
 
 tags:
+  - name: Documentation
+    description: Public machine-readable API documentation resources.
+
   - name: Health
     description: Service health and availability.
 
@@ -62,9 +68,31 @@ tags:
     description: Administrator-only application-account and submitter-scope operations.
 
   - name: Consumer API
-    description: API-key authenticated external consumer reads with per-consumer protections.
+    description: >-
+      API-key authenticated external consumer reads with per-consumer protections.
+      The complete protected fixture, event, statistic and export surface is
+      documented in `docs/api/consumer-keys.md`.
 
 paths:
+  /openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: Download the authoritative OpenAPI specification
+      description: >-
+        Returns the same version-controlled OpenAPI document maintained at
+        docs/api/openapi.yaml. This documentation resource is public and is not
+        part of the versioned /api/v1 business-data surface.
+      operationId: getOpenApiSpecification
+      x-implementation-status: implemented
+      security: []
+      responses:
+        '200':
+          description: Authoritative machine-readable OpenAPI 3.1 specification.
+          content:
+            application/yaml:
+              schema:
+                type: string
+
   /api/v1/dataset-releases:
     get:
       tags: [Dataset Releases]
@@ -125,7 +153,7 @@ paths:
   /api/v1/admin/dataset-releases:
     post:
       tags: [Administration, Dataset Releases]
-      summary: Create an immutable dataset release
+      summary: Queue an immutable dataset release
       operationId: createDatasetRelease
       x-implementation-status: implemented
       security: [{ bearerAuth: [] }]
@@ -141,18 +169,51 @@ paths:
                 version:
                   $ref: '#/components/schemas/DatasetReleaseVersion'
       responses:
-        '201':
-          description: Created release metadata, or the existing immutable release for that version.
+        '200':
+          description: Existing immutable release metadata when the version is already published.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetReleaseResponse'
+        '202':
+          description: Durable generation job accepted or reused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseJobResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
+  /api/v1/admin/dataset-release-jobs/{jobId}:
+    get:
+      tags: [Administration, Dataset Releases]
+      summary: Get dataset release generation status
+      operationId: getDatasetReleaseJob
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Safe generation progress and completed release metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetReleaseJobResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/admin/api-consumers:
     get:
@@ -189,8 +250,13 @@ paths:
               application/json:
                 { schema: { $ref: '#/components/schemas/ApiConsumerIssueResponse' } },
             }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The issue request is invalid.
           content:
@@ -222,6 +288,10 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: The API consumer identifier is not a numeric identifier (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}:
     delete:
@@ -248,6 +318,10 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: The API consumer or key identifier is not a numeric identifier (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/consumer/competitions:
     get:
@@ -259,18 +333,29 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
+        - name: name
+          in: query
+          description: Optional competition-name filter.
+          schema:
+            type: string
+            minLength: 1
       responses:
         '200':
-          {
-            description: Competition page.,
-            content:
-              {
-                application/json:
-                  { schema: { $ref: '#/components/schemas/CompetitionCollectionResponse' } },
-              },
-          }
+          description: Competition page.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            X-Quota-Limit: { $ref: '#/components/headers/QuotaLimit' }
+            X-Quota-Remaining: { $ref: '#/components/headers/QuotaRemaining' }
+            X-Quota-Reset: { $ref: '#/components/headers/QuotaReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompetitionCollectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
   /api/v1/consumer/fixtures:
     get:
@@ -282,19 +367,405 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
+        - name: competitionId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: seasonId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: gender
+          in: query
+          schema:
+            type: string
+            minLength: 1
+        - name: startDateFrom
+          in: query
+          description: Inclusive lower fixture-date bound.
+          schema:
+            type: string
+            format: date
+        - name: startDateTo
+          in: query
+          description: Inclusive upper fixture-date bound.
+          schema:
+            type: string
+            format: date
       responses:
         '200':
-          {
-            description: Fixture page.,
-            content:
-              {
-                application/json:
-                  { schema: { $ref: '#/components/schemas/FixtureCollectionResponse' } },
-              },
-          }
+          description: Fixture page.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            X-Quota-Limit: { $ref: '#/components/headers/QuotaLimit' }
+            X-Quota-Remaining: { $ref: '#/components/headers/QuotaRemaining' }
+            X-Quota-Reset: { $ref: '#/components/headers/QuotaReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FixtureCollectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
         '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
 
+  /api/v1/consumer/fixtures/{fixtureId}:
+    get:
+      tags: [Consumer API]
+      summary: Get a fixture with a consumer API key
+      operationId: getConsumerFixture
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+      responses:
+        '200':
+          description: Fixture detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureResponse'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events:
+    get:
+      tags: [Consumer API]
+      summary: List accepted fixture events with a consumer API key
+      operationId: listConsumerFixtureEvents
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: >-
+            Limit events to those involving this participant as striker,
+            non-striker, bowler, dismissed player or identified fielder.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Paginated accepted fixture events in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventCollectionResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events/export.json:
+    get:
+      tags: [Consumer API]
+      summary: Export accepted fixture events as JSON with a consumer API key
+      operationId: exportConsumerFixtureEventsJson
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: Limit events to those involving this participant.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Every matching accepted event in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventExportResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events/export.csv:
+    get:
+      tags: [Consumer API]
+      summary: Export accepted fixture events as CSV with a consumer API key
+      operationId: exportConsumerFixtureEventsCsv
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - name: inningsId
+          in: query
+          description: Limit events to one innings in the fixture.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitorId
+          in: query
+          description: Limit events to innings batted by this competitor.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: participantId
+          in: query
+          description: Limit events to those involving this participant.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: overNumber
+          in: query
+          description: Limit events to one zero-based cricket over number.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 32767
+        - name: wicketKind
+          in: query
+          description: Limit events to deliveries containing this dismissal kind.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: A CSV attachment of every matching accepted event in occurrence order.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the CSV export.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}:
+    get:
+      tags: [Consumer API]
+      summary: Get an accepted fixture event with a consumer API key
+      operationId: getConsumerFixtureEvent
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: One current accepted fixture event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventResponse'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics:
+    get:
+      tags: [Consumer API]
+      summary: Get fixture statistics with a consumer API key
+      operationId: getConsumerFixtureStatistics
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/IncludeStatisticContributors'
+      responses:
+        '200':
+          description: Derived fixture statistics and completeness state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureStatisticsResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}:
+    get:
+      tags: [Consumer API]
+      summary: Get one fixture statistic with a consumer API key
+      operationId: getConsumerFixtureStatistic
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+        - $ref: '#/components/parameters/IncludeStatisticContributors'
+      responses:
+        '200':
+          description: One derived fixture statistic resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixtureStatisticResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json:
+    get:
+      tags: [Consumer API]
+      summary: Export a fixture statistic trace as JSON with a consumer API key
+      operationId: exportConsumerFixtureStatisticEventsJson
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: The statistic's contributing accepted events in occurrence order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventExportResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ExportTraceChanged' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv:
+    get:
+      tags: [Consumer API]
+      summary: Export a fixture statistic trace as CSV with a consumer API key
+      operationId: exportConsumerFixtureStatisticEventsCsv
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FixtureId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: A CSV attachment of the statistic's contributing accepted events.
+          headers:
+            Content-Disposition:
+              description: Attachment filename for the CSV export.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ExportTraceChanged' }
+        '422': { $ref: '#/components/responses/ExportTooLarge' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/participants/{participantId}/statistics:
+    get:
+      tags: [Consumer API]
+      summary: Get participant aggregates with a consumer API key
+      operationId: getConsumerParticipantStatistics
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/ParticipantAggregateScope'
+      responses:
+        '200':
+          description: Participant season, competition, and career aggregates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregatesResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
+
+  /api/v1/consumer/participants/{participantId}/statistics/{statisticId}:
+    get:
+      tags: [Consumer API]
+      summary: Get one participant aggregate with a consumer API key
+      operationId: getConsumerParticipantStatistic
+      x-implementation-status: implemented
+      security: [{ apiKeyAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ParticipantId'
+        - $ref: '#/components/parameters/StatisticId'
+      responses:
+        '200':
+          description: One derived participant aggregate resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAggregateResponse'
+        '401': { $ref: '#/components/responses/ApiKeyUnauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/ConsumerLimitExceeded' }
+        '503': { $ref: '#/components/responses/ConsumerRateLimitUnavailable' }
   /api/v1/health:
     get:
       tags:
@@ -375,6 +846,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountDeletionResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -383,6 +855,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The exact deletion confirmation was not supplied.
           content:
@@ -434,14 +910,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubmitterAccessRequestResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The authenticated account is disabled.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '409':
           description: The account already has a pending request or is already approved.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The request body or requested competition is invalid.
           content:
@@ -479,14 +964,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubmitterScopeRequestResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The authenticated account is disabled.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '409':
           description: The account is not an approved submitter, the scope is already granted, or another scope request is pending.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The request body or requested competition is invalid.
           content:
@@ -560,6 +1054,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -572,6 +1067,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The user identifier or requested role is invalid.
           content:
@@ -631,6 +1130,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -647,6 +1147,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The update shape or one of the requested competition scopes is invalid.
           content:
@@ -685,6 +1189,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdministratorSubmitterAccessResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -701,6 +1206,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The target user identifier is malformed.
           content:
@@ -1273,9 +1782,10 @@ paths:
       summary: Get contextual weather for a fixture
       description: |
         Resolves the fixture's start date and venue coordinates, reusing stored
-        coordinates or resolving the city first and raw venue name second when
-        coordinates are absent. Resolved coordinates are persisted before daily
-        weather is retrieved through the server-side Open-Meteo integration.
+        coordinates or resolving the canonical venue and city first and raw venue
+        name second when coordinates are absent. Resolved coordinates are persisted before daily
+        weather is retrieved through the server-side
+        Open-Meteo integration; a changed venue name or city invalidates them.
         Weather is contextual external information and is not authoritative
         fixture, event, or statistic data. If the fixture exists but cannot be
         located after those lookups, or its date falls outside Open-Meteo's
@@ -1495,8 +2005,9 @@ paths:
         recomputed over each group rather than averaged across fixtures, and are
         null where their denominator is zero or where the fixtures in a group do
         not share one balls-per-over divisor. Bowling figures separately expose
-        bowler-attributable wide and no-ball runs; byes, leg-byes and innings
-        penalty runs remain team extras and are not charged to the bowler.
+        bowler-attributable wide and no-ball runs. Byes and leg-byes run off a
+        wide are wide runs charged to the bowler (Law 22.6); other byes,
+        leg-byes and innings penalty runs remain team extras.
       operationId: getParticipantAggregates
       x-implementation-status: implemented
       security: []
@@ -1536,6 +2047,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ParticipantAggregateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/statistics/leaderboards:
+    get:
+      tags:
+        - Public Read
+      summary: Get a bounded season or competition participant leaderboard
+      description: |
+        Ranks accepted-current standard-innings participant aggregates with one
+        set-based server-side query. `scope=season` requires `seasonId`;
+        `scope=competition` requires `competitionId`. Total and batting rate
+        metrics sort descending; bowling rate metrics sort ascending. Equal
+        metric values are ordered by participant name using database C
+        collation, then stable numeric participant ID. Rate qualifications and
+        their rationale are returned in the response. Results are limited to at
+        most 50 entries and expose no submission, account, review or audit data.
+      operationId: getStatisticsLeaderboard
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [season, competition]
+        - name: seasonId
+          in: query
+          description: Required only for season scope; the opaque season resource identifier.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: competitionId
+          in: query
+          description: Required only for competition scope.
+          schema:
+            $ref: '#/components/schemas/ApiIdentifier'
+        - name: metric
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/LeaderboardMetric'
+        - name: limit
+          in: query
+          description: Bounded top-N result size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: The requested authoritative leaderboard and qualification metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -1632,6 +2202,36 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /api/v1/provenance/participants/{participantId}/statistics/{statisticId}:
+    get:
+      tags: [Provenance]
+      summary: Trace a published participant aggregate to current source events
+      operationId: getParticipantAggregateProvenance
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: participantId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        - $ref: '#/components/parameters/StatisticId'
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+        - { name: cursor, in: query, schema: { type: string, minLength: 1 } }
+      responses:
+        '200':
+          description: Cursor-paginated aggregate contributors with stable event identities and source provenance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatisticProvenanceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/v1/admin/batches:
     get:
       tags: [Batches]
@@ -1673,6 +2273,7 @@ paths:
           description: Global batch history across all submitters, optionally filtered by lifecycle state.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchListResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
@@ -1717,6 +2318,7 @@ paths:
           description: Submitters receive only their own batches; administrator reviewers receive their authorised repository scope.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchListResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
@@ -1742,7 +2344,8 @@ paths:
             name: X-Batch-Package-Version,
             in: header,
             required: true,
-            schema: { type: string, const: '1.0' },
+            description: '`1.1` permits fixture proposals for genuinely new fixtures.',
+            schema: { type: string, enum: ['1.0', '1.1'] },
           }
         - {
             name: X-File-Name,
@@ -1750,6 +2353,11 @@ paths:
             required: true,
             schema: { type: string, minLength: 1, maxLength: 255 },
           }
+        - name: X-Replaces-Batch-Reference
+          in: header
+          required: false
+          description: Opaque reference of the correction-requested batch replaced by this upload.
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
@@ -1758,21 +2366,25 @@ paths:
           application/x-ndjson: { schema: { type: string, format: binary } }
       responses:
         '202':
-          {
-            description: Private source bytes were durably staged; no event is published.,
-            content:
-              {
-                application/json: { schema: { $ref: '#/components/schemas/BatchReceiptResponse' } },
-              },
-          }
+          description: Private source bytes were durably staged; no event is published.
+          headers:
+            Location:
+              description: Status URL of the staged batch.
+              required: true
+              schema: { type: string, pattern: '^/api/v1/batches/' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/BatchReceiptResponse' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409':
-          {
-            description: Active-batch concurrency limit reached.,
-            content:
-              { application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
-          }
+          description: >-
+            Active-batch concurrency limit reached; idempotency conflict; or invalid, unauthorised,
+            stale, or competing replacement relationship.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '413':
           {
             description: Payload exceeds 50 MB.,
@@ -1785,6 +2397,15 @@ paths:
             content:
               { application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
           }
+        '429':
+          description: The account exceeded 6 batch uploads in 60 seconds (`RATE_LIMIT_EXCEEDED`).
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '503':
           {
             description: Private object storage is unavailable.,
@@ -1812,6 +2433,7 @@ paths:
           }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches/{batchReference}/report:
     get:
@@ -1833,8 +2455,10 @@ paths:
           description: Summary, grouped rules, source traceability and all faults for this report page.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchReportResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches/{batchReference}/report/download:
     get:
@@ -1856,6 +2480,7 @@ paths:
               { schema: { $ref: '#/components/schemas/BatchReportDownloadResponse' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/batches/{batchReference}/review:
     post:
@@ -1877,10 +2502,16 @@ paths:
           description: Persisted decision and current publication lifecycle state.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Approval is unsafe, another decision won the race, or publication is leased.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
@@ -1908,10 +2539,16 @@ paths:
           description: Conflict resolved and current batch lifecycle returned.
           content:
             application/json: { schema: { $ref: '#/components/schemas/BatchStatusResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: The conflict is stale, ambiguous, already resolved, or cannot be corrected safely.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
@@ -1945,14 +2582,130 @@ paths:
           content:
             application/json:
               { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: The candidate is stale, unavailable, or conflicts with a prior decision.
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The mapping request is invalid.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
+  /api/v1/batches/{batchReference}/participants:
+    post:
+      tags: [Batches]
+      summary: Settle outstanding participant onboarding tasks for a batch
+      description: >-
+        An administrator answers the participant onboarding tasks a reviewer-created canonical
+        fixture could not settle deterministically. Each decision names the task it answers by
+        `taskReference` and gives exactly one answer: `personId` picks a candidate the task
+        offered, `sourceId` supplies a durable registry identifier, and `teamName` names which of
+        the fixture's two teams the participant belongs to. A participant is never matched on a
+        name, and no identifier outside the fixture's scope is accepted.
+
+        The whole array is applied in one transaction and the batch is revalidated once, so a
+        season-scale batch does not pay for one full revalidation per decision. If any decision is
+        invalid nothing is applied. Replay is safe: a decision against an already settled task is
+        a no-op, and when nothing changes no revalidation is queued.
+      operationId: createBatchParticipantOnboardingDecisions
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchParticipantOnboardingRequest' }
+      responses:
+        '202':
+          description: >-
+            The decisions were applied. `revalidationQueued` is false when every decision was
+            already settled, because then there is nothing to revalidate.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchParticipantOnboardingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The account is not an administrator, or the batch is not visible to it.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            A decision could not be applied: an unknown task, a candidate the task did not offer,
+            an identifier naming no person, or a team that is not one of the fixture's two
+            (`BATCH_PARTICIPANT_ONBOARDING_CONFLICT`). Nothing in the array was applied.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The decision array is invalid (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
+  /api/v1/batches/{batchReference}/canonical-fixtures:
+    post:
+      tags: [Batches]
+      summary: Create a canonical fixture from a staged fixture proposal
+      description: >-
+        An administrator may create the canonical fixture for an unresolved fixture reference that
+        was submitted with a complete fixture proposal in a version `1.1` batch package: a source
+        identifier, date, season and two teams. The backend records the decision and queues normal
+        reference resolution and validation; it does not publish any staged delivery. Teams,
+        participants and seasons must already be canonical records. A proposal whose `outcome` is
+        `won` must also name the winning team in `winner`, and it must be one of the proposal's own
+        two teams.
+      operationId: createBatchCanonicalFixture
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchReference, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchCanonicalFixtureRequest' }
+      responses:
+        '202':
+          description: >-
+            The canonical fixture decision was recorded. `status` is `queued` while revalidation is
+            pending, or `applied` when the stored decision has already been applied.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/BatchReferenceMappingResponse' } }
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The account is not an administrator, or the batch is not visible to it.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            The item does not carry a complete version 1.1 fixture proposal, the proposed winner is
+            not one of the fixture's two teams, or the decision conflicts with a prior decision
+            (`BATCH_CANONICAL_FIXTURE_CONFLICT`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '413':
+          description: The JSON request body exceeds 16 KB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The fixture decision is invalid (`VALIDATION_FAILED`).
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
@@ -1982,6 +2735,10 @@ paths:
       responses:
         '200':
           description: The event was atomically superseded by a corrected revision.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
           content:
             application/json:
               schema:
@@ -1998,12 +2755,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
         '422':
           description: The correction failed contract, reference, or source-event validation.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: The submission-capable account exceeded 30 requests in 60 seconds (`RATE_LIMIT_EXCEEDED`).
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
   /api/v1/submissions/events/{eventId}/history:
     get:
@@ -2059,6 +2829,10 @@ paths:
       responses:
         '201':
           description: Uploaded events were accepted and source-file provenance was stored.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
           content:
             application/json:
               schema:
@@ -2088,10 +2862,10 @@ paths:
         '429':
           description: The submission-capable account exceeded 30 requests in 60 seconds.
           headers:
-            Retry-After:
-              schema:
-                type: integer
-              description: Seconds until the current rate-limit window ends.
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
             application/json:
               schema:
@@ -2121,6 +2895,10 @@ paths:
       responses:
         '201':
           description: Submission and all ordered events were accepted and stored.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
           content:
             application/json:
               schema:
@@ -2152,10 +2930,10 @@ paths:
         '429':
           description: The submission-capable account exceeded 30 requests in 60 seconds.
           headers:
-            Retry-After:
-              schema:
-                type: integer
-              description: Seconds until the current rate-limit window ends.
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
             application/json:
               schema:
@@ -2166,12 +2944,18 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: Supabase access token
+      bearerFormat: JWT
+      description: >-
+        Supabase-issued access token for authenticated application endpoints.
+        Enter the raw access token in an interactive OpenAPI client's authorization
+        dialog; the client adds the `Bearer` scheme to the request automatically.
     apiKeyAuth:
       type: apiKey
       in: header
       name: X-API-Key
-
+      description: >-
+        External consumer API key sent in the `X-API-Key` request header.
+        Real API keys must not be stored in this specification or its examples.
   parameters:
     DatasetReleaseVersion:
       name: version
@@ -2296,9 +3080,46 @@ components:
           - competition
           - career
 
+  headers:
+    RateLimitLimit:
+      description: Requests permitted in the current 60-second rate-limit window.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    RateLimitRemaining:
+      description: Requests remaining in the current rate-limit window.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    RateLimitReset:
+      description: Seconds until the current rate-limit window ends.
+      required: true
+      schema: { type: integer, minimum: 1 }
+    RetryAfter:
+      description: Seconds to wait before retrying, until the current rate-limit window ends.
+      required: true
+      schema: { type: integer, minimum: 1 }
+    QuotaLimit:
+      description: Requests this API consumer may make per UTC day.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    QuotaRemaining:
+      description: Requests remaining for this API consumer in the current UTC day.
+      required: true
+      schema: { type: integer, minimum: 0 }
+    QuotaReset:
+      description: Seconds until the daily quota resets at UTC midnight.
+      required: true
+      schema: { type: integer, minimum: 0 }
+
   responses:
     BadRequest:
       description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+    InvalidJsonBody:
+      description: The request body is not valid JSON (`INVALID_JSON`).
       content:
         application/json:
           schema:
@@ -2389,15 +3210,35 @@ components:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
     ConsumerLimitExceeded:
-      description: The consumer rate limit or daily quota was exhausted.
+      description: >-
+        The consumer per-minute rate limit (`RATE_LIMIT_EXCEEDED`) or daily quota
+        (`QUOTA_EXCEEDED`) was exhausted. Both carry the `RateLimit-*` headers. The per-minute
+        limit also sends `Retry-After` but not `X-Quota-*`; the daily quota sends `X-Quota-*` but
+        not `Retry-After`.
       headers:
-        RateLimit-Limit: { schema: { type: integer } }
-        RateLimit-Remaining: { schema: { type: integer } }
-        RateLimit-Reset: { schema: { type: integer } }
-        X-Quota-Limit: { schema: { type: integer } }
-        X-Quota-Remaining: { schema: { type: integer } }
-        X-Quota-Reset: { schema: { type: integer } }
-        Retry-After: { schema: { type: integer } }
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+        X-Quota-Limit:
+          description: Daily request quota. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Remaining:
+          description: Requests remaining today. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Reset:
+          description: Seconds until the daily quota resets. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        Retry-After:
+          description: Seconds to wait before retrying. Sent only when the per-minute limit is exhausted.
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
+    ConsumerRateLimitUnavailable:
+      description: >-
+        The shared consumer rate-limit store is unavailable. The request is not
+        admitted and consumers should retry with bounded backoff.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
@@ -2418,14 +3259,33 @@ components:
     DatasetRelease:
       type: object
       additionalProperties: false
-      required: [releaseId, version, createdAt, formatVersion, scope, eventCount, checksum, fields]
+      required:
+        [
+          releaseId,
+          version,
+          createdAt,
+          snapshotId,
+          snapshotAsOf,
+          formatVersion,
+          scope,
+          eventCount,
+          checksum,
+          fields,
+        ]
       properties:
         releaseId:
-          $ref: '#/components/schemas/DatabaseIdentifier'
+          type: string
+          format: uuid
         version:
           $ref: '#/components/schemas/DatasetReleaseVersion'
         createdAt: { type: string, format: date-time }
-        formatVersion: { type: string, const: '1.0' }
+        snapshotId:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+          description: Opaque identity of the durable source snapshot; null only for pre-snapshot legacy releases.
+        snapshotAsOf:
+          oneOf: [{ type: string, format: date-time }, { type: 'null' }]
+          description: Database transaction time at which the durable source snapshot was captured.
+        formatVersion: { type: string, enum: ['1.0', '1.1'] }
         scope: { type: string, const: published-accepted-deliveries }
         eventCount: { type: integer, minimum: 0 }
         checksum:
@@ -2455,12 +3315,51 @@ components:
           items:
             $ref: '#/components/schemas/DatasetRelease'
 
+    DatasetReleaseJob:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          jobId,
+          version,
+          status,
+          eventsProcessed,
+          bytesWritten,
+          pageNumber,
+          createdAt,
+          startedAt,
+          completedAt,
+          failureCode,
+          failureMessage,
+          release,
+        ]
+      properties:
+        jobId: { type: string, format: uuid }
+        version: { $ref: '#/components/schemas/DatasetReleaseVersion' }
+        status: { type: string, enum: [pending, generating, completed, failed] }
+        eventsProcessed: { type: integer, minimum: 0 }
+        bytesWritten: { type: integer, minimum: 0 }
+        pageNumber: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        startedAt: { oneOf: [{ type: string, format: date-time }, { type: 'null' }] }
+        completedAt: { oneOf: [{ type: string, format: date-time }, { type: 'null' }] }
+        failureCode: { oneOf: [{ type: string, minLength: 1 }, { type: 'null' }] }
+        failureMessage: { oneOf: [{ type: string, minLength: 1 }, { type: 'null' }] }
+        release: { oneOf: [{ $ref: '#/components/schemas/DatasetRelease' }, { type: 'null' }] }
+
+    DatasetReleaseJobResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/DatasetReleaseJob' }
+
     DatasetReleaseArtifact:
       type: object
       additionalProperties: false
       required: [formatVersion, scope, fields, events]
       properties:
-        formatVersion: { type: string, const: '1.0' }
+        formatVersion: { type: string, const: '1.1' }
         scope: { type: string, const: published-accepted-deliveries }
         fields:
           type: array
@@ -2505,12 +3404,25 @@ components:
       additionalProperties: false
       required: [data]
       properties:
-        data:
-          allOf:
-            - $ref: '#/components/schemas/ApiConsumer'
-            - type: object
-              required: [apiKey]
-              properties: { apiKey: { type: string, writeOnly: true } }
+        data: { $ref: '#/components/schemas/ApiConsumerWithKey' }
+    ApiConsumerWithKey:
+      description: >-
+        An API consumer together with its one-time raw key. Its fields must stay aligned with
+        `ApiConsumer`, plus `apiKey`; the OpenAPI contract tests enforce this against real
+        responses.
+      type: object
+      additionalProperties: false
+      required: [id, name, rateLimitPerMinute, dailyQuota, createdAt, keys, apiKey]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        name: { type: string }
+        rateLimitPerMinute: { type: integer }
+        dailyQuota: { type: integer }
+        createdAt: { type: string, format: date-time }
+        keys: { type: array, items: { $ref: '#/components/schemas/ApiConsumerKey' } }
+        apiKey:
+          type: string
+          description: Raw API key. Returned only in this response and never retrievable again.
     ApiConsumerRotateResponse:
       $ref: '#/components/schemas/ApiConsumerIssueResponse'
     ApiConsumerListResponse:
@@ -2882,6 +3794,14 @@ components:
           type: string
           enum: [error, warning]
           description: Business-rule severity when this detail comes from versioned validation.
+        taskReference:
+          type: string
+          format: uuid
+          description: >-
+            The item of a submitted array this failure belongs to, so a client can show it
+            against that item rather than against the request as a whole. Carried by every
+            fault of a participant onboarding array, which is applied all or nothing. This
+            names a task, not a property; `field` remains the field-level slot.
 
     ApiErrorResponse:
       type: object
@@ -3105,6 +4025,8 @@ components:
         - gender
         - ballsPerOver
         - scheduledOvers
+        - venue
+        - toss
         - startDate
         - endDate
       properties:
@@ -3159,6 +4081,16 @@ components:
               minimum: 1
             - type: 'null'
 
+        venue:
+          oneOf:
+            - $ref: '#/components/schemas/FixtureVenue'
+            - type: 'null'
+
+        toss:
+          oneOf:
+            - $ref: '#/components/schemas/FixtureToss'
+            - type: 'null'
+
         startDate:
           type: string
           format: date
@@ -3166,6 +4098,47 @@ components:
         endDate:
           type: string
           format: date
+
+    FixtureVenue:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - city
+      properties:
+        name:
+          type: string
+          minLength: 1
+        city:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+
+    FixtureToss:
+      type: object
+      additionalProperties: false
+      required:
+        - winnerCompetitorId
+        - winnerCompetitorName
+        - decision
+      properties:
+        winnerCompetitorId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        winnerCompetitorName:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        decision:
+          oneOf:
+            - type: string
+              enum:
+                - bat
+                - field
+            - type: 'null'
 
     Competitor:
       type: object
@@ -3221,6 +4194,20 @@ components:
               minimum: 0
             - type: 'null'
 
+    ParticipantAggregateBestBowling:
+      type: object
+      additionalProperties: false
+      required:
+        - wicketsTaken
+        - runsConceded
+      properties:
+        wicketsTaken:
+          type: integer
+          minimum: 0
+        runsConceded:
+          type: integer
+          minimum: 0
+
     ParticipantFixtureBowling:
       type: object
       additionalProperties: false
@@ -3258,6 +4245,24 @@ components:
             - type: number
               minimum: 0
             - type: 'null'
+
+    ParticipantAggregateFielding:
+      type: object
+      additionalProperties: false
+      required:
+        - catches
+        - stumpings
+        - runOutInvolvements
+      properties:
+        catches:
+          type: integer
+          minimum: 0
+        stumpings:
+          type: integer
+          minimum: 0
+        runOutInvolvements:
+          type: integer
+          minimum: 0
 
     ParticipantFixture:
       type: object
@@ -3519,6 +4524,7 @@ components:
         - extras
         - nonBoundary
         - bowlerWickets
+        - wicketsLost
       properties:
         eventId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -3599,6 +4605,9 @@ components:
         bowlerWickets:
           type: integer
           minimum: 0
+        wicketsLost:
+          type: integer
+          minimum: 0
 
     FixtureStatisticCommon:
       type: object
@@ -3656,6 +4665,12 @@ components:
                 - deliveryRuns
                 - penaltyRuns
                 - totalRuns
+                - wicketsLost
+                - legalBalls
+                - overs
+                - runRate
+                - powerplay
+                - extras
               properties:
                 deliveryRuns:
                   type: integer
@@ -3666,6 +4681,108 @@ components:
                 totalRuns:
                   type: integer
                   minimum: 0
+                wicketsLost:
+                  type: integer
+                  minimum: 0
+                legalBalls:
+                  type: integer
+                  minimum: 0
+                overs:
+                  type: string
+                  pattern: '^\d+\.\d+$'
+                  example: '20.0'
+                runRate:
+                  type:
+                    - number
+                    - 'null'
+                  minimum: 0
+                  description: Runs per over, or null when no legal ball has been bowled.
+                powerplay:
+                  oneOf:
+                    - type: object
+                      additionalProperties: false
+                      required:
+                        - ranges
+                        - runs
+                        - wicketsLost
+                        - legalBalls
+                        - overs
+                        - runRate
+                        - sourceEventCount
+                      properties:
+                        ranges:
+                          type: array
+                          minItems: 1
+                          items:
+                            type: object
+                            additionalProperties: false
+                            required: [fromBall, toBall, type]
+                            properties:
+                              fromBall:
+                                type: number
+                                minimum: 0
+                              toBall:
+                                type: number
+                                minimum: 0
+                              type:
+                                type: string
+                                minLength: 1
+                        runs:
+                          type: integer
+                          minimum: 0
+                        wicketsLost:
+                          type: integer
+                          minimum: 0
+                        legalBalls:
+                          type: integer
+                          minimum: 0
+                        overs:
+                          type: string
+                          pattern: '^\d+\.\d+$'
+                        runRate:
+                          type:
+                            - number
+                            - 'null'
+                          minimum: 0
+                        sourceEventCount:
+                          type: integer
+                          minimum: 0
+                        contributingEvents:
+                          type: array
+                          description: Present only when includeContributors=true.
+                          items:
+                            $ref: '#/components/schemas/StatisticContributingEvent'
+                    - type: 'null'
+                  description: Authoritative powerplay aggregate, or null when no marker metadata exists.
+                extras:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - total
+                    - wides
+                    - noBalls
+                    - byes
+                    - legByes
+                    - penaltyRuns
+                  properties:
+                    total:
+                      type: integer
+                      minimum: 0
+                    wides:
+                      type: integer
+                      minimum: 0
+                    noBalls:
+                      type: integer
+                      minimum: 0
+                    byes:
+                      type: integer
+                      minimum: 0
+                    legByes:
+                      type: integer
+                      minimum: 0
+                    penaltyRuns:
+                      type: integer
+                      minimum: 0
 
     ParticipantFixtureStatistic:
       allOf:
@@ -3676,6 +4793,9 @@ components:
             - participantName
             - competitorId
             - competitorName
+            - battingPosition
+            - battingParticipation
+            - dismissal
             - batting
             - bowling
           properties:
@@ -3698,6 +4818,40 @@ components:
               oneOf:
                 - type: string
                   minLength: 1
+                - type: 'null'
+            battingPosition:
+              oneOf:
+                - type: integer
+                  minimum: 1
+                - type: 'null'
+            battingParticipation:
+              type: string
+              enum:
+                - did_not_bat
+                - batted
+            dismissal:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - status
+                    - kind
+                    - eventId
+                  properties:
+                    status:
+                      type: string
+                      enum:
+                        - not_out
+                        - dismissed
+                    kind:
+                      oneOf:
+                        - type: string
+                          minLength: 1
+                        - type: 'null'
+                    eventId:
+                      oneOf:
+                        - $ref: '#/components/schemas/ApiIdentifier'
+                        - type: 'null'
                 - type: 'null'
 
             batting:
@@ -3863,6 +5017,40 @@ components:
         decidedByBowlOut:
           type: boolean
 
+    FixtureHighestScorer:
+      type: object
+      additionalProperties: false
+      required:
+        - participantId
+        - participantName
+        - competitorId
+        - competitorName
+        - inningsId
+        - inningsOrdinal
+        - runsScored
+        - notOut
+      properties:
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        competitorId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        competitorName:
+          type: string
+          minLength: 1
+        inningsId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        inningsOrdinal:
+          type: integer
+          minimum: 0
+        runsScored:
+          type: integer
+          minimum: 0
+        notOut:
+          type: boolean
+
     FixtureStatistics:
       type: object
       additionalProperties: false
@@ -3871,6 +5059,7 @@ components:
         - status
         - scope
         - outcome
+        - highestScorers
         - warnings
         - statistics
       properties:
@@ -3892,6 +5081,14 @@ components:
               const: false
         outcome:
           $ref: '#/components/schemas/FixtureOutcome'
+        highestScorers:
+          type: array
+          description: >-
+            Batter or batters with the highest single-innings score across the
+            published standard innings. Ties are returned in deterministic innings
+            and participant order.
+          items:
+            $ref: '#/components/schemas/FixtureHighestScorer'
         warnings:
           type: array
           items:
@@ -3923,24 +5120,57 @@ components:
       type: object
       additionalProperties: false
       required:
+        - innings
         - runsScored
         - ballsFaced
+        - dismissals
+        - notOuts
+        - battingAverage
         - fours
         - sixes
+        - fifties
+        - hundreds
+        - highestScore
+        - highestScoreNotOut
         - strikeRate
       properties:
+        innings:
+          type: integer
+          minimum: 0
         runsScored:
           type: integer
           minimum: 0
         ballsFaced:
           type: integer
           minimum: 0
+        dismissals:
+          type: integer
+          minimum: 0
+        notOuts:
+          type: integer
+          minimum: 0
+        battingAverage:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
         fours:
           type: integer
           minimum: 0
         sixes:
           type: integer
           minimum: 0
+        fifties:
+          type: integer
+          minimum: 0
+        hundreds:
+          type: integer
+          minimum: 0
+        highestScore:
+          type: integer
+          minimum: 0
+        highestScoreNotOut:
+          type: boolean
         strikeRate:
           oneOf:
             - type: number
@@ -3951,15 +5181,24 @@ components:
       type: object
       additionalProperties: false
       required:
+        - innings
         - runsConceded
         - wides
         - noBalls
         - legalBallsBowled
         - wicketsTaken
+        - bowlingAverage
+        - bowlingStrikeRate
+        - bestBowling
+        - fourWicketHauls
+        - fiveWicketHauls
         - ballsPerOver
         - oversBowled
         - economyRate
       properties:
+        innings:
+          type: integer
+          minimum: 0
         runsConceded:
           type: integer
           minimum: 0
@@ -3975,6 +5214,24 @@ components:
           type: integer
           minimum: 0
         wicketsTaken:
+          type: integer
+          minimum: 0
+        bowlingAverage:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+        bowlingStrikeRate:
+          oneOf:
+            - type: number
+              minimum: 0
+            - type: 'null'
+        bestBowling:
+          $ref: '#/components/schemas/ParticipantAggregateBestBowling'
+        fourWicketHauls:
+          type: integer
+          minimum: 0
+        fiveWicketHauls:
           type: integer
           minimum: 0
         ballsPerOver:
@@ -4010,10 +5267,12 @@ components:
         - competitionName
         - seasonId
         - season
+        - appearances
         - fixtureCount
         - sourceEventCount
         - batting
         - bowling
+        - fielding
       properties:
         statisticId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -4044,6 +5303,9 @@ components:
         season:
           type: string
           minLength: 1
+        appearances:
+          type: integer
+          minimum: 0
         fixtureCount:
           type: integer
           minimum: 0
@@ -4058,6 +5320,8 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParticipantAggregateBowling'
             - type: 'null'
+        fielding:
+          $ref: '#/components/schemas/ParticipantAggregateFielding'
 
     ParticipantCompetitionAggregate:
       type: object
@@ -4070,10 +5334,12 @@ components:
         - statisticCode
         - competitionId
         - competitionName
+        - appearances
         - fixtureCount
         - sourceEventCount
         - batting
         - bowling
+        - fielding
       properties:
         statisticId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -4097,6 +5363,9 @@ components:
             - type: string
               minLength: 1
             - type: 'null'
+        appearances:
+          type: integer
+          minimum: 0
         fixtureCount:
           type: integer
           minimum: 0
@@ -4111,6 +5380,8 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParticipantAggregateBowling'
             - type: 'null'
+        fielding:
+          $ref: '#/components/schemas/ParticipantAggregateFielding'
 
     ParticipantCareerAggregate:
       type: object
@@ -4121,10 +5392,12 @@ components:
         - participantName
         - scope
         - statisticCode
+        - appearances
         - fixtureCount
         - sourceEventCount
         - batting
         - bowling
+        - fielding
       properties:
         statisticId:
           $ref: '#/components/schemas/ApiIdentifier'
@@ -4139,6 +5412,9 @@ components:
         statisticCode:
           type: string
           const: participant_career
+        appearances:
+          type: integer
+          minimum: 0
         fixtureCount:
           type: integer
           minimum: 0
@@ -4153,6 +5429,8 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParticipantAggregateBowling'
             - type: 'null'
+        fielding:
+          $ref: '#/components/schemas/ParticipantAggregateFielding'
 
     ParticipantAggregate:
       oneOf:
@@ -4244,6 +5522,124 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/ParticipantAggregate'
+
+    LeaderboardMetric:
+      type: string
+      enum:
+        - most_runs
+        - most_wickets
+        - most_fours
+        - most_sixes
+        - highest_batting_average
+        - highest_strike_rate
+        - best_bowling_average
+        - best_economy_rate
+        - best_bowling_strike_rate
+
+    LeaderboardQualification:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [field, minimum, rationale]
+          properties:
+            field:
+              type: string
+              enum: [dismissals, ballsFaced, wicketsTaken, legalBallsBowled]
+            minimum:
+              type: integer
+              minimum: 1
+            rationale:
+              type: string
+              minLength: 1
+        - type: 'null'
+
+    LeaderboardEntry:
+      type: object
+      additionalProperties: false
+      required: [rank, participantId, participantName, value]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        participantId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        participantName:
+          type: string
+          minLength: 1
+        value:
+          type: number
+          minimum: 0
+
+    Leaderboard:
+      type: object
+      additionalProperties: false
+      allOf:
+        - if:
+            properties:
+              scope:
+                const: season
+          then:
+            required: [seasonId, season]
+            properties:
+              seasonId:
+                $ref: '#/components/schemas/ApiIdentifier'
+              season:
+                type: string
+                minLength: 1
+      required:
+        - scope
+        - competitionId
+        - competitionName
+        - metric
+        - limit
+        - qualification
+        - tieBreakers
+        - entries
+      properties:
+        scope:
+          type: string
+          enum: [season, competition]
+        seasonId:
+          description: Present and required when scope is season.
+          $ref: '#/components/schemas/ApiIdentifier'
+        season:
+          description: Present and required when scope is season.
+          type: string
+          minLength: 1
+        competitionId:
+          $ref: '#/components/schemas/ApiIdentifier'
+        competitionName:
+          type: string
+          minLength: 1
+        metric:
+          $ref: '#/components/schemas/LeaderboardMetric'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        qualification:
+          $ref: '#/components/schemas/LeaderboardQualification'
+        tieBreakers:
+          type: array
+          prefixItems:
+            - const: metricValue
+            - const: participantName
+            - const: participantId
+          minItems: 3
+          maxItems: 3
+        entries:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/LeaderboardEntry'
+
+    LeaderboardResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Leaderboard'
 
     CompetitionResponse:
       type: object
@@ -4482,6 +5878,7 @@ components:
           progress,
           counts,
           source,
+          lineage,
           review,
         ]
       properties:
@@ -4523,6 +5920,13 @@ components:
               properties:
                 accountId: { $ref: '#/components/schemas/DatabaseIdentifier' }
                 displayName: { type: [string, 'null'] }
+        lineage:
+          type: object
+          additionalProperties: false
+          required: [replacesBatchReference, supersededByBatchReference]
+          properties:
+            replacesBatchReference: { type: [string, 'null'], format: uuid }
+            supersededByBatchReference: { type: [string, 'null'], format: uuid }
         review:
           oneOf:
             - { $ref: '#/components/schemas/BatchReviewDecision' }
@@ -4679,17 +6083,52 @@ components:
         source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
 
     ProvenanceSubmissionDetail:
-      allOf:
-        - $ref: '#/components/schemas/ProvenanceSubmission'
-        - type: object
-          required: [lifecycle, decisions]
-          properties:
-            lifecycle:
-              type: array
-              items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
-            decisions:
-              type: array
-              items: { $ref: '#/components/schemas/ProvenanceDecision' }
+      description: >-
+        A provenance submission with its lifecycle and decisions. Its fields must stay aligned
+        with `ProvenanceSubmission`, plus `lifecycle` and `decisions`; the OpenAPI contract tests
+        enforce this against real responses.
+      type: object
+      additionalProperties: false
+      required:
+        [
+          kind,
+          reference,
+          submissionId,
+          batchReference,
+          fixtureId,
+          competitionId,
+          submitter,
+          status,
+          receivedAt,
+          updatedAt,
+          eventCount,
+          source,
+          lifecycle,
+          decisions,
+        ]
+      properties:
+        kind: { type: string, enum: [direct, file, batch] }
+        reference: { type: string, minLength: 1 }
+        submissionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        batchReference:
+          oneOf: [{ type: string, format: uuid }, { type: 'null' }]
+        fixtureId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        competitionId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        submitter: { $ref: '#/components/schemas/ProvenanceActor' }
+        status: { type: string, minLength: 1 }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        eventCount: { type: integer, minimum: 0 }
+        source: { $ref: '#/components/schemas/ProvenanceSourceMetadata' }
+        lifecycle:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceLifecycleEntry' }
+        decisions:
+          type: array
+          items: { $ref: '#/components/schemas/ProvenanceDecision' }
 
     ProvenanceSubmissionListResponse:
       type: object
@@ -4812,16 +6251,30 @@ components:
     StatisticProvenance:
       type: object
       additionalProperties: false
-      required: [statisticId, fixtureId, statisticCode, scope, sourceEventCount, contributors]
+      required:
+        [
+          statisticId,
+          fixtureId,
+          participantId,
+          statisticCode,
+          scope,
+          sourceEventCount,
+          contributors,
+          pagination,
+        ]
       properties:
         statisticId: { type: string, minLength: 1 }
-        fixtureId: { $ref: '#/components/schemas/ApiIdentifier' }
+        fixtureId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
+        participantId:
+          oneOf: [{ $ref: '#/components/schemas/ApiIdentifier' }, { type: 'null' }]
         statisticCode: { type: string, minLength: 1 }
         scope: { type: string, minLength: 1 }
         sourceEventCount: { type: integer, minimum: 0 }
         contributors:
           type: array
           items: { $ref: '#/components/schemas/StatisticProvenanceContributor' }
+        pagination: { $ref: '#/components/schemas/PaginationMetadata' }
 
     StatisticProvenanceResponse:
       type: object
@@ -4870,7 +6323,7 @@ components:
         inningsId:
           { oneOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }, { type: 'null' }] }
         overNumber: { type: [integer, 'null'], minimum: 0 }
-        positionInOver: { type: [integer, 'null'], minimum: 1 }
+        positionInOver: { type: [integer, 'null'], minimum: 0 }
         description: { type: string, minLength: 1 }
 
     BatchReportError:
@@ -4903,8 +6356,36 @@ components:
         state: { type: string, enum: [ambiguous, unresolved, invalid] }
         submittedReference: {}
         reason: { type: [string, 'null'], minLength: 1 }
-        requiredAction: { type: string, enum: [select_candidate, contact_reviewer] }
+        requiredAction:
+          type: string
+          enum: [select_candidate, contact_reviewer, onboard_participant]
+          description: >-
+            `onboard_participant` means this reference is waiting on a participant onboarding
+            task that an administrator can settle at
+            `POST /api/v1/batches/{batchReference}/participants`.
         candidates: { type: array, items: { $ref: '#/components/schemas/BatchReferenceCandidate' } }
+        onboardingTask:
+          type: object
+          additionalProperties: false
+          required: [taskReference, reason, candidates]
+          description: >-
+            Present when `requiredAction` is `onboard_participant`. `taskReference` is the handle
+            a decision addresses, and is never derived from anything the decision supplies.
+          properties:
+            taskReference: { type: string, format: uuid }
+            reason:
+              type: string
+              enum:
+                [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+            candidates:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [personId, displayName]
+                properties:
+                  personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+                  displayName: { type: string, minLength: 1 }
 
     BatchPublishedConflict:
       type: object
@@ -5032,6 +6513,48 @@ components:
         approvalBlocked: { type: boolean }
         blockingReasons: { type: array, items: { type: string, minLength: 1 } }
 
+    BatchParticipantOnboardingTask:
+      type: object
+      additionalProperties: false
+      required:
+        [taskReference, fixtureId, submittedName, submittedTeamName, reason, candidates, teams]
+      description: >-
+        One outstanding participant onboarding task, listed once for the batch. The same task
+        also appears as an `onboard_participant` action on every reference waiting on it, which
+        for a player named in three hundred deliveries is three hundred appearances of one
+        decision. This list is that work deduplicated.
+      properties:
+        taskReference: { type: string, format: uuid }
+        fixtureId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        submittedName: { type: string, minLength: 1 }
+        submittedTeamName: { type: [string, 'null'], minLength: 1 }
+        reason:
+          type: string
+          enum: [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [personId, displayName]
+            properties:
+              personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              displayName: { type: string, minLength: 1 }
+        teams:
+          type: array
+          description: >-
+            The two teams of this task's fixture, in fixture order. A team decision is checked
+            by exact name against these, so without them a reviewer answering
+            `team_not_recognised` would be typing a name the platform already knows and could
+            simply have offered. Listing them makes that answer a choice between two.
+          items:
+            type: object
+            additionalProperties: false
+            required: [teamId, name]
+            properties:
+              teamId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              name: { type: string, minLength: 1 }
+
     BatchReport:
       type: object
       additionalProperties: false
@@ -5041,7 +6564,9 @@ components:
           errorGroups,
           reviewSummary,
           fixtureSummaries,
+          participantOnboarding,
           acceptedSamples,
+          blockingItems,
           items,
           pagination,
           downloadUrl,
@@ -5052,8 +6577,15 @@ components:
         reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
         fixtureSummaries:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        participantOnboarding:
+          type: array
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingTask' }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
+        blockingItems:
+          type: array
+          description: Approval-blocking reference and conflict items selected independently of ordinary report pagination.
+          items: { $ref: '#/components/schemas/BatchReportItem' }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
         pagination: { $ref: '#/components/schemas/PaginationMetadata' }
         downloadUrl: { type: string, pattern: '^/api/v1/batches/' }
@@ -5068,13 +6600,25 @@ components:
     BatchReportDownload:
       type: object
       additionalProperties: false
-      required: [batch, errorGroups, reviewSummary, fixtureSummaries, acceptedSamples, items]
+      required:
+        [
+          batch,
+          errorGroups,
+          reviewSummary,
+          fixtureSummaries,
+          participantOnboarding,
+          acceptedSamples,
+          items,
+        ]
       properties:
         batch: { $ref: '#/components/schemas/BatchStatus' }
         errorGroups: { type: array, items: { $ref: '#/components/schemas/BatchReportRuleGroup' } }
         reviewSummary: { $ref: '#/components/schemas/BatchReviewSummary' }
         fixtureSummaries:
           { type: array, items: { $ref: '#/components/schemas/BatchFixtureSummary' } }
+        participantOnboarding:
+          type: array
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingTask' }
         acceptedSamples:
           { type: array, maxItems: 15, items: { $ref: '#/components/schemas/BatchReportItem' } }
         items: { type: array, items: { $ref: '#/components/schemas/BatchReportItem' } }
@@ -5096,6 +6640,149 @@ components:
         candidateReference: { type: string, format: uuid }
         decisionKey: { type: string, minLength: 1, maxLength: 255 }
 
+    BatchCanonicalFixtureRequest:
+      type: object
+      additionalProperties: false
+      required: [itemOrdinal, referencePath, decisionKey]
+      properties:
+        itemOrdinal: { type: integer, minimum: 0 }
+        referencePath: { type: string, minLength: 1, maxLength: 1000 }
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+
+    BatchParticipantOnboardingDecision:
+      type: object
+      additionalProperties: false
+      required: [taskReference]
+      oneOf:
+        - required: [personId]
+        - required: [sourceId]
+      description: >-
+        One decision settling one outstanding task. It answers two separate questions, and they
+        are not interchangeable. Who the participant is comes from exactly one of `personId` or
+        `sourceId`; two identities for one participant have no meaning, so both together are
+        refused. Which of the fixture's two teams they belong to comes from the optional
+        `teamName`, needed when the submission carried a team the fixture does not recognise.
+        A `team_not_recognised` task needs both at once, because the task holds no identity of
+        its own and neither half can be inferred from the other; `teamName` alone is therefore
+        refused. The task is addressed by `taskReference` and never by anything derivable from
+        the answer: supplying an identifier or a team changes what the task's participant key
+        would derive to, so a re-derived handle would match no task.
+      properties:
+        taskReference: { type: string, format: uuid }
+        personId:
+          allOf: [{ $ref: '#/components/schemas/DatabaseIdentifier' }]
+          description: One of the candidates the task offered. Any other person is refused.
+        sourceId:
+          type: string
+          description: >-
+            A durable registry identifier, `namespace:entityType:value`. A `cricsheet`
+            participant is created or reused by source reference; an `app` participant must
+            already exist.
+        teamName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: One of the fixture's two teams. Any other team is refused.
+
+    BatchParticipantOnboardingRequest:
+      type: object
+      additionalProperties: false
+      required: [decisionKey, decisions]
+      properties:
+        decisionKey: { type: string, minLength: 1, maxLength: 255 }
+        decisions:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/BatchParticipantOnboardingDecision' }
+
+    BatchParticipantOnboardingReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          batchReference,
+          decisionReference,
+          status,
+          statusUrl,
+          submittedAt,
+          onboarded,
+          alreadyOnboarded,
+          revalidationQueued,
+        ]
+      properties:
+        batchReference: { type: string, format: uuid }
+        decisionReference: { type: string, format: uuid }
+        status: { type: string, enum: [queued, applied] }
+        statusUrl: { type: string, pattern: '^/api/v1/batches/' }
+        submittedAt: { type: string, format: date-time }
+        onboarded:
+          type: integer
+          minimum: 0
+          description: Tasks this request settled.
+        alreadyOnboarded:
+          type: integer
+          minimum: 0
+          description: Tasks already settled when it arrived. A replay reports its whole result here.
+        revalidationQueued:
+          type: boolean
+          description: False when nothing changed, because then there is nothing to revalidate.
+
+    BatchParticipantOnboardingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/BatchParticipantOnboardingReceipt' }
+
+    BatchFixtureOnboardingUnresolvedParticipant:
+      type: object
+      additionalProperties: false
+      required: [name, reason, candidates]
+      description: >-
+        A participant named by the batch that could not be added to the new fixture's squad.
+        A participant is never matched on a name alone, so each of these is a decision for a
+        reviewer rather than a match the platform declined to guess at.
+      properties:
+        name: { type: string, minLength: 1 }
+        teamName: { type: string, minLength: 1 }
+        reason:
+          type: string
+          description: >-
+            Which decision the reviewer has to make. `team_not_recognised`: the submitted team is
+            missing or is not one of the fixture's two teams, so the team must be chosen.
+            `no_durable_identifier`: no source identifier was submitted and at most one existing
+            person carries the name, so a registry identifier must be supplied or the single
+            candidate confirmed. `ambiguous_name`: the name belongs to more than one existing
+            person, so a candidate must be chosen. `identifier_not_found`: an application
+            identifier was supplied but names no existing person.
+          enum: [team_not_recognised, no_durable_identifier, ambiguous_name, identifier_not_found]
+        candidates:
+          type: array
+          description: Existing people sharing the submitted name, by display name or alias.
+          items:
+            type: object
+            additionalProperties: false
+            required: [personId, displayName]
+            properties:
+              personId: { $ref: '#/components/schemas/DatabaseIdentifier' }
+              displayName: { type: string, minLength: 1 }
+
+    BatchFixtureOnboardingSummary:
+      type: object
+      additionalProperties: false
+      required: [inningsCreated, squadCreated, unresolvedParticipants]
+      description: >-
+        What creating the canonical fixture onboarded deterministically, and what it could not.
+        A reviewer-approved proposal carries fixture-level facts only, so the innings and squad
+        the fixture needs are recovered from the deliveries that named them.
+      properties:
+        inningsCreated: { type: integer, minimum: 0 }
+        squadCreated: { type: integer, minimum: 0 }
+        unresolvedParticipants:
+          type: array
+          items: { $ref: '#/components/schemas/BatchFixtureOnboardingUnresolvedParticipant' }
+
     BatchReferenceMappingReceipt:
       type: object
       additionalProperties: false
@@ -5106,6 +6793,13 @@ components:
         status: { type: string, enum: [queued, applied] }
         statusUrl: { type: string, pattern: '^/api/v1/batches/' }
         submittedAt: { type: string, format: date-time }
+        onboarding:
+          allOf: [{ $ref: '#/components/schemas/BatchFixtureOnboardingSummary' }]
+          description: >-
+            Present on a canonical fixture decision. A repeat decision for a fixture that already
+            exists reports what it was able to add this time and what still needs a reviewer, so
+            the counts describe that decision rather than the fixture's whole history. Absent on
+            an ordinary reference mapping, which onboards nothing.
 
     BatchReferenceMappingResponse:
       type: object
@@ -5167,7 +6861,6 @@ components:
         - sequenceNumber
         - overNumber
         - positionInOver
-        - ballNumber
         - strikerId
         - nonStrikerId
         - bowlerId
@@ -5194,8 +6887,9 @@ components:
           description: Zero-based position in the over; unlike the display ball number, this cannot repeat.
         ballNumber:
           type: string
-          minLength: 1
           maxLength: 32
+          pattern: '^\d{1,5}\.\d{1,2}$'
+          description: Optional display label; its over component must match overNumber.
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:
@@ -5365,7 +7059,6 @@ components:
         - inningsId
         - overNumber
         - positionInOver
-        - ballNumber
         - strikerId
         - nonStrikerId
         - bowlerId
@@ -5383,7 +7076,9 @@ components:
           maximum: 32767
         ballNumber:
           type: string
-          pattern: '^\\d{1,3}\\.\\d{1,2}$'
+          maxLength: 32
+          pattern: '^\d{1,5}\.\d{1,2}$'
+          description: Optional display label; its over component must match overNumber.
         strikerId:
           $ref: '#/components/schemas/DatabaseIdentifier'
         nonStrikerId:

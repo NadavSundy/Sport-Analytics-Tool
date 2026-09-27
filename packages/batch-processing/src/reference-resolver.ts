@@ -245,9 +245,27 @@ function outcome(
   };
 }
 
+/**
+ * Applies a reviewer's recorded reference mapping.
+ *
+ * A mapping normally selects one of the candidates this reference itself
+ * offered, and the candidate check is what stops a mapping being applied after
+ * the batch has moved on beneath it.
+ *
+ * `admissible` widens that for the one case where the check cannot be met:
+ * participant onboarding. A task exists precisely because the resolver could
+ * offer nothing — an identifier naming nobody offers no candidate at all — so
+ * a decision settling one could never be applied, and the batch stayed
+ * unapprovable however many tasks the reviewer settled. Where a caller can
+ * name the canonical records the reference is allowed to resolve to (for a
+ * participant, the resolved fixture's own squad), a mapping onto one of those
+ * is honoured. It is not a widening of matching: the person is there because a
+ * reviewer put them in that squad by the decision this mapping records.
+ */
 function applyOverride(
   value: ReferenceOutcome,
   overrides: ReadonlyMap<string, ReferenceResolutionOverride>,
+  admissible?: ReadonlyMap<string, string>,
 ): ReferenceOutcome {
   const override = overrides.get(value.referencePath);
   if (!override || value.state === 'resolved' || override.entityType !== value.entityType)
@@ -255,15 +273,16 @@ function applyOverride(
   const selected = value.candidates.find(
     (candidate) => candidate.canonicalId === override.canonicalId && !candidate.outOfScope,
   );
-  return selected
-    ? {
+  const label = selected?.label ?? admissible?.get(override.canonicalId);
+  return label === undefined
+    ? value
+    : {
         ...value,
         state: 'resolved',
-        canonicalId: selected.canonicalId,
+        canonicalId: override.canonicalId,
         matchedBy: 'manual',
-        reason: `Mapped to ${selected.label} by an authorised user.`,
-      }
-    : value;
+        reason: `Mapped to ${label} by an authorised user.`,
+      };
 }
 
 /** Reduce an outcome to the provenance recorded against a staged item. */
@@ -900,7 +919,6 @@ export async function resolvePackageReferences(
   // ambiguous rather than resolved to an arbitrary row.
 
   const competitionName = readableName(uploadPackage.competition);
-  const seasonName = readableName(uploadPackage.season);
 
   const teamReferences: { path: string; reference: ReferenceInput }[] = [];
   for (const [fixtureIndex, fixture] of uploadPackage.fixtures.entries()) {
@@ -1101,11 +1119,13 @@ export async function resolvePackageReferences(
 
   for (const [fixtureIndex, fixture] of uploadPackage.fixtures.entries()) {
     const fixturePath = `fixtures.${String(fixtureIndex)}`;
+    const fixtureSeason = fixture.season ?? uploadPackage.season;
+    const fixtureSeasonName = readableName(fixtureSeason);
     const submitted = {
       sourceId: fixture.sourceId,
       context: fixture.context,
       proposal: fixture.proposal,
-      season: uploadPackage.season,
+      season: fixtureSeason,
     };
 
     let resolvedFixture: ReferenceOutcome;
@@ -1132,7 +1152,7 @@ export async function resolvePackageReferences(
         fixtureBySourceRef,
         fixtureByCanonicalId,
         competitionId,
-        seasonName,
+        fixtureSeasonName,
       );
     } else if (fixture.context) {
       // Section 3.7 applied to the fixture (#500). An identifier from a namespace
@@ -1146,7 +1166,7 @@ export async function resolvePackageReferences(
         fixture.context,
         fixtureTeamOutcomes,
         fixtureByNaturalKeyRows,
-        seasonName,
+        fixtureSeasonName,
         fixture.sourceId ? ignoredFixtureSourceIdentifier(fixture.sourceId) : null,
       );
     } else {
@@ -1234,10 +1254,19 @@ export async function resolvePackageReferences(
     const squadByCanonicalId = groupBy(squad, (member) => member.canonicalId);
     const squadByDisplayName = groupBy(squad, (member) => member.displayName);
     const squadByAlias = groupBy(aliases, (alias) => alias.name);
+    // The people a reviewer's participant mapping may name: this fixture's own
+    // squad, which is where an onboarding decision puts them.
+    const squadLabelByCanonicalId = new Map(
+      squad.map((member) => [member.canonicalId, member.displayName]),
+    );
 
     for (const [inningsIndex, innings] of fixture.innings.entries()) {
       const inningsPath = `${fixturePath}.innings.${String(inningsIndex)}`;
-      const submittedInnings = { sourceId: innings.sourceId, context: innings.context };
+      const submittedInnings = {
+        sourceId: innings.sourceId,
+        context: innings.context,
+        ...(innings.powerplays === undefined ? {} : { powerplays: innings.powerplays }),
+      };
 
       const battingTeamOutcome =
         teamOutcomeByPath.get(`${inningsPath}.context.battingTeam`) ?? null;
@@ -1293,6 +1322,7 @@ export async function resolvePackageReferences(
               squadByAlias,
             ),
             overrides,
+            squadLabelByCanonicalId,
           );
           outcomes.push(participantOutcome);
           return [role, participantOutcome] as const;

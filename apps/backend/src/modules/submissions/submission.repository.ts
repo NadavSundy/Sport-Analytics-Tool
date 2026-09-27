@@ -9,6 +9,13 @@ import {
   type CorrectionHistoryResponse,
   type SubmissionSourceFile,
 } from '@sport-analytics/contracts';
+import {
+  advanceStatisticsDataVersions,
+  affectedParticipantIds,
+  deriveCorrectionStatisticsDependencies,
+  recordStatisticsRefreshDependencies,
+  type StatisticsRefreshDependency,
+} from '@sport-analytics/batch-processing';
 import type { Pool, PoolClient } from 'pg';
 
 import {
@@ -23,11 +30,6 @@ import {
   SubmissionForbiddenError,
   SubmissionValidationError,
 } from './submission.errors';
-import {
-  deriveCorrectionStatisticsDependencies,
-  type StatisticsRefreshDependency,
-} from '../statistics/recomputation-dependencies';
-import { advanceFixtureStatisticsCacheVersions } from '../statistics/fixture-statistics.cache';
 
 interface FixtureSubmissionScope {
   fixtureId: string;
@@ -467,40 +469,6 @@ async function findLiveCorrectionTarget(
   return result.rows[0] ?? null;
 }
 
-async function recordStatisticsRefreshDependencies(
-  client: QueryExecutor,
-  sourceEventId: string,
-  revision: number,
-  dependencies: StatisticsRefreshDependency[],
-): Promise<void> {
-  for (const dependency of dependencies) {
-    await executeQuery(
-      client,
-      `
-        INSERT INTO statistics_refresh_dependency (
-          source_event_id,
-          delivery_revision,
-          fixture_id,
-          scope,
-          participant_id,
-          competition_id,
-          season
-        )
-        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
-      `,
-      [
-        sourceEventId,
-        revision,
-        dependency.fixtureId,
-        dependency.scope,
-        dependency.participantId,
-        dependency.competitionId,
-        dependency.season,
-      ],
-    );
-  }
-}
-
 async function insertDelivery(
   client: PoolClient,
   submissionId: string,
@@ -776,7 +744,10 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
             );
             await insertWickets(client, deliveryId, event);
           }
-          await advanceFixtureStatisticsCacheVersions(client, [submission.fixtureId]);
+          await advanceStatisticsDataVersions(client, {
+            fixtureIds: [submission.fixtureId],
+            participantIds: affectedParticipantIds({ events: submission.events }),
+          });
 
           return {
             submissionId: storedSubmission.submissionId,
@@ -896,12 +867,12 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           ],
         );
 
+        const participantIds = affectedParticipantIds({ events: [previousState, event] });
         const dependencies = deriveCorrectionStatisticsDependencies({
           fixtureId: target.fixtureId,
           competitionId: target.competitionId,
           season: target.season,
-          previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
-          resultingParticipantIds: [event.strikerId, event.bowlerId],
+          participantIds,
         });
         await recordStatisticsRefreshDependencies(
           client,
@@ -909,7 +880,10 @@ export function createSubmissionRepository(pool?: Pool): SubmissionRepository {
           target.revision + 1,
           dependencies,
         );
-        await advanceFixtureStatisticsCacheVersions(client, [target.fixtureId]);
+        await advanceStatisticsDataVersions(client, {
+          fixtureIds: [target.fixtureId],
+          participantIds,
+        });
 
         return {
           eventId,

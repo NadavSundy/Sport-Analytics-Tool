@@ -22,7 +22,7 @@ export interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (returnPath?: string | null) => Promise<void>;
   signOut: () => Promise<void>;
   clearLocalSession: () => Promise<void>;
 }
@@ -85,18 +85,23 @@ export function AuthProvider({ children, client }: AuthProviderProps) {
     };
   }, [client]);
 
-  const signInWithGoogle = useCallback(async () => {
-    const { error } = await client.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  const signInWithGoogle = useCallback(
+    async (returnPath?: string | null) => {
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      if (returnPath) callbackUrl.searchParams.set('returnTo', returnPath);
+      const { error } = await client.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: callbackUrl.toString(),
+        },
+      });
 
-    if (error) {
-      throw new Error('Google authentication could not be started.');
-    }
-  }, [client]);
+      if (error) {
+        throw new Error('Google authentication could not be started.');
+      }
+    },
+    [client],
+  );
 
   const signOut = useCallback(async () => {
     const { error } = await client.signOut();

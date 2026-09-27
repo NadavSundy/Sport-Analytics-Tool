@@ -3,9 +3,14 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const ciWorkflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
+const rootPackage = JSON.parse(readFileSync('package.json', 'utf8'));
 const manualBackendWorkflow = readFileSync('.gitea/workflows/deploy-backend.yml', 'utf8');
 const backendDeployScript = readFileSync('scripts/deploy-backend-azure.py', 'utf8');
 const backendArtifactSmokeCheck = readFileSync('scripts/smoke-check-backend-artifact.mjs', 'utf8');
+const backendContainerSmokeCheck = readFileSync(
+  'scripts/smoke-check-backend-container.mjs',
+  'utf8',
+);
 
 function automaticBackendJob() {
   const marker = '\n  deploy_backend:';
@@ -24,27 +29,326 @@ test('automatic backend deployment waits for validated main quality and producti
   assert.match(job, /needs\.plan\.outputs\.deployBackend == 'true'/);
 });
 
-test('automatic backend deployment avoids duplicate authoritative test suites', () => {
+test('automatic backend deployment builds, validates and deploys an immutable Container Apps image', () => {
   const job = automaticBackendJob();
 
   assert.doesNotMatch(job, /npm run test:unit/);
   assert.doesNotMatch(job, /npm run test:api/);
   assert.doesNotMatch(job, /npm run typecheck/);
   assert.doesNotMatch(job, /npm run lint/);
-  assert.match(job, /npm run build --workspace=@sport-analytics\/backend/);
-  assert.match(job, /npm run deploy:prepare:backend/);
-  assert.match(job, /smoke-check-backend-artifact\.mjs/);
-  assert.match(job, /python3 scripts\/deploy-backend-azure\.py/);
+  assert.match(job, /azure\/login@v2/);
+  assert.match(job, /AZURE_WORKER_CREDENTIALS/);
+  assert.doesNotMatch(job, /AZURE_BACKEND_CONTAINER_CREDENTIALS/);
+  assert.match(job, /docker build[\s\S]*apps\/backend\/Dockerfile/);
+  assert.equal(
+    rootPackage.scripts['smoke:backend-container'],
+    'node scripts/smoke-check-backend-container.mjs',
+  );
+  assert.match(job, /npm run smoke:backend-container --/);
+  assert.doesNotMatch(job, /node scripts\/smoke-check-backend-container\.mjs/);
+  assert.match(job, /sport-analytics-api:\$\{\{ github\.sha \}\}/);
+  assert.match(job, /az acr login/);
+  assert.match(job, /infra\/azure\/backend\/main\.bicep/);
+  assert.match(job, /az containerapp revision list/);
+  assert.match(job, /MATCHING_REVISION/);
+  assert.match(job, /properties\.template\.containers\[0\]\.image/);
+  assert.match(job, /properties\.configuration\.ingress\.fqdn/);
   assert.match(job, /api\/v1\/health/);
   assert.match(job, /api\/v1\/competitions\?limit=1/);
+  const readinessStepIndex = job.indexOf('Wait for the healthy backend Container Apps revision');
+  const healthSmokeIndex = job.indexOf('Smoke check deployed backend health');
+  const databaseSmokeIndex = job.indexOf('Smoke check deployed database access');
+  assert.ok(readinessStepIndex >= 0, 'readiness wait must be present');
+  assert.ok(
+    healthSmokeIndex > readinessStepIndex,
+    'health smoke must run after readiness succeeds',
+  );
+  assert.ok(databaseSmokeIndex > healthSmokeIndex, 'database smoke must run after health succeeds');
+  assert.doesNotMatch(job, /continue-on-error:\s*true/);
+  assert.doesNotMatch(job, /AZURE_BACKEND_PUBLISH_PROFILE/);
+  assert.doesNotMatch(job, /(?:adminUser|--username|--password)/i);
 });
 
-test('standalone backend deployment workflow is manual recovery only and shares deployment mechanics', () => {
+test('backend deployments apply ordered migrations before activating code and smoke-check schema reads', () => {
+  const automaticJob = automaticBackendJob();
+
+  const azureLoginIndex = automaticJob.indexOf('- name: Sign in to Azure');
+  const migrationIndex = automaticJob.indexOf('- name: Apply pending backend database migrations');
+  const deployIndex = automaticJob.indexOf('- name: Deploy backend Container Apps revision');
+  const schemaSmokeIndex = automaticJob.indexOf(
+    '- name: Smoke check deployed dataset-release schema access',
+  );
+
+  assert.ok(azureLoginIndex >= 0, 'Azure login must remain available before migrations run');
+  assert.ok(migrationIndex > azureLoginIndex, 'migrations must run after Azure login');
+  assert.ok(
+    deployIndex > migrationIndex,
+    'Container Apps code activation must wait for migrations',
+  );
+  assert.ok(schemaSmokeIndex > deployIndex, 'schema smoke must verify the deployed revision');
+
+  const migrationSteps = [
+    automaticJob.slice(migrationIndex, deployIndex),
+    manualBackendWorkflow.slice(
+      manualBackendWorkflow.indexOf('- name: Apply pending backend database migrations'),
+    ),
+  ];
+
+  for (const migrationStep of migrationSteps) {
+    assert.match(migrationStep, /az keyvault secret show[\s\S]*?--id "\$DATABASE_SECRET_URI"/);
+    assert.match(migrationStep, /npm run db:migrate --workspace=@sport-analytics\/backend/);
+    assert.match(migrationStep, /Applying reviewed backend database migrations/);
+    assert.doesNotMatch(migrationStep, /echo[^\n]*DATABASE_URL/i);
+    assert.doesNotMatch(migrationStep, /set -x/);
+  }
+
+  const schemaSmoke = automaticJob.slice(schemaSmokeIndex);
+  assert.match(schemaSmoke, /\/api\/v1\/dataset-releases/);
+  assert.match(schemaSmoke, /SMOKE_CHECK_ATTEMPTS/);
+
+  const manualMigrationIndex = manualBackendWorkflow.indexOf(
+    '- name: Apply pending backend database migrations',
+  );
+  const manualDeployIndex = manualBackendWorkflow.indexOf(
+    '- name: Deploy backend artifact to Azure',
+  );
+  assert.ok(manualMigrationIndex >= 0, 'rollback workflow must check migration compatibility');
+  assert.ok(
+    manualDeployIndex > manualMigrationIndex,
+    'rollback workflow must not deploy code before migrations succeed',
+  );
+});
+
+test('automatic backend deployment verifies Docker npm access and uses a cached host-networked Buildx builder', () => {
+  const job = automaticBackendJob();
+
+  const connectivityStart = job.indexOf('- name: Verify Docker npm registry connectivity');
+  const acrLoginStart = job.indexOf(
+    '- name: Sign in to Azure Container Registry',
+    connectivityStart,
+  );
+  const buildxStart = job.indexOf('- name: Prepare Docker Buildx', acrLoginStart);
+  const buildxConnectivityStart = job.indexOf(
+    '- name: Verify Buildx npm registry connectivity',
+    buildxStart,
+  );
+  const buildStart = job.indexOf(
+    '- name: Build immutable backend container image',
+    buildxConnectivityStart,
+  );
+
+  assert.notEqual(
+    connectivityStart,
+    -1,
+    'backend deployment must diagnose Docker DNS and npm registry access before the image build',
+  );
+
+  assert.notEqual(
+    acrLoginStart,
+    -1,
+    'backend deployment must authenticate to ACR before using the registry-backed build cache',
+  );
+
+  assert.notEqual(buildxStart, -1, 'backend deployment must prepare a Buildx builder');
+
+  assert.notEqual(
+    buildxConnectivityStart,
+    -1,
+    'backend deployment must verify npm connectivity through Buildx before the real image build',
+  );
+
+  assert.notEqual(buildStart, -1, 'backend deployment must retain the immutable image build');
+
+  assert.ok(
+    connectivityStart < acrLoginStart,
+    'Docker npm connectivity must be verified before ACR authentication',
+  );
+
+  assert.ok(acrLoginStart < buildxStart, 'ACR authentication must occur before Buildx setup');
+
+  assert.ok(
+    buildxStart < buildxConnectivityStart,
+    'Buildx must be prepared before its npm connectivity check',
+  );
+
+  assert.ok(
+    buildxConnectivityStart < buildStart,
+    'Buildx npm connectivity must be verified before the backend image build',
+  );
+
+  const connectivity = job.slice(connectivityStart, acrLoginStart);
+
+  const hostNetworkRuns = connectivity.match(
+    /docker run --rm --network=host node:22-bookworm-slim/g,
+  );
+
+  assert.ok(
+    hostNetworkRuns && hostNetworkRuns.length >= 2,
+    'backend deployment must probe both DNS and npm through the runner host network',
+  );
+
+  assert.match(
+    connectivity,
+    /registry\.npmjs\.org/,
+    'backend deployment must name the npm registry in diagnostics',
+  );
+
+  assert.match(
+    connectivity,
+    /timeout 30s docker run --rm --network=host node:22-bookworm-slim[\s\S]*?require\('dns'\)/,
+    'backend deployment must bound the Docker DNS preflight to 30 seconds',
+  );
+
+  assert.match(
+    connectivity,
+    /timeout 45s docker run --rm --network=host node:22-bookworm-slim[\s\S]*?npm ping/,
+    'backend deployment must bound the Docker npm registry preflight to 45 seconds',
+  );
+
+  const buildxSetup = job.slice(buildxStart, buildxConnectivityStart);
+
+  assert.match(
+    buildxSetup,
+    /docker buildx rm -f backend-ci-builder/,
+    'backend deployment must remove any stale Buildx builder before recreating it',
+  );
+
+  assert.match(
+    buildxSetup,
+    /docker buildx create[\s\S]*?--name backend-ci-builder/,
+    'backend deployment must create the backend Buildx builder',
+  );
+
+  assert.match(
+    buildxSetup,
+    /--driver docker-container/,
+    'backend Buildx builder must use the docker-container driver',
+  );
+
+  assert.match(
+    buildxSetup,
+    /--driver-opt network=host/,
+    'backend Buildx builder must use the runner host network',
+  );
+
+  assert.match(
+    buildxSetup,
+    /--buildkitd-flags '--allow-insecure-entitlement network\.host'/,
+    'backend BuildKit daemon must permit the network.host entitlement',
+  );
+
+  assert.match(buildxSetup, /--use/, 'backend Buildx builder must become the active builder');
+
+  assert.match(
+    buildxSetup,
+    /--bootstrap/,
+    'backend Buildx builder must be bootstrapped before use',
+  );
+
+  const buildxConnectivity = job.slice(buildxConnectivityStart, buildStart);
+
+  assert.match(
+    buildxConnectivity,
+    /timeout 60s docker buildx build/,
+    'Buildx npm connectivity check must fail within a bounded time',
+  );
+
+  assert.match(
+    buildxConnectivity,
+    /--allow network\.host/,
+    'Buildx npm connectivity check must allow host networking',
+  );
+
+  assert.match(
+    buildxConnectivity,
+    /--network=host/,
+    'Buildx npm connectivity check must use host networking',
+  );
+
+  assert.match(
+    buildxConnectivity,
+    /npm ping --registry=https:\/\/registry\.npmjs\.org\//,
+    'Buildx connectivity check must verify access to the npm registry',
+  );
+
+  const buildAndDeploy = job.slice(buildStart);
+
+  assert.match(buildAndDeploy, /docker buildx build/, 'backend image must be built with Buildx');
+
+  assert.match(
+    buildAndDeploy,
+    /docker buildx build[\s\S]*?--allow network\.host/,
+    'backend Buildx build must allow host-network access',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /docker buildx build[\s\S]*?--network=host/,
+    'backend Docker RUN instructions must use the runner host network',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /--cache-from "type=registry,ref=\$ACR_NAME\.azurecr\.io\/sport-analytics-api:buildcache"/,
+    'backend build must import its persistent registry-backed BuildKit cache',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /--cache-to "type=registry,ref=\$ACR_NAME\.azurecr\.io\/sport-analytics-api:buildcache,mode=max"/,
+    'backend build must export its persistent registry-backed BuildKit cache',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /--load/,
+    'backend Buildx build must load the image locally for the container smoke check',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /npm registry or Docker network failure/,
+    'backend Docker build diagnostics must distinguish registry or network failures',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /npm internal crash/,
+    'backend Docker build diagnostics must distinguish npm internal crashes',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /lifecycle-script failure/,
+    'backend Docker build diagnostics must distinguish lifecycle-script failures',
+  );
+
+  assert.match(
+    buildAndDeploy,
+    /Backend Docker build failed; inspect the BuildKit output above\./,
+    'backend Docker build must retain a generic fallback diagnostic',
+  );
+});
+
+test('manual backend deployment workflow preserves the App Service rollback path', () => {
   assert.match(manualBackendWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(manualBackendWorkflow, /\n\s*push:/);
   assert.doesNotMatch(manualBackendWorkflow, /npm run test:unit/);
   assert.doesNotMatch(manualBackendWorkflow, /npm run test:api/);
   assert.match(manualBackendWorkflow, /python3 scripts\/deploy-backend-azure\.py/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_PUBLISH_PROFILE/);
+  assert.match(manualBackendWorkflow, /statsthegame-api-dev/);
+});
+
+test('backend container smoke check uses inert configuration and validates health before image publish', () => {
+  assert.match(backendContainerSmokeCheck, /run\('docker', \[\s*'run'/);
+  assert.match(backendContainerSmokeCheck, /\/api\/v1\/health/);
+  assert.match(backendContainerSmokeCheck, /OBJECT_STORAGE_PROVIDER.*azure/);
+  assert.match(backendContainerSmokeCheck, /SUPABASE_URL.*example\.invalid/);
+  assert.doesNotMatch(
+    backendContainerSmokeCheck,
+    /(?:SUPABASE_SECRET_KEY|DATABASE_URL|AZURE_STORAGE_CONNECTION_STRING|AccountKey)/,
+  );
 });
 
 test('shared Azure backend deploy script retains ZIP creation, credential redaction and Kudu status checks', () => {
@@ -56,8 +360,13 @@ test('shared Azure backend deploy script retains ZIP creation, credential redact
 });
 
 test('backend deployment smoke configuration uses only non-secret Blob resource identifiers', () => {
+  assert.match(backendArtifactSmokeCheck, /OBJECT_STORAGE_PROVIDER: 'azure'/);
   assert.match(backendArtifactSmokeCheck, /AZURE_STORAGE_ACCOUNT_NAME: 'deploymentstorage'/);
   assert.match(backendArtifactSmokeCheck, /AZURE_STORAGE_CONTAINER_NAME: 'deployment-smoke-check'/);
+  assert.match(
+    backendArtifactSmokeCheck,
+    /AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases'/,
+  );
   assert.doesNotMatch(
     `${ciWorkflow}\n${manualBackendWorkflow}\n${backendArtifactSmokeCheck}`,
     /AZURE_STORAGE_(?:CONNECTION_STRING|ACCOUNT_KEY|SAS_TOKEN)/,

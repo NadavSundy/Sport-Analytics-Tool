@@ -23,12 +23,28 @@ and checked rather than taken on trust.
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | O1  | The printed ball number repeats within an over in 20.4% of overs (104,818 of 514,380). One over holds nineteen deliveries, six of them labelled `5.1`. | Delivery identity is the position in the source array, never the printed number.     |
 | O2  | 168 names map to more than one player identifier, and 40 identifiers map to more than one name. `Abdul Rahman` is three different people.              | Players key on the registry identifier. Names are display text and never a join key. |
-| O3  | Extras types co-occur on a single delivery — a wide with byes. Five types appear: wides, leg byes, no-balls, byes and penalty.                         | Extras are separate nullable columns, not a type and a count.                        |
+| O3  | Extras types co-occur on a single delivery — a no-ball with byes. Five types appear: wides, leg byes, no-balls, byes and penalty.                      | Extras are separate nullable columns, not a type and a count.                        |
 | O4  | `wickets` is an array. 5,833 dismissals name multiple fielders, and 127 fielder records identify a substitute with no name at all.                     | Wickets and fielders need their own tables, and fielder identity must be nullable.   |
 | O5  | 99 matches carry four innings rather than two; 204 innings are flagged as super overs.                                                                 | Innings count per fixture is not fixed at two.                                       |
 | O6  | 175 innings carry `miscounted_overs`, where an over legitimately holds five or seven legal balls.                                                      | No constraint may assume six legal balls per over.                                   |
 | O7  | Penalty runs appear at innings level, belonging to no delivery.                                                                                        | A team total cannot be derived from deliveries alone.                                |
 | O8  | `outcome` takes seven distinct shapes, including a result with no winner, an eliminator and a bowl-out.                                                | Outcome is not winner plus margin.                                                   |
+
+Cricsheet omits an extras type that did not occur, but the submission contract also accepts an
+explicit zero such as `wides: 0`, and the extras columns of O3 store it as `0` rather than NULL.
+The stored value is kept as submitted. A zero and NULL are classified identically: a delivery is a
+wide only when `extra_wides > 0` and a no-ball only when `extra_noballs > 0`. Queries must therefore
+never classify a delivery with `IS NULL` or `IS NOT NULL` on these columns (issue #590).
+
+Extras are run counts, so none may be negative. Each extras column carries a check that allows NULL
+or a value of zero or more: `delivery_extra_wides_nonnegative_ck`,
+`delivery_extra_noballs_nonnegative_ck`, `delivery_extra_byes_nonnegative_ck`,
+`delivery_extra_legbyes_nonnegative_ck` and `delivery_extra_penalty_nonnegative_ck`. The submission
+contract applies the same rule, and the Cricsheet ingest validates every delivery's extras against
+that contract before writing anything, so a file with an invalid extra leaves no partial data
+(issue #623). The #623 corpus scan found no delivery recording byes or leg byes on a wide: Cricsheet
+records runs completed off a wide as wides. The contract still accepts that form, and under Law 22.6
+such byes and leg byes are wide runs charged to the bowler (ADR-014).
 
 ### 1.1 The case that decides delivery identity
 
@@ -78,7 +94,7 @@ A delivery is identified by:
 idempotency key: two submitted deliveries are the same delivery when these four
 values agree, which is what allows a feed to be replayed without double-counting.
 
-TThe printed ball number is stored for display only, and never used to join. It is
+The printed ball number is stored for display only, and never used to join. It is
 derived at ingestion from a count of legal deliveries within the over: wides and
 no-balls do not advance it, which is why it repeats. Storing the array position
 here instead would produce a value that never repeats, and the column would no
@@ -97,6 +113,25 @@ resolves after Cricsheet renames or disambiguates it.
 Fixtures are identified by the Cricsheet match identifier, retained as
 `source_ref`, so that a resubmitted or corrected match file is recognised as the
 same fixture.
+
+`fixture.first_seen_in` references the accepted submission that first brought the
+fixture into the database. It is not decoration: every public read joins through
+it and requires that submission to be `accepted`, so a fixture whose
+`first_seen_in` is null is absent from fixture statistics, participant fixture
+history, leaderboards and provenance, however many deliveries it holds. Two
+writers set it, and neither ever overwrites a value already present:
+
+- the corpus importer, when it creates a fixture it has not seen; and
+- batch publication, for a fixture created by the reviewer canonical-fixture
+  path (issue #584), which has no submission of its own until its deliveries
+  publish.
+
+**The submission it names covers a chunk, not a batch.** Publication inserts one
+submission per fixture per chunk, and the column is filled by the first chunk to
+reach that fixture, so its `event_count` is that chunk's count rather than the
+fixture's total. Nothing reads it that way today: the read paths use it only to
+establish that an accepted submission exists. Treat it as the answer to "was this
+fixture ever published?", not as a count of anything.
 
 ---
 
@@ -234,7 +269,8 @@ expressible, and each is a place where a naive model would produce wrong figures
 1. Balls faced counts deliveries where no wide was bowled. A no-ball is faced; a
    wide is not.
 2. Runs conceded by a bowler include wides and no-balls but exclude byes and
-   leg-byes.
+   leg-byes, except byes and leg-byes run off a wide, which are wide runs
+   (Law 22.6, ADR-014).
 3. Boundaries count four or six off the bat, excluding the 232 deliveries flagged
    `non_boundary`, where the runs were run rather than struck to the rope.
 4. A team total is the sum of delivery totals **plus** innings-level penalty runs
@@ -247,35 +283,70 @@ expressible, and each is a place where a naive model would produce wrong figures
 
 ---
 
-## 6. Deferred entities
+## 6. Intermediate persistence added after the original model review
 
-`database/schema/event-model.md` identifies four further concerns that this
-iteration does not implement: validation and review state; statistic definitions
-and their versions; derived statistic results and their provenance; and dataset
-releases and export jobs.
+The original August event-model review intentionally deferred several concerns until the ingestion
+and derivation boundaries were known. The executable Sprint 2 migrations now implement most of that
+Intermediate persistence, so they are no longer future schema concepts.
 
-They are deferred deliberately, not overlooked. A derived result cannot be
-modelled before the events it derives from exist, and a statistic definition
-cannot be versioned before the derivation engine establishes what a definition
-contains. Their intended shape:
+### Implemented Intermediate structures
 
-- **Validation state** belongs on `submission`, which already carries a status.
-  A richer review workflow — who reviewed, when, against which rule — extends that
-  table rather than replacing it.
-- **Statistic definition and version** requires a definition identifier, a version,
-  and the expression or code reference that computes it, so that a published
-  figure can name the version that produced it. The super-over exclusion in rule 8
-  belongs here rather than in query code.
-- **Derived result** requires the definition version, the scope computed over, the
-  value, and the deliveries consumed, so that a correction can identify which
-  results are now stale.
-- **Dataset release** requires a release identifier, the scope, the point in time
-  represented, and a manifest, so that a consumer holding an older reference can
-  still resolve it.
+- **Batch validation and review.** `batch`, `batch_item`, checkpoints, validation results, lifecycle
+  transitions, reviewer decisions, reference mappings and publication state provide durable staged
+  ingestion and review.
+- **Private source retention.** `stored_object` records provider-independent metadata, checksum,
+  retention and expiry state for private uploaded source bytes.
+- **Immutable corrections.** `delivery_correction_history` and delivery revision links retain the
+  complete accepted correction chain while `delivery_current` exposes only the live revision.
+- **Aggregate refresh boundaries.** `statistics_refresh_dependency` records the season,
+  competition, career and fixture scopes affected by accepted corrections. Aggregate values
+  themselves continue to be derived from current accepted deliveries rather than stored as editable
+  totals.
+- **Participant statistics data versions.** `participant_statistics_version` holds one
+  monotonically increasing `data_version` per participant. It is the input version of that
+  participant's season, competition and career aggregates, and nothing reads it yet (issue #592).
+- **Participant aggregate snapshots.** `participant_aggregate_snapshot_state` holds one row per
+  participant recording the data and definition versions its stored rows were built from, a refresh
+  count and failed attempts. `participant_aggregate_snapshot` holds one row per participant, level,
+  competition and season with the grouped aggregate row as jsonb. Stored rows are disposable: they
+  are valid only while the state row matches the participant's current data version and the running
+  definition. `invalidate_participant_aggregate_snapshots()` deletes them all, and any write to
+  aggregate inputs that does not advance participant versions must call it (issue #592).
+- **Fixture-statistics caching.** A versioned cache supports repeated fixture-statistics reads
+  without replacing accepted events as the source of truth.
+- **Dataset releases.** Immutable release metadata and mutable `dataset_release_job` state support
+  asynchronous generation of checksum-backed dataset artifacts in private object storage.
+- **External API consumers.** Consumer/key persistence and usage accounting support administrator
+  key management, per-minute rate limits and UTC daily quotas.
+- **Participant onboarding tasks.** `batch_participant_onboarding_task` records each participant a
+  reviewer-created fixture could not onboard deterministically, the reason it needs a decision, and
+  the candidates that make it actionable (issue #708). A row is the unit of outstanding onboarding
+  work: while any is `outstanding`, the batch is kept `awaiting_review` rather than rejected, so a
+  reviewer is never left with work to do and no batch to do it on.
 
-What must be settled first: which statistics the client actually requires, which
-is the subject of #37, and how a release identifies the state of the data at a
-point in time.
+  **A decision addresses a task by its `task_reference`, never by a key derived from what the
+  decision supplies.** `participant_key` is the source identifier where one was submitted and the
+  name and team otherwise. It is how onboarding finds a task, not how a reviewer addresses one,
+  for two reasons. A decision mutates it: answering a `no_durable_identifier` task _with_ an
+  identifier changes the derived key from `name:…` to `source:…`, and answering a
+  `team_not_recognised` task _with_ a team changes `name:X::` to `name:X::North XI`. And it is not
+  unique within a batch, because two fixtures can each name the same person. A decision that
+  re-derived a key would match no existing task: the original would stay outstanding for ever and
+  hold the batch in `awaiting_review` permanently, which is the mirror image of the defect the
+  table exists to fix. `task_reference` is opaque and unique, so there is nothing to derive.
+
+The migration history under `database/migrations/` is authoritative for the exact columns,
+constraints and indexes added after the original model approval.
+
+### Still deferred beyond the Intermediate tier
+
+The following remain later-tier concerns rather than missing Intermediate persistence:
+
+- analyst-defined statistic definitions and executable definition versions;
+- sandboxing and validation of user-defined calculations;
+- bitemporal/as-of event and statistic history beyond the retained correction/release model;
+- live late/out-of-order feed state and replay metadata; and
+- general Advanced-tier change-feed and release-diff structures.
 
 ---
 
@@ -351,31 +422,20 @@ decided by a bowl-out, which a nullable outcome column provides. This is recorde
 as a known exclusion rather than an oversight; if a bowl-out statistic is later
 required, the source data remains available for a subsequent migration.
 
-## 9. Outstanding
+## 9. Current limitations
 
-- Client confirmation of the super-over convention.
-- The storage benchmark: owner and date. The corpus is 3,193,996 deliveries,
-  which is two and a half times the subset the original projection was based on.
-- Whether the object-storage option changes the hosting decision in ADR-003.
-- The 320 matches classified `IT20` are not the international matches. Every match
-  in the T20 international archive carries `match_type: "T20"` with
-  `team_type: "international"`, and `match_type_number` is present on exactly
-  those 5,602 matches. Anything treating `IT20` as meaning international will
-  misclassify roughly 5,300 matches. Raised against the downloader.
+- Standard aggregates exclude super-over innings by default; client confirmation of that convention
+  remains open.
+- Bitemporal/as-of history, live late or out-of-order feed state, user-defined calculation
+  definitions and general change feeds remain beyond the implemented Intermediate model.
+- Cricsheet coverage and classifications can change when source data is refreshed. The supported
+  downloader scope and generated manifest are documented in [Cricsheet data source](../data/cricsheet.md).
 
-- Client confirmation of the super-over convention.
-- The storage benchmark: owner and date. The corpus is 3,193,996 deliveries,
-  which is 2.5 times the subset the original projection was based on.
-- Whether the object-storage option changes the hosting decision in ADR-003.
-- Three delivery-level fields require investigation before the migration is
-  written: an `over` key appearing on 3,068 deliveries, where the over number
-  should belong to the parent over object; `supersubs`, present on 42 matches; and
-  `bowl_out`, present on 2.
-- The 320 matches classified `IT20` are not the international matches. Every match
-  in the T20 international archive carries `match_type: "T20"` with
-  `team_type: "international"`, and `match_type_number` is present on exactly
-  those 5,602 matches. Anything treating `IT20` as meaning international will
-  misclassify roughly 5,300 matches.
+The source-field questions described in section 8 were resolved before the baseline migration. The
+storage benchmark and private-object-storage decision are also no longer open: their measured and
+accepted records are [ADR-003](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-003-database-host-connection-and-migrations.md),
+[ADR-005](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-005-database-host-migration.md) and
+[ADR-011](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-011-file-and-object-storage.md).
 
 ---
 
@@ -393,3 +453,9 @@ The issue #358 stored-object schema was documented with the assistance of Codex[
 The issue #284 immutable correction audit schema was documented with the assistance of Codex[GPT-5].
 
 The issue #363 protected provenance API documentation was generated and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #297 Intermediate database-documentation audit was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #623 extras constraints were documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #623 wide-run rule, ADR-014, was documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #592 participant statistics data versions and aggregate snapshots were documented with the assistance of Claude-Code[Claude Opus 5].
+The issue #708 `fixture.first_seen_in` description was added with the assistance of
+Claude-Code[Claude Opus 5].

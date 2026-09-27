@@ -92,24 +92,161 @@ function shippedTemplateWithReadableNames(fileName: string): string {
   return text;
 }
 
-describe('shipped guided templates (#500)', () => {
+/**
+ * A minimal, valid season-upload package for one fixture/innings with the given
+ * events. Callers control `occurrenceSequence` and file-array position
+ * independently, so tests can express "logically ordered" vs "arrival order"
+ * for the same fixture (#588).
+ */
+function jsonPackageWithEvents(
+  events: { eventId: string; occurrenceSequence: number; ballLabel: string }[],
+): string {
+  return JSON.stringify({
+    contractVersion: '1.0',
+    packageId: 'test:package:occurrence-sequence',
+    competition: { context: { name: 'Premier T20' } },
+    season: { context: { name: '2026' } },
+    fixtures: [
+      {
+        context: {
+          date: '2026-03-14',
+          teams: [{ context: { name: 'Home' } }, { context: { name: 'Away' } }],
+        },
+        innings: [
+          {
+            context: { ordinal: 0, battingTeam: { context: { name: 'Home' } } },
+            events: events.map((event) => ({
+              eventId: event.eventId,
+              occurrenceSequence: event.occurrenceSequence,
+              overNumber: Number(event.ballLabel.split('.')[0]),
+              positionInOver: event.occurrenceSequence - 1,
+              ballLabel: event.ballLabel,
+              striker: { context: { name: 'Striker', team: { context: { name: 'Home' } } } },
+              nonStriker: {
+                context: { name: 'Non-striker', team: { context: { name: 'Home' } } },
+              },
+              bowler: { context: { name: 'Bowler', team: { context: { name: 'Away' } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            })),
+          },
+        ],
+      },
+    ],
+  });
+}
+
+describe('occurrence-sequence ordering independent of arrival order (#588)', () => {
+  const orderedEvents = [
+    { eventId: 'test:delivery:1', occurrenceSequence: 1, ballLabel: '0.1' },
+    { eventId: 'test:delivery:2', occurrenceSequence: 2, ballLabel: '0.2' },
+    { eventId: 'test:delivery:3', occurrenceSequence: 3, ballLabel: '0.3' },
+  ];
+
   it.each([
-    ['season-upload-template.csv', 'text/csv'],
-    ['season-upload-template.json', 'application/json'],
+    ['ordered', orderedEvents],
+    ['reversed', [...orderedEvents].reverse()],
+    ['shuffled', [orderedEvents[1]!, orderedEvents[2]!, orderedEvents[0]!]],
+  ])(
+    'settles on the same canonical event order for %s arrival order',
+    async (_label, arrivalOrderEvents) => {
+      const source = jsonPackageWithEvents(arrivalOrderEvents);
+
+      const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+      expect(scan.fatal).toBe(false);
+      expect(scan.sourceFaults).toEqual([]);
+
+      const { referencePackage } = await referenceChunkFor(source, 'application/json');
+      const events = referencePackage?.fixtures[0]?.innings[0]?.events ?? [];
+
+      // The published/canonical order must reflect occurrenceSequence, not the
+      // order the rows appeared in the source file.
+      expect(events.map((event) => event.eventId)).toEqual([
+        'test:delivery:1',
+        'test:delivery:2',
+        'test:delivery:3',
+      ]);
+      expect(events.map((event) => event.occurrenceSequence)).toEqual([1, 2, 3]);
+    },
+  );
+
+  it('rejects duplicate occurrence sequences regardless of arrival order', async () => {
+    const source = jsonPackageWithEvents([
+      { eventId: 'test:delivery:1', occurrenceSequence: 1, ballLabel: '0.1' },
+      { eventId: 'test:delivery:2', occurrenceSequence: 1, ballLabel: '0.2' },
+    ]);
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+
+    expect(scan.sourceFaults.map((fault) => fault.ruleCode)).toContain(
+      'DUPLICATE_OCCURRENCE_SEQUENCE',
+    );
+  });
+});
+
+describe('authoritative powerplay metadata', () => {
+  it('preserves JSON innings ranges in the staged reference package', async () => {
+    const value = JSON.parse(
+      jsonPackageWithEvents([
+        { eventId: 'test:delivery:powerplay-1', occurrenceSequence: 1, ballLabel: '0.1' },
+      ]),
+    ) as {
+      fixtures: Array<{ innings: Array<{ powerplays?: unknown }> }>;
+    };
+    value.fixtures[0]!.innings[0]!.powerplays = [{ from: 0.1, to: 5.6, type: 'mandatory' }];
+
+    const chunk = await referenceChunkFor(JSON.stringify(value), 'application/json');
+
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.powerplays).toEqual([
+      { from: 0.1, to: 5.6, type: 'mandatory' },
+    ]);
+  });
+
+  it('reports an actionable source path for an invalid range', async () => {
+    const value = JSON.parse(
+      jsonPackageWithEvents([
+        { eventId: 'test:delivery:powerplay-invalid', occurrenceSequence: 1, ballLabel: '0.1' },
+      ]),
+    ) as {
+      fixtures: Array<{ innings: Array<{ powerplays?: unknown }> }>;
+    };
+    value.fixtures[0]!.innings[0]!.powerplays = [{ from: 5.6, to: 0.1, type: 'mandatory' }];
+
+    const scan = await scanBatchReferences(
+      async () => Readable.from(JSON.stringify(value)),
+      'application/json',
+    );
+
+    expect(scan.sourceFaults).toEqual([
+      expect.objectContaining({
+        ruleCode: 'PACKAGE_ITEM_INVALID',
+        fieldPath: expect.stringContaining('powerplays'),
+        message: expect.stringContaining('must not precede'),
+      }),
+    ]);
+  });
+});
+
+describe('shipped guided templates (#500)', () => {
+  // The JSON template's second event demonstrates a caught dismissal (#536); the CSV
+  // template's example row leaves its dismissal columns blank.
+  it.each([
+    ['season-upload-template.csv', 'text/csv', 1, 0],
+    ['season-upload-template.json', 'application/json', 2, 1],
   ])(
     'expands %s with only readable names filled in and carries no reference identifier',
-    async (fileName, mediaType) => {
+    async (fileName, mediaType, eventCount, wicketCount) => {
       const source = shippedTemplateWithReadableNames(fileName);
 
       const scan = await scanBatchReferences(async () => Readable.from(source), mediaType);
       expect(scan.fatal).toBe(false);
       expect(scan.sourceFaults).toEqual([]);
-      expect(scan.eventCount).toBe(1);
+      expect(scan.eventCount).toBe(eventCount);
 
       const { referencePackage } = await referenceChunkFor(source, mediaType);
       const fixture = referencePackage?.fixtures[0];
       const innings = fixture?.innings[0];
-      const event = innings?.events[0];
+      const events = innings?.events ?? [];
 
       // Competition, fixture, innings and participants must reach the resolver as
       // readable context alone. A placeholder identifier would be preferred over
@@ -122,14 +259,337 @@ describe('shipped guided templates (#500)', () => {
         { context: { name: 'Strikers' } },
       ]);
       expect(innings?.sourceId).toBeUndefined();
-      for (const role of ['striker', 'nonStriker', 'bowler'] as const) {
-        expect(event?.[role].sourceId).toBeUndefined();
+      expect(events).toHaveLength(eventCount);
+      expect(events.flatMap((event) => event.wickets)).toHaveLength(wicketCount);
+      for (const event of events) {
+        for (const role of ['striker', 'nonStriker', 'bowler'] as const) {
+          expect(event[role].sourceId).toBeUndefined();
+        }
+        for (const wicket of event.wickets) {
+          expect(wicket.playerOut.sourceId).toBeUndefined();
+          for (const fielder of wicket.fielders) {
+            expect(fielder.participant?.sourceId).toBeUndefined();
+          }
+        }
       }
     },
   );
+
+  it('preserves a version 1.1 fixture proposal for reviewer resolution', async () => {
+    const value = JSON.parse(
+      shippedTemplateWithReadableNames('season-upload-template.json'),
+    ) as Record<string, unknown> & { fixtures: Array<Record<string, unknown>> };
+    const proposal = {
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    };
+    value.contractVersion = '1.1';
+    value.fixtures[0] = {
+      ...value.fixtures[0],
+      sourceId: 'app:fixture:test-package-fixture',
+      proposal,
+    };
+    const source = JSON.stringify(value);
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+    const referenceChunk = await referenceChunkFor(source, 'application/json');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(referenceChunk.referencePackage?.contractVersion).toBe('1.1');
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual(proposal);
+  });
+
+  it('preserves a version 1.1 fixture proposal from CSV', async () => {
+    const [headerLine = '', rowLine = ''] = shippedTemplateWithReadableNames(
+      'season-upload-template.csv',
+    ).split(/\r?\n/);
+    const columns = headerLine.split(',');
+    const cells = rowLine.split(',');
+    cells[columns.indexOf('contractVersion')] = '1.1';
+    cells[columns.indexOf('fixtureSourceId')] = 'submitter:fixture:csv-package';
+    const proposalColumns: Record<string, string> = {
+      fixtureEndDate: '2026-03-14',
+      fixtureMatchType: 'T20',
+      fixtureTeamType: 'club',
+      fixtureGender: 'female',
+      fixtureBallsPerOver: '6',
+      fixtureOutcome: 'no result',
+      fixtureSourceVersion: '1',
+      fixtureSourceRevision: '0',
+    };
+    for (const [column, value] of Object.entries(proposalColumns)) {
+      const index = columns.indexOf(column);
+      expect(index, `template column ${column}`).toBeGreaterThanOrEqual(0);
+      cells[index] = value;
+    }
+    const source = `${columns.join(',')}\n${cells.join(',')}\n`;
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    const referenceChunk = await referenceChunkFor(source, 'text/csv');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(referenceChunk.referencePackage?.contractVersion).toBe('1.1');
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual({
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    });
+  });
+
+  it('preserves a version 1.1 fixture proposal from NDJSON', async () => {
+    const proposal = {
+      endDate: '2026-03-14',
+      matchType: 'T20',
+      teamType: 'club',
+      gender: 'female',
+      ballsPerOver: 6,
+      outcome: 'no result',
+      sourceVersion: '1',
+      sourceRevision: 0,
+    };
+    const source = [
+      JSON.stringify({
+        recordType: 'manifest',
+        contractVersion: '1.1',
+        packageId: 'submitter:package:ndjson-package',
+        competition: { context: { name: 'Premier T20' } },
+        season: { context: { name: '2026' } },
+      }),
+      JSON.stringify({
+        recordType: 'fixture',
+        fixtureKey: 'fixture-1',
+        sourceId: 'submitter:fixture:ndjson-package',
+        context: {
+          date: '2026-03-14',
+          teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+        },
+        proposal,
+      }),
+      JSON.stringify({
+        recordType: 'innings',
+        fixtureKey: 'fixture-1',
+        inningsKey: 'innings-1',
+        context: { ordinal: 0, battingTeam: { context: { name: 'Wanderers' } } },
+      }),
+      JSON.stringify({
+        recordType: 'event',
+        fixtureKey: 'fixture-1',
+        inningsKey: 'innings-1',
+        event: {
+          eventId: 'submitter:delivery:ndjson-package-1',
+          occurrenceSequence: 1,
+          overNumber: 0,
+          positionInOver: 0,
+          ballLabel: '0.1',
+          striker: { context: { name: 'A. Batter' } },
+          nonStriker: { context: { name: 'B. Batter' } },
+          bowler: { context: { name: 'C. Bowler' } },
+          runs: { offBat: 0, extras: 0, total: 0 },
+          extras: {},
+        },
+      }),
+    ].join('\n');
+
+    const scan = await scanBatchReferences(
+      async () => Readable.from(source),
+      'application/x-ndjson',
+    );
+    const referenceChunk = await referenceChunkFor(source, 'application/x-ndjson');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(referenceChunk.referencePackage?.fixtures[0]?.proposal).toEqual(proposal);
+  });
+});
+
+/**
+ * The shipped CSV template's example row, with readable names filled in and the named
+ * columns set as a submitter recording a dismissal would complete them. Every column
+ * set must exist in the template header, so a template change cannot make a test vacuous.
+ */
+function shippedCsvTemplateWith(values: Record<string, string>): string {
+  const [headerLine = '', rowLine = ''] = shippedTemplateWithReadableNames(
+    'season-upload-template.csv',
+  ).split(/\r?\n/);
+  const columns = headerLine.split(',');
+  const cells = rowLine.split(',');
+  expect(cells).toHaveLength(columns.length);
+  for (const [column, value] of Object.entries(values)) {
+    const index = columns.indexOf(column);
+    expect(index, `template column ${column}`).toBeGreaterThanOrEqual(0);
+    cells[index] = value;
+  }
+  return `${headerLine}\n${cells.join(',')}\n`;
+}
+
+async function normalisedCsvEvents(source: string) {
+  const events = [];
+  for await (const candidate of normalisedBatchCandidates(
+    async () => Readable.from(source),
+    'text/csv',
+  )) {
+    events.push(candidate.event);
+  }
+  return events;
+}
+
+describe('CSV dismissal columns (#536)', () => {
+  it('carries a dismissal and its fielder from a template-shaped row', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'caught',
+      playerOutName: 'A. Batter',
+      fielder1Name: 'D. Fielder',
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([]);
+    const events = await normalisedCsvEvents(source);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.wickets).toEqual([
+      {
+        kind: 'caught',
+        playerOut: { context: { name: 'A. Batter' } },
+        fielders: [{ participant: { context: { name: 'D. Fielder' } }, substitute: false }],
+      },
+    ]);
+  });
+
+  it('produces no wicket when wicketKind is blank', async () => {
+    const source = shippedCsvTemplateWith({ wicketKind: '' });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([]);
+    const events = await normalisedCsvEvents(source);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.wickets).toEqual([]);
+  });
+
+  // A submitter who records a dismissal but forgets its kind is told, rather than the
+  // delivery quietly losing its wicket.
+  it.each([
+    ['playerOutSourceId', 'my-club:participant:dismissed-batter'],
+    ['playerOutName', 'A. Batter'],
+    ['fielder1SourceId', 'my-club:participant:fielder'],
+    ['fielder1Name', 'D. Fielder'],
+    ['fielder1Substitute', 'false'],
+    ['fielder2SourceId', 'my-club:participant:fielder'],
+    ['fielder2Name', 'D. Fielder'],
+    ['fielder2Substitute', 'true'],
+    ['fielder3SourceId', 'my-club:participant:fielder'],
+    ['fielder3Name', 'D. Fielder'],
+    ['fielder3Substitute', 'true'],
+  ])('reports %s filled in without a wicketKind instead of dropping it', async (column, value) => {
+    const source = shippedCsvTemplateWith({ wicketKind: '', [column]: value });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.eventCount).toBe(1);
+    expect(scan.sourceFaults).toEqual([
+      {
+        sourceOrdinal: 0,
+        ruleCode: 'CSV_WICKET_KIND_MISSING',
+        filePath: 'batch.csv',
+        rowNumber: 2,
+        fieldPath: 'wicketKind',
+        message: expect.stringContaining(column),
+        countsAsItem: true,
+      },
+    ]);
+    expect(await normalisedCsvEvents(source)).toEqual([]);
+  });
+
+  it('carries an unidentified substitute fielder who has no name', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'caught',
+      playerOutName: 'A. Batter',
+      fielder1Substitute: 'true',
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([]);
+    const events = await normalisedCsvEvents(source);
+    expect(events[0]?.wickets).toEqual([
+      {
+        kind: 'caught',
+        playerOut: { context: { name: 'A. Batter' } },
+        fielders: [{ substitute: true }],
+      },
+    ]);
+  });
+
+  it('moves filled fielder slots up past an empty slot', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'run out',
+      playerOutName: 'A. Batter',
+      fielder2Name: 'D. Fielder',
+      fielder3Name: 'E. Fielder',
+    });
+
+    const events = await normalisedCsvEvents(source);
+    expect(events[0]?.wickets[0]?.fielders).toEqual([
+      { participant: { context: { name: 'D. Fielder' } }, substitute: false },
+      { participant: { context: { name: 'E. Fielder' } }, substitute: false },
+    ]);
+  });
+
+  it('rejects a substitute value other than true or false instead of guessing', async () => {
+    const source = shippedCsvTemplateWith({
+      wicketKind: 'caught',
+      playerOutName: 'A. Batter',
+      fielder1Name: 'D. Fielder',
+      fielder1Substitute: 'yes',
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'text/csv');
+    expect(scan.sourceFaults).toEqual([
+      expect.objectContaining({
+        ruleCode: 'PACKAGE_ITEM_INVALID',
+        fieldPath: 'fixtures.0.innings.0.events.0.wickets.0.fielders.0.substitute',
+      }),
+    ]);
+    expect(await normalisedCsvEvents(source)).toEqual([]);
+  });
 });
 
 describe('batch package streaming expansion', () => {
+  it('requires canonical coordinate columns in CSV and permits a blank display label', async () => {
+    const withoutOverHeader = header
+      .split(',')
+      .filter((column) => column !== 'overNumber')
+      .join(',');
+    const missingCoordinateScan = await scanBatchReferences(
+      async () => Readable.from(`${withoutOverHeader}\n${csvRow()}`),
+      'text/csv',
+    );
+    expect(missingCoordinateScan.sourceFaults).toEqual([
+      expect.objectContaining({
+        message: expect.stringMatching(/missing required columns: overNumber/i),
+      }),
+    ]);
+
+    const withoutLabel = csvRow().replace(',0.1,upsert,', ',,upsert,');
+    const chunk = await referenceChunkFor(`${header}\n${withoutLabel}`, 'text/csv');
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.events[0]).toMatchObject({
+      overNumber: 0,
+      positionInOver: 0,
+    });
+    expect(chunk.referencePackage?.fixtures[0]?.innings[0]?.events[0]).not.toHaveProperty(
+      'ballLabel',
+    );
+  });
+
   it('preserves correction metadata from CSV packages', async () => {
     const source = `${header}\n${csvRow(
       'Competition',
@@ -292,5 +752,224 @@ describe('batch package streaming expansion', () => {
 
     const referenceChunk = await referenceChunkFor(records, 'application/x-ndjson');
     expect(referenceChunk.referencePackage?.fixtures[0]?.innings[0]?.events).toHaveLength(1);
+  });
+});
+
+describe('multi-season back-catalogue staging (#589)', () => {
+  it('keeps two seasons and multiple fixtures per season in one staged JSON package', async () => {
+    const fixture = (id: string, date: string, home: string, away: string, season?: string) => ({
+      ...(season ? { season: { context: { name: season } } } : {}),
+      context: {
+        date,
+        teams: [{ context: { name: home } }, { context: { name: away } }],
+      },
+      innings: [
+        {
+          context: { ordinal: 0, battingTeam: { context: { name: home } } },
+          events: [
+            {
+              eventId: `test:delivery:issue589-${id}`,
+              occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
+              ballLabel: '0.1',
+              striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
+              nonStriker: {
+                context: { name: `Non-striker ${id}`, team: { context: { name: home } } },
+              },
+              bowler: { context: { name: `Bowler ${id}`, team: { context: { name: away } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            },
+          ],
+        },
+      ],
+    });
+
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:issue589-multi-season',
+      competition: { context: { name: 'Premier T20' } },
+      // Existing single-season uploads continue to use this package default.
+      season: { context: { name: '2025' } },
+      fixtures: [
+        fixture('2025-a', '2025-03-10', 'Alpha', 'Bravo'),
+        fixture('2025-b', '2025-03-11', 'Charlie', 'Delta'),
+        fixture('2026-a', '2026-03-10', 'Alpha', 'Charlie', '2026'),
+        fixture('2026-b', '2026-03-11', 'Bravo', 'Delta', '2026'),
+      ],
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(scan.eventCount).toBe(4);
+
+    const { referencePackage } = await referenceChunkFor(source, 'application/json');
+
+    expect(referencePackage?.season.context?.name).toBe('2025');
+    expect(referencePackage?.fixtures).toHaveLength(4);
+    expect(
+      referencePackage?.fixtures.map(
+        (candidate) => candidate.season?.context?.name ?? referencePackage.season.context?.name,
+      ),
+    ).toEqual(['2025', '2025', '2026', '2026']);
+  });
+});
+
+describe('multi-season back-catalogue item validation (#589)', () => {
+  it('keeps valid siblings visible when one fixture has an invalid season (#589)', async () => {
+    const fixture = (id: string, date: string, home: string, away: string, season?: string) => ({
+      ...(season ? { season: { context: { name: season } } } : {}),
+      context: {
+        date,
+        teams: [{ context: { name: home } }, { context: { name: away } }],
+      },
+      innings: [
+        {
+          context: { ordinal: 0, battingTeam: { context: { name: home } } },
+          events: [
+            {
+              eventId: `test:delivery:issue589-invalid-${id}`,
+              occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
+              ballLabel: '0.1',
+              striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
+              nonStriker: {
+                context: { name: `Non-striker ${id}`, team: { context: { name: home } } },
+              },
+              bowler: { context: { name: `Bowler ${id}`, team: { context: { name: away } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            },
+          ],
+        },
+      ],
+    });
+
+    const badFixture = fixture('2026-bad', '2026-03-10', 'Alpha', 'Charlie', '2026') as {
+      season?: { context?: { name?: string } };
+    };
+    badFixture.season = { context: { name: '' } };
+
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:issue589-invalid-sibling',
+      competition: { context: { name: 'Premier T20' } },
+      season: { context: { name: '2025' } },
+      fixtures: [
+        fixture('2025-a', '2025-03-10', 'Alpha', 'Bravo'),
+        fixture('2025-b', '2025-03-11', 'Charlie', 'Delta'),
+        badFixture,
+        fixture('2026-good', '2026-03-11', 'Bravo', 'Delta', '2026'),
+      ],
+    });
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+
+    expect(scan.fatal).toBe(false);
+    expect(scan.eventCount).toBe(4);
+    expect(scan.rejectedOrdinals.size).toBe(1);
+    expect([...scan.rejectedOrdinals]).toEqual([2]);
+    expect(scan.sourceFaults).toEqual([
+      expect.objectContaining({
+        sourceOrdinal: 2,
+        ruleCode: 'PACKAGE_ITEM_INVALID',
+        fieldPath: expect.stringContaining('season'),
+      }),
+    ]);
+
+    const candidates = [];
+    for await (const candidate of normalisedBatchCandidates(
+      async () => Readable.from(source),
+      'application/json',
+    )) {
+      candidates.push(candidate);
+    }
+
+    expect(candidates).toHaveLength(3);
+    expect(candidates.map((candidate) => candidate.ordinal)).toEqual([0, 1, 3]);
+  });
+});
+
+describe('multi-season back-catalogue replay (#589)', () => {
+  it('replaying the same multi-season catalogue preserves duplicate identities (#589)', async () => {
+    const fixture = (id: string, date: string, home: string, away: string, season?: string) => ({
+      ...(season ? { season: { context: { name: season } } } : {}),
+      context: {
+        date,
+        teams: [{ context: { name: home } }, { context: { name: away } }],
+      },
+      innings: [
+        {
+          context: { ordinal: 0, battingTeam: { context: { name: home } } },
+          events: [
+            {
+              eventId: `test:delivery:issue589-replay-${id}`,
+              occurrenceSequence: 1,
+              overNumber: 0,
+              positionInOver: 0,
+              ballLabel: '0.1',
+              striker: { context: { name: `Striker ${id}`, team: { context: { name: home } } } },
+              nonStriker: {
+                context: { name: `Non-striker ${id}`, team: { context: { name: home } } },
+              },
+              bowler: { context: { name: `Bowler ${id}`, team: { context: { name: away } } } },
+              runs: { offBat: 0, extras: 0, total: 0 },
+              extras: {},
+            },
+          ],
+        },
+      ],
+    });
+
+    const source = JSON.stringify({
+      contractVersion: '1.0',
+      packageId: 'test:package:issue589-replay',
+      competition: { context: { name: 'Premier T20' } },
+      season: { context: { name: '2025' } },
+      fixtures: [
+        fixture('2025-a', '2025-03-10', 'Alpha', 'Bravo'),
+        fixture('2025-b', '2025-03-11', 'Charlie', 'Delta'),
+        fixture('2026-a', '2026-03-10', 'Alpha', 'Charlie', '2026'),
+        fixture('2026-b', '2026-03-11', 'Bravo', 'Delta', '2026'),
+      ],
+    });
+
+    async function stageCatalogue() {
+      const candidates: Parameters<typeof buildReferenceChunk>[0] = [];
+      for await (const candidate of normalisedBatchCandidates(
+        async () => Readable.from(source),
+        'application/json',
+      )) {
+        candidates.push(candidate);
+      }
+
+      const chunk = buildReferenceChunk(candidates);
+      return { candidates, chunk };
+    }
+
+    const first = await stageCatalogue();
+    const replay = await stageCatalogue();
+
+    expect(first.candidates).toHaveLength(4);
+    expect(replay.candidates).toHaveLength(4);
+
+    expect(first.candidates.map((candidate) => candidate.event.eventId)).toEqual(
+      replay.candidates.map((candidate) => candidate.event.eventId),
+    );
+
+    const effectiveSeasons = (chunk: ReturnType<typeof buildReferenceChunk>) =>
+      chunk.referencePackage?.fixtures.map(
+        (candidate) =>
+          candidate.season?.context?.name ?? chunk.referencePackage?.season.context?.name,
+      );
+
+    expect(effectiveSeasons(first.chunk)).toEqual(['2025', '2025', '2026', '2026']);
+    expect(effectiveSeasons(replay.chunk)).toEqual(['2025', '2025', '2026', '2026']);
+    expect(replay.chunk.referencePackage).toEqual(first.chunk.referencePackage);
+    expect(replay.chunk.referencePathByOrdinal).toEqual(first.chunk.referencePathByOrdinal);
   });
 });

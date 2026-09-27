@@ -91,6 +91,7 @@ describe('protected provenance contracts', () => {
         data: {
           statisticId: 'stat_example',
           fixtureId: '7',
+          participantId: null,
           statisticCode: 'team_total',
           scope: 'innings',
           sourceEventCount: 1,
@@ -102,6 +103,7 @@ describe('protected provenance contracts', () => {
               source,
             },
           ],
+          pagination: { nextCursor: null },
         },
       }).success,
     ).toBe(true);
@@ -113,6 +115,7 @@ describe('protected provenance contracts', () => {
         data: {
           statisticId: 'stat_example',
           fixtureId: '7',
+          participantId: null,
           statisticCode: 'team_total',
           scope: 'innings',
           sourceEventCount: 1,
@@ -137,6 +140,7 @@ describe('protected provenance contracts', () => {
               },
             },
           ],
+          pagination: { nextCursor: null },
         },
       }).success,
     ).toBe(true);

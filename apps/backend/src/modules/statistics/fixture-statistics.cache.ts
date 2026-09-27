@@ -3,7 +3,7 @@ import type { FixtureStatistics } from '@sport-analytics/contracts';
 import { executeQuery, getDatabasePool, type QueryExecutor } from '../../database';
 
 const fixtureStatisticsCacheTtlSeconds = 60;
-const cacheContractVersion = 'v1';
+const cacheContractVersion = 'v2';
 const cacheResource = 'fixture-statistics';
 
 export interface FixtureStatisticsCacheRead {
@@ -20,37 +20,13 @@ function cacheKey(fixtureId: string, dataVersion: number): string {
   return `sat:${cacheContractVersion}:${cacheResource}:fixture:${fixtureId}:v${dataVersion}`;
 }
 
+function cacheKeyPrefix(fixtureId: string): string {
+  return `sat:${cacheContractVersion}:${cacheResource}:fixture:${fixtureId}:v`;
+}
+
 interface CacheRow {
   dataVersion: number;
   payload: FixtureStatistics | null;
-}
-
-/** Advances the authoritative version in the same transaction as an event write. */
-export async function advanceFixtureStatisticsCacheVersions(
-  executor: QueryExecutor,
-  fixtureIds: readonly string[],
-): Promise<void> {
-  const uniqueFixtureIds = [...new Set(fixtureIds)];
-  if (uniqueFixtureIds.length === 0) return;
-
-  await executeQuery(
-    executor,
-    `
-      WITH advanced AS (
-        INSERT INTO fixture_statistics_cache_version (fixture_id, data_version, updated_at)
-        SELECT fixture_id, 1, now()
-        FROM unnest($1::bigint[]) AS source(fixture_id)
-        ON CONFLICT (fixture_id) DO UPDATE
-        SET data_version = fixture_statistics_cache_version.data_version + 1,
-            updated_at = now()
-        RETURNING fixture_id
-      )
-      DELETE FROM fixture_statistics_cache cache
-      USING advanced
-      WHERE cache.fixture_id = advanced.fixture_id
-    `,
-    [uniqueFixtureIds],
-  );
 }
 
 export function createFixtureStatisticsCache(
@@ -68,10 +44,11 @@ export function createFixtureStatisticsCache(
           LEFT JOIN fixture_statistics_cache cache
             ON cache.fixture_id = fixture.fixture_id
            AND cache.data_version = COALESCE(version.data_version, 0)
+           AND cache.cache_key = $2::text || COALESCE(version.data_version, 0)::text
            AND cache.expires_at > now()
           WHERE fixture.fixture_id = $1::bigint
         `,
-        [fixtureId],
+        [fixtureId, cacheKeyPrefix(fixtureId)],
       );
       const row = result.rows[0];
       return row ? { dataVersion: row.dataVersion, value: row.payload } : null;

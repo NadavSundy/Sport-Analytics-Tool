@@ -1,4 +1,6 @@
-﻿export const CRICKET_VALIDATION_RULE_VERSION = '1.0' as const;
+﻿import { isLegalDelivery } from './cricket-delivery-classification';
+
+export const CRICKET_VALIDATION_RULE_VERSION = '1.0' as const;
 
 export const CRICKET_VALIDATION_RULE_CODES = [
   'STRIKER_TEAM_INVALID',
@@ -14,6 +16,7 @@ export const CRICKET_VALIDATION_RULE_CODES = [
   'EXACT_PUBLISHED_DUPLICATE',
   'PUBLISHED_DELIVERY_CONFLICT',
   'FIXTURE_METADATA_CONFLICT',
+  'RESOLVED_COMPETITION_OUT_OF_SCOPE',
   'CORRECTION_TARGET_NOT_FOUND',
   'CORRECTION_TARGET_AMBIGUOUS',
   'CORRECTION_TARGET_WRONG_FIXTURE',
@@ -50,7 +53,7 @@ export interface CricketValidationEvent {
   inningsId: string;
   sequenceNumber: number;
   overNumber: number;
-  ballNumber: string;
+  ballNumber?: string | undefined;
   strikerId: string;
   nonStrikerId: string;
   bowlerId: string;
@@ -127,10 +130,6 @@ function participantTeam(
   participantId: string,
 ): string | undefined {
   return context.participantTeamById[participantId];
-}
-
-function isLegalDelivery(event: CricketValidationEvent): boolean {
-  return (event.extras.wides ?? 0) === 0 && (event.extras.noBalls ?? 0) === 0;
 }
 
 export function validateCricketBusinessRules(
@@ -213,7 +212,7 @@ export function validateCricketBusinessRules(
       }
     }
 
-    const ballMatch = /^(\d{1,3})\.(\d{1,2})$/.exec(event.ballNumber);
+    const ballMatch = event.ballNumber ? /^(\d{1,5})\.(\d{1,2})$/.exec(event.ballNumber) : null;
 
     if (ballMatch !== null) {
       const printedOver = Number(ballMatch[1]);
@@ -250,7 +249,7 @@ export function validateCricketBusinessRules(
 
         state.previousBallByInningsOver.set(ballKey, {
           printedBall,
-          legal: isLegalDelivery(event),
+          legal: isLegalDelivery(event.extras),
           eventIndex,
         });
       }

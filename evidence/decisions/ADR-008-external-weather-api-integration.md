@@ -122,13 +122,31 @@ The response parsing logic is unchanged: both endpoints return the same `daily.*
 ## Amendment: fixture location resolution (issue #473)
 
 Fixture weather now resolves missing venue coordinates lazily through Open-Meteo's geocoding API.
-The backend reuses valid persisted coordinates without geocoding. Otherwise it queries the stored
-city first and, only when that cannot be resolved, queries the raw venue name; it never constructs a
-combined venue-and-city query. Successful coordinates are persisted on the existing venue record for
+The backend reuses valid persisted coordinates without geocoding. Otherwise it queries the canonical
+venue together with its stored city first and, only when that cannot be resolved, queries the raw
+venue name. Successful coordinates are persisted on the existing venue record for
 later requests. If neither lookup resolves, fixture weather returns the normal successful
 unavailable state with `LOCATION_NOT_FOUND`; geocoding timeout and upstream failures retain the
 safe `504` and `502` mappings. Weather data remains uncached, and forecast/archive selection is
 unchanged.
+
+## Amendment: durable venue-coordinate invalidation
+
+The write only fills a venue that still has no coordinates, preventing concurrent first requests
+from overwriting one another. A database trigger clears derived latitude and longitude whenever a
+venue name or city changes, so future fixture-weather requests resolve the changed location safely.
+Geocoding failures and invalid results do not create durable coordinates; they remain retryable
+unavailable/provider-error states. Weather data itself remains time-dependent and is not cached by
+this change.
+
+## Amendment: transient weather-provider retry
+
+The weather provider makes at most two immediate attempts for a fixture-weather request. A second
+attempt is made only after a network/connection failure, timeout, or HTTP 408 or 5xx response;
+normal client responses and 429 rate limits remain single-attempt because an immediate retry would
+ignore the provider's rate-limit window. If the second attempt also fails, the existing controller
+error mapping and degraded fixture page remain unchanged. No weather response, including a failed
+response, is cached.
 
 ## AI Declaration
 

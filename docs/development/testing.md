@@ -80,13 +80,14 @@ tooling never falls back to the normal `DATABASE_URL`.
 | `npm run hygiene:dependencies` | Dependency-version consistency across npm workspace manifests                                   | None                                            | No              |
 | `npm run hygiene:architecture` | Circular-dependency and documented source-boundary validation                                   | None                                            | No              |
 | `npm run test`                 | Unit, frontend, API, contract, and deployment-helper suites                                     | None                                            | No              |
+| `npm run test:api-contract`    | OpenAPI contract tests: real API responses checked against `docs/api/openapi.yaml`              | None                                            | No              |
 | `npm run test:backend`         | Backend unit, API, and PostgreSQL integration suites                                            | Automatic or `DATABASE_URL_TEST`                | No              |
 | `npm run test:backend:local`   | Complete backend suite using the repository-managed PostgreSQL 16 Docker container              | Automatic Docker connection                     | Yes             |
 | `npm run test:deployment`      | Deployment workflow helper tests                                                                | None                                            | No              |
 | `npm run test:database`        | Provision and run only the database suite, or use an explicitly configured isolated database    | Automatic or `DATABASE_URL_TEST`                | No              |
 | `npm run test:database:local`  | Provision, prepare, and run only database tests against the repository-managed Docker container | Automatic Docker connection                     | Yes             |
 | `npm run test:e2e`             | Playwright browser and accessibility tests                                                      | No dedicated database workflow                  | No              |
-| `npm run test:coverage`        | Current configured coverage suites                                                              | None                                            | No              |
+| `npm run test:coverage`        | Repository-wide V8 coverage for frontend, backend, worker, contracts and batch-processing       | None                                            | No              |
 | `npm run check`                | Structure, format, lint, types, database-independent tests, OpenAPI, and production builds      | None                                            | No              |
 | `npm run test:ci`              | Normal tests, database integration tests, and browser tests                                     | CI supplies `DATABASE_URL_TEST`                 | No              |
 
@@ -95,6 +96,15 @@ system and `npm run ci:docker` provides closer Linux parity in an Ubuntu 24.04 c
 the hosted change planner and run only the checks selected by the current branch diff. Hosted Gitea CI
 remains the final merge authority. Developers who want automatic native validation before their own
 pushes can opt in with `npm run hooks:install` and remove it with `npm run hooks:remove`.
+
+### Repository-wide code coverage
+
+Issue #578 makes `npm run test:coverage` the authoritative repository-wide coverage command. It runs
+separate V8 coverage passes for the frontend, backend, worker, contracts and batch-processing
+workspaces, explicitly includes production `src/**` files that tests never import, and aggregates
+covered/coverable counters rather than averaging workspace percentages. See
+[Repository-wide Code Coverage](../testing/code-coverage.md) for report formats, CI routing, artifacts
+and the configurable threshold policy.
 
 The backend workspace's ordinary command, `npm run test --workspace=@sport-analytics/backend`,
 builds the shared contracts and runs only its unit and API suites. PostgreSQL tests run only through
@@ -711,5 +721,9 @@ The Basic end-to-end acceptance workflow was documented with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
 The Basic accessibility and responsive-design audit documentation was produced with the assistance
 of ChatGPT-Web[GPT-5.6 Sol].
+The repository-wide coverage testing section was documented with the assistance of
+ChatGPT-Web[GPT-5.6 Sol].
 The issue #458 administrator dataset-release coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #609 OpenAPI contract-test command was documented with the assistance of
+Claude-Code[Claude Opus 5].

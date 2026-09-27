@@ -77,7 +77,11 @@ Content-Type: application/json
 ```
 
 The version is a caller-selected stable identifier and can contain letters, digits, dots, underscores
-and hyphens. Reusing a version retrieves its original release rather than regenerating it. Public
+and hyphens. A new request returns `202 Accepted` with a durable job; generation continues in the
+existing worker after the HTTP request ends. Administrators can poll
+`GET /api/v1/admin/dataset-release-jobs/{jobId}` for safe page, event and byte progress. Reusing a
+pending version returns its existing job, retrying a failed version requeues that job, and reusing a
+completed version returns its original release rather than regenerating it. Public
 consumers retrieve the metadata and exact downloadable artifact at:
 
 ```http
@@ -88,27 +92,76 @@ GET /api/v1/dataset-releases/{version}/artifact.json
 
 An authenticated administrator can perform the same operation without constructing an API request
 by opening **Publish dataset release** from the Account page. The admin-only workflow validates the
-version, explains that publication is immediate and immutable, and links the successful result to
+version, explains the queued immutable publication lifecycle, polls job status, and links the successful result to
 its public metadata, JSON artefact and catalogue entry. The backend administrator guard remains the
 authoritative permission boundary.
 
 The collection is returned newest first and includes each release's stable version, creation time,
-scope, event count, format version, documented fields and SHA-256 checksum. The public application
+durable snapshot identity and snapshot as-of time, scope, event count, format version, documented
+fields and SHA-256 checksum. The public application
 exposes the same catalogue at `/dataset-releases`; each release page presents its metadata, schema,
 checksum and a direct JSON download without requiring sign-in.
 
 Each artifact is canonical JSON containing its format version, scope, field descriptions and ordered
 published accepted-delivery rows. It is generated only from the live, corrected `delivery_current`
 revision whose source submission is `accepted`; pending, rejected and superseded rows are excluded.
-The metadata response includes the SHA-256 checksum of the exact artifact bytes. Consumers should
-save the version and checksum with an analysis and verify the downloaded bytes before reuse.
+Before paging, the worker atomically materializes the accepted current-delivery rows into a durable
+snapshot and records its opaque identity and transaction as-of time. Every deterministic 10,000-row
+keyset page reads that snapshot, so a correction published after generation begins cannot enter only
+later pages and a retry produces the same logical release. The worker writes the JSON header, individual event
+objects and closing bytes directly to private object storage while updating SHA-256 over those exact
+UTF-8 bytes. It therefore never constructs the complete event array or artifact string in
+application memory. PostgreSQL retains the immutable version, schema, event count, checksum and
+opaque artifact reference; public downloads resolve that reference and stream the stored bytes.
+
+For local development, both the backend and worker fulfil the same `ObjectStore` contract with
+`OBJECT_STORAGE_PROVIDER=filesystem` and a private repository-local root such as
+`OBJECT_STORAGE_FILESYSTEM_ROOT=../../.local/object-storage`. Generation and public retrieval remain
+streaming, and checksums cover the same exact bytes. The generated files are ignored and must not be
+committed. Deployed production continues to require `OBJECT_STORAGE_PROVIDER=azure` and the private
+Azure Blob adapter; it never exposes Blob URLs or falls back to local storage.
+
+The mutable `dataset_release_job` record is separate from immutable public metadata. Release
+metadata is inserted only after object storage confirms the complete write. An interrupted database
+read, JSON stream or storage write marks the job failed and triggers deletion of the attempt-specific
+object key, leaving no visible release. If metadata insertion loses a concurrent race for
+the same version, the newly written unreferenced object is deleted and the original immutable
+release is returned. Operational reconciliation remains the fallback when storage is unavailable
+during cleanup. The metadata response includes the SHA-256 checksum of the exact artifact bytes.
+Consumers should save the version and checksum with an analysis and verify the downloaded bytes
+before reuse.
 
 Release rows cannot be updated or deleted. Later corrections can be captured only in a new version,
 so a prior version and checksum always resolve to the same retained artifact.
+
+Artifacts remain uncompressed canonical JSON in format 1.1. The format includes ordered wickets and
+fielders; detailed extras; and the `runsNonBoundary` flag, alongside the stable event identity and
+delivery ordering fields, so analysts can reproduce built-in statistics without internal schema
+knowledge. Deterministic gzip was evaluated but is
+deferred: introducing it safely requires explicit content-encoding metadata and a compatibility
+contract for existing `.json` releases. The checksum continues to cover the exact uncompressed bytes
+returned by the artifact endpoint.
+
+### Release event schema (format 1.1)
+
+Each event object carries: `eventId`, `fixtureId`, `inningsId`, `inningsOrdinal`,
+`sequenceNumber`, `overNumber`, `positionInOver`, `ballNumber`, `strikerParticipantId`,
+`nonStrikerParticipantId`, `bowlerParticipantId`, `runsOffBat`, `runsExtras`, `runsTotal`,
+`runsNonBoundary`, `extras`, and `wickets`. `eventId` is the stable source event identity, rather
+than a revision-specific delivery-row identifier. `extras` records `wides`, `noBalls`, `byes`,
+`legByes`, and `penalty` when present. `wickets` preserves their source order; every wicket records
+its stable wicket ID, kind, source kind, player out, and ordered fielders, including substitute
+status. The metadata `fields` array in every artifact repeats these field descriptions
+machine-readably.
 
 ## AI Declaration
 
 The dataset-release catalogue and download documentation was updated with the assistance of
 Codex[GPT-5]. The administrator publication workflow was documented with the assistance of
 Codex[GPT-5.6 Sol]. The complete-export and calculation-trace export documentation for issue #467 was
-updated with the assistance of Claude Code[Claude Opus 5].
+updated with the assistance of Claude Code[Claude Opus 5]. The streamed release-generation and
+storage lifecycle and local development provider were documented with the assistance of
+Codex[GPT-5]. The durable point-in-time snapshot semantics were documented with the assistance of
+Codex[GPT-5].
+The derivation-complete release schema for issue #597 was documented with the assistance of
+Codex[GPT-5].

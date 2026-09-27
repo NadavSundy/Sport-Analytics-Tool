@@ -2,16 +2,22 @@ import { randomUUID } from 'node:crypto';
 
 import {
   classifyPublishedCricketDelivery,
-  diffPublishedCricketDelivery,
   type ComparableCricketDelivery,
   type FixtureProposal,
   type PublishedCricketDelivery,
-  type SubmissionEvent,
 } from '@sport-analytics/contracts';
 
 import { executeQuery, getDatabasePool, withTransaction, type QueryExecutor } from '../../database';
-import { advanceFixtureStatisticsCacheVersions } from '../statistics/fixture-statistics.cache';
-import { deriveCorrectionStatisticsDependencies } from '../statistics/recomputation-dependencies';
+
+import {
+  BatchPublicationLeaseBusyError,
+  publishAcceptedBatchChunk,
+} from '@sport-analytics/batch-processing';
+import {
+  participantKey,
+  type FixtureOnboardingParticipant,
+  type FixtureOnboardingInnings,
+} from './fixture-onboarding';
 
 type BatchState =
   | 'received'
@@ -66,6 +72,12 @@ interface CreateBatchInput {
   packageVersion?: string;
   source?: BatchSource;
   state?: BatchState;
+  replacesBatchReference?: string;
+}
+
+interface BatchLineageRecord {
+  replacesBatchReference: string | null;
+  supersededByBatchReference: string | null;
 }
 
 interface InsertBatchItemInput {
@@ -183,9 +195,7 @@ interface BatchPublicationResult {
   conflicts: number;
 }
 
-const publicationChunkSize = 100;
-
-export class BatchLeaseBusyError extends Error {
+class BatchLeaseBusyError extends Error {
   constructor() {
     super('Another worker currently owns the publication lease.');
     this.name = 'BatchLeaseBusyError';
@@ -195,8 +205,14 @@ export class BatchLeaseBusyError extends Error {
 interface BatchItemPageOptions {
   afterOrdinal?: number;
   acceptedOnly?: boolean;
+  blockingOnly?: boolean;
   limit: number;
 }
+
+const BATCH_ITEM_APPROVAL_BLOCKER_SQL = `(
+  i.reference_resolution_state IS DISTINCT FROM 'resolved'
+  OR i.rejection_code LIKE '%CONFLICT%'
+)`;
 interface BatchCheckpointRecord {
   batchId: string;
   phase: BatchCheckpointPhase;
@@ -280,10 +296,82 @@ interface BatchReferenceMappingRecord {
   decidedAt: string;
 }
 
+type FixtureOnboardingUnresolvedReason =
+  'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
+
+interface FixtureOnboardingUnresolvedParticipant {
+  name: string;
+  teamName?: string;
+  reason: FixtureOnboardingUnresolvedReason;
+  candidates: { personId: string; displayName: string }[];
+}
+
+interface FixtureOnboardingSummary {
+  inningsCreated: number;
+  squadCreated: number;
+  unresolvedParticipants: FixtureOnboardingUnresolvedParticipant[];
+}
+
 export class BatchReviewConflictError extends Error {}
 export class BatchReviewResolutionError extends Error {}
 export class BatchReferenceMappingConflictError extends Error {}
 export class BatchPublishedConflictResolutionError extends Error {}
+export class BatchReplacementConflictError extends Error {}
+
+export interface ParticipantOnboardingTaskRecord {
+  taskReference: string;
+  fixtureId: string;
+  submittedName: string;
+  submittedTeamName: string | null;
+  reason:
+    'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
+  candidates: { personId: string; displayName: string }[];
+  /** The two teams of this task's fixture, in fixture order. */
+  teams: { teamId: string; name: string }[];
+}
+
+interface ParticipantOnboardingDecisionInput {
+  taskReference: string;
+  // Explicitly `| undefined`: the contract type these arrive as carries it, and
+  // exactOptionalPropertyTypes distinguishes an absent property from one set to
+  // undefined.
+  personId?: string | undefined;
+  sourceId?: string | undefined;
+  teamName?: string | undefined;
+}
+
+interface ParticipantOnboardingResult {
+  onboarded: number;
+  alreadyOnboarded: number;
+  revalidationQueued: boolean;
+  /** Reference sites a settled decision was recorded against. */
+  referencesMapped: number;
+}
+
+/** Why one decision in a participant onboarding array could not be applied. */
+export interface ParticipantOnboardingDecisionFault {
+  taskReference: string;
+  code:
+    | 'TASK_NOT_FOUND'
+    | 'CANDIDATE_NOT_OFFERED'
+    | 'PERSON_NOT_FOUND'
+    | 'TEAM_NOT_IN_FIXTURE'
+    | 'IDENTIFIER_UNSUPPORTED';
+  message: string;
+}
+
+/**
+ * Carries every fault in the array, not merely the first. The array is applied
+ * all or nothing, so a reviewer who submitted twenty-two decisions needs to be
+ * told about all the broken ones at once rather than discovering them one
+ * resubmission at a time.
+ */
+export class BatchParticipantOnboardingConflictError extends Error {
+  constructor(readonly faults: ParticipantOnboardingDecisionFault[]) {
+    super('One or more participant onboarding decisions could not be applied.');
+    this.name = 'BatchParticipantOnboardingConflictError';
+  }
+}
 
 /**
  * The outcome of resolving one staged item's references.
@@ -323,6 +411,7 @@ export interface BatchRepository {
   countNonTerminalBatches(submitterId: string): Promise<number>;
   getBatchProgress(batchId: string): Promise<BatchProgressRecord>;
   getBatchCounts(batchId: string): Promise<BatchCountsRecord>;
+  getBatchLineage(batchId: string): Promise<BatchLineageRecord>;
   listBatchReportItems(
     batchId: string,
     options: BatchItemPageOptions,
@@ -331,6 +420,7 @@ export interface BatchRepository {
   countBlockingValidationErrors(batchId: string): Promise<number>;
   getBatchResolutionCounts(batchId: string): Promise<BatchResolutionCountsRecord>;
   listBatchFixtureSummaries(batchId: string): Promise<BatchFixtureSummaryRecord[]>;
+  listParticipantOnboardingTasks(batchId: string): Promise<ParticipantOnboardingTaskRecord[]>;
   insertBatchItems(batchId: string, items: InsertBatchItemInput[]): Promise<BatchItemRecord[]>;
   listBatchItems(batchId: string, options: BatchItemPageOptions): Promise<BatchItemRecord[]>;
   findCheckpoint(
@@ -361,7 +451,21 @@ export interface BatchRepository {
     startDate: string;
     teamNames: string[];
     proposal: FixtureProposal;
-  }): Promise<BatchReferenceMappingRecord>;
+    innings?: FixtureOnboardingInnings[];
+    participants?: FixtureOnboardingParticipant[];
+  }): Promise<BatchReferenceMappingRecord & { onboarding?: FixtureOnboardingSummary }>;
+  applyParticipantOnboardingDecisions(input: {
+    batchId: string;
+    actorId: string;
+    decisionKey: string;
+    decisions: ParticipantOnboardingDecisionInput[];
+    /**
+     * Where each participant is named, keyed by the identity its task is keyed
+     * by, so a settled decision can be recorded against the references it
+     * answers. Omitted only where a caller has no items to read.
+     */
+    referenceSites?: Record<string, { itemOrdinal: number; referencePath: string }[]>;
+  }): Promise<ParticipantOnboardingResult>;
   applyReferenceResolution(updates: ReferenceResolutionUpdate[]): Promise<BatchItemRecord[]>;
   linkPublishedDelivery(batchItemId: string, deliveryId: string): Promise<void>;
   publishAcceptedItems(batchId: string, workerId: string): Promise<BatchPublicationResult>;
@@ -769,267 +873,396 @@ async function publishedDeliveryMatchesForItem(
   }));
 }
 
-interface BatchCorrectionTarget {
-  deliveryId: string;
-  fixtureId: string;
-  competitionId: string;
-  season: string;
-  sourceEventId: string;
-  submissionId: string;
-  eventOrdinal: number;
-  revision: number;
-  sequenceNumber: number;
-  sourceBatchItemId: string | null;
-}
-
-async function loadBatchCorrectionTarget(
+async function ensureBatchPublicationJob(
   target: QueryExecutor,
-  item: BatchItemRecord,
-): Promise<BatchCorrectionTarget | null> {
-  if (!item.correctionTargetDeliveryId || !item.correctsSourceIdentity) return null;
-  const result = await executeQuery<BatchCorrectionTarget>(
-    target,
-    `
-      SELECT current.delivery_id::text AS "deliveryId",
-             innings.fixture_id::text AS "fixtureId",
-             fixture.competition_id::text AS "competitionId",
-             fixture.season,
-             current.source_event_id::text AS "sourceEventId",
-             current.submission_id::text AS "submissionId",
-             current.submission_event_ordinal AS "eventOrdinal",
-             current.revision,
-             current.innings_sequence AS "sequenceNumber",
-             current.source_batch_item_id::text AS "sourceBatchItemId"
-      FROM delivery validated
-      JOIN delivery current
-        ON current.source_event_id=validated.source_event_id
-       AND current.superseded_at IS NULL
-      JOIN innings ON innings.innings_id=current.innings_id
-      JOIN fixture ON fixture.fixture_id=innings.fixture_id
-      JOIN submission ON submission.submission_id=current.submission_id
-                     AND submission.status='accepted'
-      WHERE validated.delivery_id=$1::bigint
-      FOR UPDATE OF current
-    `,
-    [item.correctionTargetDeliveryId],
-  );
-  return result.rows[0] ?? null;
-}
-
-async function loadBatchEventSnapshot(
-  target: QueryExecutor,
-  deliveryId: string,
-): Promise<SubmissionEvent> {
-  const result = await executeQuery<{ state: SubmissionEvent }>(
-    target,
-    `
-      SELECT jsonb_build_object(
-        'eventId', d.source_event_id::text,
-        'inningsId', d.innings_id::text,
-        'sequenceNumber', d.innings_sequence,
-        'overNumber', d.over_number,
-        'positionInOver', d.position_in_over,
-        'ballNumber', d.ball_number,
-        'strikerId', d.striker_id::text,
-        'nonStrikerId', d.non_striker_id::text,
-        'bowlerId', d.bowler_id::text,
-        'runs', jsonb_build_object(
-          'offBat', d.runs_off_bat, 'extras', d.runs_extras,
-          'total', d.runs_total, 'nonBoundary', d.non_boundary
-        ),
-        'extras', jsonb_strip_nulls(jsonb_build_object(
-          'wides', d.extra_wides, 'noBalls', d.extra_noballs,
-          'byes', d.extra_byes, 'legByes', d.extra_legbyes,
-          'penalty', d.extra_penalty
-        )),
-        'wickets', COALESCE((
-          SELECT jsonb_agg(jsonb_build_object(
-            'kind', wicket.kind,
-            'playerOutId', wicket.player_out_id::text,
-            'fielders', COALESCE((
-              SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-                'participantId', fielder.person_id::text,
-                'substitute', fielder.is_substitute
-              )) ORDER BY fielder.ordinal)
-              FROM delivery_wicket_fielder fielder
-              WHERE fielder.wicket_id=wicket.wicket_id
-            ), '[]'::jsonb)
-          ) ORDER BY wicket.ordinal)
-          FROM delivery_wicket wicket WHERE wicket.delivery_id=d.delivery_id
-        ), '[]'::jsonb)
-      ) AS state
-      FROM delivery d WHERE d.delivery_id=$1::bigint
-    `,
-    [deliveryId],
-  );
-  const state = result.rows[0]?.state;
-  if (!state) throw new Error('Batch correction snapshot query returned no event.');
-  return state;
-}
-
-async function insertBatchCorrectionWickets(
-  target: QueryExecutor,
-  deliveryId: string,
-  event: SubmissionEvent,
+  batchId: string,
+  ownerId: string,
 ): Promise<void> {
-  for (const [wicketOrdinal, wicket] of event.wickets.entries()) {
-    const inserted = await executeQuery<{ wicketId: string }>(
-      target,
-      `INSERT INTO delivery_wicket (delivery_id,ordinal,kind,source_kind,player_out_id)
-       VALUES ($1::bigint,$2::smallint,$3,$3,$4::bigint)
-       RETURNING wicket_id::text AS "wicketId"`,
-      [deliveryId, wicketOrdinal, wicket.kind, wicket.playerOutId],
-    );
-    const wicketId = inserted.rows[0]?.wicketId;
-    if (!wicketId) throw new Error('Batch correction wicket insertion returned no identifier.');
-    for (const [fielderOrdinal, fielder] of wicket.fielders.entries()) {
-      await executeQuery(
-        target,
-        `INSERT INTO delivery_wicket_fielder (wicket_id,ordinal,person_id,is_substitute)
-         VALUES ($1::bigint,$2::smallint,$3::bigint,$4)`,
-        [wicketId, fielderOrdinal, fielder.participantId ?? null, fielder.substitute],
+  const jobId = randomUUID();
+
+  const inserted = await executeQuery<{ jobId: string }>(
+    target,
+    `INSERT INTO background_job (
+       job_id,
+       job_type,
+       contract_version,
+       idempotency_key,
+       owner_id,
+       batch_id,
+       progress_total
+     )
+     SELECT
+       $1::uuid,
+       'batch.publish',
+       1,
+       $2,
+       $3::bigint,
+       $4::bigint,
+       count(*)::integer
+     FROM batch_item
+     WHERE batch_id = $4::bigint
+       AND state = 'accepted'
+     ON CONFLICT (idempotency_key) DO NOTHING
+     RETURNING job_id::text AS "jobId"`,
+    [jobId, `batch.publish:${batchId}`, ownerId, batchId],
+  );
+
+  const createdJobId = inserted.rows[0]?.jobId;
+
+  // A retry of the same approval must reuse the already-created job
+  // rather than publishing twice.
+  if (!createdJobId) {
+    return;
+  }
+
+  const commandId = randomUUID();
+
+  await executeQuery(
+    target,
+    `INSERT INTO outbox_message (
+       outbox_message_id,
+       job_id,
+       message_type,
+       contract_version,
+       body
+     )
+     VALUES (
+       $1::uuid,
+       $2::uuid,
+       'batch.publish',
+       1,
+       jsonb_build_object(
+         'type', 'batch.publish',
+         'version', 1,
+         'commandId', $1::text,
+         'jobId', $2::text,
+         'batchId', $3::text
+       )
+     )`,
+    [commandId, createdJobId, batchId],
+  );
+}
+
+/**
+ * Issue #584: a reviewer-approved fixture proposal only carries fixture-level
+ * facts. Every innings and every squad member the new fixture needs still
+ * exists only as an unresolved reference on the deliveries that named them.
+ * This creates them deterministically so the batch's next validation pass can
+ * resolve those references the same way it resolves them for any
+ * already-known fixture, instead of leaving them permanently unresolved.
+ *
+ * A participant identified only by name is matched against the *global*
+ * person table (there is no fixture squad yet to scope the match to). A name
+ * matching more than one existing person is never guessed at: it is reported
+ * back as ambiguous so a reviewer can disambiguate explicitly, and no
+ * fixture_squad row is written for it.
+ */
+/**
+ * Returns a batch to `stored` and re-queues its validation, so that the next
+ * pass sees whatever a reviewer decision has just changed.
+ *
+ * Extracted from `queueReferenceMapping`, which performed these seven
+ * statements inline. A participant onboarding decision (issue #708) queues no
+ * reference mapping — a participant resolves naturally once it is in the squad
+ * — but needs exactly this revalidation, and needs it **once** for a whole
+ * array of decisions rather than once per decision. Sharing the tail keeps one
+ * definition of what revalidation means rather than adding a second mechanism.
+ */
+async function requestBatchRevalidation(
+  executor: QueryExecutor,
+  batch: { batchId: string; batchReference: string; state: string },
+  actorId: string,
+  reason: string,
+): Promise<void> {
+  await executeQuery(
+    executor,
+    `UPDATE batch_validation_result
+     SET active = false, superseded_at = now()
+     WHERE batch_id = $1::bigint AND active`,
+    [batch.batchId],
+  );
+  await executeQuery(
+    executor,
+    `UPDATE batch_item
+     SET innings_id=NULL, state='pending', rejection_code=NULL, rejection_detail=NULL
+     WHERE batch_id=$1::bigint AND published_event_id IS NULL`,
+    [batch.batchId],
+  );
+  await executeQuery(
+    executor,
+    `UPDATE batch_checkpoint
+     SET last_ordinal = -1, lease_owner = NULL, lease_expires_at = NULL, attempt_count = 0
+     WHERE batch_id = $1::bigint AND phase = 'validating'`,
+    [batch.batchId],
+  );
+  const job = await executeQuery<{ jobId: string }>(
+    executor,
+    `UPDATE background_job
+     SET state='queued', progress_current=0, progress_total=NULL, attempt_count=0,
+         started_at=NULL, completed_at=NULL, last_error_code=NULL, last_error_message=NULL
+     WHERE batch_id=$1::bigint AND job_type='batch.validate'
+     RETURNING job_id::text AS "jobId"`,
+    [batch.batchId],
+  );
+  const jobId = requireRow(job.rows[0], 'Batch validation job reset').jobId;
+  await executeQuery(
+    executor,
+    `INSERT INTO outbox_message (
+       outbox_message_id, job_id, message_type, contract_version, body
+     ) VALUES ($1::uuid,$2::uuid,'batch.validate',1,
+       jsonb_build_object('type','batch.validate','version',1,'commandId',$1::text,
+         'jobId',$2::text,'batchId',$3::text,'batchReference',$4::text))`,
+    [randomUUID(), jobId, batch.batchId, batch.batchReference],
+  );
+  await executeQuery(executor, `UPDATE batch SET state='stored' WHERE batch_id=$1::bigint`, [
+    batch.batchId,
+  ]);
+  await executeQuery(
+    executor,
+    `INSERT INTO batch_state_transition (
+       batch_id,from_state,to_state,actor_kind,actor_identifier,reason
+     ) VALUES ($1::bigint,$2::batch_state,'stored','api',$3,$4)`,
+    [batch.batchId, batch.state, actorId, reason],
+  );
+}
+
+async function onboardFixtureCanonicalContext(
+  executor: QueryExecutor,
+  batchId: string,
+  fixtureId: string,
+  teamIdByName: Map<string, string>,
+  innings: FixtureOnboardingInnings[],
+  participants: FixtureOnboardingParticipant[],
+  /**
+   * The reviewer whose canonical fixture decision caused this. An onboarded
+   * task must name them: the state constraint requires it, and provenance for
+   * a created squad membership is the point of the row.
+   */
+  actorId: string,
+): Promise<FixtureOnboardingSummary> {
+  let inningsCreated = 0;
+  if (innings.length > 0) {
+    const rows = innings.flatMap((entry) => {
+      const battingTeamId = teamIdByName.get(entry.battingTeamName);
+      return battingTeamId ? [{ ordinal: entry.ordinal, battingTeamId }] : [];
+    });
+    if (rows.length > 0) {
+      const result = await executeQuery(
+        executor,
+        `INSERT INTO innings (fixture_id, ordinal, batting_team_id)
+         SELECT $1::bigint, r.ordinal, r."battingTeamId"::bigint
+         FROM jsonb_to_recordset($2::jsonb) AS r(ordinal int, "battingTeamId" text)
+         ON CONFLICT (fixture_id, ordinal) DO NOTHING
+         RETURNING innings_id`,
+        [fixtureId, JSON.stringify(rows)],
       );
+      inningsCreated = result.rowCount ?? result.rows.length;
     }
   }
-}
 
-async function publishBatchCorrection(
-  target: QueryExecutor,
-  item: BatchItemRecord & { fixtureId: string },
-  submitted: ComparableCricketDelivery,
-  batch: {
-    competitionId: string;
-    submitterId: string;
-    reviewerId: string;
-    reviewReason: string;
-    reviewedAt: Date;
-  },
-): Promise<string> {
-  await executeQuery(target, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
-    item.correctsSourceIdentity,
-  ]);
-  const correctionTarget = await loadBatchCorrectionTarget(target, item);
-  if (
-    !correctionTarget ||
-    correctionTarget.fixtureId !== item.fixtureId ||
-    correctionTarget.competitionId !== batch.competitionId
-  ) {
-    throw new Error('The validated batch correction target is no longer available in scope.');
-  }
-  const event: SubmissionEvent = {
-    ...submitted,
-    eventId: correctionTarget.sourceEventId,
-    sequenceNumber: correctionTarget.sequenceNumber,
-  };
-  const previousState = await loadBatchEventSnapshot(target, correctionTarget.deliveryId);
+  let squadCreated = 0;
+  const unresolvedParticipants: FixtureOnboardingUnresolvedParticipant[] = [];
 
-  await executeQuery(
-    target,
-    `UPDATE delivery SET superseded_at=now(), superseded_by=delivery_id
-     WHERE delivery_id=$1::bigint`,
-    [correctionTarget.deliveryId],
-  );
-  const inserted = await executeQuery<{ deliveryId: string }>(
-    target,
-    `INSERT INTO delivery (
-       innings_id,over_number,position_in_over,innings_sequence,ball_number,
-       striker_id,non_striker_id,bowler_id,runs_off_bat,runs_extras,runs_total,
-       non_boundary,extra_wides,extra_noballs,extra_byes,extra_legbyes,extra_penalty,
-       submission_id,source_event_id,submission_event_ordinal,revision,
-       supersedes_delivery_id,source_batch_item_id
-     ) VALUES (
-       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-       $18,$19,$20,$21,$22,$23
-     ) RETURNING delivery_id::text AS "deliveryId"`,
-    [
-      event.inningsId,
-      event.overNumber,
-      event.positionInOver,
-      event.sequenceNumber,
-      event.ballNumber,
-      event.strikerId,
-      event.nonStrikerId,
-      event.bowlerId,
-      event.runs.offBat,
-      event.runs.extras,
-      event.runs.total,
-      event.runs.nonBoundary,
-      event.extras.wides ?? null,
-      event.extras.noBalls ?? null,
-      event.extras.byes ?? null,
-      event.extras.legByes ?? null,
-      event.extras.penalty ?? null,
-      correctionTarget.submissionId,
-      correctionTarget.sourceEventId,
-      correctionTarget.eventOrdinal,
-      correctionTarget.revision + 1,
-      correctionTarget.deliveryId,
-      correctionTarget.sourceBatchItemId,
-    ],
-  );
-  const replacementId = requireRow(inserted.rows[0], 'Batch correction insertion').deliveryId;
-  await insertBatchCorrectionWickets(target, replacementId, event);
-  await executeQuery(
-    target,
-    'UPDATE delivery SET superseded_by=$2::bigint WHERE delivery_id=$1::bigint',
-    [correctionTarget.deliveryId, replacementId],
-  );
-  const resultingState = await loadBatchEventSnapshot(target, replacementId);
-  await executeQuery(
-    target,
-    `INSERT INTO delivery_correction_history (
-       source_event_id,previous_delivery_id,replacement_delivery_id,requester_id,reason,
-       previous_state,resulting_state,original_submission_id,original_submission_ordinal,
-       original_batch_item_id,reviewer_id,review_decision,reviewed_at,review_reason
-     ) VALUES ($1::uuid,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10,$11,'approved',$12,$13)`,
-    [
-      correctionTarget.sourceEventId,
-      correctionTarget.deliveryId,
-      replacementId,
-      batch.submitterId,
-      `Batch correction of ${item.correctsSourceIdentity}.`,
-      JSON.stringify(previousState),
-      JSON.stringify(resultingState),
-      correctionTarget.submissionId,
-      correctionTarget.eventOrdinal,
-      correctionTarget.sourceBatchItemId,
-      batch.reviewerId,
-      batch.reviewedAt,
-      batch.reviewReason,
-    ],
-  );
-  const dependencies = deriveCorrectionStatisticsDependencies({
-    fixtureId: correctionTarget.fixtureId,
-    competitionId: correctionTarget.competitionId,
-    season: correctionTarget.season,
-    previousParticipantIds: [previousState.strikerId, previousState.bowlerId],
-    resultingParticipantIds: [event.strikerId, event.bowlerId],
-  });
-  for (const dependency of dependencies) {
+  /**
+   * A participant is identified to the reviewer by its name where one was
+   * submitted, and otherwise by the source identifier that was. One of the two
+   * is always present: a participant carrying neither is not collected in the
+   * first place (`participantKey` in `fixture-onboarding.ts`).
+   */
+  const reportedName = (participant: FixtureOnboardingParticipant): string =>
+    participant.name ?? participant.sourceId ?? '';
+
+  /**
+   * Records the participant in the summary the decision returns, and as an
+   * outstanding task. The task is what survives the request: the summary is
+   * seen once, whereas the batch report, revalidation and the reviewer's next
+   * decision all need to know this work is still outstanding.
+   *
+   * Keyed by the identity the extraction collected by, so a repeated decision
+   * refreshes the same row. `first_reported_at` is deliberately not touched on
+   * conflict: looking at the work again does not make it newer.
+   */
+  const report = async (
+    participant: FixtureOnboardingParticipant,
+    reason: FixtureOnboardingUnresolvedReason,
+    candidates: { personId: string; displayName: string }[] = [],
+  ): Promise<void> => {
+    unresolvedParticipants.push({
+      name: reportedName(participant),
+      ...(participant.teamName ? { teamName: participant.teamName } : {}),
+      reason,
+      candidates,
+    });
+    const key = participantKey(participant);
+    if (!key) return;
     await executeQuery(
-      target,
-      `INSERT INTO statistics_refresh_dependency (
-         source_event_id,delivery_revision,fixture_id,scope,participant_id,competition_id,season
-       ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7)`,
+      executor,
+      `INSERT INTO batch_participant_onboarding_task (
+         batch_id, fixture_id, participant_key, submitted_name, submitted_source_id,
+         submitted_team_name, reason, candidates
+       ) VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6, $7, $8::jsonb)
+       ON CONFLICT (batch_id, fixture_id, participant_key) DO UPDATE SET
+         submitted_name=EXCLUDED.submitted_name,
+         submitted_source_id=EXCLUDED.submitted_source_id,
+         submitted_team_name=EXCLUDED.submitted_team_name,
+         reason=EXCLUDED.reason,
+         candidates=EXCLUDED.candidates,
+         state='outstanding',
+         person_id=NULL,
+         onboarded_at=NULL,
+         -- Cleared with the rest of the settled fields, so the row cannot land
+         -- outstanding while still naming a decider.
+         decided_by=NULL,
+         last_reported_at=now()
+       -- A settled task is a reviewer decision, and re-deriving the work must
+       -- not undo one. Without this the row was reset to outstanding with its
+       -- person_id wiped, so a decision already applied came back as work to
+       -- do while the squad row it created stayed. Issue #708, found in
+       -- deployed acceptance testing.
+       WHERE batch_participant_onboarding_task.state <> 'onboarded'`,
       [
-        correctionTarget.sourceEventId,
-        correctionTarget.revision + 1,
-        dependency.fixtureId,
-        dependency.scope,
-        dependency.participantId,
-        dependency.competitionId,
-        dependency.season,
+        batchId,
+        fixtureId,
+        key,
+        reportedName(participant),
+        participant.sourceId ?? null,
+        participant.teamName ?? null,
+        reason,
+        JSON.stringify(candidates),
       ],
     );
+  };
+
+  /** Closes the task for a participant that has just reached the squad. */
+  const recordOnboarded = async (
+    participant: FixtureOnboardingParticipant,
+    personId: string,
+  ): Promise<void> => {
+    const key = participantKey(participant);
+    if (!key) return;
+    await executeQuery(
+      executor,
+      `UPDATE batch_participant_onboarding_task
+       SET state='onboarded', person_id=$4::bigint, onboarded_at=now(),
+           -- Required by batch_participant_onboarding_task_state_ck: an
+           -- onboarded task names the reviewer who decided it as well as the
+           -- person it became. Omitting it raised a check violation, which
+           -- reaches the endpoint as a 500.
+           decided_by=$5::bigint, last_reported_at=now()
+       WHERE batch_id=$1::bigint AND fixture_id=$2::bigint AND participant_key=$3`,
+      [batchId, fixtureId, key, personId, actorId],
+    );
+  };
+
+  for (const participant of participants) {
+    const teamId = participant.teamName ? teamIdByName.get(participant.teamName) : undefined;
+    if (!teamId) {
+      // Issue #708. This used to `continue` silently, so a participant whose
+      // team was missing or was not one of the fixture's two teams vanished:
+      // no squad row, no report, and nothing for a reviewer to act on. Which
+      // team a participant belongs to is a decision, not something to infer.
+      await report(participant, 'team_not_recognised');
+      continue;
+    }
+
+    let personId: string | undefined;
+
+    if (participant.sourceId) {
+      // `person.source_ref` is a durable registry identifier (comment on the
+      // column: "Names are not stable ... Names must never be used as a join
+      // key."), so a participant carrying one can always be safely created
+      // or reused without risking a false match.
+      const identifier = participant.sourceId.split(':', 3);
+      const namespace = identifier[0];
+      const value = identifier[2];
+      if (namespace === 'app' && value) {
+        const existing = await executeQuery<{ personId: string }>(
+          executor,
+          `SELECT person_id::text AS "personId" FROM person WHERE person_id = $1::bigint`,
+          [value],
+        );
+        personId = existing.rows[0]?.personId;
+      } else if (value) {
+        const upserted = await executeQuery<{ personId: string }>(
+          executor,
+          `INSERT INTO person (source_ref, display_name)
+           VALUES ($1, COALESCE($2, $1))
+           ON CONFLICT (source_ref) DO NOTHING
+           RETURNING person_id::text AS "personId"`,
+          [value, participant.name ?? null],
+        );
+        personId =
+          upserted.rows[0]?.personId ??
+          (
+            await executeQuery<{ personId: string }>(
+              executor,
+              `SELECT person_id::text AS "personId" FROM person WHERE source_ref = $1`,
+              [value],
+            )
+          ).rows[0]?.personId;
+      }
+      if (!personId) {
+        // An identifier was submitted but names nothing this platform holds:
+        // an application identifier for a person that does not exist, or a
+        // namespace the platform does not compare against. Reported whether or
+        // not a name came with it, because the identifier alone tells the
+        // reviewer which participant this is.
+        await report(participant, 'identifier_not_found');
+        continue;
+      }
+    } else if (participant.name) {
+      // No durable identifier was submitted. A name alone is never enough to
+      // safely create or match a canonical person (see the note on
+      // `person.source_ref`), so this is always reported for a reviewer to
+      // resolve explicitly - by supplying a registry identifier, or by
+      // picking one of any existing aliases that share the name - rather
+      // than guessed at or silently created.
+      const aliasMatches = await executeQuery<{ personId: string; displayName: string }>(
+        executor,
+        `SELECT DISTINCT p.person_id::text AS "personId", p.display_name AS "displayName"
+         FROM person p
+         LEFT JOIN person_alias pa ON pa.person_id = p.person_id
+         WHERE p.display_name = $1 OR pa.name = $1`,
+        [participant.name],
+      );
+      const candidates = aliasMatches.rows.map((row) => ({
+        personId: row.personId,
+        displayName: row.displayName,
+      }));
+      // More than one person answering to the name is a different decision
+      // from none or one: the reviewer must choose between them rather than
+      // supply or confirm an identifier.
+      await report(
+        participant,
+        candidates.length > 1 ? 'ambiguous_name' : 'no_durable_identifier',
+        candidates,
+      );
+      continue;
+    }
+
+    // Unreachable while a collected participant carries a name or an
+    // identifier, and every branch above either resolves one or reports it.
+    if (!personId) {
+      await report(participant, 'no_durable_identifier');
+      continue;
+    }
+
+    const inserted = await executeQuery(
+      executor,
+      `INSERT INTO fixture_squad (fixture_id, person_id, team_id)
+       VALUES ($1::bigint, $2::bigint, $3::bigint)
+       ON CONFLICT (fixture_id, person_id) DO NOTHING
+       RETURNING fixture_id`,
+      [fixtureId, personId, teamId],
+    );
+    squadCreated += inserted.rowCount ?? inserted.rows.length;
+    // Closes any task an earlier decision opened for this participant. Run for
+    // every squad member rather than only newly inserted ones, so a replayed
+    // decision still settles a task the previous attempt left open.
+    await recordOnboarded(participant, personId);
   }
-  await advanceFixtureStatisticsCacheVersions(target, [correctionTarget.fixtureId]);
-  await executeQuery(
-    target,
-    `UPDATE batch_item SET state='published', published_event_id=$2::bigint
-     WHERE batch_item_id=$1::bigint`,
-    [item.batchItemId, replacementId],
-  );
-  return replacementId;
+
+  return { inningsCreated, squadCreated, unresolvedParticipants };
 }
 
 export function createBatchRepository(executor?: QueryExecutor): BatchRepository {
@@ -1198,22 +1431,106 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           input.submitterId,
           input.idempotencyKey,
         ]);
-        if (existing) return { batch: existing, created: false, activeLimitReached: false };
+        let replacementTarget: BatchRecord | null = null;
+        if (input.replacesBatchReference) {
+          const target = await executeQuery<BatchRow>(
+            executor,
+            `SELECT ${batchSelection} FROM batch
+             WHERE batch_reference = $1::uuid
+             FOR UPDATE`,
+            [input.replacesBatchReference],
+          );
+          replacementTarget = target.rows[0] ? mapBatch(target.rows[0]) : null;
+          if (
+            !replacementTarget ||
+            replacementTarget.submitterId !== input.submitterId ||
+            replacementTarget.competitionId !== input.competitionId
+          ) {
+            throw new BatchReplacementConflictError(
+              'The selected correction request cannot be replaced by this upload.',
+            );
+          }
+          if (existing && existing.source?.checksum !== input.source?.checksum) {
+            throw new BatchReplacementConflictError(
+              'The replacement upload key is already associated with different batch content.',
+            );
+          }
+          if (
+            replacementTarget.state === 'superseded' &&
+            replacementTarget.supersededBy === existing?.batchId
+          ) {
+            return { batch: existing, created: false, activeLimitReached: false };
+          }
+          if (replacementTarget.state !== 'correction_requested') {
+            throw new BatchReplacementConflictError(
+              'Only a batch returned for correction can receive a replacement upload.',
+            );
+          }
+          if (existing) {
+            const alreadyReplaces = await executeQuery<{ batchReference: string }>(
+              executor,
+              `SELECT batch_reference::text AS "batchReference" FROM batch
+               WHERE superseded_by = $1::bigint
+               LIMIT 1`,
+              [existing.batchId],
+            );
+            if (alreadyReplaces.rows[0]) {
+              throw new BatchReplacementConflictError(
+                'This replacement upload is already linked to another correction request.',
+              );
+            }
+          }
+        }
+        if (existing && !replacementTarget) {
+          return { batch: existing, created: false, activeLimitReached: false };
+        }
         const active = await executeQuery<{ count: string }>(
           executor,
           `SELECT count(*)::text AS count FROM batch
            WHERE submitter_id = $1::bigint
              AND state NOT IN (
-               'rejected', 'correction_requested', 'published', 'partially_published', 'superseded'
+               'rejected', 'correction_requested', 'published', 'partially_published', 'superseded',
+               'failed'
              )`,
           [input.submitterId],
         );
         if (Number(active.rows[0]?.count ?? 0) >= 3) {
           return { batch: null, created: false, activeLimitReached: true };
         }
+        const replacement = existing ?? (await insertBatchAndValidationJob(executor, input));
+        if (replacementTarget) {
+          const linked = await executeQuery(
+            executor,
+            `UPDATE batch
+             SET state = 'superseded', superseded_by = $2::bigint
+             WHERE batch_id = $1::bigint
+               AND state = 'correction_requested'
+               AND superseded_by IS NULL
+             RETURNING batch_id`,
+            [replacementTarget.batchId, replacement.batchId],
+          );
+          if (!linked.rows[0]) {
+            throw new BatchReplacementConflictError(
+              'The correction request was replaced by another upload.',
+            );
+          }
+          await executeQuery(
+            executor,
+            `INSERT INTO batch_state_transition (
+               batch_id, from_state, to_state, actor_kind, actor_identifier, reason
+             ) VALUES (
+               $1::bigint, 'correction_requested', 'superseded', 'api', $2, $3
+             )`,
+            [
+              replacementTarget.batchId,
+              input.submitterId,
+              `Corrected replacement batch ${replacement.batchReference} submitted.`,
+            ],
+          );
+        }
         return {
-          batch: await insertBatchAndValidationJob(executor, input),
-          created: true,
+          batch: replacement,
+          created: !existing,
           activeLimitReached: false,
         };
       }
@@ -1277,7 +1594,8 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         `SELECT count(*)::text AS count FROM batch
          WHERE submitter_id = $1::bigint
            AND state NOT IN (
-             'rejected', 'correction_requested', 'published', 'partially_published', 'superseded'
+             'rejected', 'correction_requested', 'published', 'partially_published', 'superseded',
+             'failed'
            )`,
         [submitterId],
       );
@@ -1384,6 +1702,28 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       };
     },
 
+    async getBatchLineage(batchId) {
+      const result = await executeQuery<BatchLineageRecord>(
+        database(),
+        `SELECT
+           predecessor.batch_reference::text AS "replacesBatchReference",
+           replacement.batch_reference::text AS "supersededByBatchReference"
+         FROM batch current_batch
+         LEFT JOIN batch predecessor ON predecessor.superseded_by = current_batch.batch_id
+         LEFT JOIN batch replacement ON replacement.batch_id = current_batch.superseded_by
+         WHERE current_batch.batch_id = $1::bigint
+         ORDER BY predecessor.batch_id DESC
+         LIMIT 1`,
+        [batchId],
+      );
+      return (
+        result.rows[0] ?? {
+          replacesBatchReference: null,
+          supersededByBatchReference: null,
+        }
+      );
+    },
+
     async listBatchReportItems(batchId, options) {
       const result = await executeQuery<BatchReportItemRecord>(
         database(),
@@ -1466,10 +1806,22 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
                 AND jsonb_array_length(COALESCE(errors.rows, '[]'::jsonb)) = 0
               )
             )
+            AND (
+              NOT $5::boolean OR (
+                i.batch_item_id IS NOT NULL
+                AND ${BATCH_ITEM_APPROVAL_BLOCKER_SQL}
+              )
+            )
           ORDER BY subjects.ordinal
           LIMIT $3::integer
         `,
-        [batchId, options.afterOrdinal ?? -1, options.limit, options.acceptedOnly ?? false],
+        [
+          batchId,
+          options.afterOrdinal ?? -1,
+          options.limit,
+          options.acceptedOnly ?? false,
+          options.blockingOnly ?? false,
+        ],
       );
       return result.rows;
     },
@@ -1798,10 +2150,17 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         if (existing.decision !== input.decision) {
           throw new BatchReviewConflictError('This batch already has a different review decision.');
         }
+
+        const resumePublication = existing.decision === 'approved' && batch.state === 'publishing';
+
+        if (resumePublication) {
+          await ensureBatchPublicationJob(executor, input.batchId, existing.actorId);
+        }
+
         return {
           batch,
           review: existing,
-          resumePublication: existing.decision === 'approved' && batch.state === 'publishing',
+          resumePublication,
         };
       }
       if (batch.state !== 'awaiting_review') {
@@ -1817,11 +2176,9 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         const otherBlockers = await executeQuery<{ count: string }>(
           executor,
           `SELECT (
-             (SELECT count(*) FROM batch_item
-              WHERE batch_id = $1::bigint
-                AND reference_resolution_state IS DISTINCT FROM 'resolved') +
-             (SELECT count(*) FROM batch_item
-              WHERE batch_id = $1::bigint AND rejection_code LIKE '%CONFLICT%')
+             (SELECT count(*) FROM batch_item i
+              WHERE i.batch_id = $1::bigint
+                AND ${BATCH_ITEM_APPROVAL_BLOCKER_SQL})
            )::text AS count`,
           [input.batchId],
         );
@@ -1859,10 +2216,15 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
       await executeQuery(
         executor,
         `INSERT INTO batch_state_transition (
-           batch_id, from_state, to_state, actor_kind, actor_identifier, reason
-         ) VALUES ($1::bigint, 'awaiting_review', $2::batch_state, 'reviewer', $3, $4)`,
+     batch_id, from_state, to_state, actor_kind, actor_identifier, reason
+   ) VALUES ($1::bigint, 'awaiting_review', $2::batch_state, 'reviewer', $3, $4)`,
         [input.batchId, targetState, input.actorId, input.reason],
       );
+
+      if (input.decision === 'approved') {
+        await ensureBatchPublicationJob(executor, input.batchId, input.actorId);
+      }
+
       return {
         batch: mapBatch(requireRow(updated.rows[0], 'Batch review state update')),
         review: {
@@ -1961,10 +2323,12 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         ],
       );
 
+      // batch_validation_result_current_ck requires an inactive result to record
+      // when it was superseded; setting active alone rejects every resolution (#529).
       await executeQuery(
         executor,
         `UPDATE batch_validation_result
-         SET active=false
+         SET active=false, superseded_at=now()
          WHERE batch_id=$1::bigint
            AND batch_item_id=$2::bigint
            AND rule_code='PUBLISHED_DELIVERY_CONFLICT'
@@ -2097,60 +2461,11 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         ],
       );
 
-      await executeQuery(
+      await requestBatchRevalidation(
         executor,
-        `UPDATE batch_validation_result
-         SET active = false, superseded_at = now()
-         WHERE batch_id = $1::bigint AND active`,
-        [input.batchId],
-      );
-      await executeQuery(
-        executor,
-        `UPDATE batch_item
-         SET innings_id=NULL, state='pending', rejection_code=NULL, rejection_detail=NULL
-         WHERE batch_id=$1::bigint AND published_event_id IS NULL`,
-        [input.batchId],
-      );
-      await executeQuery(
-        executor,
-        `UPDATE batch_checkpoint
-         SET last_ordinal = -1, lease_owner = NULL, lease_expires_at = NULL, attempt_count = 0
-         WHERE batch_id = $1::bigint AND phase = 'validating'`,
-        [input.batchId],
-      );
-      const job = await executeQuery<{ jobId: string }>(
-        executor,
-        `UPDATE background_job
-         SET state='queued', progress_current=0, progress_total=NULL, attempt_count=0,
-             started_at=NULL, completed_at=NULL, last_error_code=NULL, last_error_message=NULL
-         WHERE batch_id=$1::bigint AND job_type='batch.validate'
-         RETURNING job_id::text AS "jobId"`,
-        [input.batchId],
-      );
-      const jobId = requireRow(job.rows[0], 'Batch validation job reset').jobId;
-      await executeQuery(
-        executor,
-        `INSERT INTO outbox_message (
-           outbox_message_id, job_id, message_type, contract_version, body
-         ) VALUES ($1::uuid,$2::uuid,'batch.validate',1,
-           jsonb_build_object('type','batch.validate','version',1,'commandId',$1::text,
-             'jobId',$2::text,'batchId',$3::text,'batchReference',$4::text))`,
-        [randomUUID(), jobId, batch.batchId, batch.batchReference],
-      );
-      await executeQuery(executor, `UPDATE batch SET state='stored' WHERE batch_id=$1::bigint`, [
-        input.batchId,
-      ]);
-      await executeQuery(
-        executor,
-        `INSERT INTO batch_state_transition (
-           batch_id,from_state,to_state,actor_kind,actor_identifier,reason
-         ) VALUES ($1::bigint,$2::batch_state,'stored','api',$3,$4)`,
-        [
-          input.batchId,
-          batch.state,
-          input.actorId,
-          `Reference mapping queued for ${input.referencePath}.`,
-        ],
+        batch,
+        input.actorId,
+        `Reference mapping queued for ${input.referencePath}.`,
       );
 
       const row = requireRow(inserted.rows[0], 'Batch mapping decision insertion');
@@ -2185,21 +2500,52 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         );
       }
       let fixtureId = existingFixture?.fixtureId;
+      /*
+       * Issue #708, gap A. The team lookup and the onboarding call used to sit
+       * inside the `if (!fixtureId)` block, so onboarding ran once, when the
+       * fixture was created, and never again. A participant reported as
+       * unresolved by that first decision could not then be onboarded by a
+       * second: the fixture existed, so the whole block was skipped and the
+       * squad stayed as it was.
+       *
+       * The lookup is now unconditional and the creation stays guarded. The
+       * "both teams must already be canonical" refusal therefore still applies
+       * only when creating a fixture, so a repeat decision cannot begin failing
+       * where it used to succeed; a team that does not resolve on a repeat is
+       * reported as `team_not_recognised` like any other.
+       */
+      const teams = await executeQuery<{ teamId: string; name: string }>(
+        executor,
+        `SELECT team_id::text AS "teamId", name FROM team WHERE name = ANY($1::text[])`,
+        [input.teamNames],
+      );
+      const teamIdByName = new Map(teams.rows.map((row) => [row.name, row.teamId]));
       if (!fixtureId) {
-        const teams = await executeQuery<{ teamId: string }>(
-          executor,
-          `SELECT team_id::text AS "teamId" FROM team WHERE name = ANY($1::text[])`,
-          [input.teamNames],
-        );
         if (teams.rows.length !== 2)
           throw new BatchReferenceMappingConflictError(
             'Both proposed fixture teams must already be canonical records.',
           );
         const proposal = input.proposal;
+        /*
+         * Issue #708. `fixture_winner_ck` requires a winner exactly when the
+         * outcome is `won`, and this INSERT used to write neither, so every
+         * proposal carrying the commonest outcome of all raised a check
+         * violation that reached the reviewer as a 500. The contract now
+         * requires the winner alongside the outcome; it is resolved here
+         * against the fixture's own two teams, so this can neither introduce a
+         * team nor name one from outside the fixture.
+         */
+        const winnerId =
+          proposal.outcome === 'won' ? teamIdByName.get(proposal.winner ?? '') : undefined;
+        if (proposal.outcome === 'won' && !winnerId) {
+          throw new BatchReferenceMappingConflictError(
+            'The proposed winner must be one of the two teams of the fixture it won.',
+          );
+        }
         const inserted = await executeQuery<{ fixtureId: string }>(
           executor,
-          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,source_version,source_revision)
-           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11,$12::int)
+          `INSERT INTO fixture (source_ref,competition_id,season,match_type,team_type,gender,balls_per_over,start_date,end_date,outcome,winner_id,source_version,source_revision)
+           VALUES ($1,$2::bigint,$3,$4,$5,$6,$7::smallint,$8::date,$9::date,$10::outcome_kind,$11::bigint,$12,$13::int)
            ON CONFLICT (source_ref) DO NOTHING RETURNING fixture_id::text AS "fixtureId"`,
           [
             input.sourceRef,
@@ -2212,6 +2558,7 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
             input.startDate,
             proposal.endDate,
             proposal.outcome,
+            winnerId ?? null,
             proposal.sourceVersion,
             proposal.sourceRevision,
           ],
@@ -2243,13 +2590,25 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
           [fixtureId, input.teamNames],
         );
       }
+      // Runs for an existing fixture as well as a new one. Every write it makes
+      // is ON CONFLICT DO NOTHING, so a repeat decision adds whatever is now
+      // resolvable and leaves everything already onboarded alone.
+      const onboarding = await onboardFixtureCanonicalContext(
+        executor,
+        input.batchId,
+        fixtureId,
+        teamIdByName,
+        input.innings ?? [],
+        input.participants ?? [],
+        input.actorId,
+      );
       await executeQuery(
         executor,
         `INSERT INTO batch_canonical_fixture_decision (batch_id,reference_path,fixture_id,actor_id)
         VALUES ($1::bigint,$2,$3::bigint,$4::bigint) ON CONFLICT (batch_id,reference_path) DO NOTHING`,
         [input.batchId, input.referencePath, fixtureId, input.actorId],
       );
-      return createBatchRepository(executor).queueReferenceMapping({
+      const mapped = await createBatchRepository(executor).queueReferenceMapping({
         decisionReference: randomUUID(),
         batchId: input.batchId,
         actorId: input.actorId,
@@ -2260,6 +2619,335 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
         candidateLabel: `Canonical fixture ${fixtureId}`,
         decisionKey: input.decisionKey,
       });
+      return { ...mapped, onboarding };
+    },
+
+    async listParticipantOnboardingTasks(batchId) {
+      // Outstanding only. A settled task is no longer work, and the reviewer
+      // should not be shown a decision they have already made.
+      const result = await executeQuery<ParticipantOnboardingTaskRecord>(
+        database(),
+        `SELECT task.task_reference::text AS "taskReference", task.fixture_id::text AS "fixtureId",
+                task.submitted_name AS "submittedName",
+                task.submitted_team_name AS "submittedTeamName",
+                task.reason, task.candidates,
+                -- The team decision is checked by exact name against these two,
+                -- so the reviewer is offered exactly what will be accepted.
+                COALESCE((
+                  SELECT jsonb_agg(
+                           jsonb_build_object('teamId', team.team_id::text, 'name', team.name)
+                           ORDER BY fixture_team.ordinal
+                         )
+                  FROM fixture_team
+                  JOIN team ON team.team_id = fixture_team.team_id
+                  WHERE fixture_team.fixture_id = task.fixture_id
+                ), '[]'::jsonb) AS teams
+         FROM batch_participant_onboarding_task task
+         WHERE task.batch_id = $1::bigint AND task.state = 'outstanding'
+         ORDER BY task.fixture_id, task.submitted_name, task.task_reference`,
+        [batchId],
+      );
+      return result.rows;
+    },
+
+    async applyParticipantOnboardingDecisions(input) {
+      if (!executor) {
+        return withTransaction(getDatabasePool(), (client) =>
+          createBatchRepository(client).applyParticipantOnboardingDecisions(input),
+        );
+      }
+
+      const locked = await executeQuery<BatchRow>(
+        executor,
+        `SELECT ${batchSelection} FROM batch WHERE batch_id = $1::bigint FOR UPDATE`,
+        [input.batchId],
+      );
+      const batch = mapBatch(requireRow(locked.rows[0], 'Batch onboarding decision lookup'));
+      if (!['rejected', 'awaiting_review', 'correction_requested'].includes(batch.state)) {
+        throw new BatchParticipantOnboardingConflictError(
+          input.decisions.map((decision) => ({
+            taskReference: decision.taskReference,
+            code: 'TASK_NOT_FOUND' as const,
+            message: 'Onboarding decisions can only be applied after validation has finished.',
+          })),
+        );
+      }
+
+      // Every addressed task, read once and locked, so two reviewers deciding
+      // the same batch cannot interleave.
+      const references = input.decisions.map((decision) => decision.taskReference);
+      const taskRows = await executeQuery<{
+        taskReference: string;
+        fixtureId: string;
+        participantKey: string;
+        submittedName: string;
+        state: string;
+        submittedTeamName: string | null;
+        candidates: { personId: string; displayName: string }[];
+      }>(
+        executor,
+        `SELECT task_reference::text AS "taskReference", fixture_id::text AS "fixtureId",
+                state, submitted_team_name AS "submittedTeamName", candidates,
+                participant_key AS "participantKey", submitted_name AS "submittedName"
+         FROM batch_participant_onboarding_task
+         WHERE batch_id = $1::bigint AND task_reference = ANY($2::uuid[])
+         FOR UPDATE`,
+        [input.batchId, references],
+      );
+      const taskByReference = new Map(taskRows.rows.map((row) => [row.taskReference, row]));
+
+      const faults: ParticipantOnboardingDecisionFault[] = [];
+      const fault = (
+        taskReference: string,
+        code: ParticipantOnboardingDecisionFault['code'],
+        message: string,
+      ): void => {
+        faults.push({ taskReference, code, message });
+      };
+
+      const applicable: Array<{
+        decision: ParticipantOnboardingDecisionInput;
+        fixtureId: string;
+        personId: string;
+        teamId: string;
+        participantKey: string;
+        submittedName: string;
+      }> = [];
+      let alreadyOnboarded = 0;
+
+      for (const decision of input.decisions) {
+        const task = taskByReference.get(decision.taskReference);
+        if (!task) {
+          fault(
+            decision.taskReference,
+            'TASK_NOT_FOUND',
+            'No onboarding task for this batch carries that reference.',
+          );
+          continue;
+        }
+        if (task.state === 'onboarded') {
+          // A replay, not a fault. The reviewer's earlier decision stands.
+          alreadyOnboarded += 1;
+          continue;
+        }
+
+        // The team the participant is placed in must be one of this fixture's
+        // two. A reviewer answering team_not_recognised names it; otherwise the
+        // name the submission carried is used.
+        const teamName = decision.teamName ?? task.submittedTeamName;
+        let teamId: string | undefined;
+        if (teamName) {
+          const team = await executeQuery<{ teamId: string }>(
+            executor,
+            `SELECT team.team_id::text AS "teamId"
+             FROM fixture_team
+             JOIN team ON team.team_id = fixture_team.team_id
+             WHERE fixture_team.fixture_id = $1::bigint AND team.name = $2`,
+            [task.fixtureId, teamName],
+          );
+          teamId = team.rows[0]?.teamId;
+        }
+        if (!teamId) {
+          fault(
+            decision.taskReference,
+            'TEAM_NOT_IN_FIXTURE',
+            'Name one of the two teams of the fixture this task belongs to.',
+          );
+          continue;
+        }
+
+        let personId: string | undefined;
+        if (decision.personId) {
+          // Only a candidate the task itself offered. Any other person would be
+          // a match this platform never made, reached by a route it cannot
+          // show, which is precisely what a name is not allowed to buy.
+          const offered = task.candidates.some(
+            (candidate) => candidate.personId === decision.personId,
+          );
+          if (!offered) {
+            fault(
+              decision.taskReference,
+              'CANDIDATE_NOT_OFFERED',
+              'Choose one of the candidates this task offered, or supply a durable identifier.',
+            );
+            continue;
+          }
+          personId = decision.personId;
+        } else if (decision.sourceId) {
+          const identifier = decision.sourceId.split(':', 3);
+          const namespace = identifier[0];
+          const value = identifier[2];
+          if (namespace === 'app' && value) {
+            const existing = await executeQuery<{ personId: string }>(
+              executor,
+              `SELECT person_id::text AS "personId" FROM person WHERE person_id = $1::bigint`,
+              [value],
+            );
+            personId = existing.rows[0]?.personId;
+            if (!personId) {
+              fault(
+                decision.taskReference,
+                'PERSON_NOT_FOUND',
+                'That application identifier names no person on this platform.',
+              );
+              continue;
+            }
+          } else if (namespace === 'cricsheet' && value) {
+            // A registry identifier is durable, so creating or reusing by it
+            // cannot produce a false match. This is the same write fixture
+            // onboarding performs for a participant that arrived carrying one.
+            const upserted = await executeQuery<{ personId: string }>(
+              executor,
+              /*
+               * Issue #708. The submitted name as the display name, exactly as
+               * the derivation above does it for a participant that arrived
+               * carrying an identifier. Writing the identifier instead made two
+               * paths that create the same person from the same kind of
+               * identifier disagree, and it was not cosmetic: a squad is matched
+               * by display name, so a person named after the registry key could
+               * not be found by the name the submission used. Every reference
+               * that named the participant stayed unresolved, no item became
+               * acceptable, and the batch could not be approved however many
+               * tasks the reviewer settled. It also published the registry key
+               * as the player's name.
+               *
+               * No alias is written for the submitted name. A name must not
+               * become a resolution key of its own; this is the person's name,
+               * which the squad scope already makes safe to match within.
+               *
+               * An existing person keeps its own name: ON CONFLICT DO NOTHING.
+               */
+              `INSERT INTO person (source_ref, display_name)
+               VALUES ($1, COALESCE($2, $1))
+               ON CONFLICT (source_ref) DO NOTHING
+               RETURNING person_id::text AS "personId"`,
+              [value, task.submittedName],
+            );
+            personId =
+              upserted.rows[0]?.personId ??
+              (
+                await executeQuery<{ personId: string }>(
+                  executor,
+                  `SELECT person_id::text AS "personId" FROM person WHERE source_ref = $1`,
+                  [value],
+                )
+              ).rows[0]?.personId;
+          } else {
+            fault(
+              decision.taskReference,
+              'IDENTIFIER_UNSUPPORTED',
+              'Identifiers are compared only within the cricsheet or app namespaces.',
+            );
+            continue;
+          }
+        }
+
+        if (!personId) {
+          // Reached by a team_not_recognised task answered with a team alone,
+          // where the submission carried no identity to place in that team.
+          fault(
+            decision.taskReference,
+            'PERSON_NOT_FOUND',
+            'This task also needs a person: choose a candidate or supply a durable identifier.',
+          );
+          continue;
+        }
+        applicable.push({
+          decision,
+          fixtureId: task.fixtureId,
+          personId,
+          teamId,
+          participantKey: task.participantKey,
+          submittedName: task.submittedName,
+        });
+      }
+
+      // All or nothing. A partly applied array would leave the reviewer
+      // guessing which half took effect, and would make "revalidate once"
+      // ambiguous.
+      if (faults.length > 0) throw new BatchParticipantOnboardingConflictError(faults);
+
+      for (const entry of applicable) {
+        await executeQuery(
+          executor,
+          `INSERT INTO fixture_squad (fixture_id, person_id, team_id)
+           VALUES ($1::bigint, $2::bigint, $3::bigint)
+           ON CONFLICT (fixture_id, person_id) DO NOTHING`,
+          [entry.fixtureId, entry.personId, entry.teamId],
+        );
+        await executeQuery(
+          executor,
+          `UPDATE batch_participant_onboarding_task
+           SET state='onboarded', person_id=$3::bigint, onboarded_at=now(),
+               decided_by=$4::bigint, decision_key=$5, last_reported_at=now()
+           WHERE batch_id=$1::bigint AND task_reference=$2::uuid`,
+          [
+            input.batchId,
+            entry.decision.taskReference,
+            entry.personId,
+            input.actorId,
+            input.decisionKey,
+          ],
+        );
+      }
+
+      /*
+       * Putting the person in the squad does not make the submission resolve.
+       * A participant submitted as a name is matched against squad display
+       * names and retained aliases, and a person created from a durable
+       * identifier carries that identifier as its display name, so the name the
+       * submission used still matches nothing. Without this the deliveries stay
+       * unresolved however many tasks are settled, and the batch can never be
+       * approved: the decision is recorded against every reference it answers,
+       * the same mechanism selecting a candidate already uses.
+       *
+       * This maps a reference the reviewer has already decided. It is not a
+       * name match: the person came from an offered candidate or a durable
+       * identifier, and the paths are the ones that named this exact submitted
+       * identity.
+       */
+      let referencesMapped = 0;
+      for (const entry of applicable) {
+        for (const site of input.referenceSites?.[entry.participantKey] ?? []) {
+          const mapped = await executeQuery(
+            executor,
+            `INSERT INTO batch_reference_mapping_decision (
+               decision_reference, batch_id, item_ordinal, reference_path, entity_type,
+               candidate_id, candidate_label, actor_id, decision_key
+             ) VALUES ($1::uuid,$2::bigint,$3::integer,$4,'participant',$5::bigint,$6,$7::bigint,$8)
+             ON CONFLICT DO NOTHING`,
+            [
+              randomUUID(),
+              input.batchId,
+              site.itemOrdinal,
+              site.referencePath,
+              entry.personId,
+              entry.submittedName,
+              input.actorId,
+              `onboarding:${entry.decision.taskReference}:${String(site.itemOrdinal)}:${site.referencePath}`,
+            ],
+          );
+          referencesMapped += mapped.rowCount ?? 0;
+        }
+      }
+
+      // Once for the whole array, and not at all when nothing changed: a replay
+      // must not cost a full revalidation pass.
+      if (applicable.length > 0) {
+        await requestBatchRevalidation(
+          executor,
+          batch,
+          input.actorId,
+          `Participant onboarding decisions applied (${String(applicable.length)}).`,
+        );
+      }
+
+      return {
+        referencesMapped,
+        onboarded: applicable.length,
+        alreadyOnboarded,
+        revalidationQueued: applicable.length > 0,
+      };
     },
 
     async applyReferenceResolution(updates) {
@@ -2335,428 +3023,40 @@ export function createBatchRepository(executor?: QueryExecutor): BatchRepository
     },
 
     async publishAcceptedItems(batchId, workerId) {
-      const publish = async (
-        target: QueryExecutor,
-      ): Promise<BatchPublicationResult & { complete: boolean }> => {
-        const batch = await executeQuery<{
-          state: BatchState;
-          submitterId: string;
-          checksum: string;
-          competitionId: string;
-          reviewerId: string | null;
-          reviewReason: string | null;
-          reviewedAt: Date | null;
-        }>(
-          target,
-          `SELECT batch.state::text AS state,
-                  batch.submitter_id::text AS "submitterId",
-                  batch.source_checksum AS checksum,
-                  batch.competition_id::text AS "competitionId",
-                  review.actor_id::text AS "reviewerId",
-                  review.reason AS "reviewReason",
-                  review.decided_at AS "reviewedAt"
-           FROM batch
-           LEFT JOIN LATERAL (
-             SELECT actor_id, reason, decided_at
-             FROM batch_review_decision
-             WHERE batch_id=batch.batch_id AND decision='approved'
-             ORDER BY batch_review_decision_id DESC LIMIT 1
-           ) review ON true
-           WHERE batch.batch_id = $1::bigint FOR UPDATE OF batch`,
-          [batchId],
-        );
-        const current = requireRow(batch.rows[0], 'Batch publication lookup');
-        if (current.state === 'published')
-          return { published: 0, duplicateSkipped: 0, conflicts: 0, complete: true };
-        if (current.state !== 'publishing') {
-          throw new Error('Only an approved batch awaiting publication may be published.');
-        }
-
-        const existingCheckpoint = await executeQuery<{
-          lastOrdinal: number;
-          leaseOwner: string | null;
-          leaseExpiresAt: Date | null;
-        }>(
-          target,
-          `SELECT last_ordinal AS "lastOrdinal", lease_owner AS "leaseOwner",
-                  lease_expires_at AS "leaseExpiresAt"
-           FROM batch_checkpoint
-           WHERE batch_id=$1::bigint AND phase='publishing'
-           FOR UPDATE`,
-          [batchId],
-        );
-        const checkpoint = existingCheckpoint.rows[0];
-        if (
-          checkpoint?.leaseOwner &&
-          checkpoint.leaseOwner !== workerId &&
-          checkpoint.leaseExpiresAt &&
-          checkpoint.leaseExpiresAt.getTime() > Date.now()
-        ) {
-          throw new BatchLeaseBusyError();
-        }
-        const lastOrdinal = checkpoint?.lastOrdinal ?? -1;
-
-        await executeQuery(
-          target,
-          `INSERT INTO batch_checkpoint (batch_id,phase,last_ordinal,lease_owner,lease_expires_at,attempt_count)
-           VALUES ($1::bigint,'publishing',-1,$2,now()+interval '5 minutes',1)
-           ON CONFLICT (batch_id,phase) DO UPDATE SET
-             lease_owner=EXCLUDED.lease_owner,
-             lease_expires_at=EXCLUDED.lease_expires_at,
-             attempt_count=CASE
-               WHEN batch_checkpoint.lease_owner=EXCLUDED.lease_owner
-                    AND batch_checkpoint.lease_expires_at>now()
-                 THEN batch_checkpoint.attempt_count
-               ELSE batch_checkpoint.attempt_count+1
-             END`,
-          [batchId, workerId],
-        );
-
-        const items = await executeQuery<BatchItemRecord & { fixtureId: string }>(
-          target,
-          `SELECT ${batchItemSelectionFor('batch_item')}, innings.fixture_id::text AS "fixtureId"
-           FROM batch_item JOIN innings ON innings.innings_id = batch_item.innings_id
-           WHERE batch_item.batch_id=$1::bigint AND batch_item.state='accepted'
-             AND batch_item.ordinal>$2::integer
-           ORDER BY batch_item.ordinal
-           LIMIT $3::integer
-           FOR UPDATE OF batch_item`,
-          [batchId, lastOrdinal, publicationChunkSize],
-        );
-        const result: BatchPublicationResult = { published: 0, duplicateSkipped: 0, conflicts: 0 };
-        const newPublications: Array<{
-          item: BatchItemRecord & { fixtureId: string };
-          delivery: ComparableCricketDelivery;
-        }> = [];
-
-        for (const item of items.rows) {
-          const payload = payloadRecord(item.payload);
-          const submitted = comparableDeliveryForItem(item, payload);
-
-          if (item.operation === 'correction') {
-            if (!current.reviewerId || !current.reviewReason || !current.reviewedAt) {
-              throw new Error('Approved batch correction has no reviewer provenance.');
-            }
-            await publishBatchCorrection(target, item, submitted, {
-              ...current,
-              reviewerId: current.reviewerId,
-              reviewReason: current.reviewReason,
-              reviewedAt: current.reviewedAt,
-            });
-            result.published += 1;
-            continue;
-          }
-
-          const publishedMatches = await publishedDeliveryMatchesForItem(target, item);
-
-          const classified = publishedMatches.map((match) => ({
-            ...match,
-            classification: classifyPublishedCricketDelivery(submitted, match.delivery),
-          }));
-
-          const conflict = classified.find((match) => match.classification === 'conflict');
-
-          if (conflict) {
-            await executeQuery(
-              target,
-              `
-                UPDATE batch_item
-                SET state='rejected',
-                    rejection_code='PUBLISHED_DELIVERY_CONFLICT',
-                    rejection_detail=$2::jsonb
-                WHERE batch_item_id=$1::bigint
-              `,
-              [
-                item.batchItemId,
-                JSON.stringify({
-                  existingDeliveryId: conflict.deliveryId,
-                  differences: diffPublishedCricketDelivery(submitted, conflict.delivery),
-                }),
-              ],
-            );
-
-            await executeQuery(
-              target,
-              `
-                INSERT INTO batch_validation_result (
-                  batch_id,
-                  batch_item_id,
-                  source_ordinal,
-                  rule_code,
-                  rule_version,
-                  severity,
-                  field_path,
-                  message
-                )
-                VALUES (
-                  $1::bigint,
-                  $2::bigint,
-                  $3::integer,
-                  'PUBLISHED_DELIVERY_CONFLICT',
-                  '1.0',
-                  'error',
-                  'delivery',
-                  'A published delivery or published source identity exists with different cricket content.'
-                )
-                ON CONFLICT DO NOTHING
-              `,
-              [batchId, item.batchItemId, item.ordinal],
-            );
-
-            result.conflicts += 1;
-            continue;
-          }
-
-          const duplicate = classified.find((match) => match.classification === 'exact-duplicate');
-
-          if (duplicate) {
-            await executeQuery(
-              target,
-              `
-                UPDATE batch_item
-                SET state='duplicate_skipped',
-                    published_event_id=$2::bigint
-                WHERE batch_item_id=$1::bigint
-              `,
-              [item.batchItemId, duplicate.deliveryId],
-            );
-
-            await executeQuery(
-              target,
-              `
-                INSERT INTO batch_validation_result (
-                  batch_id,
-                  batch_item_id,
-                  source_ordinal,
-                  rule_code,
-                  rule_version,
-                  severity,
-                  field_path,
-                  message
-                )
-                VALUES (
-                  $1::bigint,
-                  $2::bigint,
-                  $3::integer,
-                  'EXACT_PUBLISHED_DUPLICATE',
-                  '1.0',
-                  'warning',
-                  'delivery',
-                  'The staged event exactly matches an already-published delivery.'
-                )
-                ON CONFLICT DO NOTHING
-              `,
-              [batchId, item.batchItemId, item.ordinal],
-            );
-
-            result.duplicateSkipped += 1;
-            continue;
-          }
-
-          newPublications.push({ item, delivery: submitted });
-        }
-
-        if (newPublications.length > 0) {
-          const publicationRows = newPublications.map(({ item, delivery }) => ({
-            batchItemId: item.batchItemId,
-            fixtureId: item.fixtureId,
-            inningsId: delivery.inningsId,
-            overNumber: delivery.overNumber,
-            positionInOver: delivery.positionInOver,
-            sequenceNumber: delivery.sequenceNumber,
-            ballNumber: delivery.ballNumber,
-            strikerId: delivery.strikerId,
-            nonStrikerId: delivery.nonStrikerId,
-            bowlerId: delivery.bowlerId,
-            offBat: delivery.runs.offBat,
-            runsExtras: delivery.runs.extras,
-            total: delivery.runs.total,
-            nonBoundary: delivery.runs.nonBoundary,
-            wides: delivery.extras.wides,
-            noBalls: delivery.extras.noBalls,
-            byes: delivery.extras.byes,
-            legByes: delivery.extras.legByes,
-            penalty: delivery.extras.penalty,
-            sourceEventId:
-              typeof payloadRecord(item.payload).eventId === 'string'
-                ? payloadRecord(item.payload).eventId
-                : null,
-            eventOrdinal: item.ordinal,
-          }));
-          const published = await executeQuery<{ count: string }>(
-            target,
-            `WITH source AS (
-               SELECT * FROM jsonb_to_recordset($3::jsonb) AS item(
-                 "batchItemId" bigint, "fixtureId" bigint, "inningsId" bigint,
-                 "overNumber" smallint, "positionInOver" smallint, "sequenceNumber" integer,
-                 "ballNumber" text, "strikerId" bigint, "nonStrikerId" bigint, "bowlerId" bigint,
-                 "offBat" smallint, "runsExtras" smallint, "total" smallint,
-                 "nonBoundary" boolean, wides smallint, "noBalls" smallint,
-                 byes smallint, "legByes" smallint, penalty smallint, "sourceEventId" uuid,
-                 "eventOrdinal" integer
-               )
-             ), inserted_submissions AS (
-               INSERT INTO submission (
-                 submitted_by, fixture_id, schema_version, event_count, source_sha256, status
-               )
-               SELECT $1::bigint, "fixtureId", '1.0', count(*)::integer, $2, 'accepted'
-               FROM source GROUP BY "fixtureId"
-               RETURNING submission_id, fixture_id
-             ), inserted_deliveries AS (
-               INSERT INTO delivery (
-                 innings_id, over_number, position_in_over, innings_sequence, ball_number,
-                 striker_id, non_striker_id, bowler_id, runs_off_bat, runs_extras, runs_total,
-                 non_boundary, extra_wides, extra_noballs, extra_byes, extra_legbyes,
-                 extra_penalty, submission_id, source_batch_item_id, source_event_id,
-                 submission_event_ordinal
-               )
-               SELECT s."inningsId", s."overNumber", s."positionInOver", s."sequenceNumber",
-                 s."ballNumber", s."strikerId", s."nonStrikerId", s."bowlerId", s."offBat",
-                 s."runsExtras", s.total, s."nonBoundary", s.wides, s."noBalls", s.byes,
-                 s."legByes", s.penalty, submission.submission_id, s."batchItemId",
-                 COALESCE(s."sourceEventId", gen_random_uuid()), s."eventOrdinal"
-               FROM source s
-               JOIN inserted_submissions submission ON submission.fixture_id=s."fixtureId"
-               ON CONFLICT DO NOTHING
-               RETURNING delivery_id, source_batch_item_id
-             ), updated_items AS (
-               UPDATE batch_item item
-               SET state='published', published_event_id=delivery.delivery_id
-               FROM inserted_deliveries delivery
-               WHERE item.batch_item_id=delivery.source_batch_item_id
-               RETURNING item.batch_item_id
-             )
-             SELECT count(*)::text AS count FROM updated_items`,
-            [current.submitterId, current.checksum, JSON.stringify(publicationRows)],
-          );
-          const publishedCount = Number(published.rows[0]?.count ?? 0);
-          if (publishedCount !== newPublications.length) {
-            throw new Error('Concurrent delivery publication requires a retry.');
-          }
-          await advanceFixtureStatisticsCacheVersions(
-            target,
-            newPublications.map(({ item }) => item.fixtureId),
-          );
-
-          const wickets = newPublications.flatMap(({ item, delivery }) =>
-            delivery.wickets.map((wicket, ordinal) => ({
-              batchItemId: item.batchItemId,
-              ordinal,
-              kind: wicket.kind,
-              playerOutId: wicket.playerOutId,
-            })),
-          );
-          if (wickets.length > 0) {
-            await executeQuery(
-              target,
-              `INSERT INTO delivery_wicket (delivery_id, ordinal, kind, source_kind, player_out_id)
-               SELECT delivery.delivery_id, wicket.ordinal, wicket.kind, wicket.kind,
-                 wicket."playerOutId"
-               FROM jsonb_to_recordset($1::jsonb) AS wicket(
-                 "batchItemId" bigint, ordinal smallint, kind text, "playerOutId" bigint
-               )
-               JOIN delivery ON delivery.source_batch_item_id=wicket."batchItemId"`,
-              [JSON.stringify(wickets)],
-            );
-          }
-
-          const fielders = newPublications.flatMap(({ item, delivery }) =>
-            delivery.wickets.flatMap((wicket, wicketOrdinal) =>
-              wicket.fielders.map((fielder, ordinal) => ({
-                batchItemId: item.batchItemId,
-                wicketOrdinal,
-                ordinal,
-                participantId: fielder.participantId,
-                substitute: fielder.substitute,
-              })),
-            ),
-          );
-          if (fielders.length > 0) {
-            await executeQuery(
-              target,
-              `INSERT INTO delivery_wicket_fielder (wicket_id, ordinal, person_id, is_substitute)
-               SELECT wicket.wicket_id, fielder.ordinal, fielder."participantId",
-                 fielder.substitute
-               FROM jsonb_to_recordset($1::jsonb) AS fielder(
-                 "batchItemId" bigint, "wicketOrdinal" smallint, ordinal smallint,
-                 "participantId" bigint, substitute boolean
-               )
-               JOIN delivery ON delivery.source_batch_item_id=fielder."batchItemId"
-               JOIN delivery_wicket wicket ON wicket.delivery_id=delivery.delivery_id
-                 AND wicket.ordinal=fielder."wicketOrdinal"`,
-              [JSON.stringify(fielders)],
-            );
-          }
-          result.published += publishedCount;
-        }
-
-        const remaining = await executeQuery<{ exists: boolean }>(
-          target,
-          `SELECT EXISTS(
-             SELECT 1 FROM batch_item
-             WHERE batch_id=$1::bigint AND state='accepted' AND ordinal>$2::integer
-           ) AS exists`,
-          [batchId, items.rows.at(-1)?.ordinal ?? lastOrdinal],
-        );
-        const newLastOrdinal = items.rows.at(-1)?.ordinal ?? lastOrdinal;
-        if (remaining.rows[0]?.exists) {
-          const advanced = await executeQuery<{ lastOrdinal: number }>(
-            target,
-            `UPDATE batch_checkpoint
-             SET last_ordinal=$3::integer,
-                 lease_expires_at=now()+interval '5 minutes'
-             WHERE batch_id=$1::bigint AND phase='publishing'
-               AND lease_owner=$2 AND lease_expires_at>now()`,
-            [batchId, workerId, newLastOrdinal],
-          );
-          if (advanced.rowCount !== 1) throw new BatchLeaseBusyError();
-          return { ...result, complete: false };
-        }
-        const conflictCount = await executeQuery<{ count: string }>(
-          target,
-          `SELECT count(*)::text AS count FROM batch_item
-           WHERE batch_id=$1::bigint
-             AND rejection_code IN (
-               'PUBLISHED_NATURAL_KEY_CONFLICT',
-               'PUBLISHED_DELIVERY_CONFLICT'
-             )`,
-          [batchId],
-        );
-        const finalState =
-          Number(conflictCount.rows[0]?.count ?? 0) > 0 ? 'partially_published' : 'published';
-        const released = await executeQuery<{ lastOrdinal: number }>(
-          target,
-          `UPDATE batch_checkpoint SET last_ordinal=COALESCE(
-             (SELECT max(ordinal) FROM batch_item WHERE batch_id=$1::bigint), -1
-           ), lease_owner=NULL, lease_expires_at=NULL
-           WHERE batch_id=$1::bigint AND phase='publishing' AND lease_owner=$2
-             AND lease_expires_at>now()
-           RETURNING last_ordinal AS "lastOrdinal"`,
-          [batchId, workerId],
-        );
-        if (released.rowCount !== 1) throw new BatchLeaseBusyError();
-        await executeQuery(
-          target,
-          `UPDATE batch SET state=$2::batch_state WHERE batch_id=$1::bigint`,
-          [batchId, finalState],
-        );
-        await executeQuery(
-          target,
-          `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
-           VALUES ($1::bigint,'publishing',$2::batch_state,'worker',$3,'Publication completed idempotently.')`,
-          [batchId, finalState, workerId],
-        );
-        return { ...result, complete: true };
+      const totals: BatchPublicationResult = {
+        published: 0,
+        duplicateSkipped: 0,
+        conflicts: 0,
       };
-      const totals: BatchPublicationResult = { published: 0, duplicateSkipped: 0, conflicts: 0 };
+
       for (;;) {
-        const result = executor
-          ? await publish(executor)
-          : await withTransaction(getDatabasePool(), publish);
-        totals.published += result.published;
-        totals.duplicateSkipped += result.duplicateSkipped;
-        totals.conflicts += result.conflicts;
-        if (result.complete) return totals;
+        try {
+          const result = executor
+            ? await publishAcceptedBatchChunk(executor, batchId, workerId, {
+                chunkSize: 100,
+                leaseMs: 300_000,
+              })
+            : await withTransaction(getDatabasePool(), (target) =>
+                publishAcceptedBatchChunk(target, batchId, workerId, {
+                  chunkSize: 100,
+                  leaseMs: 300_000,
+                }),
+              );
+
+          totals.published += result.published;
+          totals.duplicateSkipped += result.duplicateSkipped;
+          totals.conflicts += result.conflicts;
+
+          if (result.complete) {
+            return totals;
+          }
+        } catch (error) {
+          if (error instanceof BatchPublicationLeaseBusyError) {
+            throw new BatchLeaseBusyError();
+          }
+
+          throw error;
+        }
       }
     },
   };

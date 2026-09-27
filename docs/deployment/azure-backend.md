@@ -1,141 +1,231 @@
 # Azure Backend Deployment
 
-## Hosting Platform
+## Hosting and rollback status
 
-Azure App Service (Linux)
+The normal backend deployment target is Azure Container Apps. The API is packaged by
+`apps/backend/Dockerfile` as a Node.js 22 production container: it runs the compiled backend
+directly as Node PID 1, listens on port `3000`, runs as the non-root `node` user, includes the
+Supabase CA certificate, and handles `SIGINT`/`SIGTERM` through the existing Express and PostgreSQL
+shutdown path.
 
-## Runtime
+The current deployed API is available at
+`https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io`, with
+business endpoints under `/api/v1`.
 
-Node.js 22 LTS
+The existing Azure App Service `statsthegame-api-dev` remains intact and deployable during the
+Container Apps acceptance period. It is an independent rollback target, not part of the normal
+main-branch deployment. Do not retire, stop, or reconfigure it until the acceptance checklist below
+has been completed and an explicit retirement decision is recorded.
 
-## Resource
+## Container Apps architecture
 
-`statsthegame-api-dev`
+The Bicep target is `infra/azure/backend/main.bicep`. It reuses these existing development resources:
 
-## Environment
+| Concern             | Resource / design                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| Registry            | Existing Azure Container Registry `statsthegamedevyhmqlinqfhkyg.azurecr.io`              |
+| Compute environment | Existing Container Apps environment `statsthegame-dev-worker-env` shared with the worker |
+| Runtime container   | `statsthegame-dev-api`, external HTTPS ingress on target port `3000`                     |
+| Object storage      | Existing private Blob account and staged-ingestion/dataset-release containers            |
+| Database and Auth   | Existing Supabase PostgreSQL and Supabase Auth services                                  |
+| Secret store        | Existing Key Vault, referenced by URI rather than copied into the image or workflow      |
 
-Development deployment
+The API has separate user-assigned identities: a pull identity with `AcrPull` on the existing ACR,
+and a runtime identity with `Key Vault Secrets User` and `Storage Blob Data Contributor` on the
+existing Key Vault and Blob account. The Container App uses the pull identity for registry access
+and the runtime identity for Key Vault and Blob access. Neither identity uses ACR admin credentials,
+Blob account keys, SAS tokens, or storage connection strings.
 
-## Environment Variables
+Ingress is external, HTTPS-only (`allowInsecure=false`), and uses HTTP transport internally on port
+`3000`. Startup, liveness, and readiness probes all call `/api/v1/health`. Application request logs
+remain structured Pino output; use the Container App's log stream and Azure monitoring surface for
+runtime investigation. A healthy deployment is not established merely by a successful ARM/Bicep
+operation: it also requires a matching healthy revision and the deployed smoke checks described
+below.
 
-| Variable                       | Current status              | Description                                                                 |
-| ------------------------------ | --------------------------- | --------------------------------------------------------------------------- |
-| `NODE_ENV`                     | Used                        | Set to `production` for the deployed runtime.                               |
-| `PORT`                         | Platform-provided/defaulted | HTTP listen port.                                                           |
-| `CORS_ORIGINS`                 | Used                        | Comma-separated allowed browser origins; include the deployed frontend URL. |
-| `SUPABASE_URL`                 | Used                        | Supabase Auth project URL.                                                  |
-| `SUPABASE_PUBLISHABLE_KEY`     | Used                        | Supabase publishable key used for backend token verification.               |
-| `SUPABASE_SECRET_KEY`          | Required for issue #66      | Server-only Supabase key used by Auth Admin account deletion.               |
-| `DATABASE_URL`                 | Used                        | PostgreSQL session-pooler connection string.                                |
-| `AZURE_STORAGE_ACCOUNT_NAME`   | Required in production      | Non-secret Blob account name; `statsthegameblobdev` in development.         |
-| `AZURE_STORAGE_CONTAINER_NAME` | Required in production      | Non-secret private container name; `staged-ingestion` in development.       |
+## Capacity and scaling
 
-## Approved Intermediate service boundary
+The API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=0`, and `maxReplicas=1`. The development deployment scales to zero while idle to reduce Azure consumption cost. The first request after an idle period may incur Container Apps cold-start latency. `maxReplicas=1` preserves process-local rate-limit semantics until rate-limit state is externalised.
+Because the minimum is zero, the API can scale to zero while idle and wake when HTTP traffic arrives.
 
-Batch ingestion will keep the Express API on Azure App Service. The API will stream source bytes to
-private Azure Blob Storage and commit batch/job metadata through PostgreSQL. A transactional outbox
-relay will deliver job identifiers to Azure Service Bus Standard, and a separately deployed Node.js
-worker in Azure Container Apps will process them.
+The single-replica maximum is deliberate and temporary. Current API submitter and API-consumer
+per-minute rate limits use process-local `Map` state. Multiple replicas would weaken those limits by
+giving each process an independent counter. Issue #595 must provide shared rate-limit state before
+horizontal API scaling is safe. This is a correctness constraint, not a claim that the architecture
+is free or costless.
 
-The API uses `DefaultAzureCredential` and the App Service managed identity for Blob Storage. Blob
-account keys, connection strings, SAS tokens, and shared-key credentials are intentionally
-unsupported. The separate worker has its own managed-identity/deployment boundary documented in
-[Azure worker deployment](azure-worker.md).
+The revision mode is `Single`. It reduces active-revision ambiguity during normal rollout but does
+not itself guarantee rollback; operators must inspect actual revision state and use the recovery
+procedure below.
 
-The development Blob resources are provisioned outside this repository: backend identity
-`statsthegame-api-dev`, storage account `statsthegameblobdev`, and private container
-`staged-ingestion`, with **Storage Blob Data Contributor** assigned to the backend identity. The
-repository does not create or mutate these Azure resources or RBAC assignments.
+## Runtime configuration and secrets
 
-The issue #358 private object-storage adapter, streaming safeguards, durable metadata and production
-runtime composition are implemented in the backend. Batch receipt, durable validation/reporting and
-review/publication APIs now use that staged-ingestion boundary. See the
-[private object-storage operations guide](object-storage-operations.md) for access, recovery and
-credential-rotation requirements.
+Ordinary Container App configuration is supplied as non-secret values:
 
-`API_VERSION`, `CORS_ALLOWED_ORIGINS` and `LOG_LEVEL` appear as reserved placeholders in the current backend example environment file but are not read by the current application runtime. In particular, deployed CORS configuration must use `CORS_ORIGINS` unless the application code is deliberately changed.
+| Variable                                 | Production value/source                                    |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| `NODE_ENV`                               | `production`                                               |
+| `PORT`                                   | `3000`                                                     |
+| `DEPLOYMENT_ENVIRONMENT`                 | Bicep environment label, currently `dev`                   |
+| `CORS_ORIGINS`                           | Explicit allowed browser origins supplied to deployment CI |
+| `SUPABASE_URL`                           | Supabase project URL supplied to deployment CI             |
+| `SUPABASE_PUBLISHABLE_KEY`               | Publishable Supabase key supplied to deployment CI         |
+| `OBJECT_STORAGE_PROVIDER`                | `azure`                                                    |
+| `AZURE_STORAGE_ACCOUNT_NAME`             | Existing Blob account name                                 |
+| `AZURE_STORAGE_CONTAINER_NAME`           | Existing staged-ingestion container                        |
+| `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Existing staged-ingestion container                        |
+| `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Existing dataset-release container                         |
+| `AZURE_CLIENT_ID`                        | Runtime managed identity client ID supplied by Bicep       |
 
-Database credentials and other secrets are configured through Azure App Service and are never committed.
+`DATABASE_URL` and `SUPABASE_SECRET_KEY` are different: Key Vault holds their values, Container
+Apps creates Key Vault-backed secrets from versionless secret-reference URIs, and the runtime receives
+them through `secretRef`. The CI workflow receives only the reference URIs. `SUPABASE_SECRET_KEY`
+must be present because it enables the required authenticated account-deletion path; without it the
+backend starts, but account deletion returns `501 ACCOUNT_DELETION_UNAVAILABLE`.
 
-## Logging
+Gitea CI secrets are a separate boundary. `AZURE_WORKER_CREDENTIALS` is the existing shared Azure
+resource-group deployment-principal credential; its worker-oriented legacy name does not limit it to
+the worker. The backend also uses its own resource-group, Key Vault secret-reference URI, CORS, and
+Supabase configuration secrets. No secret value belongs in Bicep parameters, workflow YAML, output,
+logs, Docker build context, or documentation. See [Environment variables](../environment.md) for the
+cross-application configuration matrix.
 
-The Express application uses Pino HTTP for structured request logging. Azure App Service provides the hosting/runtime log surface.
+| Gitea Actions secret                           | Purpose                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `AZURE_WORKER_CREDENTIALS`                     | Existing shared Azure resource-group deployment principal credential; legacy name retained. |
+| `AZURE_BACKEND_CONTAINER_RESOURCE_GROUP`       | Backend deployment resource group.                                                          |
+| `AZURE_BACKEND_DATABASE_SECRET_URI`            | Versionless Key Vault reference URI for `DATABASE_URL`.                                     |
+| `AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI` | Versionless Key Vault reference URI for `SUPABASE_SECRET_KEY`.                              |
+| `AZURE_BACKEND_CORS_ORIGINS`                   | Allowed API browser origins.                                                                |
+| `AZURE_BACKEND_SUPABASE_URL`                   | Backend Supabase project URL.                                                               |
+| `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY`       | Backend Supabase publishable key.                                                           |
 
-## Deployment
+## Networking and service boundaries
 
-Automatic backend deployment is part of `Sport Analytics CI`. After a production-impacting backend or
-shared-contract change is merged, the change-aware planner validates the `main` commit and the
-`deploy_backend` job runs only after the required `quality` job succeeds.
+The API needs outbound connectivity to Supabase PostgreSQL, Supabase/Auth endpoints, Azure Blob
+Storage, and the external sport APIs used by backend features. This repository does not establish or
+verify network restrictions, private endpoints, firewall rules, DNS, or egress policy; an operator
+must verify those dependencies in the target environment.
 
-The automatic deployment job:
+Service Bus remains the asynchronous worker boundary. The API Container App deliberately has no
+Service Bus configuration or permission in this deployment target. Dataset-release generation and
+other CPU-intensive asynchronous processing remain in the worker; they are not moved into the API
+container.
 
-1. installs the committed workspace reproducibly with `npm ci`;
-2. validates `AZURE_BACKEND_PUBLISH_PROFILE`;
-3. builds `@sport-analytics/backend` for production (the backend prebuild prepares shared contracts);
-4. creates `.deployment/backend` from the root lockfile with production dependencies, compiled backend
-   output, the runtime CA certificate and a physical copy of the compiled contracts package;
-5. starts that artifact with non-secret smoke configuration and verifies its local health endpoint;
-6. creates and publishes the Azure ZIP using `scripts/deploy-backend-azure.py`; and
-7. retries the deployed health endpoint before checking the read-only
-   `/api/v1/competitions?limit=1` database path.
+## CI/CD flow
 
-Backend lint, typecheck, unit, API and required PostgreSQL integration tests remain authoritative in the
-change-aware CI lanes before `quality` succeeds and are not duplicated inside deployment.
+For a validated backend-affecting commit on `main`, `Sport Analytics CI` performs:
 
-`apps/backend/src/**`, runtime backend configuration and shared-contract changes can request backend
-deployment. Backend test-only, frontend-only, documentation, evidence and CI-only changes do not
-redeploy an unchanged API. Root dependency/configuration changes are handled conservatively when they
-can affect the production backend.
+```text
+validated main commit
+  -> retrieve DATABASE_URL from the existing Key Vault secret reference into the migration step only
+  -> apply reviewed pending node-pg-migrate migrations; stop on failure
+  -> Docker build from apps/backend/Dockerfile
+  -> inert local container /api/v1/health smoke
+  -> Azure login
+  -> immutable commit-SHA image push to ACR
+  -> Bicep deployment/update
+  -> bounded wait for the active healthy revision using that exact image
+  -> external HTTPS /api/v1/health smoke
+  -> /api/v1/competitions?limit=1 database smoke
+  -> /api/v1/dataset-releases schema-dependent smoke
+  -> success, otherwise failure
+```
 
-`.gitea/workflows/deploy-backend.yml` is retained as a manual `workflow_dispatch` recovery/redeployment
-path. It shares the same Azure ZIP/Kudu implementation through `scripts/deploy-backend-azure.py` but is
-not an independent push-triggered deployment workflow.
+The image reference uses the commit SHA and never `latest` as its authoritative deployment target.
+The database smoke is separate because `/api/v1/health` proves that the HTTP process is available but
+does not prove PostgreSQL-backed reads work. Any failed local smoke, deployment, readiness wait,
+health smoke, database smoke, or dataset-release schema smoke fails the deployment job.
 
-The local artifact check proves that the compiled server and runtime dependency tree can start before
-Azure is changed. The deployed checks report every failed attempt and fail the Action when the service
-does not recover within the configured limit.
+### Migration gate and recovery
 
-## Gitea Action secrets
+Before building or activating backend code, both the automatic Container Apps workflow and the manual
+App Service rollback workflow retrieve `DATABASE_URL` from the existing
+`AZURE_BACKEND_DATABASE_SECRET_URI` Key Vault reference. The value is captured only in the migration
+step's environment and is never printed or passed as a command-line argument. The workflow then runs
+`npm run db:migrate --workspace=@sport-analytics/backend`. This retains the committed
+`node-pg-migrate` ordering and fails the job if any pending migration cannot be applied. It does not
+run dataset-release generation or start a worker.
 
-`AZURE_BACKEND_PUBLISH_PROFILE` is the only backend secret consumed by the workflow. It is passed
-directly from the Gitea `secrets` context to the Azure deployment action and is never printed. A
-validation step reports the secret name and stops before verification when it is not configured.
+A failed migration prevents the Container Apps revision deployment or rollback artifact deployment
+from starting. Investigate the named migration and database error in the CI log, correct the reviewed
+migration or the target database condition, and rerun the workflow. Do not automatically run a down
+migration or bypass the gate: recovery must be reviewed because the database may have been changed
+before the failure. A successful rerun logs the migration status and only then permits code activation.
 
-Backend application secrets such as `DATABASE_URL` and Supabase configuration remain Azure App
-Service settings. They are not copied into the deployment artifact or exposed to the workflow's
-local artifact check.
+The workflow reuses `azure/login@v2` with the repository's Azure service-principal secret. It does
+not introduce a second authentication mechanism, ACR admin credentials, registry passwords, or
+production secret values in YAML. Changes to backend sources, `apps/backend/Dockerfile`,
+`infra/azure/backend/**`, and backend deployment helpers select the backend deployment lane.
 
-The two Azure storage identifiers are also Azure App Service settings, but are non-secret. The ZIP
-deployment workflow does not manage App Settings, identity assignment, or RBAC; an Azure operator
-must confirm those external settings before deployment. Its local production-mode artifact smoke
-check supplies inert non-secret storage identifiers and never calls Azure.
+## Rollback during acceptance
 
-`SUPABASE_SECRET_KEY` is intentionally optional during process startup. This keeps health and public
-routes available if the App Service setting is missing, while `DELETE /api/v1/account` returns a
-safe `501` until the setting is configured. Deployed issue #66 verification must confirm that the
-App Service secret belongs to the same Supabase project as `SUPABASE_URL`.
+### Container Apps revision recovery
 
-## Current startup limitation
+1. Inspect revisions and their active/health state:
 
-The App Service still has the workspace-link recovery startup command recorded in
-`docs/deployment/azure-app-service-recovery.md`. The prepared artifact now includes a physical
-`node_modules/@sport-analytics/contracts` directory, but the Azure startup command must not be removed
-until a merged deployment run proves the artifact on the live service and the normal startup command
-is changed deliberately. That remaining Azure configuration change is not performed by a publish
-profile deployment.
+   ```bash
+   az containerapp revision list --resource-group <resource-group> --name statsthegame-dev-api --output table
+   ```
 
-## Rollback
+2. Identify the known-good revision and image by inspecting the revision template. Confirm its image
+   is the expected immutable SHA reference and investigate logs before changing traffic or revision
+   state.
+3. Use the Azure Container Apps revision recovery operation appropriate to the actual revision mode
+   and Azure CLI version, then confirm the selected revision becomes active and healthy.
+4. Run the HTTPS health and database smoke checks again. Do not claim that `Single` revision mode
+   automatically preserved a usable prior revision.
 
-Azure supports redeploying a previous successful application package/workflow result. Any rollback procedure used for a release should be recorded with the deployment evidence.
+Record the exact Azure command, revision name, image SHA, outcome, and smoke evidence in the release
+record. This guide intentionally does not prescribe an unverified revision-switch command.
+
+### App Service fallback
+
+`statsthegame-api-dev` remains available as the acceptance-period fallback. The manual
+`Sport Analytics - Redeploy App Service Backend (Rollback)` workflow retains the existing
+publish-profile ZIP/Kudu deployment path. If browser traffic has already been cut over to the
+Container App URL, an App Service fallback also requires a deliberate frontend API-base-URL and CORS
+configuration reversal; those settings are not changed by this migration workflow. Verify Supabase
+Auth redirect settings and the restored API endpoint before announcing rollback completion.
+
+## Acceptance checklist
+
+### Automated CI evidence
+
+- [ ] A main commit built and pushed the immutable backend image.
+- [ ] The local inert-container health smoke passed before publication.
+- [ ] Bicep deployment completed and the expected SHA image revision became healthy within its bound.
+- [ ] External HTTPS `/api/v1/health` smoke passed.
+- [ ] `/api/v1/competitions?limit=1` database smoke passed.
+- [ ] Migration status was logged and completed before backend activation.
+- [ ] `/api/v1/dataset-releases` schema-dependent smoke passed without a 5xx response.
+- [ ] A failed deployment path demonstrably fails CI and leaves rollback decisions to operators.
+
+### Manual acceptance evidence
+
+- [ ] Container App is provisioned with external HTTPS ingress.
+- [ ] Public API reads work.
+- [ ] Registration, login, and password reset work with the deployed Auth configuration.
+- [ ] Authenticated account deletion works (proving `SUPABASE_SECRET_KEY` is configured).
+- [ ] Authenticated API operations, submission flow, and review flow work.
+- [ ] Staged-ingestion and dataset-release Blob paths work through managed identity.
+- [ ] Worker/asynchronous integration works where applicable; CPU-intensive release processing remains in the worker.
+- [ ] Container App logs are available to operators.
+- [ ] The App Service fallback workflow and `statsthegame-api-dev` remain usable.
+- [ ] Frontend API-base-URL/CORS cutover is tested deliberately, if and when approved.
+- [ ] App Service retirement is explicitly deferred until all acceptance evidence is complete.
+
+## Prerequisites before the first deployment
+
+An operator must provision the documented backend-specific Gitea secrets, including the Key Vault
+secret-reference URIs. The existing `AZURE_WORKER_CREDENTIALS` secret authenticates the shared Azure
+resource-group deployment principal, which has verified `Contributor` and `Role Based Access Control
+Administrator` roles scoped to `rg-statsthegame-dev`. This covers resource deployment,
+user-assigned-identity creation, and scoped role-assignment creation for the current Bicep. No
+subscription-level Owner role, separate manual RBAC bootstrap, or new backend deployment credential
+is required.
 
 ## AI Declaration
 
-The preceding document was reviewed and corrected with the assistance of ChatGPT-Web[GPT-5.6 Sol]
-and updated for the automated deployment checks with the assistance of Codex[GPT-5].
-The issue #356 Intermediate service boundary was documented with the assistance of Codex[GPT-5].
-The issue #358 object-storage implementation status was documented with the assistance of
-Codex[GPT-5].
-The production managed-identity composition and deployed storage settings were documented with the
-assistance of Codex[GPT-5].
-The Issue #364 Intermediate ingestion deployment-status reconciliation was reviewed and edited with
-the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Container Apps migration documentation for Issue #563 was generated and adapted with the
+assistance of Codex[GPT-5]. It must be reviewed against the first real Azure deployment evidence.

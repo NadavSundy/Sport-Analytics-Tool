@@ -22,7 +22,7 @@ Detailed deployment documentation is maintained under:
 - [Azure deployment guide](../docs/deployment/azure.md)
 - [Azure backend deployment](../docs/deployment/azure-backend.md)
 - [Azure asynchronous worker](../docs/deployment/azure-worker.md)
-- [Azure frontend deployment](../docs/deployment/azure-fronted.md)
+- [Cloudflare Pages frontend deployment](../docs/deployment/frontend-cloudflare-pages.md)
 - [Azure App Service recovery guide](../docs/deployment/azure-app-service-recovery.md)
 - [Cloudflare Pages deployment](../docs/deployment/cloudflare_pages.md)
 

@@ -1,11 +1,13 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AuthProvider } from './features/auth/AuthProvider';
 import { THEME_STORAGE_KEY } from './theme';
+
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;
@@ -164,7 +166,7 @@ describe('public application and authentication interface', () => {
     ).toBeInTheDocument();
     const accountNavigation = await screen.findByRole('navigation', { name: 'Account' });
     const authenticationCallToAction = within(accountNavigation).getByRole('link', {
-      name: 'Login or Sign up',
+      name: 'Sign in',
     });
     expect(within(accountNavigation).getAllByRole('link')).toHaveLength(1);
     expect(authenticationCallToAction).toHaveAttribute('href', '/sign-in');
@@ -183,7 +185,7 @@ describe('public application and authentication interface', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
   });
 
   it('renders the unified Google authentication page without registration alternatives', async () => {
@@ -192,13 +194,25 @@ describe('public application and authentication interface', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Login or Sign up' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByRole('link', { name: 'Create Account' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
+  });
+
+  it('presents Google sign-in with an official mark and managed-auth explanation', async () => {
+    renderApp('/sign-in');
+
+    const googleAction = await screen.findByRole('button', { name: 'Sign in with Google' });
+    const googleMark = googleAction.querySelector('svg');
+
+    expect(googleAction).toHaveClass('google-sign-in-button');
+    expect(googleAction).toHaveTextContent('Sign in');
+    expect(googleMark).toHaveAttribute('aria-hidden', 'true');
+    expect(googleMark).toHaveAttribute('focusable', 'false');
+    expect(
+      screen.getByText('Supabase will securely handle your Google login or sign-up.'),
+    ).toBeInTheDocument();
   });
 
   it('starts managed Google OAuth with the callback return URL and shows progress', async () => {
@@ -210,7 +224,7 @@ describe('public application and authentication interface', () => {
     const auth = renderApp('/sign-in');
     vi.mocked(auth.client.signInWithOAuth).mockReturnValue(pendingAuthentication);
 
-    const button = await screen.findByRole('button', { name: 'Continue with Google' });
+    const button = await screen.findByRole('button', { name: 'Sign in with Google' });
     fireEvent.click(button);
 
     expect(screen.getByRole('button', { name: 'Connecting to Google…' })).toBeDisabled();
@@ -227,6 +241,20 @@ describe('public application and authentication interface', () => {
     );
   });
 
+  it('carries a protected internal deep link into the managed OAuth callback', async () => {
+    const auth = renderApp('/submissions/batches/ABC');
+    const button = await screen.findByRole('button', { name: 'Sign in with Google' });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(auth.client.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?returnTo=%2Fsubmissions%2Fbatches%2FABC`,
+        },
+      }),
+    );
+  });
+
   it('shows a safe Google authentication error without provider details', async () => {
     const auth = renderApp('/sign-in');
     vi.mocked(auth.client.signInWithOAuth).mockResolvedValue({
@@ -234,7 +262,7 @@ describe('public application and authentication interface', () => {
       error: new Error('provider secret response') as never,
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue with Google' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in with Google' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'We could not connect to Google. Please try again.',
@@ -247,9 +275,25 @@ describe('public application and authentication interface', () => {
     renderApp('/auth/callback', createSession());
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
-    expect(screen.getByText('person@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign Out' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
+    expect(await screen.findByText('person@example.com')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Account sections' })).getByRole('link', {
+        name: 'Account management',
+      }),
+    ).toHaveAttribute('href', '/account/security');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Account' })).getByRole('link', {
+        name: 'Manage account',
+      }),
+    ).toHaveAttribute('href', '/account');
     expect(screen.queryByRole('link', { name: 'Submit Events' })).not.toBeInTheDocument();
+  });
+
+  it('rejects an external callback destination and falls back to Account', async () => {
+    vi.stubGlobal('fetch', accountPageFetch('not_requested'));
+    renderApp('/auth/callback?returnTo=https%3A%2F%2Fattacker.example', createSession());
+    expect(await screen.findByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument();
   });
 
   it('handles OAuth cancellation without exposing provider details', async () => {
@@ -294,22 +338,58 @@ describe('public application and authentication interface', () => {
 
     act(() => auth.emit('SIGNED_IN', session));
 
-    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('button', { name: 'Sign Out' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Login or Sign up' })).not.toBeInTheDocument();
-    expect(screen.getByText('person@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Manage account' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument();
+    expect(await screen.findByText('person@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('viewer')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Access' })).toHaveAttribute('href', '/account/access');
     expect(
-      screen.queryByText(/administrator|approved submitter|role|grant/i),
+      screen.queryByRole('heading', { level: 2, name: 'Delete account' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('lets an approved submitter view named competition scopes from Account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith('/auth/me')) {
+          return Promise.resolve(
+            apiResponse(200, {
+              user: {
+                id: '17',
+                subject: 'user-123',
+                displayName: 'Example User',
+                role: 'submitter',
+                approvalState: 'approved',
+                requestedCompetition: null,
+                competitionIds: ['5'],
+              },
+            }),
+          );
+        }
+        if (path.endsWith('/competitions/5'))
+          return Promise.resolve(
+            apiResponse(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+          );
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    renderApp('/account', createSession());
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View approved competition scopes' }),
+    );
     expect(
-      await screen.findByRole('button', { name: 'Request submitter access' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Delete account' })).toBeInTheDocument();
+      await screen.findByRole('dialog', { name: 'Your approved competition scopes' }),
+    ).toHaveTextContent('Premier T20');
   });
 
   it('requires deliberate account-deletion confirmation', async () => {
     vi.stubGlobal('fetch', accountPageFetch('not_requested'));
-    renderApp('/account', createSession());
+    renderApp('/account/security', createSession());
 
     const deleteButton = await screen.findByRole('button', {
       name: 'Permanently delete account',
@@ -360,7 +440,7 @@ describe('public application and authentication interface', () => {
       throw new Error(`Unexpected request: ${path}`);
     });
     vi.stubGlobal('fetch', fetchMock);
-    const auth = renderApp('/account', createSession());
+    const auth = renderApp('/account/security', createSession());
     vi.mocked(auth.client.signOut).mockReturnValue(signOut);
 
     fireEvent.click(
@@ -377,9 +457,9 @@ describe('public application and authentication interface', () => {
 
     expect(screen.getByRole('button', { name: 'Deleting account…' })).toBeDisabled();
     expect(screen.getByText('Deleting your account…')).toHaveAttribute('role', 'status');
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/v1/account',
+      `${testApiBaseUrl}/account`,
       expect.objectContaining({ method: 'DELETE' }),
     );
 
@@ -401,7 +481,7 @@ describe('public application and authentication interface', () => {
         name: 'The game, measured ball by ball.',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Login or Sign up' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('announces a safe deletion error and allows retry', async () => {
@@ -432,7 +512,7 @@ describe('public application and authentication interface', () => {
         throw new Error(`Unexpected request: ${path}`);
       }),
     );
-    renderApp('/account', createSession());
+    renderApp('/account/security', createSession());
 
     fireEvent.click(
       await screen.findByRole('checkbox', {
@@ -458,10 +538,10 @@ describe('public application and authentication interface', () => {
     const pendingSignOut = new Promise<SignOutResult>((resolve) => {
       resolveSignOut = resolve;
     });
-    const auth = renderApp('/account', createSession());
+    const auth = renderApp('/account/security', createSession());
     vi.mocked(auth.client.signOut).mockReturnValue(pendingSignOut);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign Out' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
 
     expect(screen.getByRole('button', { name: 'Signing Out…' })).toBeDisabled();
 
@@ -478,27 +558,28 @@ describe('public application and authentication interface', () => {
     ).toBeInTheDocument();
     const accountNavigation = screen.getByRole('navigation', { name: 'Account' });
     expect(within(accountNavigation).getAllByRole('link')).toHaveLength(1);
-    expect(
-      within(accountNavigation).getByRole('link', { name: 'Login or Sign up' }),
-    ).toHaveAttribute('href', '/sign-in');
+    expect(within(accountNavigation).getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
     expect(within(accountNavigation).queryByRole('link', { name: 'Create Account' })).toBeNull();
     expect(within(accountNavigation).queryByRole('link', { name: 'Sign In' })).toBeNull();
   });
 
   it('shows a safe sign-out error and remains signed in when Supabase rejects the action', async () => {
     vi.stubGlobal('fetch', accountPageFetch('not_requested'));
-    const auth = renderApp('/account', createSession());
+    const auth = renderApp('/account/security', createSession());
     vi.mocked(auth.client.signOut).mockResolvedValue({
       error: new Error('token internals') as never,
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign Out' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'We could not sign you out. Please try again.',
     );
     expect(screen.queryByText(/token internals/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Manage account' })).toBeInTheDocument();
   });
 
   it('persists a manual theme selection', async () => {

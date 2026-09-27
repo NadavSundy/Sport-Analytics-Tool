@@ -7,12 +7,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
     "@sport-analytics/contracts": "0.1.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.4"
+    "@types/pg": "^8.20.4",
+    "vitest": "^4.1.11"
   }
 }

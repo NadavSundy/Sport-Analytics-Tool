@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
 import { HomePage } from './features/home/HomePage';
@@ -7,6 +8,7 @@ import {
   CompetitorDetailPage,
   CompetitorsPage,
   FixtureDetailPage,
+  FixturePlayersPage,
   FixturesPage,
   NotFoundPage,
   ParticipantDetailPage,
@@ -25,19 +27,43 @@ import {
   FixtureStatisticDetailPage,
   FixtureStatisticsPage,
 } from './features/statistics/StatisticsPages';
+import { PlayerComparisonPage } from './features/statistics/PlayerComparisonPage';
 import { AdminUsersPage } from './features/admin/AdminUsersPage';
+import { AdministrationPage } from './features/admin/AdministrationPage';
 import { BatchReviewWorkspacePage } from './features/reviews/BatchReviewWorkspacePage';
 import {
   DatasetReleaseCataloguePage,
   DatasetReleaseDetailPage,
 } from './features/dataset-releases/DatasetReleasePages';
 import { AdminDatasetReleasePage } from './features/dataset-releases/AdminDatasetReleasePage';
+import { ApiExplorerLoadingIndicator } from './features/api-explorer/ApiExplorerLoadingIndicator';
+
+const ApiExplorerPage = lazy(() =>
+  import('./features/api-explorer/ApiExplorerPage').then(({ ApiExplorerPage }) => ({
+    default: ApiExplorerPage,
+  })),
+);
 
 export function PublicApp() {
   return (
     <PublicShell>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route
+          path="/api"
+          element={
+            <Suspense
+              fallback={
+                <div className="content-boundary api-explorer-route-loading" role="status">
+                  <ApiExplorerLoadingIndicator label="Loading API Explorer" />
+                  Loading API Explorer…
+                </div>
+              }
+            >
+              <ApiExplorerPage />
+            </Suspense>
+          }
+        />
 
         <Route path="/competitions" element={<CompetitionsPage />} />
         <Route path="/competitions/:competitionId" element={<CompetitionDetailPage />} />
@@ -47,6 +73,7 @@ export function PublicApp() {
 
         <Route path="/fixtures" element={<FixturesPage />} />
         <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
+        <Route path="/fixtures/:fixtureId/players" element={<FixturePlayersPage />} />
         <Route path="/fixtures/:fixtureId/statistics" element={<FixtureStatisticsPage />} />
         <Route
           path="/fixtures/:fixtureId/statistics/:statisticId"
@@ -57,6 +84,7 @@ export function PublicApp() {
         <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
 
         <Route path="/participants" element={<ParticipantsPage />} />
+        <Route path="/participants/compare" element={<PlayerComparisonPage />} />
         <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
 
         <Route path="/dataset-releases" element={<DatasetReleaseCataloguePage />} />
@@ -64,7 +92,8 @@ export function PublicApp() {
 
         <Route path="/sign-in" element={<AuthenticationPage />} />
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
-        <Route path="/account" element={<AccountPage />} />
+        <Route path="/account" element={<Navigate to="/account/overview" replace />} />
+        <Route path="/account/:section" element={<AccountPage />} />
         <Route path="/submissions/new" element={<SubmissionPage />} />
         <Route
           path="/submissions/batches/new"
@@ -72,6 +101,7 @@ export function PublicApp() {
         />
         <Route path="/submissions/batches" element={<BatchReportsPage />} />
         <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
+        <Route path="/admin" element={<AdministrationPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
         <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />

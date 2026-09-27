@@ -11,6 +11,7 @@ user-testing evidence. For testing **strategy and procedures**, see
 ## Requirements traceability
 
 - [Sprint 1 requirements traceability](../planning/sprint-1-requirements-traceability.md)
+- [Sprint 2 requirements and rubric traceability](../planning/sprint-2-requirements-traceability.md)
 - [Project backlog and milestone plan](../planning/project-backlog.md)
 
 ## Verification and validation evidence
@@ -27,6 +28,9 @@ screenshots); they are not duplicated here. Notable examples include:
 - [Issue #257 — dependency-cruiser verification](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-257-dependency-cruiser-verification.md)
 - [Issue #273 — accessibility and responsive-design audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-273-accessibility-responsive-audit.md)
 - [Issue #274 — security/privacy/dependency audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-274-security-privacy-dependency-audit.md)
+- [Issue #329 — Vite/Vitest toolchain migration](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-329-vite-vitest-toolchain-migration.md)
+- [Issue #578 — repository-wide code coverage](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-578-repository-code-coverage.md)
+- [Issue #648 — coverage post-deployment ordering and stability](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-648-coverage-post-deployment-stability.md)
 
 Browse the [full validation folder](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation)
 for a record tied to a specific issue number.
@@ -43,18 +47,26 @@ and the [session template](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analyti
 
 Facilitators prepare environment-specific accounts, fixtures, batches and reusable validation/reference inputs from `testing/user-testing/`. The pack deliberately keeps credentials out of Git and separates safe fixture-5 validation/reference data from writable success/correction scenarios that require disposable test state.
 
+Sprint 3 continues the same protocol and evidence model through dedicated feature-level user-feedback issues #601–#607 and #612. These issues remain separate validation/evidence activities and do not automatically block linked implementation issues from closing. Implementation issues close according to their own Definition of Done and genuine technical/process dependencies. Any `Cannot Begin Until` list on a user-feedback issue is a testing-readiness checklist identifying functionality that must be deployed and usable before the session starts.
+
+Sprint 3 session evidence is retained under [`evidence/user-testing/sprint-3/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3) and consolidated in `sprint-3-user-testing-summary.md`. Facilitator scenarios are prepared from `testing/user-testing/SPRINT3_SCENARIOS.md`; credentials and API keys remain outside Git.
+
 The execution work remains split by workflow so findings can be attributed cleanly:
 
 - #416 — public / analyst;
 - #417 — submission / batch;
 - #418 — review / administration.
 
-| Date             | Session                                                                                                                                                                                                                                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 23 Aug 2026      | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md)                                                                                                                         |
-| 10 & 13 Sep 2026 | [Issue #418 — reviewer / administrator P04](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md) — initial `REV-01` failure exposed #463; same task succeeded after the fix, followed by `REV-02`, `REV-05` and `ADM-02`. |
+| Date             | Session                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 23 Aug 2026      | [Issue #199 — public data journeys](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/2026-08-23-issue-199-public-data-journeys.md)                                                                                                                                                                         |
+| 7 Sep 2026       | [P03 — supplementary public/analyst evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-07-P03-public.md) — retained as supplementary evidence; it is not counted as a formal task attempt because the standard facilitator metadata/outcomes were not retained.                   |
+| 10 Sep 2026      | [P01 — formal public/analyst session](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-10-P01-public.md) and [P02 — formal public/analyst session](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-10-P02-public.md). |
+| 10 & 13 Sep 2026 | [Issue #418 — reviewer / administrator P04](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-10-P04-reviewer.md) — initial `REV-01` failure exposed #463; the same task succeeded after the fix, followed by `REV-02`, `REV-05` and `ADM-02`.                                             |
+| 11 Sep 2026      | [Issue #417 — P05 submitter](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-11-P05-submitter.md) — first external submitter session; accepted findings were linked to implementation work before the second session.                                                                    |
+| 15 Sep 2026      | [Issue #417 — P06 submitter](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-2/2026-09-15-P06-submitter.md) — second external submitter session; retested several P05 improvements and recorded four new findings that remain explicitly pending team disposition.                                 |
 
-Further Sprint 2 formal user-testing sessions will be added to this table as they are produced. The retained repository evidence is authoritative; documentation deployment does not retrieve or regenerate feedback from an external service.
+Sprint 2 formal user testing is complete for the three tracked workstreams. The consolidated summary remains authoritative for finding decisions, issue links and retest status; unresolved or pending findings are carried visibly rather than treated as missing test evidence.
 
 ### Reviewer / administration traceability
 

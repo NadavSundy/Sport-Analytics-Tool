@@ -20,6 +20,8 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-20',
   endDate: '2026-08-20',
 };
@@ -120,6 +122,14 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
+  await page.route('**/api/v1/competitions/5', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { competitionId: '5', name: 'Example Competition' } }),
+    });
+  });
+
   await page.route('**/api/v1/fixtures?**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -129,12 +139,13 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('the account Submit events action opens the unified submission workflow', async ({ page }) => {
-  await page.goto('/account');
-  await page.getByRole('link', { name: 'Submit events' }).click();
+test('Manage Submission opens the unified submission workflow', async ({ page }) => {
+  await page.goto('/account/overview');
+  await page.getByRole('button', { name: 'Manage Submission' }).click();
+  await page.getByRole('link', { name: 'Submit data' }).click();
 
   await expect(page).toHaveURL(/\/submissions\/new$/);
-  await expect(page.getByRole('heading', { name: 'Submit Delivery Events' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Submit data' })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
   await expect(page.getByRole('radio', { name: /Season/ })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Back catalogue/ })).toBeVisible();
@@ -149,6 +160,100 @@ test('the account Submit events action opens the unified submission workflow', a
   await expect(guided.getByRole('radio', { name: /Advanced technical JSON/ })).toHaveCount(0);
   await expect(advanced.getByRole('radio', { name: /Advanced technical JSON/ })).toBeVisible();
   await expect(page.getByLabel('Delivery events JSON')).toHaveCount(0);
+});
+
+test('submission workspace uses the centred responsive content boundary', async ({ page }) => {
+  await page.goto('/submissions/new');
+
+  for (const viewport of [
+    { width: 375, expectedWidth: 351 },
+    { width: 768, expectedWidth: 720 },
+    { width: 1440, expectedWidth: 1200 },
+    { width: 1920, expectedWidth: 1200 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: 900 });
+
+    const layout = await page.locator('.submission-page').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        right: Math.round(window.innerWidth - rect.right),
+        width: Math.round(rect.width),
+        overflows: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+
+    expect(layout.width).toBe(viewport.expectedWidth);
+    expect(Math.abs(layout.left - layout.right)).toBeLessThanOrEqual(1);
+    expect(layout.overflows).toBe(false);
+  }
+});
+
+test('submitter originates a new fixture proposal for reviewer resolution', async ({ page }) => {
+  await page.route('**/api/v1/batches', async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe('POST');
+    expect(request.headers()['x-batch-package-version']).toBe('1.1');
+    expect(request.headers()['x-competition-id']).toBe('5');
+    expect(request.postDataJSON()).toMatchObject({
+      contractVersion: '1.1',
+      competition: { context: { name: 'Example Competition' } },
+      season: { context: { name: '2026' } },
+      fixtures: [
+        {
+          sourceId: expect.stringMatching(/^submitter:fixture:/),
+          context: {
+            date: fixture.startDate,
+            teams: [{ context: { name: 'Wanderers' } }, { context: { name: 'Strikers' } }],
+          },
+          proposal: {
+            endDate: fixture.startDate,
+            matchType: 'T20',
+            teamType: 'club',
+            gender: 'female',
+            ballsPerOver: 6,
+            outcome: 'no result',
+            sourceVersion: '1',
+            sourceRevision: 0,
+          },
+        },
+      ],
+    });
+    expect(seasonUploadPackageSchema.safeParse(request.postDataJSON()).success).toBe(true);
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          batchReference,
+          status: 'stored',
+          statusUrl: `/api/v1/batches/${batchReference}`,
+          receivedAt: '2026-09-15T09:30:00.000Z',
+        },
+      }),
+    });
+  });
+
+  await page.goto('/submissions/new');
+  await page.getByLabel('Fixture', { exact: true }).selectOption('new');
+  await expect(page.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
+  await page.getByLabel('Season name').fill('2026');
+  await page.getByLabel('Fixture date').fill(fixture.startDate);
+  await page.getByLabel('Home team name').fill('Wanderers');
+  await page.getByLabel('Away team name').fill('Strikers');
+  await expect(page.getByLabel('Match type')).toHaveValue('T20');
+  await page.getByLabel('Team type').selectOption('club');
+  await page.getByLabel('Gender').selectOption('female');
+  await page.getByLabel('Fixture package').setInputFiles({
+    name: 'new-fixture.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(readableFixturePackage()),
+  });
+  await page.getByRole('button', { name: 'Upload fixture package' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Fixture upload received' })).toBeFocused();
+  await expect(page.getByText(batchReference, { exact: true })).toBeVisible();
+  await expect(page.getByText(/administrator can create the canonical fixture/i)).toBeVisible();
 });
 
 test('submitter stages advanced technical JSON with a keyboard', async ({ page }) => {
@@ -304,6 +409,7 @@ test(
               },
               progress: { total: 0, processed: 0, accepted: 0, rejected: 0 },
               counts: { accepted: 0, rejected: 0, unresolved: 0, duplicate: 0, conflicting: 0 },
+              lineage: { replacesBatchReference: null, supersededByBatchReference: null },
               review: null,
             },
           ],
@@ -314,8 +420,11 @@ test(
 
     await page.goto('/submissions/new');
     await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue('7');
-    await expect(page.getByLabel('Fixture', { exact: true }).locator('option')).toHaveText(
+    await expect(page.getByLabel('Fixture', { exact: true }).locator('option').first()).toHaveText(
       '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+    );
+    await expect(page.getByLabel('Fixture', { exact: true }).locator('option').last()).toHaveText(
+      'New fixture',
     );
     await expect(
       page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
@@ -349,7 +458,8 @@ test(
       .getByRole('link', { name: 'View submission history' })
       .click();
     await expect(page).toHaveURL(/\/submissions\/batches$/);
-    await expect(page.getByRole('link', { name: batchReference })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'fixture-package.json' })).toBeVisible();
+    await expect(page.getByText(batchReference)).toBeVisible();
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );
@@ -489,6 +599,7 @@ test(
               },
               progress: { total: 1, processed: 1, accepted: 0, rejected: 1 },
               counts: { accepted: 0, rejected: 1, unresolved: 1, duplicate: 0, conflicting: 0 },
+              lineage: { replacesBatchReference: null, supersededByBatchReference: null },
               review: null,
             },
             errorGroups: [{ ruleCode: 'REFERENCE_AMBIGUOUS', count: 1 }],
@@ -514,7 +625,9 @@ test(
                 unresolved: 1,
               },
             ],
+            participantOnboarding: [],
             acceptedSamples: [],
+            blockingItems: [],
             items: [
               {
                 ordinal: 0,

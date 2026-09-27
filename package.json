@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "dev": "node scripts/run-development-app.mjs",
@@ -17,35 +17,40 @@
     "dev:worker": "npm run dev --workspace=@sport-analytics/worker",
     "data:performance:generate": "node scripts/generate-representative-corpus.mjs",
     "measure:api-response-times": "node scripts/measure-api-response-times.mjs",
+    "verify:production-scale-deployment": "node scripts/production-scale-deployment-acceptance.mjs",
     "measure:performance:local": "npm run measure:performance --workspace=@sport-analytics/backend --",
-    "build": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/backend && npm run build --workspace=@sport-analytics/frontend && npm run build --workspace=@sport-analytics/worker",
+    "build": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/object-storage && npm run build --workspace=@sport-analytics/backend && npm run build --workspace=@sport-analytics/frontend && npm run build --workspace=@sport-analytics/worker",
     "check:contracts-public-api": "node scripts/check-contracts-public-api.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test:unit && npm run test:frontend && npm run test:api && npm run test:worker && npm run test:contracts && npm run test:deployment && npm run test:ci-routing",
+    "test": "npm run test:unit && npm run test:frontend && npm run test:api && npm run test:api-contract && npm run test:worker && npm run test:contracts && npm run test:deployment && npm run test:ci-routing",
     "test:backend": "npm run test --workspace=@sport-analytics/backend && npm run test:database",
     "test:backend:local": "npm run test --workspace=@sport-analytics/backend && npm run test:database:local",
     "test:unit": "npm run test:unit --workspace=@sport-analytics/backend",
+    "pretest:frontend": "npm run build --workspace=@sport-analytics/contracts",
     "test:frontend": "npm run test --workspace=@sport-analytics/frontend",
     "test:api": "npm run test:api --workspace=@sport-analytics/backend",
+    "test:api-contract": "npm run test:contract --workspace=@sport-analytics/backend",
     "test:worker": "npm run test --workspace=@sport-analytics/worker",
     "test:database": "npm run test:database --workspace=@sport-analytics/backend",
     "test:contracts": "npm run test --workspace=@sport-analytics/contracts",
     "test:deployment": "node --test tests/deployment/*.test.mjs",
     "test:e2e": "node scripts/run-playwright.mjs",
-    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "pretest:coverage": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/object-storage",
+    "test:coverage": "node scripts/coverage/run-coverage.mjs",
     "test:ci": "npm run test && npm run test:database && npm run test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "structure:check": "node scripts/check-required-files.mjs",
     "openapi:lint": "redocly lint docs/api/openapi.yaml",
     "deploy:prepare:backend": "node scripts/prepare-backend-deployment.mjs",
+    "smoke:backend-container": "node scripts/smoke-check-backend-container.mjs",
     "check": "npm run structure:check && npm run format:check && npm run lint && npm run build --workspace=@sport-analytics/contracts && npm run typecheck && npm run test && npm run openapi:lint && npm run build",
     "test:database:local": "node scripts/test-database-local.mjs",
     "hygiene:knip": "knip",
     "hygiene:dependencies": "syncpack lint",
     "hygiene": "npm run hygiene:knip && npm run hygiene:dependencies && npm run hygiene:architecture",
-    "hygiene:architecture": "depcruise --config .dependency-cruiser.cjs apps/frontend/src apps/backend/src apps/worker/src packages/contracts/src packages/batch-processing/src",
+    "hygiene:architecture": "depcruise --config .dependency-cruiser.cjs apps/frontend/src apps/backend/src apps/worker/src packages/contracts/src packages/batch-processing/src packages/object-storage/src",
     "ci:plan": "node scripts/ci-change-plan.mjs",
     "test:ci-routing": "node --test tests/ci/*.test.mjs",
     "ci:local": "node scripts/ci-local.mjs",
@@ -53,7 +58,8 @@
     "verify:intermediate-ingestion:invariants": "node scripts/verify-intermediate-ingestion.mjs --invariants-only",
     "ci:docker": "node scripts/ci-docker.mjs",
     "hooks:install": "node scripts/git-hooks.mjs install",
-    "hooks:remove": "node scripts/git-hooks.mjs remove"
+    "hooks:remove": "node scripts/git-hooks.mjs remove",
+    "test:e2e:api-explorer-live": "cross-env PLAYWRIGHT_API_EXPLORER_LIVE=1 PLAYWRIGHT_API_BASE_URL=https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/api/v1 node scripts/run-playwright.mjs tests/e2e/api-explorer-live.spec.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -61,7 +67,8 @@
     "@redocly/cli": "^2.46.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
+    "cross-env": "^10.1.0",
     "dependency-cruiser": "^18.2.0",
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^4.6.2",
@@ -70,5 +77,8 @@
     "syncpack": "^15.3.3",
     "typescript": "5.5.4",
     "wrangler": "^4.119.0"
+  },
+  "overrides": {
+    "vite": "^7.3.6"
   }
 }

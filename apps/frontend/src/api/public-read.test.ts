@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from './client';
 import { ApiContractError, fixtureEventExportFilename, requestPublicApi } from './public-read';
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 function response(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -36,7 +38,7 @@ describe('public read API client', () => {
 
     expect(result.data[0]?.name).toBe('Premier League');
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/v1/competitions?name=Premier',
+      `${testApiBaseUrl}/competitions?name=Premier`,
       expect.objectContaining({
         headers: { Accept: 'application/json' },
       }),

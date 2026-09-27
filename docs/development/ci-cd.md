@@ -36,6 +36,17 @@ planner result and every job that the planner marked as required.
 The workflow name and final job name must therefore not be changed casually. If either changes, the
 branch-protection rule must be reviewed before merge.
 
+### User-feedback status is not a CI closure gate
+
+As of Issue #647 (17 September 2026), Sprint 3 user-feedback issues #601–#607 and #612 are
+independent validation/evidence tasks. Repository CI does **not** reopen or block an implementation
+issue or Pull Request solely because one of those user-feedback issues remains open.
+
+Gitea dependencies are reserved for genuine technical/process prerequisites. The ordinary Pull Request
+quality gate, unit/integration/E2E tests, coverage, hygiene, documentation, contracts, security and
+deployment checks remain unchanged. If later user testing finds a defect or accepted improvement, the
+finding is linked to a new or reopened implementation issue and retested after the change.
+
 ## Hosted runner environment
 
 The university provides two shared Gitea Actions runners. Project workflows target the fixed label:
@@ -148,8 +159,8 @@ the same suites in a separate workflow:
 
 ```text
 unrelated Pull Request -> normal change-aware lanes only
-Intermediate ingestion  -> validation + focused browser -> Sport Analytics CI / quality
-Intermediate + broad UI  -> validation + full browser    -> Sport Analytics CI / quality
+Intermediate ingestion -> validation + focused browser -> Sport Analytics CI / quality
+Intermediate + broad UI -> validation + full browser    -> Sport Analytics CI / quality
 main push                -> affected deployment only after required Pull Request quality
 ```
 
@@ -254,23 +265,38 @@ A hygiene failure is a required validation failure and therefore makes `quality`
 
 ## Coverage policy
 
-`npm run test:coverage` currently duplicates unit suites and does not enforce a repository-wide
-coverage threshold. Running it on every Pull Request would consume runner time without changing the
-merge decision.
+Issue #648 keeps repository coverage accurate and visible while removing it from the blocking
+quality/deployment path. The authoritative command remains `npm run test:coverage`; it runs the five
+required workspace coverage passes and aggregates covered/coverable counters into one repository
+summary.
 
-The policy is therefore:
+Coverage is now a **late evidence stage**:
 
-- Pull Requests: run the relevant functional/unit/browser/database checks, but do not duplicate them
-  solely for coverage;
-- pushes to `main`: do not repeat coverage or application test suites after the required Pull Request
-  quality gate has already passed;
-- `workflow_dispatch` of **Sport Analytics CI**: generate coverage as part of deliberate full validation.
+- ordinary blocking validation/browser checks run first;
+- `quality` depends only on planning and the normal required validation lanes;
+- deployment jobs depend on `quality`, never on coverage;
+- coverage waits until `quality` and all deployment jobs have resolved, then runs when the change plan
+  requests it; and
+- a coverage-test/threshold failure is recorded as `FAILED / INCOMPLETE` evidence without retroactively
+  invalidating an otherwise successful quality/deployment path.
 
-The Intermediate ingestion merge gate does not generate a second coverage run; it reuses the same
-change-aware validation/browser ownership described above.
+The frontend coverage command keeps the standard `vitest run --coverage` behaviour. Coverage-specific retries and worker limits were investigated and rejected because they would mask failures rather than address their cause. The separate local frontend-test failures encountered during investigation were traced to stale shared-contract build output and addressed independently in #656. Coverage failures therefore remain visible as late evidence without gating quality or deployment.
 
-If a repository-wide coverage threshold is introduced later, this policy must be reviewed because
-coverage may then become a merge-affecting gate.
+Coverage still uploads the complete `coverage/` directory through `actions/upload-artifact@v4`, including
+per-workspace HTML/LCOV/JSON reports, combined output, and CI status evidence. A failed/incomplete coverage
+run does not publish a new live badge; the previous valid badge is retained.
+
+Coverage routing includes production-source changes in the five covered workspaces, coverage
+infrastructure/configuration changes, `workflow_dispatch`, and every push to `main`. Local change-aware
+CI keeps `npm run test:coverage` strict and runs it last when selected.
+
+Repository thresholds remain centralised through `COVERAGE_THRESHOLD_LINES`,
+`COVERAGE_THRESHOLD_STATEMENTS`, `COVERAGE_THRESHOLD_FUNCTIONS`, and `COVERAGE_THRESHOLD_BRANCHES`.
+Thresholds are still calculated by the authoritative coverage command; in hosted CI their non-zero exit
+is preserved as coverage evidence rather than a deployment gate.
+
+See [Repository-wide Code Coverage](../testing/code-coverage.md) for source scope, aggregation, outputs,
+routing and verification.
 
 ## Optional local CI parity before a push
 
@@ -419,7 +445,7 @@ pipelines and therefore cannot race or deploy before the shared post-merge quali
 Application deployment paths are documented in:
 
 - [Azure backend](../deployment/azure-backend.md)
-- [Azure frontend](../deployment/azure-fronted.md)
+- [Cloudflare Pages frontend](../deployment/frontend-cloudflare-pages.md)
 - [Cloudflare Pages](../deployment/cloudflare_pages.md)
 - [Deployment overview](../deployment/overview.md)
 
@@ -437,12 +463,14 @@ The job graph should be read as follows:
 - `validation` skipped on `main`: expected because the application quality suite already passed in the
   required up-to-date Pull Request;
 - `validation` failure: one or more required formatting, hygiene, lint/typecheck, workspace
-  tests/builds, PostgreSQL integration, documentation, deployment-helper, OpenAPI or manual coverage
-  checks failed;
+  tests/builds, PostgreSQL integration, documentation, deployment-helper or OpenAPI checks failed;
+- `coverage` skipped: expected when the change plan does not require repository-wide reporting;
+- `coverage` failure: a required workspace coverage run/report failed or a configured combined threshold
+  was not met;
 - `browser` skipped on a Pull Request: expected when browser validation is not required;
 - `browser` skipped on `main`: expected on the deployment-only post-merge path;
 - `browser` failure: the production browser build, Playwright journey or accessibility validation failed;
-- `quality` failure: planning failed or a required Pull Request validation lane did not complete
+- `quality` failure: planning failed or a required validation, browser or coverage lane did not complete
   successfully;
 - deployment failure after merge: source quality has already passed, but the target environment,
   deployment artifact or live smoke check needs investigation.
@@ -470,3 +498,21 @@ silently changing project process in YAML.
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+
+### Local frontend test dependency
+
+Use the repository-level frontend test command for normal local validation:
+
+```powershell
+npm.cmd run test:frontend
+```
+
+The command rebuilds `@sport-analytics/contracts` before running the frontend Vitest suite. This mirrors the hosted validation dependency order and prevents the frontend from consuming stale compiled shared-contract output.
+
+The workspace-level command:
+
+```powershell
+npm.cmd run test --workspace=@sport-analytics/frontend
+```
+
+is a low-level test command. When using it directly, rebuild shared contracts first if their source has changed.

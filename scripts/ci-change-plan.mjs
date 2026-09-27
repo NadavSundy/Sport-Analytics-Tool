@@ -59,9 +59,11 @@ function emptyPlan() {
     hygiene: false,
     deployment: false,
     openapi: false,
+    apiContract: false,
     coverage: false,
     deployFrontend: false,
     deployBackend: false,
+    deployWorker: false,
     deployDocs: false,
     needsNpm: false,
   };
@@ -80,6 +82,7 @@ function markFull(plan) {
   plan.hygiene = true;
   plan.deployment = true;
   plan.openapi = true;
+  plan.apiContract = true;
   plan.needsNpm = true;
 }
 
@@ -98,6 +101,39 @@ function isEvidenceLightweight(file) {
   return file.startsWith('evidence/') && EVIDENCE_LIGHTWEIGHT_EXTENSIONS.has(path.extname(file));
 }
 
+function isCoverageInfrastructurePath(file) {
+  return (
+    new Set([
+      'package.json',
+      'package-lock.json',
+      '.gitea/workflows/ci.yml',
+      'apps/frontend/package.json',
+      'apps/frontend/vite.config.ts',
+      'apps/backend/package.json',
+      'apps/backend/vitest.config.ts',
+      'apps/worker/package.json',
+      'apps/worker/vitest.config.ts',
+      'packages/contracts/package.json',
+      'packages/contracts/vitest.config.ts',
+      'packages/batch-processing/package.json',
+      'packages/batch-processing/vitest.config.ts',
+      'scripts/ci-change-plan.mjs',
+      'scripts/ci-local.mjs',
+      'tests/ci/coverage-strategy.test.mjs',
+    ]).has(file) || file.startsWith('scripts/coverage/')
+  );
+}
+
+function isCoverageSourcePath(file) {
+  return [
+    'apps/frontend/src/',
+    'apps/backend/src/',
+    'apps/worker/src/',
+    'packages/contracts/src/',
+    'packages/batch-processing/src/',
+  ].some((prefix) => file.startsWith(prefix));
+}
+
 function isIntermediateIngestionPath(file) {
   if (
     [
@@ -107,6 +143,7 @@ function isIntermediateIngestionPath(file) {
       'apps/backend/src/modules/submissions/',
       'apps/worker/',
       'packages/batch-processing/',
+      'packages/object-storage/',
       'apps/frontend/src/features/reviews/',
       'apps/frontend/src/features/submissions/',
     ].some((prefix) => file.startsWith(prefix))
@@ -154,6 +191,8 @@ function isIntermediateIngestionPath(file) {
 function applyPath(plan, file) {
   if (!file) return;
 
+  if (isCoverageInfrastructurePath(file) || isCoverageSourcePath(file)) plan.coverage = true;
+
   const intermediateIngestion = isIntermediateIngestionPath(file);
   if (intermediateIngestion) plan.intermediateIngestion = true;
 
@@ -177,6 +216,8 @@ function applyPath(plan, file) {
       file === 'docs/api/openapi.yaml'
     ) {
       plan.openapi = true;
+      // A specification-only change must still be checked against the implementation.
+      plan.apiContract = true;
     }
     return;
   }
@@ -186,6 +227,7 @@ function applyPath(plan, file) {
     if (file === 'package.json' || file === 'package-lock.json') {
       plan.deployFrontend = true;
       plan.deployBackend = true;
+      plan.deployWorker = true;
       plan.deployDocs = true;
     } else if (file === 'tsconfig.base.json') {
       plan.deployFrontend = true;
@@ -196,6 +238,12 @@ function applyPath(plan, file) {
 
   if (file === '.gitea/workflows/ci.yml') {
     markFull(plan);
+    return;
+  }
+
+  if (file === '.gitea/workflows/deploy-worker.yml') {
+    markFull(plan);
+    plan.deployWorker = true;
     return;
   }
 
@@ -223,6 +271,7 @@ function applyPath(plan, file) {
     plan.contracts = true;
     plan.deployFrontend = true;
     plan.deployBackend = true;
+    plan.deployWorker = true;
     plan.frontend = true;
     plan.backend = true;
     plan.e2e = true;
@@ -237,6 +286,17 @@ function applyPath(plan, file) {
     plan.backend = true;
     plan.worker = true;
     plan.database = true;
+    plan.deployment = true;
+    plan.deployBackend = true;
+    plan.deployWorker = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
+  if (file.startsWith('packages/object-storage/')) {
+    plan.backend = true;
+    plan.worker = true;
     plan.deployment = true;
     plan.deployBackend = true;
     plan.hygiene = true;
@@ -276,11 +336,15 @@ function applyPath(plan, file) {
     const affectsBackendRuntime =
       file.startsWith('apps/backend/src/') ||
       file.startsWith('apps/backend/certs/') ||
+      file === 'apps/backend/Dockerfile' ||
       file === 'apps/backend/package.json' ||
       file === 'apps/backend/tsconfig.json';
 
     if (affectsBackendRuntime) {
       plan.deployBackend = true;
+      if (file === 'apps/backend/Dockerfile') {
+        plan.deployment = true;
+      }
     }
     return;
   }
@@ -289,6 +353,7 @@ function applyPath(plan, file) {
     plan.worker = true;
     plan.database = true;
     plan.deployment = true;
+    plan.deployWorker = true;
     plan.hygiene = true;
     plan.needsNpm = true;
     return;
@@ -307,6 +372,7 @@ function applyPath(plan, file) {
   if (
     file === 'scripts/prepare-backend-deployment.mjs' ||
     file === 'scripts/smoke-check-backend-artifact.mjs' ||
+    file === 'scripts/smoke-check-backend-container.mjs' ||
     file === 'scripts/deploy-backend-azure.py'
   ) {
     plan.backend = true;
@@ -362,6 +428,25 @@ function applyPath(plan, file) {
     return;
   }
 
+  if (file.startsWith('infra/azure/worker/')) {
+    plan.worker = true;
+    plan.database = true;
+    plan.deployment = true;
+    plan.deployWorker = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
+  if (file.startsWith('infra/azure/backend/')) {
+    plan.backend = true;
+    plan.deployment = true;
+    plan.deployBackend = true;
+    plan.hygiene = true;
+    plan.needsNpm = true;
+    return;
+  }
+
   if (file.startsWith('infra/') || file.startsWith('database/')) {
     plan.backend = true;
     plan.database = true;
@@ -408,16 +493,28 @@ export function classifyChangedFiles(files, { eventName = 'pull_request' } = {})
     plan.needsNpm = true;
   }
 
+  if (plan.backend) {
+    // Any change that can alter backend behaviour is checked against the published
+    // OpenAPI contract, as is any change to the contract itself (see above).
+    plan.apiContract = true;
+  }
+
   if (plan.frontend || plan.backend || plan.worker || plan.contracts) {
     plan.hygiene = true;
     plan.needsNpm = true;
   }
 
-  // Coverage duplicates unit suites and currently enforces no repository-wide
-  // threshold. Pull Requests remain the authoritative automated quality gate,
-  // and main pushes are deployment-only after that gate. Generate coverage only
-  // for an explicit full workflow dispatch until a threshold makes it merge-affecting.
-  plan.coverage = eventName === 'workflow_dispatch';
+  // Coverage is a late, non-blocking evidence lane. Production-source and
+  // coverage-infrastructure Pull Requests request it after normal quality; manual
+  // runs and every merged main commit also record a repository-wide baseline.
+  if (eventName === 'workflow_dispatch') {
+    plan.coverage = true;
+  } else if (eventName === 'push') {
+    // Every merged main commit receives a reproducible repository baseline.
+    // Main pushes already skip the normal application validation lanes, so this
+    // does not duplicate the pre-merge unit suites in hosted CI.
+    plan.coverage = true;
+  }
 
   return plan;
 }

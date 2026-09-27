@@ -4,12 +4,14 @@ import type {
   AdministratorSubmitterAccessUpdate,
 } from '@sport-analytics/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
+import { signInPathFor } from '../auth/auth-return';
+import { Breadcrumbs } from '../../components/NavigationPrimitives';
 import {
   AdminUserManagementContractError,
   getAdministratorUserManagement,
@@ -484,6 +486,7 @@ function ManageDialog({
 
 export function AdminUsersPage() {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   const client = useAuthenticatedApiClient();
   const [pageState, setPageState] = useState<PageState>({ kind: 'loading' });
   const [search, setSearch] = useState('');
@@ -609,7 +612,8 @@ export function AdminUsersPage() {
     });
   }
 
-  if (!isLoading && !isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isLoading && !isAuthenticated)
+    return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
 
   const users = pageState.kind === 'ready' ? pageState.data.users : [];
   const query = search.trim().toLocaleLowerCase();
@@ -625,8 +629,14 @@ export function AdminUsersPage() {
 
   return (
     <section className="admin-users-page content-boundary" aria-labelledby="admin-users-title">
+      <Breadcrumbs
+        items={[
+          { label: 'Administration', to: '/admin' },
+          { label: 'Users & access', to: '#' },
+        ]}
+      />
       <header className="page-heading admin-users-page__heading">
-        <p className="eyebrow">Administrator workspace</p>
+        <p className="eyebrow">Administration</p>
         <h1 id="admin-users-title">Manage users</h1>
         <p>
           Find accounts, understand access at a glance, and manage roles, requests, and competition

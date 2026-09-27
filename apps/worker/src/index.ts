@@ -9,6 +9,8 @@ import { createLogger } from './logger';
 import { OutboxRelay } from './outbox-relay';
 import { createProbeJobHandler } from './probe-job';
 import { createRuntimeDependencies } from './runtime-dependencies';
+import { createDatasetReleaseJobHandler } from './dataset-release-job';
+import { createBatchPublicationJobHandler } from './batch-publication-job';
 
 async function main(): Promise<void> {
   const environment = loadWorkerEnvironment();
@@ -22,7 +24,7 @@ async function main(): Promise<void> {
   );
   const batchValidation = createBatchValidationJobHandler(
     dependencies.database,
-    dependencies.objectStorage,
+    dependencies.ingestionObjectStorage,
     logger,
     {
       workerId: environment.workerId,
@@ -30,11 +32,29 @@ async function main(): Promise<void> {
       leaseMs: environment.BATCH_LEASE_MS,
     },
   );
+  const batchPublication = createBatchPublicationJobHandler(dependencies.database, logger, {
+    workerId: environment.workerId,
+    chunkSize: environment.BATCH_CHUNK_SIZE,
+    leaseMs: environment.BATCH_LEASE_MS,
+  });
+  const datasetRelease = createDatasetReleaseJobHandler(
+    dependencies.database,
+    dependencies.releaseObjectStorage,
+    logger,
+    {
+      workerId: environment.workerId,
+      leaseMs: environment.BATCH_LEASE_MS,
+      deploymentEnvironment: environment.DEPLOYMENT_ENVIRONMENT,
+      storageProvider: environment.OBJECT_STORAGE_PROVIDER,
+    },
+  );
   const pump = new DeliveryPump(
     dependencies.deliveryReceiver,
     createJobHandler({
       probe: createProbeJobHandler(dependencies.checks, logger, environment.WORKER_PROBE_DELAY_MS),
       batchValidation: batchValidation.handler,
+      batchPublication: batchPublication.handler,
+      datasetRelease: datasetRelease.handler,
     }),
     logger,
   );
@@ -57,7 +77,7 @@ async function main(): Promise<void> {
     },
   );
   pump.start();
-  outbox.start();
+  if (dependencies.useOutboxRelay) outbox.start();
   logger.info('Asynchronous worker is running.', {
     workerId: environment.workerId,
     port: environment.WORKER_PORT,

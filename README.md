@@ -2,7 +2,9 @@
 
 Event-driven sports analytics platform providing validated submissions, derived statistics, dataset exports, and a versioned public API for COMS3011A.
 
-> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and approve or reject pending submitter-access requests, re-scope approved submitters, or revoke access. Approved submitters can submit validated, ordered cricket delivery events directly or through bounded JSON/CSV file uploads within their authorised competition scope. Public competition, season, fixture, event, competitor, participant, and derived fixture-statistics reads are available without authentication. The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Filtered dataset exports and later-tier aggregation and release features remain future work.
+[![Repository coverage](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/raw/branch/coverage-badge/badge.svg)](https://sports-analytics-tool.pages.dev/testing/code-coverage/)
+
+> **Current status:** The Express API validates Supabase identities, synchronizes provider-neutral application accounts, exposes the current user profile, and enforces `viewer`, `submitter`, and `admin` roles with competition-scoped submissions. Administrators can review users and manage submitter access. Approved submitters use the staged batch workflow for season and back-catalogue packages, with asynchronous validation, reference resolution, reviewer decisions, correction resubmission, and publication; administrators retain privileged direct/import routes. Public competition, season, fixture, event, competitor, participant, derived fixture-statistics, and participant season/competition/career aggregate reads are available without authentication. Filtered fixture-event and calculation-trace exports are available as JSON and CSV, and immutable versioned dataset releases can be generated and downloaded. External consumers can use administrator-issued API keys with per-minute rate limits and UTC daily quotas. The backend also provides the required runtime external API integration through Open-Meteo via `GET /api/v1/weather`. Advanced analyst-defined statistics, live-feed and bitemporal processing, change feeds, and other Advanced-tier functionality remain future work.
 
 ## Repository structure
 
@@ -25,7 +27,7 @@ See [Repository Structure](docs/architecture/repository-structure.md) for the de
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 20.19+ (20.x) or Node.js 22.12+; hosted CI/deployment use Node.js 22 LTS
 - npm 10 or later
 - Python 3.10 or later and MkDocs Material for the documentation site
 - Access to the current Supabase-hosted PostgreSQL development database
@@ -170,22 +172,25 @@ The Sport Analytics Tool uses Microsoft Azure for hosting.
 
 ### Backend
 
-URL: https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/
+URL: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io
 
-- Platform: Azure App Service (Linux)
-- Runtime: Node.js 22 LTS
+API base URL: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1
+
+- Platform: Azure Container Apps
+- Runtime: Node.js 22 LTS production container
 - Environment: Development
-- Deployment: Azure App Service
-- Configuration: Environment variables managed through Azure App Service
+- Deployment: immutable ACR image and Bicep through Gitea Actions
+- Configuration: Container Apps configuration; Key Vault-backed secrets; managed identities for ACR and Blob access
+- Rollback during acceptance: existing App Service `statsthegame-api-dev` remains manually deployable
 
 ### Frontend
 
-URL: https://statsthegame-web-dev-dngxgqb2esbudsce.southafricanorth-01.azurewebsites.net/
+URL: https://sport-analytics-tool-web.pages.dev/
 
-- Platform: Azure App Service (Linux)
+- Platform: Cloudflare Pages
 - Runtime: Node.js 22 LTS
 - Environment: Development
-- Deployment: Azure App Service
+- Deployment: Gitea Actions with Wrangler
 - Built using Vite.
 
 ### Asynchronous ingestion worker
@@ -204,15 +209,15 @@ The deployment workflow will:
 
 1. install root workspace dependencies from `package-lock.json`;
 2. lint, type-check and test the affected workspace and shared contracts;
-3. build the application from its `apps/frontend` or `apps/backend` workspace;
-4. deploy the prepared application bundle to Azure App Service; and
-5. retry a content-aware smoke or health check against the deployed service.
+3. build the frontend bundle or the backend production container from the root workspace;
+4. deploy the frontend to Cloudflare Pages and the backend immutable container image to Azure Container Apps; and
+5. retry content-aware health and database smoke checks against the deployed backend service.
 
 Deployment credentials are stored securely using repository Action Secrets.
 
 No deployment credentials are committed to source control.
 
-See [Azure frontend deployment](docs/deployment/azure-fronted.md) and
+See [Cloudflare Pages frontend deployment](docs/deployment/frontend-cloudflare-pages.md) and
 [Azure backend deployment](docs/deployment/azure-backend.md) for workflow triggers, required Gitea
 secrets, artifact contents and failure behaviour.
 
@@ -297,3 +302,4 @@ shared register remains available while its entries are migrated.
 
 The preceding README was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The asynchronous worker setup and deployment summary were added with the assistance of Codex[GPT-5].
+The Issue #563 backend Container Apps deployment summary was updated with the assistance of Codex[GPT-5].

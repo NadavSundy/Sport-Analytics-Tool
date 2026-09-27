@@ -1,19 +1,18 @@
 import { resolve } from 'node:path';
+import { advanceFixtureStatisticsCacheVersions } from '@sport-analytics/batch-processing';
 import { fixtureStatisticsSchema } from '@sport-analytics/contracts';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { withExplicitZeroExtras } from './explicit-zero-extras';
 import { executeQuery } from '../../src/database';
 import {
   listCompetitorsForFixtures,
   listParticipantFixtures,
 } from '../../src/modules/participants/participant.repository';
-import {
-  advanceFixtureStatisticsCacheVersions,
-  createFixtureStatisticsCache,
-} from '../../src/modules/statistics/fixture-statistics.cache';
+import { createFixtureStatisticsCache } from '../../src/modules/statistics/fixture-statistics.cache';
 import { deriveFixtureStatistics } from '../../src/modules/statistics/fixture-statistics.derivation';
 import { loadFixtureStatisticsSource } from '../../src/modules/statistics/fixture-statistics.repository';
 import { createFixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';
@@ -38,13 +37,20 @@ interface BowlingDeltaRow {
   wickets: number;
 }
 
-const seedPath = resolve(__dirname, '../../../../database/seeds/matches/423788.json');
+const seedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/423788.json'),
+);
+const miscountedSeedPath = withExplicitZeroExtras(
+  resolve(__dirname, '../../../../database/seeds/matches/1462921.json'),
+);
 const sourceRef = `issue-104-423788-${process.pid}`;
+const miscountedSourceRef = `issue-631-1462921-${process.pid}`;
 
 describe.sequential('fixture statistics database integration', () => {
   let pool: Pool | undefined;
   let client: PoolClient | undefined;
   let fixtureId: string | undefined;
+  let miscountedFixtureId: string | undefined;
 
   function databaseClient(): PoolClient {
     if (!client) {
@@ -73,6 +79,10 @@ describe.sequential('fixture statistics database integration', () => {
     try {
       const ingestion = await ingestMatchData(client, seedPath, { sourceRef });
       fixtureId = ingestion.fixtureId;
+      const miscountedIngestion = await ingestMatchData(client, miscountedSeedPath, {
+        sourceRef: miscountedSourceRef,
+      });
+      miscountedFixtureId = miscountedIngestion.fixtureId;
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
       client.release();
@@ -141,13 +151,77 @@ describe.sequential('fixture statistics database integration', () => {
               {
                 inningsOrdinal: statistic.inningsOrdinal,
                 totalRuns: statistic.metrics.totalRuns,
+                wicketsLost: statistic.metrics.wicketsLost,
+                legalBalls: statistic.metrics.legalBalls,
+                overs: statistic.metrics.overs,
+                runRate: statistic.metrics.runRate,
+                powerplay: statistic.metrics.powerplay
+                  ? {
+                      ranges: statistic.metrics.powerplay.ranges,
+                      runs: statistic.metrics.powerplay.runs,
+                      wicketsLost: statistic.metrics.powerplay.wicketsLost,
+                      legalBalls: statistic.metrics.powerplay.legalBalls,
+                      overs: statistic.metrics.powerplay.overs,
+                      runRate: statistic.metrics.powerplay.runRate,
+                      sourceEventCount: statistic.metrics.powerplay.sourceEventCount,
+                    }
+                  : null,
+                extras: statistic.metrics.extras,
               },
             ]
           : [],
       ),
     ).toEqual([
-      { inningsOrdinal: 0, totalRuns: 214 },
-      { inningsOrdinal: 1, totalRuns: 214 },
+      {
+        inningsOrdinal: 0,
+        totalRuns: 214,
+        wicketsLost: 6,
+        legalBalls: 120,
+        overs: '20.0',
+        runRate: 10.7,
+        powerplay: {
+          ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+          runs: 62,
+          wicketsLost: 1,
+          legalBalls: 36,
+          overs: '6.0',
+          runRate: 10.33,
+          sourceEventCount: 37,
+        },
+        extras: {
+          total: 18,
+          wides: 5,
+          noBalls: 1,
+          byes: 0,
+          legByes: 12,
+          penaltyRuns: 0,
+        },
+      },
+      {
+        inningsOrdinal: 1,
+        totalRuns: 214,
+        wicketsLost: 4,
+        legalBalls: 120,
+        overs: '20.0',
+        runRate: 10.7,
+        powerplay: {
+          ranges: [{ fromBall: 0.1, toBall: 5.6, type: 'mandatory' }],
+          runs: 53,
+          wicketsLost: 1,
+          legalBalls: 36,
+          overs: '6.0',
+          runRate: 8.83,
+          sourceEventCount: 37,
+        },
+        extras: {
+          total: 6,
+          wides: 2,
+          noBalls: 3,
+          byes: 0,
+          legByes: 1,
+          penaltyRuns: 0,
+        },
+      },
     ]);
 
     const people = await executeQuery<PersonRow>(
@@ -238,7 +312,7 @@ describe.sequential('fixture statistics database integration', () => {
       `
         SELECT
           COALESCE(SUM(d.runs_off_bat), 0)::int AS runs,
-          COUNT(*) FILTER (WHERE d.extra_wides IS NULL)::int AS balls
+          COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) = 0)::int AS balls
         FROM delivery d
         JOIN innings i ON i.innings_id = d.innings_id
         WHERE i.fixture_id = $1
@@ -274,7 +348,7 @@ describe.sequential('fixture statistics database integration', () => {
             0
           )::int AS "runsConceded",
           COUNT(*) FILTER (
-            WHERE extra_wides IS NULL AND extra_noballs IS NULL
+            WHERE COALESCE(extra_wides, 0) = 0 AND COALESCE(extra_noballs, 0) = 0
           )::int AS "legalBalls",
           COALESCE(SUM(credited_wickets), 0)::int AS wickets
         FROM super_over_delivery
@@ -310,6 +384,23 @@ describe.sequential('fixture statistics database integration', () => {
       expect(event.strikerParticipantName.length).toBeGreaterThan(0);
       expect(event.bowlerParticipantName.length).toBeGreaterThan(0);
     }
+  });
+
+  test('preserves a reference five-ball miscount when presenting innings progress', async () => {
+    if (!miscountedFixtureId) {
+      throw new Error('Expected the miscounted-over reference fixture to be ingested.');
+    }
+    const source = await loadFixtureStatisticsSource(miscountedFixtureId, databaseClient());
+    expect(source).not.toBeNull();
+    expect(source?.innings[0]?.miscountedOvers).toEqual([{ overNumber: 16, balls: 5 }]);
+
+    const firstInnings = deriveFixtureStatistics(source!).statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsOrdinal === 0,
+    );
+    expect(firstInnings?.scope === 'innings' ? firstInnings.metrics : null).toMatchObject({
+      legalBalls: 107,
+      overs: '18.0',
+    });
   });
 
   // The cache-aside path was previously only exercised through an injected

@@ -5,6 +5,12 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { ingestMatchData } from '../../scripts/ingest-match-data';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
+import { withExplicitZeroExtras } from './explicit-zero-extras';
+import {
+  deriveReferenceFigures,
+  inningsExtrasComparisons,
+  type DerivedReferenceFigures,
+} from './reference-derived-figures';
 
 /**
  * Published-figure comparisons for the reference fixtures added under issue #287.
@@ -238,15 +244,15 @@ const INNINGS_SUMMARY = `
     ) AS wickets,
     COUNT(*)::int AS deliveries,
     COUNT(*) FILTER (
-      WHERE d.extra_wides IS NULL AND d.extra_noballs IS NULL
+      WHERE COALESCE(d.extra_wides, 0) = 0 AND COALESCE(d.extra_noballs, 0) = 0
     )::int AS "legalDeliveries",
     COALESCE(SUM(d.runs_extras), 0)::int AS extras,
     COALESCE(SUM(d.extra_byes), 0)::int AS "byeRuns",
     COALESCE(SUM(d.extra_legbyes), 0)::int AS "legByeRuns",
     COALESCE(SUM(d.extra_wides), 0)::int AS "wideRuns",
-    COUNT(*) FILTER (WHERE d.extra_wides IS NOT NULL)::int AS "wideDeliveries",
+    COUNT(*) FILTER (WHERE COALESCE(d.extra_wides, 0) > 0)::int AS "wideDeliveries",
     COALESCE(SUM(d.extra_noballs), 0)::int AS "noBallRuns",
-    COUNT(*) FILTER (WHERE d.extra_noballs IS NOT NULL)::int AS "noBallDeliveries"
+    COUNT(*) FILTER (WHERE COALESCE(d.extra_noballs, 0) > 0)::int AS "noBallDeliveries"
   FROM innings i
   JOIN team t ON t.team_id = i.batting_team_id
   JOIN delivery_current d ON d.innings_id = i.innings_id
@@ -347,7 +353,9 @@ describe.sequential('reference fixture published figures', () => {
     }
 
     beforeAll(async () => {
-      const seedPath = resolve(__dirname, `../../../../database/seeds/matches/${fixture.id}.json`);
+      const seedPath = withExplicitZeroExtras(
+        resolve(__dirname, `../../../../database/seeds/matches/${fixture.id}.json`),
+      );
       client = await databasePool().connect();
       await client.query('BEGIN');
       try {
@@ -454,6 +462,39 @@ describe.sequential('reference fixture published figures', () => {
             actual: row ? `${row.score}|${row.playerOut}` : 'missing',
             expected: `${score}|${playerOut}`,
           });
+        }
+      }
+
+      for (const check of checks) {
+        expect.soft(check.actual, `${check.label} (${fixture.evidence})`).toEqual(check.expected);
+      }
+    });
+
+    let derivedFigures: Promise<DerivedReferenceFigures> | undefined;
+    function referenceFigures(): Promise<DerivedReferenceFigures> {
+      derivedFigures ??= deriveReferenceFigures(databaseClient(), ingestedFixtureId());
+      return derivedFigures;
+    }
+
+    test('reproduces the published extras through the statistics derivation and history', async () => {
+      const figures = await referenceFigures();
+      const checks: ReferenceCheck[] = [];
+
+      for (const [index, expected] of fixture.innings.entries()) {
+        const bowlingTeam = fixture.innings.find((innings) => innings.team !== expected.team)?.team;
+
+        for (const [path, teams] of [
+          ['derivation', figures.derivation],
+          ['history', figures.history],
+        ] as const) {
+          for (const [label, actual, expectedValue] of inningsExtrasComparisons(
+            `innings ${index + 1} ${path}`,
+            expected,
+            teams.get(expected.team),
+            bowlingTeam === undefined ? undefined : teams.get(bowlingTeam),
+          )) {
+            checks.push({ label, actual, expected: expectedValue });
+          }
         }
       }
 

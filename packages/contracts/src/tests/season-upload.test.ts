@@ -8,13 +8,15 @@ import {
   seasonUploadPackageSchema,
 } from '../season-upload';
 
-const homeTeam = { sourceId: 'cricsheet:team:wits' };
+const homeTeam = { context: { name: 'Wits University' } };
 const awayTeam = { context: { name: 'University of Cape Town' } };
 
 function event(overrides = {}) {
   return {
     eventId: 'cricsheet:delivery:1412526-1-1',
     occurrenceSequence: 1,
+    overNumber: 0,
+    positionInOver: 0,
     ballLabel: '0.1',
     striker: { sourceId: 'cricsheet:participant:player-1' },
     nonStriker: { context: { name: 'A. Batter', team: homeTeam } },
@@ -49,6 +51,45 @@ function seasonPackage(overrides = {}) {
 }
 
 describe('versioned season-upload contract', () => {
+  test('accepts authoritative innings powerplays and rejects malformed or overlapping ranges', () => {
+    const withPowerplays = (powerplays: unknown[]) =>
+      seasonPackage({
+        fixtures: [
+          fixture({
+            innings: [
+              {
+                context: { ordinal: 1, battingTeam: homeTeam },
+                powerplays,
+                events: [event()],
+              },
+            ],
+          }),
+        ],
+      });
+
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        withPowerplays([
+          { from: 0.1, to: 5.6, type: 'mandatory' },
+          { from: 6.1, to: 16.6, type: 'batting' },
+        ]),
+      ).success,
+    ).toBe(true);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        withPowerplays([{ from: 5.6, to: 0.1, type: 'mandatory' }]),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        withPowerplays([
+          { from: 0.1, to: 5.6, type: 'mandatory' },
+          { from: 5.6, to: 6.6, type: 'batting' },
+        ]),
+      ).success,
+    ).toBe(false);
+  });
+
   test('requires a complete proposal for the canonical-creation package version', () => {
     const fixtureProposal = {
       endDate: '2026-03-14',
@@ -141,6 +182,57 @@ describe('versioned season-upload contract', () => {
     expect(JSON.stringify(seasonPackage())).not.toMatch(/"(?:fixture|innings|participant|team)Id"/);
   });
 
+  test('requires explicit canonical coordinates while keeping the display label optional', () => {
+    const explicitWithoutLabel = event({ ballLabel: undefined });
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [
+                { context: { ordinal: 1, battingTeam: homeTeam }, events: [explicitWithoutLabel] },
+              ],
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(true);
+
+    const missingOver = event({ overNumber: undefined });
+    const missingPosition = event({ positionInOver: undefined });
+    for (const invalidEvent of [missingOver, missingPosition]) {
+      expect(
+        seasonUploadPackageSchema.safeParse(
+          seasonPackage({
+            fixtures: [
+              fixture({
+                innings: [
+                  { context: { ordinal: 1, battingTeam: homeTeam }, events: [invalidEvent] },
+                ],
+              }),
+            ],
+          }),
+        ).success,
+      ).toBe(false);
+    }
+  });
+
+  test('rejects malformed and contradictory display labels', () => {
+    for (const invalidEvent of [event({ ballLabel: 'first ball' }), event({ overNumber: 1 })]) {
+      const result = seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [{ context: { ordinal: 1, battingTeam: homeTeam }, events: [invalidEvent] }],
+            }),
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toMatch(/ball label/i);
+    }
+  });
+
   test('accepts a representative 70-fixture season without application database identifiers', () => {
     const representativeSeason = seasonPackage({
       fixtures: Array.from({ length: 70 }, (_, fixtureIndex) =>
@@ -149,6 +241,10 @@ describe('versioned season-upload contract', () => {
           innings: [
             {
               sourceId: `cricsheet:innings:season-${fixtureIndex + 1}-1`,
+              context: {
+                ordinal: 0,
+                battingTeam: homeTeam,
+              },
               events: [
                 event({
                   eventId: `cricsheet:delivery:season-${fixtureIndex + 1}-1`,
@@ -188,6 +284,7 @@ describe('versioned season-upload contract', () => {
           innings: [
             {
               sourceId: 'cricsheet:innings:1412526-1',
+              context: { ordinal: 0, battingTeam: homeTeam },
               events: [laterEvent, event()],
             },
           ],
@@ -198,6 +295,7 @@ describe('versioned season-upload contract', () => {
           innings: [
             {
               sourceId: 'cricsheet:innings:1412527-1',
+              context: { ordinal: 0, battingTeam: awayTeam },
               events: [
                 event({
                   eventId: 'cricsheet:delivery:1412527-1-1',
@@ -367,6 +465,97 @@ describe('versioned season-upload contract', () => {
         fixtures: [fixture({ sourceId: 'cricsheet:team:1412526' })],
       }).success,
     ).toBe(false);
+  });
+
+  test('rejects source-only references without a durable canonical resolver', () => {
+    const sourceOnly = (sourceId: string) => ({ sourceId });
+
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({ competition: sourceOnly('cricsheet:competition:varsity-cup') }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({ season: sourceOnly('cricsheet:season:2026') }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              context: { date: '2026-03-14', teams: [sourceOnly('cricsheet:team:wits'), awayTeam] },
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [fixture({ sourceId: 'other:fixture:1412526', context: undefined })],
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [
+                {
+                  sourceId: 'cricsheet:innings:1412526-1',
+                  events: [event()],
+                },
+              ],
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      seasonUploadPackageSchema.safeParse(
+        seasonPackage({
+          fixtures: [
+            fixture({
+              innings: [
+                {
+                  context: { ordinal: 1, battingTeam: homeTeam },
+                  events: [event({ striker: sourceOnly('other:participant:player-1') })],
+                },
+              ],
+            }),
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  test('accepts source-only references backed by durable canonical mappings', () => {
+    const result = seasonUploadPackageSchema.safeParse(
+      seasonPackage({
+        fixtures: [
+          {
+            sourceId: 'app:fixture:101',
+            innings: [
+              {
+                sourceId: 'app:innings:201',
+                events: [
+                  event({
+                    striker: { sourceId: 'cricsheet:participant:player-1' },
+                    nonStriker: { sourceId: 'app:participant:301' },
+                    bowler: { sourceId: 'app:participant:302' },
+                  }),
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(result.success).toBe(true);
   });
 
   test('defines an explicit resolution requirement for ambiguous participants', () => {

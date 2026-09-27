@@ -45,12 +45,14 @@ GET /api/v1/fixtures/{fixtureId}/weather
 ```
 
 This endpoint automatically uses the fixture's `start_date` and stored venue coordinates. When
-coordinates are absent, it asks Open-Meteo's geocoding endpoint for the stored city first, then
-falls back to the raw venue name if the city cannot be resolved. A successful result is persisted
-on the venue and reused by later requests. It is the appropriate endpoint for fixture pages: the
-frontend calls this backend endpoint only and never calls Open-Meteo. Weather is contextual
-external information; it does not change or authoritatively describe fixture, event, or statistic
-records.
+coordinates are absent, it asks Open-Meteo's geocoding endpoint for the canonical venue together
+with its stored city first, then falls back to the raw venue name if that location cannot be
+resolved. A successful result is persisted on the canonical venue, then reused by later requests
+without another geocoding call. Changing a venue's name or city clears the derived coordinates so
+a later lookup safely resolves the changed location. It is the appropriate endpoint for fixture
+pages: the frontend calls this backend endpoint only and never calls Open-Meteo. Weather is
+contextual external information; it does not change or authoritatively describe fixture, event, or
+statistic records.
 
 When weather is available, the response includes fixture and venue context plus the same daily
 temperature, precipitation, and wind fields returned by `/weather`:
@@ -146,11 +148,18 @@ a problem with the project's own API surface. The backend logs the underlying er
 responding, so failures remain observable without crashing the application or leaking upstream
 error internals to the client.
 
+Before returning one of these provider errors, the backend makes one immediate second attempt only
+when the first Open-Meteo request has a network/connection failure, times out, or returns HTTP 408
+or 5xx. It does not retry normal client responses or 429 rate limits, because an immediate request
+would ignore the provider's rate-limit window. This bounded retry does not cache weather responses
+or replace the fixture page's manual retry fallback.
+
 ## Known limitations
 
-- Venue coordinates are optional stored data (`venue.latitude` and `venue.longitude`). Missing
-  coordinates are resolved lazily from the stored city, then raw venue name, and persisted when
-  Open-Meteo resolves either query. Weather responses themselves are not cached.
+- Venue coordinates are optional canonical metadata (`venue.latitude` and `venue.longitude`).
+  Missing coordinates are resolved lazily from the canonical venue and city, then raw venue name,
+  and persisted only after Open-Meteo returns valid coordinates. Changing the venue name or city
+  invalidates the stored coordinates. Weather responses themselves are not cached.
 - Open-Meteo's archive endpoint only covers dates from `1940-01-01` onward, and the forecast
   endpoint only extends 16 days into the future. Dates outside this combined range return
   `422 DATE_UNSUPPORTED` from `/api/v1/weather`, or `availability: "unavailable"` with reason

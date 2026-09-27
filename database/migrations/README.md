@@ -47,6 +47,32 @@ The Issue #283 review workflow migration adds the explicit `correction_requested
 the `returned_for_correction` decision, and a unique per-batch decision guard. The guard serialises
 approve/reject races while same-decision approval retries resume the existing publication safely.
 
+## Sprint 2 Intermediate migrations
+
+The Intermediate implementation is spread across additive migrations rather than one monolithic
+schema change. The main Sprint 2 migration groups are:
+
+| Migration                                                                                                                                                                    | Purpose                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `20260831100000000_batch-ingestion-models.sql` and `20260902120000000_extend-batch-persistence.sql`                                                                          | Durable batch, item, validation and checkpoint persistence                               |
+| `20260902193000000_stored-objects.sql`                                                                                                                                       | Provider-independent private-object metadata and retention                               |
+| `20260904100000000_background-jobs-and-batch-validation-queue.sql`                                                                                                           | Durable asynchronous validation/job state                                                |
+| `20260904120000000_immutable-correction-history.sql`                                                                                                                         | Immutable delivery revision and correction audit history                                 |
+| `20260907100000000_batch-review-workflow.sql` and `20260907130000000_batch-reference-mapping.sql`                                                                            | Review decisions, correction return and explicit reference resolution                    |
+| `20260907130000000_api-consumer-keys.sql`                                                                                                                                    | External consumer keys, limits and quota persistence                                     |
+| `20260907150000000_statistics-refresh-dependencies.sql` and `20260907160000000_fixture-statistics-cache.sql`                                                                 | Selective aggregate refresh dependencies and versioned fixture-statistics caching        |
+| `20260909100000000_dataset-releases.sql`                                                                                                                                     | Immutable dataset-release metadata                                                       |
+| `20260911120000000_batch-correction-ingestion.sql`, `20260913100000000_batch-published-conflict-resolution.sql` and `20260913170000000_refresh-delivery-current-lineage.sql` | Batch corrections, explicit publication-conflict resolution and current-revision lineage |
+| `20260914100000000_stream-dataset-release-artifacts.sql` and `20260914150000000_async-dataset-release-jobs.sql`                                                              | Streamed release artifacts and durable asynchronous release generation                   |
+
+| `20260917120000000_dataset-release-snapshots.sql` | Durable point-in-time source snapshots for asynchronous dataset releases |
+| `20260917180000000_powerplay-provenance.sql` | Reviewed source-batch provenance for authoritative innings powerplay markers |
+| `20260919100000000_api-consumer-shared-rate-limits.sql` | Atomic shared UTC-minute counters for consumer limits across backend replicas |
+
+Apply migrations only through the documented `node-pg-migrate` commands. Integration tests rebuild
+an isolated test database from the complete ordered migration set, which makes missing dependencies
+or invalid migration ordering visible before deployment.
+
 ## AI Declaration
 
 The issue #255 competition-scoped request migration, issue #256 history migration, and issue #265
@@ -54,3 +80,6 @@ file provenance migration were documented with the assistance of Codex[GPT-5].
 The issue #276 batch-ingestion migration was documented with the assistance of Codex[GPT-5].
 The Issue #277 batch receipt migration was documented with the assistance of Codex[GPT-5].
 The Issue #283 review workflow migration was documented with the assistance of Codex[GPT-5].
+The Issue #297 Sprint 2 migration index was reviewed and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #633 powerplay provenance migration was documented with the assistance of Codex[GPT-5].
+The issue #595 shared consumer rate-limit migration was documented with the assistance of Codex[GPT-5].

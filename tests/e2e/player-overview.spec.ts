@@ -25,6 +25,8 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-09',
   endDate: '2026-08-09',
 };
@@ -39,7 +41,17 @@ const inningsStatistic = {
   competitorId: 'team-1',
   competitorName: 'Wanderers',
   sourceEventCount: 12,
-  metrics: { deliveryRuns: 103, penaltyRuns: 1, totalRuns: 104 },
+  metrics: {
+    deliveryRuns: 103,
+    penaltyRuns: 1,
+    totalRuns: 104,
+    wicketsLost: 3,
+    legalBalls: 72,
+    overs: '12.0',
+    runRate: 8.67,
+    powerplay: null,
+    extras: { total: 8, wides: 3, noBalls: 1, byes: 0, legByes: 3, penaltyRuns: 1 },
+  },
 };
 
 const playerStatistic = {
@@ -198,19 +210,41 @@ const careerAggregates = {
       participantName: 'A Player',
       scope: 'career',
       statisticCode: 'participant_career',
+      appearances: 62,
       fixtureCount: 58,
       sourceEventCount: 1677,
-      batting: { runsScored: 1234, ballsFaced: 987, fours: 101, sixes: 37, strikeRate: 125.03 },
+      batting: {
+        innings: 54,
+        runsScored: 1234,
+        ballsFaced: 987,
+        dismissals: 49,
+        notOuts: 5,
+        battingAverage: 25.18,
+        fours: 101,
+        sixes: 37,
+        fifties: 7,
+        hundreds: 2,
+        highestScore: 112,
+        highestScoreNotOut: true,
+        strikeRate: 125.03,
+      },
       bowling: {
+        innings: 31,
         runsConceded: 842,
         wides: 24,
         noBalls: 11,
         legalBallsBowled: 690,
         wicketsTaken: 41,
+        bowlingAverage: 20.54,
+        bowlingStrikeRate: 16.83,
+        bestBowling: { wicketsTaken: 5, runsConceded: 22 },
+        fourWicketHauls: 2,
+        fiveWicketHauls: 1,
         ballsPerOver: 6,
         oversBowled: '115.0',
         economyRate: 7.32,
       },
+      fielding: { catches: 18, stumpings: 2, runOutInvolvements: 4 },
     },
   ],
 };
@@ -277,6 +311,7 @@ test(
                   },
                   nonBoundary: false,
                   bowlerWickets: 0,
+                  wicketsLost: 0,
                 },
               ],
             },
@@ -302,6 +337,7 @@ test(
                 method: null,
                 decidedByBowlOut: false,
               },
+              highestScorers: [],
               warnings: [],
               statistics: [inningsStatistic, playerStatistic],
             },
@@ -344,8 +380,8 @@ test(
 
     await expect(page.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Career totals' })).toBeVisible();
-    await expect(page.getByText('1234', { exact: true })).toBeVisible();
-    await expect(page.getByText('7.32', { exact: true })).toBeVisible();
+    await expect(page.getByText('1234', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('7.32', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Wides', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('No-balls', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Match history' })).toBeVisible();
@@ -358,16 +394,16 @@ test(
     await expect(
       page.getByText('Published figures are based on incomplete source data.'),
     ).toBeVisible();
-    await expect(page.getByText('No bowling figures are available.')).toBeVisible();
+    await expect(page.getByText('Did not bowl')).toBeVisible();
     await expect(
       page.getByText('No batting or bowling figures are published for this player in this match.'),
     ).toBeVisible();
     expect(
       requestedUrls.some((url) => url.includes('/participants/player-1/fixtures?limit=10')),
     ).toBe(true);
-    expect(
-      requestedUrls.some((url) => url.endsWith('/participants/player-1/statistics?scope=career')),
-    ).toBe(true);
+    expect(requestedUrls.some((url) => url.endsWith('/participants/player-1/statistics'))).toBe(
+      true,
+    );
 
     const internalValues = [
       'stat-career-1',
@@ -404,17 +440,19 @@ test(
     await expect(
       page.getByRole('heading', { level: 1, name: 'Wanderers vs Strikers' }),
     ).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Match statistics' })).toBeVisible();
+    await page.getByRole('link', { name: 'Statistics', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Match statistics' })).toBeVisible();
     await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Innings totals' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Player statistics' })).toBeVisible();
-    await expect(page.getByText('104', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Innings summary' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Batting scorecard' })).toBeVisible();
+    await expect(page.getByText('104/3', { exact: true }).first()).toBeVisible();
     await expectReadableAccessibleView(page, internalValues);
 
     await selectTheme(page, 'night');
     await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
     await expectReadableAccessibleView(page, internalValues);
 
+    await page.getByText('How these match statistics are calculated', { exact: true }).click();
     const calculationLink = page.getByRole('link', { name: 'View calculation trace' }).first();
     await calculationLink.focus();
     await expect(calculationLink).toBeFocused();

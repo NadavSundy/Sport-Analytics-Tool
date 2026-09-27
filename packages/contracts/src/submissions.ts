@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { eventCoordinateSchema, validateDisplayBallLabel } from './event-coordinates';
+
 import { apiDateTimeSchema, apiIdentifierSchema } from './api';
 
 export const DIRECT_SUBMISSION_SCHEMA_VERSION = '1.0' as const;
@@ -103,25 +105,34 @@ export const submissionWicketSchema = z
     }
   });
 
+/**
+ * A delivery's extras breakdown. Each type is a non-negative count of runs that
+ * fits the delivery table's smallint columns, and no other key is accepted.
+ * Exported so that other ingestion paths validate extras against the same rules.
+ */
+export const submissionExtrasSchema = z
+  .object({
+    wides: smallNonNegativeIntegerSchema.optional(),
+    noBalls: smallNonNegativeIntegerSchema.optional(),
+    byes: smallNonNegativeIntegerSchema.optional(),
+    legByes: smallNonNegativeIntegerSchema.optional(),
+    penalty: smallNonNegativeIntegerSchema.optional(),
+  })
+  .strict();
+
 const submissionEventBaseSchema = z
   .object({
     eventId: submissionEventIdSchema,
     inningsId: databaseIdentifierSchema,
     sequenceNumber: z.number().int().positive().max(2_147_483_647),
-    overNumber: smallNonNegativeIntegerSchema,
-    positionInOver: smallNonNegativeIntegerSchema,
+    overNumber: eventCoordinateSchema,
+    positionInOver: eventCoordinateSchema,
     // The printed ball number is display only: it is never unique and never used
     // to join, because it counts legal deliveries and so repeats within an over.
     // The identifying columns are overNumber and positionInOver. Constrained to
     // the printed form so that a submitted label cannot be arbitrary text, but
-    // the platform does not currently verify that it agrees with the position it
-    // describes.
-    ballNumber: z
-      .string()
-      .regex(
-        /^\d{1,3}\.\d{1,2}$/,
-        'A printed ball number takes the form <over>.<ball>, for example 5.1.',
-      ),
+    // the over component must agree with the canonical coordinate when present.
+    ballNumber: z.string().max(32).optional(),
     strikerId: databaseIdentifierSchema,
     nonStrikerId: databaseIdentifierSchema,
     bowlerId: databaseIdentifierSchema,
@@ -133,16 +144,7 @@ const submissionEventBaseSchema = z
         nonBoundary: z.boolean().default(false),
       })
       .strict(),
-    extras: z
-      .object({
-        wides: smallNonNegativeIntegerSchema.optional(),
-        noBalls: smallNonNegativeIntegerSchema.optional(),
-        byes: smallNonNegativeIntegerSchema.optional(),
-        legByes: smallNonNegativeIntegerSchema.optional(),
-        penalty: smallNonNegativeIntegerSchema.optional(),
-      })
-      .strict()
-      .default({}),
+    extras: submissionExtrasSchema.default({}),
     wickets: z.array(submissionWicketSchema).max(2).default([]),
   })
   .strict();
@@ -151,6 +153,8 @@ function validateEvent(
   event: Omit<z.infer<typeof submissionEventBaseSchema>, 'eventId' | 'sequenceNumber'>,
   context: z.RefinementCtx,
 ): void {
+  validateDisplayBallLabel(event.ballNumber, event.overNumber, 'ballNumber', context);
+
   if (event.strikerId === event.nonStrikerId) {
     context.addIssue({
       code: z.ZodIssueCode.custom,

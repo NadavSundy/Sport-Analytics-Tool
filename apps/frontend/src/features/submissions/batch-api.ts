@@ -1,8 +1,10 @@
 import {
   BATCH_PACKAGE_VERSION,
+  BATCH_PACKAGE_VERSIONS,
   batchReceiptResponseSchema,
   batchReferenceMappingResponseSchema,
   batchListResponseSchema,
+  batchParticipantOnboardingResponseSchema,
   batchReportDownloadResponseSchema,
   batchReportResponseSchema,
   batchReviewResponseSchema,
@@ -11,6 +13,8 @@ import {
   type BatchReceiptResponse,
   type BatchReferenceMappingRequest,
   type BatchCanonicalFixtureRequest,
+  type BatchParticipantOnboardingRequest,
+  type BatchParticipantOnboardingResponse,
   type BatchReferenceMappingResponse,
   type BatchReportResponse,
   type BatchReviewRequest,
@@ -43,6 +47,32 @@ const mediaTypesByExtension = {
   json: 'application/json',
   ndjson: 'application/x-ndjson',
 } as const;
+
+async function batchPackageVersion(file: File, mediaType: string): Promise<string> {
+  if (mediaType !== 'application/json') return BATCH_PACKAGE_VERSION;
+
+  try {
+    const payload = JSON.parse(
+      new TextDecoder().decode(new Uint8Array(await file.arrayBuffer())),
+    ) as unknown;
+
+    if (!payload || typeof payload !== 'object') return BATCH_PACKAGE_VERSION;
+
+    const candidate = (payload as { contractVersion?: unknown }).contractVersion;
+    if (
+      typeof candidate === 'string' &&
+      (BATCH_PACKAGE_VERSIONS as readonly string[]).includes(candidate)
+    ) {
+      return candidate;
+    }
+
+    // Keep staging behaviour unchanged for malformed/unsupported packages.
+    // The worker remains responsible for the detailed validation report.
+    return BATCH_PACKAGE_VERSION;
+  } catch {
+    return BATCH_PACKAGE_VERSION;
+  }
+}
 
 export class BatchUploadInputError extends Error {
   constructor(message: string) {
@@ -131,6 +161,8 @@ export async function uploadBatch(
   competitionId: string,
   file: File,
   idempotencyKey: string,
+  replacesBatchReference?: string,
+  packageVersion?: (typeof BATCH_PACKAGE_VERSIONS)[number],
 ): Promise<BatchReceiptResponse> {
   const extension = file.name.split('.').pop()?.toLowerCase() as
     keyof typeof mediaTypesByExtension | undefined;
@@ -142,6 +174,7 @@ export async function uploadBatch(
   if (file.size > MAX_BATCH_BYTES) {
     throw new BatchUploadInputError('The package is larger than the 50 MB upload limit.');
   }
+  const resolvedPackageVersion = packageVersion ?? (await batchPackageVersion(file, mediaType));
 
   return parse(
     await client.request<unknown>('/batches', {
@@ -149,9 +182,10 @@ export async function uploadBatch(
       headers: {
         'Content-Type': mediaType,
         'Idempotency-Key': idempotencyKey,
-        'X-Batch-Package-Version': BATCH_PACKAGE_VERSION,
+        'X-Batch-Package-Version': resolvedPackageVersion,
         'X-Competition-Id': competitionId,
         'X-File-Name': file.name,
+        ...(replacesBatchReference ? { 'X-Replaces-Batch-Reference': replacesBatchReference } : {}),
       },
       body: file,
     }),
@@ -204,6 +238,26 @@ export async function resolvePublishedConflict(
       },
     ),
     batchStatusResponseSchema,
+  );
+}
+
+/**
+ * The whole array in one request, because the batch is revalidated once for it.
+ * A reviewer settling twenty-two tasks one at a time would pay for twenty-two
+ * full revalidation passes.
+ */
+export async function decideParticipantOnboarding(
+  client: AuthenticatedApiClient,
+  batchReference: string,
+  decisions: BatchParticipantOnboardingRequest,
+): Promise<BatchParticipantOnboardingResponse> {
+  return parse(
+    await client.request<unknown>(`/batches/${encodeURIComponent(batchReference)}/participants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(decisions),
+    }),
+    batchParticipantOnboardingResponseSchema,
   );
 }
 

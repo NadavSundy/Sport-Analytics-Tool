@@ -19,6 +19,8 @@ const fixture = {
   gender: 'female',
   ballsPerOver: 6,
   scheduledOvers: 20,
+  venue: null,
+  toss: null,
   startDate: '2026-08-20',
   endDate: '2026-08-20',
 };
@@ -70,6 +72,7 @@ function statistics(totalRuns: number) {
         method: null,
         decidedByBowlOut: false,
       },
+      highestScorers: [],
       warnings: [],
       statistics: [
         {
@@ -82,7 +85,24 @@ function statistics(totalRuns: number) {
           competitorId: '30',
           competitorName: 'Wanderers',
           sourceEventCount: 1,
-          metrics: { deliveryRuns: totalRuns, penaltyRuns: 0, totalRuns },
+          metrics: {
+            deliveryRuns: totalRuns,
+            penaltyRuns: 0,
+            totalRuns,
+            wicketsLost: 0,
+            legalBalls: 1,
+            overs: '0.1',
+            runRate: totalRuns * 6,
+            powerplay: null,
+            extras: {
+              total: 0,
+              wides: 0,
+              noBalls: 0,
+              byes: 0,
+              legByes: 0,
+              penaltyRuns: 0,
+            },
+          },
         },
       ],
     },

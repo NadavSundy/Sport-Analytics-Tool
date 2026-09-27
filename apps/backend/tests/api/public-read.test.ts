@@ -135,6 +135,7 @@ function contributingEvent(eventId: string, sequenceNumber: number) {
     extras: { wides: null, noBalls: null, byes: null, legByes: null, penalty: null },
     nonBoundary: false,
     bowlerWickets: 0,
+    wicketsLost: 0,
   };
 }
 
@@ -207,6 +208,8 @@ function participantFixture(overrides: Partial<ParticipantFixture> = {}): Partic
       gender: 'male',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     },
@@ -425,6 +428,12 @@ describe('public read API', () => {
       gender: 'male',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: '20',
+        winnerCompetitorName: 'Team Alpha',
+        decision: 'bat',
+      },
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     });
@@ -444,6 +453,12 @@ describe('public read API', () => {
       fixtureId: '100',
       competitionName: 'Test Competition',
       seasonLabel: '2026',
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: '20',
+        winnerCompetitorName: 'Team Alpha',
+        decision: 'bat',
+      },
       competitors: [
         {
           competitorId: '20',

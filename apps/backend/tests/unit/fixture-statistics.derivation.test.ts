@@ -35,6 +35,8 @@ function event(
     extraPenalty: null,
     creditedWickets: 0,
     wickets: [],
+    overNumber: 0,
+    ballNumber: '0.1',
     ...overrides,
   };
 }
@@ -135,6 +137,8 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
         battingCompetitorId: '10',
         penaltyPre: 5,
         penaltyPost: null,
+        miscountedOvers: [],
+        powerplays: [{ fromBall: 0.1, toBall: 0.6, type: 'mandatory' }],
       },
       {
         inningsId: '502',
@@ -143,6 +147,8 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
         battingCompetitorId: '20',
         penaltyPre: null,
         penaltyPost: null,
+        miscountedOvers: [],
+        powerplays: [],
       },
     ],
     events,
@@ -176,6 +182,98 @@ function goldenSource(events = goldenEvents): FixtureStatisticsSource {
 }
 
 describe('fixture statistics golden fixture', () => {
+  test('derives authoritative powerplay values and preserves missing versus zero-valued results', () => {
+    const result = deriveFixtureStatistics(goldenSource(), { includeContributors: true });
+    const innings = result.statistics.filter((statistic) => statistic.scope === 'innings');
+
+    expect(innings[0]?.scope === 'innings' ? innings[0].metrics.powerplay : undefined).toEqual({
+      ranges: [{ fromBall: 0.1, toBall: 0.6, type: 'mandatory' }],
+      runs: 18,
+      wicketsLost: 0,
+      legalBalls: 4,
+      overs: '0.4',
+      runRate: 27,
+      sourceEventCount: 6,
+      contributingEvents: expect.arrayContaining([
+        expect.objectContaining({ eventId: '1' }),
+        expect.objectContaining({ eventId: '6' }),
+      ]),
+    });
+    expect(innings[1]?.scope === 'innings' ? innings[1].metrics.powerplay : undefined).toBeNull();
+
+    const zero = goldenSource([
+      event({
+        deliveryId: 'wide-only',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        runsExtras: 0,
+        runsTotal: 0,
+        extraWides: 1,
+      }),
+    ]);
+    zero.innings = [{ ...zero.innings[0]!, penaltyPre: null }];
+    const zeroPowerplay = deriveFixtureStatistics(zero).statistics.find(
+      (statistic) => statistic.scope === 'innings',
+    );
+    expect(
+      zeroPowerplay?.scope === 'innings' ? zeroPowerplay.metrics.powerplay : null,
+    ).toMatchObject({
+      runs: 0,
+      wicketsLost: 0,
+      legalBalls: 0,
+      overs: '0.0',
+      runRate: null,
+    });
+  });
+
+  test('changes powerplay values only for accepted-event corrections inside the range', () => {
+    const source = goldenSource([
+      event({
+        deliveryId: 'inside',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        ballNumber: '0.2',
+        runsTotal: 1,
+      }),
+      event({
+        deliveryId: 'outside',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 2,
+        ballNumber: '1.1',
+        overNumber: 1,
+        runsTotal: 2,
+      }),
+    ]);
+    source.innings[0]!.penaltyPre = null;
+    const powerplayRuns = (value: FixtureStatisticsSource) => {
+      const statistic = deriveFixtureStatistics(value).statistics.find(
+        (item) => item.scope === 'innings' && item.inningsId === '501',
+      );
+      return statistic?.scope === 'innings' ? statistic.metrics.powerplay?.runs : undefined;
+    };
+
+    expect(powerplayRuns(source)).toBe(1);
+    expect(
+      powerplayRuns({
+        ...source,
+        events: source.events.map((item) =>
+          item.deliveryId === 'outside' ? { ...item, runsTotal: 9 } : item,
+        ),
+      }),
+    ).toBe(1);
+    expect(
+      powerplayRuns({
+        ...source,
+        events: source.events.map((item) =>
+          item.deliveryId === 'inside' ? { ...item, runsTotal: 4 } : item,
+        ),
+      }),
+    ).toBe(4);
+  });
+
   test('derives the manually verified Basic cricket statistics', () => {
     const result = deriveFixtureStatistics(goldenSource());
 
@@ -190,6 +288,18 @@ describe('fixture statistics golden fixture', () => {
       method: null,
       decidedByBowlOut: false,
     });
+    expect(result.highestScorers).toEqual([
+      {
+        participantId: '101',
+        participantName: 'Player 101',
+        competitorId: '10',
+        competitorName: 'Team Alpha',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        runsScored: 10,
+        notOut: true,
+      },
+    ]);
 
     const firstInnings = result.statistics.find(
       (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
@@ -202,6 +312,18 @@ describe('fixture statistics golden fixture', () => {
         deliveryRuns: 18,
         penaltyRuns: 5,
         totalRuns: 23,
+        wicketsLost: 0,
+        legalBalls: 4,
+        overs: '0.4',
+        runRate: 34.5,
+        extras: {
+          total: 9,
+          wides: 1,
+          noBalls: 1,
+          byes: 2,
+          legByes: 0,
+          penaltyRuns: 5,
+        },
       },
     });
 
@@ -278,6 +400,117 @@ describe('fixture statistics golden fixture', () => {
     const reversed = deriveFixtureStatistics(goldenSource([...goldenEvents].reverse()));
 
     expect(reversed).toEqual(forward);
+  });
+
+  test('returns every tied highest individual innings score in deterministic order', () => {
+    const tiedEvents = [
+      event({
+        deliveryId: '20',
+        inningsId: '502',
+        inningsOrdinal: 1,
+        inningsSequence: 1,
+        battingCompetitorId: '20',
+        battingCompetitorName: 'Team Beta',
+        strikerId: '201',
+        strikerName: 'Player 201',
+        runsOffBat: 10,
+        runsTotal: 10,
+      }),
+      event({
+        deliveryId: '10',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        strikerId: '101',
+        strikerName: 'Player 101',
+        runsOffBat: 10,
+        runsTotal: 10,
+      }),
+    ];
+
+    const result = deriveFixtureStatistics(goldenSource([...tiedEvents].reverse()));
+
+    expect(
+      result.highestScorers.map((scorer) => [scorer.inningsOrdinal, scorer.participantId]),
+    ).toEqual([
+      [0, '101'],
+      [1, '201'],
+    ]);
+  });
+
+  test('uses a single innings score rather than summing the same batter across innings', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: '1',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          strikerId: '101',
+          strikerName: 'Player 101',
+          runsOffBat: 7,
+          runsTotal: 7,
+        }),
+        event({
+          deliveryId: '2',
+          inningsId: '502',
+          inningsOrdinal: 1,
+          inningsSequence: 1,
+          battingCompetitorId: '20',
+          battingCompetitorName: 'Team Beta',
+          strikerId: '101',
+          strikerName: 'Player 101',
+          runsOffBat: 7,
+          runsTotal: 7,
+        }),
+        event({
+          deliveryId: '3',
+          inningsId: '502',
+          inningsOrdinal: 1,
+          inningsSequence: 2,
+          battingCompetitorId: '20',
+          battingCompetitorName: 'Team Beta',
+          strikerId: '201',
+          strikerName: 'Player 201',
+          runsOffBat: 10,
+          runsTotal: 10,
+        }),
+      ]),
+    );
+
+    expect(result.highestScorers).toEqual([
+      expect.objectContaining({ participantId: '201', inningsOrdinal: 1, runsScored: 10 }),
+    ]);
+  });
+
+  test('marks a highest scorer dismissed when the accepted events contain a terminal wicket', () => {
+    const result = deriveFixtureStatistics(
+      goldenSource([
+        event({
+          deliveryId: '1',
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: 1,
+          strikerId: '101',
+          strikerName: 'Player 101',
+          runsOffBat: 12,
+          runsTotal: 12,
+          wickets: [
+            {
+              wicketId: 'w-1',
+              eventId: '1',
+              playerOutId: '101',
+              kind: 'caught',
+              isTerminal: true,
+            },
+          ],
+        }),
+      ]),
+    );
+
+    expect(result.highestScorers).toEqual([
+      expect.objectContaining({ participantId: '101', runsScored: 12, notOut: false }),
+    ]);
   });
 
   test('keeps team extras out of a bowler extras breakdown', () => {
@@ -546,6 +779,392 @@ describe('fixture statistics golden fixture', () => {
       battingParticipation: 'did_not_bat',
       batting: null,
       dismissal: null,
+    });
+  });
+});
+
+describe('innings scorecard context', () => {
+  function inningsMetrics(source: FixtureStatisticsSource) {
+    const statistic = deriveFixtureStatistics(source).statistics.find(
+      (candidate) => candidate.scope === 'innings' && candidate.inningsId === '501',
+    );
+    return statistic?.scope === 'innings' ? statistic.metrics : null;
+  }
+
+  test('counts terminal dismissals regardless of bowler credit', () => {
+    const source = goldenSource([
+      event({
+        deliveryId: 'bowled',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        creditedWickets: 1,
+        wickets: [
+          {
+            wicketId: 'w-bowled',
+            eventId: 'bowled',
+            playerOutId: '101',
+            kind: 'bowled',
+            isTerminal: true,
+          },
+        ],
+      }),
+      event({
+        deliveryId: 'run-out',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 2,
+        wickets: [
+          {
+            wicketId: 'w-run-out',
+            eventId: 'run-out',
+            playerOutId: '102',
+            kind: 'run out',
+            isTerminal: true,
+          },
+        ],
+      }),
+      event({
+        deliveryId: 'retired-hurt',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 3,
+        wickets: [
+          {
+            wicketId: 'w-retired-hurt',
+            eventId: 'retired-hurt',
+            playerOutId: '103',
+            kind: 'retired hurt',
+            isTerminal: false,
+          },
+        ],
+      }),
+    ]);
+
+    expect(inningsMetrics(source)).toMatchObject({ wicketsLost: 2 });
+    const traced = deriveFixtureStatistics(source, { includeContributors: true });
+    const innings = traced.statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
+    );
+    const bowler = traced.statistics.find(
+      (statistic) => statistic.scope === 'participant' && statistic.participantId === '201',
+    );
+    expect(innings?.contributingEvents?.map((eventRecord) => eventRecord.wicketsLost)).toEqual([
+      1, 1, 0,
+    ]);
+    expect(bowler?.scope === 'participant' ? bowler.bowling?.wicketsTaken : null).toBe(1);
+  });
+
+  test('preserves zero extras and uses null for a run rate without legal balls', () => {
+    const source = goldenSource([]);
+    source.innings = [{ ...source.innings[0]!, penaltyPre: null }];
+
+    expect(inningsMetrics(source)).toMatchObject({
+      wicketsLost: 0,
+      legalBalls: 0,
+      overs: '0.0',
+      runRate: null,
+      extras: {
+        total: 0,
+        wides: 0,
+        noBalls: 0,
+        byes: 0,
+        legByes: 0,
+        penaltyRuns: 0,
+      },
+    });
+  });
+
+  test('formats progress using fixture and miscounted-over metadata', () => {
+    const events = Array.from({ length: 7 }, (_, index) =>
+      event({
+        deliveryId: `miscount-${index + 1}`,
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: index + 1,
+        overNumber: index < 5 ? 0 : 1,
+        runsOffBat: 1,
+        runsTotal: 1,
+      }),
+    );
+    const source = goldenSource(events);
+    source.innings[0]!.miscountedOvers = [{ overNumber: 0, balls: 5 }];
+    source.innings[0]!.penaltyPre = null;
+
+    expect(inningsMetrics(source)).toMatchObject({
+      legalBalls: 7,
+      overs: '1.2',
+      runRate: 6,
+    });
+  });
+
+  test('uses a non-six fixture balls-per-over value for progress and run rate', () => {
+    const source = goldenSource(
+      Array.from({ length: 7 }, (_, index) =>
+        event({
+          deliveryId: `eight-ball-${index + 1}`,
+          inningsId: '501',
+          inningsOrdinal: 0,
+          inningsSequence: index + 1,
+          runsOffBat: 1,
+          runsTotal: 1,
+        }),
+      ),
+    );
+    source.ballsPerOver = 8;
+    source.innings[0]!.penaltyPre = null;
+
+    expect(inningsMetrics(source)).toMatchObject({ legalBalls: 7, overs: '0.7', runRate: 8 });
+  });
+
+  test('recomputes score and wicket state from replacement current events', () => {
+    const original = goldenSource([
+      event({
+        deliveryId: 'original',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        runsOffBat: 1,
+        runsTotal: 1,
+      }),
+    ]);
+    const corrected = goldenSource([
+      event({
+        deliveryId: 'replacement',
+        inningsId: '501',
+        inningsOrdinal: 0,
+        inningsSequence: 1,
+        runsOffBat: 4,
+        runsTotal: 4,
+        wickets: [
+          {
+            wicketId: 'corrected-wicket',
+            eventId: 'replacement',
+            playerOutId: '101',
+            kind: 'run out',
+            isTerminal: true,
+          },
+        ],
+      }),
+    ]);
+
+    expect(inningsMetrics(original)).toMatchObject({ totalRuns: 6, wicketsLost: 0 });
+    expect(inningsMetrics(corrected)).toMatchObject({ totalRuns: 9, wicketsLost: 1 });
+  });
+});
+
+describe('fixture statistics with zero-valued extras (issue #590)', () => {
+  const extraFields = [
+    'extraWides',
+    'extraNoBalls',
+    'extraByes',
+    'extraLegByes',
+    'extraPenalty',
+  ] as const;
+
+  function withExplicitZeros(
+    events: FixtureStatisticsEventSource[],
+    fields: readonly (typeof extraFields)[number][] = extraFields,
+  ): FixtureStatisticsEventSource[] {
+    return events.map((source) => {
+      const copy = { ...source };
+      for (const field of fields) {
+        copy[field] ??= 0;
+      }
+      return copy;
+    });
+  }
+
+  function overEvent(
+    inningsSequence: number,
+    overrides: Partial<FixtureStatisticsEventSource>,
+  ): FixtureStatisticsEventSource {
+    return event({
+      deliveryId: `over-${inningsSequence}`,
+      inningsId: '501',
+      inningsOrdinal: 0,
+      inningsSequence,
+      ...overrides,
+    });
+  }
+
+  // One over from bowler 201 holding nine deliveries, six of them legal.
+  const overWithWideAndNoBalls: FixtureStatisticsEventSource[] = [
+    overEvent(1, { runsOffBat: 1, runsTotal: 1 }),
+    overEvent(2, { strikerId: '102', runsExtras: 1, runsTotal: 1, extraWides: 1 }),
+    overEvent(3, {
+      strikerId: '102',
+      runsOffBat: 4,
+      runsExtras: 1,
+      runsTotal: 5,
+      extraNoBalls: 1,
+    }),
+    overEvent(4, { strikerId: '102' }),
+    overEvent(5, { strikerId: '102', runsExtras: 1, runsTotal: 1, extraLegByes: 1 }),
+    overEvent(6, { runsExtras: 2, runsTotal: 2, extraByes: 2 }),
+    overEvent(7, { runsExtras: 3, runsTotal: 3, extraNoBalls: 1, extraByes: 2 }),
+    overEvent(8, { runsExtras: 5, runsTotal: 5, extraPenalty: 5 }),
+    overEvent(9, { runsOffBat: 6, runsTotal: 6 }),
+  ];
+
+  function participant(result: ReturnType<typeof deriveFixtureStatistics>, participantId: string) {
+    const statistic = result.statistics.find(
+      (candidate) => candidate.scope === 'participant' && candidate.participantId === participantId,
+    );
+    return statistic?.scope === 'participant' ? statistic : undefined;
+  }
+
+  test('derives identical statistics whether zero extras are omitted or explicit', () => {
+    for (const events of [goldenEvents, overWithWideAndNoBalls]) {
+      const omitted = deriveFixtureStatistics(goldenSource(events));
+
+      expect(deriveFixtureStatistics(goldenSource(withExplicitZeros(events)))).toEqual(omitted);
+      expect(
+        deriveFixtureStatistics(
+          goldenSource(withExplicitZeros(events, ['extraWides', 'extraNoBalls'])),
+        ),
+      ).toEqual(omitted);
+    }
+  });
+
+  test.each([
+    ['omitted', overWithWideAndNoBalls],
+    ['explicitly zero', withExplicitZeros(overWithWideAndNoBalls)],
+  ])(
+    'derives an over containing a wide and no-balls when other extras are %s',
+    (_label, events) => {
+      const result = deriveFixtureStatistics(goldenSource(events), { includeContributors: true });
+
+      expect(participant(result, '201')?.bowling).toEqual({
+        // 11 off the bat + 1 wide + 2 no-balls. The byes, leg bye and penalty
+        // runs are team extras and are not charged to the bowler.
+        runsConceded: 14,
+        wides: 1,
+        noBalls: 2,
+        legalBallsBowled: 6,
+        oversBowled: '1.0',
+        economyRate: 14,
+        wicketsTaken: 0,
+      });
+
+      // The no-ball at sequence 7 is faced; the wide at sequence 2 is not.
+      expect(participant(result, '101')?.batting).toEqual({
+        runsScored: 7,
+        ballsFaced: 5,
+        strikeRate: 140,
+        fours: 0,
+        sixes: 1,
+      });
+      expect(participant(result, '102')?.batting).toEqual({
+        runsScored: 4,
+        ballsFaced: 3,
+        strikeRate: 133.33,
+        fours: 1,
+        sixes: 0,
+      });
+
+      const innings = result.statistics.find(
+        (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
+      );
+      expect(innings?.scope === 'innings' ? innings.metrics : null).toMatchObject({
+        deliveryRuns: 24,
+        penaltyRuns: 5,
+        totalRuns: 29,
+      });
+
+      const teamExtras =
+        innings?.scope === 'innings'
+          ? innings.contributingEvents?.reduce(
+              (total, contributingEvent) => total + contributingEvent.runs.extras,
+              0,
+            )
+          : null;
+      expect(teamExtras).toBe(13);
+    },
+  );
+});
+
+describe('fixture statistics with byes or leg byes recorded on a wide (ADR-014, issue #623)', () => {
+  function overEvent(
+    inningsSequence: number,
+    overrides: Partial<FixtureStatisticsEventSource>,
+  ): FixtureStatisticsEventSource {
+    return event({
+      deliveryId: `wide-over-${inningsSequence}`,
+      inningsId: '501',
+      inningsOrdinal: 0,
+      inningsSequence,
+      ...overrides,
+    });
+  }
+
+  // One over from bowler 201 to batter 101: nine deliveries, six of them legal.
+  function over(
+    firstWide: Partial<FixtureStatisticsEventSource>,
+    secondWide: Partial<FixtureStatisticsEventSource>,
+  ): FixtureStatisticsEventSource[] {
+    return [
+      overEvent(1, { runsOffBat: 1, runsTotal: 1 }),
+      overEvent(2, { runsExtras: 5, runsTotal: 5, ...firstWide }),
+      overEvent(3, { runsExtras: 3, runsTotal: 3, ...secondWide }),
+      // Byes off a no-ball remain byes (Law 21), so they are not the bowler's.
+      overEvent(4, { runsExtras: 3, runsTotal: 3, extraNoBalls: 1, extraByes: 2 }),
+      overEvent(5, {}),
+      overEvent(6, { runsOffBat: 4, runsTotal: 4 }),
+      overEvent(7, {}),
+      overEvent(8, {}),
+      overEvent(9, {}),
+    ];
+  }
+
+  const recordedWithByes = over(
+    { extraWides: 1, extraByes: 4 },
+    { extraWides: 2, extraLegByes: 1 },
+  );
+  const recordedAsWides = over({ extraWides: 5 }, { extraWides: 3 });
+
+  function participant(events: FixtureStatisticsEventSource[], participantId: string) {
+    const statistic = deriveFixtureStatistics(goldenSource(events)).statistics.find(
+      (candidate) => candidate.scope === 'participant' && candidate.participantId === participantId,
+    );
+    return statistic?.scope === 'participant' ? statistic : undefined;
+  }
+
+  test('derives identical statistics whether runs off a wide are recorded as byes or as wides', () => {
+    expect(deriveFixtureStatistics(goldenSource(recordedWithByes))).toEqual(
+      deriveFixtureStatistics(goldenSource(recordedAsWides)),
+    );
+  });
+
+  test('charges byes and leg byes run off a wide to the bowler as wide runs', () => {
+    expect(participant(recordedWithByes, '201')?.bowling).toEqual({
+      // 5 off the bat + 8 wide runs + 1 no-ball. The 2 byes off the no-ball
+      // are team extras.
+      runsConceded: 14,
+      wides: 8,
+      noBalls: 1,
+      legalBallsBowled: 6,
+      oversBowled: '1.0',
+      economyRate: 14,
+      wicketsTaken: 0,
+    });
+
+    // Neither wide is a ball faced, and byes are never the batter's runs.
+    expect(participant(recordedWithByes, '101')?.batting).toEqual({
+      runsScored: 5,
+      ballsFaced: 7,
+      strikeRate: 71.43,
+      fours: 1,
+      sixes: 0,
+    });
+
+    const innings = deriveFixtureStatistics(goldenSource(recordedWithByes)).statistics.find(
+      (statistic) => statistic.scope === 'innings' && statistic.inningsId === '501',
+    );
+    expect(innings?.scope === 'innings' ? innings.metrics : null).toMatchObject({
+      deliveryRuns: 16,
+      penaltyRuns: 5,
+      totalRuns: 21,
     });
   });
 });

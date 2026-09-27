@@ -9,6 +9,12 @@ The current schema version is `1.0`. A request contains one fixture and 1–1,00
 delivery events. Events for each innings must appear in ascending `sequenceNumber` order. Statistics
 are not accepted: the platform derives them from accepted deliveries.
 
+Each event requires explicit zero-based `overNumber` and `positionInOver`
+coordinates. `ballNumber` is optional display data and is never used for
+identity or ordering. If supplied, it must use `<over>.<ball>` form and its over
+component must match `overNumber`; the ball component may repeat for wides and
+no-balls.
+
 ```http
 POST /api/v1/submissions
 Authorization: Bearer <supabase-access-token>
@@ -84,6 +90,21 @@ All guided modes use the same maintained JSON and spreadsheet templates, and dat
 required. The interface displays upload progress and the durable receipt, and links to the batch
 report where background validation, source-row errors and ambiguous-reference mapping remain
 available after navigation.
+
+Single-fixture mode also provides a separate **Propose a new fixture** action. The submitter selects
+an authorised competition, enters the fixture date, season, teams and the complete canonical-fixture
+metadata, then uploads a matching JSON or CSV fixture package. The browser generates the existing
+version `1.1` fixture-proposal contract and sends it through the batch pipeline; it never inserts
+canonical fixture data directly. Selecting the package first prefills its competition, season,
+fixture date and team names in the proposal form, leaving the submitter to confirm that context and
+enter the proposal-only metadata. Before upload, the browser warns when that readable context matches
+an accessible existing fixture and offers the existing-fixture path; batch reference resolution
+remains the authoritative server-side check.
+Match type is retained because version `1.1` and the canonical fixture require it, but the UI fixes
+the available value to `T20`, matching the platform scope. Team type is selected as `club` or
+`international`, and gender as `female` or `male`.
+An administrator can use the batch report's **Create canonical fixture from proposal** action, after
+which normal reference resolution and validation run again for the affected submission.
 
 The advanced technical JSON editor preserves the canonical identifier-based input format. For an
 ordinary submitter, the browser converts that input to a batch package using explicit `app:*`
@@ -238,3 +259,4 @@ Codex[GPT-5].
 The Issue #435 guided single-fixture upload behavior was documented with the assistance of
 Codex[GPT-5].
 The Issue #437 unified submission workflow was documented with the assistance of Codex[GPT-5].
+The Issue #571 new-fixture proposal workflow was documented with the assistance of Codex[GPT-5].

@@ -54,6 +54,7 @@ the [Local Development Setup](../development/setup.md#component-getting-started-
   [task bank](../testing/user-testing-task-bank.md)
 - [Bug tracking](../testing/bug-tracking.md)
 - [Sprint 1 requirements traceability](../planning/sprint-1-requirements-traceability.md)
+- [Sprint 2 requirements and rubric traceability](../planning/sprint-2-requirements-traceability.md)
 
 ## AI use and compliance
 

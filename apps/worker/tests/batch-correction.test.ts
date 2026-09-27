@@ -97,6 +97,61 @@ describe('batch correction target resolution', () => {
     });
   });
 
+  it('accepts explicit canonical coordinates when the display label is omitted', () => {
+    const candidate = {
+      ordinal: 0,
+      filePath: 'events.json',
+      rowNumber: null,
+      fixtureKey: 'fixture',
+      inningsKey: 'innings',
+      packageEnvelope: {
+        contractVersion: '1.0',
+        packageId: 'test:package:no-label',
+        competition: { context: { name: 'Competition' } },
+        season: { context: { name: '2026' } },
+      },
+      fixture: {
+        context: {
+          date: '2026-03-14',
+          teams: [{ context: { name: 'Home' } }, { context: { name: 'Away' } }],
+        },
+      },
+      innings: { context: { ordinal: 0, battingTeam: { context: { name: 'Home' } } } },
+      event: {
+        eventId: 'cricsheet:delivery:no-label',
+        occurrenceSequence: 1,
+        overNumber: 0,
+        positionInOver: 0,
+        operation: 'upsert' as const,
+        striker: { context: { name: 'Striker' } },
+        nonStriker: { context: { name: 'Non-striker' } },
+        bowler: { context: { name: 'Bowler' } },
+        runs: { offBat: 0, extras: 0, total: 0, nonBoundary: false },
+        extras: {},
+        wickets: [],
+      },
+    };
+
+    const prepared = prepareItem(
+      candidate,
+      {
+        inningsId: '20',
+        state: 'resolved',
+        resolvedReferences: {
+          participants: {
+            striker: { canonicalId: '31' },
+            nonStriker: { canonicalId: '32' },
+            bowler: { canonicalId: '33' },
+          },
+        },
+      },
+      { overNumber: 0, positionInOver: 0 },
+    );
+
+    expect(prepared).toMatchObject({ state: 'accepted', overNumber: 0, positionInOver: 0 });
+    expect(prepared?.payload).not.toHaveProperty('ballNumber');
+  });
+
   it('resolves one in-scope target and preserves its occurrence sequence', async () => {
     const correction = item();
     const results = await resolveCorrectionTargets(

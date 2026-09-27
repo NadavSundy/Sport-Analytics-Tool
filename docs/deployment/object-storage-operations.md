@@ -6,9 +6,9 @@ the application.
 
 ## Provisioning and access
 
-- The development deployment uses storage account `statsthegameblobdev` and private container
-  `staged-ingestion`. Anonymous container access and account-wide public Blob access must remain
-  disabled.
+- The development deployment uses storage account `statsthegameblobdev`, private staged-ingestion
+  container `staged-ingestion`, and private immutable-release container `dataset-releases`.
+  Anonymous container access and account-wide public Blob access must remain disabled.
 - The backend App Service identity is `statsthegame-api-dev`. Azure must enable/assign that managed
   identity and grant it **Storage Blob Data Contributor** on the account or the narrower container
   scope. Do not grant browser identities, public users, or the frontend access to the container.
@@ -16,8 +16,11 @@ the application.
   configures application startup and documents the required settings; its publish-profile workflow
   deploys code and does not create the account, container, identity, or role assignment.
 - Production App Service configuration supplies only
+  `OBJECT_STORAGE_PROVIDER=azure`,
   `AZURE_STORAGE_ACCOUNT_NAME=statsthegameblobdev` and
-  `AZURE_STORAGE_CONTAINER_NAME=staged-ingestion`. These identifiers are non-secret App Settings.
+  `AZURE_STORAGE_INGESTION_CONTAINER_NAME=staged-ingestion` (with
+  `AZURE_STORAGE_CONTAINER_NAME` retained as its compatibility alias), plus
+  `AZURE_STORAGE_RELEASE_CONTAINER_NAME=dataset-releases`. These identifiers are non-secret App Settings.
 - Enable secure transfer. Apply network restrictions, soft delete, versioning, and abandoned-block
   cleanup according to ADR-011 before enabling the batch receipt endpoint.
 - Keep Azure SDK HTTP logging disabled for payload bodies and authorisation headers. Application logs
@@ -31,7 +34,9 @@ the backend, both before the metadata is marked retained and again on download.
 
 ## Production startup and authentication
 
-When `NODE_ENV=production`, environment validation requires the account and container identifiers.
+When `NODE_ENV=production`, environment validation requires `OBJECT_STORAGE_PROVIDER=azure` plus the
+account and container identifiers. A missing provider or filesystem selection fails startup and
+cannot silently write deployed artifacts to local App Service storage.
 Startup derives the HTTPS endpoint
 `https://statsthegameblobdev.blob.core.windows.net`, constructs `DefaultAzureCredential`, creates a
 `BlobServiceClient`, resolves the configured `ContainerClient`, wraps it in
@@ -43,8 +48,49 @@ On Azure App Service, `DefaultAzureCredential` obtains a Microsoft Entra token f
 managed identity. Blob account keys, Azure Storage connection strings, SAS tokens,
 `SharedKeyCredential`, and public or pre-signed Blob URLs are intentionally unsupported. Do not add
 any of them to Gitea secrets, App Settings, source, tests, examples, or operational recovery steps.
-Local and unit tests inject `FakeObjectStore` or constructor fakes and do not require an Azure
-account.
+Unit tests may inject `FakeObjectStore` or constructor fakes and do not require an Azure account.
+
+## Local development provider
+
+Local dataset publication can use the same provider-independent streaming boundary without Azure:
+
+```env
+OBJECT_STORAGE_PROVIDER=filesystem
+OBJECT_STORAGE_FILESYSTEM_ROOT=../../.local/object-storage
+```
+
+The root is resolved from the backend process working directory. With the documented npm workspace
+commands, the example points to repository-local `.local/object-storage`. Writes stream into a
+temporary file under the configured root and are atomically promoted without overwriting an
+existing object only after the input completes. Failed or interrupted writes remove the temporary
+file. Reads return file streams, deletes are idempotent, and storage keys are validated so they
+cannot traverse outside the configured root. The adapter preserves bytes exactly and exposes no
+filesystem or public provider URL.
+
+The generated `.local/object-storage/dataset-releases/<uuid>.json` files are ignored by Git and must not be committed.
+This provider is for local development only; it is not a durability or backup substitute for Azure
+Blob Storage and is rejected when `NODE_ENV=production`.
+
+## Immutable dataset release artifacts
+
+Dataset publication uses a separately injected private `ObjectStore` instance and the same managed
+identity. Each attempt writes a server-generated `<uuid>.json` key in the `dataset-releases`
+logical store/container with the adapter's non-overwrite
+condition. PostgreSQL reads accepted current deliveries in 10,000-row deterministic keyset pages;
+the worker streams canonical JSON to Blob Storage and computes the event count and SHA-256 digest
+as the exact UTF-8 bytes pass through. Only after the upload succeeds does it insert immutable
+release metadata and the opaque storage key/provider version in PostgreSQL. The public artifact
+endpoint streams the resolved private Blob through the backend and never exposes a provider URL or
+credential.
+
+The staged-ingestion store retains its existing lifecycle and must not apply an ingestion expiry
+policy to the separate dataset-releases container. Release artifacts have no scheduled expiry because the public version and checksum are permanent.
+If paging, serialization, upload or metadata insertion fails, the attempt has no release row and the
+worker deletes the generated key and records a failed retryable job. A concurrent same-version publisher keeps the first immutable
+row and deletes the losing attempt's unreferenced object. Reconciliation must also inspect the
+`dataset-releases` container for keys absent from `dataset_release`, because an Azure outage can prevent
+worker cleanup. It must never replace bytes referenced by an existing release; a missing or
+checksum-mismatched release artifact is an integrity incident.
 
 ## Runtime verification and diagnosis
 
@@ -61,7 +107,8 @@ temporary backend diagnostic performed by an operator, not a public HTTP workflo
 For `401` authentication failures, confirm the `statsthegame-api-dev` identity is enabled on the
 running App Service and that the deployment is using the intended App Service instance. For `403`
 authorisation failures, inspect the identity's role assignment scope and confirm **Storage Blob Data
-Contributor** applies to `statsthegameblobdev` or `staged-ingestion`. New role assignments can take
+Contributor** applies to `statsthegameblobdev` or to both `staged-ingestion` and
+`dataset-releases`. New role assignments can take
 time to propagate; wait for propagation and retry with the same managed identity rather than adding
 a key, connection string, or SAS fallback. Also verify the account/container names, private-access
 setting, secure-transfer requirement, and any storage-network restrictions. Record only safe status
@@ -78,7 +125,13 @@ transaction. Schedule reconciliation to detect:
 - `deletion_pending` or `deletion_failed` records requiring another delete attempt; and
 - abandoned uncommitted blocks from interrupted uploads.
 
-For a failed upload, the request fails closed and attempts to delete its generated key. No stored
+For releases, `dataset_release_job.attempt_storage_key` remains populated when automatic deletion
+cannot be confirmed. Before deleting such an object, an operator must verify that no immutable
+`dataset_release.artifact_storage_key` references it, delete through the approved provider boundary,
+and only then clear the diagnostic key. A failed job alone is not sufficient evidence to delete an
+object.
+
+For a failed upload, the job fails closed and attempts to delete its generated key. No stored
 object metadata or processable batch may be created. If cleanup cannot reach Azure, reconciliation
 must delete the orphan; the key is safe to handle because it is generated and never reused.
 
@@ -119,4 +172,5 @@ failure and keep file-dependent operations failed closed.
 
 This operations guide was created with the assistance of Codex[GPT-5].
 The production managed-identity wiring and credential-safe operational guidance were updated with
-the assistance of Codex[GPT-5].
+the assistance of Codex[GPT-5]. The immutable dataset-release storage lifecycle and the safe local
+filesystem provider were documented with the assistance of Codex[GPT-5].

@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import type { AdministratorManagedUser } from '@sport-analytics/contracts';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -149,10 +149,10 @@ describe('administrator user management page', () => {
   it('redirects signed-out visitors and rejects non-administrators before listing users', async () => {
     const fetchMock = vi.fn().mockResolvedValue(currentUser('viewer'));
     vi.stubGlobal('fetch', fetchMock);
-    renderPage(null);
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument(),
-    );
+    await act(async () => {
+      renderPage(null);
+    });
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

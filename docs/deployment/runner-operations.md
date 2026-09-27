@@ -315,3 +315,7 @@ The runner setup was verified by:
 
 The dedicated runner therefore provides additional repository CI capacity while
 preserving shared-runner fallback and existing workflow behaviour.
+
+## AI Declaration
+
+The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

@@ -79,10 +79,24 @@ function service(): ProvenanceService {
       data: {
         statisticId: 'stat_example',
         fixtureId: '7',
+        participantId: null,
         statisticCode: 'team_total',
         scope: 'innings',
         sourceEventCount: 0,
         contributors: [],
+        pagination: { nextCursor: null },
+      },
+    }),
+    getParticipantStatistic: vi.fn().mockResolvedValue({
+      data: {
+        statisticId: 'stat_career',
+        fixtureId: null,
+        participantId: '101',
+        statisticCode: 'participant_career',
+        scope: 'career',
+        sourceEventCount: 0,
+        contributors: [],
+        pagination: { nextCursor: null },
       },
     }),
   };
@@ -142,5 +156,17 @@ describe('protected provenance API', () => {
 
     expect(provenance.getEvent).toHaveBeenCalledWith(account, '101');
     expect(provenance.getStatistic).toHaveBeenCalledWith(account, '7', 'stat_example');
+  });
+
+  test('routes paginated participant aggregate provenance through the private API', async () => {
+    const provenance = service();
+    const account = createTestAccount({ role: 'admin', competitionIds: ['5'] });
+    await request(app(account, provenance))
+      .get('/api/v1/provenance/participants/101/statistics/stat_career?limit=25')
+      .set('Authorization', 'Bearer token')
+      .expect(200);
+    expect(provenance.getParticipantStatistic).toHaveBeenCalledWith(account, '101', 'stat_career', {
+      limit: 25,
+    });
   });
 });

@@ -23,7 +23,10 @@ Issue #364 verifies the complete Intermediate path against this design rather th
 ### 1.3 Out of scope
 
 1. Dataset release and snapshot construction, defined by issue #294.
-2. Selective recomputation of derived statistics after publication, defined by issue #286.
+2. Selective recomputation of derived statistics after publication, defined by issue #286 and
+   implemented by issue #592 (ADR-015). Selective means a change recomputes each affected
+   participant's query once and rewrites only the affected scope rows; unaffected participants are
+   not recomputed and their rows stay byte-identical.
 3. The corpus importer, described in section 2.1 as context only and not modified by this design.
 
 ---
@@ -228,19 +231,19 @@ _Satisfies acceptance criterion 1._
 
 ### 4.1 Batch states
 
-| State                  | Meaning                                                                                            | Terminal |
-| ---------------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `received`             | Request accepted, batch record created. No payload stored.                                         | No       |
-| `stored`               | Payload written to object storage, checksum recorded.                                              | No       |
-| `validating`           | A worker holds a lease and is expanding and validating items.                                      | No       |
-| `rejected`             | Validation completed; no item is publishable.                                                      | Yes      |
-| `awaiting_review`      | Validation completed; at least one item accepted. Reviewer decision required.                      | No       |
-| `correction_requested` | A reviewer returned the immutable source for correction; a corrected upload uses a new batch.      | Yes      |
-| `publishing`           | Reviewer approved; accepted items are being written to the event tables.                           | No       |
-| `published`            | All accepted items written.                                                                        | Yes      |
-| `partially_published`  | Publication completed with at least one accepted item failing to write. Operator action required.  | Yes      |
-| `failed`               | Processing stopped through infrastructure failure after the retry budget was exhausted. Resumable. | No       |
-| `superseded`           | Replaced by a later batch carrying the same idempotency key.                                       | Yes      |
+| State                  | Meaning                                                                                             | Terminal |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | -------- |
+| `received`             | Request accepted, batch record created. No payload stored.                                          | No       |
+| `stored`               | Payload written to object storage, checksum recorded.                                               | No       |
+| `validating`           | A worker holds a lease and is expanding and validating items.                                       | No       |
+| `rejected`             | Validation completed; no item is publishable and no reviewer decision remains.                      | No       |
+| `awaiting_review`      | Validation completed; an item is accepted or a reviewer decision remains. Reviewer action required. | No       |
+| `correction_requested` | A reviewer returned the immutable source for correction; a corrected upload uses a new batch.       | Yes      |
+| `publishing`           | Reviewer approved; accepted items are being written to the event tables.                            | No       |
+| `published`            | All accepted items written.                                                                         | Yes      |
+| `partially_published`  | Publication completed with at least one accepted item failing to write. Operator action required.   | Yes      |
+| `failed`               | Processing stopped through infrastructure failure after the retry budget was exhausted. Resumable.  | No       |
+| `superseded`           | Replaced by a later batch carrying the same idempotency key.                                        | Yes      |
 
 ### 4.2 Item states
 
@@ -255,9 +258,10 @@ _Satisfies acceptance criterion 1._
 ### 4.3 Permitted transitions
 
 ```text
-received ──▶ stored ──▶ validating ──┬──▶ rejected
+received ──▶ stored ──▶ validating ──┬──▶ rejected ──▶ stored        (reviewer decision)
                                      └──▶ awaiting_review ──┬──▶ publishing ──┬──▶ published
                                                            ├──▶ rejected
+                                                           ├──▶ stored        (reviewer decision)
                                                            └──▶ correction_requested
                                                                            └──▶ partially_published
 
@@ -268,10 +272,23 @@ any non-terminal ──▶ superseded
 
 A transition not listed above must be rejected by the state machine and recorded as an integrity error.
 
+**`rejected` is not terminal.** It was described as terminal until issue #708, and the
+implementation never matched: a reviewer decision — a reference mapping, or a canonical fixture
+decision — has always been accepted from `rejected`, `awaiting_review` or `correction_requested`,
+and returns the batch to `stored` so that validation runs again over the decision. The table and
+the diagram above now say so.
+
+The distinction that matters is not whether a state is final but whether a reviewer still has a
+move. `rejected` means validation found nothing publishable **and** no decision remains to be made.
+While a decision does remain — an unresolved fixture carrying a complete proposal (issue #695), or
+an outstanding participant onboarding task (issue #708) — validation finishes in `awaiting_review`
+even with nothing accepted, because a batch a reviewer can still act on must be somewhere they can
+still find it.
+
 ### 4.4 Requirements
 
 1. A batch state transition must be written in the same transaction as the work that caused it.
-2. A batch in a terminal state may not transition, except that `rejected` and `published` may be superseded under section 8.4.
+2. A batch in a terminal state may not transition, except that `published` may be superseded under section 8.4. `rejected` is not terminal: it may be superseded, and a reviewer decision returns it to `stored` for revalidation.
 3. Every transition must be recorded in an append-only audit record carrying the actor, the timestamp and the reason.
 
 ---
@@ -514,7 +531,17 @@ The identifying columns of a delivery are `inningsId`, `overNumber` and `positio
 
 ### 8.4 Resubmission
 
-Where a submitter resubmits a corrected payload under the key of a batch already `rejected` or `published`, the earlier batch must be marked `superseded` with `superseded_by` populated. The earlier batch and its items must be retained. Supersession is a link, not a deletion.
+Where a submitter responds to a `correction_requested` review decision, the corrected payload uses a
+new content-derived idempotency key and explicitly identifies the earlier batch by its opaque
+reference. The repository locks the submitter and earlier batch, verifies the same submitter and
+competition, creates or reuses the replacement receipt, and changes the earlier batch to
+`superseded` with `superseded_by` populated in the same transaction. The earlier batch and its items
+remain retained. Supersession is a link, not a deletion.
+
+Following `superseded_by` forward, or its reverse relationship from a replacement, forms the ordered
+correction chain. Status and history representations expose both directions as opaque batch
+references. A stale or competing replacement request is rejected, and a superseded batch cannot
+re-enter review or publication.
 
 ---
 
@@ -559,6 +586,36 @@ resume and publication behavior around that boundary. The repository still avoid
 business rules inside persistence helpers.
 
 ---
+
+## Durable asynchronous publication
+
+An approved batch is not published inside the reviewer HTTP request. Approval persists the review decision and durable `batch.publish` work before the request returns.
+
+Publication is executed by the asynchronous worker in bounded chunks. The publication checkpoint records progress and uses a lease so interrupted work can be reclaimed and resumed safely.
+
+Each chunk:
+
+1. claims or renews the publication checkpoint lease;
+2. loads the next accepted items after the persisted checkpoint;
+3. performs published-delivery matching once for the chunk;
+4. classifies events as new publications, exact duplicates or published-content conflicts;
+5. persists duplicate and conflict outcomes using set-based PostgreSQL operations;
+6. bulk-publishes new canonical deliveries;
+7. advances the checkpoint only after the chunk transaction succeeds.
+
+Exact duplicate and published-conflict outcome writes use `jsonb_to_recordset` so a chunk does not issue an update and validation-result insert for every individual event.
+
+The durable background job records attempts and progress independently of the reviewer request. Transient worker failure requeues publication work and permits the worker to resume from the stored checkpoint. Terminal publication leaves the batch as `published` or `partially_published`.
+
+### Season-scale acceptance
+
+Deployed acceptance on 15 September 2026 used a representative 16,713-event IPL season package.
+
+The final publication job processed the remaining 15,930 publication items and completed successfully in 3 minutes 37 seconds, below the required 15-minute season-scale target.
+
+The final batch state was `published`, with no accepted items remaining.
+
+A separate pre-fix batch that had been stranded in `publishing` was also recovered through the durable worker path and completed successfully after multiple attempts, demonstrating resumable publication.
 
 ## 10. Review Before Publication
 
@@ -765,3 +822,8 @@ The issue #283 review and publication implementation record was added with the a
 Codex[GPT-5].
 The Issue #364 implementation-status reconciliation was reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+The Issue #539 correction-resubmission lifecycle was updated with the assistance of Codex[GPT-5].
+The Issue #540 durable asynchronous publication and final season-scale acceptance update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].
+The issue #708 batch state-machine correction, recording that `rejected` is not terminal and that
+outstanding reviewer work defers rejection, was made with the assistance of Claude-Code[Claude Opus 5].

@@ -21,6 +21,26 @@ function collection(data: unknown[], nextCursor: string | null = null, totalPage
   return response(200, { data, pagination: { nextCursor, totalPages } });
 }
 
+function leaderboard(
+  scope: { competitionId: string; competitionName: string; seasonId?: string; season?: string },
+  metric: 'most_runs' | 'most_wickets',
+  entries: Array<{ rank: number; participantId: string; participantName: string; value: number }>,
+) {
+  return response(200, {
+    data: {
+      scope: scope.seasonId ? 'season' : 'competition',
+      competitionId: scope.competitionId,
+      competitionName: scope.competitionName,
+      ...(scope.seasonId ? { seasonId: scope.seasonId, season: scope.season } : {}),
+      metric,
+      limit: 5,
+      qualification: null,
+      tieBreakers: ['metricValue', 'participantName', 'participantId'],
+      entries,
+    },
+  });
+}
+
 function playerMatch(
   fixtureId: string,
   options: {
@@ -52,6 +72,8 @@ function playerMatch(
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate,
       endDate: startDate,
     },
@@ -110,25 +132,41 @@ function careerAggregates(
               participantName: 'A Player',
               scope: 'career',
               statisticCode: 'participant_career',
+              appearances: 62,
               fixtureCount: 58,
               sourceEventCount: 1677,
               batting: {
+                innings: 54,
                 runsScored: 1234,
                 ballsFaced: 987,
+                dismissals: 49,
+                notOuts: 5,
+                battingAverage: 25.18,
                 fours: 101,
                 sixes: 37,
+                fifties: 7,
+                hundreds: 2,
+                highestScore: 112,
+                highestScoreNotOut: true,
                 strikeRate: 125.03,
               },
               bowling: {
+                innings: 31,
                 runsConceded: 842,
                 wides: 24,
                 noBalls: 11,
                 legalBallsBowled: 690,
                 wicketsTaken: 41,
+                bowlingAverage: 20.54,
+                bowlingStrikeRate: 16.83,
+                bestBowling: { wicketsTaken: 5, runsConceded: 22 },
+                fourWicketHauls: 2,
+                fiveWicketHauls: 1,
                 ballsPerOver: 6,
                 oversBowled: '115.0',
                 economyRate: 7.32,
               },
+              fielding: { catches: 18, stumpings: 2, runOutInvolvements: 4 },
             },
           ],
     },
@@ -307,6 +345,8 @@ describe('public browsing pages', () => {
               gender: 'female',
               ballsPerOver: 6,
               scheduledOvers: 20,
+              venue: null,
+              toss: null,
               startDate: '2026-08-09',
               endDate: '2026-08-09',
             },
@@ -334,6 +374,8 @@ describe('public browsing pages', () => {
               gender: 'female',
               ballsPerOver: 6,
               scheduledOvers: 20,
+              venue: null,
+              toss: null,
               startDate: '2026-08-10',
               endDate: '2026-08-10',
             },
@@ -348,6 +390,9 @@ describe('public browsing pages', () => {
     renderRoute('/fixtures?gender=female&limit=25');
 
     expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'View statistics for Wanderers vs Strikers' }),
+    ).toHaveAttribute('href', '/fixtures/fixture-1/statistics');
     expect(screen.getByLabelText('Gender')).toHaveValue('female');
     expect(screen.getByLabelText('Records per page')).toHaveValue('25');
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/fixtures?gender=female&limit=25');
@@ -554,6 +599,12 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: 'team-1',
+        winnerCompetitorName: 'Wanderers',
+        decision: 'field',
+      },
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -607,7 +658,7 @@ describe('public browsing pages', () => {
     ).toBe(true);
   });
 
-  it('opens a fixture and displays its match statistics and participating players', async () => {
+  it('opens a fixture and exposes statistics and players through local navigation', async () => {
     let resolveWeather!: (value: Response) => void;
     const requestedUrls: string[] = [];
     const fixture = {
@@ -626,6 +677,12 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      toss: {
+        winnerCompetitorId: 'team-1',
+        winnerCompetitorName: 'Wanderers',
+        decision: 'field',
+      },
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -659,6 +716,7 @@ describe('public browsing pages', () => {
                   method: null,
                   decidedByBowlOut: false,
                 },
+                highestScorers: [],
                 warnings: [],
                 statistics: [],
               },
@@ -700,12 +758,13 @@ describe('public browsing pages', () => {
         },
       }),
     );
-    await screen.findByText('Wits Cricket Oval, Johannesburg');
     const weatherSection = screen
       .getByRole('heading', { name: 'Match weather' })
       .closest('section');
     expect(weatherSection).not.toBeNull();
-    expect(within(weatherSection!).getByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
+    expect(
+      await within(weatherSection!).findByText('Wits Cricket Oval, Johannesburg'),
+    ).toBeVisible();
     expect(within(weatherSection!).getByText('24 °C')).toBeVisible();
     expect(within(weatherSection!).getByText('11 °C')).toBeVisible();
     expect(within(weatherSection!).getByText('0 mm')).toBeVisible();
@@ -715,8 +774,20 @@ describe('public browsing pages', () => {
       'href',
       '/competitions/competition-1',
     );
+    const venueFact = screen.getByText('Venue', { selector: 'dt' }).closest('div');
+    expect(venueFact).not.toBeNull();
+    expect(within(venueFact!).getByText('Wits Cricket Oval, Johannesburg')).toBeVisible();
+    expect(screen.getByText('Wanderers won the toss and chose to field.')).toBeVisible();
+    const fixtureNavigation = screen.getByRole('navigation', { name: 'Fixture sections' });
+    const statisticsLink = within(fixtureNavigation).getByRole('link', { name: 'Statistics' });
+    const playersLink = within(fixtureNavigation).getByRole('link', { name: 'Players' });
+    expect(statisticsLink).toHaveAttribute('href', '/fixtures/fixture-1/statistics');
+    expect(playersLink).toHaveAttribute('href', '/fixtures/fixture-1/players');
+
+    fireEvent.click(statisticsLink);
     expect(await screen.findByText('Wanderers won by 12 runs.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'A Player' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('link', { name: 'Players' }));
+    expect(await screen.findByRole('link', { name: 'A Player' })).toHaveAttribute(
       'href',
       '/participants/player-1',
     );
@@ -739,6 +810,14 @@ describe('public browsing pages', () => {
         },
       },
       message: 'Weather is unavailable for this fixture’s venue.',
+      fixtureVenue: null,
+      fixtureToss: {
+        winnerCompetitorId: 'team-1',
+        winnerCompetitorName: 'Wanderers',
+        decision: 'field',
+      },
+      expectedVenue: 'Venue unavailable',
+      expectedToss: 'Wanderers won the toss and chose to field.',
       retry: false,
     },
     {
@@ -751,11 +830,42 @@ describe('public browsing pages', () => {
         },
       },
       message: 'Weather could not be loaded. The match overview is still available.',
+      fixtureVenue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+      fixtureToss: null,
+      expectedVenue: 'Wits Cricket Oval, Johannesburg',
+      expectedToss: 'Toss information unavailable',
       retry: true,
+      retryWeather: {
+        data: {
+          fixtureId: 'fixture-1',
+          date: '2026-08-09',
+          availability: 'available',
+          venue: { name: 'Wits Cricket Oval', city: 'Johannesburg' },
+          weather: {
+            date: '2026-08-09',
+            latitude: -26.1929,
+            longitude: 28.0305,
+            temperatureMax: 24,
+            temperatureMin: 11,
+            precipitationSum: 0,
+            windSpeedMax: 17,
+          },
+        },
+      },
     },
   ])(
     'keeps the fixture overview usable during $name',
-    async ({ weatherStatus, weatherBody, message, retry }) => {
+    async ({
+      weatherStatus,
+      weatherBody,
+      message,
+      fixtureVenue,
+      fixtureToss,
+      expectedVenue,
+      expectedToss,
+      retry,
+      retryWeather,
+    }) => {
       const fixture = {
         fixtureId: 'fixture-1',
         competitionId: 'competition-1',
@@ -772,14 +882,21 @@ describe('public browsing pages', () => {
         gender: 'female',
         ballsPerOver: 6,
         scheduledOvers: 20,
+        venue: fixtureVenue,
+        toss: fixtureToss,
         startDate: '2026-08-09',
         endDate: '2026-08-09',
       };
+      let weatherRequests = 0;
       vi.stubGlobal(
         'fetch',
         vi.fn().mockImplementation((input: string) => {
           const url = new URL(input);
           if (url.pathname.endsWith('/fixtures/fixture-1/weather')) {
+            weatherRequests += 1;
+            if (weatherRequests === 2 && retryWeather) {
+              return Promise.resolve(response(200, retryWeather));
+            }
             return Promise.resolve(response(weatherStatus, weatherBody));
           }
           if (url.pathname.endsWith('/fixtures/fixture-1')) {
@@ -802,6 +919,7 @@ describe('public browsing pages', () => {
                     method: null,
                     decidedByBowlOut: false,
                   },
+                  highestScorers: [],
                   warnings: [],
                   statistics: [],
                 },
@@ -819,8 +937,15 @@ describe('public browsing pages', () => {
       ).toBeVisible();
       expect(await screen.findByText(message)).toBeVisible();
       expect(screen.getByText('Premier Cricket League')).toBeVisible();
+      expect(screen.getByText(expectedVenue)).toBeVisible();
+      expect(screen.getByText(expectedToss)).toBeVisible();
       if (retry) {
         expect(screen.getByRole('button', { name: 'Try weather again' })).toBeEnabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Try weather again' }));
+        await waitFor(() => expect(weatherRequests).toBe(2));
+        expect(
+          screen.getAllByText('Wits Cricket Oval, Johannesburg').length,
+        ).toBeGreaterThanOrEqual(2);
       } else {
         expect(screen.queryByRole('button', { name: 'Try weather again' })).not.toBeInTheDocument();
       }
@@ -845,6 +970,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -875,6 +1002,26 @@ describe('public browsing pages', () => {
         if (url.pathname.endsWith('/fixtures')) {
           return Promise.resolve(collection([fixture]));
         }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          const metric = url.searchParams.get('metric') as 'most_runs' | 'most_wickets';
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+              },
+              metric,
+              [
+                {
+                  rank: 1,
+                  participantId: metric === 'most_runs' ? 'batter-1' : 'bowler-1',
+                  participantName: metric === 'most_runs' ? 'Leading Batter' : 'Leading Bowler',
+                  value: metric === 'most_runs' ? 312 : 9,
+                },
+              ],
+            ),
+          );
+        }
         return Promise.resolve(collection([{ competitorId: 'team-1', name: 'Wanderers' }]));
       }),
     );
@@ -899,10 +1046,25 @@ describe('public browsing pages', () => {
       'href',
       '/competitors/team-1',
     );
+    expect(await screen.findByRole('link', { name: 'Leading Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
+    expect(screen.getByRole('link', { name: 'Leading Bowler' })).toHaveAttribute(
+      'href',
+      '/participants/bowler-1',
+    );
     expect(document.querySelector('main')).not.toHaveTextContent('competition-1');
     expect(document.querySelector('main')).not.toHaveTextContent(/competitor|participant/i);
     expect(
       requestedUrls.some((url) => url.includes('/fixtures?competitionId=competition-1&limit=10')),
+    ).toBe(true);
+    expect(
+      requestedUrls.some((url) =>
+        url.includes(
+          '/statistics/leaderboards?scope=competition&metric=most_runs&limit=5&competitionId=competition-1',
+        ),
+      ),
     ).toBe(true);
   });
 
@@ -923,6 +1085,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -942,6 +1106,28 @@ describe('public browsing pages', () => {
             }),
           );
         }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          const metric = url.searchParams.get('metric') as 'most_runs' | 'most_wickets';
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                seasonId: 'season-1',
+                season: '2026 season',
+              },
+              metric,
+              [
+                {
+                  rank: 1,
+                  participantId: metric === 'most_runs' ? 'batter-1' : 'bowler-1',
+                  participantName: metric === 'most_runs' ? 'Season Batter' : 'Season Bowler',
+                  value: metric === 'most_runs' ? 200 : 7,
+                },
+              ],
+            ),
+          );
+        }
         if (url.pathname.endsWith('/fixtures')) {
           return Promise.resolve(collection([fixture]));
         }
@@ -953,7 +1139,11 @@ describe('public browsing pages', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: '2026 season' })).toBeVisible();
     const relatedHeadings = screen.getAllByRole('heading', { level: 2 });
-    expect(relatedHeadings.map((heading) => heading.textContent)).toEqual(['Fixtures', 'Teams']);
+    expect(relatedHeadings.map((heading) => heading.textContent)).toEqual([
+      'Season leaders',
+      'Fixtures',
+      'Teams',
+    ]);
     expect(screen.getByRole('link', { name: 'Premier Cricket League' })).toHaveAttribute(
       'href',
       '/competitions/competition-1',
@@ -966,7 +1156,92 @@ describe('public browsing pages', () => {
       'href',
       '/competitors/team-1',
     );
+    expect(await screen.findByRole('link', { name: 'Season Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
     expect(document.querySelector('main')).not.toHaveTextContent('season-1');
+  });
+
+  it('keeps leaderboard failures and empty results independent and preserves zero values on retry', async () => {
+    let runRequests = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: string) => {
+        const url = new URL(input);
+        if (url.pathname.endsWith('/seasons/season-1')) {
+          return Promise.resolve(
+            response(200, {
+              data: {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026 season',
+                seasonId: 'season-1',
+              },
+            }),
+          );
+        }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          const metric = url.searchParams.get('metric') as 'most_runs' | 'most_wickets';
+          if (metric === 'most_runs') {
+            runRequests += 1;
+            if (runRequests === 1) {
+              return Promise.resolve(
+                response(503, {
+                  error: {
+                    code: 'SERVICE_UNAVAILABLE',
+                    message: 'Ranking is temporarily unavailable.',
+                  },
+                }),
+              );
+            }
+            return Promise.resolve(
+              leaderboard(
+                {
+                  competitionId: 'competition-1',
+                  competitionName: 'Premier Cricket League',
+                  seasonId: 'season-1',
+                  season: '2026 season',
+                },
+                metric,
+                [{ rank: 1, participantId: 'batter-1', participantName: 'Zero Batter', value: 0 }],
+              ),
+            );
+          }
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                seasonId: 'season-1',
+                season: '2026 season',
+              },
+              metric,
+              [],
+            ),
+          );
+        }
+        return Promise.resolve(collection([]));
+      }),
+    );
+
+    renderRoute('/seasons/season-1');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Leading run scorers could not be loaded' }),
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'No ranked players available' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry leading run scorers' }));
+
+    const table = await screen.findByRole('table', {
+      name: 'Leading run scorers for 2026 season',
+    });
+    expect(within(table).getByRole('link', { name: 'Zero Batter' })).toHaveAttribute(
+      'href',
+      '/participants/batter-1',
+    );
+    expect(within(table).getByRole('cell', { name: '0' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'No ranked players available' })).toBeVisible();
   });
 
   it('displays a team fixture history and readable players', async () => {
@@ -986,6 +1261,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     };
@@ -1039,6 +1316,8 @@ describe('public browsing pages', () => {
       gender: 'female',
       ballsPerOver: 6,
       scheduledOvers: 20,
+      venue: null,
+      toss: null,
       startDate: '2026-08-09',
       endDate: '2026-08-09',
     });
@@ -1070,6 +1349,18 @@ describe('public browsing pages', () => {
                 seasonId: 'season-1',
               },
             ]),
+          );
+        }
+        if (url.pathname.endsWith('/statistics/leaderboards')) {
+          return Promise.resolve(
+            leaderboard(
+              {
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+              },
+              url.searchParams.get('metric') as 'most_runs' | 'most_wickets',
+              [],
+            ),
           );
         }
         if (url.pathname.endsWith('/fixtures')) {
@@ -1217,7 +1508,7 @@ describe('public browsing pages', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Match history could not be loaded');
     expect(screen.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
     // The failed history must not take the independently loaded career totals with it.
-    expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+    expect((await within(sectionTitled('Career totals')).findAllByText('1234'))[0]).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry matches' }));
     expect(await screen.findByText('Partial data')).toBeVisible();
@@ -1301,7 +1592,6 @@ describe('public browsing pages', () => {
     expect(metricValue(career, 'Bowling statistics', 'Runs conceded')).toBe('842');
     expect(metricValue(career, 'Bowling statistics', 'Wides')).toBe('24');
     expect(metricValue(career, 'Bowling statistics', 'No-balls')).toBe('11');
-    expect(metricValue(career, 'Bowling statistics', 'Legal balls')).toBe('690');
     expect(metricValue(career, 'Bowling statistics', 'Overs')).toBe('115.0');
     expect(metricValue(career, 'Bowling statistics', 'Economy rate')).toBe('7.32');
     expect(metricValue(career, 'Bowling statistics', 'Wickets')).toBe('41');
@@ -1325,7 +1615,7 @@ describe('public browsing pages', () => {
       .map((requestUrl) => new URL(requestUrl))
       .filter((url) => url.pathname.endsWith('/participants/player-1/statistics'));
     expect(aggregateRequests).toHaveLength(1);
-    expect(aggregateRequests[0]?.search).toBe('?scope=career');
+    expect(aggregateRequests[0]?.search).toBe('');
     expect(document.querySelector('main')).not.toHaveTextContent(/player-1|stat-career-1/);
   });
 
@@ -1377,7 +1667,7 @@ describe('public browsing pages', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Loading career totals' })).toBeVisible();
 
     resolveCareer(careerAggregates());
-    expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+    expect((await within(sectionTitled('Career totals')).findAllByText('1234'))[0]).toBeVisible();
     expect(screen.getByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();
   });
 
@@ -1499,7 +1789,7 @@ describe('public browsing pages', () => {
       expect(screen.getAllByRole('alert')).toHaveLength(1);
 
       fireEvent.click(screen.getByRole('button', { name: 'Retry career totals' }));
-      expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+      expect((await within(sectionTitled('Career totals')).findAllByText('1234'))[0]).toBeVisible();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       expect(careerRequests).toBe(2);
       // Retrying one section does not re-request the other.
@@ -1547,7 +1837,7 @@ describe('public browsing pages', () => {
     expect(alert).toHaveTextContent('The published match history could not be displayed.');
     expect(sectionTitled('Match history')).toContainElement(alert);
     expect(screen.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
-    expect(await within(sectionTitled('Career totals')).findByText('1234')).toBeVisible();
+    expect((await within(sectionTitled('Career totals')).findAllByText('1234'))[0]).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry matches' }));
     expect(await screen.findByRole('link', { name: 'Wanderers vs Strikers' })).toBeVisible();

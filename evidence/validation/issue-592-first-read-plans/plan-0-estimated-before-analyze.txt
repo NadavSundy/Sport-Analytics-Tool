@@ -1,0 +1,177 @@
+GroupAggregate  (cost=275.28..290.29 rows=3 width=311)
+  Group Key: ((GROUPING(pf.competition_id) = 0)), ((GROUPING(pf.season) = 0)), pf.competition_id, pf.season, ((count(DISTINCT pf.fixture_id))::integer), ac.fixture_count, ac.source_event_count, ac.batting_delivery_count, ac.bowling_delivery_count, br.runs_scored, br.balls_faced, br.fours, br.sixes, br.batting_innings, br.batting_dismissals, br.fifties, br.hundreds, br.highest_score, br.highest_score_not_out, bo.runs_conceded, bo.wides, bo.no_balls, bo.legal_balls, bo.wickets, bo.bowling_innings, bo.four_wicket_hauls, bo.five_wicket_hauls, bo.best_bowling_wickets, bo.best_bowling_runs, bo.balls_per_over, fi.catches, fi.stumpings, fi.run_out_involvements
+  CTE published_fixture
+    ->  Nested Loop  (cost=13.67..27.65 rows=1 width=50)
+          ->  Hash Join  (cost=13.39..25.54 rows=1 width=50)
+                Hash Cond: (f.first_seen_in = publication.submission_id)
+                ->  Seq Scan on fixture f  (cost=0.00..11.70 rows=170 width=58)
+                ->  Hash  (cost=13.38..13.38 rows=1 width=8)
+                      ->  Seq Scan on submission publication  (cost=0.00..13.38 rows=1 width=8)
+                            Filter: (status = 'accepted'::submission_status)
+          ->  Index Only Scan using fixture_squad_pkey on fixture_squad fs  (cost=0.28..1.95 rows=1 width=8)
+                Index Cond: ((fixture_id = f.fixture_id) AND (person_id = '1'::bigint))
+  CTE participant_delivery
+    ->  Unique  (cost=215.64..215.65 rows=1 width=98)
+          ->  Sort  (cost=215.64..215.64 rows=1 width=98)
+                Sort Key: delivery.innings_id, delivery.over_number, delivery.position_in_over, delivery.revision DESC, delivery.delivery_id DESC
+                ->  Nested Loop  (cost=141.02..215.63 rows=1 width=98)
+                      ->  Nested Loop  (cost=140.87..160.59 rows=1 width=117)
+                            Join Filter: (delivery_1.delivery_id = delivery.delivery_id)
+                            ->  Nested Loop  (cost=4.60..24.21 rows=1 width=117)
+                                  ->  Nested Loop  (cost=4.31..12.83 rows=2 width=58)
+                                        ->  CTE Scan on published_fixture pf_1  (cost=0.00..0.02 rows=1 width=50)
+                                        ->  Bitmap Heap Scan on innings i  (cost=4.31..12.79 rows=2 width=16)
+                                              Recheck Cond: (fixture_id = pf_1.fixture_id)
+                                              Filter: (NOT is_super_over)
+                                              ->  Bitmap Index Scan on innings_fixture_idx  (cost=0.00..4.31 rows=5 width=0)
+                                                    Index Cond: (fixture_id = pf_1.fixture_id)
+                                  ->  Index Scan using delivery_sequence_live on delivery  (cost=0.29..5.68 rows=1 width=67)
+                                        Index Cond: (innings_id = i.innings_id)
+                            ->  HashAggregate  (cost=136.27..136.32 rows=5 width=8)
+                                  Group Key: delivery_1.delivery_id
+                                  ->  Append  (cost=0.29..136.26 rows=5 width=8)
+                                        ->  Index Scan using delivery_striker_idx on delivery delivery_1  (cost=0.29..8.30 rows=1 width=8)
+                                              Index Cond: (striker_id = '1'::bigint)
+                                        ->  Index Scan using delivery_non_striker_idx on delivery delivery_2  (cost=0.29..8.30 rows=1 width=8)
+                                              Index Cond: (non_striker_id = '1'::bigint)
+                                        ->  Index Scan using delivery_bowler_idx on delivery delivery_3  (cost=0.29..8.30 rows=1 width=8)
+                                              Index Cond: (bowler_id = '1'::bigint)
+                                        ->  Nested Loop  (cost=4.47..36.27 rows=1 width=8)
+                                              ->  Bitmap Heap Scan on delivery_wicket wicket_4  (cost=4.17..11.28 rows=3 width=8)
+                                                    Recheck Cond: (player_out_id = '1'::bigint)
+                                                    ->  Bitmap Index Scan on delivery_wicket_player_out_idx  (cost=0.00..4.17 rows=3 width=0)
+                                                          Index Cond: (player_out_id = '1'::bigint)
+                                              ->  Memoize  (cost=0.30..8.32 rows=1 width=8)
+                                                    Cache Key: wicket_4.delivery_id
+                                                    Cache Mode: logical
+                                                    ->  Index Scan using delivery_pkey on delivery delivery_4  (cost=0.29..8.31 rows=1 width=8)
+                                                          Index Cond: (delivery_id = wicket_4.delivery_id)
+                                                          Filter: (superseded_at IS NULL)
+                                        ->  Nested Loop  (cost=15.08..75.05 rows=1 width=8)
+                                              ->  Hash Join  (cost=14.79..34.37 rows=9 width=8)
+                                                    Hash Cond: (wicket_5.wicket_id = fielder_1.wicket_id)
+                                                    ->  Seq Scan on delivery_wicket wicket_5  (cost=0.00..16.90 rows=690 width=16)
+                                                    ->  Hash  (cost=14.68..14.68 rows=9 width=8)
+                                                          ->  Bitmap Heap Scan on delivery_wicket_fielder fielder_1  (cost=4.13..14.68 rows=9 width=8)
+                                                                Recheck Cond: (person_id = '1'::bigint)
+                                                                ->  Bitmap Index Scan on delivery_wicket_fielder_person_idx  (cost=0.00..4.13 rows=9 width=0)
+                                                                      Index Cond: (person_id = '1'::bigint)
+                                              ->  Index Scan using delivery_pkey on delivery delivery_5  (cost=0.29..4.52 rows=1 width=8)
+                                                    Index Cond: (delivery_id = wicket_5.delivery_id)
+                                                    Filter: (superseded_at IS NULL)
+                      ->  Index Scan using submission_pkey on submission source_submission  (cost=0.15..0.38 rows=1 width=8)
+                            Index Cond: (submission_id = delivery.submission_id)
+                            Filter: (status = 'accepted'::submission_status)
+                      SubPlan 2
+                        ->  Bitmap Heap Scan on delivery_wicket wicket_2  (cost=4.17..11.29 rows=1 width=0)
+                              Recheck Cond: (delivery_id = delivery.delivery_id)
+                              Filter: (player_out_id = '1'::bigint)
+                              ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0)
+                                    Index Cond: (delivery_id = delivery.delivery_id)
+                      SubPlan 4
+                        ->  Bitmap Heap Scan on delivery_wicket wicket_3  (cost=4.17..11.30 rows=1 width=0)
+                              Recheck Cond: (delivery_id = delivery.delivery_id)
+                              Filter: ((kind <> ALL ('{"retired hurt","retired not out"}'::text[])) AND (player_out_id = '1'::bigint))
+                              ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0)
+                                    Index Cond: (delivery_id = delivery.delivery_id)
+                      SubPlan 6
+                        ->  Aggregate  (cost=31.82..31.83 rows=1 width=8)
+                              ->  Nested Loop  (cost=4.32..31.81 rows=2 width=0)
+                                    ->  Bitmap Heap Scan on delivery_wicket dw  (cost=4.17..11.28 rows=3 width=32)
+                                          Recheck Cond: (delivery_id = delivery.delivery_id)
+                                          ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0)
+                                                Index Cond: (delivery_id = delivery.delivery_id)
+                                    ->  Index Scan using dismissal_kind_pkey on dismissal_kind dk  (cost=0.15..6.83 rows=1 width=32)
+                                          Index Cond: (code = dw.kind)
+                                          Filter: credits_bowler
+  ->  Incremental Sort  (cost=31.98..46.69 rows=3 width=187)
+        Sort Key: ((GROUPING(pf.competition_id) = 0)) DESC, ((GROUPING(pf.season) = 0)) DESC, pf.competition_id, pf.season, ((count(DISTINCT pf.fixture_id))::integer), ac.fixture_count, ac.source_event_count, ac.batting_delivery_count, ac.bowling_delivery_count, br.runs_scored, br.balls_faced, br.fours, br.sixes, br.batting_innings, br.batting_dismissals, br.fifties, br.hundreds, br.highest_score, br.highest_score_not_out, bo.runs_conceded, bo.wides, bo.no_balls, bo.legal_balls, bo.wickets, bo.bowling_innings, bo.four_wicket_hauls, bo.five_wicket_hauls, bo.best_bowling_wickets, bo.best_bowling_runs, bo.balls_per_over, fi.catches, fi.stumpings, fi.run_out_involvements
+        Presorted Key: ((GROUPING(pf.competition_id) = 0)), ((GROUPING(pf.season) = 0))
+        ->  Nested Loop Left Join  (cost=24.68..46.56 rows=3 width=187)
+              Join Filter: ((NOT (bo.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (bo.season IS DISTINCT FROM pf.season)) AND (bo.competition_grouped = ((GROUPING(pf.competition_id) = 0))) AND (bo.season_grouped = ((GROUPING(pf.season) = 0))))
+              ->  Nested Loop Left Join  (cost=24.52..45.97 rows=3 width=143)
+                    Join Filter: ((NOT (fi.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (fi.season IS DISTINCT FROM pf.season)) AND (fi.competition_grouped = ((GROUPING(pf.competition_id) = 0))) AND (fi.season_grouped = ((GROUPING(pf.season) = 0))))
+                    ->  Nested Loop Left Join  (cost=0.58..21.44 rows=3 width=131)
+                          Join Filter: ((NOT (br.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (br.season IS DISTINCT FROM pf.season)) AND (br.competition_grouped = ((GROUPING(pf.competition_id) = 0))) AND (br.season_grouped = ((GROUPING(pf.season) = 0))))
+                          ->  Nested Loop Left Join  (cost=0.48..20.92 rows=3 width=94)
+                                ->  Merge Left Join  (cost=0.33..0.40 rows=3 width=62)
+                                      Merge Cond: ((((GROUPING(pf.competition_id) = 0)) = ac.competition_grouped) AND (((GROUPING(pf.season) = 0)) = ac.season_grouped))
+                                      Join Filter: ((NOT (ac.competition_id IS DISTINCT FROM pf.competition_id)) AND (NOT (ac.season IS DISTINCT FROM pf.season)))
+                                      ->  Sort  (cost=0.13..0.14 rows=3 width=46)
+                                            Sort Key: ((GROUPING(pf.competition_id) = 0)) DESC, ((GROUPING(pf.season) = 0)) DESC
+                                            ->  GroupAggregate  (cost=0.03..0.11 rows=3 width=46)
+                                                  Group Key: pf.competition_id, pf.season
+                                                  Group Key: pf.competition_id
+                                                  Group Key: ()
+                                                  ->  Sort  (cost=0.03..0.04 rows=1 width=48)
+                                                        Sort Key: pf.competition_id, pf.season
+                                                        ->  CTE Scan on published_fixture pf  (cost=0.00..0.02 rows=1 width=48)
+                                      ->  Sort  (cost=0.19..0.20 rows=3 width=58)
+                                            Sort Key: ac.competition_grouped DESC, ac.season_grouped DESC
+                                            ->  Subquery Scan on ac  (cost=0.03..0.17 rows=3 width=58)
+                                                  ->  GroupAggregate  (cost=0.03..0.14 rows=3 width=58)
+                                                        Group Key: pd.competition_id, pd.season
+                                                        Group Key: pd.competition_id
+                                                        Group Key: ()
+                                                        ->  Sort  (cost=0.03..0.04 rows=1 width=50)
+                                                              Sort Key: pd.competition_id, pd.season
+                                                              ->  CTE Scan on participant_delivery pd  (cost=0.00..0.02 rows=1 width=50)
+                                ->  Index Scan using competition_pkey on competition c  (cost=0.15..6.84 rows=1 width=40)
+                                      Index Cond: (competition_id = pf.competition_id)
+                          ->  Materialize  (cost=0.10..0.32 rows=3 width=79)
+                                ->  Subquery Scan on br  (cost=0.10..0.30 rows=3 width=79)
+                                      ->  GroupAggregate  (cost=0.10..0.27 rows=3 width=79)
+                                            Group Key: bi.competition_id, bi.season
+                                            Group Key: bi.competition_id
+                                            Group Key: ()
+                                            ->  Sort  (cost=0.10..0.10 rows=1 width=65)
+                                                  Sort Key: bi.competition_id, bi.season
+                                                  ->  Subquery Scan on bi  (cost=0.06..0.08 rows=1 width=65)
+                                                        ->  HashAggregate  (cost=0.06..0.07 rows=1 width=73)
+                                                              Group Key: pd_1.innings_id, pd_1.fixture_id, pd_1.competition_id, pd_1.season
+                                                              Filter: bool_or((pd_1.is_striker OR pd_1.is_non_striker OR pd_1.is_batter))
+                                                              ->  CTE Scan on participant_delivery pd_1  (cost=0.00..0.02 rows=1 width=65)
+                    ->  Materialize  (cost=23.95..24.21 rows=5 width=54)
+                          ->  Subquery Scan on fi  (cost=23.95..24.18 rows=5 width=54)
+                                ->  GroupAggregate  (cost=23.95..24.13 rows=5 width=54)
+                                      Group Key: fc.competition_id, fc.season
+                                      Group Key: fc.competition_id
+                                      Group Key: ()
+                                      ->  Sort  (cost=23.95..23.95 rows=2 width=72)
+                                            Sort Key: fc.competition_id, fc.season
+                                            ->  Subquery Scan on fc  (cost=23.89..23.94 rows=2 width=72)
+                                                  ->  Unique  (cost=23.89..23.92 rows=2 width=88)
+                                                        ->  Sort  (cost=23.89..23.89 rows=2 width=88)
+                                                              Sort Key: pd_2.fixture_id, pd_2.competition_id, pd_2.season, wicket.wicket_id, wicket.kind
+                                                              ->  Append  (cost=4.33..23.88 rows=2 width=88)
+                                                                    ->  Nested Loop  (cost=4.33..12.55 rows=1 width=88)
+                                                                          ->  Nested Loop  (cost=4.17..11.33 rows=3 width=88)
+                                                                                ->  CTE Scan on participant_delivery pd_2  (cost=0.00..0.02 rows=1 width=56)
+                                                                                ->  Bitmap Heap Scan on delivery_wicket wicket  (cost=4.17..11.28 rows=3 width=48)
+                                                                                      Recheck Cond: (delivery_id = pd_2.delivery_id)
+                                                                                      ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0)
+                                                                                            Index Cond: (delivery_id = pd_2.delivery_id)
+                                                                          ->  Index Scan using delivery_wicket_fielder_pkey on delivery_wicket_fielder fielder  (cost=0.15..0.40 rows=1 width=8)
+                                                                                Index Cond: (wicket_id = wicket.wicket_id)
+                                                                                Filter: (person_id = '1'::bigint)
+                                                                    ->  Nested Loop  (cost=4.17..11.32 rows=1 width=88)
+                                                                          ->  CTE Scan on participant_delivery pd_3  (cost=0.00..0.02 rows=1 width=56)
+                                                                                Filter: is_bowler
+                                                                          ->  Bitmap Heap Scan on delivery_wicket wicket_1  (cost=4.17..11.29 rows=1 width=48)
+                                                                                Recheck Cond: (delivery_id = pd_3.delivery_id)
+                                                                                Filter: (kind = 'caught and bowled'::text)
+                                                                                ->  Bitmap Index Scan on delivery_wicket_delivery_idx  (cost=0.00..4.17 rows=3 width=0)
+                                                                                      Index Cond: (delivery_id = pd_3.delivery_id)
+              ->  Materialize  (cost=0.16..0.40 rows=3 width=86)
+                    ->  Subquery Scan on bo  (cost=0.16..0.38 rows=3 width=86)
+                          ->  GroupAggregate  (cost=0.16..0.35 rows=3 width=86)
+                                Group Key: bo_1.competition_id, bo_1.season
+                                Group Key: bo_1.competition_id
+                                Group Key: ()
+                                ->  Sort  (cost=0.16..0.16 rows=1 width=70)
+                                      Sort Key: bo_1.competition_id, bo_1.season
+                                      ->  Subquery Scan on bo_1  (cost=0.11..0.15 rows=1 width=70)
+                                            ->  HashAggregate  (cost=0.11..0.14 rows=1 width=82)
+                                                  Group Key: pd_4.innings_id, pd_4.fixture_id, pd_4.competition_id, pd_4.season, pd_4.balls_per_over
+                                                  ->  CTE Scan on participant_delivery pd_4  (cost=0.00..0.02 rows=1 width=76)
+                                                        Filter: is_bowler

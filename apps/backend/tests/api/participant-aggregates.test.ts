@@ -19,25 +19,41 @@ const careerAggregates: ParticipantAggregates = {
       participantName: 'BB McCullum',
       scope: 'career',
       statisticCode: 'participant_career',
+      appearances: 1,
       fixtureCount: 1,
       sourceEventCount: 60,
       batting: {
+        innings: 1,
         runsScored: 116,
         ballsFaced: 56,
+        dismissals: 0,
+        notOuts: 1,
+        battingAverage: null,
         fours: 12,
         sixes: 8,
+        fifties: 0,
+        hundreds: 1,
+        highestScore: 116,
+        highestScoreNotOut: true,
         strikeRate: 207.14,
       },
       bowling: {
+        innings: 1,
         runsConceded: 24,
         wides: 2,
         noBalls: 1,
         legalBallsBowled: 18,
         wicketsTaken: 2,
+        bowlingAverage: 12,
+        bowlingStrikeRate: 9,
+        bestBowling: { wicketsTaken: 2, runsConceded: 24 },
+        fourWicketHauls: 0,
+        fiveWicketHauls: 0,
         ballsPerOver: 6,
         oversBowled: '3.0',
         economyRate: 8,
       },
+      fielding: { catches: 2, stumpings: 1, runOutInvolvements: 1 },
     },
   ],
 };
@@ -91,8 +107,14 @@ describe('public participant aggregate statistics API', () => {
     expect(response.body.data.participantId).toBe('101');
     expect(response.body.data.scope).toEqual({ superOversIncluded: false });
     expect(response.body.data.statistics[0].bowling).toMatchObject({
+      innings: 1,
       wides: 2,
       noBalls: 1,
+      bowlingAverage: 12,
+    });
+    expect(response.body.data.statistics[0]).toMatchObject({
+      appearances: 1,
+      fielding: { catches: 2, stumpings: 1, runOutInvolvements: 1 },
     });
   });
 

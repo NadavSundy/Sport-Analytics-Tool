@@ -7,11 +7,28 @@
  * trip, a match costs about a minute one row at a time and a few seconds
  * batched. Behaviour is unchanged throughout: the same conflict clauses preserve
  * idempotency, and only rows actually inserted are counted.
+ *
+ * The fixture statistics cache version and the statistics data version of every
+ * affected participant are advanced in the caller's transaction, as every other
+ * event write does (issue #592). The affected participants are those the ingest
+ * actually adds to the fixture squad, whose appearances change, and everyone
+ * named by a delivery it actually inserts. A re-ingest that inserts nothing
+ * affects no participant, but still advances the fixture version.
  */
 
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
+import {
+  advanceStatisticsDataVersions,
+  affectedParticipantIds,
+  type AggregateParticipantEvent,
+} from '@sport-analytics/batch-processing';
+import {
+  inningsPowerplaysSchema,
+  isLegalDelivery,
+  submissionExtrasSchema,
+} from '@sport-analytics/contracts';
 import type { QueryExecutor } from '../src/database';
 
 interface Delivery {
@@ -65,6 +82,78 @@ function placeholders(rowCount: number, columnCount: number): string {
   }).join(',');
 }
 
+/** Cricsheet extras keys and the submission contract keys they correspond to. */
+const CONTRACT_EXTRAS_KEY_BY_CRICSHEET_KEY: Readonly<Record<string, string>> = {
+  wides: 'wides',
+  noballs: 'noBalls',
+  byes: 'byes',
+  legbyes: 'legByes',
+  penalty: 'penalty',
+};
+
+const MAX_REPORTED_EXTRAS_ISSUES = 5;
+
+interface CricsheetInnings {
+  overs?: Array<{ over: number; deliveries: Delivery[] }>;
+  powerplays?: unknown;
+}
+
+export function assertValidCricsheetPowerplays(innings: readonly CricsheetInnings[]): void {
+  for (const [inningsIndex, currentInnings] of innings.entries()) {
+    if (currentInnings.powerplays === undefined) continue;
+    const result = inningsPowerplaysSchema.safeParse(currentInnings.powerplays);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      const field = issue?.path.length ? `.${issue.path.join('.')}` : '';
+      throw new Error(
+        `Invalid powerplay metadata at innings ${inningsIndex + 1}${field}: ${issue?.message ?? 'Invalid range.'}; nothing was ingested.`,
+      );
+    }
+  }
+}
+
+/**
+ * Validate every delivery's extras against the submission contract.
+ *
+ * Runs before anything is written, so a file with one invalid delivery is
+ * rejected whole and leaves no partial data whatever transaction the caller
+ * holds. A key Cricsheet does not define is passed through unmapped, so the
+ * contract rejects it rather than the ingest silently dropping it.
+ */
+export function assertValidCricsheetExtras(innings: readonly CricsheetInnings[]): void {
+  const issues: string[] = [];
+
+  for (const [inningsIndex, currentInnings] of innings.entries()) {
+    for (const over of currentInnings.overs ?? []) {
+      for (const [position, delivery] of over.deliveries.entries()) {
+        const extras = Object.fromEntries(
+          Object.entries(delivery.extras ?? {}).map(([key, value]) => [
+            CONTRACT_EXTRAS_KEY_BY_CRICSHEET_KEY[key] ?? key,
+            value,
+          ]),
+        );
+        const result = submissionExtrasSchema.safeParse(extras);
+        if (result.success) continue;
+
+        const location = `innings ${inningsIndex + 1}, over ${over.over}, delivery ${position + 1}`;
+        for (const issue of result.error.issues) {
+          issues.push(`${location}: ${['extras', ...issue.path].join('.')}: ${issue.message}`);
+        }
+      }
+    }
+  }
+
+  if (issues.length > 0) {
+    const reported = issues.slice(0, MAX_REPORTED_EXTRAS_ISSUES).join('; ');
+    const remaining = issues.length - MAX_REPORTED_EXTRAS_ISSUES;
+    throw new Error(
+      `Invalid delivery extras; nothing was ingested. ${reported}${
+        remaining > 0 ? `; and ${remaining} more` : ''
+      }`,
+    );
+  }
+}
+
 export async function ingestMatchData(
   client: QueryExecutor,
   matchPath: string,
@@ -75,6 +164,9 @@ export async function ingestMatchData(
   const info = match.info;
   const meta = match.meta ?? {};
   const registry: Record<string, string> = info.registry?.people ?? {};
+
+  assertValidCricsheetExtras(match.innings ?? []);
+  assertValidCricsheetPowerplays(match.innings ?? []);
 
   async function scalar<T>(sql: string, values: unknown[] = []): Promise<T> {
     const { rows } = await client.query(sql, values);
@@ -284,13 +376,19 @@ export async function ingestMatchData(
     }
   }
 
+  // Only squad rows actually inserted change a participant's appearances.
+  const addedSquadParticipantIds: string[] = [];
   if (squadRows.size > 0) {
-    await client.query(
+    const insertedSquad = await client.query(
       `INSERT INTO fixture_squad (fixture_id, person_id, team_id, role)
        VALUES ${placeholders(squadRows.size, 4)}
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING person_id`,
       [...squadRows.values()].flat(),
     );
+    for (const row of insertedSquad.rows) {
+      addedSquadParticipantIds.push(String(row.person_id));
+    }
   }
 
   // ---- officials --------------------------------------------------------
@@ -392,6 +490,7 @@ export async function ingestMatchData(
   }
 
   const powerplayRows: unknown[][] = [];
+  const powerplayInningsIds: number[] = [];
   const absentRows: unknown[][] = [];
   const miscountedRows: unknown[][] = [];
 
@@ -399,6 +498,9 @@ export async function ingestMatchData(
     const inningsId = inningsIdByOrdinal.get(ordinal);
     if (inningsId === undefined) continue;
 
+    if (Object.prototype.hasOwnProperty.call(innings, 'powerplays')) {
+      powerplayInningsIds.push(inningsId);
+    }
     for (const powerplay of innings.powerplays ?? []) {
       powerplayRows.push([inningsId, powerplay.from, powerplay.to, powerplay.type]);
     }
@@ -419,6 +521,12 @@ export async function ingestMatchData(
         Number((detail as { balls: string | number }).balls),
       ]);
     }
+  }
+
+  if (powerplayInningsIds.length > 0) {
+    await client.query(`DELETE FROM innings_powerplay WHERE innings_id = ANY($1::bigint[])`, [
+      powerplayInningsIds,
+    ]);
   }
 
   if (powerplayRows.length > 0) {
@@ -459,6 +567,7 @@ export async function ingestMatchData(
   }
 
   let deliveryCount = 0;
+  const insertedEvents: AggregateParticipantEvent[] = [];
 
   for (const [ordinal, innings] of inningsList.entries()) {
     const inningsId = inningsIdByOrdinal.get(ordinal);
@@ -476,9 +585,8 @@ export async function ingestMatchData(
 
         // The printed ball number counts legal deliveries only. Wides and
         // no-balls do not advance it, so it repeats within an over. It is a
-        // label, never an identifier.
-        const isLegal = extras.wides === undefined && extras.noballs === undefined;
-        if (isLegal) legalBalls += 1;
+        // label, never an identifier. Cricsheet spells the no-ball key `noballs`.
+        if (isLegalDelivery({ wides: extras.wides, noBalls: extras.noballs })) legalBalls += 1;
 
         pending.push({
           inningsId,
@@ -548,6 +656,21 @@ export async function ingestMatchData(
       const deliveryId = deliveryIdByKey.get(`${item.overNumber}:${item.position}`);
       return deliveryId === undefined ? [] : [{ ...item, deliveryId }];
     });
+
+    for (const item of inserted) {
+      insertedEvents.push({
+        strikerId: String(requirePerson(item.delivery.batter, 'batter')),
+        nonStrikerId: String(requirePerson(item.delivery.non_striker, 'non-striker')),
+        bowlerId: String(requirePerson(item.delivery.bowler, 'bowler')),
+        wickets: (item.delivery.wickets ?? []).map((wicket) => ({
+          playerOutId: String(requirePerson(wicket.player_out, 'dismissed player')),
+          fielders: (wicket.fielders ?? []).map((fielder) => {
+            const fielderId = fielder.name ? personId.get(fielder.name) : undefined;
+            return fielderId === undefined ? {} : { participantId: String(fielderId) };
+          }),
+        })),
+      });
+    }
 
     const wicketRows = inserted.flatMap((item) =>
       (item.delivery.wickets ?? []).map((wicket, wicketOrdinal) => ({
@@ -668,6 +791,14 @@ export async function ingestMatchData(
       );
     }
   }
+
+  await advanceStatisticsDataVersions(client, {
+    fixtureIds: [String(fixtureId)],
+    participantIds: affectedParticipantIds({
+      events: insertedEvents,
+      squadParticipantIds: addedSquadParticipantIds,
+    }),
+  });
 
   return {
     sourceRef,

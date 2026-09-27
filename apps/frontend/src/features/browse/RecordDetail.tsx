@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Breadcrumbs,
+  SectionNavigation,
+  type NavigationItem,
+} from '../../components/NavigationPrimitives';
 
 interface DetailLayoutProps {
   backLabel: string;
@@ -7,11 +12,29 @@ interface DetailLayoutProps {
   children: ReactNode;
   eyebrow: string;
   title: string;
+  breadcrumbs?: NavigationItem[];
+  sections?: NavigationItem[];
 }
 
-export function DetailLayout({ backLabel, backTo, children, eyebrow, title }: DetailLayoutProps) {
+export function DetailLayout({
+  backLabel,
+  backTo,
+  breadcrumbs,
+  children,
+  eyebrow,
+  sections,
+  title,
+}: DetailLayoutProps) {
   return (
     <article className="detail-page content-boundary">
+      <Breadcrumbs
+        items={
+          breadcrumbs ?? [
+            { label: backLabel.charAt(0).toUpperCase() + backLabel.slice(1), to: backTo },
+            { label: title, to: '#' },
+          ]
+        }
+      />
       <Link className="back-link" to={backTo}>
         Back to {backLabel}
       </Link>
@@ -19,6 +42,7 @@ export function DetailLayout({ backLabel, backTo, children, eyebrow, title }: De
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
       </header>
+      {sections ? <SectionNavigation items={sections} label={`${title} sections`} /> : null}
       {children}
     </article>
   );

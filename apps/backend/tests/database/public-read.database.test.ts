@@ -180,7 +180,7 @@ describe.sequential('public read relationship summaries database integration', (
     );
   });
 
-  test('returns stored venue coordinates for fixture weather resolution', async () => {
+  test('persists and returns resolved venue coordinates for fixture weather resolution', async () => {
     const executor = databaseClient();
     const currentFixtureId = ingestedFixtureId();
 
@@ -197,6 +197,35 @@ describe.sequential('public read relationship summaries database integration', (
         name: 'AMI Stadium',
         latitude: -43.4894,
         longitude: 172.5405,
+      },
+    });
+  });
+
+  test('rejects invalid venue coordinates and invalidates resolved coordinates after location changes', async () => {
+    const executor = databaseClient();
+    const currentFixtureId = ingestedFixtureId();
+    const context = await findFixtureWeatherContext(currentFixtureId, executor);
+    const venueId = context?.venue?.venueId;
+    expect(venueId).toBeDefined();
+
+    await executor.query('SAVEPOINT invalid_venue_coordinates');
+    await expect(
+      executor.query(
+        'UPDATE venue SET latitude = 91, longitude = 172.5405 WHERE venue_id = $1::bigint',
+        [venueId],
+      ),
+    ).rejects.toThrow();
+    await executor.query('ROLLBACK TO SAVEPOINT invalid_venue_coordinates');
+
+    await executor.query('UPDATE venue SET city = $2::text WHERE venue_id = $1::bigint', [
+      venueId,
+      `Christchurch refreshed ${process.pid}`,
+    ]);
+
+    await expect(findFixtureWeatherContext(currentFixtureId, executor)).resolves.toMatchObject({
+      venue: {
+        latitude: null,
+        longitude: null,
       },
     });
   });

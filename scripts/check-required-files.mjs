@@ -19,6 +19,8 @@ const requiredFiles = [
   'packages/contracts/README.md',
   'packages/batch-processing/package.json',
   'packages/batch-processing/README.md',
+  'packages/object-storage/package.json',
+  'packages/object-storage/README.md',
   'docs/development/technology-stack.md',
   'docs/development/ci-cd.md',
   'database/README.md',

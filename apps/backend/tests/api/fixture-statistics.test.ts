@@ -38,6 +38,7 @@ describe('public fixture statistics API', () => {
           method: null,
           decidedByBowlOut: false,
         },
+        highestScorers: [],
         warnings: [],
         statistics: [],
       });
@@ -77,6 +78,19 @@ describe('public fixture statistics API', () => {
           deliveryRuns: 0,
           penaltyRuns: 5,
           totalRuns: 5,
+          wicketsLost: 0,
+          legalBalls: 0,
+          overs: '0.0',
+          runRate: null,
+          powerplay: null,
+          extras: {
+            total: 5,
+            wides: 0,
+            noBalls: 0,
+            byes: 0,
+            legByes: 0,
+            penaltyRuns: 5,
+          },
         },
         contributingEvents: [],
       });

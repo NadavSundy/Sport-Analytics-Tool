@@ -21,11 +21,42 @@ The API is a primary product. It must be designed and implemented by the team as
 The version-controlled API contract is published in the
 [OpenAPI specification](openapi.md).
 
+## Live development API
+
+The deployed development backend is hosted on Azure Container Apps:
+
+- **Base URL:** <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io>
+- **API base URL:** <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1>
+- **Health check:** <https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1/health>
+
+The deployment guides and Sprint evidence retain the deployment/acceptance trail. Availability is
+verified as part of milestone close-out rather than inferred from this documentation page.
+
 See [API versioning and deprecation](versioning.md) for compatibility,
 deprecation and retirement rules.
 
 See [Shared API Contracts](contracts.md) for the complete identifier,
 response, error, filtering, sorting, date/time, event-ordering, and pagination conventions.
+
+## Interactive API Explorer
+
+The public frontend exposes an interactive API Explorer at `/api`. It loads the authoritative
+`/openapi.yaml` document from the backend at runtime rather than keeping a frontend copy of the
+contract. The page identifies `v1` as the currently supported API major version and exposes the
+contract-defined bearer-token and consumer API-key authorization controls.
+
+Implemented operations are available for normal exploration. Planned operations are hidden by
+default; users may reveal them explicitly, but interactive submission is disabled while the planned
+view is active.
+
+The Explorer is discoverable from the Stat'sTheGame primary public navigation as **API**. The
+bottom-of-page API entry opens the in-app Explorer, while a separate **API Documentation** link
+continues to expose the extended MkDocs documentation.
+
+The Explorer makes both deferred stages visible: the route-level lazy module and the backend
+OpenAPI specification request each show the same labelled progress indicator until their associated
+content is ready. A specification failure replaces that indicator with an explicit retryable error
+state, so an unfinished or failed Explorer is not presented as a blank page.
 
 ## Current endpoints
 
@@ -264,22 +295,95 @@ Administrators can issue, rotate and revoke external-consumer API keys. The keye
 currently provides competition and fixture reads and applies consumer-wide request-rate and UTC daily
 quota controls. See [Consumer API keys, rate limits and quotas](consumer-keys.md).
 
-## Required future API areas
+## Intermediate API areas
 
-- submission review, correction, and correction-history workflows;
-- derived season, competition, and career statistics;
-- versioned dataset releases and larger asynchronous exports;
-- staged and resumable batch ingestion;
-- statistic definitions and versions for the advanced tier;
-- asynchronous jobs for large requests;
-- change feeds and release differences for the advanced tier.
+The Intermediate tier is implemented through the same handwritten `/api/v1` boundary and is included
+in the version-controlled OpenAPI contract.
 
-The OpenAPI specification is maintained alongside the implementation, with shared request and
-response contracts covered by automated contract tests. Backend behaviour is implemented through
-the handwritten Express API rather than generated database endpoints.
+### Batch ingestion, review and publication
+
+Whole-season and back-catalogue packages use the asynchronous batch API. The implemented surface
+covers receipt, status, reports, report downloads, reference mapping, published-delivery conflict
+resolution, reviewer decisions, correction resubmission and publication.
+
+See [Batch ingestion receipt API](batches.md) for the lifecycle and authorisation rules.
+
+### Corrections and audit history
+
+Accepted delivery corrections create immutable revisions rather than overwriting published data.
+Authorised users can submit a correction and retrieve the retained revision history.
+
+See [Direct Event Submissions](submissions.md#correct-an-accepted-event) and
+[Protected provenance and audit API](provenance.md).
+
+### Participant aggregates
+
+The public API derives season, competition and career aggregates from current accepted delivery
+revisions:
+
+```http
+GET /api/v1/participants/{participantId}/statistics
+GET /api/v1/participants/{participantId}/statistics/{statisticId}
+```
+
+See [Participant aggregate calculations](../statistics/participant-aggregates.md).
+
+### Season and competition leaderboards
+
+`GET /api/v1/statistics/leaderboards` returns a bounded, server-ranked participant table for one
+explicit season or competition. Supply `scope=season&seasonId=...` or
+`scope=competition&competitionId=...`, a supported `metric`, and an optional `limit` from 1 to 50
+(default 10). Invalid scope/identifier combinations, metrics and bounds return `400`; a scope that
+does not exist returns `404`.
+
+Total metrics are `most_runs`, `most_wickets`, `most_fours` and `most_sixes`. Qualified rate metrics
+are `highest_batting_average`, `highest_strike_rate`, `best_bowling_average`,
+`best_economy_rate` and `best_bowling_strike_rate`. Every response names the scope and metric,
+returns stable participant identifiers and readable names, and carries the applicable qualification
+rule. See [Participant aggregate calculations](../statistics/participant-aggregates.md#leaderboards).
+
+### Dataset releases
+
+Administrators can queue immutable versioned dataset releases. Public consumers can discover release
+metadata and download the exact checksum-backed JSON artifact.
+
+See [Dataset exports](../data/dataset-exports.md).
+
+### API consumer protections
+
+Administrators can issue, rotate and revoke consumer API keys. Keyed consumer requests are protected
+by configurable per-minute rate limits and durable UTC daily quotas.
+
+See [Consumer API keys, rate limits and quotas](consumer-keys.md).
+
+### Caching and response-time behaviour
+
+Repeated fixture-statistics reads use a versioned 60-second server-side cache-aside path. Contributor
+traces bypass the cache, and accepted changes advance the fixture version so stale cached statistics
+are no longer reachable.
+
+The reproducible workload, response-time targets and measurement commands are documented in
+[Representative-scale API performance baseline](../development/performance-baseline.md).
+
+The [OpenAPI specification](openapi.md) remains the authoritative request/response contract for all
+implemented endpoints.
+
+## Remaining future API areas
+
+The following belong to later Advanced-tier work rather than the implemented Intermediate surface:
+
+- analyst-defined statistic definitions, validation, sandboxing and versioning;
+- late and out-of-order live-feed replay;
+- bitemporal/as-of statistic queries and release comparisons;
+- larger asynchronous analytical jobs and change-feed functionality where not already implemented
+  for dataset-release generation.
 
 ## AI Declaration
 
-The preceding document was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]
-and Codex[GPT-5]. The competition-scoped submitter access behavior was updated with the assistance
-of Codex[GPT-5].
+The preceding API overview was reviewed and updated for the Intermediate implementation with the
+assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #635 public leaderboard endpoint and qualification summary were documented with the
+assistance of Codex[GPT-5].
+The Issue #660 public API Explorer workflow was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #661 public API Explorer discoverability and production UX guidance was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The Issue #726 API Explorer loading-feedback guidance was updated with the assistance of Codex[GPT-5].
