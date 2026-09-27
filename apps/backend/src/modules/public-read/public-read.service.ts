@@ -111,7 +111,6 @@ export interface PublicReadService {
     pagination: {
       nextCursor: string | null;
       totalPages?: number;
-      
     };
   }>;
 
@@ -642,7 +641,7 @@ export function createPublicReadService(
             displayName: record.displayName,
             participantId: record.participantId,
           })),
-           totalPages: Math.ceil(page.totalRecords / query.limit),
+          totalPages: Math.ceil(page.totalRecords / query.limit),
         },
       };
     },
