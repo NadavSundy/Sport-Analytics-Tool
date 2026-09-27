@@ -257,6 +257,7 @@ const fixtureProposalCsvFields = [
   'fixtureGender',
   'fixtureBallsPerOver',
   'fixtureOutcome',
+  'fixtureWinner',
   'fixtureSourceVersion',
   'fixtureSourceRevision',
 ] as const;
@@ -315,6 +316,7 @@ function createFixtureProposalCsvFile(contents: string, metadata: NewFixtureMeta
     set(row, 'fixtureGender', metadata.proposal.gender);
     set(row, 'fixtureBallsPerOver', String(metadata.proposal.ballsPerOver));
     set(row, 'fixtureOutcome', metadata.proposal.outcome);
+    set(row, 'fixtureWinner', metadata.proposal.winner ?? '');
     set(row, 'fixtureSourceVersion', metadata.proposal.sourceVersion);
     set(row, 'fixtureSourceRevision', String(metadata.proposal.sourceRevision));
     return row;

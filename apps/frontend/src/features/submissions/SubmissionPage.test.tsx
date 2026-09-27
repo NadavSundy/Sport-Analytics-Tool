@@ -1055,6 +1055,8 @@ describe('role-gated event submission page', () => {
 
     fireEvent.change(screen.getByLabelText('Team type'), { target: { value: 'club' } });
     fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } });
+    fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'won' } });
+    fireEvent.change(screen.getByLabelText('Winning team'), { target: { value: 'Wanderers' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload fixture package' }));
 
@@ -1094,7 +1096,8 @@ describe('role-gated event submission page', () => {
             teamType: 'club',
             gender: 'female',
             ballsPerOver: 6,
-            outcome: 'no result',
+            outcome: 'won',
+            winner: 'Wanderers',
             sourceVersion: '1',
             sourceRevision: 0,
           },
