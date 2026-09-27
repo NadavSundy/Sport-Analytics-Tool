@@ -110,6 +110,8 @@ export interface PublicReadService {
     data: Season[];
     pagination: {
       nextCursor: string | null;
+      totalPages?: number;
+      
     };
   }>;
 
@@ -138,6 +140,7 @@ export interface PublicReadService {
     data: Participant[];
     pagination: {
       nextCursor: string | null;
+      totalPages?: number;
     };
   }>;
 
@@ -509,6 +512,7 @@ export function createPublicReadService(
             competitionId: record.competitionId,
             label: record.label,
           })),
+          totalPages: Math.ceil(page.totalRecords / query.limit),
         },
       };
     },
@@ -638,6 +642,7 @@ export function createPublicReadService(
             displayName: record.displayName,
             participantId: record.participantId,
           })),
+           totalPages: Math.ceil(page.totalRecords / query.limit),
         },
       };
     },
