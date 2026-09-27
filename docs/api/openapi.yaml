@@ -1477,6 +1477,7 @@ paths:
       tags:
         - Public Read
       summary: Export accepted fixture events as JSON
+      deprecated: true
       description: |
         Exports every current accepted fixture event matching the filters, in
         deterministic innings and sequence order. It accepts the same filters as
@@ -1488,6 +1489,14 @@ paths:
         Records pair competition, team and participant identifiers with readable
         names and represent absent extras categories as zero. Submission
         ownership, revision history and internal audit fields are not exposed.
+
+        This operation is deprecated but remains available for compatibility.
+        Migrate to `GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json`
+        with an `X-API-Key`; it returns the same export representation and
+        supports the same filters. Responses include `Deprecation: ?1` and a
+        `Link` header with `rel="successor-version"` containing the concrete
+        replacement URL. No retirement date is scheduled, so no `Sunset` header
+        is sent.
       operationId: exportFixtureEventsJson
       x-implementation-status: implemented
       security: []
@@ -1524,6 +1533,17 @@ paths:
       responses:
         '200':
           description: Every matching accepted event in occurrence order.
+          headers:
+            Deprecation:
+              description: RFC 9745 Structured Field indicating this operation is deprecated.
+              schema:
+                type: string
+                example: '?1'
+            Link:
+              description: RFC 8288 successor-version link to the concrete consumer export URL.
+              schema:
+                type: string
+                example: '</api/v1/consumer/fixtures/100/events/export.json>; rel="successor-version"'
           content:
             application/json:
               schema:
