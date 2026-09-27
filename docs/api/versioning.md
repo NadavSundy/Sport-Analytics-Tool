@@ -74,6 +74,32 @@ Before an implemented endpoint, field or API major version is retired:
 
 Deprecation does not itself remove functionality.
 
+## Active lifecycle example
+
+`GET /api/v1/fixtures/{fixtureId}/events/export.json` is deprecated and remains
+fully available for existing clients. Its successor is
+`GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json`, which returns
+the same JSON export but requires an `X-API-Key` under the consumer API policy.
+
+Each successful deprecated response includes `Deprecation: ?1`, the RFC 9745
+Structured Field value for a deprecated resource, and an RFC 8288 `Link` header
+whose `successor-version` relation contains the concrete replacement URL and
+preserves the request query string. For example:
+
+```http
+GET /api/v1/fixtures/100/events/export.json?overNumber=3
+
+HTTP/1.1 200 OK
+API-Version: v1
+Deprecation: ?1
+Link: </api/v1/consumer/fixtures/100/events/export.json?overNumber=3>; rel="successor-version"
+```
+
+No retirement date has been approved, so this lifecycle deliberately omits a
+`Sunset` header rather than publishing a misleading date. If retirement is
+scheduled, the approved HTTP-date `Sunset` value and migration period must be
+added here, in OpenAPI, and in the response middleware together.
+
 ## OpenAPI status
 
 The OpenAPI baseline may describe both implemented and agreed planned operations.
