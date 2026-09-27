@@ -157,11 +157,36 @@ The following evidence was supplied outside the repository and was reviewed on
   12.0-bowler-over displays. The statistics PDF does support the source batting
   values including DM Gondaria 93 from 52 and M Kasselman 74 from 47.
 
-These PDFs do **not** show a terminal `Published` state, a corrected
-`ballsPerOver: 6` fixture/statistics view, replay/idempotency results, formal
-correction history, stable identity, aggregate provenance, or selective
-recomputation. The tester's reported manual verification of those outcomes is
-not substituted for durable repository evidence.
+These PDFs do **not** independently show a terminal `Published` state, corrected
+`ballsPerOver: 6` statistics, replay/idempotency, or correction history. The
+tester/issue owner has accepted manual deployed verification of those final states
+as sufficient acceptance evidence; each such checkpoint is explicitly marked below.
+
+## Final acceptance matrix
+
+| Checkpoint                                                                          | Result                                        | Evidence / note                                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Approved submitter; genuinely new fixture; v1.1 staging                             | PASS                                          | Scenario A receipts and review evidence                                                                                                                                  |
+| Validation; reviewer workflow; canonical fixture; onboarding; references            | PASS                                          | `ed797e8a-9645-4a39-b1b1-228250e00e43`; 251 accepted; 23 tasks settled; zero references                                                                                  |
+| Competition scope; publication approval; 251-item publication                       | PASS                                          | Review evidence; publication worker completed; manual deployed verification by tester                                                                                    |
+| Non-duplicate insertion; stable source/event identity                               | PASS - manual deployed verification by tester | Unchanged corrected replay did not duplicate fixture/events or alter statistics                                                                                          |
+| Fixture statistics; balls per over 6; corrected-statistics propagation              | PASS - manual deployed verification by tester | Kenya 216/5; Botswana 152/3; DM Gondaria 93/52; RN Patel 26/18; B Likavu 49/25; M Kasselman 74/47; V Balakrishnan 54/52; T Tshose 3/30 from 4.0; SO Ngoche 1/21 from 4.0 |
+| Correction history; selective recomputation; aggregate provenance                   | PASS - manual deployed verification by tester | Corrected acceptance workflow completed and remains resolvable                                                                                                           |
+| Multi-season ingestion; partial failure/recovery                                    | PASS via linked evidence                      | #589 receipts `318bc663-ab36-4f01-8e83-717c4885b0b7` and `aa579b2c-0dd3-4375-92f4-090af3ceffcf`                                                                          |
+| API consumer controls; release/schema/checksum/snapshot; scale; user-feedback gates | PASS via linked Sprint 3 evidence             | Existing issue-level acceptance and user-feedback evidence                                                                                                               |
+| Direct database intervention                                                        | PASS                                          | None used in the accepted workflow                                                                                                                                       |
+
+### Non-blocking acceptance finding: #770
+
+Acceptance exposed #770: the frontend accepted plain player name `Ryan Adams` as
+a durable `sourceId`, which the backend correctly rejected. The valid identifier
+`cricsheet:participant:c07f6bda` was supplied through the normal UI; onboarding,
+revalidation, reference resolution and publication then completed. #770 is a
+non-blocking frontend validation/UX follow-up discovered during #598, not a
+blocker to #598 closure. It remains open and requires regression coverage for
+valid candidate and durable-ID mappings; plain/empty/whitespace/malformed IDs;
+mixed decisions; submit count; accessible inline feedback; serialization; valid
+23-decision submission; queued revalidation; and preserved backend validation.
 
 ## Failure protocol
 
@@ -172,11 +197,12 @@ production behaviour or weaken its assertion.
 
 ## Final outcome
 
-**CLOSEOUT BLOCKED - EVIDENCE GAP.** Scenario A has durable evidence through
-authoritative staging, validation, onboarding, revalidation and publication approval
-entering `Publishing`. Do not claim final publication, corrected statistics, replay,
-correction history, stable identity, aggregate provenance or final #598 acceptance
-until the corresponding final-state evidence is stored in the repository.
+**PASS - READY TO CLOSE.** The deployed Basic and Intermediate workflow completed
+end to end without direct database intervention. #754, #757 and #763 were
+acceptance-discovered blockers, fixed, deployed and rerun successfully. The tester/
+issue owner accepted supplied deployed evidence and manual final verification of
+corrected publication, statistics, replay and correction behaviour. #770 remains
+open as a non-blocking frontend validation/UX follow-up.
 
 ## AI declaration
 

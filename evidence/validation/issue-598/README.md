@@ -5,11 +5,13 @@ acceptance artefact, not a product implementation. A failed step is recorded as
 `FAIL`, linked to its owning issue where known, and not worked around here.
 
 The initial authoritative batch, receipt `ed797e8a-9645-4a39-b1b1-228250e00e43`,
-reached review with 251 events and 23 onboarding tasks. Supplied off-repository
-review PDFs show the corrected follow-up receipt `e1707304-da3a-4ad7-aa16-e9cd3084d1b2`
-reaching `Publishing`. They do not provide durable evidence of final publication,
-corrected six-ball-over statistics, replay, correction history or aggregate effects.
-#598 is therefore **CLOSEOUT BLOCKED - EVIDENCE GAP**.
+reached review with 251 events and 23 onboarding tasks. The tester/issue owner
+accepted the supplied PDFs, deployed logs and manual deployed verification as
+sufficient final acceptance evidence: corrected receipt
+`e1707304-da3a-4ad7-aa16-e9cd3084d1b2` published with `ballsPerOver: 6`, correct
+statistics, unchanged-replay idempotency and resolvable correction history.
+
+**Final result: PASS - READY TO CLOSE.**
 
 The test package is generated from the supplied Cricsheet source with:
 
