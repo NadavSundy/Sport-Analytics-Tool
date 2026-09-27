@@ -111,6 +111,12 @@ the deployed architecture is described as implemented.
 
 A monorepo simplifies shared tooling, atomic Pull Requests, and contracts while preserving separate deployable applications. Its main risk is accidental coupling. The folder boundaries, backend-only database rule, and CI checks must be enforced during review.
 
+## Related reading paths
+
+- [Architecture & Data](../architecture-and-data.md) — recommended architecture/database/security reading order.
+- [Product & API](../product-and-api.md) — externally visible product and API behaviour.
+- [Deployment & Operations](../deployment/overview.md) — hosted topology, recovery and deployment controls.
+
 ## AI Declaration
 
 The issue #55 advanced-service decision summary was drafted and reconciled with the repository with
@@ -119,3 +125,4 @@ Codex[GPT-5].
 The issue #365 worker target status was documented with the assistance of Codex[GPT-5].
 The Issue #364 current-state architecture reconciliation was reviewed and edited with the
 assistance of ChatGPT-Web[GPT-5.6 Sol].
+The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
