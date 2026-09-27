@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import {
   finalBatchValidationState,
+  finalBatchStateAfterValidationFailure,
   persistReviewerActionableOnboardingTasks,
   isReviewerActionableFixtureResolution,
   prepareItem,
@@ -216,6 +217,13 @@ describe('reviewer-actionable batch finalisation (#695)', () => {
         },
       }),
     ).toBe(false);
+  });
+});
+
+describe('reviewer-actionable validation failure recovery (#757)', () => {
+  test('keeps staged reviewer work reviewable when asynchronous validation cannot finish', () => {
+    expect(finalBatchStateAfterValidationFailure(true)).toBe('awaiting_review');
+    expect(finalBatchStateAfterValidationFailure(false)).toBe('failed');
   });
 });
 

@@ -333,4 +333,10 @@ For acceptance evidence, exercise at least two seasons, multiple fixtures in
 each season, one invalid fixture among valid fixtures, and a replay of the same
 catalogue after the first publication.
 
+Related remediation: [#754](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/754)
+restores `winner` propagation for completed v1.1 new-fixture proposals. A catalogue or new-fixture
+workflow with `outcome: "won"` must retain the winning team; this is required before rerunning the
+#598 deployed acceptance scenario.
+
 AI Declaration: This Issue #589 edit was generated and reviewed with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The #754 related-remediation note was added with the assistance of Codex[GPT-5].

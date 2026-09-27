@@ -64,4 +64,33 @@ describe('new fixture proposal packages', () => {
     expect(value('fixtureSourceVersion')).toBe('1');
     expect(value('fixtureSourceRevision')).toBe('0');
   });
+
+  it('preserves the winning team in a won CSV fixture proposal', async () => {
+    const source = seasonUploadCsvTemplate
+      .replace('Competition name', 'Example Competition')
+      .replace('2026-03-14', '2026-08-20')
+      .replaceAll('Home team', 'Wanderers')
+      .replaceAll('Away team', 'Strikers');
+    const file = createFixtureProposalBatchFile('new-fixture.csv', source, {
+      competitionName: 'Example Competition',
+      seasonName: '2026',
+      startDate: '2026-08-20',
+      homeTeamName: 'Wanderers',
+      awayTeamName: 'Strikers',
+      proposal: {
+        endDate: '2026-08-20',
+        matchType: 'T20',
+        teamType: 'club',
+        gender: 'female',
+        ballsPerOver: 6,
+        outcome: 'won',
+        winner: 'Wanderers',
+        sourceVersion: '1',
+        sourceRevision: 0,
+      },
+    });
+    const [header, row] = parseCsvRecords(await readFile(file));
+
+    expect(row?.[header?.indexOf('fixtureWinner') ?? -1]).toBe('Wanderers');
+  });
 });
