@@ -130,6 +130,16 @@ export function finalBatchStateAfterValidationFailure(
   return hasReviewerActionableWork ? 'awaiting_review' : 'failed';
 }
 
+export function safeBatchValidationFailureDetails(error: unknown): {
+  errorName: string;
+  errorMessage: string;
+} {
+  if (error instanceof Error) {
+    return { errorName: error.name, errorMessage: error.message.slice(0, 500) };
+  }
+  return { errorName: 'UnknownError', errorMessage: 'Non-Error value thrown.' };
+}
+
 type ParticipantOnboardingReason =
   'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
 
@@ -2172,12 +2182,13 @@ export function createBatchValidationJobHandler(
       if (error instanceof LeaseBusyError) throw error;
       const permanent = error instanceof PermanentBatchFailure;
       const exhausted = await fail(claimResult, error, permanent);
+      const failure = safeBatchValidationFailureDetails(error);
       logger.warn('Batch validation processing failed.', {
         batchReference: claimResult.batchReference,
         jobId: claimResult.jobId,
         attempt: claimResult.attemptCount,
         exhausted,
-        errorName: error instanceof Error ? error.name : 'UnknownError',
+        ...failure,
         durationMs: Date.now() - startedAt,
       });
       if (exhausted) {

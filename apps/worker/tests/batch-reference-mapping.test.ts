@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   finalBatchValidationState,
   finalBatchStateAfterValidationFailure,
+  safeBatchValidationFailureDetails,
   persistReviewerActionableOnboardingTasks,
   isReviewerActionableFixtureResolution,
   prepareItem,
@@ -224,6 +225,18 @@ describe('reviewer-actionable validation failure recovery (#757)', () => {
   test('keeps staged reviewer work reviewable when asynchronous validation cannot finish', () => {
     expect(finalBatchStateAfterValidationFailure(true)).toBe('awaiting_review');
     expect(finalBatchStateAfterValidationFailure(false)).toBe('failed');
+  });
+});
+
+describe('batch validation diagnostics (#763)', () => {
+  test('keeps the failure class and bounded message without serialising a stack', () => {
+    const detail = safeBatchValidationFailureDetails(
+      new Error(`first-chunk query failed: ${'x'.repeat(600)}`),
+    );
+
+    expect(detail.errorName).toBe('Error');
+    expect(detail.errorMessage).toHaveLength(500);
+    expect(detail).not.toHaveProperty('stack');
   });
 });
 
