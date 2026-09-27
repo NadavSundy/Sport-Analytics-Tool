@@ -33,8 +33,10 @@ must retain all of the following metadata through staging and reviewer resolutio
 `sourceRevision`. The reviewer receives that exact validated proposal before choosing **Create
 canonical fixture from proposal**; the upload never creates a canonical fixture directly.
 
-JSON uses `fixtures[].proposal`. CSV uses the eight `fixture*` columns included in the maintained
-template (`fixtureEndDate` through `fixtureSourceRevision`) on every row for that fixture. NDJSON
+JSON uses `fixtures[].proposal`. CSV uses the nine `fixture*` columns included in the maintained
+template (`fixtureEndDate` through `fixtureSourceRevision`, including `fixtureWinner`) on every row
+for that fixture. A `won` outcome requires the winning team's name in `fixtureWinner`; other
+outcomes leave that column blank. NDJSON
 uses `proposal` on its `fixture` record. A version `1.1` source that omits or invalidly represents
 any required proposal field is rejected as a package-item validation error; the worker never drops
 proposal metadata or substitutes defaults. Version `1.0` packages remain unchanged and leave these
