@@ -43,5 +43,12 @@ following the naming and redaction rules in the
 Raw CSV registers and transcripts are intentionally not reproduced as normal MkDocs pages; the
 links above point to the authoritative repository copies.
 
+> **Different evidence stream:** the Sprint Microsoft Teams meeting transcripts are not AI
+> interaction transcripts. They are indexed separately under
+> [Team Meeting Transcripts](team-meeting-transcripts.md).
+
 The preceding page was planned and drafted with the assistance of Claude[Claude Sonnet 5],
 resolving issue #254.
+
+The separation between AI interaction evidence and Sprint Teams meeting transcripts was clarified
+with the assistance of ChatGPT-Web[GPT-5.6 Sol].

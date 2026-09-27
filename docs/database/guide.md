@@ -82,8 +82,7 @@ reviewers.
 
 In development and deployed environments the backend and worker receive `DATABASE_URL` through
 server-side configuration. Production TLS verification remains enabled; credentials and connection
-strings are never committed or exposed to the frontend. Azure App Service hosts the API, Azure
-Container Apps hosts the worker, and both use the same PostgreSQL authority. Database access remains
+strings are never committed or exposed to the frontend. Azure Container Apps hosts the API and the worker, and both use the same PostgreSQL authority. Database access remains
 behind repository and service boundaries, with parameterised queries and `withTransaction()` for
 all-or-nothing multi-record operations. The transactional outbox and worker checkpoints make
 asynchronous batch work recoverable after commit rather than treating a queue message as the source
@@ -111,8 +110,15 @@ of test runs while checking migration order and rollback sections.
   reproducible manifest are documented in [Cricsheet data source](../data/cricsheet.md); coverage is
   not represented as complete worldwide cricket history.
 
+## Related reading paths
+
+- [Architecture & Data](../architecture-and-data.md) — architecture/database/security entry point.
+- [Product & API](../product-and-api.md) — public behaviour built on the database model.
+- [Deployment & Operations](../deployment/overview.md) — hosted database/application deployment boundaries.
+
 ## AI Declaration
 
 The preceding Issue #579 database architecture guide was planned, generated and reviewed with the
 assistance of Codex[GPT-5].
 The issue #592 stored participant aggregate references were added with the assistance of Claude-Code[Claude Opus 5].
+The current Container Apps hosting wording and documentation reading-path links were updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
