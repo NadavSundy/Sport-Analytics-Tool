@@ -67,6 +67,21 @@ export function createConsumerAuthentication(
           return;
         }
         response.locals.apiConsumer = consumer;
+        response.once('finish', () => {
+          const endpoint = request.route?.path;
+          if (typeof endpoint !== 'string' || !consumer.keyId || !repository.recordUsage) return;
+          const statusClass = `${Math.floor(response.statusCode / 100)}xx`;
+          if (!['2xx', '3xx', '4xx', '5xx'].includes(statusClass)) return;
+          void repository
+            .recordUsage({
+              consumerId: consumer.consumerId,
+              keyId: consumer.keyId,
+              endpoint: `${request.method} ${endpoint}`,
+              statusClass: statusClass as '2xx' | '3xx' | '4xx' | '5xx',
+              at: requestTime,
+            })
+            .catch(() => undefined);
+        });
         next();
       })
       .catch(next);
