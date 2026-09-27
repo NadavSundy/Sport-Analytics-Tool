@@ -43,6 +43,10 @@
   max-width: 48rem;
 }
 
+.api-explorer__state .api-explorer-loading-indicator {
+  margin-bottom: var(--space-3);
+}
+
 .api-explorer__retry {
   margin-top: var(--space-4);
 }
@@ -145,6 +149,9 @@
 }
 
 .api-explorer-route-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   padding-block: var(--space-8);
 }
 
