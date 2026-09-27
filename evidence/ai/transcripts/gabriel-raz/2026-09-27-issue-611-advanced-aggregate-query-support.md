@@ -56,4 +56,4 @@ aggregate behavior for a valid red test to specify.
 - Branch: `feat/611-advanced-aggregate-query-support`
 - Gap-analysis document:
   `docs/validation/issue-611-advanced-aggregate-query-gap-analysis.md`
-- Commit hashes: pending commit creation
+- Documentation audit commit: `f4edc689`
