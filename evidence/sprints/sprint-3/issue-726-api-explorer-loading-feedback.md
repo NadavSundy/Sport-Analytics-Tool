@@ -30,11 +30,15 @@ progress indicator and status, resolves the request, then verifies Swagger rende
 is removed. The existing failure-and-retry test verifies that a failed request shows the explicit
 error state rather than an indefinite loading region.
 
+The existing `tests/e2e/api-explorer.spec.ts` command completed successfully on 2026-09-27 with
+the repository's desktop and tagged mobile coverage. The runner did not emit a per-test summary;
+no unobserved browser result is inferred from that omission.
+
 ## Outstanding verification
 
-No browser-throttling, screenshot, desktop/mobile manual, or stakeholder-retest evidence has been
-recorded for this change. Those checks remain required before claiming the corresponding issue #726
-Definition of Done items are complete.
+No browser-throttling, screenshot, manual desktop/mobile inspection, or stakeholder-retest evidence
+has been recorded for this change. Those checks remain required before claiming the corresponding
+issue #726 Definition of Done items are complete.
 
 ## Links
 
