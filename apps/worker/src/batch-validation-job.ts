@@ -119,6 +119,17 @@ export function finalBatchValidationState(
     : 'rejected';
 }
 
+/**
+ * A worker failure is terminal only when it leaves no persisted reviewer work.
+ * The background job still records its failure; this state merely keeps an
+ * otherwise-actionable batch available to a reviewer.
+ */
+export function finalBatchStateAfterValidationFailure(
+  hasReviewerActionableWork: boolean,
+): 'awaiting_review' | 'failed' {
+  return hasReviewerActionableWork ? 'awaiting_review' : 'failed';
+}
+
 type ParticipantOnboardingReason =
   'team_not_recognised' | 'no_durable_identifier' | 'ambiguous_name' | 'identifier_not_found';
 
@@ -1824,6 +1835,38 @@ export function createBatchValidationJobHandler(
     });
   }
 
+  async function hasReviewerActionableWork(
+    client: Pick<PoolClient, 'query'>,
+    batchId: string,
+  ): Promise<boolean> {
+    const proposalResult = await client.query<{ fixtureResolution: unknown }>(
+      `SELECT DISTINCT resolved_references->'fixture' AS "fixtureResolution"
+         FROM batch_item
+        WHERE batch_id=$1::bigint
+          AND state='rejected'
+          AND rejection_code='REFERENCE_RESOLUTION_FAILED'
+          AND reference_resolution_state='unresolved'
+          AND resolved_references ? 'fixture'`,
+      [batchId],
+    );
+    if (
+      proposalResult.rows.some(({ fixtureResolution }) =>
+        isReviewerActionableFixtureResolution(fixtureResolution),
+      )
+    ) {
+      return true;
+    }
+
+    const taskResult = await client.query<{ outstanding: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM batch_participant_onboarding_task
+          WHERE batch_id=$1::bigint AND state='outstanding'
+       ) AS outstanding`,
+      [batchId],
+    );
+    return taskResult.rows[0]?.outstanding ?? false;
+  }
+
   async function fail(
     claimResult: ClaimResult,
     error: unknown,
@@ -1843,6 +1886,12 @@ export function createBatchValidationJobHandler(
         [claimResult.batchId],
       );
       const currentState = batch.rows[0]?.state;
+      const target =
+        currentState === 'validating'
+          ? finalBatchStateAfterValidationFailure(
+              await hasReviewerActionableWork(client, claimResult.batchId),
+            )
+          : 'failed';
       await client.query(
         `UPDATE background_job SET state=$2::background_job_state,last_error_code=$3,last_error_message=$4,
            completed_at=CASE WHEN $2='failed' THEN now() ELSE NULL END WHERE job_id=$1::uuid`,
@@ -1854,18 +1903,22 @@ export function createBatchValidationJobHandler(
         ],
       );
       if (currentState === 'validating') {
-        await client.query(`UPDATE batch SET state='failed' WHERE batch_id=$1::bigint`, [
+        await client.query(`UPDATE batch SET state=$2::batch_state WHERE batch_id=$1::bigint`, [
           claimResult.batchId,
+          target,
         ]);
         await client.query(
           `INSERT INTO batch_state_transition (batch_id,from_state,to_state,actor_kind,actor_identifier,reason)
-           VALUES ($1::bigint,'validating','failed','worker',$2,$3)`,
+           VALUES ($1::bigint,'validating',$2::batch_state,'worker',$3,$4)`,
           [
             claimResult.batchId,
+            target,
             options.workerId,
-            exhausted
-              ? 'Validation retry budget exhausted.'
-              : 'Transient validation infrastructure failure.',
+            target === 'awaiting_review'
+              ? 'Validation failed after reviewer-actionable work was staged.'
+              : exhausted
+                ? 'Validation retry budget exhausted.'
+                : 'Transient validation infrastructure failure.',
           ],
         );
       }
