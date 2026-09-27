@@ -34,6 +34,7 @@ Every consumer route is key-protected. The protected analytics surface is:
 
 ```text
 GET /api/v1/consumer/competitions
+GET /api/v1/consumer/usage
 GET /api/v1/consumer/fixtures
 GET /api/v1/consumer/fixtures/{fixtureId}
 GET /api/v1/consumer/fixtures/{fixtureId}/events
@@ -64,6 +65,26 @@ the raw consumer key into the `apiKeyAuth` **Value** field. Do not include
 `X-API-Key:` in the value; the client adds that request header automatically.
 
 Missing, malformed, unknown and revoked secrets return `401`, `WWW-Authenticate: ApiKey`, and no information about the matching consumer or key state.
+
+## Own usage
+
+`GET /api/v1/consumer/usage` returns an API key's **own consumer's** aggregated request
+usage. It never accepts a consumer ID and has no administrator equivalent. The result is grouped
+by UTC date, normalized route template and HTTP status class, ordered by date descending, endpoint
+ascending and status class ascending. Use `from` and `to` as inclusive `YYYY-MM-DD` dates; the
+default window is the most recent seven UTC dates and the maximum is 31 days. `limit` defaults to
+50 groups and is capped at 100.
+
+```http
+GET /api/v1/consumer/usage?from=2026-09-20&to=2026-09-26&limit=50
+X-API-Key: sat_live_<secret>
+```
+
+Telemetry records only the stable consumer ID, safe key ID, timestamp, normalized method/route
+template and response status class. It never stores a raw key or hash, URL/query values, headers,
+request body, credentials or response payload. Usage events are retained for 31 days, then removed
+by scheduled operational cleanup. The current request becomes visible after its response completes;
+the response's `quota` context describes the request that retrieved the aggregate.
 
 ### Using a consumer key from WSL
 
@@ -99,3 +120,4 @@ The issue #609 consumer filter and limit-header details were added with the assi
 The issue #594 consumer-surface classification and protected aliases were added with the assistance of Codex[GPT-5].
 The issue #595 shared rate-limit counter and failure-mode documentation was added with the assistance of Codex[GPT-5].
 The issue #743 browser-client authentication and CORS response-header clarification was added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #610 consumer usage documentation was added with the assistance of Codex[GPT-5].

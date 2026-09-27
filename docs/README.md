@@ -76,6 +76,18 @@ See:
 - [Cloudflare Pages deployment guide](deployment/cloudflare_pages.md) for documentation-site deployment; and
 - [MkDocs configuration and navigation](../mkdocs.yml) for the documentation-site configuration.
 
+## Information architecture
+
+The public navigation is organised by reader intent rather than by repository folder. The main
+entry points are Getting Started, Product & API, Architecture & Data, Development, Deployment &
+Operations, Testing & Quality, and Project Process & Evidence. Detailed reference pages remain
+searchable and are linked from the relevant hub instead of all competing at the first navigation
+level.
+
+When adding a new page, first decide which reader goal owns it, link it from that section's overview,
+and add it to the primary navigation only when it is a normal starting point rather than specialist
+reference. Avoid moving existing files solely to make the folder tree resemble the navigation.
+
 ## Theming
 
 The site's colours, fonts, logo and favicon follow the [Stat'sTheGame brand guidelines](design/brand-guidelines.md):
@@ -88,4 +100,7 @@ Run `python -m mkdocs build --strict` after any theming change and check both th
 
 ## AI Declaration
 
-The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol]. The Theming section, and the branding/external-link implementation it describes, were added with the assistance of Claude[Claude Sonnet 5].
+The preceding document was planned, generated, reviewed and edited with the assistance of
+ChatGPT-Web[GPT-5.6 Sol]. The Theming section, and the branding/external-link implementation it
+describes, were added with the assistance of Claude[Claude Sonnet 5]. The information-architecture
+guidance was updated with the assistance of ChatGPT-Web[GPT-5.6 Sol].

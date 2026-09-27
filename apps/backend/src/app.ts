@@ -279,6 +279,7 @@ export function createApp(dependencies: AppDependencies = {}) {
       fixtureStatisticsService,
       participantAggregatesService,
       consumerAuthentication,
+      apiConsumerRepository,
     ),
   );
   app.use(
