@@ -14,6 +14,8 @@ acceptance evidence. Gitea remains authoritative for live issue status and depen
 | [`issue-565-production-scale-deployment-acceptance.md`](issue-565-production-scale-deployment-acceptance.md) | #565  | **Partially complete.** The deployed asynchronous lifecycle completed on 2026-09-24 for `2026.09.24-issue-565-live` with 3,207,110 events. Automated-run output, artifact checksum, browser/authenticated journey, controlled restart and Azure capacity evidence remain pending. |
 | [`issue-565-live-result.json`](issue-565-live-result.json)                                                   | #565  | Raw Issue #565 live-run result                                                                                                                                                                                                                                                    |
 | [`issue-599-performance-revalidation.md`](issue-599-performance-revalidation.md)                             | #599  | Complete for local measurement. Does **not** include a deployed re-run.                                                                                                                                                                                                           |
+| [`2026-09-28-stakeholder-review.md`](2026-09-28-stakeholder-review.md)                                       | #613  | Complete stakeholder-summary record; source screenshots retained in the asynchronous stakeholder folder.                                                                                                                                                                          |
+| [`2026-09-28-sprint-3-close-out.md`](2026-09-28-sprint-3-close-out.md)                                       | #613  | **Pre-finalisation.** Substantive close-out drafted; final #598 result, latest gate reconciliation, peer review and milestone tag remain pending.                                                                                                                                 |
 | [`issue-726-api-explorer-loading-feedback.md`](issue-726-api-explorer-loading-feedback.md)                   | #726  | Implementation evidence records the supplied client feedback, identified deferred stages and automated component checks. Manual throttling, mobile screenshots and stakeholder retest remain pending.                                                                             |
 
 ## Original Teams meeting transcript
@@ -41,3 +43,5 @@ than copying individual figures out of context.
 
 The Sprint 3 repository evidence index was reorganised for discoverability with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].GPT-Web[GPT-5.6 Sol].
+
+The Issue #613 Sprint 3 evidence-index update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
