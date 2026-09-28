@@ -3,11 +3,12 @@ import type {
   Competition,
   CurrentUserProfile,
 } from '@sport-analytics/contracts';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ApiResponseError } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
+import { NameCombobox } from '../../components/NameCombobox';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import {
   batchUploadIdempotencyKey,
@@ -68,9 +69,20 @@ export function BatchUploadWorkflow({
   const client = useAuthenticatedApiClient();
   const [access, setAccess] = useState<AccessState>({ kind: 'loading' });
   const [competitionId, setCompetitionId] = useState('');
+  const [competitionInput, setCompetitionInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [upload, setUpload] = useState<UploadState>({ kind: 'idle' });
   const resultRef = useRef<HTMLDivElement>(null);
+  const loadCompetitionOptions = useCallback(
+    async (_query: string, _signal: AbortSignal) =>
+      access.kind === 'ready'
+        ? access.competitions.map((competition) => ({
+            label: competition.name,
+            value: competition.competitionId,
+          }))
+        : [],
+    [access],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,14 +90,18 @@ export function BatchUploadWorkflow({
     void competitionOptions(profile, controller.signal)
       .then((competitions) => {
         setAccess({ kind: 'ready', competitions });
-        setCompetitionId(
+        const selectedCompetitionId =
           (replacement &&
             competitions.some(
               (competition) => competition.competitionId === replacement.competitionId,
             ) &&
             replacement.competitionId) ||
-            competitions[0]?.competitionId ||
-            '',
+          competitions[0]?.competitionId ||
+          '';
+        setCompetitionId(selectedCompetitionId);
+        setCompetitionInput(
+          competitions.find((competition) => competition.competitionId === selectedCompetitionId)
+            ?.name ?? '',
         );
       })
       .catch(() => {
@@ -217,22 +233,25 @@ export function BatchUploadWorkflow({
             </div>
           ) : null}
           <div className="submission-field">
-            <label htmlFor="batch-competition">Competition</label>
-            <select
-              id="batch-competition"
-              value={competitionId}
+            <NameCombobox
+              dependencyKey="authorised-batch-competitions"
               disabled={busy || completed || Boolean(replacement)}
-              onChange={(event) => {
-                setCompetitionId(event.target.value);
+              entityName="competition"
+              inputValue={competitionInput}
+              label="Competition"
+              loadOptions={loadCompetitionOptions}
+              onInputChange={setCompetitionInput}
+              onSelectionChange={(option) => {
+                setCompetitionId(option?.value ?? '');
+                setCompetitionInput(option?.label ?? '');
                 setUpload({ kind: 'idle' });
               }}
-            >
-              {access.competitions.map((competition) => (
-                <option value={competition.competitionId} key={competition.competitionId}>
-                  {competition.name}
-                </option>
-              ))}
-            </select>
+              onSelectionResolved={(option) => {
+                if (option) setCompetitionInput(option.label);
+              }}
+              placeholder="Type a competition name"
+              selectedValue={competitionId}
+            />
             <p className="field-help">Only competitions authorised by the server appear here.</p>
           </div>
 

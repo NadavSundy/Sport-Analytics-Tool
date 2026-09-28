@@ -4065,6 +4065,22 @@ components:
               minLength: 1
             - type: 'null'
 
+    TotalPagesPaginationMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - nextCursor
+        - totalPages
+      properties:
+        nextCursor:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        totalPages:
+          type: integer
+          minimum: 0
+
     Competition:
       type: object
       additionalProperties: false
@@ -5774,7 +5790,7 @@ components:
           items:
             $ref: '#/components/schemas/Season'
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: '#/components/schemas/TotalPagesPaginationMetadata'
 
     FixtureResponse:
       type: object
@@ -5894,7 +5910,7 @@ components:
           items:
             $ref: '#/components/schemas/Participant'
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: '#/components/schemas/TotalPagesPaginationMetadata'
 
     ParticipantFixtureCollectionResponse:
       type: object

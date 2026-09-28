@@ -16,7 +16,9 @@ export interface NameComboboxOption {
 }
 
 interface NameComboboxProps {
+  descriptionId?: string;
   dependencyKey: string;
+  disabled?: boolean;
   entityName: string;
   inputValue: string;
   label: string;
@@ -118,7 +120,9 @@ export function fuzzyRankOptions(
 }
 
 export function NameCombobox({
+  descriptionId,
   dependencyKey,
+  disabled = false,
   entityName,
   inputValue,
   label,
@@ -166,7 +170,7 @@ export function NameCombobox({
 
         loadedRequestKeyRef.current = requestKey;
         setState({ status: 'ready', options });
-        if (selectedValue) {
+        if (selectedValue && !inputValue.trim()) {
           onSelectionResolvedRef.current(
             options.find((option) => option.value === selectedValue) ?? null,
           );
@@ -208,6 +212,7 @@ export function NameCombobox({
   const optionsPending = open && loadedRequestKeyRef.current !== requestKey;
 
   function showOptions() {
+    if (disabled) return;
     setOpen(true);
     setActiveIndex(-1);
   }
@@ -302,11 +307,15 @@ export function NameCombobox({
           aria-activedescendant={activeOption ? `${listboxId}-${activeIndex}` : undefined}
           aria-autocomplete="list"
           aria-controls={listboxId}
-          aria-describedby={validationMessage ? feedbackId : undefined}
+          aria-describedby={
+            [descriptionId, validationMessage ? feedbackId : undefined].filter(Boolean).join(' ') ||
+            undefined
+          }
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-invalid={validationMessage ? 'true' : undefined}
           autoComplete="off"
+          disabled={disabled}
           id={inputId}
           onChange={(event) => {
             onInputChange(event.target.value);
@@ -327,6 +336,7 @@ export function NameCombobox({
           <button
             aria-label={`Clear ${label.toLocaleLowerCase()}`}
             className="name-combobox__clear"
+            disabled={disabled}
             onClick={() => {
               onSelectionChange(null);
               setOpen(false);
@@ -340,6 +350,7 @@ export function NameCombobox({
           aria-label={`${open ? 'Hide' : 'Show'} ${label.toLocaleLowerCase()} options`}
           aria-expanded={open}
           className="name-combobox__toggle"
+          disabled={disabled}
           onClick={() => {
             if (open) {
               setOpen(false);

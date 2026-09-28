@@ -1,7 +1,7 @@
 import type { CollectionResponse } from '../../api/public-read';
 import { type FormEvent, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { NameCombobox, type NameComboboxOption } from './NameCombobox';
+import { NameCombobox, type NameComboboxOption } from '../../components/NameCombobox';
 import { usePublicData } from './usePublicData';
 
 interface TextFilterField {

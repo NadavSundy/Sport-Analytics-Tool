@@ -236,8 +236,11 @@ test('submitter originates a new fixture proposal for reviewer resolution', asyn
   });
 
   await page.goto('/submissions/new');
-  await page.getByLabel('Fixture', { exact: true }).selectOption('new');
+  await page.getByRole('button', { name: 'Propose a new fixture' }).click();
   await expect(page.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Competition' })).toHaveValue(
+    'Example Competition',
+  );
   await page.getByLabel('Season name').fill('2026');
   await page.getByLabel('Fixture date').fill(fixture.startDate);
   await page.getByLabel('Home team name').fill('Wanderers');
@@ -304,18 +307,27 @@ test('submitter stages advanced technical JSON with a keyboard', async ({ page }
   await page.goto('/submissions/new');
   await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
 
+  const competitionSelector = page.getByRole('combobox', { name: 'Competition' });
   const fixtureSelector = page.getByLabel('Fixture', { exact: true });
   const editor = page.getByLabel('Delivery events JSON');
   const submitButton = page.getByRole('button', { name: 'Submit events' });
 
-  await expect(fixtureSelector).toHaveValue('7');
+  await competitionSelector.fill('Exam Comp');
+  await expect(page.getByRole('option', { name: /Example Competition/ })).toBeVisible();
+  await competitionSelector.press('ArrowDown');
+  await competitionSelector.press('Enter');
+  await expect(competitionSelector).toHaveValue('Example Competition');
+
+  await fixtureSelector.fill('wander');
+  await expect(page.getByRole('option', { name: /Wanderers v Strikers/ })).toBeVisible();
+  await fixtureSelector.press('ArrowDown');
+  await fixtureSelector.press('Enter');
+  await expect(fixtureSelector).toHaveValue(
+    '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+  );
   await editor.fill(JSON.stringify(events, null, 2));
 
-  await fixtureSelector.focus();
-  await page.keyboard.press('Tab');
-  await expect(editor).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(submitButton).toBeFocused();
+  await submitButton.focus();
   await page.keyboard.press('Enter');
 
   const stagedHeading = page.locator(
@@ -422,13 +434,17 @@ test(
     });
 
     await page.goto('/submissions/new');
-    await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue('7');
-    await expect(page.getByLabel('Fixture', { exact: true }).locator('option').first()).toHaveText(
+    await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue(
       '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
     );
-    await expect(page.getByLabel('Fixture', { exact: true }).locator('option').last()).toHaveText(
-      'New fixture',
-    );
+    await page.getByRole('button', { name: 'Show fixture options' }).click();
+    await expect(
+      page.getByRole('option', {
+        name: /2026-08-20 — Wanderers v Strikers — Example Competition, 2026 \(T20\)/,
+      }),
+    ).toBeVisible();
+    await page.getByLabel('Fixture', { exact: true }).press('Escape');
+    await expect(page.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     await expect(
       page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
     ).toBeVisible();
@@ -565,7 +581,7 @@ test(
     await page.goto('/submissions/batches/new');
     await expect(page).toHaveURL(/\/submissions\/new$/);
     await page.getByRole('radio', { name: /Back catalogue/ }).click();
-    await expect(page.getByLabel('Competition', { exact: true })).toHaveValue('5');
+    await expect(page.getByLabel('Competition', { exact: true })).toHaveValue('Premier T20');
     await expect(page.getByLabel('Season context')).toHaveCount(0);
     await page.getByLabel('Back catalogue package').setInputFiles({
       name: 'back-catalogue.csv',
