@@ -423,7 +423,7 @@ export const seasonCollectionResponseSchema = z.object({
   data: z.array(seasonSchema),
   pagination: z.object({
     nextCursor: z.string().min(1).nullable(),
-    totalPages: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative().optional(),
   }),
 });
 
@@ -724,7 +724,7 @@ export const participantCollectionResponseSchema = z.object({
   data: z.array(participantSchema),
   pagination: z.object({
     nextCursor: z.string().min(1).nullable(),
-    totalPages: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative().optional(),
   }),
 });
 
