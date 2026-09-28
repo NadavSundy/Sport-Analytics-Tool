@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Validates a filled-in COR-01 events.json against the real submission contract.
 //
-//   node validate.js [events.json]
+//   node validate.js [events.json] [fixtureId]
 //
 // It runs the two checks the server runs, in the server's order:
 //
@@ -24,6 +24,9 @@ const {
   DIRECT_SUBMISSION_SCHEMA_VERSION,
 } = require(resolve(repoRoot, 'packages/contracts/dist/index.js'));
 
+// The settled #605 target: fixture 10266, innings 20540.
+const TARGET_FIXTURE_ID = '10266';
+
 const PLACEHOLDERS = {
   __INNINGS_ID__: '1',
   __STRIKER_ID__: '2',
@@ -32,6 +35,9 @@ const PLACEHOLDERS = {
 };
 
 const file = process.argv[2] ?? resolve(__dirname, 'events.json');
+// The form supplies fixtureId itself, so it is not in events.json. Pass the real
+// one to check the payload exactly as the frontend builds it.
+const fixtureId = process.argv[3] ?? TARGET_FIXTURE_ID;
 let text = readFileSync(file, 'utf8');
 
 const substituted = [];
@@ -44,7 +50,7 @@ for (const [token, value] of Object.entries(PLACEHOLDERS)) {
 
 const events = JSON.parse(text);
 const result = submissionRequestSchema.safeParse({
-  fixtureId: '1',
+  fixtureId,
   schemaVersion: DIRECT_SUBMISSION_SCHEMA_VERSION,
   events,
 });
@@ -63,7 +69,8 @@ if (!result.success) {
 }
 
 console.log(
-  `VALID against submissionRequestSchema (schemaVersion ${DIRECT_SUBMISSION_SCHEMA_VERSION}).`,
+  `VALID against submissionRequestSchema ` +
+    `(schemaVersion ${DIRECT_SUBMISSION_SCHEMA_VERSION}, fixtureId ${fixtureId}).`,
 );
 
 // The cricket rules need to know which side each participant is on. Derive that

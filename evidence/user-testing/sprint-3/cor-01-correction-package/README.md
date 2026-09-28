@@ -33,11 +33,38 @@ not `submitter-test`.
 file-upload path also produces `acceptedBatch`. The workspace is reachable only
 through the pasted-JSON route.
 
-## Step 1 — choose the fixture and read four identifiers off it
+## Step 1 — the target fixture and its four identifiers
 
 Database identifiers are assigned at ingest and are environment-specific;
-nothing in this repository records the deployed values. They must be read off the
-build being tested.
+nothing derives them from this repository. The values below were read off the
+deployed build and are recorded here so the session does not have to rediscover
+them.
+
+**Target: fixture 10266**, and `events.json` is already filled in for it. The
+identifiers below were read off the deployed build on 2026-09-28; re-read them
+with the procedure after this section if the environment is rebuilt.
+
+| Value          | Identifier | Read as                                       |
+| -------------- | ---------- | --------------------------------------------- |
+| `fixtureId`    | `10266`    | Selected in the form, not present in the JSON |
+| `inningsId`    | `20540`    | Ordinal 0, New Zealand batting                |
+| `strikerId`    | `56`       | BB McCullum, New Zealand                      |
+| `nonStrikerId` | `168873`   | SP Fleming, New Zealand                       |
+| `bowlerId`     | `136492`   | WPUJC Vaas, Sri Lanka bowling                 |
+
+10266 is New Zealand v Sri Lanka, 2006-12-22, Sri Lanka in New Zealand T20I
+Series, competition `10200`. All four values come from one real delivery
+(event `2345070`) in innings 20540, which is what guarantees the three players
+are in `fixture_squad` and on the correct sides.
+
+**It is a real historical T20 international.** The four synthetic deliveries it
+gains are permanent — see the limitations below — so its scorecard will
+permanently stop matching the published record: a phantom over 900, 12 runs
+added to New Zealand's innings (10 after the correction), and a distorted
+overs-bowled figure for Vaas. That cost was accepted deliberately when the
+target was settled; record it in the session notes.
+
+### What makes a target usable
 
 A usable target needs **three** things, and the third rules out most candidates:
 
@@ -64,45 +91,18 @@ fixture that appears in the **Fixture** dropdown has a competition by
 construction. Pick from the dropdown, then check requirement 3 with one events
 call.
 
-### Candidates already ruled out
+### Candidates ruled out
 
-| Candidate                           | Verdict                                                                                                                            |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Reference match **729307**          | Avoid. Its published figures are the validation baseline in `evidence/validation/729307-published-figures.md`.                     |
-| #708 **onboarding-test** fixtures   | Blocked on requirement 3. They hold zero published events, so no `inningsId` can be read. Usable only with direct database access. |
-| Fixture **8937** (first men's T20I) | Blocked on requirement 1. `competitionId` is `null`, so it cannot be submitted to at all — see the finding below.                  |
+| Candidate                           | Verdict                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reference match **729307**          | Avoid. Its published figures are the validation baseline in `evidence/validation/729307-published-figures.md`.                                                                                                                                                                                            |
+| #708 **onboarding-test** fixtures   | Blocked on requirement 3. They hold zero published events, so no `inningsId` can be read. Usable only with direct database access.                                                                                                                                                                        |
+| Fixture **8937** (first men's T20I) | Blocked on requirement 1. `competitionId` is `null`, so `submission.service.ts:51` returns `403` for every role, and the issue #311 fix filters it out of the administrator selector. Unrepairable through the product: no `UPDATE fixture` statement and no write method on any `/api/v1/fixtures` path. |
 
-### Finding: fixture 8937 cannot be a submission target
+### Re-targeting
 
-8937 is New Zealand v Australia at Eden Park, 2005-02-17, season 2004/05 — the
-first men's T20 international, and not one of the four seeded matches. It has
-published events, so its identifiers read off cleanly:
-
-| Value          | Identifier                               |
-| -------------- | ---------------------------------------- |
-| `inningsId`    | `17880` (ordinal 0, Australia batting)   |
-| `strikerId`    | `71` (MJ Clarke)                         |
-| `nonStrikerId` | `136386` (AC Gilchrist)                  |
-| `bowlerId`     | `14194` (DR Tuffey), New Zealand bowling |
-
-Those four were filled into this package and **pass both contract gates** —
-`submissionRequestSchema` and `validateCricketBusinessRules` — with `fixtureId`
-`8937`. The correction payload passes `correctionRequestSchema`. The package is
-not the problem.
-
-The fixture is. 8937 carries `competitionId: null`, recorded in
-`evidence/ai/transcripts/dean-feldman/2026-09-18_AI_Deployment_Azure-Container-Apps-Migration.md:10500`
-and diagnosed under issue #311 in
-`evidence/ai/transcripts/gabriel-raz/2026-08-29-issue-311-admin-event-submission.md:810`:
-"fixture `8937` has `competitionId: null`, so it is not eligible for any scoped
-submission and the backend correctly rejects it." The #311 fix was to filter such
-fixtures out of the administrator selector, so 8937 should not even appear in the
-**Fixture** dropdown.
-
-There is no route to repair it: the backend contains no `UPDATE fixture`
-statement and the API defines no write method on any `/api/v1/fixtures` path, so
-a fixture's competition association cannot be set through the product. 8937 is
-permanently unusable as a submission target without direct database access.
+To move the package to a different fixture, restore the four placeholders and
+repeat this:
 
 Then:
 
@@ -120,12 +120,12 @@ Then:
    empty response means this fixture cannot be used.
 4. From **one** event in that innings, copy four values:
 
-   | Read from the response    | Paste into `events.json` as |
-   | ------------------------- | --------------------------- |
-   | `inningsId`               | `__INNINGS_ID__`            |
-   | `strikerParticipantId`    | `__STRIKER_ID__`            |
-   | `nonStrikerParticipantId` | `__NON_STRIKER_ID__`        |
-   | `bowlerParticipantId`     | `__BOWLER_ID__`             |
+   | Read from the response    | Replaces |
+   | ------------------------- | -------- |
+   | `inningsId`               | `20540`  |
+   | `strikerParticipantId`    | `56`     |
+   | `nonStrikerParticipantId` | `168873` |
+   | `bowlerParticipantId`     | `136492` |
 
 Taking all four from one real delivery is deliberate. Those three players
 already batted and bowled in that innings, so they are guaranteed to be in
@@ -146,13 +146,20 @@ and easy to miss inside a large one.
 Also record, for the session notes, the fixture's current total runs and the
 striker's current runs — those are the figures expected to move.
 
-## Step 2 — fill in and validate
+## Step 2 — validate before the session
 
-Substitute the four placeholders (each appears once per event, four times each),
-then:
+`events.json` is already filled in for fixture 10266, so this is a confirmation
+run rather than a fill-in step:
 
 ```bash
 node evidence/user-testing/sprint-3/cor-01-correction-package/validate.js
+```
+
+It defaults to fixture `10266`. Pass a different file and fixture to check a
+re-targeted copy:
+
+```bash
+node …/validate.js ./events.json 12345
 ```
 
 It runs the two checks the server runs, in the server's order: the payload the
@@ -170,12 +177,12 @@ delivery coordinates are free.
 
 Signed in as the `admin` account, go to **`/submissions/new`**.
 
-| Control                  | What to do                                                                                                                                                                                                                  |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workflow                 | Choose **Advanced technical JSON**                                                                                                                                                                                          |
-| **Fixture**              | Select the chosen fixture. Options read `{startDate} — {home} v {away} — {competition}, {season} ({matchType})`. Only fixtures with a competition appear here, which is why the dropdown doubles as the requirement-1 check |
-| **Delivery events JSON** | Paste the entire filled-in contents of `events.json` — the bare `[ … ]` array, nothing around it                                                                                                                            |
-| Button                   | **Submit events**                                                                                                                                                                                                           |
+| Control                  | What to do                                                                                                                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow                 | Choose **Advanced technical JSON**                                                                                                                                                                                                        |
+| **Fixture**              | Select **`2006-12-22 — New Zealand v Sri Lanka — Sri Lanka in New Zealand T20I Series, … (T20)`**. Options read `{startDate} — {home} v {away} — {competition}, {season} ({matchType})`, and only fixtures with a competition appear here |
+| **Delivery events JSON** | Paste the entire contents of `events.json` — the bare `[ … ]` array, nothing around it                                                                                                                                                    |
+| Button                   | **Submit events**                                                                                                                                                                                                                         |
 
 Do not wrap the array in an object. The form adds `fixtureId` and
 `schemaVersion` itself (`submission-api.ts:342-346`); pasting a full
@@ -270,11 +277,13 @@ that the accepted event was not changed.
 
 ## Validation record
 
-On 2026-09-28, with placeholders substituted for throwaway numeric identifiers,
+On 2026-09-28, with the real target identifiers in place — fixture `10266`,
+innings `20540`, striker `56`, non-striker `168873`, bowler `136492` —
 `validate.js` reported the package **VALID against `submissionRequestSchema`
-(schemaVersion 1.0)** and **VALID against `validateCricketBusinessRules` (no
-violations)** for all four events. The intended correction (off-bat 6 to 4 with a
-reason) was separately checked against `correctionRequestSchema` and is valid.
+(schemaVersion 1.0, fixtureId 10266)** and **VALID against
+`validateCricketBusinessRules` (no violations)** for all four events. The
+intended correction (off-bat 6 to 4, with a reason) was separately checked
+against `correctionRequestSchema` for the same fixture and innings and is valid.
 
 Eight deliberate mutations were each correctly rejected, confirming both gates
 are live rather than vacuously passing:
