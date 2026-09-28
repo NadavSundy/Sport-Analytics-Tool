@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { seasonUploadPackageSchema } from '@sport-analytics/contracts';
 
 const fixture = {
@@ -63,6 +63,32 @@ function readableFixturePackage(): string {
     text = text.replaceAll(placeholder, value);
   }
   return text;
+}
+
+/**
+ * Choose the competition and then its fixture. Since #779 the page loads
+ * fixtures only for the competition that has been chosen, so the fixture
+ * selector starts empty and disabled and a journey that reaches a submit has to
+ * make the selection a submitter would make.
+ */
+async function chooseListedFixture(page: Page) {
+  const competitionSelector = page.getByRole('combobox', { name: 'Competition' });
+  const fixtureSelector = page.getByLabel('Fixture', { exact: true });
+
+  await expect(fixtureSelector).toBeDisabled();
+  await page.getByRole('button', { name: 'Show competition options' }).click();
+  await page.getByRole('option', { name: 'Example Competition' }).click();
+  await expect(competitionSelector).toHaveValue('Example Competition');
+
+  await page.getByRole('button', { name: 'Show fixture options' }).click();
+  await page
+    .getByRole('option', {
+      name: /2026-08-20 — Wanderers v Strikers — Example Competition, 2026 \(T20\)/,
+    })
+    .click();
+  await expect(fixtureSelector).toHaveValue(
+    '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+  );
 }
 
 test.beforeEach(async ({ page }) => {
@@ -363,6 +389,7 @@ test('technical JSON schema errors remain associated with the editor and receive
 
   await page.goto('/submissions/new');
   await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
+  await chooseListedFixture(page);
   const editor = page.getByLabel('Delivery events JSON');
   await editor.fill(JSON.stringify(invalidEvents));
   await page.getByRole('button', { name: 'Submit events' }).click();
@@ -434,16 +461,7 @@ test(
     });
 
     await page.goto('/submissions/new');
-    await expect(page.getByLabel('Fixture', { exact: true })).toHaveValue(
-      '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
-    );
-    await page.getByRole('button', { name: 'Show fixture options' }).click();
-    await expect(
-      page.getByRole('option', {
-        name: /2026-08-20 — Wanderers v Strikers — Example Competition, 2026 \(T20\)/,
-      }),
-    ).toBeVisible();
-    await page.getByLabel('Fixture', { exact: true }).press('Escape');
+    await chooseListedFixture(page);
     await expect(page.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     await expect(
       page.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
@@ -517,6 +535,7 @@ test('file validation identifies a rejected CSV row and returns focus to the res
   });
 
   await page.goto('/submissions/new');
+  await chooseListedFixture(page);
   const fileInput = page.getByLabel('Fixture package', { exact: true });
   await fileInput.setInputFiles({
     name: 'events.csv',

@@ -25,6 +25,12 @@ const fixture = {
   endDate: '2026-08-20',
 };
 
+/**
+ * The submission page reads its competitions from the competitions API (#779);
+ * an administrator gets the paged list rather than a per-scope read.
+ */
+const competitions = [{ competitionId: '5', name: 'Premier T20' }];
+
 const events = [
   {
     eventId,
@@ -116,6 +122,23 @@ async function fulfill(route: Route, status: number, body: unknown) {
 async function openAcceptedSubmission(page: Page) {
   await page.goto('/submissions/new');
   await page.getByRole('radio', { name: /Advanced technical JSON/ }).click();
+
+  // Since #779 the page loads fixtures only for the chosen competition, so the
+  // administrator picks the competition and then the fixture rather than
+  // finding one already selected.
+  const fixtureSelector = page.getByLabel('Fixture', { exact: true });
+  await expect(fixtureSelector).toBeDisabled();
+  await page.getByRole('button', { name: 'Show competition options' }).click();
+  await page.getByRole('option', { name: 'Premier T20' }).click();
+  await expect(page.getByRole('combobox', { name: 'Competition' })).toHaveValue('Premier T20');
+  await page.getByRole('button', { name: 'Show fixture options' }).click();
+  await page
+    .getByRole('option', { name: /2026-08-20 — Wanderers v Strikers — Premier T20, 2026 \(T20\)/ })
+    .click();
+  await expect(fixtureSelector).toHaveValue(
+    '2026-08-20 — Wanderers v Strikers — Premier T20, 2026 (T20)',
+  );
+
   await page.getByLabel('Delivery events JSON').fill(JSON.stringify(events, null, 2));
   await page.getByRole('button', { name: 'Submit events' }).click();
   await expect(page.getByRole('heading', { name: 'Submission accepted' })).toBeFocused();
@@ -159,6 +182,10 @@ test('administrator direct-import correction works by keyboard and refreshes sta
 
     if (url.pathname.endsWith('/auth/me')) {
       await fulfill(route, 200, currentUser('admin'));
+      return;
+    }
+    if (url.pathname.endsWith('/competitions')) {
+      await fulfill(route, 200, { data: competitions, pagination: { nextCursor: null } });
       return;
     }
     if (url.pathname.endsWith('/fixtures')) {
@@ -265,6 +292,8 @@ test('administrator correction validation remains associated with the relevant i
 
     if (url.pathname.endsWith('/auth/me')) {
       await fulfill(route, 200, currentUser('admin'));
+    } else if (url.pathname.endsWith('/competitions')) {
+      await fulfill(route, 200, { data: competitions, pagination: { nextCursor: null } });
     } else if (url.pathname.endsWith('/fixtures')) {
       await fulfill(route, 200, {
         data: [fixture],
