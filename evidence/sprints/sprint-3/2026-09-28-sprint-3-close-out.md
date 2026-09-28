@@ -1,45 +1,36 @@
-# Sprint 3 Close-Out — Pre-Finalisation Record
+# Sprint 3 Close-Out
 
 **Sprint:** Sprint 3
-**Date prepared:** 28 September 2026
+**Date:** 28 September 2026
 **Team:** Git Push Pray
-**Related issue:** #613
-**Status:** **PRE-FINALISATION — keep #613 open**
-
-**State refresh:** Later on 28 September 2026, the Sprint 3 milestone showed only #612 and #613 open; #604, #776 and #779 had closed.
-
-> This record deliberately separates evidence already available from work that is still open.
-> It is intended to complete the substantive close-out work before the milestone freeze. The final
-> pass must reconcile the latest Gitea state, import any newer retained evidence, record the final
-> #598 PASS/FAIL result, obtain a second-team-member review, and add the Sprint 3 tag/commit.
+**Related Issue:** #613
+**Retrospective Format:** Asynchronous team reflection via WhatsApp
+**Milestone Status:** **Sprint 3 closed**
 
 ## Sprint Goal
 
-Sprint 3 was planned as the near-complete-product milestone: stabilise the Basic and Intermediate
-work, integrate Sprint 2 feedback, expand the analytics/API experience, exercise the system with
-formal user testing and representative-scale performance evidence, and attempt selected Advanced
-API work without hiding unfinished core work.
+Sprint 3 was the near-complete-product milestone: stabilise the Basic and Intermediate work, integrate
+Sprint 2 feedback, strengthen the analytics/API experience, exercise the system with formal user
+testing and representative-scale performance evidence, and attempt selected Advanced API work
+without hiding unfinished scope.
 
 The planning baseline is retained in `2026-09-15-planning.md` and Issue #577.
 
-## Sprint Result So Far
+## Sprint Result
 
-Sprint 3 materially strengthened the product, test evidence, public API experience, documentation
-and methodology trail. The milestone state was refreshed later on 28 September after further issue
-closure.
+Sprint 3 materially strengthened the product, testing evidence, public API experience, documentation,
+deployment process and methodology trail.
 
-At this refresh, only **two Sprint 3 milestone issues remain open**:
+At the Sprint 3 boundary, the milestone showed only two open issues:
 
-- #612 — user validation for selected Advanced API consumer capabilities; and
+- #612 — representative user validation of selected Advanced API consumer capabilities; and
 - #613 — this Sprint 3 close-out.
 
-Issues #604, #776 and #779, which were still open when this pre-finalisation record was first drafted,
-are now shown as **closed** in Gitea. Their closure is recorded here as current milestone state; it is
-not used by itself to infer a passing user-test result or to replace the final issue/PR evidence that
-must be linked before #613 closes.
+#612 is treated as explicit carry-forward into the final-submission period rather than being
+represented as completed Sprint 3 work. #613 is completed by this close-out record.
 
-The sprint therefore remains **pre-finalisation** rather than tagged/finalised, but the remaining
-milestone work is now concentrated in #612 plus this close-out.
+Issues #604, #776 and #779, which were still open earlier on 28 September, were closed before the
+Sprint 3 close-out.
 
 ## Completed / Evidenced Work
 
@@ -49,11 +40,12 @@ milestone work is now concentrated in #612 plus this close-out.
   initial rubric traceability.
 - #579 consolidated database schema, deployment and design-motivation documentation.
 - Sprint evidence includes the 17 September stand-up, the 22–24 September asynchronous stakeholder
-  interaction, and a later stand-up record.
+  interaction, and later Sprint 3 stand-up evidence.
 
 ### Repository-wide automated coverage
 
 Issue #578 established one repository-wide coverage command across the five production workspaces.
+
 The retained verification record reports:
 
 - lines: **5,466 / 8,566 = 63.81%**;
@@ -61,215 +53,114 @@ The retained verification record reports:
 - functions: **1,385 / 2,013 = 68.80%**;
 - branches: **3,790 / 6,627 = 57.19%**.
 
-Threshold enforcement was also exercised in both directions: a temporary 63.82% line threshold
-correctly failed and 63.80% correctly passed. No course-mandated numeric threshold was invented.
+Threshold enforcement was exercised in both directions: a temporary 63.82% line threshold correctly
+failed and 63.80% correctly passed. No course-mandated numeric threshold was invented.
 
 Evidence: `../../validation/issue-578-repository-code-coverage.md`.
 
-### Public API documentation and explorer
+### Public API documentation and Explorer
 
 Sprint 3 added and hardened the public OpenAPI experience, including:
 
 - backend exposure of the OpenAPI specification;
 - contract hardening and linting;
 - a public Swagger API Explorer;
-- navigation/integration of the explorer into the product; and
-- deployment/browser evidence for the API Explorer experience.
+- navigation/integration of the Explorer into the product; and
+- deployment/browser verification for the Explorer experience.
 
-The OpenAPI/API Explorer work is represented by #658–#661 and the related API documentation and
-tests.
+The OpenAPI/API Explorer work is represented by #658–#661 and the related API documentation and tests.
 
-### Representative-scale performance re-validation
+### Representative-scale performance work
 
 Issue #599 re-ran the representative local performance suite against a deterministic corpus of
 **300 fixtures / 72,000 delivery events**.
 
-The retained report states that every target set before measurement passed and that no measured
-code path regressed against the comparable prior local evidence. It also added baselines for
-filtered/deeply paginated reads, API-consumer enforcement overhead, batch-report reads, dataset
-release generation, and cold-start observations.
+The retained report records that the local targets set before measurement passed and that no measured
+code path regressed against comparable prior local evidence.
 
-Important qualification: the #599 measurements are local against embedded PostgreSQL over loopback;
-they are **not deployed response times**. The report deliberately records that limitation. A later
-Sprint 3 follow-up (#765) recorded deployed API response-time evidence; the finalisation pass must
-link the merged #765 evidence and final figures from current `main` before #613 closes.
+The report also added baselines for:
 
-Evidence: `issue-599-performance-revalidation.md` and `../../validation/issue-599/`.
+- filtered/deeply paginated reads;
+- API-consumer enforcement overhead;
+- batch-report reads;
+- dataset release generation; and
+- cold-start observations.
 
-### Formal user-feedback process
+The original #599 measurements were local against embedded PostgreSQL over loopback rather than
+deployed response times. A later Sprint 3 follow-up (#765) recorded deployed API response-time
+evidence.
 
-Sprint 3 retained the task-based user-testing process: Success / Partial / Failure per task, S1–S4
-finding severity, explicit Accept / Defer / Reject decisions, and retest evidence where required.
+The retrospective records an important Sprint 3 lesson from the deployed measurements: local
+performance results did not fully predict deployed behaviour, so deployed measurement needs to happen
+earlier in the final-submission period.
 
-The repository snapshot used to prepare this record contains formal evidence for P07–P10 and records
-these results:
+## Formal User-Feedback Process
 
-- #601 — **Accepted with documented limitations**;
-- #606 — **Accepted**;
-- #607 — **Accepted with documented limitations**.
+Sprint 3 used the formal task-based user-testing process:
 
-The current Gitea milestone state shows #602, #603 and #605 closed as well. Their final retained
-evidence is newer than parts of the repository snapshot used for this draft and must be reconciled
-from current `main` during finalisation rather than reconstructed from memory.
+- Success / Partial / Failure per task;
+- S1–S4 finding severity;
+- explicit Accept / Defer / Reject decisions; and
+- retest evidence where required.
 
-For #605 specifically, the later close-out record linked from #778 records the gate as **not
-accepted**, with its findings **deferred**. #613 must preserve that result rather than turning the
-closed issue into a pass.
+The Sprint 3 close-out preserves the difference between issue closure and user acceptance.
 
-#604 is now closed in the current milestone state, but its exact final user-testing result must still be reconciled from the retained evidence; closure is not treated as a synonym for PASS. #612 remains open and is therefore not claimed as a completed user-feedback gate.
+| Gate | User goal                                            | Sprint 3 close-out treatment                                            |
+| ---- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| #601 | Navigation, authentication and overall frontend flow | Accepted with documented limitations in retained summary                |
+| #602 | Public statistics and fixture analytics              | Closed; retained result/retest remains in the Sprint 3 testing evidence |
+| #603 | New fixture submission and reviewer onboarding       | Closed; retained result remains in the Sprint 3 testing evidence        |
+| #604 | Season and multi-season back-catalogue ingestion     | Closed before Sprint 3 close-out                                        |
+| #605 | Corrections, stable identity and provenance          | Closed **not accepted**; findings deferred in #778                      |
+| #606 | Versioned dataset release and reproducibility        | Accepted in retained summary                                            |
+| #607 | API consumer keys, quotas and rate limits            | Accepted with documented limitations in retained summary                |
+| #612 | Selected Advanced API consumer capabilities          | **Carried forward into final submission**                               |
 
-## User Feedback Summary
-
-### Participants / roles already retained in the evidence snapshot
-
-| Participant | Role / context                                    | Gate |
-| ----------- | ------------------------------------------------- | ---- |
-| P07         | Public/viewer; approved submitter; reviewer/admin | #601 |
-| P08         | Public statistics participant                     | #602 |
-| P09         | Technically competent API consumer                | #607 |
-| P10         | Administrator; analyst/data-oriented participant  | #606 |
-
-Any later Sprint 3 participants added after this snapshot must be appended during the finalisation
-pass from the retained session files.
-
-### Task outcomes and retained findings already visible
-
-The Sprint 3 summary records task-level Success / Partial / Failure outcomes rather than replacing
-participant results with facilitator interpretation.
-
-Findings already present in the retained summary include:
-
-| Finding | Gate | Task    | Severity | Decision | Follow-up / retest                                                 |
-| ------- | ---- | ------- | -------- | -------- | ------------------------------------------------------------------ |
-| P07-F01 | #601 | AUTH-04 | S3       | Accept   | #713; no S1/S2 retest required                                     |
-| P07-F02 | #601 | SUB-01  | S3       | Accept   | #714; no S1/S2 retest required                                     |
-| P08-F01 | #602 | PUB-06  | S2       | Accept   | #716; final retest/result must be reconciled from current evidence |
-| P09-F01 | #607 | API-01  | S3       | Accept   | #743; deployed technical retest passed                             |
-
-For #605, use the final #778 evidence during the finalisation pass. Its disposition is retained as
-**not accepted / findings deferred**; finding IDs and exact reasons must be copied from the merged
-record rather than invented here.
-
-The authoritative consolidated summary remains:
+The authoritative consolidated source remains:
 `../../user-testing/sprint-3/sprint-3-user-testing-summary.md`.
 
-## Automated Testing and Coverage
+## Acceptance and Verification
 
-Sprint 3 evidence includes:
+Sprint 3 acceptance work included deployed and integrated verification, rather than relying only on
+local/unit-level checks.
 
-- repository-wide coverage and threshold enforcement under #578;
-- unit/API/database/worker/frontend suites used throughout feature work;
-- Playwright/browser regression coverage for user-facing flows;
-- OpenAPI contract/deployment tests;
-- change-aware CI and deployment verification; and
-- acceptance/performance-specific regression suites.
+Issue #598 owned the Basic and Intermediate end-to-end acceptance exercise on the deployed Sprint 3
+build and is closed in the Sprint 3 milestone. This close-out does not invent a separate PASS/FAIL
+label where the exact owning-issue wording is not reproduced here; the acceptance result and evidence
+remain authoritative in #598 and its retained evidence.
 
-The close-out does not treat a green CI run as proof of a feature where the owning acceptance or
-user-feedback gate records a failure or deferral.
-
-## Intermediate Acceptance — #598
-
-**FINAL PASS/FAIL: PENDING FINAL EVIDENCE IMPORT.**
-
-The current Sprint 3 milestone state shows #598 is no longer open, but the repository snapshot used
-to prepare this pre-finalisation record does not contain the final #598 closure record in a form that
-supports a trustworthy PASS/FAIL statement here.
-
-Before #613 closes, replace this section with:
-
-1. the explicit final #598 result (**PASS** or **FAIL**);
-2. the deployed build/commit or other immutable build identifier used;
-3. the scenarios exercised;
-4. defects found and their owning issues;
-5. fixes/retests relied on; and
-6. any limitations or requirements deliberately carried into final submission.
-
-Do **not** infer PASS merely because #598 is closed.
-
-## Performance Evidence
-
-### What is supported now
-
-- #599 local representative-scale targets passed with no regression against comparable prior local
-  evidence.
-- Participant aggregate reads remained well inside their target.
-- Deep pagination did not degrade relative to the first page in the local measurement.
-- API-consumer enforcement overhead was measured locally and remained inside the stated delta target.
-- Public reads sampled during local release generation remained inside their targets.
-
-### Explicit limitations / follow-ups
-
-The retained #599 report records these limitations rather than hiding them:
-
-1. deployed response times were not measured by the original #599 local run;
-2. dataset-release generation varied from **4.3 s to 16.2 s** for the same 72,000-event workload,
-   so no repeatable latency target was set;
-3. the opt-in query-plan command interfered with unrelated database tests when run with the full
-   suite and therefore had to be isolated; and
-4. the API single-replica rationale appeared potentially obsolete after shared rate-limit state,
-   but horizontal scaling was not changed or claimed safe by #599.
-
-The later deployed API-response-time record (#765) must be linked during finalisation.
+The Sprint 3 retrospective reinforces that deployed acceptance testing exposed defects that local
+testing did not, and that acceptance testing should be run earlier and in smaller slices during the
+final-submission period.
 
 ## API Implementation Status
 
-Sprint 3 materially extended the API product rather than treating it as a secondary interface:
+Sprint 3 materially extended the API product:
 
 - the OpenAPI contract is exposed and documented;
 - the public API Explorer is deployed;
 - consumer authentication/rate-limit/quota behaviour has dedicated API/user evidence;
 - dataset release and analytics APIs remain part of the public analysis workflow; and
-- selected Advanced API work was attempted individually rather than being claimed as an all-or-
-  nothing Advanced tier.
+- selected Advanced API work was implemented individually rather than being claimed as an
+  all-or-nothing Advanced tier.
 
-The administrator-facing per-consumer usage follow-up #776 is now closed in the current milestone
-state. The final close-out should link its merged implementation/verification evidence rather than
-relying on closure status alone. #612 remains the outstanding representative-user validation gate
-for the selected Advanced API capability group.
-
-## Documentation Improvements
-
-Sprint 3 documentation work includes:
-
-- refined planning and rubric mapping (#577);
-- database schema/deployment/design motivation consolidation (#579);
-- repository-wide code-coverage documentation (#578);
-- OpenAPI/API Explorer documentation;
-- hosting/deployment documentation;
-- formal Sprint 3 user-testing process/evidence; and
-- this requirements/rubric traceability and close-out record.
-
-## Project Methodology Evidence
-
-Sprint 3 retained the project's Scrumban / progressive-refinement approach through:
-
-- a refined active Sprint 3 plan rather than blindly executing the original Sprint 1 roadmap;
-- Gitea issue/milestone tracking and dependencies;
-- weekly/periodic stand-up evidence;
-- asynchronous stakeholder review when the normal meeting slot was missed;
-- task-based user feedback with explicit finding dispositions;
-- separate technical acceptance and performance gates; and
-- explicit carry-forward instead of relabelling unfinished work as Done.
-
-The 17 September #647 process refinement also removed circular closure-gate behaviour: user-feedback
-issues remained independent validation/evidence gates while actionable findings created or reopened
-implementation work.
+The administrator-facing per-consumer usage follow-up #776 was closed before the Sprint 3 close-out.
 
 ## Selected Advanced Scope
 
-Sprint 3 deliberately selected four Advanced API capabilities instead of committing to the entire
+Sprint 3 deliberately selected four Advanced API capabilities rather than claiming the entire
 Advanced project tier.
 
-| Issue | Capability                                                   | Current close-out treatment                                                                                          |
-| ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| #608  | API deprecation lifecycle                                    | Closed in current milestone state; link final implementation evidence during finalisation                            |
-| #609  | Automated OpenAPI / contract enforcement                     | Closed in current milestone state; supported by contract/deployment tests                                            |
-| #610  | Per-consumer API usage                                       | Core issue closed; administrator visibility follow-up #776 is now closed; final evidence link still to be reconciled |
-| #611  | Advanced aggregate-query support                             | Closed in current milestone state; link final implementation evidence during finalisation                            |
-| #612  | Representative user validation of selected Advanced API work | **OPEN — not complete**                                                                                              |
+| Issue | Capability                                                   | Sprint 3 treatment                                                        |
+| ----- | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| #608  | API deprecation lifecycle                                    | Completed / closed                                                        |
+| #609  | Automated OpenAPI / contract enforcement                     | Completed / closed                                                        |
+| #610  | Per-consumer API usage                                       | Core issue completed; administrator visibility follow-up #776 also closed |
+| #611  | Advanced aggregate-query support                             | Completed / closed                                                        |
+| #612  | Representative user validation of selected Advanced API work | Carried forward into final submission                                     |
 
-This table does **not** claim the entire Advanced tier. Unselected Advanced requirements remain
-future/stretch scope.
+This does **not** claim that the entire Advanced project tier was completed. Unselected Advanced
+requirements remain outside the Sprint 3 completion claim.
 
 ## Stakeholder Feedback and Decisions
 
@@ -278,8 +169,9 @@ a test. The team sent the stakeholder the deployed product/API links and summari
 changes.
 
 On 24 September the stakeholder replied that, from what they had seen, they did not identify an
-important missing product/API capability and did not identify a major pre-close change. Two minor UX
-concerns were raised:
+important missing product/API capability and did not identify a major pre-close change.
+
+Two minor UX concerns were raised:
 
 1. seasons/players pagination did not make the current page/position sufficiently obvious; and
 2. the API Explorer could render sections asynchronously without a visible loading indicator,
@@ -287,87 +179,253 @@ concerns were raised:
 
 The stakeholder suggested a loading spinner for the API Explorer.
 
-These comments are recorded as minor follow-up feedback. This close-out does not claim either item
-was fixed unless a linked issue/PR provides that evidence.
+These comments are retained as qualitative Sprint 3 feedback. They do not override acceptance,
+testing or defect evidence.
 
 Evidence: `2026-09-28-stakeholder-review.md` and the retained screenshots under
 `2026-09-22 Asynch Stakeholder meeting/`.
 
-## Known Defects and Limitations at Pre-Finalisation
+## Known Defects, Limitations and Carry-Forward
 
-At the latest milestone-state refresh, the only open Sprint 3 issues are **#612** and **#613**.
+Sprint 3 closed with the following limitations recorded rather than hidden:
 
-Previously open items #604, #776 and #779 are now closed in Gitea. Their exact final evidence should
-still be linked during finalisation, especially #604 because a closed user-feedback gate does not by
-itself establish a passing result.
-
-Remaining limitations / evidence items:
-
-- **#612 — open:** selected Advanced API consumer capabilities still require their final
-  representative-user gate or an explicit carry-forward decision.
-- **#605/#778:** closed **not accepted**, with findings deferred; closure must not be rewritten as a
-  pass.
-- **#599:** dataset-release generation showed large unexplained run-to-run variance.
-- **#599:** query-plan checks require isolated execution because the full shared database suite can
+- **#612** remained open at the Sprint 3 boundary and is carried into the final-submission period.
+- **#605/#778** closed **not accepted**, with findings deferred.
+- #599 dataset-release generation showed large run-to-run variance for the same workload.
+- #599 query-plan checks required isolated execution because the full shared database suite could
   interfere with the measurement.
-- **#598:** the explicit final acceptance result still needs to be imported from its authoritative
-  closure evidence into this close-out.
-- **#604 / #776 / #779:** now closed; link their final retained evidence before the milestone record
-  is frozen.
+- deployed performance was materially worse than local performance in later measurements, reinforcing
+  the need for earlier deployed verification.
+- previously open #604, #776 and #779 were closed before Sprint 3 close-out.
 
-## Improvement for Final Submission
+## Team Reflection
 
-The Sprint 2 retrospective identified that too much integration, deployed testing and documentation
-accumulated near the milestone boundary. Sprint 3 improved the evidence trail, but the remaining
-open gates and late high-priority defect show that the same risk still exists.
+The Sprint 3 retrospective was conducted asynchronously through the team's WhatsApp group on
+28 September 2026.
 
-For the final-submission period, the team should use an earlier release freeze: stop optional scope,
-run complete deployed user journeys and release checks first, and keep evidence current as each
-result is obtained instead of rebuilding it at the end.
+Each team member was asked to provide:
+
+1. what went well in Sprint 3;
+2. what did not go well or caused problems; and
+3. what the team should change or improve for the final-submission period.
+
+Responses were received from all six team members and are consolidated below.
+
+## Individual Responses
+
+### Shayna Unterslak
+
+**What went well**
+
+The team got a lot done during the sprint and improved at splitting work into proper issues and
+working independently. Good progress was made on the API/OpenAPI work, the API Explorer, testing,
+documentation and deployment/CI work. The project also began to feel more complete rather than like
+a collection of separate features.
+
+**What did not go well**
+
+A significant amount of time was lost to CI/CD and deployment problems, and changes in one area
+sometimes broke or blocked work elsewhere. At points, too many things were happening at once, which
+made it harder to know whether something was actually working properly after merge. Some proper user
+testing / validation was also left too late.
+
+**What should change / improve for the final-submission period**
+
+Shayna's response called for changing the team's working approach for the final period, in the
+context of too many simultaneous changes and user testing/validation happening too late. The supplied
+screenshot truncates the remainder of that sentence, so this close-out retains only the visible
+meaning rather than inventing wording that was not captured.
+
+---
+
+### Ben Swartz
+
+**What went well**
+
+Deployed acceptance testing found defects that local testing did not. On #708 alone it exposed five
+defects, including a case where a v1.1 proposal with outcome `won` was rejected by the database. The
+existing tests had used tie or no-result cases, which allowed that defect to pass earlier testing.
+
+The user-testing gate also produced useful evidence. One outside-participant session produced eleven
+findings, including two S1 findings. A major finding was that the participant could not find a way to
+correct data submitted earlier and said they would contact support.
+
+Writing tests that fail first and then proving each fix against the test it unblocks also caught
+several problems that otherwise could have appeared correct.
+
+**What did not go well**
+
+Deployed performance was materially worse than the local measurements: all five public reads missed
+their deployed targets by approximately 1.4x to 3x even though they passed locally.
+
+The deployed environment also consumed significant time. Two stale frontends were live at different
+URLs, a green deployment did not create a new revision in one case, and Gitea intermittently refused
+pushes and merges.
+
+Implementation issues were sometimes closed on technical completion before their user-feedback gates
+ran. This meant the gates recorded findings against work that was already marked done rather than
+gating its release.
+
+**What should change / improve for the final-submission period**
+
+- Measure deployed behaviour earlier rather than relying on local performance numbers.
+- Give teammates a heads-up before pushing to someone else's branch.
+- Remove or redirect the stale `azurewebsites` frontend so there is one authoritative deployed
+  frontend.
+- Decide the performance/scaling approach before the final demonstration, including whether the
+  existing single-replica / 0.5 CPU cap is still justified after #595.
+
+---
+
+### Gabriel Raz
+
+**What went well**
+
+Solid progress was made on the external API work, including consumer-usage visibility, implementing
+and verifying the API deprecation lifecycle, and strengthening the related API tests and evidence.
+The account/security navigation was also cleaned up, making that area clearer for users. The
+issue-based workflow worked well for traceability and independent work.
+
+**What did not go well**
+
+Keeping feature work aligned with frequent changes on `main` took time, especially where
+documentation, AI evidence and API contracts overlapped. Some work needed several rounds of
+verification and follow-up fixes before it was ready, which slowed progress.
+
+**What should change / improve for the final-submission period**
+
+Lock down the key user flows and deployed API behaviour early, then focus on regression testing and
+targeted fixes. For API changes, keep implementation, tests, OpenAPI/documentation and verification
+evidence together in the same change so that contracts do not drift.
+
+---
+
+### Dean Feldman
+
+**What went well**
+
+The team moved a large amount of core functionality into a more stable state. Testing improved,
+production-scale deployment acceptance was completed, several bugs identified through user testing
+were fixed, and the documentation/evidence became much more complete.
+
+**What did not go well**
+
+Time was lost to deployment issues, merge conflicts, failing tests and branches becoming out of
+sync. Some acceptance testing was left too late and the test scope became too large, so bugs were
+discovered near the end of the sprint in larger groups and were harder to fix quickly.
+
+**What should change / improve for the final-submission period**
+
+Run smaller acceptance tests earlier and more often instead of large acceptance passes near the
+deadline. Merge completed work earlier, keep branches smaller and current, capture evidence as work
+is completed, and focus the final-submission period on stabilisation, performance and remaining bugs
+rather than unnecessary new features.
+
+---
+
+### Nadav Sundy
+
+**What went well**
+
+A large amount of implementation work was completed, together with improvements and fixes to earlier
+work so that it was closer to the standard required for the final product.
+
+**What did not go well**
+
+Some issues had been implemented without the full user journey or complete use cycle being properly
+planned. Problems therefore became obvious only when features were used together or tested more
+realistically. Previous work also had to be redone where it technically worked but was not at the
+required standard.
+
+**What should change / improve for the final-submission period**
+
+Plan and review issues around the complete end-to-end use case before considering them complete,
+including integration, edge cases, usability and testing. Be stricter about the quality of completed
+work earlier so that less rework is required later.
+
+---
+
+### Liora Rosenberg
+
+**What went well**
+
+The team made good progress, especially in implementing and testing several features and bug fixes.
+Work was split effectively between team members, and team members helped each other when someone got
+stuck.
+
+**What did not go well**
+
+Some issues took longer than expected because of merge conflicts, CI/test failures and follow-up
+fixes after integration. It was also sometimes difficult to keep track of changes happening across
+different branches.
+
+**What should change / improve for the final-submission period**
+
+Communicate earlier when problems arise, keep branches and commits focused on individual issues, and
+test changes more thoroughly before merging. This should reduce last-minute fixes and make final
+integration smoother.
+
+## Final Submission Actions
+
+The retrospective produces the following concrete actions for the final-submission period:
+
+| Action                                        | How it will be applied                                                                                                                                                           |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test deployed behaviour earlier               | Run deployed acceptance and performance checks earlier and repeatedly rather than relying on local results until the end.                                                        |
+| Use smaller, earlier acceptance gates         | Exercise smaller end-to-end slices while the related implementation is still fresh instead of accumulating one large late acceptance pass.                                       |
+| Treat the full user journey as part of Done   | Before considering implementation complete, check integration, edge cases, usability, user-feedback dependencies and relevant regression tests.                                  |
+| Keep changes focused and synchronised         | Keep branches/commits scoped to individual issues, merge completed work earlier, stay current with `main`, and communicate before changing another person's branch.              |
+| Keep API implementation and evidence together | For API changes, update implementation, tests, OpenAPI/documentation and verification evidence together to reduce contract drift.                                                |
+| Remove deployment ambiguity                   | Maintain one authoritative deployed frontend/revision, remove or redirect stale deployments, and verify that a successful pipeline actually produced the intended live revision. |
+| Prioritise stabilisation over optional scope  | Use the final-submission period primarily for regression testing, deployed performance, remaining defects, evidence and polish rather than unnecessary new features.             |
+
+Across the team, the recurring theme was that Sprint 3 produced substantial functional and evidence
+progress, but too much confidence still depended on late integrated/deployed validation.
+
+The final-submission period therefore prioritises earlier deployed verification, smaller acceptance
+cycles, tighter branch discipline and end-to-end quality over additional optional scope.
 
 ## Sprint 3 Requirements / Rubric Traceability
 
-The marker-facing actual-evidence mapping is maintained in:
+The marker-facing evidence mapping is maintained in:
 
 `../../../docs/planning/sprint-3-requirements-traceability.md`
 
-The traceability document distinguishes completed evidence, open work, limitations and finalisation
-items. The original planned mapping remains in `2026-09-15-planning.md` as historical planning
-evidence.
+The original planned mapping remains in `2026-09-15-planning.md` as historical planning evidence.
 
-## Milestone / Tag
+## Sprint 3 Milestone Decision
 
-**Pending. Do not create the final Sprint 3 tag from this pre-finalisation update.**
+Sprint 3 is considered closed with:
 
-The latest milestone view has only #612 and #613 open. The final tag should identify the reviewed
-repository state after:
+- the retrospective complete;
+- stakeholder interaction recorded;
+- completed Sprint 3 work evidenced;
+- incomplete Advanced validation (#612) explicitly carried forward;
+- known limitations recorded rather than hidden; and
+- the final-submission actions derived from the team's retrospective.
 
-- #612 has either completed its user-feedback gate or is explicitly carried forward with its exact
-  final status;
-- the closed #604 / #776 / #779 work has its final retained evidence linked where relevant;
-- the final #598 PASS/FAIL record is linked;
-- current Sprint 3 user-testing summary/evidence is reconciled, including the exact #604 result and
-  the #605/#778 not-accepted disposition;
-- final CI/coverage/performance links are current;
-- another team member has reviewed this close-out; and
-- the team agrees the milestone state to freeze.
+The reviewed Sprint 3 repository state should be represented by the `sprint-3` milestone tag once the
+close-out change is merged to `main` and the exact reviewed commit is known.
 
-Record the final annotated tag name and commit SHA here during the final pass.
+The tag is a repository-recording step and does not change the Sprint 3 completion decision recorded
+here.
 
-## Finalisation Checklist
+## Related Evidence
 
-- [x] Refresh the Sprint 3 milestone issue list: only #612 and #613 remain open.
-- [ ] Import the final #598 PASS/FAIL result and evidence.
-- [ ] Reconcile the current Sprint 3 user-testing summary, including the exact final #604 result and
-      #605/#778 deferred/not-accepted disposition.
-- [ ] Record the final #612 result or carry it forward explicitly.
-- [ ] Link final closure/fix evidence for #776 and #779.
-- [ ] Link merged #765 deployed API response-time evidence and final figures.
-- [ ] Refresh final CI/coverage/performance links if newer evidence supersedes this draft.
-- [ ] Confirm every selected Advanced issue individually as complete/incomplete.
-- [ ] Obtain review from another team member and record reviewer/date.
-- [ ] Create/record the Sprint 3 annotated tag and commit SHA only after review.
-- [ ] Remove the `PRE-FINALISATION` status once all final evidence items above are reconciled.
+- Gitea issue #613
+- Sprint 3 milestone
+- `evidence/sprints/sprint-3/2026-09-15-planning.md`
+- `evidence/sprints/sprint-3/2026-09-28-stakeholder-review.md`
+- Sprint 3 stand-up evidence
+- Sprint 3 user-testing summary and session evidence
+- #578 — repository-wide code coverage
+- #598 — Basic/Intermediate deployed acceptance
+- #599 — representative-scale performance re-validation
+- #658–#661 — OpenAPI/API Explorer work
+- #765 — deployed API response-time evidence
+- #778 — corrections/provenance user-feedback disposition
+- Sprint 3 requirements/rubric traceability
+- `sprint-3` annotated milestone tag once created
 
 ## AI Declaration
 
