@@ -6,6 +6,8 @@
 **Related issue:** #613
 **Status:** **PRE-FINALISATION — keep #613 open**
 
+**State refresh:** Later on 28 September 2026, the Sprint 3 milestone showed only #612 and #613 open; #604, #776 and #779 had closed.
+
 > This record deliberately separates evidence already available from work that is still open.
 > It is intended to complete the substantive close-out work before the milestone freeze. The final
 > pass must reconcile the latest Gitea state, import any newer retained evidence, record the final
@@ -23,19 +25,21 @@ The planning baseline is retained in `2026-09-15-planning.md` and Issue #577.
 ## Sprint Result So Far
 
 Sprint 3 materially strengthened the product, test evidence, public API experience, documentation
-and methodology trail. The current milestone state on 28 September shows that most Sprint 3 issues
-have closed, but the sprint is **not yet ready for a final milestone tag**.
+and methodology trail. The milestone state was refreshed later on 28 September after further issue
+closure.
 
-The five issues still open in the Sprint 3 milestone at the time this pre-finalisation record was
-prepared are:
+At this refresh, only **two Sprint 3 milestone issues remain open**:
 
-- #604 — user validation for season / multi-season back-catalogue ingestion;
-- #612 — user validation for selected Advanced API consumer capabilities;
-- #613 — this Sprint 3 close-out;
-- #776 — administrator per-consumer API usage visibility; and
-- #779 — high-priority admin fixture-selector performance defect.
+- #612 — user validation for selected Advanced API consumer capabilities; and
+- #613 — this Sprint 3 close-out.
 
-These are carried explicitly rather than described as completed work.
+Issues #604, #776 and #779, which were still open when this pre-finalisation record was first drafted,
+are now shown as **closed** in Gitea. Their closure is recorded here as current milestone state; it is
+not used by itself to infer a passing user-test result or to replace the final issue/PR evidence that
+must be linked before #613 closes.
+
+The sprint therefore remains **pre-finalisation** rather than tagged/finalised, but the remaining
+milestone work is now concentrated in #612 plus this close-out.
 
 ## Completed / Evidenced Work
 
@@ -112,7 +116,7 @@ For #605 specifically, the later close-out record linked from #778 records the g
 accepted**, with its findings **deferred**. #613 must preserve that result rather than turning the
 closed issue into a pass.
 
-#604 and #612 remain open and are therefore not claimed as completed user-feedback gates.
+#604 is now closed in the current milestone state, but its exact final user-testing result must still be reconciled from the retained evidence; closure is not treated as a synonym for PASS. #612 remains open and is therefore not claimed as a completed user-feedback gate.
 
 ## User Feedback Summary
 
@@ -218,9 +222,10 @@ Sprint 3 materially extended the API product rather than treating it as a second
 - selected Advanced API work was attempted individually rather than being claimed as an all-or-
   nothing Advanced tier.
 
-The current open #776 means administrator-facing per-consumer usage visibility is still incomplete.
-The core work linked to #610 may be closed, but #613 must not claim the #776 administrator follow-up
-as shipped while it remains open.
+The administrator-facing per-consumer usage follow-up #776 is now closed in the current milestone
+state. The final close-out should link its merged implementation/verification evidence rather than
+relying on closure status alone. #612 remains the outstanding representative-user validation gate
+for the selected Advanced API capability group.
 
 ## Documentation Improvements
 
@@ -255,13 +260,13 @@ implementation work.
 Sprint 3 deliberately selected four Advanced API capabilities instead of committing to the entire
 Advanced project tier.
 
-| Issue | Capability                                                   | Current close-out treatment                                                               |
-| ----- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| #608  | API deprecation lifecycle                                    | Closed in current milestone state; link final implementation evidence during finalisation |
-| #609  | Automated OpenAPI / contract enforcement                     | Closed in current milestone state; supported by contract/deployment tests                 |
-| #610  | Per-consumer API usage                                       | Core issue closed; administrator visibility follow-up #776 remains open                   |
-| #611  | Advanced aggregate-query support                             | Closed in current milestone state; link final implementation evidence during finalisation |
-| #612  | Representative user validation of selected Advanced API work | **OPEN — not complete**                                                                   |
+| Issue | Capability                                                   | Current close-out treatment                                                                                          |
+| ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| #608  | API deprecation lifecycle                                    | Closed in current milestone state; link final implementation evidence during finalisation                            |
+| #609  | Automated OpenAPI / contract enforcement                     | Closed in current milestone state; supported by contract/deployment tests                                            |
+| #610  | Per-consumer API usage                                       | Core issue closed; administrator visibility follow-up #776 is now closed; final evidence link still to be reconciled |
+| #611  | Advanced aggregate-query support                             | Closed in current milestone state; link final implementation evidence during finalisation                            |
+| #612  | Representative user validation of selected Advanced API work | **OPEN — not complete**                                                                                              |
 
 This table does **not** claim the entire Advanced tier. Unselected Advanced requirements remain
 future/stretch scope.
@@ -290,16 +295,25 @@ Evidence: `2026-09-28-stakeholder-review.md` and the retained screenshots under
 
 ## Known Defects and Limitations at Pre-Finalisation
 
-- **#779 — high priority:** the admin fixture selector loads every fixture before the page becomes
-  usable.
-- **#604 — open:** season/multi-season workflow still lacks its final representative-user gate.
-- **#612 — open:** selected Advanced API consumer capabilities still lack their final user gate.
-- **#776 — open:** administrator per-consumer API usage visibility remains incomplete.
-- #605 closed **not accepted**, with its findings deferred; closure must not be rewritten as a pass.
-- #599 dataset-release generation showed large unexplained run-to-run variance.
-- #599 query-plan checks require isolated execution because the full shared database suite can
+At the latest milestone-state refresh, the only open Sprint 3 issues are **#612** and **#613**.
+
+Previously open items #604, #776 and #779 are now closed in Gitea. Their exact final evidence should
+still be linked during finalisation, especially #604 because a closed user-feedback gate does not by
+itself establish a passing result.
+
+Remaining limitations / evidence items:
+
+- **#612 — open:** selected Advanced API consumer capabilities still require their final
+  representative-user gate or an explicit carry-forward decision.
+- **#605/#778:** closed **not accepted**, with findings deferred; closure must not be rewritten as a
+  pass.
+- **#599:** dataset-release generation showed large unexplained run-to-run variance.
+- **#599:** query-plan checks require isolated execution because the full shared database suite can
   interfere with the measurement.
-- Final #598 acceptance wording still needs to be imported from its authoritative closure evidence.
+- **#598:** the explicit final acceptance result still needs to be imported from its authoritative
+  closure evidence into this close-out.
+- **#604 / #776 / #779:** now closed; link their final retained evidence before the milestone record
+  is frozen.
 
 ## Improvement for Final Submission
 
@@ -323,13 +337,17 @@ evidence.
 
 ## Milestone / Tag
 
-**Pending. Do not create the final Sprint 3 tag from this pre-finalisation commit.**
+**Pending. Do not create the final Sprint 3 tag from this pre-finalisation update.**
 
-The final tag should identify the reviewed repository state after:
+The latest milestone view has only #612 and #613 open. The final tag should identify the reviewed
+repository state after:
 
-- #604 / #612 / #776 / #779 have either been completed or explicitly carried forward;
+- #612 has either completed its user-feedback gate or is explicitly carried forward with its exact
+  final status;
+- the closed #604 / #776 / #779 work has its final retained evidence linked where relevant;
 - the final #598 PASS/FAIL record is linked;
-- current user-testing summary/evidence is reconciled;
+- current Sprint 3 user-testing summary/evidence is reconciled, including the exact #604 result and
+  the #605/#778 not-accepted disposition;
 - final CI/coverage/performance links are current;
 - another team member has reviewed this close-out; and
 - the team agrees the milestone state to freeze.
@@ -338,19 +356,18 @@ Record the final annotated tag name and commit SHA here during the final pass.
 
 ## Finalisation Checklist
 
-- [ ] Pull current `main` and confirm the Sprint 3 milestone issue list.
+- [x] Refresh the Sprint 3 milestone issue list: only #612 and #613 remain open.
 - [ ] Import the final #598 PASS/FAIL result and evidence.
-- [ ] Reconcile the current Sprint 3 user-testing summary, especially #602, #603 and #605/#778.
-- [ ] Record the final #604 result or carry it forward explicitly.
+- [ ] Reconcile the current Sprint 3 user-testing summary, including the exact final #604 result and
+      #605/#778 deferred/not-accepted disposition.
 - [ ] Record the final #612 result or carry it forward explicitly.
-- [ ] Update #776 status and disposition.
-- [ ] Update #779 status and disposition.
+- [ ] Link final closure/fix evidence for #776 and #779.
 - [ ] Link merged #765 deployed API response-time evidence and final figures.
 - [ ] Refresh final CI/coverage/performance links if newer evidence supersedes this draft.
 - [ ] Confirm every selected Advanced issue individually as complete/incomplete.
 - [ ] Obtain review from another team member and record reviewer/date.
 - [ ] Create/record the Sprint 3 annotated tag and commit SHA only after review.
-- [ ] Remove the `PRE-FINALISATION` status once all items above are reconciled.
+- [ ] Remove the `PRE-FINALISATION` status once all final evidence items above are reconciled.
 
 ## AI Declaration
 
