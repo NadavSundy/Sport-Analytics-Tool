@@ -381,9 +381,10 @@ The Administration entry point opens a responsive list and creation form. The co
 shows safe configuration, key prefixes and lifecycle dates, with explicit confirmation for key
 rotation and individual-key revocation. Raw keys appear only in the in-memory one-time view returned
 by creation or rotation and disappear when that view is dismissed. Both pages link to the public API
-Explorer rather than reproducing the OpenAPI documentation. Per-consumer usage is intentionally
-absent until the handwritten backend exposes an administrator-authorized contract; the existing
-usage operation authenticates a consumer key and returns only that consumer's own aggregate.
+Explorer rather than reproducing the OpenAPI documentation. The detail view also presents
+owner-scoped historical usage by inclusive UTC date window, normalized operation, response status
+class and request count. It distinguishes empty usage from a loading failure and labels configured
+quota/rate policy as context rather than current remaining capacity. No consumer secret is required.
 
 ---
 
@@ -423,4 +424,6 @@ documented with the assistance of Codex[GPT-5].
 The issue #581 navigation, Account/Manage Submission separation, local navigation and safe authentication
 return-path implementation were documented with the assistance of Codex[GPT-5.6 Sol].
 The issue #775 administrator API-consumer information architecture was documented with the
+assistance of Codex[GPT-5.6 Sol].
+The issue #776 administrator consumer-usage information architecture was documented with the
 assistance of Codex[GPT-5.6 Sol].

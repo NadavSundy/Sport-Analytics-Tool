@@ -4,15 +4,61 @@ import {
   accountDeletionRequestSchema,
   accountDeletionResponseSchema,
   APPLICATION_ROLES,
+  administratorApiConsumerUsageResponseSchema,
   administratorSubmitterAccessUpdateSchema,
   administratorRoleUpdateSchema,
   administratorUserManagementResponseSchema,
+  apiConsumerPathParametersSchema,
   applicationRoleSchema,
   currentUserProfileResponseSchema,
   submitterAccessRequestSchema,
   submitterAccessRequestResponseSchema,
   submitterApprovalStateSchema,
 } from '../auth';
+
+describe('administrator API consumer usage contracts', () => {
+  const response = {
+    data: {
+      consumer: {
+        id: '7',
+        name: 'Partner dashboard',
+        rateLimitPerMinute: 60,
+        dailyQuota: 10_000,
+      },
+      from: '2026-09-20',
+      to: '2026-09-26',
+      totalRequests: 8,
+      entries: [
+        {
+          date: '2026-09-26',
+          endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+          statusClass: '2xx',
+          requestCount: 8,
+        },
+      ],
+    },
+  };
+
+  test('accepts safe consumer context and aggregated usage', () => {
+    expect(administratorApiConsumerUsageResponseSchema.parse(response)).toEqual(response);
+    expect(apiConsumerPathParametersSchema.safeParse({ consumerId: '7' }).success).toBe(true);
+    expect(apiConsumerPathParametersSchema.safeParse({ consumerId: 'not-numeric' }).success).toBe(
+      false,
+    );
+  });
+
+  test.each(['apiKey', 'keyHash', 'headers', 'requestBody', 'responsePayload'])(
+    'rejects the secret or payload field %s',
+    (field) => {
+      expect(
+        administratorApiConsumerUsageResponseSchema.safeParse({
+          ...response,
+          data: { ...response.data, [field]: 'must-not-be-exposed' },
+        }).success,
+      ).toBe(false);
+    },
+  );
+});
 
 describe('application role contract', () => {
   test.each(APPLICATION_ROLES)('accepts the %s role', (role) => {

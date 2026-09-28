@@ -133,6 +133,9 @@ describe('Swagger/explorer-facing OpenAPI metadata', () => {
   test('keeps representative public, bearer and API-key security explicit', () => {
     expect(security(operation(document, '/api/v1/health'))).toEqual([]);
     expect(security(operation(document, '/api/v1/auth/me'))).toEqual([{ bearerAuth: [] }]);
+    expect(security(operation(document, '/api/v1/admin/api-consumers/{consumerId}/usage'))).toEqual(
+      [{ bearerAuth: [] }],
+    );
     expect(security(operation(document, '/api/v1/consumer/fixtures'))).toEqual([
       { apiKeyAuth: [] },
     ]);

@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test('administrator creates, copies, rotates, and revokes an API consumer key @mobile', async ({
+test('administrator manages a consumer and reviews its usage without its key @mobile', async ({
   page,
   context,
 }) => {
@@ -117,6 +117,36 @@ test('administrator creates, copies, rotates, and revokes an API consumer key @m
       body: JSON.stringify({ data: { ...consumer, apiKey: rotatedKey } }),
     });
   });
+  await page.route('**/api/v1/admin/api-consumers/17/usage*', async (route) => {
+    expect(route.request().headers().authorization).toContain('Bearer ');
+    expect(route.request().url()).not.toContain(issuedKey);
+    expect(route.request().url()).not.toContain(rotatedKey);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          consumer: {
+            id: '17',
+            name: 'Match data partner',
+            rateLimitPerMinute: 25,
+            dailyQuota: 500,
+          },
+          from: '2026-09-21',
+          to: '2026-09-27',
+          totalRequests: 14,
+          entries: [
+            {
+              date: '2026-09-27',
+              endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+              statusClass: '2xx',
+              requestCount: 14,
+            },
+          ],
+        },
+      }),
+    });
+  });
   await page.route('**/api/v1/admin/api-consumers/17/keys/32', async (route) => {
     const consumer = consumers[0] as { keys: Array<Record<string, unknown>> };
     consumers = [
@@ -148,6 +178,13 @@ test('administrator creates, copies, rotates, and revokes an API consumer key @m
 
   await page.getByRole('link', { name: 'Manage Match data partner' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Match data partner' })).toBeVisible();
+  const usage = page.getByRole('region', { name: 'API consumer usage table' });
+  await expect(usage).toContainText('2026-09-27');
+  await expect(usage).toContainText('GET /consumer/fixtures/:fixtureId/events');
+  await expect(usage).toContainText('2xx');
+  await expect(usage).toContainText('14');
+  await expect(page.getByText('2026-09-21 to 2026-09-27 UTC')).toBeVisible();
+  await expect(page.getByLabel(/API key/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'Rotate key' }).click();
   const rotateDialog = page.getByRole('dialog', { name: 'Rotate API key?' });
   await expect(rotateDialog).toContainText('stop every previous active key');

@@ -1,4 +1,5 @@
 import {
+  administratorApiConsumerUsageResponseSchema,
   administratorSubmitterAccessResponseSchema,
   administratorUserManagementResponseSchema,
   apiConsumerIssueResponseSchema,
@@ -6,6 +7,7 @@ import {
   apiConsumerRotateResponseSchema,
   type ApiConsumer,
   type ApiConsumerIssue,
+  type AdministratorApiConsumerUsageResponse,
   type AdministratorManagedUser,
   type AdministratorRoleUpdate,
   type AdministratorSubmitterAccessUpdate,
@@ -36,6 +38,26 @@ export async function getAdministratorApiConsumers(
   const parsed = apiConsumerListResponseSchema.safeParse(response);
   if (!parsed.success) throw new AdminApiConsumerContractError();
   return parsed.data.data.consumers;
+}
+
+export async function getAdministratorApiConsumerUsage(
+  client: AuthenticatedApiClient,
+  consumerId: string,
+  query: { from?: string; to?: string; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<AdministratorApiConsumerUsageResponse['data']> {
+  const parameters = new URLSearchParams();
+  if (query.from) parameters.set('from', query.from);
+  if (query.to) parameters.set('to', query.to);
+  if (query.limit !== undefined) parameters.set('limit', String(query.limit));
+  const suffix = parameters.size > 0 ? `?${parameters.toString()}` : '';
+  const response = await client.request<unknown>(
+    `/admin/api-consumers/${encodeURIComponent(consumerId)}/usage${suffix}`,
+    signal ? { signal } : {},
+  );
+  const parsed = administratorApiConsumerUsageResponseSchema.safeParse(response);
+  if (!parsed.success) throw new AdminApiConsumerContractError();
+  return parsed.data.data;
 }
 
 export async function createAdministratorApiConsumer(

@@ -9,8 +9,8 @@ All management operations require an administrator's Supabase bearer token.
 The frontend Administration area provides the routine workflow at
 `/admin/api-consumers`: administrators can list the consumers they own, create a consumer, inspect
 safe configuration and key metadata, rotate all active keys, and revoke an individual key. It also
-links to the API Explorer for the complete API product documentation. The management API remains
-the authorization boundary.
+shows safe historical usage aggregates for a selected consumer and links to the API Explorer for
+the complete API product documentation. The management API remains the authorization boundary.
 
 ```http
 POST /api/v1/admin/api-consumers
@@ -77,29 +77,41 @@ the raw consumer key into the `apiKeyAuth` **Value** field. Do not include
 
 Missing, malformed, unknown and revoked secrets return `401`, `WWW-Authenticate: ApiKey`, and no information about the matching consumer or key state.
 
-## Own usage
+## Consumer-self and administrator usage
 
 `GET /api/v1/consumer/usage` returns an API key's **own consumer's** aggregated request
-usage. It never accepts a consumer ID and has no administrator equivalent. The result is grouped
-by UTC date, normalized route template and HTTP status class, ordered by date descending, endpoint
-ascending and status class ascending. Use `from` and `to` as inclusive `YYYY-MM-DD` dates; the
-default window is the most recent seven UTC dates and the maximum is 31 days. `limit` defaults to
-50 groups and is capped at 100.
+usage. It never accepts a consumer ID. `GET
+/api/v1/admin/api-consumers/{consumerId}/usage` instead uses an application-user bearer token,
+requires the `admin` role and applies the existing administrator-owner visibility rule before
+reading telemetry. A missing and a non-visible consumer receive the same safe not-found response;
+the administrator does not supply or recover the consumer's secret key.
+
+Both operations use the same aggregation and window semantics. Results are grouped by UTC date,
+normalized route template and HTTP status class, ordered by date descending, endpoint ascending
+and status class ascending. Use `from` and `to` as inclusive `YYYY-MM-DD` dates; the default window
+is the most recent seven UTC dates and the maximum is 31 days. `limit` defaults to 50 groups and is
+capped at 100.
 
 ```http
 GET /api/v1/consumer/usage?from=2026-09-20&to=2026-09-26&limit=50
 X-API-Key: sat_live_<secret>
 ```
 
+```http
+GET /api/v1/admin/api-consumers/17/usage?from=2026-09-20&to=2026-09-26&limit=50
+Authorization: Bearer <admin-token>
+```
+
 Telemetry records only the stable consumer ID, safe key ID, timestamp, normalized method/route
 template and response status class. It never stores a raw key or hash, URL/query values, headers,
 request body, credentials or response payload. Usage events are retained for 31 days, then removed
 by scheduled operational cleanup. The current request becomes visible after its response completes;
-the response's `quota` context describes the request that retrieved the aggregate.
-
-Consequently, the administrator frontend does not show per-consumer usage. Adding that workflow
-requires a separately designed and authorized administrator endpoint; the frontend must not obtain
-usage by retaining a raw key or querying PostgreSQL directly.
+the consumer-self response's `quota` context describes the request that retrieved the aggregate.
+The administrator response instead provides the selected consumer's configured daily quota and
+per-minute rate limit alongside historical totals. It does not claim a current remaining quota or
+live rate-limit state. Neither response exposes raw keys, key hashes, credential headers, request
+bodies, response payloads or raw query-string values, and the frontend never queries PostgreSQL
+directly.
 
 ### Using a consumer key from WSL
 
@@ -138,3 +150,5 @@ The issue #743 browser-client authentication and CORS response-header clarificat
 The issue #610 consumer usage documentation was added with the assistance of Codex[GPT-5].
 The issue #775 administrator frontend workflow and current usage boundary were documented with the
 assistance of Codex[GPT-5.6 Sol].
+The issue #776 administrator per-consumer usage authorization, aggregation and privacy boundaries
+were documented with the assistance of Codex[GPT-5.6 Sol].
