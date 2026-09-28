@@ -11,7 +11,7 @@ import { useCallback, useId, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { publicReadApi } from '../api/public-read';
 import { BrowseCollection, type FilterField } from '../features/browse/BrowseCollection';
-import type { NameComboboxOption } from '../features/browse/NameCombobox';
+import type { NameComboboxOption } from '../components/NameCombobox';
 import { RelatedCollection } from '../features/browse/RelatedCollection';
 import {
   DetailError,

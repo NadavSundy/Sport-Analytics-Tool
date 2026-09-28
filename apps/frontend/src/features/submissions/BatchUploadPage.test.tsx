@@ -152,7 +152,9 @@ describe('guided batch upload', () => {
     expect(screen.getByRole('link', { name: 'Download spreadsheet template' })).toHaveAttribute(
       'download',
     );
-    expect(await screen.findByLabelText('Competition')).toHaveDisplayValue('Premier T20');
+    await waitFor(() =>
+      expect(screen.getByLabelText('Competition')).toHaveDisplayValue('Premier T20'),
+    );
     const season = screen.queryByLabelText('Season context');
     if (season) {
       await waitFor(() =>
@@ -242,6 +244,35 @@ describe('guided batch upload', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('223e4567-e89b-42d3-a456-426614174000')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Competition' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Show competition options' })).toBeDisabled();
+  });
+
+  test('browses and fuzzy-searches the authorised competition choices', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(200, {
+          data: [
+            { competitionId: '5', name: 'Premier T20' },
+            { competitionId: '8', name: 'University League' },
+          ],
+          pagination: { nextCursor: null },
+        }),
+      ),
+    );
+    renderUpload('catalogue', { ...submitterProfile, role: 'admin', competitionIds: [] });
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue('Premier T20'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Show competition options' }));
+    expect(await screen.findAllByRole('option')).toHaveLength(2);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Competition' }), {
+      target: { value: 'univ' },
+    });
+    fireEvent.click(await screen.findByRole('option', { name: 'University League' }));
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue('University League');
   });
 
   test('does not load known seasons because package context is authoritative', async () => {
