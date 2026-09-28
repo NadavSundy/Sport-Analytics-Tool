@@ -134,4 +134,25 @@ describe('NameCombobox', () => {
       expect(screen.getByRole('status')).toHaveTextContent('No such competition was found.'),
     );
   });
+
+  it('keeps the input and disclosure controls unavailable when disabled', () => {
+    render(
+      <NameCombobox
+        dependencyKey="locked"
+        disabled
+        entityName="competition"
+        inputValue="Premier Cricket League"
+        label="Competition"
+        loadOptions={vi.fn().mockResolvedValue(options)}
+        onInputChange={() => undefined}
+        onSelectionChange={() => undefined}
+        onSelectionResolved={() => undefined}
+        selectedValue="competition-1"
+      />,
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Show competition options' })).toBeDisabled();
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
 });

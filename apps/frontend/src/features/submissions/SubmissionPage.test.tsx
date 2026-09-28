@@ -119,6 +119,11 @@ async function selectTechnicalJson() {
   fireEvent.click(await screen.findByRole('radio', { name: /Advanced technical JSON/ }));
 }
 
+async function openCombobox(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: `Show ${label.toLowerCase()} options` }));
+  return screen.findByRole('listbox', { name: `${label} options` });
+}
+
 function useSystemTheme() {
   vi.stubGlobal(
     'matchMedia',
@@ -342,9 +347,12 @@ describe('role-gated event submission page', () => {
     renderSubmissionPage();
     await selectTechnicalJson();
 
-    const selector = await screen.findByLabelText('Fixture');
-    expect(within(selector).getAllByRole('option')).toHaveLength(2);
-    expect(within(selector).queryByRole('option', { name: /fixture 99/i })).toBeNull();
+    expect(await screen.findByRole('combobox', { name: 'Competition' })).toHaveValue(
+      'Example Competition',
+    );
+    const fixtureOptions = await openCombobox('Fixture');
+    expect(within(fixtureOptions).getAllByRole('option')).toHaveLength(1);
+    expect(within(fixtureOptions).queryByRole('option', { name: /fixture 99/i })).toBeNull();
     expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(
       expect.arrayContaining([
         expect.stringContaining('competitionId=5'),
@@ -353,7 +361,7 @@ describe('role-gated event submission page', () => {
     );
   });
 
-  it('lists fixtures from every competition for an administrator without scopes', async () => {
+  it('filters single and technical fixtures by competition for an administrator', async () => {
     const unassignedFixture = { ...fixture, fixtureId: '99', competitionId: null };
     const otherCompetitionFixture = {
       ...fixture,
@@ -375,25 +383,103 @@ describe('role-gated event submission page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderSubmissionPage();
-    await selectTechnicalJson();
 
     expect(
       await screen.findByRole('heading', { name: 'Administrator submission access' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/may submit event data for any competition/i)).toBeInTheDocument();
 
-    const selector = screen.getByLabelText('Fixture');
-    expect(within(selector).getAllByRole('option')).toHaveLength(2);
+    const competitionOptions = await openCombobox('Competition');
+    expect(within(competitionOptions).getAllByRole('option')).toHaveLength(2);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Competition' }), {
+      target: { value: 'prem' },
+    });
+    fireEvent.click(await screen.findByRole('option', { name: 'Premier League' }));
+
+    expect((screen.getByRole('combobox', { name: 'Fixture' }) as HTMLInputElement).value).toContain(
+      'Premier League',
+    );
+    const fixtureOptions = await openCombobox('Fixture');
+    expect(within(fixtureOptions).getAllByRole('option')).toHaveLength(1);
     expect(
-      within(selector).getByRole('option', { name: /Example Competition/i }),
-    ).toBeInTheDocument();
-    expect(within(selector).getByRole('option', { name: /Premier League/i })).toBeInTheDocument();
-    expect(within(selector).queryByRole('option', { name: /Outside Scope/i })).toBeNull();
+      within(fixtureOptions).queryByRole('option', { name: /Example Competition/i }),
+    ).toBeNull();
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Fixture' }), { key: 'Escape' });
+
+    await selectTechnicalJson();
+    expect(screen.getByLabelText('Delivery events JSON')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue(
+      'Example Competition',
+    );
+    await openCombobox('Competition');
+    fireEvent.click(screen.getByRole('option', { name: 'Premier League' }));
+    expect((screen.getByRole('combobox', { name: 'Fixture' }) as HTMLInputElement).value).toContain(
+      'Premier League',
+    );
 
     const fixtureRequests = fetchMock.mock.calls
       .map(([input]) => String(input))
       .filter((url) => url.includes('/fixtures?'));
     expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
+  });
+
+  it('fuzzy-searches fixture context and stages the selected canonical fixture', async () => {
+    const laterFixture = {
+      ...fixture,
+      fixtureId: '8',
+      season: '2027',
+      seasonLabel: '2027/28',
+      startDate: '2027-09-14',
+      endDate: '2027-09-14',
+      competitors: [
+        { competitorId: '30', name: 'Rangers' },
+        { competitorId: '31', name: 'Falcons' },
+      ],
+    };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture, laterFixture]));
+      if (url.endsWith('/batches') && init?.method === 'POST') {
+        return Promise.resolve(
+          response(202, {
+            data: {
+              batchReference: '323e4567-e89b-42d3-a456-426614174000',
+              status: 'stored',
+              statusUrl: '/api/v1/batches/323e4567-e89b-42d3-a456-426614174000',
+              receivedAt: '2026-09-28T09:30:00.000Z',
+            },
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    const fixtureSelector = await screen.findByRole('combobox', { name: 'Fixture' });
+    fireEvent.change(fixtureSelector, { target: { value: '2027/28' } });
+    expect(await screen.findByRole('option', { name: /Rangers v Falcons/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Wanderers v Strikers/ })).toBeNull();
+    fireEvent.click(screen.getByRole('option', { name: /Rangers v Falcons/ }));
+
+    fireEvent.change(screen.getByLabelText('Delivery events JSON'), {
+      target: { value: JSON.stringify(validEvents) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+    let uploadCall: (typeof fetchMock.mock.calls)[number] | undefined;
+    await waitFor(() => {
+      uploadCall = fetchMock.mock.calls.find(
+        ([request, init]) => String(request).endsWith('/batches') && init?.method === 'POST',
+      );
+      expect(uploadCall).toBeDefined();
+    });
+    expect(new Headers((uploadCall?.[1] as RequestInit).headers).get('X-File-Name')).toBe(
+      'technical-8.json',
+    );
   });
 
   it('stages advanced technical JSON through the batch review pipeline', async () => {
@@ -897,7 +983,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
 
-    const fixtureSelect = await screen.findByLabelText('Fixture');
+    const fixtureSelect = await screen.findByRole('combobox', { name: 'Fixture' });
     expect(screen.getByRole('radio', { name: /Single fixture/ })).toBeChecked();
     expect(screen.getByRole('radio', { name: /Season/ })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Back catalogue/ })).toBeInTheDocument();
@@ -910,13 +996,11 @@ describe('role-gated event submission page', () => {
     ).toBeVisible();
     expect(screen.queryByRole('link', { name: /Upload a season or back catalogue/ })).toBeNull();
     expect(fixtureSelect).toHaveAccessibleDescription(/never need to enter a database ID/i);
+    const fixtureOptions = await openCombobox('Fixture');
     expect(
-      within(fixtureSelect).getByRole('option', {
-        name: '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+      within(fixtureOptions).getByRole('option', {
+        name: /2026-08-20 — Wanderers v Strikers — Example Competition, 2026 \(T20\)/,
       }),
-    ).toBeInTheDocument();
-    expect(
-      within(fixtureSelect).queryByRole('option', { name: 'New fixture' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     expect(
@@ -997,7 +1081,9 @@ describe('role-gated event submission page', () => {
     expect(screen.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose an existing fixture' }));
-    expect(await screen.findByLabelText('Fixture')).toHaveValue('7');
+    expect(await screen.findByLabelText('Fixture')).toHaveValue(
+      '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
+    );
   });
 
   it('only retains a winner while a new fixture outcome is won', async () => {
@@ -1019,7 +1105,11 @@ describe('role-gated event submission page', () => {
 
     await screen.findByLabelText('Fixture');
     fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
-    await screen.findByRole('option', { name: 'Example Competition' });
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue(
+        'Example Competition',
+      ),
+    );
     fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'won' } });
     fireEvent.change(await screen.findByLabelText('Winning team'), {
       target: { value: 'Wanderers' },
@@ -1065,7 +1155,17 @@ describe('role-gated event submission page', () => {
 
     await screen.findByLabelText('Fixture');
     fireEvent.click(screen.getByRole('button', { name: 'Propose a new fixture' }));
-    expect(await screen.findByRole('option', { name: 'Example Competition' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue(
+        'Example Competition',
+      ),
+    );
+    const proposalCompetition = screen.getByRole('combobox', { name: 'Competition' });
+    fireEvent.change(proposalCompetition, { target: { value: 'Exam Comp' } });
+    await screen.findByRole('option', { name: /Example Competition/ });
+    fireEvent.keyDown(proposalCompetition, { key: 'ArrowDown' });
+    fireEvent.keyDown(proposalCompetition, { key: 'Enter' });
+    expect(proposalCompetition).toHaveValue('Example Competition');
     expect(screen.getByText(/version 1.1 fixture proposal/i)).toBeVisible();
 
     const readablePackage = readableFixturePackage();
