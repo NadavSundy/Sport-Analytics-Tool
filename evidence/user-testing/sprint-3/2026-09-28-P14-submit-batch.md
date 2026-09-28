@@ -175,10 +175,10 @@ While using the search/select control, when the search text was fully backspaced
 | BAT-04 | Understand Failed/Correction-Required Batch | **Success** | None     |
 | BAT-05 | Download a Complete Batch Report            | **Failure** | P14-F02  |
 
-**Total attempts:** 5  
-**Success:** 3  
-**Partial:** 1  
-**Failure:** 1
+- **Total attempts:** 5
+- **Success:** 3
+- **Partial:** 1
+- **Failure:** 1
 
 ---
 
