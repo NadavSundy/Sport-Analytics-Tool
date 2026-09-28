@@ -1,5 +1,14 @@
 # Issue #599 — Sprint 3 representative-scale performance re-validation
 
+> **Status reconciliation — 2026-09-28.** The deployed production-scale acceptance tracked by
+> issue #565 subsequently completed successfully on 2026-09-25. Its retained evidence is in
+> `evidence/sprints/sprint-3/issue-565-production-scale-deployment-acceptance.md`,
+> `evidence/sprints/sprint-3/issue-565-live-result.json`, and
+> `evidence/sprints/sprint-3/issue-565/`. Statements below that describe #565 as pending are
+> historical context from when this performance record was first written. They do **not** override
+> the later #565 completion evidence. The deployed response-time findings in section 10 remain a
+> separate #599 concern and are not erased by #565 completing its acceptance procedure.
+
 ## What this does not cover
 
 **Read this before quoting any figure in this document.**
@@ -26,19 +35,18 @@
    size, region and connection limit are not evidenced anywhere in the repository and
    are recorded as unknown.
 
-3. **Deployed production-scale acceptance under #565 is still pending.** Its evidence
-   record is a baseline smoke only: health with CORS and two static frontend routes
-   pass; the asynchronous release lifecycle, public reads during generation, artifact
-   checksum, recovery, and every capacity, replica and CPU signal are `pending`.
+3. **Historical status at the time of the original #599 write-up:** deployed production-scale
+   acceptance under #565 was still pending. **Current status:** #565 completed on 2026-09-25.
+   The completed record includes the asynchronous release lifecycle, public reads during
+   generation, artifact checksum, recovery/duplicate-safety evidence, and retained API/worker
+   capacity screenshots. See `issue-565-production-scale-deployment-acceptance.md`.
 
-4. **Therefore the deployed-architecture criteria of issue #599 are not discharged by
-   this work, and a deployed re-run is still required.** A local measurement cannot
-   settle how the deployed system behaves: the API is capped at one 0.5-CPU replica
-   with `minReplicas` 0, the worker and API are separate Container Apps competing for
-   one hosted database, and every database round trip carries roughly thirty-six times
-   the latency measured here. What #599 establishes is that no code path regressed at
-   representative scale and that five previously unmeasured workloads now have
-   baselines. What it does not establish is what any of them cost in production.
+4. **The local measurements in sections 1-9 still do not discharge deployed-performance
+   conclusions by themselves.** A local measurement cannot settle how the deployed system
+   behaves: the API is capped at one 0.5-CPU replica with `minReplicas` 0, the worker and API
+   are separate Container Apps using the hosted database, and the network path differs materially
+   from loopback. #565 now supplies separate deployed acceptance evidence, while section 10 of
+   this document remains the source for #599's deployed response-time measurements.
 
 Sections 1 and 9.3 expand on each of these.
 
@@ -68,21 +76,24 @@ A figure in this document is therefore evidence that **a code path does or does 
 unnecessary work at representative data volume**. It is not evidence of deployed
 response time. Read this section before quoting any number outside this file.
 
-### 1.1 Deployed acceptance remains pending
+### 1.1 Deployed acceptance — historical pending state, subsequently completed
 
 Issue #565 defines the deployed production-scale acceptance procedure
-(`docs/deployment/production-scale-acceptance.md`). Its evidence record,
-`evidence/sprints/sprint-3/issue-565-production-scale-deployment-acceptance.md`, is at
-the time of writing a **baseline smoke only**: backend health with CORS and the two
-static frontend routes are recorded as passing on 2026-09-22 16:23 UTC, and every other
-row — the asynchronous release lifecycle, public reads during generation, artifact
-checksum, recovery and duplicate safety, and all capacity, replica and CPU signals — is
-`pending`. Its own conclusion reads "Pending a live run."
+(`docs/deployment/production-scale-acceptance.md`). When this section was originally
+written, its evidence record was a baseline smoke only and the live acceptance rows were
+pending.
 
-**The #565 acceptance procedure has still not been run**, and is not discharged by
-anything here: it requires a deployed worker, a deployed frontend origin and a
-short-lived administrator bearer token, and covers the release lifecycle, recovery,
-duplicate safety and the capacity signals, none of which are exercised below.
+**Status update — 2026-09-25:** the #565 acceptance procedure subsequently completed.
+The completed evidence records the asynchronous release lifecycle, foreground public
+reads during generation, metadata/artifact retrieval, SHA-256 verification, recovery
+and duplicate-safety observations, a 3,207,110-event published release, and retained
+API/worker capacity screenshots. See
+`evidence/sprints/sprint-3/issue-565-production-scale-deployment-acceptance.md` and
+`evidence/sprints/sprint-3/issue-565-live-result.json`.
+
+This does not change the purpose of #599: section 10 remains the deployed response-time
+measurement for the five #289 read operations, while #565 is the deployment-acceptance
+record for the production-scale lifecycle and capacity evidence.
 
 What has since been run is narrower and is recorded in section 10: the five #289
 read operations, measured twice against the deployed API. That is enough to answer
@@ -164,11 +175,11 @@ evidence that a live Azure deployment has succeeded."
 
 ### 4.1 Explicitly unknown
 
-Not evidenced in the repository, and therefore not stated: the Supabase database tier,
-instance size, region or connection limit; the deployed PostgreSQL server version; the
-replica counts, CPU and memory actually observed under load; and whether `minReplicas`
-is `0` in the live deployment or overridden at deploy time. The #565 capacity table,
-which would carry the observed figures, is `pending` throughout.
+Not evidenced in this #599 measurement record, and therefore not inferred here: the Supabase
+database tier, instance size, region or connection limit; the deployed PostgreSQL server version;
+and whether `minReplicas` is `0` in the live deployment or overridden at deploy time. Subsequent
+#565 evidence separately records observed API/worker CPU, memory, maximum replica count and
+restart-count signals; those later observations are not retroactively treated as #599 measurements.
 
 ### 4.2 Finding: the API replica cap may no longer be necessary
 
@@ -620,9 +631,10 @@ and commits, quoted from the evidence files cited. They are not re-measured here
   section 8.7.
 - **Supabase database tier, instance size, region, connection limit, and server
   version.** Not evidenced anywhere in the repository. Section 4.1.
-- **Observed deployed replica counts, CPU and memory.** The #565 capacity table that
-  would carry them is `pending` throughout.
-- **Deployed production-scale acceptance.** Still outstanding under #565. Section 1.1.
+- **Observed deployed replica counts, CPU and memory within this #599 run.** Not measured by
+  sections 1-9. Later #565 evidence separately records those Azure observations.
+- **Deployed production-scale acceptance.** Completed subsequently under #565 on
+  2026-09-25; see the status reconciliation at the top of this document and section 1.1.
 - **Deployed season-scale batch ingestion.** The last figure is the #540 run of
   2026-09-15 at 3m37.235s against a 15-minute target, on commit `b68158c`. It was not
   re-run for Sprint 3 and cannot be re-run locally.
@@ -750,14 +762,16 @@ region. Those need their own measurement.
 - Resolve the replica cap question raised in section 4.2 — whether #595 has obsoleted
   the rationale — and if it has, measure again with the cap lifted. Changing
   infrastructure to improve a measurement remains out of scope here.
-- The #565 deployed acceptance procedure is still outstanding and is unaffected by this
-  section.
+- The #565 deployed acceptance procedure subsequently completed on 2026-09-25. That later
+  lifecycle/capacity evidence is separate from the response-time measurements in this section.
 
 ## AI Declaration
 
 The issue #599 re-validation plan, target statement, evidence structure and the
 measurement runners added for this issue were produced with the assistance of
-Claude-Code[Claude Opus 5]. Every figure recorded in this document is a **measured
-figure** under `docs/development/reference-fixtures.md` section 4.2, produced by the
-command named alongside it. No figure is estimated, extrapolated, or copied from an
+Claude-Code[Claude Opus 5]. The 2026-09-28 status reconciliation that links the later
+#565 completion evidence was reviewed and edited with ChatGPT-Web[GPT-5.6 Thinking].
+Every performance figure recorded in this document is a **measured figure** under
+`docs/development/reference-fixtures.md` section 4.2, produced by the command named
+alongside it. No performance figure is estimated, extrapolated, or copied from an
 unstated source.
