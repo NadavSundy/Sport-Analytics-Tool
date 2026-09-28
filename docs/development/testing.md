@@ -423,6 +423,26 @@ npm run test --workspace=@sport-analytics/frontend -- --run src/features/dataset
 npm run test:e2e -- tests/e2e/admin-dataset-releases.spec.ts --workers=1
 ```
 
+## Administrator API-consumer coverage
+
+The administrator API-consumer frontend suite covers signed-out redirection, role denial, safe list
+and detail metadata, empty and retryable error states, contract-aligned create validation, backend
+validation feedback, one-time key display and dismissal, clipboard success, and confirmed key
+rotation and revocation success/failure paths. It verifies that complete raw keys do not remain in
+ordinary list or detail state. Administrator per-consumer usage is not tested because the current
+backend exposes only key-authenticated self usage.
+
+The focused Playwright journey follows the Administration entry point through creation, copy,
+detail, rotation and revocation at desktop and Pixel 7 sizes. It checks horizontal overflow and
+serious or critical Axe findings using mock credentials and explicitly non-production key fixtures.
+
+Run the focused checks with:
+
+```text
+npm run test --workspace=@sport-analytics/frontend -- --run src/features/admin/AdminApiConsumersPage.test.tsx src/features/admin/AdministrationPage.test.tsx
+npm run test:e2e -- tests/e2e/admin-api-consumers.spec.ts --workers=1
+```
+
 ## Direct submission coverage
 
 The contract and API suites cover the versioned delivery schema, anonymous users and viewers,
@@ -734,3 +754,5 @@ Codex[GPT-5.6 Sol].
 The issue #609 OpenAPI contract-test command was documented with the assistance of
 Claude-Code[Claude Opus 5].
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #775 administrator API-consumer coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].

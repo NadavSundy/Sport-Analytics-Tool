@@ -72,8 +72,10 @@ flowchart TD
         ReviewQueue["/reviews/batches"] --> ReviewDetail["/reviews/batches/:batchReference"]
         Administration["/admin"]
         AdminUsers["/admin/users"]
+        AdminConsumers["/admin/api-consumers"] --> AdminConsumerDetail["/admin/api-consumers/:consumerId"]
         PublishRelease["/admin/dataset-releases/new"]
         Administration --> AdminUsers
+        Administration --> AdminConsumers
         Administration --> PublishRelease
     end
 
@@ -103,7 +105,7 @@ flowchart TD
   **Access & scope**. An administrator **Manage Submission** menu exposes **Submit data**,
   **Submission history**, and **Review**. **Administration** is a separate administrator-only
   navigation item.
-- Administration organises existing **Users & access** and **Data governance** surfaces. Review
+- Administration organises **Users & access**, **API consumers**, and **Data governance** surfaces. Review
   decisions remain administrator-only; no reviewer application role exists.
 - The mobile menu exposes the same public and permitted Manage Submission destinations as labelled direct
   links, without depending on icon recognition or nested entity grids.
@@ -373,6 +375,16 @@ immutable-publication warning, one labelled version field, one primary publish a
 result region. On narrow screens, controls and result links become single-column and long checksums
 wrap without horizontal page overflow.
 
+### 5.8 Manage API consumers (administrator)
+
+The Administration entry point opens a responsive list and creation form. The consumer detail view
+shows safe configuration, key prefixes and lifecycle dates, with explicit confirmation for key
+rotation and individual-key revocation. Raw keys appear only in the in-memory one-time view returned
+by creation or rotation and disappear when that view is dismissed. Both pages link to the public API
+Explorer rather than reproducing the OpenAPI documentation. Per-consumer usage is intentionally
+absent until the handwritten backend exposes an administrator-authorized contract; the existing
+usage operation authenticates a consumer key and returns only that consumer's own aggregate.
+
 ---
 
 ## 6. Open questions for review
@@ -410,3 +422,5 @@ The issue #571 new-fixture proposal journey and its issue #583 duplicate-warning
 documented with the assistance of Codex[GPT-5].
 The issue #581 navigation, Account/Manage Submission separation, local navigation and safe authentication
 return-path implementation were documented with the assistance of Codex[GPT-5.6 Sol].
+The issue #775 administrator API-consumer information architecture was documented with the
+assistance of Codex[GPT-5.6 Sol].

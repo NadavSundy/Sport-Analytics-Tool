@@ -58,6 +58,12 @@ OpenAPI specification request each show the same labelled progress indicator unt
 content is ready. A specification failure replaces that indicator with an explicit retryable error
 state, so an unfinished or failed Explorer is not presented as a blank page.
 
+Signed-in administrators manage external API consumers through `/admin/api-consumers`. That
+frontend uses the existing handwritten list, issue, rotate and individual-key revoke operations and
+links back to the API Explorer; it complements rather than duplicates the API documentation. The
+current administrator API has no per-consumer usage operation, so usage remains available only to
+the authenticated consumer through `GET /api/v1/consumer/usage`.
+
 ## Current endpoints
 
 ```http
@@ -394,3 +400,5 @@ The Issue #660 public API Explorer workflow was reviewed and documented with the
 The Issue #661 public API Explorer discoverability and production UX guidance was reviewed and documented with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The Issue #726 API Explorer loading-feedback guidance was updated with the assistance of Codex[GPT-5].
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #775 administrator consumer-management frontend boundary was documented with the
+assistance of Codex[GPT-5.6 Sol].
