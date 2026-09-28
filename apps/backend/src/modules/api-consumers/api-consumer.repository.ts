@@ -37,6 +37,7 @@ interface ConsumerUsageEntry {
 export interface ApiConsumerRepository {
   issue(ownerAccountId: string, issue: ApiConsumerIssue, key: GeneratedKey): Promise<ApiConsumer>;
   list(ownerAccountId: string): Promise<ApiConsumer[]>;
+  findOwned(ownerAccountId: string, consumerId: string): Promise<ApiConsumer | null>;
   rotate(ownerAccountId: string, consumerId: string, key: GeneratedKey): Promise<ApiConsumer>;
   revoke(ownerAccountId: string, consumerId: string, keyId: string): Promise<void>;
   findActiveConsumer(keyHash: string): Promise<ActiveConsumer | null>;
@@ -139,6 +140,15 @@ export function createApiConsumerRepository(pool: Pool = getDatabasePool()): Api
       return Promise.all(
         rows.rows.map((row) => readConsumer(pool, row.id).then((consumer) => consumer!)),
       );
+    },
+    async findOwned(ownerAccountId, consumerId) {
+      const owned = await executeQuery<{ id: string }>(
+        pool,
+        `SELECT api_consumer_id::text AS id FROM api_consumer
+         WHERE api_consumer_id = $1 AND owner_app_user_id = $2`,
+        [consumerId, ownerAccountId],
+      );
+      return owned.rows[0] ? readConsumer(pool, owned.rows[0].id) : null;
     },
     async rotate(ownerAccountId, consumerId, key) {
       return withTransaction(pool, async (client) => {
@@ -275,6 +285,7 @@ export function createLazyApiConsumerRepository(): ApiConsumerRepository {
   return {
     issue: (...args) => resolved().issue(...args),
     list: (...args) => resolved().list(...args),
+    findOwned: (...args) => resolved().findOwned(...args),
     rotate: (...args) => resolved().rotate(...args),
     revoke: (...args) => resolved().revoke(...args),
     findActiveConsumer: (...args) => resolved().findActiveConsumer(...args),

@@ -429,12 +429,14 @@ The administrator API-consumer frontend suite covers signed-out redirection, rol
 and detail metadata, empty and retryable error states, contract-aligned create validation, backend
 validation feedback, one-time key display and dismissal, clipboard success, and confirmed key
 rotation and revocation success/failure paths. It verifies that complete raw keys do not remain in
-ordinary list or detail state. Administrator per-consumer usage is not tested because the current
-backend exposes only key-authenticated self usage.
+ordinary list or detail state. Per-consumer usage coverage includes initial loading, populated and
+valid empty states, request failure and retry, selected-consumer scoping, bounded UTC date-window
+validation, status/count interpretation and secret exclusion.
 
 The focused Playwright journey follows the Administration entry point through creation, copy,
-detail, rotation and revocation at desktop and Pixel 7 sizes. It checks horizontal overflow and
-serious or critical Axe findings using mock credentials and explicitly non-production key fixtures.
+detail, owner-scoped usage review, rotation and revocation at desktop and Pixel 7 sizes. It checks
+horizontal overflow and serious or critical Axe findings using mock credentials and explicitly
+non-production key fixtures.
 
 Run the focused checks with:
 
@@ -755,4 +757,6 @@ The issue #609 OpenAPI contract-test command was documented with the assistance 
 Claude-Code[Claude Opus 5].
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #775 administrator API-consumer coverage was documented with the assistance of
+Codex[GPT-5.6 Sol].
+The issue #776 administrator consumer-usage coverage was documented with the assistance of
 Codex[GPT-5.6 Sol].

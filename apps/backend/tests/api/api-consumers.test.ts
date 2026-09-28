@@ -25,6 +25,18 @@ function service(): ApiConsumerService {
       apiKey: 'sat_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     }),
     list: vi.fn().mockResolvedValue([consumer]),
+    usage: vi.fn().mockResolvedValue({
+      consumer: {
+        id: consumer.id,
+        name: consumer.name,
+        rateLimitPerMinute: consumer.rateLimitPerMinute,
+        dailyQuota: consumer.dailyQuota,
+      },
+      from: '2026-09-01',
+      to: '2026-09-07',
+      totalRequests: 0,
+      entries: [],
+    }),
     rotate: vi.fn().mockResolvedValue({
       ...consumer,
       apiKey: 'sat_live_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
@@ -37,6 +49,7 @@ function repository(overrides: Partial<ApiConsumerRepository> = {}): ApiConsumer
   return {
     issue: vi.fn(),
     list: vi.fn(),
+    findOwned: vi.fn().mockResolvedValue(consumer),
     rotate: vi.fn(),
     revoke: vi.fn(),
     findActiveConsumer: vi

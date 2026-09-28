@@ -1,4 +1,8 @@
-import { apiConsumerIssueSchema, type ApiConsumer } from '@sport-analytics/contracts';
+import {
+  apiConsumerIssueSchema,
+  type AdministratorApiConsumerUsageResponse,
+  type ApiConsumer,
+} from '@sport-analytics/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
@@ -11,6 +15,7 @@ import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
 import {
   AdminApiConsumerContractError,
   createAdministratorApiConsumer,
+  getAdministratorApiConsumerUsage,
   getAdministratorApiConsumers,
   revokeAdministratorApiConsumerKey,
   rotateAdministratorApiConsumerKey,
@@ -26,6 +31,12 @@ type OneTimeSecret = { apiKey: string; consumerName: string; reason: 'created' |
 type Confirmation =
   | { kind: 'rotate'; consumer: ApiConsumer }
   | { kind: 'revoke'; consumer: ApiConsumer; keyId: string; prefix: string };
+type UsageData = AdministratorApiConsumerUsageResponse['data'];
+type UsageState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; data: UsageData };
 
 interface FormErrors {
   name?: string | undefined;
@@ -46,6 +57,26 @@ function dateTime(value: string): string {
     timeStyle: 'short',
     timeZone: 'UTC',
   }).format(new Date(value));
+}
+
+function validUsageDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function usageWindowError(from: string, to: string): string | null {
+  if (!validUsageDate(from) || !validUsageDate(to)) {
+    return 'Enter valid From and To dates in UTC.';
+  }
+  const days =
+    Math.floor(
+      (new Date(`${to}T00:00:00.000Z`).getTime() - new Date(`${from}T00:00:00.000Z`).getTime()) /
+        86_400_000,
+    ) + 1;
+  if (days < 1) return 'To date must be on or after From date.';
+  if (days > 31) return 'Choose a period of no more than 31 UTC dates.';
+  return null;
 }
 
 function activeKeys(consumer: ApiConsumer) {
@@ -274,6 +305,10 @@ export function AdminApiConsumersPage() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [usageState, setUsageState] = useState<UsageState>({ kind: 'idle' });
+  const [usageFrom, setUsageFrom] = useState('');
+  const [usageTo, setUsageTo] = useState('');
+  const [usageValidationError, setUsageValidationError] = useState<string | null>(null);
   const confirmationTriggerRef = useRef<HTMLButtonElement | null>(null);
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -312,6 +347,47 @@ export function AdminApiConsumersPage() {
     void loadConsumers(controller.signal);
     return () => controller.abort();
   }, [isAuthenticated, isLoading, loadConsumers]);
+
+  const consumers = pageState.kind === 'ready' ? pageState.consumers : [];
+  const selectedConsumer = consumerId
+    ? consumers.find((consumer) => consumer.id === consumerId)
+    : undefined;
+
+  const loadUsage = useCallback(
+    async (
+      selectedConsumerId: string,
+      query: { from?: string; to?: string } = {},
+      signal?: AbortSignal,
+    ) => {
+      setUsageState({ kind: 'loading' });
+      try {
+        const data = await getAdministratorApiConsumerUsage(
+          client,
+          selectedConsumerId,
+          { ...query, limit: 100 },
+          signal,
+        );
+        setUsageFrom(data.from);
+        setUsageTo(data.to);
+        setUsageState({ kind: 'ready', data });
+      } catch (error) {
+        if (signal?.aborted) return;
+        setUsageState({ kind: 'error', message: errorMessage(error) });
+      }
+    },
+    [client],
+  );
+
+  useEffect(() => {
+    if (!selectedConsumer) {
+      setUsageState({ kind: 'idle' });
+      return;
+    }
+    setUsageValidationError(null);
+    const controller = new AbortController();
+    void loadUsage(selectedConsumer.id, {}, controller.signal);
+    return () => controller.abort();
+  }, [loadUsage, selectedConsumer]);
 
   function replaceConsumer(updated: ApiConsumer) {
     setPageState((current) =>
@@ -427,14 +503,18 @@ export function AdminApiConsumersPage() {
     }
   }
 
+  function submitUsageWindow(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedConsumer) return;
+    const validation = usageWindowError(usageFrom, usageTo);
+    setUsageValidationError(validation);
+    if (validation) return;
+    void loadUsage(selectedConsumer.id, { from: usageFrom, to: usageTo });
+  }
+
   if (!isLoading && !isAuthenticated) {
     return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
   }
-
-  const consumers = pageState.kind === 'ready' ? pageState.consumers : [];
-  const selectedConsumer = consumerId
-    ? consumers.find((consumer) => consumer.id === consumerId)
-    : undefined;
 
   return (
     <section
@@ -453,7 +533,7 @@ export function AdminApiConsumersPage() {
         <h1 id="api-consumers-title">{selectedConsumer?.name ?? 'API consumers'}</h1>
         <p>
           {consumerId
-            ? 'Review safe configuration and manage this consumer’s active keys.'
+            ? 'Review safe configuration, aggregated usage, and active keys without handling the consumer’s secret.'
             : 'Issue and manage credentials, rate limits, and daily quotas for external API integrations.'}
         </p>
         <Link to="/api">Open API Explorer</Link>
@@ -492,6 +572,156 @@ export function AdminApiConsumersPage() {
           <section className="api-consumer-panel" aria-labelledby="consumer-configuration-title">
             <h2 id="consumer-configuration-title">Configuration</h2>
             <ConsumerFacts consumer={selectedConsumer} />
+          </section>
+          <section className="api-consumer-panel" aria-labelledby="consumer-usage-title">
+            <div className="api-consumer-section-heading">
+              <div>
+                <h2 id="consumer-usage-title">Usage</h2>
+                <p>
+                  Historical request aggregates by UTC date, normalized operation, and response
+                  status class.
+                </p>
+              </div>
+            </div>
+            <form
+              className="api-consumer-usage-form"
+              onSubmit={submitUsageWindow}
+              aria-describedby="consumer-usage-window-help"
+              noValidate
+            >
+              <div>
+                <label htmlFor="consumer-usage-from">From date (UTC)</label>
+                <input
+                  id="consumer-usage-from"
+                  type="date"
+                  required
+                  value={usageFrom}
+                  aria-invalid={Boolean(usageValidationError)}
+                  aria-describedby={
+                    usageValidationError ? 'consumer-usage-window-error' : undefined
+                  }
+                  onChange={(event) => setUsageFrom(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="consumer-usage-to">To date (UTC)</label>
+                <input
+                  id="consumer-usage-to"
+                  type="date"
+                  required
+                  value={usageTo}
+                  aria-invalid={Boolean(usageValidationError)}
+                  aria-describedby={
+                    usageValidationError ? 'consumer-usage-window-error' : undefined
+                  }
+                  onChange={(event) => setUsageTo(event.target.value)}
+                />
+              </div>
+              <button
+                className="button button--secondary"
+                type="submit"
+                disabled={usageState.kind === 'loading'}
+              >
+                Apply period
+              </button>
+              <p id="consumer-usage-window-help">Choose up to 31 inclusive UTC dates.</p>
+              {usageValidationError ? (
+                <p id="consumer-usage-window-error" className="field-error" role="alert">
+                  {usageValidationError}
+                </p>
+              ) : null}
+            </form>
+            {usageState.kind === 'loading' || usageState.kind === 'idle' ? (
+              <div className="state-message" role="status">
+                <h3>Loading usage</h3>
+                <p>Retrieving this consumer’s safe usage aggregates...</p>
+              </div>
+            ) : usageState.kind === 'error' ? (
+              <div className="state-message state-message--error" role="alert">
+                <h3>Usage could not be loaded</h3>
+                <p>{usageState.message}</p>
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  onClick={() =>
+                    void loadUsage(
+                      selectedConsumer.id,
+                      usageFrom && usageTo ? { from: usageFrom, to: usageTo } : {},
+                    )
+                  }
+                >
+                  Retry loading usage
+                </button>
+              </div>
+            ) : (
+              <>
+                <dl className="api-consumer-facts api-consumer-usage-summary">
+                  <div>
+                    <dt>Period</dt>
+                    <dd>
+                      {usageState.data.from} to {usageState.data.to} UTC
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Requests in period</dt>
+                    <dd>{usageState.data.totalRequests.toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt>Configured daily quota</dt>
+                    <dd>{usageState.data.consumer.dailyQuota.toLocaleString()}/UTC day</dd>
+                  </div>
+                  <div>
+                    <dt>Configured rate limit</dt>
+                    <dd>{usageState.data.consumer.rateLimitPerMinute.toLocaleString()}/minute</dd>
+                  </div>
+                </dl>
+                <p className="api-consumer-usage-context">
+                  These are historical totals for the selected period. Configured limits do not
+                  indicate current remaining quota or live rate-limit state. The table shows up to
+                  100 aggregate groups; the period total includes every matching request.
+                </p>
+                {usageState.data.entries.length === 0 ? (
+                  <div className="state-message" role="status">
+                    <h3>No usage exists in this period</h3>
+                    <p>Try another UTC date range if you are investigating earlier activity.</p>
+                  </div>
+                ) : (
+                  <div
+                    className="api-consumer-table-wrap"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="API consumer usage table"
+                  >
+                    <table className="api-consumer-table api-consumer-usage-table">
+                      <caption>
+                        Aggregated usage for {usageState.data.consumer.name}, from{' '}
+                        {usageState.data.from} through {usageState.data.to} UTC
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Date (UTC)</th>
+                          <th scope="col">Operation</th>
+                          <th scope="col">Status class</th>
+                          <th scope="col">Requests</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usageState.data.entries.map((entry) => (
+                          <tr key={`${entry.date}-${entry.endpoint}-${entry.statusClass}`}>
+                            <th scope="row" data-label="Date (UTC)">
+                              {entry.date}
+                            </th>
+                            <td data-label="Operation">{entry.endpoint}</td>
+                            <td data-label="Status class">{entry.statusClass}</td>
+                            <td data-label="Requests">{entry.requestCount.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
           </section>
           <section className="api-consumer-panel" aria-labelledby="consumer-keys-title">
             <div className="api-consumer-section-heading">

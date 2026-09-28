@@ -83,6 +83,37 @@ function listResponse(consumers: ApiConsumer[] = [consumer()]) {
   return response(200, { data: { consumers } });
 }
 
+function usageResponse(
+  entries: Array<{
+    date: string;
+    endpoint: string;
+    statusClass: '2xx' | '3xx' | '4xx' | '5xx';
+    requestCount: number;
+  }> = [
+    {
+      date: '2026-09-26',
+      endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+      statusClass: '2xx',
+      requestCount: 8,
+    },
+  ],
+) {
+  return response(200, {
+    data: {
+      consumer: {
+        id: '12',
+        name: 'Partner dashboard',
+        rateLimitPerMinute: 60,
+        dailyQuota: 10_000,
+      },
+      from: '2026-09-20',
+      to: '2026-09-26',
+      totalRequests: entries.reduce((total, entry) => total + entry.requestCount, 0),
+      entries,
+    },
+  });
+}
+
 function renderPage(path = '/admin/api-consumers', currentSession: Session | null = session()) {
   render(
     <AuthProvider client={authClient(currentSession)}>
@@ -237,10 +268,12 @@ describe('administrator API consumer management', () => {
       .fn()
       .mockResolvedValueOnce(currentUser())
       .mockResolvedValueOnce(listResponse())
+      .mockResolvedValueOnce(usageResponse())
       .mockResolvedValueOnce(
         response(503, { error: { code: 'FAILED', message: 'Rotation is unavailable.' } }),
       )
-      .mockResolvedValueOnce(response(200, { data: { ...rotated, apiKey: rawKey } }));
+      .mockResolvedValueOnce(response(200, { data: { ...rotated, apiKey: rawKey } }))
+      .mockResolvedValueOnce(usageResponse());
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/admin/api-consumers/12');
     const rotate = await screen.findByRole('button', { name: 'Rotate key' });
@@ -276,11 +309,13 @@ describe('administrator API consumer management', () => {
       .fn()
       .mockResolvedValueOnce(currentUser())
       .mockResolvedValueOnce(listResponse())
+      .mockResolvedValueOnce(usageResponse())
       .mockResolvedValueOnce(
         response(500, { error: { code: 'FAILED', message: 'Revocation failed.' } }),
       )
       .mockResolvedValueOnce(response(204))
-      .mockResolvedValueOnce(listResponse([revoked]));
+      .mockResolvedValueOnce(listResponse([revoked]))
+      .mockResolvedValueOnce(usageResponse());
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/admin/api-consumers/12');
     fireEvent.click(await screen.findByRole('button', { name: 'Revoke key sat_live_test-sa' }));
@@ -296,5 +331,87 @@ describe('administrator API consumer management', () => {
     expect(screen.getByRole('status')).toHaveTextContent('API key sat_live_test-sa was revoked.');
     expect(screen.getByText('Revoked')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Revoke key sat_live/ })).not.toBeInTheDocument();
+  });
+
+  it('loads selected-consumer usage, interprets status/counts, and never renders secrets', async () => {
+    let resolveUsage: ((value: Response) => void) | undefined;
+    const pendingUsage = new Promise<Response>((resolve) => {
+      resolveUsage = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(listResponse())
+      .mockReturnValueOnce(pendingUsage);
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage('/admin/api-consumers/12');
+
+    expect(await screen.findByRole('heading', { name: 'Loading usage' })).toBeInTheDocument();
+    resolveUsage?.(usageResponse());
+    const usageTable = within(await screen.findByRole('table', { name: /Aggregated usage/ }));
+    expect(usageTable.getByText('GET /consumer/fixtures/:fixtureId/events')).toBeInTheDocument();
+    expect(usageTable.getByText('2xx')).toBeInTheDocument();
+    expect(usageTable.getByText('8')).toBeInTheDocument();
+    expect(screen.getByText('2026-09-20 to 2026-09-26 UTC')).toBeInTheDocument();
+    expect(screen.queryByText(rawKey)).not.toBeInTheDocument();
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(rawKey);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      'http://localhost:3000/api/v1/admin/api-consumers/12/usage?limit=100',
+    );
+  });
+
+  it('distinguishes empty usage, validates the date window, and requests an explicit UTC period', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(listResponse())
+      .mockResolvedValueOnce(usageResponse([]))
+      .mockResolvedValueOnce(usageResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage('/admin/api-consumers/12');
+
+    expect(
+      await screen.findByRole('heading', { name: 'No usage exists in this period' }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('From date (UTC)'), {
+      target: { value: '2026-08-01' },
+    });
+    fireEvent.change(screen.getByLabelText('To date (UTC)'), {
+      target: { value: '2026-09-26' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply period' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('no more than 31 UTC dates');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    fireEvent.change(screen.getByLabelText('From date (UTC)'), {
+      target: { value: '2026-09-20' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply period' }));
+    expect(await screen.findByRole('table', { name: /Aggregated usage/ })).toBeInTheDocument();
+    expect(fetchMock.mock.calls[3]?.[0]).toContain(
+      '/admin/api-consumers/12/usage?from=2026-09-20&to=2026-09-26&limit=100',
+    );
+  });
+
+  it('shows a usage failure separately and retries the same selected consumer', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(currentUser())
+      .mockResolvedValueOnce(listResponse())
+      .mockResolvedValueOnce(
+        response(503, { error: { code: 'FAILED', message: 'Usage service unavailable.' } }),
+      )
+      .mockResolvedValueOnce(usageResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage('/admin/api-consumers/12');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Usage could not be loaded');
+    expect(alert).toHaveTextContent('Usage service unavailable.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading usage' }));
+    expect(await screen.findByRole('table', { name: /Aggregated usage/ })).toBeInTheDocument();
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(
+      'http://localhost:3000/api/v1/admin/api-consumers/12/usage?limit=100',
+    );
   });
 });

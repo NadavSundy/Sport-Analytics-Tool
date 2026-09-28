@@ -298,6 +298,43 @@ describe('authenticated operations', () => {
       { requestBody: body },
     );
   });
+
+  test('GET /admin/api-consumers/{consumerId}/usage matches the admin usage contract', async () => {
+    const apiConsumers = {
+      usage: async () => ({
+        consumer: {
+          id: apiConsumer.id,
+          name: apiConsumer.name,
+          rateLimitPerMinute: apiConsumer.rateLimitPerMinute,
+          dailyQuota: apiConsumer.dailyQuota,
+        },
+        from: '2026-09-20',
+        to: '2026-09-26',
+        totalRequests: 8,
+        entries: [
+          {
+            date: '2026-09-26',
+            endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+            statusClass: '2xx' as const,
+            requestCount: 8,
+          },
+        ],
+      }),
+    };
+
+    contract.expectResponse(
+      await request(contractApp({ account: { role: 'admin' }, apiConsumers }))
+        .get('/api/v1/admin/api-consumers/7/usage?from=2026-09-20&to=2026-09-26&limit=25')
+        .set('Authorization', 'Bearer token')
+        .expect(200),
+    );
+    contract.expectResponse(
+      await request(contractApp({ account: { role: 'viewer' }, apiConsumers }))
+        .get('/api/v1/admin/api-consumers/7/usage')
+        .set('Authorization', 'Bearer token')
+        .expect(403),
+    );
+  });
 });
 
 describe('deprecation metadata', () => {

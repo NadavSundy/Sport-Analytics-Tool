@@ -6,7 +6,8 @@
       "entry": [
         "scripts/smoke-check-backend-artifact.mjs",
         "scripts/guide-issue-598-deployed-acceptance.mjs",
-        "docs/javascripts/external-links.js"
+        "docs/javascripts/external-links.js",
+        "evidence/user-testing/sprint-3/cor-01-correction-package/validate.js"
       ],
       "ignoreDependencies": ["wrangler"]
     }

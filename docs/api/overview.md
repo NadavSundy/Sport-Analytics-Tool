@@ -60,9 +60,11 @@ state, so an unfinished or failed Explorer is not presented as a blank page.
 
 Signed-in administrators manage external API consumers through `/admin/api-consumers`. That
 frontend uses the existing handwritten list, issue, rotate and individual-key revoke operations and
-links back to the API Explorer; it complements rather than duplicates the API documentation. The
-current administrator API has no per-consumer usage operation, so usage remains available only to
-the authenticated consumer through `GET /api/v1/consumer/usage`.
+links back to the API Explorer; it complements rather than duplicates the API documentation. A
+selected consumer's detail view uses the owner-scoped, bearer-authenticated `GET
+/api/v1/admin/api-consumers/{consumerId}/usage` operation for safe historical aggregates. The
+consumer-self `GET /api/v1/consumer/usage` operation remains API-key authenticated and scoped to
+the calling consumer.
 
 ## Current endpoints
 
@@ -402,3 +404,5 @@ The Issue #726 API Explorer loading-feedback guidance was updated with the assis
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #775 administrator consumer-management frontend boundary was documented with the
 assistance of Codex[GPT-5.6 Sol].
+The issue #776 administrator per-consumer usage workflow was documented with the assistance of
+Codex[GPT-5.6 Sol].
