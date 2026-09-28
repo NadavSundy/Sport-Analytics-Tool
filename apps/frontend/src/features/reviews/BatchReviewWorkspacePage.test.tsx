@@ -1288,6 +1288,231 @@ describe('reviewer batch workspace', () => {
     expect(screen.getByRole('button', { name: 'Submit 1 decision' })).toBeEnabled();
   });
 
+  /*
+   * Issue #770. The card treated any non-empty trimmed string as a durable
+   * identifier, so a plain name marked the task Answered, counted toward
+   * "Submit N decisions" and was sent as sourceId. The backend rejected the
+   * whole array with a 422 and the reviewer saw only a generic failure.
+   *
+   * The verdict now comes from batchParticipantOnboardingDecisionSchema, the
+   * schema the request itself is built from, so the frontend cannot assemble a
+   * decision the endpoint would refuse.
+   */
+  const namedTask = {
+    taskReference: '3e9f5c2d-6a7b-4c8d-9e0f-1a2b3c4d5e6f',
+    fixtureId: '22',
+    submittedName: 'R. Adams',
+    // One of the fixture's two, so this task needs only an identity and the
+    // identifier is the only thing under test.
+    submittedTeamName: 'Lions',
+    reason: 'no_durable_identifier' as const,
+    candidates: [],
+    teams: [
+      { teamId: '30', name: 'Lions' },
+      { teamId: '31', name: 'Bears' },
+    ],
+  };
+
+  const secondNamedTask = {
+    ...namedTask,
+    taskReference: '4f0a6d3e-7b8c-4d9e-af10-2b3c4d5e6f70',
+    submittedName: 'T. Mokoena',
+  };
+
+  function onboardingPost() {
+    return vi.fn((_init: RequestInit) =>
+      response({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-28T12:00:00.000Z',
+          onboarded: 1,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    );
+  }
+
+  function cardFor(name: string) {
+    return within(screen.getByRole('heading', { name }).closest('article')!);
+  }
+
+  test('settles a task by choosing a candidate the task offered', async () => {
+    const post = onboardingPost();
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([ambiguousTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    await screen.findByRole('heading', { name: 'A. Smith' });
+    fireEvent.click(cardFor('A. Smith').getByRole('radio', { name: 'Alan Smith' }));
+
+    expect(screen.getByRole('button', { name: 'Submit 1 decision' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+
+    // A candidate is a personId and is not an identifier, so nothing about
+    // identifier validation may reach it.
+    expect(JSON.parse(String(post.mock.calls[0]![0].body)).decisions).toEqual([
+      { taskReference: ambiguousTask.taskReference, personId: '11' },
+    ]);
+  });
+
+  test('settles a task with a durable identifier of the right shape', async () => {
+    const post = onboardingPost();
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([namedTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    await screen.findByRole('heading', { name: 'R. Adams' });
+    const card = cardFor('R. Adams');
+    fireEvent.click(card.getByRole('radio', { name: 'Supply a durable identifier' }));
+    fireEvent.change(card.getByLabelText('Durable identifier'), {
+      target: { value: 'cricsheet:participant:c07f6bda' },
+    });
+
+    expect(card.getByLabelText('Durable identifier')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(card.queryByText(/not a durable identifier/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(String(post.mock.calls[0]![0].body)).decisions).toEqual([
+      { taskReference: namedTask.taskReference, sourceId: 'cricsheet:participant:c07f6bda' },
+    ]);
+  });
+
+  test('refuses a plain name as a durable identifier and says why', async () => {
+    const post = onboardingPost();
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([namedTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    await screen.findByRole('heading', { name: 'R. Adams' });
+    const card = cardFor('R. Adams');
+    fireEvent.click(card.getByRole('radio', { name: 'Supply a durable identifier' }));
+    fireEvent.change(card.getByLabelText('Durable identifier'), {
+      target: { value: 'Ryan Adams' },
+    });
+
+    // Says what is wrong with what was typed, and shows a participant example.
+    // Not a restatement of the standing help text, which the card already
+    // carries whether or not anything is wrong.
+    const message = card.getByText(/not a durable identifier/i);
+    expect(message).toBeInTheDocument();
+    expect(message.textContent).toContain('cricsheet:participant:c07f6bda');
+
+    // The field names its own error, so a screen reader reaches it from the
+    // input rather than only on a sweep of the page.
+    const input = card.getByLabelText('Durable identifier');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input.getAttribute('aria-describedby')).toContain(message.id);
+
+    // Not answered, not counted, and not submittable.
+    expect(card.queryByText('Answered. It is applied when you submit.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  test('treats an empty or whitespace identifier as unanswered, and refuses one with a space in it', async () => {
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([namedTask]), onboardingPost()));
+    renderPage(`/reviews/batches/${reference}`);
+
+    await screen.findByRole('heading', { name: 'R. Adams' });
+    const card = cardFor('R. Adams');
+    fireEvent.click(card.getByRole('radio', { name: 'Supply a durable identifier' }));
+    const input = card.getByLabelText('Durable identifier');
+
+    // Nothing typed yet is unanswered, not wrong. An error on a field the
+    // reviewer has not filled in is noise.
+    expect(screen.getByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    expect(card.queryByText(/not a durable identifier/i)).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.change(input, { target: { value: '   ' } });
+    expect(screen.getByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+    expect(card.queryByText(/not a durable identifier/i)).not.toBeInTheDocument();
+
+    // Whitespace inside one is a different matter: it has been typed, and it
+    // is not an identifier.
+    fireEvent.change(input, { target: { value: 'cricsheet:participant:ryan adams' } });
+    expect(card.getByText(/not a durable identifier/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit 0 decisions' })).toBeDisabled();
+  });
+
+  test('submits only the valid decisions when several participants are answered together', async () => {
+    const post = onboardingPost();
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([namedTask, secondNamedTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    await screen.findByRole('heading', { name: 'R. Adams' });
+    const invalid = cardFor('R. Adams');
+    fireEvent.click(invalid.getByRole('radio', { name: 'Supply a durable identifier' }));
+    fireEvent.change(invalid.getByLabelText('Durable identifier'), {
+      target: { value: 'Ryan Adams' },
+    });
+
+    const valid = cardFor('T. Mokoena');
+    fireEvent.click(valid.getByRole('radio', { name: 'Supply a durable identifier' }));
+    fireEvent.change(valid.getByLabelText('Durable identifier'), {
+      target: { value: 'cricsheet:participant:onboarding-test-bowler-1' },
+    });
+
+    // One of the two is answered, so the count is one and the invalid card
+    // carries its own message rather than spoiling the other decision.
+    expect(invalid.getByText(/not a durable identifier/i)).toBeInTheDocument();
+    expect(valid.queryByText(/not a durable identifier/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 1 decision' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(String(post.mock.calls[0]![0].body)).decisions).toEqual([
+      {
+        taskReference: secondNamedTask.taskReference,
+        sourceId: 'cricsheet:participant:onboarding-test-bowler-1',
+      },
+    ]);
+  });
+
+  test('batches several valid identifiers into one request and one revalidation', async () => {
+    const post = vi.fn((_init: RequestInit) =>
+      response({
+        data: {
+          batchReference: reference,
+          decisionReference: '688a0bf0-e168-4b67-bf6f-f5857dbb1f87',
+          status: 'queued',
+          statusUrl: `/api/v1/batches/${reference}`,
+          submittedAt: '2026-09-28T12:00:00.000Z',
+          onboarded: 2,
+          alreadyOnboarded: 0,
+          revalidationQueued: true,
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', onboardingFetch(onboardingReport([namedTask, secondNamedTask]), post));
+    renderPage(`/reviews/batches/${reference}`);
+
+    await screen.findByRole('heading', { name: 'R. Adams' });
+    for (const [name, sourceId] of [
+      ['R. Adams', 'cricsheet:participant:c07f6bda'],
+      ['T. Mokoena', 'cricsheet:participant:onboarding-test-bowler-1'],
+    ] as const) {
+      const card = cardFor(name);
+      fireEvent.click(card.getByRole('radio', { name: 'Supply a durable identifier' }));
+      fireEvent.change(card.getByLabelText('Durable identifier'), { target: { value: sourceId } });
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit 2 decisions' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+
+    // One request for both, because one request per decision is one full
+    // revalidation pass per decision.
+    const body = JSON.parse(String(post.mock.calls[0]![0].body));
+    expect(body.decisions).toHaveLength(2);
+    expect(body.decisions.map((decision: { sourceId: string }) => decision.sourceId)).toEqual([
+      'cricsheet:participant:c07f6bda',
+      'cricsheet:participant:onboarding-test-bowler-1',
+    ]);
+    expect(typeof body.decisionKey).toBe('string');
+  });
+
   test('shows no onboarding section when no participant is waiting', async () => {
     vi.stubGlobal(
       'fetch',
