@@ -9,6 +9,7 @@ import {
   createApiConsumerListController,
   createApiConsumerRevokeController,
   createApiConsumerRotateController,
+  createApiConsumerUsageController,
 } from './api-consumer.controller';
 import type { ApiConsumerService } from './api-consumer.service';
 
@@ -31,6 +32,12 @@ export function createApiConsumerRouter(
     authenticate,
     authorize,
     createApiConsumerIssueController(service),
+  );
+  router.get(
+    '/admin/api-consumers/:consumerId/usage',
+    authenticate,
+    authorize,
+    createApiConsumerUsageController(service),
   );
   router.post(
     '/admin/api-consumers/:consumerId/keys/rotate',

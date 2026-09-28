@@ -293,6 +293,50 @@ paths:
           content:
             application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
 
+  /api/v1/admin/api-consumers/{consumerId}/usage:
+    get:
+      tags: [Administration]
+      summary: Retrieve an administrator-owned API consumer's aggregated usage
+      description: >-
+        Returns safe historical aggregates for the selected consumer without requiring or
+        exposing an API key. Visibility follows the existing owner-scoped administrator consumer
+        model. Results are grouped by UTC date, normalized route template and response status
+        class. The default range is seven UTC dates; the maximum range is 31 dates. Results are
+        ordered by date descending, endpoint ascending, then status class ascending. The response
+        contains no credentials, headers, bodies, payloads or raw query-string values.
+      operationId: getAdministratorApiConsumerUsage
+      x-implementation-status: implemented
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: consumerId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DatabaseIdentifier' }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: Owner-scoped consumer identity, configuration and bounded usage aggregate.
+          content:
+            application/json:
+              { schema: { $ref: '#/components/schemas/AdministratorApiConsumerUsageResponse' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: The consumer does not exist or is not visible to this administrator.
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: The API consumer identifier is not a numeric identifier (`VALIDATION_FAILED`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+
   /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}:
     delete:
       tags: [Administration]
@@ -329,8 +373,8 @@ paths:
       summary: Retrieve the authenticated consumer's aggregated API usage
       description: >-
         Returns only the API key's own consumer telemetry. Results are grouped by UTC date,
-        normalized route template and response status class. No administrator usage endpoint exists.
-        The default range is seven UTC dates; the maximum range is 31 dates. Results are ordered by
+        normalized route template and response status class. The default range is seven UTC dates;
+        the maximum range is 31 dates. Results are ordered by
         date descending, endpoint ascending, then status class ascending.
       operationId: getConsumerUsage
       x-implementation-status: implemented
@@ -3459,15 +3503,41 @@ components:
                 remaining: { type: integer, minimum: 0 }
             entries:
               type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [date, endpoint, statusClass, requestCount]
-                properties:
-                  date: { type: string, format: date }
-                  endpoint: { type: string, example: 'GET /consumer/fixtures/:fixtureId/events' }
-                  statusClass: { type: string, enum: ['2xx', '3xx', '4xx', '5xx'] }
-                  requestCount: { type: integer, minimum: 0 }
+              items: { $ref: '#/components/schemas/ConsumerUsageEntry' }
+    ConsumerUsageEntry:
+      type: object
+      additionalProperties: false
+      required: [date, endpoint, statusClass, requestCount]
+      properties:
+        date: { type: string, format: date }
+        endpoint: { type: string, example: 'GET /consumer/fixtures/:fixtureId/events' }
+        statusClass: { type: string, enum: ['2xx', '3xx', '4xx', '5xx'] }
+        requestCount: { type: integer, minimum: 0 }
+    AdministratorApiConsumerUsageResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [consumer, from, to, totalRequests, entries]
+          properties:
+            consumer:
+              type: object
+              additionalProperties: false
+              required: [id, name, rateLimitPerMinute, dailyQuota]
+              properties:
+                id: { $ref: '#/components/schemas/ApiIdentifier' }
+                name: { type: string }
+                rateLimitPerMinute: { type: integer, minimum: 1, maximum: 10000 }
+                dailyQuota: { type: integer, minimum: 1, maximum: 10000 }
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+            totalRequests: { type: integer, minimum: 0 }
+            entries:
+              type: array
+              items: { $ref: '#/components/schemas/ConsumerUsageEntry' }
     ApiConsumerKey:
       type: object
       additionalProperties: false
@@ -4064,6 +4134,22 @@ components:
             - type: string
               minLength: 1
             - type: 'null'
+
+    TotalPagesPaginationMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - nextCursor
+        - totalPages
+      properties:
+        nextCursor:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        totalPages:
+          type: integer
+          minimum: 0
 
     Competition:
       type: object
@@ -5774,7 +5860,7 @@ components:
           items:
             $ref: '#/components/schemas/Season'
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: '#/components/schemas/TotalPagesPaginationMetadata'
 
     FixtureResponse:
       type: object
@@ -5894,7 +5980,7 @@ components:
           items:
             $ref: '#/components/schemas/Participant'
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: '#/components/schemas/TotalPagesPaginationMetadata'
 
     ParticipantFixtureCollectionResponse:
       type: object

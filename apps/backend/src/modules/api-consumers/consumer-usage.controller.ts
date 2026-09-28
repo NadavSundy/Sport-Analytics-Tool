@@ -1,14 +1,8 @@
-import { consumerUsageQuerySchema, consumerUsageResponseSchema } from '@sport-analytics/contracts';
+import { consumerUsageResponseSchema } from '@sport-analytics/contracts';
 import type { RequestHandler } from 'express';
 
 import type { ActiveConsumer, ApiConsumerRepository } from './api-consumer.repository';
-
-const MAX_RANGE_DAYS = 31;
-const DEFAULT_RANGE_DAYS = 7;
-
-function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
-}
+import { ConsumerUsageQueryError, resolveConsumerUsageQuery } from './consumer-usage-query';
 
 function invalid(response: Parameters<RequestHandler>[1], field: string, message: string): void {
   response.status(400).json({
@@ -25,35 +19,12 @@ export function createConsumerUsageController(
   now: () => Date = () => new Date(),
 ): RequestHandler {
   return (request, response, next) => {
-    const parsed = consumerUsageQuerySchema.safeParse(request.query);
-    if (!parsed.success) {
-      invalid(response, parsed.error.issues[0]?.path.join('.') || 'query', 'Invalid usage query.');
-      return;
-    }
-    const today = new Date(now());
-    today.setUTCHours(0, 0, 0, 0);
-    const defaultFrom = new Date(today);
-    defaultFrom.setUTCDate(defaultFrom.getUTCDate() - (DEFAULT_RANGE_DAYS - 1));
-    const from = parsed.data.from ?? isoDate(defaultFrom);
-    const to = parsed.data.to ?? isoDate(today);
-    const fromDate = new Date(`${from}T00:00:00.000Z`);
-    const toDate = new Date(`${to}T00:00:00.000Z`);
-    if (
-      Number.isNaN(fromDate.getTime()) ||
-      isoDate(fromDate) !== from ||
-      Number.isNaN(toDate.getTime()) ||
-      isoDate(toDate) !== to
-    ) {
-      invalid(response, 'from', 'Dates must be calendar dates in YYYY-MM-DD format.');
-      return;
-    }
-    const rangeDays = Math.floor((toDate.getTime() - fromDate.getTime()) / 86_400_000) + 1;
-    if (rangeDays < 1) {
-      invalid(response, 'to', '`to` must be on or after `from`.');
-      return;
-    }
-    if (rangeDays > MAX_RANGE_DAYS) {
-      invalid(response, 'to', `Date ranges may not exceed ${MAX_RANGE_DAYS} days.`);
+    let query;
+    try {
+      query = resolveConsumerUsageQuery(request.query, now());
+    } catch (error) {
+      if (!(error instanceof ConsumerUsageQueryError)) throw error;
+      invalid(response, error.field, error.message);
       return;
     }
     const consumer = response.locals.apiConsumer as ActiveConsumer;
@@ -62,13 +33,13 @@ export function createConsumerUsageController(
       return;
     }
     void repository
-      .listUsage(consumer.consumerId, { from, to, limit: parsed.data.limit })
+      .listUsage(consumer.consumerId, query)
       .then((usage) =>
         response.status(200).json(
           consumerUsageResponseSchema.parse({
             data: {
-              from,
-              to,
+              from: query.from,
+              to: query.to,
               totalRequests: usage.totalRequests,
               quota: {
                 limit: consumer.dailyQuota,

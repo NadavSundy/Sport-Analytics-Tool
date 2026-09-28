@@ -1,8 +1,13 @@
-import type { ApiConsumer, ApiConsumerIssue } from '@sport-analytics/contracts';
+import type {
+  AdministratorApiConsumerUsageResponse,
+  ApiConsumer,
+  ApiConsumerIssue,
+} from '@sport-analytics/contracts';
 import { randomBytes } from 'node:crypto';
 
 import type { ApplicationAccount } from '../accounts/account';
 import {
+  ApiConsumerNotFoundError,
   createApiConsumerRepository,
   hashApiKey,
   type ApiConsumerRepository,
@@ -14,6 +19,11 @@ export interface ApiConsumerService {
     issue: ApiConsumerIssue,
   ): Promise<ApiConsumer & { apiKey: string }>;
   list(owner: ApplicationAccount): Promise<ApiConsumer[]>;
+  usage(
+    owner: ApplicationAccount,
+    consumerId: string,
+    query: { from: string; to: string; limit: number },
+  ): Promise<AdministratorApiConsumerUsageResponse['data']>;
   rotate(owner: ApplicationAccount, consumerId: string): Promise<ApiConsumer & { apiKey: string }>;
   revoke(owner: ApplicationAccount, consumerId: string, keyId: string): Promise<void>;
 }
@@ -33,6 +43,24 @@ export function createApiConsumerService(
     },
     async list(owner) {
       return repository.list(owner.accountId);
+    },
+    async usage(owner, consumerId, query) {
+      const consumer = await repository.findOwned(owner.accountId, consumerId);
+      if (!consumer) throw new ApiConsumerNotFoundError();
+      if (!repository.listUsage) throw new Error('Consumer usage repository is unavailable.');
+      const usage = await repository.listUsage(consumerId, query);
+      return {
+        consumer: {
+          id: consumer.id,
+          name: consumer.name,
+          rateLimitPerMinute: consumer.rateLimitPerMinute,
+          dailyQuota: consumer.dailyQuota,
+        },
+        from: query.from,
+        to: query.to,
+        totalRequests: usage.totalRequests,
+        entries: usage.entries,
+      };
     },
     async rotate(owner, consumerId) {
       const key = generateKey();

@@ -9,9 +9,10 @@ import {
   type SubmissionEvent,
   type SubmissionResponse,
 } from '@sport-analytics/contracts';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ApiResponseError } from '../../api/client';
+import { NameCombobox, type NameComboboxOption } from '../../components/NameCombobox';
 import { useAuth } from '../auth/AuthProvider';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
@@ -127,6 +128,33 @@ function formatFixtureOption(fixture: Fixture): string {
     fixture.competitors.map((competitor) => competitor.name).join(' v ') || 'Teams unavailable';
   const competition = fixture.competitionName ?? 'Competition unavailable';
   return `${fixture.startDate} — ${teams} — ${competition}, ${fixture.seasonLabel} (${fixture.matchType})`;
+}
+
+function competitionComboboxOptions(fixtures: Fixture[]): NameComboboxOption[] {
+  const competitions = new Map<string, string>();
+  for (const fixture of fixtures) {
+    if (fixture.competitionId && fixture.competitionName) {
+      competitions.set(fixture.competitionId, fixture.competitionName);
+    }
+  }
+  return [...competitions]
+    .map(([value, label]) => ({ label, value }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function fixtureComboboxOptions(fixtures: Fixture[]): NameComboboxOption[] {
+  return fixtures.map((fixture) => ({
+    keywords: [
+      fixture.startDate,
+      fixture.competitionName ?? '',
+      fixture.season,
+      fixture.seasonLabel,
+      fixture.matchType,
+      ...fixture.competitors.map((competitor) => competitor.name),
+    ],
+    label: formatFixtureOption(fixture),
+    value: fixture.fixtureId,
+  }));
 }
 
 function normaliseFixtureValue(value: string): string {
@@ -359,8 +387,16 @@ function SubmissionForm({
 }) {
   const client = useAuthenticatedApiClient();
 
+  const initialFixture = fixtures[0];
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState(
+    initialFixture?.competitionId ?? '',
+  );
+  const [competitionInput, setCompetitionInput] = useState(initialFixture?.competitionName ?? '');
   const [fixtureId, setFixtureId] = useState(
-    fixtures[0]?.fixtureId ?? (mode === 'file' ? NEW_FIXTURE_VALUE : ''),
+    initialFixture?.fixtureId ?? (mode === 'file' ? NEW_FIXTURE_VALUE : ''),
+  );
+  const [fixtureInput, setFixtureInput] = useState(
+    initialFixture ? formatFixtureOption(initialFixture) : '',
   );
   const [competitionState, setCompetitionState] = useState<CompetitionState>({ kind: 'idle' });
   const [scopeDialogState, setScopeDialogState] = useState<ScopeDialogState>({ kind: 'closed' });
@@ -381,6 +417,7 @@ function SubmissionForm({
     sourceVersion: '1',
     sourceRevision: '0',
   });
+  const [newFixtureCompetitionInput, setNewFixtureCompetitionInput] = useState('');
   const [eventJson, setEventJson] = useState(EMPTY_EVENTS);
   const [file, setFile] = useState<File | null>(null);
   const [decisionKey, setDecisionKey] = useState(newDecisionKey);
@@ -464,8 +501,15 @@ function SubmissionForm({
 
   function chooseExistingFixture() {
     if (!fixtures[0]) return;
-    setFixtureId(fixtures[0].fixtureId);
+    selectExistingFixture(fixtures[0]);
     setFile(null);
+  }
+
+  function selectExistingFixture(fixture: Fixture) {
+    setSelectedCompetitionId(fixture.competitionId ?? '');
+    setCompetitionInput(fixture.competitionName ?? '');
+    setFixtureId(fixture.fixtureId);
+    setFixtureInput(formatFixtureOption(fixture));
     setDecisionKey(newDecisionKey());
     resetResult();
   }
@@ -499,6 +543,7 @@ function SubmissionForm({
         homeTeamName: context.teams[0] ?? '',
         awayTeamName: context.teams[1] ?? '',
       }));
+      if (matchingCompetition) setNewFixtureCompetitionInput(matchingCompetition.name);
     } catch (error) {
       setResult({
         kind: 'rejected',
@@ -688,6 +733,35 @@ function SubmissionForm({
     }
   }
 
+  const competitionSelectOptions = useMemo(() => competitionComboboxOptions(fixtures), [fixtures]);
+  const filteredFixtures = useMemo(
+    () => fixtures.filter((fixture) => fixture.competitionId === selectedCompetitionId),
+    [fixtures, selectedCompetitionId],
+  );
+  const fixtureSelectOptions = useMemo(
+    () => fixtureComboboxOptions(filteredFixtures),
+    [filteredFixtures],
+  );
+  const loadCompetitionSelectOptions = useCallback(
+    async (_query: string, _signal: AbortSignal) => competitionSelectOptions,
+    [competitionSelectOptions],
+  );
+  const loadFixtureSelectOptions = useCallback(
+    async (_query: string, _signal: AbortSignal) => fixtureSelectOptions,
+    [fixtureSelectOptions],
+  );
+  const loadProposalCompetitionOptions = useCallback(
+    async (_query: string, _signal: AbortSignal) =>
+      competitionState.kind === 'ready'
+        ? competitionState.competitions.map((competition) => ({
+            label: competition.name,
+            value: competition.competitionId,
+          }))
+        : [],
+    [competitionState],
+  );
+  const competitionNames = competitionSelectOptions.map((competition) => competition.label);
+
   if (fixtures.length === 0 && mode === 'json') {
     return (
       <div className="state-message" role="status">
@@ -703,7 +777,6 @@ function SubmissionForm({
   const resultDescriptionId =
     result.kind === 'rejected' ? 'submission-validation-results' : undefined;
 
-  const competitions = [...new Set(fixtures.map((fixture) => fixture.competitionName))];
   const completed = result.kind === 'accepted' || result.kind === 'acceptedBatch';
   const matchingFixtureProposal =
     mode === 'file' && fixtureId === NEW_FIXTURE_VALUE
@@ -760,8 +833,8 @@ function SubmissionForm({
           ) : (
             <>
               <p>
-                {competitions.join(', ')}. The backend checks this scope again when it receives your
-                submission.
+                {competitionNames.join(', ')}. The backend checks this scope again when it receives
+                your submission.
               </p>
             </>
           )}
@@ -785,26 +858,54 @@ function SubmissionForm({
           </section>
         ) : (
           <div className="submission-field">
-            <label htmlFor="submission-fixture">Fixture</label>
-
-            <select
-              id="submission-fixture"
-              aria-describedby="submission-fixture-help"
-              value={fixtureId}
-              onChange={(event) => {
-                setFixtureId(event.target.value);
+            <NameCombobox
+              dependencyKey="authorised-fixture-competitions"
+              disabled={result.kind === 'submitting' || completed}
+              entityName="competition"
+              inputValue={competitionInput}
+              label="Competition"
+              loadOptions={loadCompetitionSelectOptions}
+              onInputChange={setCompetitionInput}
+              onSelectionChange={(option) => {
+                const nextCompetitionId = option?.value ?? '';
+                const nextFixture = fixtures.find(
+                  (fixture) => fixture.competitionId === nextCompetitionId,
+                );
+                setSelectedCompetitionId(nextCompetitionId);
+                setCompetitionInput(option?.label ?? '');
+                setFixtureId(nextFixture?.fixtureId ?? '');
+                setFixtureInput(nextFixture ? formatFixtureOption(nextFixture) : '');
                 setDecisionKey(newDecisionKey());
                 resetResult();
               }}
-              disabled={result.kind === 'submitting' || completed}
-            >
-              {fixtures.map((fixture) => (
-                <option key={fixture.fixtureId} value={fixture.fixtureId}>
-                  {formatFixtureOption(fixture)}
-                </option>
-              ))}
-              {mode === 'file' ? <option value={NEW_FIXTURE_VALUE}>New fixture</option> : null}
-            </select>
+              onSelectionResolved={(option) => {
+                if (option) setCompetitionInput(option.label);
+              }}
+              placeholder="Type a competition name"
+              selectedValue={selectedCompetitionId}
+            />
+
+            <NameCombobox
+              dependencyKey={selectedCompetitionId}
+              descriptionId="submission-fixture-help"
+              disabled={result.kind === 'submitting' || completed || !selectedCompetitionId}
+              entityName="fixture"
+              inputValue={fixtureInput}
+              label="Fixture"
+              loadOptions={loadFixtureSelectOptions}
+              onInputChange={setFixtureInput}
+              onSelectionChange={(option) => {
+                setFixtureId(option?.value ?? '');
+                setFixtureInput(option?.label ?? '');
+                setDecisionKey(newDecisionKey());
+                resetResult();
+              }}
+              onSelectionResolved={(option) => {
+                if (option) setFixtureInput(option.label);
+              }}
+              placeholder="Type a team, date, season or match type"
+              selectedValue={fixtureId === NEW_FIXTURE_VALUE ? '' : fixtureId}
+            />
 
             <p id="submission-fixture-help" className="field-help">
               Choose an existing match by date and teams. You never need to enter a database ID.
@@ -843,10 +944,8 @@ function SubmissionForm({
                   className="button button--secondary"
                   type="button"
                   onClick={() => {
-                    setFixtureId(matchingFixtureProposal.fixtureId);
+                    selectExistingFixture(matchingFixtureProposal);
                     setFile(null);
-                    setDecisionKey(newDecisionKey());
-                    resetResult();
                   }}
                   disabled={result.kind === 'submitting' || completed}
                 >
@@ -866,24 +965,29 @@ function SubmissionForm({
               <p role="status">No authorised competitions are available for a fixture proposal.</p>
             ) : (
               <div className="submission-field">
-                <label htmlFor="new-fixture-competition">Competition</label>
-                <select
-                  id="new-fixture-competition"
-                  value={newFixture.competitionId}
-                  required
+                <NameCombobox
+                  dependencyKey="authorised-proposal-competitions"
                   disabled={result.kind === 'submitting' || completed}
-                  onChange={(event) => {
-                    setNewFixture((draft) => ({ ...draft, competitionId: event.target.value }));
+                  entityName="competition"
+                  inputValue={newFixtureCompetitionInput}
+                  label="Competition"
+                  loadOptions={loadProposalCompetitionOptions}
+                  onInputChange={setNewFixtureCompetitionInput}
+                  onSelectionChange={(option) => {
+                    setNewFixture((draft) => ({
+                      ...draft,
+                      competitionId: option?.value ?? '',
+                    }));
+                    setNewFixtureCompetitionInput(option?.label ?? '');
                     setDecisionKey(newDecisionKey());
                     resetResult();
                   }}
-                >
-                  {competitionState.competitions.map((competition) => (
-                    <option key={competition.competitionId} value={competition.competitionId}>
-                      {competition.name}
-                    </option>
-                  ))}
-                </select>
+                  onSelectionResolved={(option) => {
+                    if (option) setNewFixtureCompetitionInput(option.label);
+                  }}
+                  placeholder="Type a competition name"
+                  selectedValue={newFixture.competitionId}
+                />
               </div>
             )}
 

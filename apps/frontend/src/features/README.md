@@ -17,7 +17,8 @@ selection, Basic delivery-event JSON editor, structured result display, and a pe
 correction form for events accepted in the current submission interaction. Corrections keep event
 identity and occurrence order read-only, calculate event totals from editable delivery values, and
 refresh the affected fixture statistics after success. Suggested future feature directories include
-`datasets` and `api-consumers`.
+`datasets`. The admin feature also contains the administrator-only API-consumer list, creation,
+safe detail and one-time key-management workflow.
 
 ## AI Declaration
 
@@ -32,4 +33,6 @@ The issue #314 home feature description was updated with the assistance of Codex
 The issue #476 career totals and shared section boundary description was updated with the assistance
 of Claude Code[Claude Opus 5].
 The issue #582 scorecard and participant-scope description was updated with the assistance of
+Codex[GPT-5.6 Sol].
+The issue #775 administrator API-consumer feature description was updated with the assistance of
 Codex[GPT-5.6 Sol].

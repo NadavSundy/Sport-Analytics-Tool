@@ -220,6 +220,10 @@ export const apiConsumerRotateResponseSchema = z
   .object({ data: apiConsumerSchema.extend({ apiKey: z.string().min(1) }) })
   .strict();
 
+export const apiConsumerPathParametersSchema = z
+  .object({ consumerId: apiIdentifierSchema.regex(/^\d+$/) })
+  .strict();
+
 const usageDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const consumerUsageQuerySchema = z
@@ -239,13 +243,19 @@ export const consumerUsageEntrySchema = z
   })
   .strict();
 
+const consumerUsageAggregateSchema = z
+  .object({
+    from: usageDateSchema,
+    to: usageDateSchema,
+    totalRequests: z.number().int().nonnegative(),
+    entries: z.array(consumerUsageEntrySchema),
+  })
+  .strict();
+
 export const consumerUsageResponseSchema = z
   .object({
-    data: z
-      .object({
-        from: usageDateSchema,
-        to: usageDateSchema,
-        totalRequests: z.number().int().nonnegative(),
+    data: consumerUsageAggregateSchema
+      .extend({
         quota: z
           .object({
             limit: consumerLimitSchema,
@@ -253,7 +263,21 @@ export const consumerUsageResponseSchema = z
             remaining: z.number().int().nonnegative(),
           })
           .strict(),
-        entries: z.array(consumerUsageEntrySchema),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const administratorApiConsumerUsageResponseSchema = z
+  .object({
+    data: consumerUsageAggregateSchema
+      .extend({
+        consumer: apiConsumerSchema.pick({
+          id: true,
+          name: true,
+          rateLimitPerMinute: true,
+          dailyQuota: true,
+        }),
       })
       .strict(),
   })
@@ -287,5 +311,9 @@ export type ApiConsumer = z.infer<typeof apiConsumerSchema>;
 export type ApiConsumerIssueResponse = z.infer<typeof apiConsumerIssueResponseSchema>;
 export type ApiConsumerListResponse = z.infer<typeof apiConsumerListResponseSchema>;
 export type ApiConsumerRotateResponse = z.infer<typeof apiConsumerRotateResponseSchema>;
+export type ApiConsumerPathParameters = z.infer<typeof apiConsumerPathParametersSchema>;
 export type ConsumerUsageQuery = z.infer<typeof consumerUsageQuerySchema>;
 export type ConsumerUsageResponse = z.infer<typeof consumerUsageResponseSchema>;
+export type AdministratorApiConsumerUsageResponse = z.infer<
+  typeof administratorApiConsumerUsageResponseSchema
+>;

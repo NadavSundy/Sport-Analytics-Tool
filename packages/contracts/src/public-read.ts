@@ -419,7 +419,13 @@ export const competitionCollectionResponseSchema =
 
 export const seasonResponseSchema = createResourceResponseSchema(seasonSchema);
 
-export const seasonCollectionResponseSchema = createCollectionResponseSchema(seasonSchema);
+export const seasonCollectionResponseSchema = z.object({
+  data: z.array(seasonSchema),
+  pagination: z.object({
+    nextCursor: z.string().min(1).nullable(),
+    totalPages: z.number().int().nonnegative().optional(),
+  }),
+});
 
 export const fixtureResponseSchema = createResourceResponseSchema(fixtureSchema);
 
@@ -714,8 +720,13 @@ export const leaderboardSchema = z.discriminatedUnion('scope', [
 ]);
 
 export const leaderboardResponseSchema = createResourceResponseSchema(leaderboardSchema);
-export const participantCollectionResponseSchema =
-  createCollectionResponseSchema(participantSchema);
+export const participantCollectionResponseSchema = z.object({
+  data: z.array(participantSchema),
+  pagination: z.object({
+    nextCursor: z.string().min(1).nullable(),
+    totalPages: z.number().int().nonnegative().optional(),
+  }),
+});
 
 export const publicEventResponseSchema = createResourceResponseSchema(publicEventSchema);
 

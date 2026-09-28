@@ -27,18 +27,23 @@ export interface ParticipantListOptions {
 export interface ParticipantPage {
   records: ParticipantRecord[];
   hasMore: boolean;
+  totalRecords: number;
 }
 
 export async function listParticipants(
   options: ParticipantListOptions,
   executor: QueryExecutor = getDatabasePool(),
 ): Promise<ParticipantPage> {
-  const conditions: string[] = [];
+  // Split so the total reflects the filters (name, fixture/team) but not the
+  // cursor position: paging further through the same filtered set must not
+  // change how many pages it reports.
+  const filterConditions: string[] = [];
+  const cursorConditions: string[] = [];
   const values: unknown[] = [];
 
   if (options.name) {
     values.push(`%${options.name}%`);
-    conditions.push(`p.display_name ILIKE $${values.length}`);
+    filterConditions.push(`p.display_name ILIKE $${values.length}`);
   }
 
   if (options.fixtureId || options.competitorId) {
@@ -54,7 +59,7 @@ export async function listParticipants(
       squadConditions.push(`fs.team_id = $${values.length}::bigint`);
     }
 
-    conditions.push(`
+    filterConditions.push(`
       EXISTS (
         SELECT 1
         FROM fixture_squad fs
@@ -70,25 +75,35 @@ export async function listParticipants(
     values.push(options.after.participantId);
     const idParameter = values.length;
 
-    conditions.push(
-      `(p.display_name, p.person_id) > ($${nameParameter}::text, $${idParameter}::bigint)`,
+    cursorConditions.push(
+      `(display_name, person_id) > ($${nameParameter}::text, $${idParameter}::bigint)`,
     );
   }
 
   values.push(options.limit + 1);
   const limitParameter = values.length;
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const filterWhere = filterConditions.length > 0 ? `WHERE ${filterConditions.join(' AND ')}` : '';
+  const cursorWhere = cursorConditions.length > 0 ? `WHERE ${cursorConditions.join(' AND ')}` : '';
 
-  const result = await executeQuery<ParticipantRecord>(
+  const result = await executeQuery<ParticipantRecord & { totalRecords: number }>(
     executor,
     `
+      WITH filtered_participants AS (
+        SELECT
+          p.person_id,
+          p.display_name,
+          COUNT(*) OVER()::integer AS "totalRecords"
+        FROM person p
+        ${filterWhere}
+      )
       SELECT
-        p.person_id::text AS "participantId",
-        p.display_name AS "displayName"
-      FROM person p
-      ${where}
-      ORDER BY p.display_name ASC, p.person_id ASC
+        person_id::text AS "participantId",
+        display_name AS "displayName",
+        "totalRecords"
+      FROM filtered_participants
+      ${cursorWhere}
+      ORDER BY display_name ASC, person_id ASC
       LIMIT $${limitParameter}
     `,
     values,
@@ -97,6 +112,7 @@ export async function listParticipants(
   return {
     records: result.rows.slice(0, options.limit),
     hasMore: result.rows.length > options.limit,
+    totalRecords: result.rows[0]?.totalRecords ?? 0,
   };
 }
 

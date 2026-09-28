@@ -13,6 +13,7 @@ const sourcePrefix = `api-consumer-test-${process.pid}`;
 describe.sequential('API consumer key persistence', () => {
   let pool: Pool;
   let accountId: string;
+  let otherAccountId: string;
 
   beforeAll(async () => {
     const url = assertSafeTestDatabase(
@@ -28,6 +29,13 @@ describe.sequential('API consumer key persistence', () => {
       [sourcePrefix],
     );
     accountId = account.rows[0]!.id;
+    const otherAccount = await executeQuery<{ id: string }>(
+      pool,
+      `INSERT INTO app_user (auth_provider, auth_subject, display_name, application_role, submitter_approval_state)
+      VALUES ('test', $1, 'Other API Consumer Test', 'admin', 'not_requested') RETURNING app_user_id::text AS id`,
+      [`${sourcePrefix}-other`],
+    );
+    otherAccountId = otherAccount.rows[0]!.id;
   });
 
   afterAll(async () => {
@@ -78,22 +86,64 @@ describe.sequential('API consumer key persistence', () => {
       statusClass: '2xx',
       at: new Date('2026-09-27T10:00:00.000Z'),
     });
+    await repository.recordUsage!({
+      consumerId: issued.id,
+      keyId: active!.keyId!,
+      endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+      statusClass: '2xx',
+      at: new Date('2026-09-27T11:00:00.000Z'),
+    });
+    await repository.recordUsage!({
+      consumerId: issued.id,
+      keyId: active!.keyId!,
+      endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+      statusClass: '4xx',
+      at: new Date('2026-09-27T12:00:00.000Z'),
+    });
+
+    const otherRaw = 'sat_live_ccccccccccccccccccccccccccccccccccccccccccc';
+    const other = await repository.issue(
+      otherAccountId,
+      { name: 'Other owner consumer', rateLimitPerMinute: 10, dailyQuota: 100 },
+      {
+        raw: otherRaw,
+        prefix: otherRaw.slice(0, 17),
+        hash: hashApiKey(otherRaw),
+      },
+    );
+    const otherActive = await repository.findActiveConsumer(hashApiKey(otherRaw));
+    await repository.recordUsage!({
+      consumerId: other.id,
+      keyId: otherActive!.keyId!,
+      endpoint: 'GET /consumer/competitions',
+      statusClass: '5xx',
+      at: new Date('2026-09-27T13:00:00.000Z'),
+    });
     const usage = await repository.listUsage!(issued.id, {
       from: '2026-09-27',
       to: '2026-09-27',
       limit: 10,
     });
     expect(usage).toEqual({
-      totalRequests: 1,
+      totalRequests: 3,
       entries: [
         {
           date: '2026-09-27',
           endpoint: 'GET /consumer/fixtures/:fixtureId/events',
           statusClass: '2xx',
+          requestCount: 2,
+        },
+        {
+          date: '2026-09-27',
+          endpoint: 'GET /consumer/fixtures/:fixtureId/events',
+          statusClass: '4xx',
           requestCount: 1,
         },
       ],
     });
+    expect(await repository.findOwned(accountId, issued.id)).toMatchObject({ id: issued.id });
+    expect(await repository.findOwned(accountId, other.id)).toBeNull();
+    expect(JSON.stringify(usage)).not.toContain('GET /consumer/competitions');
     const telemetry = await executeQuery<{ rawKey: string | null; query: string | null }>(
       pool,
       `SELECT null::text AS "rawKey", null::text AS query FROM api_consumer_request_usage

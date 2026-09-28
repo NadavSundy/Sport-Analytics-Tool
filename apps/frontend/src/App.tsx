@@ -30,6 +30,7 @@ import {
 import { PlayerComparisonPage } from './features/statistics/PlayerComparisonPage';
 import { AdminUsersPage } from './features/admin/AdminUsersPage';
 import { AdministrationPage } from './features/admin/AdministrationPage';
+import { AdminApiConsumersPage } from './features/admin/AdminApiConsumersPage';
 import { BatchReviewWorkspacePage } from './features/reviews/BatchReviewWorkspacePage';
 import {
   DatasetReleaseCataloguePage,
@@ -103,6 +104,8 @@ export function PublicApp() {
         <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
         <Route path="/admin" element={<AdministrationPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/api-consumers" element={<AdminApiConsumersPage />} />
+        <Route path="/admin/api-consumers/:consumerId" element={<AdminApiConsumersPage />} />
         <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
         <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
         <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
