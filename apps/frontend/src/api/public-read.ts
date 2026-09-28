@@ -73,7 +73,7 @@ interface ResponseSchema<ResponseBody> {
 
 export interface CollectionResponse<Resource> {
   data: Resource[];
-  pagination: PaginationMetadata & { totalPages?: number };
+  pagination: PaginationMetadata & { totalPages?: number | undefined };
 }
 
 export class ApiContractError extends Error {
