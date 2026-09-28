@@ -10,6 +10,7 @@ import './ApiExplorerPage.css';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/v1';
 const API_MAJOR_VERSION = 'v1';
+const CONSUMER_API_DOCUMENTATION_URL = 'https://sports-analytics-tool.pages.dev/api/consumer-keys/';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'patch', 'options', 'head']);
 
 type OpenApiOperation = Record<string, unknown> & {
@@ -202,15 +203,61 @@ export function ApiExplorerPage() {
           <p className="eyebrow">Public developer interface</p>
           <h2 id="api-explorer-version">Supported API major version: {API_MAJOR_VERSION}</h2>
           <p>
-            Public reads need no credentials. Authenticated application endpoints use a Supabase
-            bearer token, while consumer endpoints use an <code>X-API-Key</code>. Use the
-            explorer&apos;s <strong>Authorize</strong> control to supply credentials at runtime.
+            Choose the access type that matches your use case before exploring individual operations
+            below.
           </p>
         </div>
         <nav className="api-explorer__links" aria-label="API supporting resources">
           <a href="https://sports-analytics-tool.pages.dev/api/overview/">API documentation</a>
           <Link to="/dataset-releases">Dataset downloads</Link>
         </nav>
+      </section>
+
+      <section className="api-explorer__access" aria-labelledby="api-access-heading">
+        <div className="api-explorer__access-heading">
+          <p className="eyebrow">Access and authentication</p>
+          <h2 id="api-access-heading">How to access the API</h2>
+        </div>
+        <div className="api-explorer__access-grid">
+          <article className="api-explorer__access-card ui-card">
+            <h3>Public API</h3>
+            <p>
+              Public operations can be used without authentication. They provide browsing and read
+              access to published sports data.
+            </p>
+          </article>
+
+          <article className="api-explorer__access-card ui-card">
+            <h3>Consumer API</h3>
+            <p>
+              External integrations use <code>/api/v1/consumer</code> operations. Every consumer
+              operation requires an administrator-issued API key sent in the <code>X-API-Key</code>{' '}
+              request header.
+            </p>
+            <p>
+              Under the current access model, ask a Stat&apos;sTheGame administrator or project
+              administrator for API consumer access. Consumer requests have per-consumer rate limits
+              and daily quotas.
+            </p>
+            <p>
+              Keep the issued key in secure secret storage. Never place it in a URL, query string,
+              browser bundle or logs.
+            </p>
+            <a href={CONSUMER_API_DOCUMENTATION_URL}>Consumer API access and key guidance</a>
+          </article>
+
+          <article className="api-explorer__access-card ui-card">
+            <h3>Application and admin API</h3>
+            <p>
+              Other authenticated application and administrator operations use the
+              application&apos;s bearer authentication and role checks. A consumer API key does not
+              grant administrator, submission or batch access.
+            </p>
+          </article>
+        </div>
+        <p className="api-explorer__authorize-note">
+          In the explorer, use <strong>Authorize</strong> to supply an issued credential at runtime.
+        </p>
       </section>
 
       {loadState.kind === 'loading' ? (

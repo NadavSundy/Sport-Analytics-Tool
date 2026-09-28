@@ -7,11 +7,52 @@
 }
 
 .api-explorer__intro h2,
+.api-explorer__access h2,
+.api-explorer__access h3,
 .api-explorer__controls h2,
 .api-explorer__state h2 {
   margin: 0;
   font-family: var(--font-display);
   line-height: 1.15;
+}
+
+.api-explorer__access {
+  margin-bottom: var(--space-6);
+}
+
+.api-explorer__access-heading {
+  margin-bottom: var(--space-4);
+}
+
+.api-explorer__access-heading h2,
+.api-explorer__access-card h3 {
+  margin: 0;
+}
+
+.api-explorer__access-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.api-explorer__access-card {
+  min-width: 0;
+}
+
+.api-explorer__access-card p {
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+.api-explorer__access-card a {
+  font-weight: 600;
+}
+
+.api-explorer__authorize-note {
+  margin: var(--space-4) 0 0;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 3px solid var(--colour-brand);
+  color: var(--colour-text-secondary);
 }
 
 .api-explorer__intro p:not(.eyebrow),
@@ -163,6 +204,10 @@
 
   .api-explorer__links {
     width: 100%;
+  }
+
+  .api-explorer__access-grid {
+    grid-template-columns: 1fr;
   }
 
   .api-explorer__links a,

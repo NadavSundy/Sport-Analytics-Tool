@@ -70,6 +70,23 @@ test(
     await expect(page.getByRole('heading', { level: 1, name: 'API Explorer' })).toBeVisible();
     await expect(page.getByText('Supported API major version: v1')).toBeVisible();
 
+    const accessRegion = page.getByRole('region', { name: 'How to access the API' });
+    await expect(accessRegion.getByRole('heading', { name: 'Public API' })).toBeVisible();
+    await expect(accessRegion.getByText(/without authentication/)).toBeVisible();
+    await expect(accessRegion.getByRole('heading', { name: 'Consumer API' })).toBeVisible();
+    await expect(accessRegion.getByText(/administrator-issued API key/)).toBeVisible();
+    await expect(accessRegion.getByText(/X-API-Key/)).toBeVisible();
+    await expect(accessRegion.getByText(/ask a Stat'sTheGame administrator/)).toBeVisible();
+    await expect(accessRegion.getByText(/rate limits and daily quotas/)).toBeVisible();
+    await expect(
+      accessRegion.getByRole('link', { name: 'Consumer API access and key guidance' }),
+    ).toHaveAttribute('href', 'https://sports-analytics-tool.pages.dev/api/consumer-keys/');
+    await expect(
+      accessRegion.getByRole('heading', { name: 'Application and admin API' }),
+    ).toBeVisible();
+    await expect(accessRegion.getByText(/does not grant administrator/)).toBeVisible();
+    await expect(accessRegion).not.toContainText('sat_live_');
+
     await expect(
       page.locator('.swagger-ui .opblock-summary-path', { hasText: '/api/v1/health' }),
     ).toBeVisible();
