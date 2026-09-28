@@ -162,6 +162,37 @@ function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null, totalPages: 1 } });
 }
 
+const exampleCompetition = { competitionId: '5', name: 'Example Competition' };
+const premierLeagueCompetition = { competitionId: '6', name: 'Premier League' };
+const knownCompetitions = [exampleCompetition, premierLeagueCompetition];
+
+/**
+ * The submission selectors read their competitions from the competitions API
+ * rather than from a fixture sweep (#779), so every fetch mock serves both
+ * shapes: the administrator's paged list and the submitter's per-scope read.
+ */
+function competitionRoute(
+  url: string,
+  available: { competitionId: string; name: string }[] = knownCompetitions,
+): Response | null {
+  const single = /\/competitions\/([^?]+)$/.exec(url);
+  if (single) {
+    const competition = available.find((entry) => entry.competitionId === single[1]);
+    return competition
+      ? (response(200, { data: competition }) as unknown as Response)
+      : (response(404, {
+          error: { code: 'NOT_FOUND', message: 'No competition.' },
+        }) as unknown as Response);
+  }
+  if (url.includes('/competitions')) {
+    return response(200, {
+      data: available,
+      pagination: { nextCursor: null },
+    }) as unknown as Response;
+  }
+  return null;
+}
+
 /**
  * The downloadable template completed the way the guided page asks: readable
  * names for the selected fixture and nothing else. Each placeholder must be
@@ -337,6 +368,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5', '6']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('competitionId=5')) {
         return Promise.resolve(fixtures([fixture, outsideScopeFixture]));
       }
@@ -375,6 +408,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'not_requested'));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture, otherCompetitionFixture, unassignedFixture]));
       }
@@ -423,6 +458,33 @@ describe('role-gated event submission page', () => {
     expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
   });
 
+  it('offers a competition that holds no fixtures yet', async () => {
+    // #779: the competition list used to be derived by walking every loaded
+    // fixture, so a competition with no fixtures could never appear and the
+    // account's scope was under-reported. Sourcing it from the competitions API
+    // is what makes this competition offerable at all.
+    const emptyCompetition = { competitionId: '7', name: 'Empty Cup' };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'not_requested'));
+      }
+      const competitionResponse = competitionRoute(url, [exampleCompetition, emptyCompetition]);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+
+    const competitionOptions = await openCombobox('Competition');
+    expect(
+      within(competitionOptions).getByRole('option', { name: 'Empty Cup' }),
+    ).toBeInTheDocument();
+  });
+
   it('fuzzy-searches fixture context and stages the selected canonical fixture', async () => {
     const laterFixture = {
       ...fixture,
@@ -441,6 +503,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture, laterFixture]));
       if (url.endsWith('/batches') && init?.method === 'POST') {
         return Promise.resolve(
@@ -490,6 +554,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -578,6 +644,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -695,6 +763,8 @@ describe('role-gated event submission page', () => {
           if (url.endsWith('/auth/me')) {
             return Promise.resolve(currentUser('admin', 'approved', ['5']));
           }
+          const competitionResponse = competitionRoute(url);
+          if (competitionResponse) return Promise.resolve(competitionResponse);
           if (url.includes('/fixtures?')) {
             return Promise.resolve(fixtures([fixture]));
           }
@@ -753,6 +823,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -808,6 +880,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -837,6 +911,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -896,6 +972,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -935,6 +1013,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -1062,6 +1142,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1092,6 +1174,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1130,6 +1214,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1246,6 +1332,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1272,6 +1360,8 @@ describe('role-gated event submission page', () => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -1311,6 +1401,8 @@ describe('role-gated event submission page', () => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (!url.endsWith('/batches')) throw new Error(`Unexpected request: ${url}`);
       return Promise.resolve(
@@ -1351,6 +1443,8 @@ describe('role-gated event submission page', () => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       throw new Error(`Unexpected request: ${url}`);
     });

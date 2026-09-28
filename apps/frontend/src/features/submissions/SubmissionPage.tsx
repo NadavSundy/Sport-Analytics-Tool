@@ -56,6 +56,7 @@ type AccessState =
     }
   | {
       kind: 'permitted';
+      competitions: Competition[];
       fixtures: Fixture[];
       profile: CurrentUserProfile & { role: 'submitter' | 'admin' };
     };
@@ -66,12 +67,6 @@ const NEW_FIXTURE_VALUE = 'new';
 const NEW_FIXTURE_MATCH_TYPES = ['T20'] as const;
 const NEW_FIXTURE_TEAM_TYPES = ['club', 'international'] as const;
 const NEW_FIXTURE_GENDERS = ['female', 'male'] as const;
-
-type CompetitionState =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'ready'; competitions: Competition[] }
-  | { kind: 'error' };
 
 type ScopeDialogState =
   | { kind: 'closed' }
@@ -128,18 +123,6 @@ function formatFixtureOption(fixture: Fixture): string {
     fixture.competitors.map((competitor) => competitor.name).join(' v ') || 'Teams unavailable';
   const competition = fixture.competitionName ?? 'Competition unavailable';
   return `${fixture.startDate} — ${teams} — ${competition}, ${fixture.seasonLabel} (${fixture.matchType})`;
-}
-
-function competitionComboboxOptions(fixtures: Fixture[]): NameComboboxOption[] {
-  const competitions = new Map<string, string>();
-  for (const fixture of fixtures) {
-    if (fixture.competitionId && fixture.competitionName) {
-      competitions.set(fixture.competitionId, fixture.competitionName);
-    }
-  }
-  return [...competitions]
-    .map(([value, label]) => ({ label, value }))
-    .sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function fixtureComboboxOptions(fixtures: Fixture[]): NameComboboxOption[] {
@@ -375,11 +358,13 @@ function SubmissionWorkflowSelector({
 }
 
 function SubmissionForm({
+  competitions,
   fixtures,
   profile,
   role,
   mode,
 }: {
+  competitions: Competition[];
   fixtures: Fixture[];
   profile: CurrentUserProfile;
   role: 'submitter' | 'admin';
@@ -398,7 +383,6 @@ function SubmissionForm({
   const [fixtureInput, setFixtureInput] = useState(
     initialFixture ? formatFixtureOption(initialFixture) : '',
   );
-  const [competitionState, setCompetitionState] = useState<CompetitionState>({ kind: 'idle' });
   const [scopeDialogState, setScopeDialogState] = useState<ScopeDialogState>({ kind: 'closed' });
   const [newFixture, setNewFixture] = useState<NewFixtureDraft>({
     competitionId: '',
@@ -446,34 +430,25 @@ function SubmissionForm({
     scopeTriggerRef.current?.focus();
   }
 
+  // A new-fixture proposal names its competition by name inside the package, so
+  // the submitted name picks the competition where it matches one in scope. This
+  // reads the list the selector already loaded rather than fetching its own.
   useEffect(() => {
     if (mode !== 'file' || fixtureId !== NEW_FIXTURE_VALUE) return;
-    const controller = new AbortController();
-    setCompetitionState({ kind: 'loading' });
-    void competitionOptions(profile, controller.signal)
-      .then((competitions) => {
-        setCompetitionState({ kind: 'ready', competitions });
-        setNewFixture((draft) => {
-          const submittedCompetition = competitions.find(
-            (competition) =>
-              competition.name.trim().toLocaleLowerCase() ===
-              draft.submittedCompetitionName.trim().toLocaleLowerCase(),
-          );
-          return {
-            ...draft,
-            competitionId:
-              submittedCompetition?.competitionId ??
-              (competitions.some((competition) => competition.competitionId === draft.competitionId)
-                ? draft.competitionId
-                : (competitions[0]?.competitionId ?? '')),
-          };
-        });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setCompetitionState({ kind: 'error' });
-      });
-    return () => controller.abort();
-  }, [fixtureId, mode, profile]);
+    setNewFixture((draft) => {
+      const submittedCompetition = competitions.find(
+        (competition) =>
+          competition.name.trim().toLocaleLowerCase() ===
+          draft.submittedCompetitionName.trim().toLocaleLowerCase(),
+      );
+      const competitionId =
+        submittedCompetition?.competitionId ??
+        (competitions.some((competition) => competition.competitionId === draft.competitionId)
+          ? draft.competitionId
+          : (competitions[0]?.competitionId ?? ''));
+      return draft.competitionId === competitionId ? draft : { ...draft, competitionId };
+    });
+  }, [competitions, fixtureId, mode]);
 
   useEffect(() => {
     if (
@@ -525,14 +500,11 @@ function SubmissionForm({
         selectedFile.name,
         await readFileText(selectedFile),
       );
-      const matchingCompetition =
-        competitionState.kind === 'ready'
-          ? competitionState.competitions.find(
-              (competition) =>
-                competition.name.trim().toLocaleLowerCase() ===
-                context.competitionName.trim().toLocaleLowerCase(),
-            )
-          : undefined;
+      const matchingCompetition = competitions.find(
+        (competition) =>
+          competition.name.trim().toLocaleLowerCase() ===
+          context.competitionName.trim().toLocaleLowerCase(),
+      );
       setNewFixture((draft) => ({
         ...draft,
         competitionId: matchingCompetition?.competitionId ?? draft.competitionId,
@@ -587,12 +559,9 @@ function SubmissionForm({
           throw new BatchUploadInputError('The package is larger than the 50 MB upload limit.');
         }
         if (fixtureId === NEW_FIXTURE_VALUE) {
-          const competition =
-            competitionState.kind === 'ready'
-              ? competitionState.competitions.find(
-                  (candidate) => candidate.competitionId === newFixture.competitionId,
-                )
-              : undefined;
+          const competition = competitions.find(
+            (candidate) => candidate.competitionId === newFixture.competitionId,
+          );
           if (!competition) {
             throw new SubmissionInputError('Choose an authorised competition for the new fixture.');
           }
@@ -733,7 +702,14 @@ function SubmissionForm({
     }
   }
 
-  const competitionSelectOptions = useMemo(() => competitionComboboxOptions(fixtures), [fixtures]);
+  const competitionSelectOptions = useMemo(
+    () =>
+      competitions.map((competition) => ({
+        label: competition.name,
+        value: competition.competitionId,
+      })),
+    [competitions],
+  );
   const filteredFixtures = useMemo(
     () => fixtures.filter((fixture) => fixture.competitionId === selectedCompetitionId),
     [fixtures, selectedCompetitionId],
@@ -751,23 +727,17 @@ function SubmissionForm({
     [fixtureSelectOptions],
   );
   const loadProposalCompetitionOptions = useCallback(
-    async (_query: string, _signal: AbortSignal) =>
-      competitionState.kind === 'ready'
-        ? competitionState.competitions.map((competition) => ({
-            label: competition.name,
-            value: competition.competitionId,
-          }))
-        : [],
-    [competitionState],
+    async (_query: string, _signal: AbortSignal) => competitionSelectOptions,
+    [competitionSelectOptions],
   );
   const competitionNames = competitionSelectOptions.map((competition) => competition.label);
 
-  if (fixtures.length === 0 && mode === 'json') {
+  if (competitions.length === 0 && mode === 'json') {
     return (
       <div className="state-message" role="status">
-        <h2>No in-scope fixtures</h2>
+        <h2>No in-scope competitions</h2>
         <p>
-          Your account has submission access, but it currently has no available fixtures in its
+          Your account has submission access, but it currently has no available competitions in its
           scope.
         </p>
       </div>
@@ -954,14 +924,7 @@ function SubmissionForm({
               </div>
             ) : null}
 
-            {competitionState.kind === 'loading' || competitionState.kind === 'idle' ? (
-              <p role="status">Loading authorised competitions…</p>
-            ) : competitionState.kind === 'error' ? (
-              <p className="field-error" role="alert">
-                Authorised competitions could not be loaded. Choose Existing fixture and try again,
-                or reload this page.
-              </p>
-            ) : competitionState.competitions.length === 0 ? (
+            {competitions.length === 0 ? (
               <p role="status">No authorised competitions are available for a fixture proposal.</p>
             ) : (
               <div className="submission-field">
@@ -1515,13 +1478,16 @@ export function SubmissionPage() {
           return;
         }
 
-        const fixtures =
+        const [competitions, fixtures] = await Promise.all([
+          competitionOptions(profile, controller.signal),
           profile.role === 'admin'
-            ? await listAllFixtures(controller.signal)
-            : await listScopedFixtures(profile.competitionIds, controller.signal);
+            ? listAllFixtures(controller.signal)
+            : listScopedFixtures(profile.competitionIds, controller.signal),
+        ]);
 
         setAccessState({
           kind: 'permitted',
+          competitions,
           fixtures,
           profile: { ...profile, role: profile.role },
         });
@@ -1591,6 +1557,7 @@ export function SubmissionPage() {
           ) : (
             <SubmissionForm
               key={workflow}
+              competitions={accessState.competitions}
               fixtures={accessState.fixtures}
               profile={accessState.profile}
               role={accessState.profile.role}
