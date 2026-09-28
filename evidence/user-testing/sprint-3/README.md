@@ -32,6 +32,11 @@ A user-feedback issue must not close until:
 
 Any `Cannot Begin Until` list on the user-feedback issue is a testing-readiness checklist, not a Gitea dependency direction. Implementation issues close according to their own Definition of Done and genuine technical/process prerequisites. Findings that require action create or reopen linked implementation work and are retested after the change.
 
+## Prepared session inputs
+
+- `cor-01-correction-package/` — #605 `COR-01` four-delivery direct-submission
+  package, with the identifier-discovery procedure and a contract validator.
+
 ## Authoritative records
 
 - Process: `docs/testing/user-testing-protocol.md`
@@ -43,3 +48,4 @@ Any `Cannot Begin Until` list on the user-feedback issue is a testing-readiness 
 ## AI Declaration
 
 The preceding evidence guide was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #605 `COR-01` prepared-input pointer was added with the assistance of Claude-Code[Claude Opus 5].
