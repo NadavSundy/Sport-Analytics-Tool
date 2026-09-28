@@ -26,8 +26,7 @@ import { invalidateBatchCollections } from './batch-collection-state';
 import { CorrectionWorkspace } from './CorrectionWorkspace';
 import { signInPathFor } from '../auth/auth-return';
 import {
-  listAllFixtures,
-  listScopedFixtures,
+  listCompetitionFixtures,
   SubmissionInputError,
   createFixtureProposalBatchFile,
   createTechnicalBatchFile,
@@ -57,7 +56,6 @@ type AccessState =
   | {
       kind: 'permitted';
       competitions: Competition[];
-      fixtures: Fixture[];
       profile: CurrentUserProfile & { role: 'submitter' | 'admin' };
     };
 
@@ -359,29 +357,65 @@ function SubmissionWorkflowSelector({
 
 function SubmissionForm({
   competitions,
-  fixtures,
   profile,
   role,
   mode,
 }: {
   competitions: Competition[];
-  fixtures: Fixture[];
   profile: CurrentUserProfile;
   role: 'submitter' | 'admin';
   mode: 'file' | 'json';
 }) {
   const client = useAuthenticatedApiClient();
 
-  const initialFixture = fixtures[0];
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState(
-    initialFixture?.competitionId ?? '',
-  );
-  const [competitionInput, setCompetitionInput] = useState(initialFixture?.competitionName ?? '');
-  const [fixtureId, setFixtureId] = useState(
-    initialFixture?.fixtureId ?? (mode === 'file' ? NEW_FIXTURE_VALUE : ''),
-  );
-  const [fixtureInput, setFixtureInput] = useState(
-    initialFixture ? formatFixtureOption(initialFixture) : '',
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState('');
+  const [competitionInput, setCompetitionInput] = useState('');
+  const [fixtureId, setFixtureId] = useState('');
+  const [fixtureInput, setFixtureInput] = useState('');
+
+  /**
+   * Fixtures for one competition, fetched when that competition list is first
+   * opened and kept for the rest of the page (#779). The request deliberately
+   * carries no AbortSignal: a combobox closing mid-flight would otherwise poison
+   * the entry for every later reader of the same competition.
+   */
+  const loadedFixtures = useRef(new Map<string, Fixture[]>());
+  const pendingFixtures = useRef(new Map<string, Promise<Fixture[]>>());
+
+  const fixturesForCompetition = useCallback(async (competitionId: string): Promise<Fixture[]> => {
+    if (!competitionId) return [];
+    const loaded = loadedFixtures.current.get(competitionId);
+    if (loaded) return loaded;
+    let pending = pendingFixtures.current.get(competitionId);
+    if (!pending) {
+      pending = listCompetitionFixtures(competitionId)
+        .then((fixtures) => {
+          // The query is already scoped, so this only keeps the guarantee the
+          // page used to get from filtering a full sweep: nothing outside the
+          // chosen competition can ever be offered for it.
+          const scoped = fixtures.filter((entry) => entry.competitionId === competitionId);
+          loadedFixtures.current.set(competitionId, scoped);
+          return scoped;
+        })
+        .finally(() => {
+          pendingFixtures.current.delete(competitionId);
+        });
+      pendingFixtures.current.set(competitionId, pending);
+    }
+    return pending;
+  }, []);
+
+  // A proposal is checked against the fixtures of the competition it names, so
+  // that a fixture already on the platform is recognised without loading every
+  // other competition to find it.
+  const [proposalCompetitionFixtures, setProposalCompetitionFixtures] = useState<Fixture[]>([]);
+
+  const selectedFixture = useCallback(
+    () =>
+      loadedFixtures.current
+        .get(selectedCompetitionId)
+        ?.find((candidate) => candidate.fixtureId === fixtureId),
+    [fixtureId, selectedCompetitionId],
   );
   const [scopeDialogState, setScopeDialogState] = useState<ScopeDialogState>({ kind: 'closed' });
   const [newFixture, setNewFixture] = useState<NewFixtureDraft>({
@@ -475,9 +509,11 @@ function SubmissionForm({
   }
 
   function chooseExistingFixture() {
-    if (!fixtures[0]) return;
-    selectExistingFixture(fixtures[0]);
+    setFixtureId('');
+    setFixtureInput('');
     setFile(null);
+    setDecisionKey(newDecisionKey());
+    resetResult();
   }
 
   function selectExistingFixture(fixture: Fixture) {
@@ -607,7 +643,7 @@ function SubmissionForm({
           return;
         }
 
-        const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
+        const fixture = selectedFixture();
         if (!fixture?.competitionId) {
           throw new SubmissionInputError('Select an available fixture before uploading.');
         }
@@ -621,7 +657,7 @@ function SubmissionForm({
           fixtureLabel: formatFixtureOption(fixture),
         });
       } else {
-        const fixture = fixtures.find((candidate) => candidate.fixtureId === fixtureId);
+        const fixture = selectedFixture();
         if (!fixture?.competitionId) {
           throw new SubmissionInputError('Select an available fixture before submitting.');
         }
@@ -702,6 +738,24 @@ function SubmissionForm({
     }
   }
 
+  useEffect(() => {
+    if (mode !== 'file' || fixtureId !== NEW_FIXTURE_VALUE || !newFixture.competitionId) {
+      setProposalCompetitionFixtures([]);
+      return;
+    }
+    let active = true;
+    void fixturesForCompetition(newFixture.competitionId)
+      .then((loaded) => {
+        if (active) setProposalCompetitionFixtures(loaded);
+      })
+      .catch(() => {
+        if (active) setProposalCompetitionFixtures([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [fixtureId, fixturesForCompetition, mode, newFixture.competitionId]);
+
   const competitionSelectOptions = useMemo(
     () =>
       competitions.map((competition) => ({
@@ -710,21 +764,14 @@ function SubmissionForm({
       })),
     [competitions],
   );
-  const filteredFixtures = useMemo(
-    () => fixtures.filter((fixture) => fixture.competitionId === selectedCompetitionId),
-    [fixtures, selectedCompetitionId],
-  );
-  const fixtureSelectOptions = useMemo(
-    () => fixtureComboboxOptions(filteredFixtures),
-    [filteredFixtures],
-  );
   const loadCompetitionSelectOptions = useCallback(
     async (_query: string, _signal: AbortSignal) => competitionSelectOptions,
     [competitionSelectOptions],
   );
   const loadFixtureSelectOptions = useCallback(
-    async (_query: string, _signal: AbortSignal) => fixtureSelectOptions,
-    [fixtureSelectOptions],
+    async (_query: string, _signal: AbortSignal) =>
+      fixtureComboboxOptions(await fixturesForCompetition(selectedCompetitionId)),
+    [fixturesForCompetition, selectedCompetitionId],
   );
   const loadProposalCompetitionOptions = useCallback(
     async (_query: string, _signal: AbortSignal) => competitionSelectOptions,
@@ -750,7 +797,7 @@ function SubmissionForm({
   const completed = result.kind === 'accepted' || result.kind === 'acceptedBatch';
   const matchingFixtureProposal =
     mode === 'file' && fixtureId === NEW_FIXTURE_VALUE
-      ? findMatchingFixtureProposal(fixtures, newFixture)
+      ? findMatchingFixtureProposal(proposalCompetitionFixtures, newFixture)
       : undefined;
   const fixturePackageInput = (
     <div className="submission-field">
@@ -821,7 +868,7 @@ function SubmissionForm({
               className="button button--secondary"
               type="button"
               onClick={chooseExistingFixture}
-              disabled={result.kind === 'submitting' || completed || fixtures.length === 0}
+              disabled={result.kind === 'submitting' || completed}
             >
               Choose an existing fixture
             </button>
@@ -837,14 +884,10 @@ function SubmissionForm({
               loadOptions={loadCompetitionSelectOptions}
               onInputChange={setCompetitionInput}
               onSelectionChange={(option) => {
-                const nextCompetitionId = option?.value ?? '';
-                const nextFixture = fixtures.find(
-                  (fixture) => fixture.competitionId === nextCompetitionId,
-                );
-                setSelectedCompetitionId(nextCompetitionId);
+                setSelectedCompetitionId(option?.value ?? '');
                 setCompetitionInput(option?.label ?? '');
-                setFixtureId(nextFixture?.fixtureId ?? '');
-                setFixtureInput(nextFixture ? formatFixtureOption(nextFixture) : '');
+                setFixtureId('');
+                setFixtureInput('');
                 setDecisionKey(newDecisionKey());
                 resetResult();
               }}
@@ -1478,17 +1521,11 @@ export function SubmissionPage() {
           return;
         }
 
-        const [competitions, fixtures] = await Promise.all([
-          competitionOptions(profile, controller.signal),
-          profile.role === 'admin'
-            ? listAllFixtures(controller.signal)
-            : listScopedFixtures(profile.competitionIds, controller.signal),
-        ]);
+        const competitions = await competitionOptions(profile, controller.signal);
 
         setAccessState({
           kind: 'permitted',
           competitions,
-          fixtures,
           profile: { ...profile, role: profile.role },
         });
       })
@@ -1558,7 +1595,6 @@ export function SubmissionPage() {
             <SubmissionForm
               key={workflow}
               competitions={accessState.competitions}
-              fixtures={accessState.fixtures}
               profile={accessState.profile}
               role={accessState.profile.role}
               mode={workflow === 'fixture' ? 'file' : 'json'}
