@@ -62,6 +62,15 @@ Gitea remains authoritative for current issue state, assignees, dependencies and
 Sprint 3 requirements/rubric close-out should be linked here when its authoritative record exists
 rather than reconstructed on this page.
 
+Additional Sprint 3 records:
+
+- [22–24 September asynchronous stakeholder review summary](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-28-stakeholder-review.md)
+- [28 September Sprint 3 pre-finalisation close-out](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-3/2026-09-28-sprint-3-close-out.md)
+
+Related: [Sprint 3 requirements & rubric traceability](../planning/sprint-3-requirements-traceability.md).
+
+The 28 September close-out is intentionally pre-finalisation. It must be reconciled against current `main`, reviewed by another team member and updated with the final milestone tag before #613 closes.
+
 ## How to add future Sprint evidence
 
 Create a new `evidence/sprints/sprint-<n>/` directory, retain concise Markdown records for normal
@@ -76,3 +85,5 @@ This Sprint evidence index was originally created with AI assistance recorded in
 current information-architecture cleanup, broken Sprint 2 close-out link correction, Sprint 3 index
 refresh and transcript routing were reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol].
+
+The Issue #613 Sprint 3 close-out navigation update was reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
