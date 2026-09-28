@@ -119,6 +119,19 @@ async function selectTechnicalJson() {
   fireEvent.click(await screen.findByRole('radio', { name: /Advanced technical JSON/ }));
 }
 
+/**
+ * Choose a competition and then its first fixture. Since #779 the page loads no
+ * fixtures until a competition is chosen, so nothing is preselected and a test
+ * that submits has to make the selection a user would make.
+ */
+async function chooseExistingFixture(competitionName = 'Example Competition') {
+  await screen.findByRole('combobox', { name: 'Competition' });
+  await openCombobox('Competition');
+  fireEvent.click(screen.getByRole('option', { name: competitionName }));
+  const fixtureOptions = await openCombobox('Fixture');
+  fireEvent.click(within(fixtureOptions).getAllByRole('option')[0]!);
+}
+
 async function openCombobox(label: string) {
   fireEvent.click(screen.getByRole('button', { name: `Show ${label.toLowerCase()} options` }));
   return screen.findByRole('listbox', { name: `${label} options` });
@@ -160,6 +173,37 @@ function currentUser(
 
 function fixtures(data: unknown[]) {
   return response(200, { data, pagination: { nextCursor: null, totalPages: 1 } });
+}
+
+const exampleCompetition = { competitionId: '5', name: 'Example Competition' };
+const premierLeagueCompetition = { competitionId: '6', name: 'Premier League' };
+const knownCompetitions = [exampleCompetition, premierLeagueCompetition];
+
+/**
+ * The submission selectors read their competitions from the competitions API
+ * rather than from a fixture sweep (#779), so every fetch mock serves both
+ * shapes: the administrator's paged list and the submitter's per-scope read.
+ */
+function competitionRoute(
+  url: string,
+  available: { competitionId: string; name: string }[] = knownCompetitions,
+): Response | null {
+  const single = /\/competitions\/([^?]+)$/.exec(url);
+  if (single) {
+    const competition = available.find((entry) => entry.competitionId === single[1]);
+    return competition
+      ? (response(200, { data: competition }) as unknown as Response)
+      : (response(404, {
+          error: { code: 'NOT_FOUND', message: 'No competition.' },
+        }) as unknown as Response);
+  }
+  if (url.includes('/competitions')) {
+    return response(200, {
+      data: available,
+      pagination: { nextCursor: null },
+    }) as unknown as Response;
+  }
+  return null;
 }
 
 /**
@@ -337,6 +381,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5', '6']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('competitionId=5')) {
         return Promise.resolve(fixtures([fixture, outsideScopeFixture]));
       }
@@ -347,18 +393,30 @@ describe('role-gated event submission page', () => {
     renderSubmissionPage();
     await selectTechnicalJson();
 
-    expect(await screen.findByRole('combobox', { name: 'Competition' })).toHaveValue(
-      'Example Competition',
+    // Only the account's own competitions are offered, and no fixture request is
+    // made until one is chosen (#779).
+    const competitionOptions = await openCombobox('Competition');
+    expect(within(competitionOptions).getAllByRole('option')).toHaveLength(2);
+    expect(
+      fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => url.includes('/fixtures?')),
+    ).toEqual([]);
+
+    fireEvent.click(
+      within(competitionOptions).getByRole('option', { name: 'Example Competition' }),
     );
     const fixtureOptions = await openCombobox('Fixture');
     expect(within(fixtureOptions).getAllByRole('option')).toHaveLength(1);
     expect(within(fixtureOptions).queryByRole('option', { name: /fixture 99/i })).toBeNull();
-    expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('competitionId=5'),
-        expect.stringContaining('competitionId=6'),
-      ]),
-    );
+
+    // Exactly one scoped request, for the chosen competition only.
+    const fixtureRequests = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .filter((url) => url.includes('/fixtures?'));
+    expect(fixtureRequests).toHaveLength(1);
+    expect(fixtureRequests[0]).toContain('competitionId=5');
+    expect(fixtureRequests.join(' ')).not.toContain('competitionId=6');
   });
 
   it('filters single and technical fixtures by competition for an administrator', async () => {
@@ -375,6 +433,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'not_requested'));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture, otherCompetitionFixture, unassignedFixture]));
       }
@@ -396,9 +456,9 @@ describe('role-gated event submission page', () => {
     });
     fireEvent.click(await screen.findByRole('option', { name: 'Premier League' }));
 
-    expect((screen.getByRole('combobox', { name: 'Fixture' }) as HTMLInputElement).value).toContain(
-      'Premier League',
-    );
+    // Choosing a competition clears the fixture rather than guessing one, then
+    // loads that competition's fixtures on demand (#779).
+    expect((screen.getByRole('combobox', { name: 'Fixture' }) as HTMLInputElement).value).toBe('');
     const fixtureOptions = await openCombobox('Fixture');
     expect(within(fixtureOptions).getAllByRole('option')).toHaveLength(1);
     expect(
@@ -408,19 +468,125 @@ describe('role-gated event submission page', () => {
 
     await selectTechnicalJson();
     expect(screen.getByLabelText('Delivery events JSON')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue(
-      'Example Competition',
-    );
-    await openCombobox('Competition');
-    fireEvent.click(screen.getByRole('option', { name: 'Premier League' }));
-    expect((screen.getByRole('combobox', { name: 'Fixture' }) as HTMLInputElement).value).toContain(
-      'Premier League',
-    );
+    expect(screen.getByRole('combobox', { name: 'Competition' })).toHaveValue('');
 
+    // Every fixture request is scoped to a competition, and the page never
+    // issues the unfiltered sweep that used to run before it was usable.
     const fixtureRequests = fetchMock.mock.calls
       .map(([input]) => String(input))
       .filter((url) => url.includes('/fixtures?'));
-    expect(fixtureRequests).toEqual([expect.not.stringContaining('competitionId=')]);
+    expect(fixtureRequests).not.toHaveLength(0);
+    for (const request of fixtureRequests) {
+      expect(request).toContain('competitionId=');
+    }
+    expect(fixtureRequests.filter((url) => url.includes('competitionId=6'))).toHaveLength(1);
+  });
+
+  it('becomes usable for an administrator without loading any fixture', async () => {
+    // #779: the page used to page through every fixture in the database before
+    // it could be used at all, about 141 requests against the deployed corpus.
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'not_requested'));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    expect(await screen.findByRole('combobox', { name: 'Competition' })).toBeInTheDocument();
+
+    expect(
+      fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => url.includes('/fixtures')),
+    ).toEqual([]);
+  });
+
+  it('loads each competition once and does not refetch while searching', async () => {
+    const otherCompetitionFixture = {
+      ...fixture,
+      fixtureId: '8',
+      competitionId: '6',
+      competitionName: 'Premier League',
+    };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'not_requested'));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('competitionId=6')) {
+        return Promise.resolve(fixtures([otherCompetitionFixture]));
+      }
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const fixtureRequests = () =>
+      fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => url.includes('/fixtures?'));
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    await chooseExistingFixture();
+    expect(fixtureRequests()).toHaveLength(1);
+
+    // The combobox reloads its options on every distinct query, so a loader that
+    // fetched per keystroke would show up here.
+    fireEvent.change(screen.getByRole('combobox', { name: 'Fixture' }), {
+      target: { value: 'Wand' },
+    });
+    expect(await screen.findByRole('option', { name: /Wanderers v Strikers/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Fixture' }), {
+      target: { value: 'Wanderers' },
+    });
+    expect(await screen.findByRole('option', { name: /Wanderers v Strikers/ })).toBeInTheDocument();
+    expect(fixtureRequests()).toHaveLength(1);
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Fixture' }), { key: 'Escape' });
+
+    // A second competition is fetched once, and returning to the first reuses it.
+    await chooseExistingFixture('Premier League');
+    expect(fixtureRequests()).toHaveLength(2);
+    expect(fixtureRequests()[1]).toContain('competitionId=6');
+
+    await chooseExistingFixture('Example Competition');
+    expect(fixtureRequests()).toHaveLength(2);
+  });
+
+  it('offers a competition that holds no fixtures yet', async () => {
+    // #779: the competition list used to be derived by walking every loaded
+    // fixture, so a competition with no fixtures could never appear and the
+    // account's scope was under-reported. Sourcing it from the competitions API
+    // is what makes this competition offerable at all.
+    const emptyCompetition = { competitionId: '7', name: 'Empty Cup' };
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('admin', 'not_requested'));
+      }
+      const competitionResponse = competitionRoute(url, [exampleCompetition, emptyCompetition]);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+
+    const competitionOptions = await openCombobox('Competition');
+    expect(
+      within(competitionOptions).getByRole('option', { name: 'Empty Cup' }),
+    ).toBeInTheDocument();
   });
 
   it('fuzzy-searches fixture context and stages the selected canonical fixture', async () => {
@@ -441,6 +607,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture, laterFixture]));
       if (url.endsWith('/batches') && init?.method === 'POST') {
         return Promise.resolve(
@@ -460,6 +628,9 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    // The fixture box searches within the chosen competition (#779).
+    await openCombobox('Competition');
+    fireEvent.click(screen.getByRole('option', { name: 'Example Competition' }));
     const fixtureSelector = await screen.findByRole('combobox', { name: 'Fixture' });
     fireEvent.change(fixtureSelector, { target: { value: '2027/28' } });
     expect(await screen.findByRole('option', { name: /Rangers v Falcons/ })).toBeInTheDocument();
@@ -490,6 +661,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -504,6 +677,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    await chooseExistingFixture();
 
     fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
       target: { value: JSON.stringify(validEvents) },
@@ -578,6 +752,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -632,6 +808,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    await chooseExistingFixture();
     fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
       target: { value: JSON.stringify(validEvents) },
     });
@@ -695,6 +872,8 @@ describe('role-gated event submission page', () => {
           if (url.endsWith('/auth/me')) {
             return Promise.resolve(currentUser('admin', 'approved', ['5']));
           }
+          const competitionResponse = competitionRoute(url);
+          if (competitionResponse) return Promise.resolve(competitionResponse);
           if (url.includes('/fixtures?')) {
             return Promise.resolve(fixtures([fixture]));
           }
@@ -729,6 +908,7 @@ describe('role-gated event submission page', () => {
 
       renderSubmissionPage();
       await selectTechnicalJson();
+      await chooseExistingFixture();
       fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
         target: { value: JSON.stringify(validEvents) },
       });
@@ -753,6 +933,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -788,6 +970,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    await chooseExistingFixture();
     fireEvent.change(await screen.findByLabelText('Delivery events JSON'), {
       target: { value: JSON.stringify(validEvents) },
     });
@@ -808,6 +991,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -817,6 +1002,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    await chooseExistingFixture();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, {
       target: { value: JSON.stringify([{ ...validEvents[0], eventId: 'not-a-uuid' }]) },
@@ -837,6 +1023,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -870,6 +1058,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    await chooseExistingFixture();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, { target: { value: JSON.stringify(validEvents) } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
@@ -896,6 +1085,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('admin', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -912,6 +1103,7 @@ describe('role-gated event submission page', () => {
 
     renderSubmissionPage();
     await selectTechnicalJson();
+    await chooseExistingFixture();
     const editor = await screen.findByLabelText('Delivery events JSON');
     fireEvent.change(editor, { target: { value: '{' } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
@@ -935,6 +1127,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) {
         return Promise.resolve(fixtures([fixture]));
       }
@@ -996,12 +1190,16 @@ describe('role-gated event submission page', () => {
     ).toBeVisible();
     expect(screen.queryByRole('link', { name: /Upload a season or back catalogue/ })).toBeNull();
     expect(fixtureSelect).toHaveAccessibleDescription(/never need to enter a database ID/i);
+    // The fixture list is scoped to a competition since #779, so choose one.
+    await openCombobox('Competition');
+    fireEvent.click(screen.getByRole('option', { name: 'Example Competition' }));
     const fixtureOptions = await openCombobox('Fixture');
-    expect(
-      within(fixtureOptions).getByRole('option', {
-        name: /2026-08-20 — Wanderers v Strikers — Example Competition, 2026 \(T20\)/,
-      }),
-    ).toBeInTheDocument();
+    const fixtureOption = within(fixtureOptions).getByRole('option', {
+      name: /2026-08-20 — Wanderers v Strikers — Example Competition, 2026 \(T20\)/,
+    });
+    expect(fixtureOption).toBeInTheDocument();
+    // No fixture is preselected since #779, so the upload needs one chosen.
+    fireEvent.click(fixtureOption);
     expect(screen.getByRole('button', { name: 'Propose a new fixture' })).toBeVisible();
     expect(
       screen.getByText(/Upload one JSON or CSV spreadsheet package up to 50 MB/),
@@ -1062,6 +1260,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1081,7 +1281,11 @@ describe('role-gated event submission page', () => {
     expect(screen.getByRole('group', { name: 'New fixture metadata' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose an existing fixture' }));
-    expect(await screen.findByLabelText('Fixture')).toHaveValue(
+    // Nothing is preselected since #779, so returning leaves the fixture empty
+    // and the selector ready rather than restoring an arbitrary first fixture.
+    expect(await screen.findByLabelText('Fixture')).toHaveValue('');
+    await chooseExistingFixture();
+    expect(screen.getByLabelText('Fixture')).toHaveValue(
       '2026-08-20 — Wanderers v Strikers — Example Competition, 2026 (T20)',
     );
   });
@@ -1092,6 +1296,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1130,6 +1336,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1246,6 +1454,8 @@ describe('role-gated event submission page', () => {
       if (url.endsWith('/auth/me')) {
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
       }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (url.endsWith('/competitions/5')) {
         return Promise.resolve(
@@ -1272,6 +1482,8 @@ describe('role-gated event submission page', () => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -1311,6 +1523,8 @@ describe('role-gated event submission page', () => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       if (!url.endsWith('/batches')) throw new Error(`Unexpected request: ${url}`);
       return Promise.resolve(
@@ -1332,6 +1546,7 @@ describe('role-gated event submission page', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     renderSubmissionPage();
+    await chooseExistingFixture();
     const input = await screen.findByLabelText('Fixture package');
     fireEvent.change(input, {
       target: { files: [new File([singleFixtureCsv()], 'events.csv', { type: 'text/csv' })] },
@@ -1351,6 +1566,8 @@ describe('role-gated event submission page', () => {
       const url = String(input);
       if (url.endsWith('/auth/me'))
         return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
       if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
       throw new Error(`Unexpected request: ${url}`);
     });
