@@ -1,0 +1,50 @@
+[
+  {
+    "eventId": "a1dcd0b9-972f-4361-891f-53c79bd462a8",
+    "inningsId": "__INNINGS_ID__",
+    "sequenceNumber": 9001,
+    "overNumber": 900,
+    "positionInOver": 0,
+    "ballNumber": "900.1",
+    "strikerId": "__STRIKER_ID__",
+    "nonStrikerId": "__NON_STRIKER_ID__",
+    "bowlerId": "__BOWLER_ID__",
+    "runs": { "offBat": 1, "extras": 0, "total": 1 }
+  },
+  {
+    "eventId": "27ff7ea0-386b-46f1-abe0-b8e0cc2ef83d",
+    "inningsId": "__INNINGS_ID__",
+    "sequenceNumber": 9002,
+    "overNumber": 900,
+    "positionInOver": 1,
+    "ballNumber": "900.2",
+    "strikerId": "__STRIKER_ID__",
+    "nonStrikerId": "__NON_STRIKER_ID__",
+    "bowlerId": "__BOWLER_ID__",
+    "runs": { "offBat": 2, "extras": 0, "total": 2 }
+  },
+  {
+    "eventId": "538f3493-6b6e-47a1-a8d7-eabcba13591d",
+    "inningsId": "__INNINGS_ID__",
+    "sequenceNumber": 9003,
+    "overNumber": 900,
+    "positionInOver": 2,
+    "ballNumber": "900.3",
+    "strikerId": "__STRIKER_ID__",
+    "nonStrikerId": "__NON_STRIKER_ID__",
+    "bowlerId": "__BOWLER_ID__",
+    "runs": { "offBat": 6, "extras": 0, "total": 6 }
+  },
+  {
+    "eventId": "8f728529-882d-4a08-9a9d-c4fd44386946",
+    "inningsId": "__INNINGS_ID__",
+    "sequenceNumber": 9004,
+    "overNumber": 900,
+    "positionInOver": 3,
+    "ballNumber": "900.4",
+    "strikerId": "__STRIKER_ID__",
+    "nonStrikerId": "__NON_STRIKER_ID__",
+    "bowlerId": "__BOWLER_ID__",
+    "runs": { "offBat": 3, "extras": 0, "total": 3 }
+  }
+]
