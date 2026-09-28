@@ -2345,6 +2345,17 @@ main {
   font-size: 0.9375rem;
 }
 
+/*
+ * The rule above is more specific than .field-error, so without this the
+ * validation message would render in the muted colour of the help text beside
+ * it and read as more guidance rather than as something wrong. Issue #770.
+ */
+.participant-onboarding__identifier .field-error {
+  color: var(--colour-error);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
 .participant-onboarding__answered,
 .participant-onboarding__feedback,
 .participant-onboarding__fault {
