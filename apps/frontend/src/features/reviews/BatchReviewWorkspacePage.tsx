@@ -10,6 +10,7 @@ import type {
 } from '@sport-analytics/contracts';
 import {
   batchParticipantOnboardingDecisionSchema,
+  batchParticipantOnboardingRequestSchema,
   fixtureProposalSchema,
 } from '@sport-analytics/contracts';
 import {
@@ -1643,17 +1644,34 @@ function ParticipantOnboarding({
 
   async function submit() {
     if (decisions.length === 0) return;
+    /*
+     * Issue #770. The last word before anything is sent, against the schema
+     * the endpoint validates with. Each decision has already been judged on its
+     * own card; this covers what only the whole request can be wrong about,
+     * which today is the two hundred the array is bounded to. A batch with more
+     * outstanding tasks than that would otherwise be refused wholesale after
+     * the reviewer had answered every one of them.
+     */
+    const request = {
+      decisionKey: onboardingDecisionKey(
+        batchReference,
+        decisions.map((decision) => decision.taskReference),
+      ),
+      decisions,
+    };
+    const validated = batchParticipantOnboardingRequestSchema.safeParse(request);
+    if (!validated.success) {
+      setFeedback(
+        `These ${String(decisions.length)} decisions cannot be submitted together. ` +
+          'Settle them in groups of two hundred or fewer.',
+      );
+      return;
+    }
     setSaving(true);
     setFeedback(null);
     setFaults([]);
     try {
-      const receipt = await decideParticipantOnboarding(client, batchReference, {
-        decisionKey: onboardingDecisionKey(
-          batchReference,
-          decisions.map((decision) => decision.taskReference),
-        ),
-        decisions,
-      });
+      const receipt = await decideParticipantOnboarding(client, batchReference, validated.data);
       const { onboarded, alreadyOnboarded, revalidationQueued } = receipt.data;
       setAnswers({});
       if (revalidationQueued) onRevalidationQueued();
