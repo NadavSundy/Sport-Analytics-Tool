@@ -39,51 +39,70 @@ Database identifiers are assigned at ingest and are environment-specific;
 nothing in this repository records the deployed values. They must be read off the
 build being tested.
 
-**Recommended fixture: an issue #708 onboarding-test fixture — Argentina v
-Austria — and specifically its second innings.**
+A usable target needs **three** things, and the third rules out most candidates:
 
-These deliveries cannot be removed afterwards (see the limitations below), so the
-target should be a fixture that is already synthetic. The #708 packages in
-`evidence/validation/issue-708/` each created one: every record they introduce is
-fictional and prefixed `onboarding-test-`, and each fixture is published with two
-innings and five deliveries.
+1. **A competition association.** `submission.service.ts:51` refuses outright:
+   `if (!fixture.competitionId || !canSubmitToCompetition(...)) throw new SubmissionForbiddenError()`.
+   A fixture with a null `competitionId` returns `403` for every role, admin
+   included.
+2. **`innings` and `fixture_squad` rows.** These come from
+   `onboardFixtureCanonicalContext` (`batch.repository.ts:1029`) at **Create
+   canonical fixture from proposal**, not at publication. The package supplies
+   its own deliveries, so pre-existing deliveries are not themselves required.
+3. **Published events — solely so the `inningsId` can be discovered.** No API
+   exposes a fixture's innings. There is no innings endpoint, and
+   `GET /api/v1/fixtures/{fixtureId}` returns `competitors` as
+   `{competitorId, name}` with no innings and no squad. The events endpoint is
+   the only surface that emits `inningsId`, and on a fixture with no deliveries
+   it returns nothing. Without database access, an event-less fixture is
+   therefore unusable however well-formed its innings rows are.
 
-| Package                              | Fixture date | Season                 |
-| ------------------------------------ | ------------ | ---------------------- |
-| `onboarding-test-package.json`       | 2031-03-14   | `onboarding-test-2031` |
-| `onboarding-test-package-rerun.json` | 2032-04-18   | `onboarding-test-2032` |
-| `onboarding-test-package-run-3.json` | 2033-05-22   | `onboarding-test-2033` |
+**The selector is the test for requirement 1.** `listAllFixtures`
+(`submission-api.ts:69-70`) filters `fixture.competitionId !== null`, and
+`listScopedFixtures` requires the competition be one of the account's. So any
+fixture that appears in the **Fixture** dropdown has a competition by
+construction. Pick from the dropdown, then check requirement 3 with one events
+call.
 
-Prefer the **2031** fixture: its onboarding run is complete and written up in
-`evidence/validation/issue-708/deployed-acceptance-2026-09-25.md`, so nothing
-further depends on its live delivery count. Only a fixture whose onboarding
-journey actually completed is usable — an unrun package has no fixture on the
-deployed build at all, and burning one of those to make a COR-01 target wastes a
-single-use onboarding scenario.
+### Candidates already ruled out
 
-**Use innings 2, not innings 1.** Innings 1 cannot satisfy the server's rules:
-its non-striker `onboarding-test-Sipho-Dlamini` is deliberately on
-`onboarding-test-Unlisted-Wanderers` rather than the batting team, which is the
-`team_not_recognised` case #708 exists to test, and it holds only one genuine
-Argentina batter — so it cannot supply two distinct batters on the batting side.
-Innings 2 is clean in all three packages:
+| Candidate                           | Verdict                                                                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Reference match **729307**          | Avoid. Its published figures are the validation baseline in `evidence/validation/729307-published-figures.md`.                     |
+| #708 **onboarding-test** fixtures   | Blocked on requirement 3. They hold zero published events, so no `inningsId` can be read. Usable only with direct database access. |
+| Fixture **8937** (first men's T20I) | Blocked on requirement 1. `competitionId` is `null`, so it cannot be submitted to at all — see the finding below.                  |
 
-| Role        | Participant                      | Team                |
-| ----------- | -------------------------------- | ------------------- |
-| Batting     | —                                | Austria             |
-| Striker     | `onboarding-test-Lerato-Khumalo` | Austria             |
-| Non-striker | `onboarding-test-Thandi-Mokoena` | Austria             |
-| Bowler      | `onboarding-test-Priya-Naicker`  | Argentina (bowling) |
+### Finding: fixture 8937 cannot be a submission target
 
-Innings 2 also makes the correction unusually legible. It currently holds two
-deliveries worth **2 runs**. This package adds 1 + 2 + 6 + 3 = **12**, taking it
-to 14; correcting the six to a four takes it to **12**. Both movements are
-visible at a glance, which they would not be inside a 132-run innings.
+8937 is New Zealand v Australia at Eden Park, 2005-02-17, season 2004/05 — the
+first men's T20 international, and not one of the four seeded matches. It has
+published events, so its identifiers read off cleanly:
 
-**Do not use the seeded reference match 729307.** Its published figures are the
-validation baseline recorded in
-`evidence/validation/729307-published-figures.md`; adding four synthetic
-deliveries to it corrupts the fixture that evidence documents.
+| Value          | Identifier                               |
+| -------------- | ---------------------------------------- |
+| `inningsId`    | `17880` (ordinal 0, Australia batting)   |
+| `strikerId`    | `71` (MJ Clarke)                         |
+| `nonStrikerId` | `136386` (AC Gilchrist)                  |
+| `bowlerId`     | `14194` (DR Tuffey), New Zealand bowling |
+
+Those four were filled into this package and **pass both contract gates** —
+`submissionRequestSchema` and `validateCricketBusinessRules` — with `fixtureId`
+`8937`. The correction payload passes `correctionRequestSchema`. The package is
+not the problem.
+
+The fixture is. 8937 carries `competitionId: null`, recorded in
+`evidence/ai/transcripts/dean-feldman/2026-09-18_AI_Deployment_Azure-Container-Apps-Migration.md:10500`
+and diagnosed under issue #311 in
+`evidence/ai/transcripts/gabriel-raz/2026-08-29-issue-311-admin-event-submission.md:810`:
+"fixture `8937` has `competitionId: null`, so it is not eligible for any scoped
+submission and the backend correctly rejects it." The #311 fix was to filter such
+fixtures out of the administrator selector, so 8937 should not even appear in the
+**Fixture** dropdown.
+
+There is no route to repair it: the backend contains no `UPDATE fixture`
+statement and the API defines no write method on any `/api/v1/fixtures` path, so
+a fixture's competition association cannot be set through the product. 8937 is
+permanently unusable as a submission target without direct database access.
 
 Then:
 
@@ -95,11 +114,11 @@ Then:
    GET /api/v1/fixtures/{fixtureId}/events?limit=10
    ```
 
-3. Find the two events whose `inningsOrdinal` is **2** — the ones batted by
-   Austria. If they come back with resolved participant IDs, that alone proves
-   what this package needs: the innings exists, the three players were onboarded,
-   and they are in the fixture's squad on the right sides.
-4. From **one** of those two events, copy four values:
+3. Pick one innings and confirm events come back for it. Events returning with
+   resolved participant IDs is the proof requirement 3 is met: the innings
+   exists, and the players are in the fixture's squad on the right sides. An
+   empty response means this fixture cannot be used.
+4. From **one** event in that innings, copy four values:
 
    | Read from the response    | Paste into `events.json` as |
    | ------------------------- | --------------------------- |
@@ -118,13 +137,11 @@ fixture's squad; `validateCricketBusinessRules`
 (`packages/contracts/src/cricket-validation.ts:174-213`) requires striker and
 non-striker to be on the innings' batting team and the bowler on its bowling
 team. Mixing IDs from different innings or fixtures fails these checks — which is
-why all four values come from one delivery, and why innings 1 is excluded.
+why all four values come from one delivery.
 
-Two of the three innings-2 participants (`Lerato-Khumalo`, carrying an
-identifier that names nobody, and `Priya-Naicker`, carrying none) reached the
-platform only through a reviewer onboarding decision during the #708 run. Step 3
-above is what confirms those decisions were made: if the events return their IDs,
-they exist.
+Prefer a low-scoring innings. The package adds 1 + 2 + 6 + 3 = **12 runs**, and
+the correction removes 2 of them. Both movements are obvious in a small innings
+and easy to miss inside a large one.
 
 Also record, for the session notes, the fixture's current total runs and the
 striker's current runs — those are the figures expected to move.
@@ -153,12 +170,12 @@ delivery coordinates are free.
 
 Signed in as the `admin` account, go to **`/submissions/new`**.
 
-| Control                  | What to do                                                                                                                                                                                                                         |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workflow                 | Choose **Advanced technical JSON**                                                                                                                                                                                                 |
-| **Fixture**              | Select the chosen fixture. Options read `{startDate} — {home} v {away} — {competition}, {season} ({matchType})`, so the 2031 onboarding-test fixture appears as `2031-03-14 — Argentina v Austria — …, onboarding-test-2031 (T20)` |
-| **Delivery events JSON** | Paste the entire filled-in contents of `events.json` — the bare `[ … ]` array, nothing around it                                                                                                                                   |
-| Button                   | **Submit events**                                                                                                                                                                                                                  |
+| Control                  | What to do                                                                                                                                                                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow                 | Choose **Advanced technical JSON**                                                                                                                                                                                          |
+| **Fixture**              | Select the chosen fixture. Options read `{startDate} — {home} v {away} — {competition}, {season} ({matchType})`. Only fixtures with a competition appear here, which is why the dropdown doubles as the requirement-1 check |
+| **Delivery events JSON** | Paste the entire filled-in contents of `events.json` — the bare `[ … ]` array, nothing around it                                                                                                                            |
+| Button                   | **Submit events**                                                                                                                                                                                                           |
 
 Do not wrap the array in an object. The form adds `fixtureId` and
 `schemaVersion` itself (`submission-api.ts:342-346`); pasting a full
@@ -199,9 +216,8 @@ The participant selects the third delivery, changes off-bat runs from **6** to
 - "Revision 2 is now current. The displayed event and match statistics below
   have been refreshed."
 - The fixture statistics panel below re-fetches in place — the fixture total and
-  the striker's runs each drop by 2. On the recommended 2031 fixture that is the
-  Austria innings going 14 → 12, and `onboarding-test-Lerato-Khumalo` going
-  14 → 12.
+  the striker's runs each drop by 2 — from the +12 this package added, down to
+  +10 against the innings' original total.
 
 The striker's season/competition/career aggregates also change, but only on the
 participant's own page; snapshots refresh synchronously on the next read
@@ -230,11 +246,13 @@ that the accepted event was not changed.
   submission; a correction supersedes a revision but never removes it, and there
   is no reviewer or administrator route that undoes an accepted direct
   submission. The only reset is a database restore or reseed. This is the whole
-  reason Step 1 targets an already-synthetic `onboarding-test-` fixture: the
-  four deliveries stay there for good, so they should land somewhere nothing
-  real depends on. Record in the session notes which fixture was used and that
-  its delivery count moved from five to nine, so a later reader of the #708
-  acceptance evidence is not surprised by it.
+  reason the target must be chosen deliberately: the four deliveries stay for
+  good, at a phantom over 900, adding 12 runs (10 after the correction) to the
+  innings and distorting the bowler's overs-bowled figure. On a real historical
+  match that means its scorecard permanently stops matching the published
+  record. Record in the session notes which fixture was used and what its
+  delivery count and innings total moved from and to, so a later reader is not
+  surprised by it.
 - **`overNumber` is 900 by design.** Live rows are unique on
   `(innings_id, over_number, position_in_over)` and on
   `(innings_id, innings_sequence)`
