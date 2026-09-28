@@ -30,7 +30,13 @@ export class SubmissionInputError extends Error {
   }
 }
 
-async function listCompetitionFixtures(
+/**
+ * Every fixture in one competition. The submission selectors load a competition
+ * at a time rather than the whole table: an administrator is scoped to nothing,
+ * so an unfiltered sweep is one request per hundred fixtures in the database
+ * before the page can be used at all (#779).
+ */
+export async function listCompetitionFixtures(
   competitionId: string,
   signal?: AbortSignal,
 ): Promise<Fixture[]> {
