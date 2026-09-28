@@ -10,7 +10,7 @@
 | #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      | #582; #513; #590                                           | `2026-09-24-P08-public.md`       | In progress                          |
 | #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` | #571; #583; #483; #584; #585; #586; #587; #705; #708; #770 | `2026-09-28-P11-new-fixture.md`  | Accepted with documented limitations |
 | #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                                                            |                                  | Not started                          |
-| #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   |                                                            |                                  | Not started                          |
+| #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   | #591; #592; #593                                           | `2026-09-28-P12-admin.md`        | Not accepted                         |
 | #606                | Versioned dataset release and reproducibility            | `PUB-04`, `DATA-01`, `DATA-02`                                         | #562; #596; #597                                           | `2026-09-25-P10-admin.md`        | Accepted                             |
 | #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     | #594; #595; #743                                           | `2026-09-26-P09-api-consumer.md` | Accepted with documented limitations |
 | #612                | Selected Advanced API consumer capabilities              | `API-02`, `API-03`, `API-04`                                           |                                                            |                                  | Not started                          |
@@ -26,6 +26,7 @@
 | P09            | Technically competent API consumer                | Competent API consumer  | #607                   | `2026-09-26-P09-api-consumer.md` |
 | P10            | Administrator; analyst/data-oriented participant  | Not separately recorded | #606                   | `2026-09-25-P10-admin.md`        |
 | P11            | Submitter; reviewer                               | Not supplied            | #603                   | `2026-09-28-P11-new-fixture.md`  |
+| P12            | Administrator                                     | Not supplied            | #605                   | `2026-09-28-P12-admin.md`        |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -33,45 +34,49 @@ Participant names, personal email addresses and credentials must not appear here
 
 Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather than manufacturing results.
 
-| Task ID | Attempts | Success | Partial | Failure | Finding IDs |
-| ------- | -------: | ------: | ------: | ------: | ----------- |
-| AUTH-01 |        2 |       2 |       0 |       0 |             |
-| AUTH-02 |        2 |       2 |       0 |       0 |             |
-| AUTH-03 |        0 |       0 |       0 |       0 |             |
-| AUTH-04 |        1 |       0 |       1 |       0 | P07-F01     |
-| PUB-01  |        2 |       2 |       0 |       0 |             |
-| PUB-02  |        1 |       1 |       0 |       0 |             |
-| PUB-03  |        1 |       1 |       0 |       0 |             |
-| PUB-04  |        1 |       1 |       0 |       0 |             |
-| PUB-05  |        1 |       1 |       0 |       0 |             |
-| PUB-06  |        1 |       0 |       1 |       0 | P08-F01     |
-| SUB-01  |        2 |       1 |       1 |       0 | P07-F02     |
-| SUB-02  |        0 |       0 |       0 |       0 |             |
-| SUB-03  |        1 |       1 |       0 |       0 |             |
-| SUB-04  |        1 |       1 |       0 |       0 |             |
-| SUB-05  |        0 |       0 |       0 |       0 |             |
-| SUB-06  |        0 |       0 |       0 |       0 |             |
-| SUB-07  |        1 |       1 |       0 |       0 |             |
-| BAT-01  |        0 |       0 |       0 |       0 |             |
-| BAT-02  |        0 |       0 |       0 |       0 |             |
-| BAT-03  |        0 |       0 |       0 |       0 |             |
-| BAT-04  |        0 |       0 |       0 |       0 |             |
-| BAT-05  |        0 |       0 |       0 |       0 |             |
-| COR-01  |        0 |       0 |       0 |       0 |             |
-| REV-01  |        2 |       2 |       0 |       0 |             |
-| REV-02  |        1 |       1 |       0 |       0 |             |
-| REV-03  |        0 |       0 |       0 |       0 |             |
-| REV-04  |        0 |       0 |       0 |       0 |             |
-| REV-05  |        0 |       0 |       0 |       0 |             |
-| REV-06  |        1 |       0 |       1 |       0 | P11-F01     |
-| ADM-01  |        0 |       0 |       0 |       0 |             |
-| ADM-02  |        0 |       0 |       0 |       0 |             |
-| DATA-01 |        1 |       1 |       0 |       0 |             |
-| DATA-02 |        1 |       1 |       0 |       0 |             |
-| API-01  |        1 |       0 |       1 |       0 | P09-F01     |
-| API-02  |        0 |       0 |       0 |       0 |             |
-| API-03  |        0 |       0 |       0 |       0 |             |
-| API-04  |        0 |       0 |       0 |       0 |             |
+| Task ID | Attempts | Success | Partial | Failure | Finding IDs                                                   |
+| ------- | -------: | ------: | ------: | ------: | ------------------------------------------------------------- |
+| AUTH-01 |        2 |       2 |       0 |       0 |                                                               |
+| AUTH-02 |        2 |       2 |       0 |       0 |                                                               |
+| AUTH-03 |        0 |       0 |       0 |       0 |                                                               |
+| AUTH-04 |        1 |       0 |       1 |       0 | P07-F01                                                       |
+| PUB-01  |        2 |       2 |       0 |       0 |                                                               |
+| PUB-02  |        1 |       1 |       0 |       0 |                                                               |
+| PUB-03  |        1 |       1 |       0 |       0 |                                                               |
+| PUB-04  |        1 |       1 |       0 |       0 |                                                               |
+| PUB-05  |        1 |       1 |       0 |       0 |                                                               |
+| PUB-06  |        1 |       0 |       1 |       0 | P08-F01                                                       |
+| SUB-01  |        2 |       1 |       1 |       0 | P07-F02                                                       |
+| SUB-02  |        0 |       0 |       0 |       0 |                                                               |
+| SUB-03  |        1 |       1 |       0 |       0 |                                                               |
+| SUB-04  |        1 |       1 |       0 |       0 |                                                               |
+| SUB-05  |        0 |       0 |       0 |       0 |                                                               |
+| SUB-06  |        0 |       0 |       0 |       0 |                                                               |
+| SUB-07  |        1 |       1 |       0 |       0 |                                                               |
+| BAT-01  |        0 |       0 |       0 |       0 |                                                               |
+| BAT-02  |        0 |       0 |       0 |       0 |                                                               |
+| BAT-03  |        0 |       0 |       0 |       0 |                                                               |
+| BAT-04  |        0 |       0 |       0 |       0 |                                                               |
+| BAT-05  |        0 |       0 |       0 |       0 |                                                               |
+| COR-01  |        2 |       1 |       0 |       1 | P12-F01; P12-F02; P12-F03; P12-F04; P12-F05; P12-F06; P12-F07 |
+| REV-01  |        2 |       2 |       0 |       0 |                                                               |
+| REV-02  |        1 |       1 |       0 |       0 |                                                               |
+| REV-03  |        0 |       0 |       0 |       0 |                                                               |
+| REV-04  |        0 |       0 |       0 |       0 |                                                               |
+| REV-05  |        0 |       0 |       0 |       0 |                                                               |
+| REV-06  |        1 |       0 |       1 |       0 | P11-F01                                                       |
+| ADM-01  |        0 |       0 |       0 |       0 |                                                               |
+| ADM-02  |        1 |       0 |       1 |       0 | P12-F08; P12-F09                                              |
+| DATA-01 |        1 |       1 |       0 |       0 |                                                               |
+| DATA-02 |        1 |       1 |       0 |       0 |                                                               |
+| API-01  |        1 |       0 |       1 |       0 | P09-F01                                                       |
+| API-02  |        0 |       0 |       0 |       0 |                                                               |
+| API-03  |        0 |       0 |       0 |       0 |                                                               |
+| API-04  |        0 |       0 |       0 |       0 |                                                               |
+
+`COR-01` carries two attempts from one P12 session because the task bank's wording covers two situations the product treats differently: correcting data submitted in an earlier session failed, and correcting a submission made moments before succeeded. `2026-09-28-P12-admin.md` scores each separately.
+
+No `PUB-*` task was attempted for #605. The session covered `COR-01` and `ADM-02` only, and the gate's selected `PUB-*` tasks were not exercised, so the `PUB-*` counts above carry no #605 attempt. `P12-F10` and `P12-F11` are cross-cutting findings not attributable to a single Task ID.
 
 ## Findings and Decisions
 
@@ -85,16 +90,28 @@ Every S1/S2 or otherwise actionable finding must have a recorded decision.
 | P09-F01    | P09     | #607                | API-01  | Interactive OpenAPI showed `RATE_LIMIT_EXCEEDED` but did not expose `RateLimit-*` / `Retry-After` headers to the browser participant. | S3       | Accept   | Browser-based consumers needed the safe rate/quota response headers exposed through CORS.                                           | #743        | Not recorded    | Passed — deployed Swagger showed rate/quota headers on `200` and `RateLimit-*` / `Retry-After` on `429` |
 | P11-F01    | P11     | #603                | REV-06  | Participant onboarding accepted a player name as a durable identifier and submitted an invalid request.                               | S3       | Defer    | The supported new-fixture workflow reached review, onboarding and publication; #770 remains a non-blocking validation/UX follow-up. | #770        | Not applicable  | Not required for deferred S3 finding; independent #770 retest pending                                   |
 
+| P12-F01 | P12 | #605 | COR-01 (1) | No discoverable way to correct data submitted in an earlier session; participant abandoned the task and would have contacted support. | S1 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F02 | P12 | #605 | COR-01 (1) | Submission history entries all show the same name and cannot be told apart in the list. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F03 | P12 | #605 | COR-01 (1) | Submission item list omits run values, so the delivery needing correction cannot be identified. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F04 | P12 | #605 | COR-01 (2) | Correction history is promised in the interface but unreachable; the endpoint has no UI. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F05 | P12 | #605 | COR-01 (2) | An accepted direct submission appears in no submission list afterwards. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F06 | P12 | #605 | COR-01 (2) | No warning or guard before an out-of-range over number reaches published statistics. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F07 | P12 | #605 | COR-01 (2) | `non-boundary runs` wording unclear to a domain-competent user. | S4 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F08 | P12 | #605 | ADM-02 | The reviewer workspace does not show who decided a batch, though the submitter-facing report does. | S3 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F09 | P12 | #605 | ADM-02 | No navigation between a batch and the fixtures, events or statistics it produced, in either direction. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F10 | P12 | #605 | Cross-cutting | Deployed page loads slow enough to read as failure rather than latency; corroborates #599 section 10. | S1 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+| P12-F11 | P12 | #605 | Cross-cutting | The administrator fixture selector loads every fixture in the database, about 141 sequential requests. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for a deferred finding; carried to #613 |
+
 Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents user-feedback issue close-out for an S1/S2 or otherwise actionable finding.
 
 ## Severity Summary
 
 | Severity | Count | Accepted | Deferred | Rejected | Pending | Resolved after retest |
 | -------- | ----: | -------: | -------: | -------: | ------: | --------------------: |
-| S1       |     0 |        0 |        0 |        0 |       0 |                     0 |
-| S2       |     1 |        1 |        0 |        0 |       0 |                     0 |
-| S3       |     4 |        3 |        1 |        0 |       0 |                     1 |
-| S4       |     0 |        0 |        0 |        0 |       0 |                     0 |
+| S1       |     2 |        0 |        2 |        0 |       0 |                     0 |
+| S2       |     8 |        1 |        7 |        0 |       0 |                     0 |
+| S3       |     5 |        3 |        2 |        0 |       0 |                     1 |
+| S4       |     1 |        0 |        1 |        0 |       0 |                     0 |
 
 ## Integrated Changes and Retests
 
@@ -106,24 +123,35 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 
 ## Deferred / Rejected Findings
 
-| Finding ID | Decision | Reason                                                                                               | Revisit trigger, if any                |
-| ---------- | -------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| P07-F01    | Accept   | Non-blocking navigation improvement tracked in #713.                                                 | Issue #713 implementation/review       |
-| P07-F02    | Accept   | Non-blocking scope-discoverability improvement tracked in #714.                                      | Issue #714 implementation/review       |
-| P11-F01    | Defer    | #770 is a non-blocking durable-identifier validation/UX follow-up; the supported workflow completed. | #770 completion and independent retest |
+| Finding ID | Decision | Reason                                                                                                                              | Revisit trigger, if any                |
+| ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| P07-F01    | Accept   | Non-blocking navigation improvement tracked in #713.                                                                                | Issue #713 implementation/review       |
+| P07-F02    | Accept   | Non-blocking scope-discoverability improvement tracked in #714.                                                                     | Issue #714 implementation/review       |
+| P11-F01    | Defer    | #770 is a non-blocking durable-identifier validation/UX follow-up; the supported workflow completed.                                | #770 completion and independent retest |
+| P12-F01    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S1) | #613 Sprint 3 close-out                |
+| P12-F02    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P12-F03    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P12-F04    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P12-F05    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P12-F06    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P12-F07    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S4) | #613 Sprint 3 close-out                |
+| P12-F08    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S3) | #613 Sprint 3 close-out                |
+| P12-F09    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P12-F10    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S1) | #613 Sprint 3 close-out                |
+| P12-F11    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
 
 ## User-Feedback Issue Close-Out Checklist
 
-| User-feedback issue | Readiness satisfied before testing                                                                                       | Formal session(s) linked         | All attempted tasks scored | Actionable findings decided               | Accepted S1/S2 retested                            | Summary current | Issue may close                                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| #601                | Deployed app recorded; exact URL/commit unavailable                                                                      | `2026-09-24-P07-multi-role.md`   | Yes                        | Yes                                       | Not applicable; no accepted S1/S2 finding          | Yes             | Yes                                                                                                                     |
-| #602                | Deployed app recorded; exact URL/commit unavailable                                                                      | `2026-09-24-P08-public.md`       | Yes                        | Yes; P08-F01 accepted                     | No; #716 implementation and PUB-06 retest required | Yes             | No; accepted S2 retest remains required                                                                                 |
-| #603                | Facilitator reported #571; #583; #483; #584; #585; #586; #587; #705 and #708 deployed/usable; deployment SHA unavailable | `2026-09-28-P11-new-fixture.md`  | Yes                        | Yes; P11-F01 deferred to #770             | Not applicable; deferred S3 finding                | Yes             | Yes; Accepted with documented limitations: coached Partial REV-06; #770 deferred; deployment SHA/reset plan unavailable |
-| #604                |                                                                                                                          |                                  |                            |                                           |                                                    |                 |                                                                                                                         |
-| #605                |                                                                                                                          |                                  |                            |                                           |                                                    |                 |                                                                                                                         |
-| #606                | Immutable version/checksum and documented public metadata/artifact paths recorded; deployed commit unavailable           | `2026-09-25-P10-admin.md`        | Yes                        | No findings reported                      | Not applicable                                     | Yes             | Yes; Accepted with documented limitation that deployed commit and P10's exact field-name list were not retained         |
-| #607                | Deployed API/docs and commit recorded; `S3-API-01` prepared                                                              | `2026-09-26-P09-api-consumer.md` | Yes                        | Yes; P09-F01 accepted, issue link pending | Not applicable; no accepted S1/S2 finding          | Yes             | No; follow-up issue link and unassisted PUB-05 retest pending                                                           |
-| #612                |                                                                                                                          |                                  |                            |                                           |                                                    |                 |                                                                                                                         |
+| User-feedback issue | Readiness satisfied before testing                                                                                        | Formal session(s) linked         | All attempted tasks scored | Actionable findings decided               | Accepted S1/S2 retested                            | Summary current | Issue may close                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| #601                | Deployed app recorded; exact URL/commit unavailable                                                                       | `2026-09-24-P07-multi-role.md`   | Yes                        | Yes                                       | Not applicable; no accepted S1/S2 finding          | Yes             | Yes                                                                                                                     |
+| #602                | Deployed app recorded; exact URL/commit unavailable                                                                       | `2026-09-24-P08-public.md`       | Yes                        | Yes; P08-F01 accepted                     | No; #716 implementation and PUB-06 retest required | Yes             | No; accepted S2 retest remains required                                                                                 |
+| #603                | Facilitator reported #571; #583; #483; #584; #585; #586; #587; #705 and #708 deployed/usable; deployment SHA unavailable  | `2026-09-28-P11-new-fixture.md`  | Yes                        | Yes; P11-F01 deferred to #770             | Not applicable; deferred S3 finding                | Yes             | Yes; Accepted with documented limitations: coached Partial REV-06; #770 deferred; deployment SHA/reset plan unavailable |
+| #604                |                                                                                                                           |                                  |                            |                                           |                                                    |                 |                                                                                                                         |
+| #605                | Prepared `S3-COR-01` package validated against the submission contract; deployed environment recorded; commit unavailable | `2026-09-28-P12-admin.md`        | Yes                        | Yes; all eleven findings deferred to #613 | Not applicable; no finding was accepted            | Yes             | No; Not accepted — two S1 findings remain unfixed                                                                       |
+| #606                | Immutable version/checksum and documented public metadata/artifact paths recorded; deployed commit unavailable            | `2026-09-25-P10-admin.md`        | Yes                        | No findings reported                      | Not applicable                                     | Yes             | Yes; Accepted with documented limitation that deployed commit and P10's exact field-name list were not retained         |
+| #607                | Deployed API/docs and commit recorded; `S3-API-01` prepared                                                               | `2026-09-26-P09-api-consumer.md` | Yes                        | Yes; P09-F01 accepted, issue link pending | Not applicable; no accepted S1/S2 finding          | Yes             | No; follow-up issue link and unassisted PUB-05 retest pending                                                           |
+| #612                |                                                                                                                           |                                  |                            |                                           |                                                    |                 |                                                                                                                         |
 
 ## Remaining Concerns
 
@@ -131,6 +159,9 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 - #580 and #581 were already closed when this gate was finalised; this record notes their closed status and does not change either issue.
 - #602 has one retained public-statistics session. P08-F01 is an accepted S2 player-comparison finding tracked by #716; #602 cannot close until implementation and PUB-06 retest are complete.
 - #607 has one retained API-consumer session. PUB-05 is Success because the bearer-token assistance occurred only after that task had completed. API-01 remains Partial as the historical participant outcome. P09-F01 is linked to #743; the deployed fix passed browser/OpenAPI technical retest. The gate is Accepted with documented limitations because no participant rerun on the corrected build is recorded.
+- #605 has one retained correction/provenance session and is **Not accepted**. `COR-01` produced two outcomes: correcting data submitted in an earlier session failed with no workaround, and correcting a submission made moments before succeeded. `ADM-02` was Partial. Eleven findings, including two S1, are deferred to #613 with no fix attempted this sprint.
+- No `PUB-*` task was attempted for #605. The session covered `COR-01` and `ADM-02` only, and the gate's selected `PUB-*` tasks were not exercised, so the gate's planned coverage is only partly evidenced.
+- #591, #592 and #593 were already closed when this gate ran, so the gate reported on work it was meant to release rather than gating it. This record notes their closed status and does not change any of them. How the Sprint 3 user-feedback gates operated in practice against how they were designed — issues closing on technical completion rather than waiting for the gate — is carried to #613 for the close-out narrative.
 - #603 has one retained new-fixture session. P11's valid package reached review and was onboarded and approved/published. `REV-06` was Partial after facilitator intervention for deferred S3 finding P11-F01/#770. The deployed SHA and reset/recreate procedure were not retained.
 
 ## Issue #601 Final Gate Result
@@ -168,6 +199,44 @@ unrecorded reset/recreate procedure. This user-feedback result releases #571,
 #583, #483, #584, #585, #586, #587, #705 and #708 for closure only if each
 issue independently satisfies its remaining technical Definition of Done.
 
+## Issue #605 Final Gate Result
+
+**Not accepted.**
+
+`COR-01`'s first half failed. P12, an administrator, could not find any way to
+correct data submitted in an earlier session: submission history entries were
+indistinguishable, the item list carried no run values, no edit control existed
+on the submission or on the match, and the participant concluded they would give
+up and contact support. They stated they came away "worried that once data is in,
+I can't fix my own mistakes". No workaround was available, and correction of
+previously published data is the subject of this gate.
+
+`COR-01`'s second half succeeded. Correcting a delivery submitted moments earlier
+was straightforward, and derived statistics updated immediately and correctly.
+That is the narrower situation the product actually supports.
+
+`ADM-02` was Partial. Submitter, timestamp, lifecycle status and rejection
+reasons were all clear, but the deciding reviewer was not visible in the
+workspace used, and provenance could not be followed from a batch to the fixtures
+and deliveries it produced or back again.
+
+Two S1 findings remain unfixed: `P12-F01`, the absence of any discoverable
+correction path for previously submitted data, and `P12-F10`, deployed page loads
+slow enough that the participant twice judged the site broken and would have
+abandoned it. `P12-F10` corroborates section 10 of
+`evidence/sprints/sprint-3/issue-599-performance-revalidation.md`, which measured
+five of five deployed read operations failing their targets on 2026-09-25.
+
+All eleven findings are deferred to #613 rather than fixed, because Sprint 3
+closes on 29 September 2026. No `PUB-*` task was attempted, so the gate's planned
+coverage is only partly evidenced.
+
+**This gate releases no implementation issue for closure.** #591, #592 and #593
+were already closed on technical completion before this session ran, so there was
+nothing left for the gate to release; this record notes that status and does not
+change any of those issues. The observation that the Sprint 3 user-feedback gates
+ran after the work they were designed to gate is carried to #613.
+
 ## Evidence Integrity Checklist
 
 - [ ] Every formal session uses `YYYY-MM-DD-PXX-ROLE.md`.
@@ -184,3 +253,4 @@ issue independently satisfies its remaining technical Definition of Done.
 ## AI Declaration
 
 The preceding Sprint 3 evidence scaffold was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The #605 coverage, P12 participant, task-outcome, finding, deferral and gate-result entries were added with the assistance of Claude-Code[Claude Opus 5].
