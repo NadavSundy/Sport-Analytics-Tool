@@ -2,6 +2,20 @@
 
 External integrations use the consumer surface rather than the anonymous public-read surface. An administrator issues and manages keys through the handwritten management API; a raw secret is returned only by the issue and rotation responses. Store it in the consumer's secret manager immediately.
 
+## Requesting consumer access
+
+Consumer keys are administrator-issued; the project does not provide self-service consumer
+registration or public key issuance. A legitimate external consumer should ask a Stat'sTheGame
+administrator or project administrator for API consumer access through their existing project
+relationship. The administrator can then create the consumer and issue its key through the
+administrator-only management workflow.
+
+The raw key is shown only once when it is issued or rotated. The consumer must transfer and store it
+as a secret, send it only in the `X-API-Key` request header, and never place it in a URL, query
+string, browser-visible client bundle or log. Consumer keys authorize only the documented
+`/api/v1/consumer/*` operations; they do not authorize administrator, submission, batch or other
+application-authenticated operations.
+
 ## Management
 
 All management operations require an administrator's Supabase bearer token.
@@ -152,3 +166,5 @@ The issue #775 administrator frontend workflow and current usage boundary were d
 assistance of Codex[GPT-5.6 Sol].
 The issue #776 administrator per-consumer usage authorization, aggregation and privacy boundaries
 were documented with the assistance of Codex[GPT-5.6 Sol].
+The issue #783 external-consumer access-request and credential-handling guidance was documented with
+the assistance of Codex[GPT-5].

@@ -53,6 +53,14 @@ The Explorer is discoverable from the Stat'sTheGame primary public navigation as
 bottom-of-page API entry opens the in-app Explorer, while a separate **API Documentation** link
 continues to expose the extended MkDocs documentation.
 
+Before the operation list, the Explorer distinguishes anonymous public reads, API-key-authenticated
+consumer operations and bearer-authenticated application/administrator operations. It explains that
+consumer keys are administrator-issued, tells prospective external consumers to request access from
+a Stat'sTheGame administrator or project administrator under the current access model, identifies
+the `X-API-Key` request header and consumer limits, and links directly to the
+[consumer-key guidance](consumer-keys.md). A consumer key authorizes only documented consumer
+operations and never grants administrator, submission or batch access.
+
 The Explorer makes both deferred stages visible: the route-level lazy module and the backend
 OpenAPI specification request each show the same labelled progress indicator until their associated
 content is ready. A specification failure replaces that indicator with an explicit retryable error
@@ -406,3 +414,5 @@ The issue #775 administrator consumer-management frontend boundary was documente
 assistance of Codex[GPT-5.6 Sol].
 The issue #776 administrator per-consumer usage workflow was documented with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #783 public API consumer-onboarding guidance was documented with the assistance of
+Codex[GPT-5].

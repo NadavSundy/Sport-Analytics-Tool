@@ -104,7 +104,38 @@ describe('ApiExplorerPage', () => {
       await screen.findByRole('heading', { level: 1, name: 'API Explorer' }, { timeout: 5_000 }),
     ).toBeInTheDocument();
     expect(screen.getByText('Supported API major version: v1')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'How to access the API' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('explains public, consumer, and application access before the explorer', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okSpecification()));
+
+    renderPage();
+
+    const accessRegion = screen.getByRole('region', { name: 'How to access the API' });
+    expect(within(accessRegion).getByRole('heading', { name: 'Public API' })).toBeVisible();
+    expect(within(accessRegion).getByText(/without authentication/)).toBeVisible();
+
+    expect(within(accessRegion).getByRole('heading', { name: 'Consumer API' })).toBeVisible();
+    expect(within(accessRegion).getByText(/administrator-issued API key/)).toBeVisible();
+    expect(within(accessRegion).getByText(/X-API-Key/)).toBeVisible();
+    expect(within(accessRegion).getByText(/ask a Stat'sTheGame administrator/)).toBeVisible();
+    expect(within(accessRegion).getByText(/rate limits and daily quotas/)).toBeVisible();
+
+    expect(
+      within(accessRegion).getByRole('link', {
+        name: 'Consumer API access and key guidance',
+      }),
+    ).toHaveAttribute('href', 'https://sports-analytics-tool.pages.dev/api/consumer-keys/');
+
+    expect(
+      within(accessRegion).getByRole('heading', { name: 'Application and admin API' }),
+    ).toBeVisible();
+    expect(within(accessRegion).getByText(/does not grant administrator/)).toBeVisible();
+    expect(accessRegion).not.toHaveTextContent(/sat_live_/);
+
+    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
   });
 
   it('keeps a visible accessible loading indicator until the specification is ready', async () => {

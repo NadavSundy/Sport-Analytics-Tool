@@ -122,12 +122,13 @@ useful as task-state wireframes and do not change backend role or scope semantic
 
 ### 2.3 Content hierarchy per page type
 
-| Page type                  | Hierarchy                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------------------- |
-| List page (e.g. Fixtures)  | Page title → filters → paginated card/row grid → pagination                                 |
-| Detail page (e.g. Fixture) | Breadcrumb → title/summary → tabs (Overview / Statistics / Squads / Timeline) → tab content |
-| Form page (Submission)     | Title → scope/help copy → single-column form → primary action → result region               |
-| Admin page                 | Title → one card per account → request state → scope controls → role-transition actions     |
+| Page type                  | Hierarchy                                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------------------------- |
+| API Explorer               | Page title → version/resources → public/consumer/application access guide → operation explorer |
+| List page (e.g. Fixtures)  | Page title → filters → paginated card/row grid → pagination                                    |
+| Detail page (e.g. Fixture) | Breadcrumb → title/summary → tabs (Overview / Statistics / Squads / Timeline) → tab content    |
+| Form page (Submission)     | Title → scope/help copy → single-column form → primary action → result region                  |
+| Admin page                 | Title → one card per account → request state → scope controls → role-transition actions        |
 
 ---
 
@@ -427,3 +428,5 @@ The issue #775 administrator API-consumer information architecture was documente
 assistance of Codex[GPT-5.6 Sol].
 The issue #776 administrator consumer-usage information architecture was documented with the
 assistance of Codex[GPT-5.6 Sol].
+The issue #783 public API consumer-onboarding hierarchy was documented with the assistance of
+Codex[GPT-5].
