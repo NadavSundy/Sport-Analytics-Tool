@@ -9,7 +9,7 @@
 | #601                | Navigation, authentication and overall frontend flow     | `AUTH-*` + representative navigation                                   | #580; #581                                                 | `2026-09-24-P07-multi-role.md`   | Accepted with documented limitations |
 | #602                | Public statistics and fixture analytics                  | `PUB-01`–`PUB-06`                                                      | #582; #513; #590                                           | `2026-09-24-P08-public.md`       | In progress                          |
 | #603                | Genuinely new fixture submission and reviewer onboarding | `AUTH-01`, `AUTH-02`, `SUB-01`, `SUB-07`, `REV-01`, `REV-02`, `REV-06` | #571; #583; #483; #584; #585; #586; #587; #705; #708; #770 | `2026-09-28-P11-new-fixture.md`  | Accepted with documented limitations |
-| #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      |                                                            |                                  | Not started                          |
+| #604                | Season and multi-season back-catalogue ingestion         | `BAT-01`–`BAT-05`                                                      | #586; #587; #588; #589                                     | `2026-09-28-P14-submit-batch.md` | Accepted with documented limitations |
 | #605                | Corrections, stable identity and statistics provenance   | `COR-01`, `ADM-02`, selected `PUB-*`                                   | #591; #592; #593                                           | `2026-09-28-P12-admin.md`        | Not accepted                         |
 | #606                | Versioned dataset release and reproducibility            | `PUB-04`, `DATA-01`, `DATA-02`                                         | #562; #596; #597                                           | `2026-09-25-P10-admin.md`        | Accepted                             |
 | #607                | API consumer keys, quotas and rate limits                | `PUB-05`, `API-01`                                                     | #594; #595; #743                                           | `2026-09-26-P09-api-consumer.md` | Accepted with documented limitations |
@@ -28,6 +28,7 @@
 | P11            | Submitter; reviewer                               | Not supplied                                         | #603                   | `2026-09-28-P11-new-fixture.md`  |
 | P12            | Administrator                                     | Not supplied                                         | #605                   | `2026-09-28-P12-admin.md`        |
 | P13            | Technically competent API consumer                | Computer Science student with development experience | #612                   | `2026-09-28-P13-api-consumer.md` |
+| P14            | Approved submitter; reviewer/admin where required | Not separately recorded                              | #604                   | `2026-09-28-P14-submit-batch.md` |
 
 Participant names, personal email addresses and credentials must not appear here.
 
@@ -54,11 +55,11 @@ Record outcomes per attempted Task ID. Leave unattempted tasks at zero rather th
 | SUB-05  |        0 |       0 |       0 |       0 |                                                               |
 | SUB-06  |        0 |       0 |       0 |       0 |                                                               |
 | SUB-07  |        1 |       1 |       0 |       0 |                                                               |
-| BAT-01  |        0 |       0 |       0 |       0 |                                                               |
-| BAT-02  |        0 |       0 |       0 |       0 |                                                               |
-| BAT-03  |        0 |       0 |       0 |       0 |                                                               |
-| BAT-04  |        0 |       0 |       0 |       0 |                                                               |
-| BAT-05  |        0 |       0 |       0 |       0 |                                                               |
+| BAT-01  |        1 |       1 |       0 |       0 |                                                               |
+| BAT-02  |        1 |       1 |       0 |       0 |                                                               |
+| BAT-03  |        1 |       0 |       1 |       0 | P14-F01                                                       |
+| BAT-04  |        1 |       1 |       0 |       0 |                                                               |
+| BAT-05  |        1 |       0 |       0 |       1 | P14-F02                                                       |
 | COR-01  |        2 |       1 |       0 |       1 | P12-F01; P12-F02; P12-F03; P12-F04; P12-F05; P12-F06; P12-F07 |
 | REV-01  |        2 |       2 |       0 |       0 |                                                               |
 | REV-02  |        1 |       1 |       0 |       0 |                                                               |
@@ -102,6 +103,9 @@ Every S1/S2 or otherwise actionable finding must have a recorded decision.
 | P12-F10    | P12     | #605                | Cross-cutting | Deployed page loads slow enough to read as failure rather than latency; corroborates #599 section 10.                                                      | S1       | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint.        | #613        | Not applicable      | Not required for a deferred finding; carried to #613                                                    |
 | P12-F11    | P12     | #605                | Cross-cutting | The administrator fixture selector loads every fixture in the database, about 141 sequential requests.                                                     | S2       | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint.        | #613        | Not applicable      | Not required for a deferred finding; carried to #613                                                    |
 | P13-F01    | P13     | #612                | PUB-05        | Prospective external API consumer could discover the API and understand its operations but could not determine how to request access or obtain an API key. | S2       | Accept   | Authenticated-consumer onboarding is not independently discoverable; the participant repeated the same concern in post-test feedback. | #783        | Not yet implemented | Required after #783 is deployed; repeat PUB-05 without coaching                                         |
+| P14-F01    | P14     | #604                | BAT-03        | The submission report clearly showed that the two source items were unresolved because their fixture references could not be matched, but the recovery/action guidance could be clearer about exactly what the submitter needs to change before retrying. | S3 | Defer | Non-blocking clarity improvement; recorded and carried to #613 for the Sprint 3 close-out. | #613 | Not applicable | Not required for deferred S3 finding; carried to #613 |
+| P14-F02    | P14     | #604                | BAT-05        | The “Download JSON Report” control was discoverable, but selecting it displayed “The complete report is temporarily unavailable. Try the download again.” The participant could not obtain the complete report. | S2 | Defer | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the Sprint 3 close-out; no fix attempted within this sprint. | #613 | Not applicable | Not required for deferred S2 finding; carried to #613 |
+| P14-F03    | P14     | #604                | Cross-cutting | When all search text is backspaced/cleared, the search/select control automatically selects the top option instead of returning to a blank state. This was a non-blocking usability issue. | S4 | Defer | Minor non-blocking UX improvement; recorded and carried to #613 for the Sprint 3 close-out. | #613 | Not applicable | Not required for deferred S4 finding; carried to #613 |
 
 Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is temporary and prevents user-feedback issue close-out for an S1/S2 or otherwise actionable finding.
 
@@ -110,9 +114,9 @@ Allowed final decisions are `Accept`, `Defer`, or `Reject`. `Pending` is tempora
 | Severity | Count | Accepted | Deferred | Rejected | Pending | Resolved after retest |
 | -------- | ----: | -------: | -------: | -------: | ------: | --------------------: |
 | S1       |     2 |        0 |        2 |        0 |       0 |                     0 |
-| S2       |     9 |        2 |        7 |        0 |       0 |                     0 |
-| S3       |     5 |        3 |        2 |        0 |       0 |                     1 |
-| S4       |     1 |        0 |        1 |        0 |       0 |                     0 |
+| S2       |    10 |        2 |        8 |        0 |       0 |                     0 |
+| S3       |     6 |        3 |        3 |        0 |       0 |                     1 |
+| S4       |     2 |        0 |        2 |        0 |       0 |                     0 |
 
 ## Integrated Changes and Retests
 
@@ -140,6 +144,9 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 | P12-F09    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
 | P12-F10    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S1) | #613 Sprint 3 close-out                |
 | P12-F11    | Defer    | Sprint 3 closes 29 September 2026. Recorded and carried to #613 for the sprint close-out; no fix attempted within this sprint. (S2) | #613 Sprint 3 close-out                |
+| P14-F01    | Defer    | BAT-03 reference-resolution messaging was understandable at a technical level but could provide clearer recovery/action guidance. Recorded and carried to #613 for the Sprint 3 close-out. (S3) | #613 Sprint 3 close-out |
+| P14-F02    | Defer    | The Download JSON Report control was available, but the complete report was temporarily unavailable when selected. Recorded and carried to #613 for the Sprint 3 close-out. (S2) | #613 Sprint 3 close-out |
+| P14-F03    | Defer    | Clearing all search text automatically selects the top option instead of leaving the search/select control blank. Non-blocking usability follow-up carried to #613. (S4) | #613 Sprint 3 close-out |
 
 ## User-Feedback Issue Close-Out Checklist
 
@@ -148,7 +155,7 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 | #601                | Deployed app recorded; exact URL/commit unavailable                                                                                                                         | `2026-09-24-P07-multi-role.md`   | Yes                        | Yes                                       | Not applicable; no accepted S1/S2 finding                     | Yes             | Yes                                                                                                                     |
 | #602                | Deployed app recorded; exact URL/commit unavailable                                                                                                                         | `2026-09-24-P08-public.md`       | Yes                        | Yes; P08-F01 accepted                     | No; #716 implementation and PUB-06 retest required            | Yes             | No; accepted S2 retest remains required                                                                                 |
 | #603                | Facilitator reported #571; #583; #483; #584; #585; #586; #587; #705 and #708 deployed/usable; deployment SHA unavailable                                                    | `2026-09-28-P11-new-fixture.md`  | Yes                        | Yes; P11-F01 deferred to #770             | Not applicable; deferred S3 finding                           | Yes             | Yes; Accepted with documented limitations: coached Partial REV-06; #770 deferred; deployment SHA/reset plan unavailable |
-| #604                |                                                                                                                                                                             |                                  |                            |                                           |                                                               |                 |                                                                                                                         |
+| #604 | Prepared season and multi-season/back-catalogue packages were available; valid Women's Premier Cup and Men's Challenger Cup packages were used during the session; deployed environment recorded in session evidence | `2026-09-28-P14-submit-batch.md` | Yes | Yes; P14-F01, P14-F02 and P14-F03 all have final decisions | Not applicable; all P14 findings were deferred rather than accepted S1/S2 changes | Yes | Yes; Accepted with documented limitations: BAT-03 recovery wording could be clearer, BAT-05 report download was unavailable, and P14-F03 is a non-blocking search/select usability issue |
 | #605                | Prepared `S3-COR-01` package validated against the submission contract; deployed environment recorded; commit unavailable                                                   | `2026-09-28-P12-admin.md`        | Yes                        | Yes; all eleven findings deferred to #613 | Not applicable; no finding was accepted                       | Yes             | No; Not accepted — two S1 findings remain unfixed                                                                       |
 | #606                | Immutable version/checksum and documented public metadata/artifact paths recorded; deployed commit unavailable                                                              | `2026-09-25-P10-admin.md`        | Yes                        | No findings reported                      | Not applicable                                                | Yes             | Yes; Accepted with documented limitation that deployed commit and P10's exact field-name list were not retained         |
 | #607                | Deployed API/docs and commit recorded; `S3-API-01` prepared                                                                                                                 | `2026-09-26-P09-api-consumer.md` | Yes                        | Yes; P09-F01 accepted, issue link pending | Not applicable; no accepted S1/S2 finding                     | Yes             | No; follow-up issue link and unassisted PUB-05 retest pending                                                           |
@@ -173,6 +180,8 @@ Accepted S1/S2 changes require retest. Prefer the same Task ID against the corre
 - #591, #592 and #593 were already closed when this gate ran, so the gate reported on work it was meant to release rather than gating it. This record notes their closed status and does not change any of them. How the Sprint 3 user-feedback gates operated in practice against how they were designed — issues closing on technical completion rather than waiting for the gate — is carried to #613 for the close-out narrative.
 
 - #603 has one retained new-fixture session. P11's valid package reached review and was onboarded and approved/published. `REV-06` was Partial after facilitator intervention for deferred S3 finding P11-F01/#770. The deployed SHA and reset/recreate procedure were not retained.
+
+- #604 has one retained season/back-catalogue ingestion session. P14 completed BAT-01, BAT-02 and BAT-04 successfully. BAT-03 was Partial because the unresolved-reference report was technically informative but could provide clearer recovery/action guidance. BAT-05 was a Failure because the Download JSON Report control was available but the complete report was temporarily unavailable. P14-F01 and P14-F02 were deferred to #613. P14-F03 records a separate non-blocking usability issue where clearing all search text automatically selects the top option rather than leaving the control blank. #604 is Accepted with documented limitations.
 
 ## Issue #601 Final Gate Result
 
@@ -282,6 +291,28 @@ Before the final #612 gate result can be assigned:
 - the implementation PR/commit and retest result must be recorded in the session and Sprint 3 summary.
 
 The final gate result must then be recorded as `Accepted`, `Accepted with documented limitations`, or `Not accepted`.
+
+## Issue #604 Final Gate Result
+
+**Accepted with documented limitations.**
+
+P14 completed all five selected batch-ingestion tasks.
+
+`BAT-01` was successful: the Women's Premier Cup season upload was completed successfully and the workflow was easy to understand.
+
+`BAT-02` was successful: the Men's Challenger Cup upload was completed successfully and the workflow was easy to understand.
+
+`BAT-03` was Partial. The submission report clearly identified two unresolved source items and showed that their fixture references could not be matched. However, the recovery/action guidance could be clearer about exactly what the submitter needs to change before retrying. This produced deferred S3 finding `P14-F01`.
+
+`BAT-04` was successful. The participant received the clear message: "The package does not match the selected fixture. Check its date and both team names."
+
+`BAT-05` was a Failure. The `Download JSON Report` control was discoverable, but selecting it displayed "The complete report is temporarily unavailable. Try the download again." The complete report could therefore not be obtained. This produced deferred S2 finding `P14-F02`.
+
+A separate cross-cutting usability observation, `P14-F03`, records that clearing all search text automatically selected the top option rather than returning the search/select control to a blank state. This was non-blocking and was recorded as S4 and deferred to #613.
+
+All P14 findings have final decisions. No S1/S2 finding was accepted as a change requiring participant retest. The retained limitations are the BAT-03 recovery wording, the unavailable BAT-05 report download, and the non-blocking search/select behaviour.
+
+**This gate is Accepted with documented limitations.**
 
 ## Evidence Integrity Checklist
 
