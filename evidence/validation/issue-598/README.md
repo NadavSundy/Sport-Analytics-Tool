@@ -11,7 +11,7 @@ sufficient final acceptance evidence: corrected receipt
 `e1707304-da3a-4ad7-aa16-e9cd3084d1b2` published with `ballsPerOver: 6`, correct
 statistics, unchanged-replay idempotency and resolvable correction history.
 
-**Final result: PASS - READY TO CLOSE.**
+**Final result: PASS.** See the [authoritative closure addendum](acceptance-record.md#authoritative-closure-addendum-2026-09-28) for the deployed-revision boundary, complete scenario ledger, fixed-and-retested blockers, and explicit #770/evidence limitations. This record may be referenced by #613.
 
 The test package is generated from the supplied Cricsheet source with:
 
