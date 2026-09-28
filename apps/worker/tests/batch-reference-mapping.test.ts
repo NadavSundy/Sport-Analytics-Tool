@@ -1,6 +1,8 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, test, vi } from 'vitest';
 
+import { canonicaliseCandidates } from '../src/batch-package';
+
 import {
   finalBatchValidationState,
   finalBatchStateAfterValidationFailure,
@@ -238,6 +240,30 @@ describe('batch validation diagnostics (#763)', () => {
     expect(detail.errorMessage).toHaveLength(500);
     expect(detail).not.toHaveProperty('stack');
   });
+});
+
+test('assigns distinct persisted positions to repeated legal-ball labels in one over (#763)', () => {
+  const candidates = canonicaliseCandidates([
+    {
+      ordinal: 0,
+      fixtureKey: 'f',
+      inningsKey: 'i',
+      event: { overNumber: 0, positionInOver: 0, occurrenceSequence: 1 },
+    },
+    {
+      ordinal: 1,
+      fixtureKey: 'f',
+      inningsKey: 'i',
+      event: { overNumber: 0, positionInOver: 1, occurrenceSequence: 2 },
+    },
+    {
+      ordinal: 2,
+      fixtureKey: 'f',
+      inningsKey: 'i',
+      event: { overNumber: 0, positionInOver: 1, occurrenceSequence: 3 },
+    },
+  ] as never);
+  expect(candidates.map((candidate) => candidate.event.positionInOver)).toEqual([0, 1, 2]);
 });
 
 describe('reviewer-actionable participant references (#729)', () => {

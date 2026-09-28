@@ -24,6 +24,8 @@ Before a Sprint 3 user-feedback session:
 
 The scenario record is intentionally metadata-only. It makes an environment-specific setup reproducible without committing secrets or pretending mutable database identifiers are portable between environments.
 
+For the #603 genuinely-new-fixture feedback gate, use the focused [session pack](ISSUE_603_NEW_FIXTURE_SESSION_PACK.md). It combines the scenario-specific readiness check, neutral participant prompts, capture fields and gate-decision rules; it does not supply participant results.
+
 ## Reusable fixture-5 reference
 
 The reusable source pack comes from the live Thailand vs Singapore fixture used for the 8 September stakeholder review:
