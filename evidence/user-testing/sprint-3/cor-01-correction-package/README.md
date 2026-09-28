@@ -39,26 +39,67 @@ Database identifiers are assigned at ingest and are environment-specific;
 nothing in this repository records the deployed values. They must be read off the
 build being tested.
 
-**Recommended fixture:** the seeded reference match **729307** — Kolkata Knight
-Riders v Kings XI Punjab, 26 April 2014, IPL 2014, T20
-(`database/seeds/matches/729307.json`). Its expected figures are already
-documented in `evidence/validation/729307-published-figures.md` (Kings XI Punjab
-132/9 in 20 overs; KKR 109 all out in 18.2), so the facilitator knows what the
-statistics should read before and after. Confirm it is present on the deployed
-build; if the deployment is not seeded from `database/seeds/matches/`, any
-existing fixture with accepted events works instead.
+**Recommended fixture: an issue #708 onboarding-test fixture — Argentina v
+Austria — and specifically its second innings.**
+
+These deliveries cannot be removed afterwards (see the limitations below), so the
+target should be a fixture that is already synthetic. The #708 packages in
+`evidence/validation/issue-708/` each created one: every record they introduce is
+fictional and prefixed `onboarding-test-`, and each fixture is published with two
+innings and five deliveries.
+
+| Package                              | Fixture date | Season                 |
+| ------------------------------------ | ------------ | ---------------------- |
+| `onboarding-test-package.json`       | 2031-03-14   | `onboarding-test-2031` |
+| `onboarding-test-package-rerun.json` | 2032-04-18   | `onboarding-test-2032` |
+| `onboarding-test-package-run-3.json` | 2033-05-22   | `onboarding-test-2033` |
+
+Prefer the **2031** fixture: its onboarding run is complete and written up in
+`evidence/validation/issue-708/deployed-acceptance-2026-09-25.md`, so nothing
+further depends on its live delivery count. Only a fixture whose onboarding
+journey actually completed is usable — an unrun package has no fixture on the
+deployed build at all, and burning one of those to make a COR-01 target wastes a
+single-use onboarding scenario.
+
+**Use innings 2, not innings 1.** Innings 1 cannot satisfy the server's rules:
+its non-striker `onboarding-test-Sipho-Dlamini` is deliberately on
+`onboarding-test-Unlisted-Wanderers` rather than the batting team, which is the
+`team_not_recognised` case #708 exists to test, and it holds only one genuine
+Argentina batter — so it cannot supply two distinct batters on the batting side.
+Innings 2 is clean in all three packages:
+
+| Role        | Participant                      | Team                |
+| ----------- | -------------------------------- | ------------------- |
+| Batting     | —                                | Austria             |
+| Striker     | `onboarding-test-Lerato-Khumalo` | Austria             |
+| Non-striker | `onboarding-test-Thandi-Mokoena` | Austria             |
+| Bowler      | `onboarding-test-Priya-Naicker`  | Argentina (bowling) |
+
+Innings 2 also makes the correction unusually legible. It currently holds two
+deliveries worth **2 runs**. This package adds 1 + 2 + 6 + 3 = **12**, taking it
+to 14; correcting the six to a four takes it to **12**. Both movements are
+visible at a glance, which they would not be inside a 132-run innings.
+
+**Do not use the seeded reference match 729307.** Its published figures are the
+validation baseline recorded in
+`evidence/validation/729307-published-figures.md`; adding four synthetic
+deliveries to it corrupts the fixture that evidence documents.
 
 Then:
 
 1. Browse to the fixture. Its URL is `/fixtures/{fixtureId}` — that path segment
    is the `fixtureId`.
-2. Fetch one page of its accepted events (anonymous, no key needed):
+2. Fetch its accepted events (anonymous, no key needed):
 
    ```http
-   GET /api/v1/fixtures/{fixtureId}/events?limit=5
+   GET /api/v1/fixtures/{fixtureId}/events?limit=10
    ```
 
-3. From **one** returned event, copy four values:
+3. Find the two events whose `inningsOrdinal` is **2** — the ones batted by
+   Austria. If they come back with resolved participant IDs, that alone proves
+   what this package needs: the innings exists, the three players were onboarded,
+   and they are in the fixture's squad on the right sides.
+4. From **one** of those two events, copy four values:
 
    | Read from the response    | Paste into `events.json` as |
    | ------------------------- | --------------------------- |
@@ -76,7 +117,14 @@ the innings to belong to the fixture and every participant to be in the
 fixture's squad; `validateCricketBusinessRules`
 (`packages/contracts/src/cricket-validation.ts:174-213`) requires striker and
 non-striker to be on the innings' batting team and the bowler on its bowling
-team. Mixing IDs from different innings or fixtures fails these checks.
+team. Mixing IDs from different innings or fixtures fails these checks — which is
+why all four values come from one delivery, and why innings 1 is excluded.
+
+Two of the three innings-2 participants (`Lerato-Khumalo`, carrying an
+identifier that names nobody, and `Priya-Naicker`, carrying none) reached the
+platform only through a reviewer onboarding decision during the #708 run. Step 3
+above is what confirms those decisions were made: if the events return their IDs,
+they exist.
 
 Also record, for the session notes, the fixture's current total runs and the
 striker's current runs — those are the figures expected to move.
@@ -105,12 +153,12 @@ delivery coordinates are free.
 
 Signed in as the `admin` account, go to **`/submissions/new`**.
 
-| Control                  | What to do                                                                                                                                                                                             |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Workflow                 | Choose **Advanced technical JSON**                                                                                                                                                                     |
-| **Fixture**              | Select the chosen fixture. Options read `{startDate} — {home} v {away} — {competition}, {season} ({matchType})`, so 729307 appears as `2014-04-26 — Kolkata Knight Riders v Kings XI Punjab — … (T20)` |
-| **Delivery events JSON** | Paste the entire filled-in contents of `events.json` — the bare `[ … ]` array, nothing around it                                                                                                       |
-| Button                   | **Submit events**                                                                                                                                                                                      |
+| Control                  | What to do                                                                                                                                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow                 | Choose **Advanced technical JSON**                                                                                                                                                                                                 |
+| **Fixture**              | Select the chosen fixture. Options read `{startDate} — {home} v {away} — {competition}, {season} ({matchType})`, so the 2031 onboarding-test fixture appears as `2031-03-14 — Argentina v Austria — …, onboarding-test-2031 (T20)` |
+| **Delivery events JSON** | Paste the entire filled-in contents of `events.json` — the bare `[ … ]` array, nothing around it                                                                                                                                   |
+| Button                   | **Submit events**                                                                                                                                                                                                                  |
 
 Do not wrap the array in an object. The form adds `fixtureId` and
 `schemaVersion` itself (`submission-api.ts:342-346`); pasting a full
@@ -151,7 +199,9 @@ The participant selects the third delivery, changes off-bat runs from **6** to
 - "Revision 2 is now current. The displayed event and match statistics below
   have been refreshed."
 - The fixture statistics panel below re-fetches in place — the fixture total and
-  the striker's runs each drop by 2.
+  the striker's runs each drop by 2. On the recommended 2031 fixture that is the
+  Austria innings going 14 → 12, and `onboarding-test-Lerato-Khumalo` going
+  14 → 12.
 
 The striker's season/competition/career aggregates also change, but only on the
 participant's own page; snapshots refresh synchronously on the next read
@@ -177,10 +227,14 @@ that the accepted event was not changed.
   find: there is no correction route in `App.tsx` and no nav entry. Record that
   as the finding rather than as a session failure.
 - **The added deliveries are permanent.** No endpoint deletes a delivery or a
-  submission; a correction supersedes a revision but never removes it. The only
-  reset is a database restore or reseed. Using the 729307 reference fixture
-  therefore leaves four synthetic deliveries in it. Prefer a disposable fixture
-  where one exists.
+  submission; a correction supersedes a revision but never removes it, and there
+  is no reviewer or administrator route that undoes an accepted direct
+  submission. The only reset is a database restore or reseed. This is the whole
+  reason Step 1 targets an already-synthetic `onboarding-test-` fixture: the
+  four deliveries stay there for good, so they should land somewhere nothing
+  real depends on. Record in the session notes which fixture was used and that
+  its delivery count moved from five to nine, so a later reader of the #708
+  acceptance evidence is not surprised by it.
 - **`overNumber` is 900 by design.** Live rows are unique on
   `(innings_id, over_number, position_in_over)` and on
   `(innings_id, innings_sequence)`
