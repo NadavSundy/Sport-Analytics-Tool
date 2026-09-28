@@ -1,7 +1,7 @@
 import { consumerUsageQuerySchema, type ConsumerUsageQuery } from '@sport-analytics/contracts';
 
-export const MAX_CONSUMER_USAGE_RANGE_DAYS = 31;
-export const DEFAULT_CONSUMER_USAGE_RANGE_DAYS = 7;
+const MAX_CONSUMER_USAGE_RANGE_DAYS = 31;
+const DEFAULT_CONSUMER_USAGE_RANGE_DAYS = 7;
 
 export interface ResolvedConsumerUsageQuery {
   from: string;
