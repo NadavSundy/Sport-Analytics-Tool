@@ -6,6 +6,12 @@ External integrations use the consumer surface rather than the anonymous public-
 
 All management operations require an administrator's Supabase bearer token.
 
+The frontend Administration area provides the routine workflow at
+`/admin/api-consumers`: administrators can list the consumers they own, create a consumer, inspect
+safe configuration and key metadata, rotate all active keys, and revoke an individual key. It also
+links to the API Explorer for the complete API product documentation. The management API remains
+the authorization boundary.
+
 ```http
 POST /api/v1/admin/api-consumers
 Authorization: Bearer <admin-token>
@@ -17,6 +23,11 @@ Content-Type: application/json
 The `201` response contains `data.apiKey` exactly once. Subsequent `GET /api/v1/admin/api-consumers` responses return only safe key metadata (ID, prefix, creation time and revocation time), never the raw secret or its digest.
 
 Rotate a consumer key with `POST /api/v1/admin/api-consumers/{consumerId}/keys/rotate`. Rotation revokes every active key for that consumer before issuing the replacement. Revoke an individual key immediately with `DELETE /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}`. Both actions make the old key return the same generic `401 API_KEY_UNAUTHORIZED` result as an unknown key.
+
+The frontend keeps a raw issue or rotation response only in the current in-memory one-time-key
+view. Dismissing or leaving that view discards the raw key; normal list and detail views use only the
+safe metadata returned by the list operation. The frontend does not place keys in URLs, browser
+storage, logs or analytics.
 
 ## Endpoint access classification
 
@@ -86,6 +97,10 @@ request body, credentials or response payload. Usage events are retained for 31 
 by scheduled operational cleanup. The current request becomes visible after its response completes;
 the response's `quota` context describes the request that retrieved the aggregate.
 
+Consequently, the administrator frontend does not show per-consumer usage. Adding that workflow
+requires a separately designed and authorized administrator endpoint; the frontend must not obtain
+usage by retaining a raw key or querying PostgreSQL directly.
+
 ### Using a consumer key from WSL
 
 If the issued consumer key is already stored in the `API_KEY` environment
@@ -121,3 +136,5 @@ The issue #594 consumer-surface classification and protected aliases were added 
 The issue #595 shared rate-limit counter and failure-mode documentation was added with the assistance of Codex[GPT-5].
 The issue #743 browser-client authentication and CORS response-header clarification was added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #610 consumer usage documentation was added with the assistance of Codex[GPT-5].
+The issue #775 administrator frontend workflow and current usage boundary were documented with the
+assistance of Codex[GPT-5.6 Sol].

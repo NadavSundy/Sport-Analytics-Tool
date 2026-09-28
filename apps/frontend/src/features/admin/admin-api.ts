@@ -1,6 +1,11 @@
 import {
   administratorSubmitterAccessResponseSchema,
   administratorUserManagementResponseSchema,
+  apiConsumerIssueResponseSchema,
+  apiConsumerListResponseSchema,
+  apiConsumerRotateResponseSchema,
+  type ApiConsumer,
+  type ApiConsumerIssue,
   type AdministratorManagedUser,
   type AdministratorRoleUpdate,
   type AdministratorSubmitterAccessUpdate,
@@ -14,6 +19,61 @@ export class AdminUserManagementContractError extends Error {
     super('The API returned an unexpected administrator response. Please try again.');
     this.name = 'AdminUserManagementContractError';
   }
+}
+
+export class AdminApiConsumerContractError extends Error {
+  constructor() {
+    super('The API returned an unexpected API consumer response. Please try again.');
+    this.name = 'AdminApiConsumerContractError';
+  }
+}
+
+export async function getAdministratorApiConsumers(
+  client: AuthenticatedApiClient,
+  signal?: AbortSignal,
+): Promise<ApiConsumer[]> {
+  const response = await client.request<unknown>('/admin/api-consumers', signal ? { signal } : {});
+  const parsed = apiConsumerListResponseSchema.safeParse(response);
+  if (!parsed.success) throw new AdminApiConsumerContractError();
+  return parsed.data.data.consumers;
+}
+
+export async function createAdministratorApiConsumer(
+  client: AuthenticatedApiClient,
+  issue: ApiConsumerIssue,
+): Promise<ApiConsumer & { apiKey: string }> {
+  const response = await client.request<unknown>('/admin/api-consumers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(issue),
+  });
+  const parsed = apiConsumerIssueResponseSchema.safeParse(response);
+  if (!parsed.success) throw new AdminApiConsumerContractError();
+  return parsed.data.data;
+}
+
+export async function rotateAdministratorApiConsumerKey(
+  client: AuthenticatedApiClient,
+  consumerId: string,
+): Promise<ApiConsumer & { apiKey: string }> {
+  const response = await client.request<unknown>(
+    `/admin/api-consumers/${encodeURIComponent(consumerId)}/keys/rotate`,
+    { method: 'POST' },
+  );
+  const parsed = apiConsumerRotateResponseSchema.safeParse(response);
+  if (!parsed.success) throw new AdminApiConsumerContractError();
+  return parsed.data.data;
+}
+
+export async function revokeAdministratorApiConsumerKey(
+  client: AuthenticatedApiClient,
+  consumerId: string,
+  keyId: string,
+): Promise<void> {
+  await client.request<void>(
+    `/admin/api-consumers/${encodeURIComponent(consumerId)}/keys/${encodeURIComponent(keyId)}`,
+    { method: 'DELETE' },
+  );
 }
 
 export async function updateAdministratorUserRole(

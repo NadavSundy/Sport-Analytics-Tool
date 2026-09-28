@@ -60,6 +60,13 @@ export function AdministrationPage() {
             </Link>
           </section>
           <section>
+            <h2>API consumers</h2>
+            <p>Issue and manage external API credentials, rate limits, and daily quotas.</p>
+            <Link className="button button--secondary" to="/admin/api-consumers">
+              Manage API consumers
+            </Link>
+          </section>
+          <section>
             <h2>Data governance</h2>
             <p>Publish versioned dataset releases and inspect the public release catalogue.</p>
             <div className="administration-links__actions">
