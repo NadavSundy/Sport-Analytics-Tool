@@ -8,7 +8,10 @@ import type {
   BatchStatus,
   CurrentUserProfile,
 } from '@sport-analytics/contracts';
-import { fixtureProposalSchema } from '@sport-analytics/contracts';
+import {
+  batchParticipantOnboardingDecisionSchema,
+  fixtureProposalSchema,
+} from '@sport-analytics/contracts';
 import {
   useCallback,
   useEffect,
@@ -1387,21 +1390,57 @@ function needsTeam(task: BatchParticipantOnboardingTask): boolean {
   );
 }
 
-function toDecision(
+/**
+ * What a reviewer's answer amounts to so far.
+ *
+ * `incomplete` is nothing chosen, nothing typed yet, or a team still to name:
+ * work in progress rather than a mistake, so it is silent. `invalid` is
+ * something typed that cannot be a durable identifier, which is a mistake and
+ * says so.
+ */
+type OnboardingOutcome =
+  | { status: 'incomplete' }
+  | { status: 'invalid'; message: string }
+  | { status: 'ready'; decision: BatchParticipantOnboardingDecision };
+
+const incomplete: OnboardingOutcome = { status: 'incomplete' };
+
+/**
+ * Issue #770. A durable identifier used to be anything that was not blank, so
+ * a plain name marked the task answered, counted toward "Submit N decisions"
+ * and went to the endpoint as `sourceId`. The whole array was then refused with
+ * a 422 and the reviewer saw one generic failure for a mistake in one field.
+ *
+ * The verdict comes from `batchParticipantOnboardingDecisionSchema`, the schema
+ * the request is built from, rather than from a copy of its rule kept in step
+ * by hand. The wording is this card's own: the schema's message names a fixture
+ * where a reviewer is looking at a participant.
+ */
+function toOutcome(
   task: BatchParticipantOnboardingTask,
   answer: OnboardingAnswer | undefined,
-): BatchParticipantOnboardingDecision | null {
+): OnboardingOutcome {
   const identity = answer?.identity;
-  if (!identity) return null;
-  if (identity.kind === 'identifier' && identity.sourceId.trim().length === 0) return null;
-  if (needsTeam(task) && !answer?.teamName) return null;
-  return {
+  if (!identity) return incomplete;
+  const sourceId = identity.kind === 'identifier' ? identity.sourceId.trim() : null;
+  if (identity.kind === 'identifier' && sourceId?.length === 0) return incomplete;
+  if (needsTeam(task) && !answer?.teamName) return incomplete;
+
+  const candidate = {
     taskReference: task.taskReference,
-    ...(identity.kind === 'candidate'
-      ? { personId: identity.personId }
-      : { sourceId: identity.sourceId.trim() }),
+    ...(identity.kind === 'candidate' ? { personId: identity.personId } : { sourceId }),
     ...(answer?.teamName ? { teamName: answer.teamName } : {}),
   };
+  const parsed = batchParticipantOnboardingDecisionSchema.safeParse(candidate);
+  if (!parsed.success) {
+    return {
+      status: 'invalid',
+      message:
+        'That is not a durable identifier. It needs three parts \u2014 a registry namespace, the ' +
+        'entity type, then the value \u2014 like cricsheet:participant:c07f6bda.',
+    };
+  }
+  return { status: 'ready', decision: parsed.data };
 }
 
 /**
@@ -1436,7 +1475,11 @@ function ParticipantOnboardingTaskCard({
   const teamName = `onboarding-team-${task.taskReference}`;
   const identifierId = `onboarding-identifier-${task.taskReference}`;
   const faultId = `onboarding-fault-${task.taskReference}`;
-  const answered = toDecision(task, answer) !== null;
+  const helpId = `${identifierId}-help`;
+  const errorId = `${identifierId}-error`;
+  const outcome = toOutcome(task, answer);
+  const answered = outcome.status === 'ready';
+  const invalidIdentifier = outcome.status === 'invalid' ? outcome.message : null;
   return (
     <article
       className={`participant-onboarding__task${fault ? ' participant-onboarding__task--faulted' : ''}`}
@@ -1499,7 +1542,8 @@ function ParticipantOnboardingTaskCard({
               type="text"
               value={answer.identity.sourceId}
               disabled={disabled}
-              aria-describedby={`${identifierId}-help`}
+              aria-describedby={invalidIdentifier ? `${helpId} ${errorId}` : helpId}
+              aria-invalid={invalidIdentifier ? 'true' : undefined}
               onChange={(event) =>
                 onAnswer({
                   ...answer,
@@ -1507,11 +1551,16 @@ function ParticipantOnboardingTaskCard({
                 })
               }
             />
-            <p id={`${identifierId}-help`}>
+            <p id={helpId}>
               A registry reference such as <code>cricsheet:participant:abc123</code>, or{' '}
               <code>app:person:42</code> for someone already on this platform. A name is not an
               identifier and is never accepted as one.
             </p>
+            {invalidIdentifier ? (
+              <p className="field-error" id={errorId}>
+                {invalidIdentifier}
+              </p>
+            ) : null}
           </div>
         ) : null}
         {task.candidates.length === 0 ? (
@@ -1580,8 +1629,12 @@ function ParticipantOnboarding({
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const decisions = tasks
-    .map((task) => toDecision(task, answers[task.taskReference]))
-    .filter((decision): decision is BatchParticipantOnboardingDecision => decision !== null);
+    .map((task) => toOutcome(task, answers[task.taskReference]))
+    .filter(
+      (outcome): outcome is { status: 'ready'; decision: BatchParticipantOnboardingDecision } =>
+        outcome.status === 'ready',
+    )
+    .map((outcome) => outcome.decision);
   const faultByTask = new Map(
     faults
       .filter((detail) => detail.taskReference !== undefined)
