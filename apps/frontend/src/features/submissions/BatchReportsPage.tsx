@@ -26,6 +26,9 @@ type ReportState =
   | { kind: 'error'; message: string }
   | { kind: 'ready'; report: BatchReportResponse['data'] };
 
+type DownloadState =
+  { kind: 'idle' } | { kind: 'downloading' } | { kind: 'error'; message: string };
+
 const stateLabels: Record<BatchStatus['status'], string> = {
   received: 'Received',
   stored: 'Stored',
@@ -61,6 +64,14 @@ function correctedUploadPath(batch: BatchStatus): string {
     competitionId: batch.competitionId,
   });
   return `/submissions/new?${parameters.toString()}`;
+}
+
+function downloadUnavailableMessage(error: unknown, batchReference: string): string {
+  const cause =
+    error instanceof ApiResponseError
+      ? error.message
+      : 'Your connection or browser did not return a response from the report service.';
+  return `${cause} Try the download again. If it is still unavailable, contact support and include batch reference ${batchReference}.`;
 }
 
 function outcomeLabel(outcome: BatchReportItem['outcome']) {
@@ -481,9 +492,7 @@ function BatchList() {
 function BatchReport({ batchReference }: { batchReference: string }) {
   const client = useAuthenticatedApiClient();
   const [state, setState] = useState<ReportState>({ kind: 'loading' });
-  const [downloadState, setDownloadState] = useState<
-    { kind: 'idle' } | { kind: 'downloading' } | { kind: 'error' }
-  >({ kind: 'idle' });
+  const [downloadState, setDownloadState] = useState<DownloadState>({ kind: 'idle' });
   useEffect(() => {
     void getBatchReport(client, batchReference)
       .then((response) => {
@@ -509,8 +518,11 @@ function BatchReport({ batchReference }: { batchReference: string }) {
     try {
       await downloadBatchReport(client, batchReference);
       setDownloadState({ kind: 'idle' });
-    } catch {
-      setDownloadState({ kind: 'error' });
+    } catch (error: unknown) {
+      setDownloadState({
+        kind: 'error',
+        message: downloadUnavailableMessage(error, batchReference),
+      });
     }
   }
 
@@ -563,9 +575,7 @@ function BatchReport({ batchReference }: { batchReference: string }) {
       >
         {downloadState.kind === 'downloading' ? 'Preparing report…' : 'Download JSON report'}
       </button>
-      {downloadState.kind === 'error' ? (
-        <p role="alert">The complete report is temporarily unavailable. Try the download again.</p>
-      ) : null}
+      {downloadState.kind === 'error' ? <p role="alert">{downloadState.message}</p> : null}
       <h2>Results</h2>
       <ReportItems batchReference={batchReference} items={state.report.items} />
       {state.report.pagination.nextCursor ? (

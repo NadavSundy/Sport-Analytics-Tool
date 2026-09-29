@@ -173,6 +173,37 @@ describe('batch report view', () => {
     expect(screen.getByRole('button', { name: 'Download JSON report' })).toBeInTheDocument();
   });
 
+  test('explains an unavailable report download and gives the next action', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        if (String(input).includes('/auth/me')) return Promise.resolve(apiResponse(profile()));
+        if (String(input).includes('/report/download')) {
+          return Promise.resolve({
+            ok: false,
+            status: 503,
+            json: vi.fn().mockResolvedValue({
+              error: {
+                code: 'REPORT_UNAVAILABLE',
+                message: 'The report service is undergoing maintenance.',
+              },
+            }),
+          } as unknown as Response);
+        }
+        return Promise.resolve(apiResponse(report(3, 0)));
+      }),
+    );
+    await renderReport();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download JSON report' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/the report service is undergoing maintenance/i);
+    expect(alert).toHaveTextContent(
+      /try.*again.*contact support.*123e4567-e89b-42d3-a456-426614174000/i,
+    );
+  });
+
   test('shows actionable item faults with source and accepted-record traceability', async () => {
     const body = report(1, 1);
     body.data.batch.progress.total = 2;
