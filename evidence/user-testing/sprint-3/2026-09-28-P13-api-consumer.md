@@ -1,4 +1,4 @@
-# Sprint 3 User-Testing Session — P13 — Advanced API Consumer
+﻿# Sprint 3 User-Testing Session â€” P13 â€” Advanced API Consumer
 
 ## Session Metadata
 
@@ -21,7 +21,7 @@
 | Workflow focus                         | Advanced API consumer capabilities                                                               |
 | User-feedback issue                    | #612                                                                                             |
 | Prepared consumer safe label           | `S3 API Advanced Test`                                                                           |
-| Known supporting implementation issues | #775, #776                                                                                       |
+| Known supporting implementation issues | #775, #776, #783                                                                                 |
 | Participant independence               | Confirmed not part of the project team and did not implement/substantially design the workflow   |
 | API consumer credentials               | Supplied out-of-band                                                                             |
 | Administrator credentials              | Supplied out-of-band                                                                             |
@@ -39,7 +39,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task — `PUB-05` — API Discovery
+# Task â€” `PUB-05` â€” API Discovery
 
 **Task goal**
 
@@ -73,7 +73,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 **Description:** A technically experienced prospective API consumer could discover the API documentation and available operations, but could not determine how to request consumer access or obtain an API key. The same problem was independently identified again in post-test feedback.
 
-**Severity:** **S2 — High**
+**Severity:** **S2 â€” High**
 
 **Severity rationale:** The API itself remains discoverable and understandable, but a new external consumer cannot independently complete the onboarding path needed to make authenticated consumer requests. This is a major obstacle in an important API workflow, although access can currently be supplied out-of-band.
 
@@ -85,7 +85,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task — `API-02` — Retrieve and Understand Aggregate Data
+# Task â€” `API-02` â€” Retrieve and Understand Aggregate Data
 
 **Task goal**
 
@@ -117,7 +117,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task — `API-03` — Follow a Deprecation Path
+# Task â€” `API-03` â€” Follow a Deprecation Path
 
 **Task goal**
 
@@ -149,7 +149,7 @@ This session covers `PUB-05`, `API-02`, `API-03`, and `API-04`.
 
 ---
 
-# Task — `API-04` — Find a Consumer's API Usage
+# Task â€” `API-04` â€” Find a Consumer's API Usage
 
 **Task goal**
 
@@ -224,9 +224,9 @@ Yes.
 
 # Findings Summary and Decisions
 
-| Finding ID | Task ID  | Finding                                                                              | Severity | Decision   | Reason                                                                                                        | Gitea issue | Fix PR / commit     | Retest                      |
-| ---------- | -------- | ------------------------------------------------------------------------------------ | -------- | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- | ------------------- | --------------------------- |
-| `P13-F01`  | `PUB-05` | Prospective API consumer cannot discover how to request access or obtain an API key. | S2       | **Accept** | Onboarding for authenticated consumer operations is not discoverable; concern repeated in post-test feedback. | #783        | Not yet implemented | Required after deployed fix |
+| Finding ID | Task ID  | Finding                                                                              | Severity | Decision   | Reason                                                                                                        | Gitea issue | Fix PR / commit  | Retest                                                                                                                      |
+| ---------- | -------- | ------------------------------------------------------------------------------------ | -------- | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `P13-F01`  | `PUB-05` | Prospective API consumer cannot discover how to request access or obtain an API key. | S2       | **Accept** | Onboarding for authenticated consumer operations is not discoverable; concern repeated in post-test feedback. | #783        | #787 / `14c203c` | **Passed — deployed PUB-05 retest completed on 2026-09-28; participant was satisfied with the revised onboarding guidance** |
 
 No additional findings are recorded from this session.
 
@@ -234,7 +234,7 @@ No additional findings are recorded from this session.
 
 # Follow-Up Gitea Issue
 
-## P13-F01 — #783
+## P13-F01 â€” #783
 
 **Title:** Document how external API consumers request access and obtain an API key
 
@@ -242,7 +242,7 @@ No additional findings are recorded from this session.
 
 **Task ID:** `PUB-05`
 
-**Severity:** S2 — High
+**Severity:** S2 â€” High
 
 **Description:** During Sprint 3 formal user testing, a technically experienced API consumer could easily locate the API Explorer and understand the available operations, but could not find any documented path for requesting API access or obtaining a consumer key.
 
@@ -260,6 +260,28 @@ No additional findings are recorded from this session.
 
 ---
 
+# Retest — `P13-F01` / `PUB-05`
+
+| Field                  | Record                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| Date                   | 2026-09-28                                                                                    |
+| Finding                | `P13-F01`                                                                                     |
+| Task                   | `PUB-05`                                                                                      |
+| Related implementation | #783                                                                                          |
+| Pull Request           | #787                                                                                          |
+| Implementation commit  | `14c203c1781b0f12e4b1aacd43b8d0ac7d80966a`                                                    |
+| Main merge commit      | `34bca4d0a8ff442092808434c3e022016844fcc7`                                                    |
+| Environment            | Deployed Stat'sTheGame API Explorer containing the #783 onboarding change                     |
+| Exact deployment SHA   | Not separately recorded in the supplied retest note                                           |
+| Assistance             | No workflow assistance was reported in the supplied retest note                               |
+| Outcome                | **Passed**                                                                                    |
+| Participant feedback   | The participant was satisfied with `PUB-05` and the revised API-consumer onboarding guidance. |
+| Finding status         | **Resolved**                                                                                  |
+
+The historical first-run `PUB-05` outcome remains **Partial**. The retest does not rewrite the original observation; it records that the accepted S2 finding was corrected and successfully re-evaluated on the deployed product.
+
+---
+
 # Credential / Privacy Review
 
 No API key, bearer token, password, authentication cookie, personal email address, or other secret appears in the retained session notes.
@@ -270,19 +292,21 @@ The participant referred only to the safe consumer label `S3 API Advanced Test`,
 
 # Gate Status
 
-**Ready for team finding decisions**
+**Accepted with documented limitations**
 
-The session provides evidence for all four selected tasks. `API-02`, `API-03`, and `API-04` were completed successfully. `PUB-05` was Partial because the participant could not determine how to obtain API consumer access.
+The original session provides evidence for all four selected tasks. `API-02`, `API-03`, and `API-04` were completed successfully.
 
-Issue #612 must not yet be marked accepted because `P13-F01` is an **accepted S2 finding** that still requires implementation and retest.
+`PUB-05` was initially Partial because the participant could not determine how a prospective external consumer should request access or obtain an API key. That produced accepted S2 finding `P13-F01`, tracked by #783.
 
-Before gate closure:
+#783 was implemented through PR #787. The implementation commit is `14c203c1781b0f12e4b1aacd43b8d0ac7d80966a` and it was merged to `main` in `34bca4d0a8ff442092808434c3e022016844fcc7`.
 
-- implement the accepted follow-up tracked by Gitea issue #783;
-- implement and deploy the onboarding/documentation fix;
-- retest `PUB-05` against the corrected deployed build without coaching;
-- record the retest outcome and implementation PR/commit;
-- then assign the final #612 gate result as `Accepted`, `Accepted with documented limitations`, or `Not accepted`.
+After the corrected API onboarding experience was deployed, `PUB-05` was retested. The participant was satisfied with the revised guidance and the finding is considered resolved.
+
+The exact deployment SHA and a separate assistance field were not retained in the supplied retest note; this is recorded as a limitation rather than inferred.
+
+All #612 findings now have final decisions, the accepted S2 change has been retested successfully, and no unresolved #612 finding remains.
+
+**Issue #612 may close with the final result: Accepted with documented limitations.**
 
 ---
 
@@ -301,3 +325,5 @@ Before gate closure:
 ## AI Declaration
 
 The preceding anonymised session evidence was organised and drafted with the assistance of ChatGPT-Web[GPT-5.6 Sol] based on facilitator/participant notes. The project team remains responsible for verifying observations, task outcomes, severity, decisions and retained evidence.
+
+The #783 deployed PUB-05 retest close-out and #612 gate update were organised and drafted with the assistance of ChatGPT-Web[GPT-5.6 Sol] from the supplied participant retest result and repository evidence.
