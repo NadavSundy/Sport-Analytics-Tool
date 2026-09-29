@@ -155,6 +155,13 @@ describe('public application and authentication interface', () => {
     vi.unstubAllGlobals();
   });
 
+  it('shows an accessible route-loading state while a non-home page is loaded on demand', () => {
+    renderApp('/fixtures');
+
+    expect(screen.getByRole('status', { name: 'Loading page' })).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading page' }).closest('.route-content')).toBeInTheDocument();
+  });
+
   it('keeps the landing page public and shows signed-out navigation', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

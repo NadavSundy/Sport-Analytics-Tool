@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import SwaggerUI from 'swagger-ui-react';
 import { parse } from 'yaml';
-import 'swagger-ui-react/swagger-ui.css';
 
 import { PageLayout } from '../../components/PageLayout';
 import { ApiExplorerLoadingIndicator } from './ApiExplorerLoadingIndicator';
 import './ApiExplorerPage.css';
+
+const SwaggerUI = lazy(async () => {
+  await import('swagger-ui-react/swagger-ui.css');
+  const module = await import('swagger-ui-react');
+  return { default: module.default };
+});
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/v1';
 const API_MAJOR_VERSION = 'v1';
@@ -141,6 +145,7 @@ function parseOpenApiDocument(source: string): OpenApiDocument {
 export function ApiExplorerPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [showPlanned, setShowPlanned] = useState(false);
+  const [showInteractiveExplorer, setShowInteractiveExplorer] = useState(false);
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' });
   const specificationUrl = openApiSpecificationUrl();
 
@@ -352,15 +357,26 @@ export function ApiExplorerPage() {
             <h2 className="api-explorer__swagger-heading" id="swagger-heading">
               OpenAPI {API_MAJOR_VERSION}
             </h2>
-            <div className="api-explorer__swagger">
-              <SwaggerUI
-                spec={swaggerDocument}
-                deepLinking
-                displayRequestDuration
-                defaultModelsExpandDepth={-1}
-                persistAuthorization={false}
-              />
-            </div>
+            {showInteractiveExplorer ? (
+              <Suspense fallback={<ApiExplorerLoadingIndicator label="Loading interactive API Explorer" />}>
+                <div className="api-explorer__swagger">
+                  <SwaggerUI
+                    spec={swaggerDocument}
+                    deepLinking
+                    displayRequestDuration
+                    defaultModelsExpandDepth={-1}
+                    persistAuthorization={false}
+                  />
+                </div>
+              </Suspense>
+            ) : (
+              <div className="api-explorer__swagger-placeholder ui-card">
+                <p>The interactive explorer is loaded on demand to keep this public page responsive.</p>
+                <button className="ui-button ui-button--secondary" type="button" onClick={() => setShowInteractiveExplorer(true)}>
+                  Load interactive API Explorer
+                </button>
+              </div>
+            )}
           </section>
         </>
       ) : null}

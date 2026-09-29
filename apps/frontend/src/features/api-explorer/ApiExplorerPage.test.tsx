@@ -85,6 +85,11 @@ function renderPage() {
   );
 }
 
+async function loadInteractiveExplorer() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Load interactive API Explorer' }));
+  return screen.findByTestId('swagger-ui');
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -135,7 +140,7 @@ describe('ApiExplorerPage', () => {
     expect(within(accessRegion).getByText(/does not grant administrator/)).toBeVisible();
     expect(accessRegion).not.toHaveTextContent(/sat_live_/);
 
-    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(await loadInteractiveExplorer()).toBeInTheDocument();
   });
 
   it('keeps a visible accessible loading indicator until the specification is ready', async () => {
@@ -158,7 +163,7 @@ describe('ApiExplorerPage', () => {
 
     resolveSpecification?.(okSpecification());
 
-    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(await loadInteractiveExplorer()).toBeInTheDocument();
     expect(
       screen.queryByRole('progressbar', { name: 'Loading API specification' }),
     ).not.toBeInTheDocument();
@@ -169,7 +174,7 @@ describe('ApiExplorerPage', () => {
 
     renderPage();
 
-    const swagger = await screen.findByTestId('swagger-ui');
+    const swagger = await loadInteractiveExplorer();
     expect(swagger).toHaveAttribute('data-paths', '/api/v1/health');
     expect(swagger).toHaveAttribute('data-auth-schemes', 'bearerAuth,apiKeyAuth');
 
@@ -190,7 +195,7 @@ describe('ApiExplorerPage', () => {
     renderPage();
 
     const toggle = await screen.findByRole('checkbox', { name: /Show planned operations/ });
-    expect(screen.getByTestId('swagger-ui')).toHaveAttribute('data-paths', '/api/v1/health');
+    expect(await loadInteractiveExplorer()).toHaveAttribute('data-paths', '/api/v1/health');
 
     fireEvent.click(toggle);
 
@@ -225,7 +230,7 @@ describe('ApiExplorerPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading specification' }));
 
-    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(await loadInteractiveExplorer()).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 });

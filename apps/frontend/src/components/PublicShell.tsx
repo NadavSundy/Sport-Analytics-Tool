@@ -29,11 +29,15 @@ function BrandWordmark() {
         className="brand-wordmark__image brand-asset--day"
         src="/brand/statsthegame-wordmark-light.svg"
         alt="Stat'sTheGame"
+        width={176}
+        height={35}
       />
       <img
         className="brand-wordmark__image brand-asset--night"
         src="/brand/statsthegame-wordmark-dark.svg"
         alt="Stat'sTheGame"
+        width={176}
+        height={35}
       />
     </span>
   );

@@ -254,11 +254,13 @@ describe('public browsing pages', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    renderRoute('/competitions');
+    const { container } = renderRoute('/competitions');
 
     expect(
-      screen.getByRole('heading', { level: 3, name: 'Loading competitions' }).parentElement,
+      (await screen.findByRole('heading', { level: 3, name: 'Loading competitions' })).parentElement,
     ).toHaveAttribute('role', 'status');
+    expect(container.querySelector('.record-list--skeleton')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.record-list__item')).toHaveLength(0);
 
     resolveRequest(
       collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }]),

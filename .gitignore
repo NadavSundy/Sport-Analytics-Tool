@@ -188,3 +188,6 @@ AGENTS.md
 # Coverage tooling source is tracked; generated coverage output remains ignored.
 !scripts/coverage/
 !scripts/coverage/aggregate-coverage.mjs
+
+# Legitimate local OAuth state used only for Lighthouse protected-route audits.
+/artifacts/lighthouse/auth/

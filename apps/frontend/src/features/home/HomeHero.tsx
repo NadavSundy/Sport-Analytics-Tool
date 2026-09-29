@@ -60,14 +60,14 @@ export function HomeHero() {
   const handleSceneUnavailable = useCallback(() => setSceneReady(false), []);
 
   useEffect(() => {
-    if (reducedMotion || !supportsWebGL()) {
+    if (reducedMotion) {
       setScene(null);
       setSceneReady(false);
       return undefined;
     }
 
     let cancelled = false;
-    const loadScene = window.setTimeout(() => {
+    const loadScene = () => {
       void import('./HeroScene')
         .then(({ HeroScene }) => {
           if (!cancelled) {
@@ -80,11 +80,31 @@ export function HomeHero() {
             setSceneReady(false);
           }
         });
-    }, 0);
+    };
+
+    let idleCallback: number | undefined;
+    const loadAfterInteraction = () => {
+      if (!supportsWebGL()) {
+        setScene(null);
+        setSceneReady(false);
+        return;
+      }
+      idleCallback = window.requestIdleCallback?.(loadScene, { timeout: 4_000 });
+      if (idleCallback === undefined) {
+        loadScene();
+      }
+    };
+
+    window.addEventListener('pointerdown', loadAfterInteraction, { once: true, passive: true });
+    window.addEventListener('keydown', loadAfterInteraction, { once: true });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(loadScene);
+      if (idleCallback !== undefined) {
+        window.cancelIdleCallback?.(idleCallback);
+      }
+      window.removeEventListener('pointerdown', loadAfterInteraction);
+      window.removeEventListener('keydown', loadAfterInteraction);
     };
   }, [reducedMotion]);
 

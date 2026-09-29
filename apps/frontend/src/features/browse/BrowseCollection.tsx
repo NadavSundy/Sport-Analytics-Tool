@@ -423,10 +423,12 @@ export function BrowseCollection<Resource>({
           </div>
 
           {state.status === 'loading' ? (
-            <div className="state-message" role="status">
-              <h3>Loading {resourceLabel}</h3>
-              <p>Published records are being requested from the Sport Analytics API.</p>
-            </div>
+            <>
+              <div className="state-message" role="status">
+                <h3>Loading {resourceLabel}</h3>
+                <p>Published records are being requested from the Sport Analytics API.</p>
+              </div>
+            </>
           ) : null}
 
           {state.status === 'error' ? (

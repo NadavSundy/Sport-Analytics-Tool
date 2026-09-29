@@ -869,6 +869,10 @@ main {
   flex: 1;
 }
 
+.route-content {
+  min-block-size: 100dvh;
+}
+
 .auth-page {
   min-height: min(42rem, calc(100svh - 13.5rem));
   display: grid;
