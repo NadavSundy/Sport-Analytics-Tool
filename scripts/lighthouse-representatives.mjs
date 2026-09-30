@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-export const lighthouseRepresentativeEnvironment = {
+const lighthouseRepresentativeEnvironment = {
   competitionId: 'LIGHTHOUSE_COMPETITION_ID',
   seasonId: 'LIGHTHOUSE_SEASON_ID',
   fixtureId: 'LIGHTHOUSE_FIXTURE_ID',

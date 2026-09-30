@@ -1,4 +1,4 @@
-import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
+import type { GoTrueClient, Session, User } from '@supabase/auth-js';
 import {
   createContext,
   useCallback,
@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 type SupabaseAuthClient = Pick<
-  SupabaseClient['auth'],
+  GoTrueClient,
   'getSession' | 'onAuthStateChange' | 'signInWithOAuth' | 'signOut'
 >;
 

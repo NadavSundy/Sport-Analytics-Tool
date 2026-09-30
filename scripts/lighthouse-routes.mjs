@@ -1,6 +1,6 @@
 // This is the authoritative Lighthouse inventory for App.tsx. A route is only
 // automatically audited when it can render through the legitimate preview setup.
-export const lighthouseRoutes = [
+const lighthouseRoutes = [
   { path: '/', access: 'public', kind: 'static', setup: 'none', baseline: true },
   {
     path: '/api',

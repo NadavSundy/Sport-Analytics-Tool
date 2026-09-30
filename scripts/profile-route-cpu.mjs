@@ -13,7 +13,7 @@ export const routeSlug = (route) => {
   return route === '/' ? 'home' : route.replace(/^\/+|\/+$/g, '').replace(/[^a-zA-Z0-9-]+/g, '-');
 };
 const { SourceMapConsumer } = sourceMap;
-export async function profileRoute({
+async function profileRoute({
   route = '/',
   baseUrl = 'http://localhost:5173',
   output = 'artifacts/cpu-profiles',

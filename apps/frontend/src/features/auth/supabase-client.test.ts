@@ -7,7 +7,6 @@ const authClient = {
   signOut: vi.fn(),
 };
 const createAuthClient = vi.fn((_options?: unknown) => authClient);
-const createSupabaseClient = vi.fn();
 
 class AuthClientConstructor {
   constructor(options: unknown) {
@@ -16,7 +15,6 @@ class AuthClientConstructor {
 }
 
 vi.mock('@supabase/auth-js', () => ({ GoTrueClient: AuthClientConstructor }));
-vi.mock('@supabase/supabase-js', () => ({ createClient: createSupabaseClient }));
 
 describe('Supabase auth client', () => {
   afterEach(() => {
@@ -41,6 +39,5 @@ describe('Supabase auth client', () => {
         url: 'https://example.supabase.co/auth/v1',
       }),
     );
-    expect(createSupabaseClient).not.toHaveBeenCalled();
   });
 });
