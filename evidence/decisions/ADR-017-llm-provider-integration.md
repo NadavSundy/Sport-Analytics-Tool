@@ -91,10 +91,14 @@ leaked key or a load test at $10 rather than at the account balance.
 | `LLM_MODEL`      | `claude-haiku-4-5-20251001` | Character-set bounded, because it reaches the request body.                  |
 | `LLM_TIMEOUT_MS` | `15000`                     | 2000 to 60000.                                                               |
 
-The key is held in Key Vault, surfaced to Container Apps as the `llm-api-key` secret reference and
-into the runtime through `secretRef`, exactly as `DATABASE_URL` and `SUPABASE_SECRET_KEY` are. CI
-receives only the reference URI. `scripts/check-frontend-bundle-secrets.mjs` rejects both the
-variable name and the provider's key shape in a frontend bundle.
+The key is held in Key Vault as `backend-llm-api-key`, following the vault's convention of naming a
+secret for the service that owns it, and reaches the runtime through `secretRef` exactly as
+`DATABASE_URL` and `SUPABASE_SECRET_KEY` do. Inside the Container App it is aliased as the
+`llm-api-key` secret; that alias is local to the app and is not required to match the vault name,
+which is why `database-url` and `supabase-secret-key` sit beside `backend-database-url` and
+`backend-supabase-secret-key`. CI receives only the versionless reference URI.
+`scripts/check-frontend-bundle-secrets.mjs` rejects both the variable name and the provider's key
+shape in a frontend bundle.
 
 `LLM_TIMEOUT_MS` defaults to 15000 rather than the 5000 the weather adapter uses, because the first
 request carrying a new response schema pays a one-time schema-compilation cost that a warm request
@@ -218,9 +222,9 @@ repository's dependency-hygiene gates.
   to `503`, and `warnAboutOptionalConfiguration` logs one startup warning naming the variable and no
   value. An earlier draft of this record required the key in production; that was rejected, because
   making the whole API refuse to start over an optional feature trades a large outage for a small
-  one. The deployment still supplies the key: the Key Vault secret reference must exist before the
-  template deploys, and the deployment workflow fails without its reference URI, so a deployment
-  cannot reach production having silently forgotten it.
+  one. The deployment still supplies the key: the `backend-llm-api-key` Key Vault secret must exist
+  before the template deploys, and the deployment workflow fails without its reference URI, so a
+  deployment cannot reach production having silently forgotten it.
 - **No endpoint, route or interface is added by this decision.** Issue #815 adds the endpoint that
   executes a validated definition and #816 the interface. Until then the adapter is unreachable from
   outside the backend.

@@ -70,16 +70,20 @@ The normal deployed API uses the non-secret runtime variables in the preceding t
 `SUPABASE_PUBLISHABLE_KEY` are ordinary runtime configuration values; they are not substituted for
 server secrets.
 
-`DATABASE_URL` and `SUPABASE_SECRET_KEY` are Key Vault secret values. Container Apps receives only
-versionless Key Vault secret-reference URIs, creates Container Apps secrets, and supplies those two
-variables through `secretRef`. The deployment CI receives only the URIs, never their values.
-`SUPABASE_SECRET_KEY` is required to preserve authenticated account deletion; process startup and
-unrelated routes remain available without it, but deletion returns `501`.
+`DATABASE_URL`, `SUPABASE_SECRET_KEY` and `LLM_API_KEY` are Key Vault secret values, held as
+`backend-database-url`, `backend-supabase-secret-key` and `backend-llm-api-key`. Container Apps
+receives only versionless Key Vault secret-reference URIs, creates Container Apps secrets, and
+supplies those three variables through `secretRef`. The Container Apps secret names are local
+aliases and do not repeat the vault's `backend-` prefix. The deployment CI receives only the URIs,
+never their values. `SUPABASE_SECRET_KEY` is required to preserve authenticated account deletion;
+process startup and unrelated routes remain available without it, but deletion returns `501`.
+`LLM_API_KEY` is optional to the application in every environment, and without it only
+natural-language query translation is disabled.
 
 Gitea Actions secrets are separate again. The existing `AZURE_WORKER_CREDENTIALS` secret is the
 shared Azure resource-group deployment-principal credential despite its worker-oriented legacy name.
-Backend-specific secrets hold the resource group, two Key Vault secret-reference URIs, CORS origins,
-Supabase URL, and Supabase publishable key used by backend deployment CI. Do not put real values in
+Backend-specific secrets hold the resource group, three Key Vault secret-reference URIs, CORS
+origins, Supabase URL, and Supabase publishable key used by backend deployment CI. Do not put real values in
 `.env` examples, Docker build arguments, Bicep outputs, workflow logs, or repository documentation.
 
 ## Asynchronous worker runtime

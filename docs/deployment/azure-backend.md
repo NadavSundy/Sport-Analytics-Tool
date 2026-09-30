@@ -91,11 +91,19 @@ production included: without it the backend starts, logs one startup warning nam
 and natural-language query translation reports itself unconfigured while every other capability is
 unaffected. See ADR-017.
 
-It is not optional to this deployment, however. **The `llm-api-key` Key Vault secret must exist
-before this template deploys**, because Container Apps resolves the secret reference when the
+It is not optional to this deployment, however. **The `backend-llm-api-key` Key Vault secret must
+exist before this template deploys**, because Container Apps resolves the secret reference when the
 revision is created and a missing secret fails the deployment rather than degrading the running
 app. The deployment workflow also fails when `AZURE_BACKEND_LLM_API_KEY_SECRET_URI` is not
 configured, so the reference URI must be provisioned alongside it.
+
+Two different names are involved and they are deliberately not the same. The **Key Vault** secret is
+`backend-llm-api-key`, carrying the `backend-` prefix the vault uses to keep each service's secrets
+distinct from the worker's, alongside `backend-database-url` and `backend-supabase-secret-key`. The
+**Container Apps** secret is `llm-api-key`, a local alias inside the API's own Container App that
+`secretRef` resolves, alongside `database-url` and `supabase-secret-key`. The only link between them
+is the `llmApiKeySecretUri` Bicep parameter, which receives the versionless vault URI from
+`AZURE_BACKEND_LLM_API_KEY_SECRET_URI`. Renaming either one does not require renaming the other.
 
 ### Storing the language-model key
 
@@ -111,7 +119,7 @@ the shell history or the process list:
 read -rs -p 'Anthropic API key: ' LLM_API_KEY && \
   az keyvault secret set \
     --vault-name statsthegame-dev-kv \
-    --name llm-api-key \
+    --name backend-llm-api-key \
     --value "$LLM_API_KEY" \
     --output none && \
   unset LLM_API_KEY
@@ -123,7 +131,7 @@ Actions secret `AZURE_BACKEND_LLM_API_KEY_SECRET_URI`:
 ```bash
 az keyvault secret show \
   --vault-name statsthegame-dev-kv \
-  --name llm-api-key \
+  --name backend-llm-api-key \
   --query id --output tsv | sed 's|/[^/]*$||'
 ```
 
