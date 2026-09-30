@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadDatabaseStatementTimeoutMs, loadEnvironment } from '../../src/config/env';
+import {
+  loadDatabaseStatementTimeoutMs,
+  loadEnvironment,
+  warnAboutOptionalConfiguration,
+} from '../../src/config/env';
 
 const requiredEnvironment = {
   NODE_ENV: 'test',
@@ -166,5 +170,132 @@ describe('database statement timeout configuration', () => {
         loadEnvironment({ ...requiredEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: value }),
       ).toThrow('DATABASE_STATEMENT_TIMEOUT_MS');
     }
+  });
+});
+
+describe('language-model provider configuration', () => {
+  /** A deployable production environment, carrying no language-model key. */
+  const productionEnvironmentWithoutKey = {
+    ...requiredEnvironment,
+    NODE_ENV: 'production',
+    DEPLOYMENT_ENVIRONMENT: 'dev',
+    OBJECT_STORAGE_PROVIDER: 'azure',
+    AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+    AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+    AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+  };
+
+  it('starts without a language-model key', () => {
+    const environment = loadEnvironment(requiredEnvironment);
+
+    expect(environment.LLM_API_KEY).toBeUndefined();
+    expect(environment.LLM_MODEL).toBe('claude-haiku-4-5-20251001');
+    expect(environment.LLM_TIMEOUT_MS).toBe(15_000);
+  });
+
+  it('treats a blank language-model key as unconfigured', () => {
+    expect(
+      loadEnvironment({ ...requiredEnvironment, LLM_API_KEY: '   ' }).LLM_API_KEY,
+    ).toBeUndefined();
+  });
+
+  // Natural-language querying is one optional feature. A missing key must disable
+  // it and nothing else, so production must still start without one.
+  it('starts in production without a language-model key', () => {
+    const environment = loadEnvironment(productionEnvironmentWithoutKey);
+
+    expect(environment.LLM_API_KEY).toBeUndefined();
+    expect(environment.NODE_ENV).toBe('production');
+  });
+
+  it('accepts a configured key', () => {
+    expect(
+      loadEnvironment({
+        ...productionEnvironmentWithoutKey,
+        LLM_API_KEY: 'test-placeholder-not-a-real-key',
+      }).LLM_API_KEY,
+    ).toBe('test-placeholder-not-a-real-key');
+  });
+
+  it('accepts a configured model and timeout', () => {
+    const environment = loadEnvironment({
+      ...requiredEnvironment,
+      LLM_MODEL: 'claude-sonnet-5-5',
+      LLM_TIMEOUT_MS: '30000',
+    });
+
+    expect(environment.LLM_MODEL).toBe('claude-sonnet-5-5');
+    expect(environment.LLM_TIMEOUT_MS).toBe(30_000);
+  });
+
+  it('accepts the declared timeout bounds', () => {
+    for (const [value, expected] of [
+      ['2000', 2_000],
+      ['60000', 60_000],
+    ] as const) {
+      expect(
+        loadEnvironment({ ...requiredEnvironment, LLM_TIMEOUT_MS: value }).LLM_TIMEOUT_MS,
+      ).toBe(expected);
+    }
+  });
+
+  it('rejects a timeout outside the declared bounds or not a whole number', () => {
+    for (const value of ['0', '1999', '60001', '1500.5', 'soon']) {
+      expect(() => loadEnvironment({ ...requiredEnvironment, LLM_TIMEOUT_MS: value })).toThrow(
+        'LLM_TIMEOUT_MS',
+      );
+    }
+  });
+
+  // The identifier reaches the outbound request body, so it may only be a model
+  // identifier and never arbitrary content.
+  it('rejects a model identifier outside the permitted character set', () => {
+    for (const value of ['Claude Haiku', 'claude/haiku', '../etc/passwd', '']) {
+      expect(() => loadEnvironment({ ...requiredEnvironment, LLM_MODEL: value })).toThrow(
+        'LLM_MODEL',
+      );
+    }
+  });
+});
+
+describe('optional configuration warnings', () => {
+  it('reports a missing language-model key once, naming only the variable', () => {
+    const messages: string[] = [];
+
+    warnAboutOptionalConfiguration(loadEnvironment(requiredEnvironment), (message) =>
+      messages.push(message),
+    );
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('LLM_API_KEY');
+    expect(messages[0]).toContain('disabled');
+  });
+
+  it('says nothing when the language-model key is configured', () => {
+    const messages: string[] = [];
+
+    warnAboutOptionalConfiguration(
+      loadEnvironment({ ...requiredEnvironment, LLM_API_KEY: 'test-placeholder-not-a-real-key' }),
+      (message) => messages.push(message),
+    );
+
+    expect(messages).toEqual([]);
+  });
+
+  // The warning exists so an operator learns the feature is off. It must never
+  // become a way for key material to reach a log.
+  it('never logs the configured key', () => {
+    const messages: string[] = [];
+    const key = 'test-placeholder-not-a-real-key';
+
+    warnAboutOptionalConfiguration(
+      loadEnvironment({ ...requiredEnvironment, LLM_API_KEY: key }),
+      (message) => messages.push(message),
+    );
+    warnAboutOptionalConfiguration(loadEnvironment(requiredEnvironment), (message) =>
+      messages.push(message),
+    );
+
+    expect(messages.join(' ')).not.toContain(key);
   });
 });

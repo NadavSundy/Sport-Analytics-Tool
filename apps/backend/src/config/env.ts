@@ -76,6 +76,27 @@ const environmentSchema = z
     AZURE_STORAGE_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_INGESTION_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_RELEASE_CONTAINER_NAME: optionalAzureContainerName,
+    // Server-only key for the natural-language query adapter (ADR-017). Optional
+    // in every environment, production included: natural-language querying is one
+    // optional feature and a missing key must disable it rather than stop the
+    // backend from serving everything else. When it is absent the adapter raises
+    // its not-configured error and `warnAboutOptionalConfiguration` says so once
+    // at startup. Its format is deliberately not validated: a shape check would
+    // couple the backend to a credential format the provider may change.
+    LLM_API_KEY: optionalNonEmptyString,
+    // Bounded to the character set a model identifier uses, so a stray value
+    // cannot become arbitrary content in the outbound request body.
+    LLM_MODEL: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9.-]{0,63}$/, 'Model identifier must be lowercase alphanumeric')
+      .default('claude-haiku-4-5-20251001'),
+    // A warm request is a second or two, but the first request carrying a new
+    // response schema pays a one-time compilation cost, so a five-second bound
+    // of the kind the weather adapter uses is too tight. Fifteen seconds covers
+    // both, and with exactly one retry the worst case stays near thirty. The
+    // ceiling keeps that worst case inside what a person will wait for.
+    LLM_TIMEOUT_MS: z.coerce.number().int().min(2_000).max(60_000).default(15_000),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === 'production') {
@@ -178,4 +199,26 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
   }
 
   return result.data;
+}
+
+/**
+ * Reports each optional capability the running configuration leaves switched off,
+ * once, at startup.
+ *
+ * An absent optional value is a valid configuration rather than a fault, so it
+ * must not stop the backend. It must also not be silent: an operator who expected
+ * natural-language querying to work should learn that the key is missing from the
+ * startup log rather than from a reader's failed question.
+ *
+ * Only the variable name is reported. No value is read, logged or echoed.
+ */
+export function warnAboutOptionalConfiguration(
+  environment: Environment,
+  log: (message: string) => void = console.warn,
+): void {
+  if (!environment.LLM_API_KEY) {
+    log(
+      'LLM_API_KEY is not configured; natural-language query translation is disabled. Every other capability is unaffected.',
+    );
+  }
 }
