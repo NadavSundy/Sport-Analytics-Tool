@@ -41,6 +41,15 @@ param databaseSecretUri string
 @description('Versionless HTTPS Key Vault secret URI for SUPABASE_SECRET_KEY.')
 param supabaseSecretKeySecretUri string
 
+@description('Versionless HTTPS Key Vault secret URI for LLM_API_KEY.')
+param llmApiKeySecretUri string
+
+@description('Model identifier used by the natural-language query adapter (ADR-017).')
+param llmModel string = 'claude-haiku-4-5-20251001'
+
+@description('Millisecond bound on one language-model request; 2000 to 60000.')
+param llmTimeoutMs int = 15000
+
 @description('Exact allowed browser origins for credentialed API requests.')
 param corsOrigins string
 
@@ -159,6 +168,11 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
           keyVaultUrl: supabaseSecretKeySecretUri
           identity: runtimeIdentity.id
         }
+        {
+          name: 'llm-api-key'
+          keyVaultUrl: llmApiKeySecretUri
+          identity: runtimeIdentity.id
+        }
       ]
     }
     template: {
@@ -178,6 +192,11 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             // A bound, not a credential: it names how long one statement may run.
             { name: 'DATABASE_STATEMENT_TIMEOUT_MS', value: '15000' }
+            { name: 'LLM_API_KEY', secretRef: 'llm-api-key' }
+            // Configuration, not credentials: the model identifier and the
+            // request bound are plain values (ADR-017).
+            { name: 'LLM_MODEL', value: llmModel }
+            { name: 'LLM_TIMEOUT_MS', value: string(llmTimeoutMs) }
             { name: 'OBJECT_STORAGE_PROVIDER', value: 'azure' }
             { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: existingStorage.name }
             { name: 'AZURE_STORAGE_CONTAINER_NAME', value: storageContainerName }

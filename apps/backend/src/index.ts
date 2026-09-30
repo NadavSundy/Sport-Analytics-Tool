@@ -1,10 +1,11 @@
 import 'dotenv/config';
 
 import { createApp } from './app';
-import { loadEnvironment } from './config/env';
+import { loadEnvironment, warnAboutOptionalConfiguration } from './config/env';
 import { closeDatabasePool } from './database';
 
 const environment = loadEnvironment();
+warnAboutOptionalConfiguration(environment);
 const app = createApp({ environment });
 
 const server = app.listen(environment.PORT, () => {
