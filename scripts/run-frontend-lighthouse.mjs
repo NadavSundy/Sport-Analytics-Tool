@@ -49,7 +49,13 @@ console.table([
 const results = [];
 const smokeResults = [];
 const chrome = await chromeLauncher.launch({
-  chromeFlags: ['--headless=new', '--no-first-run', '--no-default-browser-check'],
+  chromeFlags: [
+    '--headless=new',
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--no-first-run',
+    '--no-default-browser-check',
+  ],
 });
 console.info(`Chrome ready: pid=${chrome.pid}; port=${chrome.port}.`);
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${chrome.port}`);
