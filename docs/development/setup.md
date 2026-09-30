@@ -307,6 +307,24 @@ The database safety guard requires `NODE_ENV=test`, requires the target database
 as a test database, and rejects a test connection that resolves to the same PostgreSQL host, port and
 database as the configured development connection.
 
+### Statement execution bound
+
+`DATABASE_STATEMENT_TIMEOUT_MS` bounds how long one PostgreSQL statement may run before the server
+cancels it. It is optional: the backend defaults to 15000 milliseconds and the asynchronous worker
+declares the same variable in its own configuration with a default of 60000. Both accept 1000 to
+120000 milliseconds, and a value outside that range fails startup with the other environment
+validation. It is a bound rather than a credential, so it belongs in `.env` and in deployment
+configuration as a plain value.
+
+The bound applies only to the application pools. Committed migrations, the operator scripts under
+`apps/backend/scripts/`, and the PostgreSQL integration tests each open their own connections and
+remain unbounded, because a corpus import or an index build legitimately runs far longer than any
+application statement.
+
+A cancelled statement returns `503` with the error code `DATABASE_STATEMENT_TIMEOUT`. The condition
+is temporary and the request may be retried. The full contract is recorded in
+[database access](../database/access.md).
+
 ### Stop or remove the local test database
 
 The container may remain running between test runs. Each local database-test run resets the schema,
