@@ -100,6 +100,12 @@ No retirement date has been approved, so this lifecycle deliberately omits a
 scheduled, the approved HTTP-date `Sunset` value and migration period must be
 added here, in OpenAPI, and in the response middleware together.
 
+This example records current production behaviour. [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
+accepts the anonymous path as the future canonical resource path with optional consumer
+identification. Issue [#821](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/821)
+must reverse this direction through the same compatibility process; issue #820 changes neither the
+current route nor its headers.
+
 ## OpenAPI status
 
 The OpenAPI baseline may describe both implemented and agreed planned operations.
@@ -137,3 +143,5 @@ The OpenAPI description documents the handwritten Express API. It is not generat
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
+The issue #820 current/future deprecation boundary was documented with the assistance of
+Codex[GPT-5].
