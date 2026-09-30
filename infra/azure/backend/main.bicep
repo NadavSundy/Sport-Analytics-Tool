@@ -176,6 +176,8 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             { name: 'SUPABASE_PUBLISHABLE_KEY', value: supabasePublishableKey }
             { name: 'SUPABASE_SECRET_KEY', secretRef: 'supabase-secret-key' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
+            // A bound, not a credential: it names how long one statement may run.
+            { name: 'DATABASE_STATEMENT_TIMEOUT_MS', value: '15000' }
             { name: 'OBJECT_STORAGE_PROVIDER', value: 'azure' }
             { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: existingStorage.name }
             { name: 'AZURE_STORAGE_CONTAINER_NAME', value: storageContainerName }
