@@ -5,7 +5,9 @@ test(
   'public and authentication page themes have no serious accessibility violations',
   { tag: '@mobile' },
   async ({ page, isMobile }) => {
-    const routes = isMobile ? ['/', '/sign-in'] : ['/', '/sign-in', '/account'];
+    const routes = isMobile
+      ? ['/', '/sign-in']
+      : ['/', '/sign-in', '/account', '/privacy', '/terms', '/accessibility'];
     const themes = isMobile ? (['day'] as const) : (['day', 'night'] as const);
 
     for (const route of routes) {
