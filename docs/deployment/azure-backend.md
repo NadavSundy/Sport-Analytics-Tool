@@ -76,12 +76,49 @@ Ordinary Container App configuration is supplied as non-secret values:
 | `AZURE_STORAGE_INGESTION_CONTAINER_NAME` | Existing staged-ingestion container                        |
 | `AZURE_STORAGE_RELEASE_CONTAINER_NAME`   | Existing dataset-release container                         |
 | `AZURE_CLIENT_ID`                        | Runtime managed identity client ID supplied by Bicep       |
+| `LLM_MODEL`                              | Bicep parameter, currently `claude-haiku-4-5-20251001`     |
+| `LLM_TIMEOUT_MS`                         | Bicep parameter, currently `15000`                         |
 
-`DATABASE_URL` and `SUPABASE_SECRET_KEY` are different: Key Vault holds their values, Container
-Apps creates Key Vault-backed secrets from versionless secret-reference URIs, and the runtime receives
-them through `secretRef`. The CI workflow receives only the reference URIs. `SUPABASE_SECRET_KEY`
-must be present because it enables the required authenticated account-deletion path; without it the
-backend starts, but account deletion returns `501 ACCOUNT_DELETION_UNAVAILABLE`.
+`DATABASE_URL`, `SUPABASE_SECRET_KEY` and `LLM_API_KEY` are different: Key Vault holds their values,
+Container Apps creates Key Vault-backed secrets from versionless secret-reference URIs, and the
+runtime receives them through `secretRef`. The CI workflow receives only the reference URIs.
+`SUPABASE_SECRET_KEY` must be present because it enables the required authenticated
+account-deletion path; without it the backend starts, but account deletion returns
+`501 ACCOUNT_DELETION_UNAVAILABLE`. `LLM_API_KEY` must be present because the environment schema
+requires it in production, so a deployment cannot ship a permanently unavailable natural-language
+query feature; see ADR-017.
+
+### Storing the language-model key
+
+An operator with `Key Vault Secrets Officer` on the existing vault stores the value once. The key
+must be the workspace-scoped key from the project Anthropic Console workspace that carries the $10
+monthly spend limit recorded in ADR-017.
+
+Read the secret value from a prompt rather than passing it on the command line, so it does not enter
+the shell history or the process list:
+
+```bash
+read -rs -p 'Anthropic API key: ' LLM_API_KEY && \
+  az keyvault secret set \
+    --vault-name statsthegame-dev-kv \
+    --name llm-api-key \
+    --value "$LLM_API_KEY" \
+    --output none && \
+  unset LLM_API_KEY
+```
+
+Then read back only the versionless reference URI, never the value, and store that URI as the Gitea
+Actions secret `AZURE_BACKEND_LLM_API_KEY_SECRET_URI`:
+
+```bash
+az keyvault secret show \
+  --vault-name statsthegame-dev-kv \
+  --name llm-api-key \
+  --query id --output tsv | sed 's|/[^/]*$||'
+```
+
+The key value must never appear in Bicep parameters, workflow YAML, job output, logs, the Docker
+build context, a committed `.env` file, or documentation.
 
 Gitea CI secrets are a separate boundary. `AZURE_WORKER_CREDENTIALS` is the existing shared Azure
 resource-group deployment-principal credential; its worker-oriented legacy name does not limit it to
@@ -96,6 +133,7 @@ cross-application configuration matrix.
 | `AZURE_BACKEND_CONTAINER_RESOURCE_GROUP`       | Backend deployment resource group.                                                          |
 | `AZURE_BACKEND_DATABASE_SECRET_URI`            | Versionless Key Vault reference URI for `DATABASE_URL`.                                     |
 | `AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI` | Versionless Key Vault reference URI for `SUPABASE_SECRET_KEY`.                              |
+| `AZURE_BACKEND_LLM_API_KEY_SECRET_URI`         | Versionless Key Vault reference URI for `LLM_API_KEY`.                                      |
 | `AZURE_BACKEND_CORS_ORIGINS`                   | Allowed API browser origins.                                                                |
 | `AZURE_BACKEND_SUPABASE_URL`                   | Backend Supabase project URL.                                                               |
 | `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY`       | Backend Supabase publishable key.                                                           |
