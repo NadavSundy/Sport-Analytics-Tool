@@ -118,16 +118,16 @@ describe('public shell API discovery', () => {
       </AuthProvider>,
     );
 
-    const apiResources = within(screen.getByRole('contentinfo')).getByRole('navigation', {
-      name: 'API resources',
+    const footerNavigation = within(screen.getByRole('contentinfo')).getByRole('navigation', {
+      name: 'Footer navigation',
     });
 
-    expect(within(apiResources).getByRole('link', { name: 'API Explorer' })).toHaveAttribute(
+    expect(within(footerNavigation).getByRole('link', { name: 'API Explorer' })).toHaveAttribute(
       'href',
       '/api',
     );
 
-    const docsLink = within(apiResources).getByRole('link', { name: 'API Documentation' });
+    const docsLink = within(footerNavigation).getByRole('link', { name: 'API Documentation' });
     expect(docsLink).toHaveAttribute(
       'href',
       'https://sports-analytics-tool.pages.dev/api/overview/',
@@ -225,5 +225,32 @@ describe('public shell API discovery', () => {
     } else {
       expect(mobile.queryByRole('link', { name: 'Administration' })).toBeNull();
     }
+  });
+  it('exposes public policy links and the project contact from the footer', () => {
+    render(
+      <AuthProvider client={createSignedOutAuthClient()}>
+        <MemoryRouter>
+          <PublicShell>
+            <p>Page</p>
+          </PublicShell>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    const footer = within(screen.getByRole('contentinfo'));
+    const footerNavigation = footer.getByRole('navigation', { name: 'Footer navigation' });
+
+    expect(within(footerNavigation).getByRole('link', { name: 'Privacy Notice' })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
+    expect(within(footerNavigation).getByRole('link', { name: 'Terms of Use' })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+    expect(within(footerNavigation).getByRole('link', { name: 'Accessibility' })).toHaveAttribute(
+      'href',
+      '/accessibility',
+    );
   });
 });
