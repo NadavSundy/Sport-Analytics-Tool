@@ -1,5 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 
+import { DatabaseAccessError } from '../database/errors';
+
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
   if (response.headersSent) {
     _next(error);
@@ -31,6 +33,20 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
       error: {
         code: 'INVALID_JSON',
         message: 'The request body is not valid JSON.',
+      },
+    });
+    return;
+  }
+
+  // A cancelled statement is a temporary condition rather than a defect, so it
+  // is reported as retryable instead of as an internal error. Every other
+  // database failure keeps its existing 500: those are not known to be
+  // retryable and reclassifying them is not this change.
+  if (error instanceof DatabaseAccessError && error.code === 'DATABASE_STATEMENT_TIMEOUT') {
+    response.status(503).json({
+      error: {
+        code: 'DATABASE_STATEMENT_TIMEOUT',
+        message: 'The request exceeded the database time limit. Please retry.',
       },
     });
     return;

@@ -3,8 +3,12 @@ export type DatabaseErrorCode =
   | 'DATABASE_CONFLICT'
   | 'DATABASE_REFERENCE_ERROR'
   | 'DATABASE_CONSTRAINT_ERROR'
+  | 'DATABASE_STATEMENT_TIMEOUT'
   | 'DATABASE_OPERATION_FAILED'
   | 'DATABASE_TRANSACTION_FAILED';
+
+/** PostgreSQL `query_canceled`, which a statement exceeding its bound raises. */
+const QUERY_CANCELED = '57014';
 
 export class DatabaseAccessError extends Error {
   constructor(
@@ -65,6 +69,17 @@ export function translateDatabaseError(error: unknown): DatabaseAccessError {
       return new DatabaseAccessError(
         'DATABASE_CONSTRAINT_ERROR',
         'The database rejected invalid data.',
+        { cause: error },
+      );
+
+    // The statement ran past its configured bound and the server cancelled it.
+    // This is reported separately from a generic failure because it is
+    // temporary: the same request may succeed when the database is less loaded,
+    // so a caller should retry rather than treat the result as final.
+    case QUERY_CANCELED:
+      return new DatabaseAccessError(
+        'DATABASE_STATEMENT_TIMEOUT',
+        'The database statement exceeded its time limit and was cancelled.',
         { cause: error },
       );
 

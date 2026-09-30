@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadEnvironment, warnAboutOptionalConfiguration } from '../../src/config/env';
+import {
+  loadDatabaseStatementTimeoutMs,
+  loadEnvironment,
+  warnAboutOptionalConfiguration,
+} from '../../src/config/env';
 
 const requiredEnvironment = {
   NODE_ENV: 'test',
@@ -118,6 +122,54 @@ describe('backend environment', () => {
     expect(environment).not.toHaveProperty('AZURE_STORAGE_CONNECTION_STRING');
     expect(environment).not.toHaveProperty('AZURE_STORAGE_ACCOUNT_KEY');
     expect(environment).not.toHaveProperty('AZURE_STORAGE_SAS_TOKEN');
+  });
+});
+
+describe('database statement timeout configuration', () => {
+  it('defaults to fifteen seconds when unset', () => {
+    expect(loadEnvironment(requiredEnvironment).DATABASE_STATEMENT_TIMEOUT_MS).toBe(15_000);
+    expect(loadDatabaseStatementTimeoutMs({})).toBe(15_000);
+  });
+
+  it('accepts a configured value through both entry points', () => {
+    const source = { ...requiredEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: '30000' };
+
+    expect(loadEnvironment(source).DATABASE_STATEMENT_TIMEOUT_MS).toBe(30_000);
+    expect(loadDatabaseStatementTimeoutMs(source)).toBe(30_000);
+  });
+
+  it('accepts the declared bounds', () => {
+    expect(loadDatabaseStatementTimeoutMs({ DATABASE_STATEMENT_TIMEOUT_MS: '1000' })).toBe(1_000);
+    expect(loadDatabaseStatementTimeoutMs({ DATABASE_STATEMENT_TIMEOUT_MS: '120000' })).toBe(
+      120_000,
+    );
+  });
+
+  // Below the floor the bound would cancel ordinary work, and zero would be
+  // omitted from the connection handshake altogether, leaving no bound at all.
+  it('rejects a value below the floor, including zero', () => {
+    for (const value of ['0', '999', '-1']) {
+      expect(() =>
+        loadEnvironment({ ...requiredEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: value }),
+      ).toThrow('DATABASE_STATEMENT_TIMEOUT_MS');
+      expect(() =>
+        loadDatabaseStatementTimeoutMs({ DATABASE_STATEMENT_TIMEOUT_MS: value }),
+      ).toThrow('DATABASE_STATEMENT_TIMEOUT_MS');
+    }
+  });
+
+  it('rejects a value above the ceiling, so the bound cannot be configured away', () => {
+    expect(() =>
+      loadEnvironment({ ...requiredEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: '120001' }),
+    ).toThrow('DATABASE_STATEMENT_TIMEOUT_MS');
+  });
+
+  it('rejects a non-integer and a non-numeric value', () => {
+    for (const value of ['1500.5', 'soon', '']) {
+      expect(() =>
+        loadEnvironment({ ...requiredEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: value }),
+      ).toThrow('DATABASE_STATEMENT_TIMEOUT_MS');
+    }
   });
 });
 

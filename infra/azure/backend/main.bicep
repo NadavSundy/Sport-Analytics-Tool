@@ -190,6 +190,8 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             { name: 'SUPABASE_PUBLISHABLE_KEY', value: supabasePublishableKey }
             { name: 'SUPABASE_SECRET_KEY', secretRef: 'supabase-secret-key' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
+            // A bound, not a credential: it names how long one statement may run.
+            { name: 'DATABASE_STATEMENT_TIMEOUT_MS', value: '15000' }
             { name: 'LLM_API_KEY', secretRef: 'llm-api-key' }
             // Configuration, not credentials: the model identifier and the
             // request bound are plain values (ADR-017).
