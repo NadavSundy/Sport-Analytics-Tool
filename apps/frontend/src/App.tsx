@@ -38,6 +38,11 @@ import {
 } from './features/dataset-releases/DatasetReleasePages';
 import { AdminDatasetReleasePage } from './features/dataset-releases/AdminDatasetReleasePage';
 import { ApiExplorerLoadingIndicator } from './features/api-explorer/ApiExplorerLoadingIndicator';
+import {
+  AccessibilityStatementPage,
+  PrivacyNoticePage,
+  TermsOfUsePage,
+} from './features/policies/PolicyPages';
 
 const ApiExplorerPage = lazy(() =>
   import('./features/api-explorer/ApiExplorerPage').then(({ ApiExplorerPage }) => ({
@@ -90,6 +95,10 @@ export function PublicApp() {
 
         <Route path="/dataset-releases" element={<DatasetReleaseCataloguePage />} />
         <Route path="/dataset-releases/:version" element={<DatasetReleaseDetailPage />} />
+
+        <Route path="/privacy" element={<PrivacyNoticePage />} />
+        <Route path="/terms" element={<TermsOfUsePage />} />
+        <Route path="/accessibility" element={<AccessibilityStatementPage />} />
 
         <Route path="/sign-in" element={<AuthenticationPage />} />
         <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
