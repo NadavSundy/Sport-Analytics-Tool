@@ -3,10 +3,14 @@ import type { BatchReportItem, BatchReportResponse } from '@sport-analytics/cont
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
+
+beforeAll(async () => {
+  await import('./BatchReportsPage');
+});
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 type AuthStateListener = (event: AuthChangeEvent, session: Session | null) => void;

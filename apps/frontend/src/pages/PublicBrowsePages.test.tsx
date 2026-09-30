@@ -2,7 +2,7 @@ import type { AuthChangeEvent, Session } from '@supabase/auth-js';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicApp } from '../App';
 import { AuthProvider } from '../features/auth/AuthProvider';
 
@@ -232,6 +232,12 @@ function renderRoute(route: string) {
     </AuthProvider>,
   );
 }
+
+beforeAll(async () => {
+  // PublicBrowsePages is one production lazy chunk. Preload it once so the
+  // first collection test does not race Vite/Vitest transform latency in CI.
+  await import('./PublicBrowsePages');
+});
 
 describe('public browsing pages', () => {
   beforeEach(() => {

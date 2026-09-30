@@ -2,7 +2,7 @@ import type { AuthChangeEvent, Session, User } from '@supabase/auth-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AuthProvider } from './features/auth/AuthProvider';
 import { THEME_STORAGE_KEY } from './theme';
@@ -125,6 +125,16 @@ function renderApp(path = '/', session: Session | null = null) {
 
   return auth;
 }
+
+beforeAll(async () => {
+  // App.tsx intentionally lazy-loads these production routes for Lighthouse.
+  // Warm their modules in Vitest so route assertions measure behaviour rather
+  // than CI transform/import latency.
+  await Promise.all([
+    import('./features/auth/AuthPages'),
+    import('./features/submissions/SubmissionPage'),
+  ]);
+});
 
 function useSystemTheme(prefersDark: boolean) {
   vi.stubGlobal(
