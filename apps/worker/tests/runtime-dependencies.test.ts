@@ -36,6 +36,10 @@ describe('worker runtime composition', () => {
       expect(await text(await ingestion.read('same.json'))).toBe('ingestion');
       expect(await text(await dependencies.releaseObjectStorage.read('same.json'))).toBe('release');
       expect(dependencies.useOutboxRelay).toBe(false);
+      // Sent as a startup parameter, so every connection this pool opens is
+      // bounded. Asserted on the pool configuration because the property is
+      // what carries the bound to each connection.
+      expect(dependencies.database.options.statement_timeout).toBe(60_000);
     } finally {
       await dependencies.close();
       await rm(root, { recursive: true, force: true });

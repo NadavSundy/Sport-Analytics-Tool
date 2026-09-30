@@ -68,4 +68,23 @@ describe('worker environment', () => {
       }),
     ).toThrow(/Production worker transport must be azure-service-bus/);
   });
+
+  // The worker's bound is deliberately larger than the API's, because its unit
+  // of work is a page of ten thousand rows and no reader is waiting on it.
+  it('bounds statement execution time with its own longer default', () => {
+    expect(loadWorkerEnvironment(validEnvironment).DATABASE_STATEMENT_TIMEOUT_MS).toBe(60_000);
+
+    expect(
+      loadWorkerEnvironment({ ...validEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: '90000' })
+        .DATABASE_STATEMENT_TIMEOUT_MS,
+    ).toBe(90_000);
+  });
+
+  it('rejects a statement bound outside its declared range', () => {
+    for (const value of ['0', '999', '120001', '1500.5', 'soon']) {
+      expect(() =>
+        loadWorkerEnvironment({ ...validEnvironment, DATABASE_STATEMENT_TIMEOUT_MS: value }),
+      ).toThrow(/DATABASE_STATEMENT_TIMEOUT_MS/);
+    }
+  });
 });

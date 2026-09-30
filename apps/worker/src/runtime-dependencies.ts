@@ -98,6 +98,10 @@ export function createRuntimeDependencies(environment: WorkerEnvironment): Runti
     max: Math.max(2, environment.WORKER_CONCURRENCY + 1),
     connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 30_000,
+    // Sent as a PostgreSQL startup parameter, so every connection this pool
+    // opens carries the bound. A cancelled statement inside a transaction
+    // aborts that transaction, which the job lease then retries.
+    statement_timeout: environment.DATABASE_STATEMENT_TIMEOUT_MS,
     application_name: 'sport-analytics-worker',
   });
   database.on('error', () => console.error('Unexpected PostgreSQL worker pool error.'));
