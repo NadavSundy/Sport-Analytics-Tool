@@ -15,7 +15,7 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <AuthProvider client={supabase.auth}>
+    <AuthProvider client={supabase}>
       <BrowserRouter>
         <App />
       </BrowserRouter>

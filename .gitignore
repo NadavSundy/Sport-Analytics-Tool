@@ -191,3 +191,26 @@ AGENTS.md
 
 # Legitimate local OAuth state used only for Lighthouse protected-route audits.
 /artifacts/lighthouse/auth/
+
+
+# Lighthouse local reports
+artifacts/lighthouse*/
+
+# Playwright generated reports
+playwright-report/
+test-results/
+
+# Authentication session files
+playwright/.auth/
+**/*storage-state*.json
+
+# Local environment secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Local logs
+*.log
+
+/artifacts/

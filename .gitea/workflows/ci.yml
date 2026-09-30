@@ -260,6 +260,78 @@ jobs:
           NODE_ENV: production
         run: npm run test:e2e
 
+  lighthouse:
+    needs: plan
+    if: >-
+      github.event_name != 'push' &&
+      needs.plan.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      LIGHTHOUSE_RUNS: '3'
+      LIGHTHOUSE_GATE_MODE: report
+      LIGHTHOUSE_OUTPUT_DIR: artifacts/lighthouse-ci
+      LIGHTHOUSE_ROUTES: /,/api,/competitions,/seasons,/fixtures,/competitors,/participants,/dataset-releases,/sign-in
+      VITE_SUPABASE_URL: https://e2e.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: e2e-public-key
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production frontend for Lighthouse
+        run: |
+          npm run build --workspace=@sport-analytics/contracts
+          npm run build --workspace=@sport-analytics/frontend
+
+      - name: Restore Playwright Chromium cache
+        id: lighthouse-playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-ubuntu24-chromium-1.62.1
+
+      - name: Ensure Playwright Chromium system dependencies
+        run: npx playwright install-deps chromium
+
+      - name: Install Playwright Chromium on cache miss
+        if: steps.lighthouse-playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
+
+      - name: Run Lighthouse production-preview baseline
+        shell: bash
+        run: |
+          npm run preview --workspace=@sport-analytics/frontend -- --host 127.0.0.1 --port 4173 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          npm run test:lighthouse
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-public-baseline-${{ github.sha }}
+          path: artifacts/lighthouse-ci
+          if-no-files-found: warn
+          retention-days: 30
+
   quality:
     needs:
       - plan

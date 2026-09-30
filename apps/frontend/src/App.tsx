@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicShell } from './components/PublicShell';
 import { HomePage } from './features/home/HomePage';
 import { ApiExplorerLoadingIndicator } from './features/api-explorer/ApiExplorerLoadingIndicator';
+import { ApiExplorerRouteFrame } from './features/api-explorer/ApiExplorerRouteFrame';
 
 function lazyNamed<T, K extends keyof T>(load: () => Promise<T>, component: K) {
   return lazy(() => load().then((module) => ({ default: module[component] as ComponentType })));
@@ -63,9 +64,9 @@ const AdminDatasetReleasePage = lazyNamed(
   'AdminDatasetReleasePage',
 );
 
-const ApiExplorerPage = lazy(() =>
-  import('./features/api-explorer/ApiExplorerPage').then(({ ApiExplorerPage }) => ({
-    default: ApiExplorerPage,
+const ApiExplorerContent = lazy(() =>
+  import('./features/api-explorer/ApiExplorerPage').then(({ ApiExplorerContent }) => ({
+    default: ApiExplorerContent,
   })),
 );
 
@@ -73,78 +74,80 @@ export function PublicApp() {
   return (
     <PublicShell>
       <div className="route-content">
-      <Suspense
-        fallback={
-          <div className="content-boundary" role="status" aria-label="Loading page">
-            Loading pageâ€¦
-          </div>
-        }
-      >
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route
-            path="/api"
-            element={
-              <Suspense
-                fallback={
-                  <div className="content-boundary api-explorer-route-loading" role="status">
-                    <ApiExplorerLoadingIndicator label="Loading API Explorer" />
-                    Loading API Explorer…
-                  </div>
-                }
-              >
-                <ApiExplorerPage />
-              </Suspense>
-            }
-          />
+        <Suspense
+          fallback={
+            <div className="content-boundary" role="status" aria-label="Loading page">
+              Loading pageâ€¦
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/api"
+              element={
+                <ApiExplorerRouteFrame>
+                  <Suspense
+                    fallback={
+                      <div className="api-explorer-route-loading" role="status">
+                        <ApiExplorerLoadingIndicator label="Loading API Explorer" />
+                        Loading API Explorer…
+                      </div>
+                    }
+                  >
+                    <ApiExplorerContent />
+                  </Suspense>
+                </ApiExplorerRouteFrame>
+              }
+            />
 
-          <Route path="/competitions" element={<CompetitionsPage />} />
-          <Route path="/competitions/:competitionId" element={<CompetitionDetailPage />} />
+            <Route path="/competitions" element={<CompetitionsPage />} />
+            <Route path="/competitions/:competitionId" element={<CompetitionDetailPage />} />
 
-          <Route path="/seasons" element={<SeasonsPage />} />
-          <Route path="/seasons/:seasonId" element={<SeasonDetailPage />} />
+            <Route path="/seasons" element={<SeasonsPage />} />
+            <Route path="/seasons/:seasonId" element={<SeasonDetailPage />} />
 
-          <Route path="/fixtures" element={<FixturesPage />} />
-          <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
-          <Route path="/fixtures/:fixtureId/players" element={<FixturePlayersPage />} />
-          <Route path="/fixtures/:fixtureId/statistics" element={<FixtureStatisticsPage />} />
-          <Route
-            path="/fixtures/:fixtureId/statistics/:statisticId"
-            element={<FixtureStatisticDetailPage />}
-          />
+            <Route path="/fixtures" element={<FixturesPage />} />
+            <Route path="/fixtures/:fixtureId" element={<FixtureDetailPage />} />
+            <Route path="/fixtures/:fixtureId/players" element={<FixturePlayersPage />} />
+            <Route path="/fixtures/:fixtureId/statistics" element={<FixtureStatisticsPage />} />
+            <Route
+              path="/fixtures/:fixtureId/statistics/:statisticId"
+              element={<FixtureStatisticDetailPage />}
+            />
 
-          <Route path="/competitors" element={<CompetitorsPage />} />
-          <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
+            <Route path="/competitors" element={<CompetitorsPage />} />
+            <Route path="/competitors/:competitorId" element={<CompetitorDetailPage />} />
 
-          <Route path="/participants" element={<ParticipantsPage />} />
-          <Route path="/participants/compare" element={<PlayerComparisonPage />} />
-          <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
+            <Route path="/participants" element={<ParticipantsPage />} />
+            <Route path="/participants/compare" element={<PlayerComparisonPage />} />
+            <Route path="/participants/:participantId" element={<ParticipantDetailPage />} />
 
-          <Route path="/dataset-releases" element={<DatasetReleaseCataloguePage />} />
-          <Route path="/dataset-releases/:version" element={<DatasetReleaseDetailPage />} />
+            <Route path="/dataset-releases" element={<DatasetReleaseCataloguePage />} />
+            <Route path="/dataset-releases/:version" element={<DatasetReleaseDetailPage />} />
 
-          <Route path="/sign-in" element={<AuthenticationPage />} />
-          <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
-          <Route path="/account" element={<Navigate to="/account/overview" replace />} />
-          <Route path="/account/:section" element={<AccountPage />} />
-          <Route path="/submissions/new" element={<SubmissionPage />} />
-          <Route
-            path="/submissions/batches/new"
-            element={<Navigate to="/submissions/new" replace />}
-          />
-          <Route path="/submissions/batches" element={<BatchReportsPage />} />
-          <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
-          <Route path="/admin" element={<AdministrationPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/api-consumers" element={<AdminApiConsumersPage />} />
-          <Route path="/admin/api-consumers/:consumerId" element={<AdminApiConsumersPage />} />
-          <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
-          <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
-          <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
+            <Route path="/sign-in" element={<AuthenticationPage />} />
+            <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
+            <Route path="/account" element={<Navigate to="/account/overview" replace />} />
+            <Route path="/account/:section" element={<AccountPage />} />
+            <Route path="/submissions/new" element={<SubmissionPage />} />
+            <Route
+              path="/submissions/batches/new"
+              element={<Navigate to="/submissions/new" replace />}
+            />
+            <Route path="/submissions/batches" element={<BatchReportsPage />} />
+            <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
+            <Route path="/admin" element={<AdministrationPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/api-consumers" element={<AdminApiConsumersPage />} />
+            <Route path="/admin/api-consumers/:consumerId" element={<AdminApiConsumersPage />} />
+            <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
+            <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
+            <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </div>
     </PublicShell>
   );

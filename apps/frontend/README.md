@@ -348,6 +348,21 @@ and accepts explicit protected/detail overrides such as `LIGHTHOUSE_SUBMISSION_B
 The runner fails rather than silently auditing a protected route anonymously when required state is
 missing. Do not use mocked E2E storage state, record credentials, or commit session files.
 
+### CI baseline and strict modes
+
+Gitea Actions runs the public static route inventory against a production Vite preview after frontend
+changes. It runs each desktop/mobile route three times, reports median metrics in
+`artifacts/lighthouse-ci/summary.md`, and uploads the JSON reports and summary as a 30-day CI artifact.
+The current CI job uses `LIGHTHOUSE_GATE_MODE=report`: it records the evidence and fails only on a
+catastrophic median Performance regression below 40. This is a temporary migration mode, not a lower
+issue target. Once the complete legitimate route matrix is stable, use `LIGHTHOUSE_GATE_MODE=strict`
+to enforce Performance >=90, CLS <=0.1, LCP <=2.5s and TBT <=200ms from the same median evidence.
+
+CI does not receive OAuth storage states, so authenticated routes are explicitly deferred/unverified;
+they are never treated as passing. Parameterised routes remain skipped until deterministic API data is
+available in that environment. Local runs retain the default strict mode and can use legitimate states
+and `LIGHTHOUSE_API_BASE_URL` when those inputs are available.
+
 ## Deployment
 
 The frontend application is hosted on Cloudflare Pages:

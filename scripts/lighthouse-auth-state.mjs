@@ -8,10 +8,13 @@ export const lighthouseStorageStateEnvironment = {
 
 export async function applyLighthouseStorageState({ context, baseUrl, role }) {
   const environmentVariable = lighthouseStorageStateEnvironment[role];
-  if (!environmentVariable) throw new Error(`No Lighthouse storage-state convention exists for role "${role}".`);
+  if (!environmentVariable)
+    throw new Error(`No Lighthouse storage-state convention exists for role "${role}".`);
   const statePath = process.env[environmentVariable];
   if (!statePath) {
-    throw new Error(`Protected Lighthouse route requires a legitimate ${role} session. Set ${environmentVariable} to a Playwright storage-state JSON file created through the normal Google OAuth flow.`);
+    throw new Error(
+      `Protected Lighthouse route requires a legitimate ${role} session. Set ${environmentVariable} to a Playwright storage-state JSON file created through the normal Google OAuth flow.`,
+    );
   }
   const state = JSON.parse(await readFile(statePath, 'utf8'));
   if (!Array.isArray(state.cookies) || !Array.isArray(state.origins)) {
@@ -25,7 +28,8 @@ export async function applyLighthouseStorageState({ context, baseUrl, role }) {
     const originState = state.origins.find((origin) => origin.origin === new URL(baseUrl).origin);
     await page.evaluate((localStorageState) => {
       window.localStorage.clear();
-      for (const { name, value } of localStorageState ?? []) window.localStorage.setItem(name, value);
+      for (const { name, value } of localStorageState ?? [])
+        window.localStorage.setItem(name, value);
     }, originState?.localStorage);
     await page.reload({ waitUntil: 'domcontentloaded' });
   } finally {

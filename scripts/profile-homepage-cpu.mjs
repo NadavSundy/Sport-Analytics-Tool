@@ -85,7 +85,8 @@ try {
       navigation,
       resources,
       headingVisible: heading
-        ? getComputedStyle(heading).visibility !== 'hidden' && getComputedStyle(heading).opacity !== '0'
+        ? getComputedStyle(heading).visibility !== 'hidden' &&
+          getComputedStyle(heading).opacity !== '0'
         : false,
     };
   });
@@ -139,7 +140,10 @@ try {
     path.join(outputDirectory, 'homepage-summary.json'),
     JSON.stringify({ durationMs, samples: profile.samples.length, summary }, null, 2),
   );
-  await writeFile(path.join(outputDirectory, 'homepage-timeline.json'), JSON.stringify(timeline, null, 2));
+  await writeFile(
+    path.join(outputDirectory, 'homepage-timeline.json'),
+    JSON.stringify(timeline, null, 2),
+  );
   console.table(summary.slice(0, 20));
 } finally {
   await browser.close();

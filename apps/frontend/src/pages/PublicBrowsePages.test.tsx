@@ -257,7 +257,8 @@ describe('public browsing pages', () => {
     const { container } = renderRoute('/competitions');
 
     expect(
-      (await screen.findByRole('heading', { level: 3, name: 'Loading competitions' })).parentElement,
+      (await screen.findByRole('heading', { level: 3, name: 'Loading competitions' }))
+        .parentElement,
     ).toHaveAttribute('role', 'status');
     expect(container.querySelector('.record-list--skeleton')).not.toBeInTheDocument();
     expect(container.querySelectorAll('.record-list__item')).toHaveLength(0);

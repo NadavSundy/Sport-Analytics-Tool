@@ -29,6 +29,14 @@ export const lighthouseRoutes = [
     baseline: false,
   },
   {
+    path: '/__lighthouse-not-found__',
+    routePattern: '*',
+    access: 'public',
+    kind: 'not-found',
+    setup: 'deliberately nonexistent public path',
+    baseline: false,
+  },
+  {
     path: '/competitions/:competitionId',
     access: 'public',
     kind: 'parameterised',

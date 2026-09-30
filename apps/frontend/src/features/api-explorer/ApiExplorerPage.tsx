@@ -2,8 +2,8 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { parse } from 'yaml';
 
-import { PageLayout } from '../../components/PageLayout';
 import { ApiExplorerLoadingIndicator } from './ApiExplorerLoadingIndicator';
+import { ApiExplorerRouteFrame } from './ApiExplorerRouteFrame';
 import './ApiExplorerPage.css';
 
 const SwaggerUI = lazy(async () => {
@@ -142,7 +142,7 @@ function parseOpenApiDocument(source: string): OpenApiDocument {
   return document;
 }
 
-export function ApiExplorerPage() {
+export function ApiExplorerContent() {
   const [reloadToken, setReloadToken] = useState(0);
   const [showPlanned, setShowPlanned] = useState(false);
   const [showInteractiveExplorer, setShowInteractiveExplorer] = useState(false);
@@ -199,10 +199,7 @@ export function ApiExplorerPage() {
   }, [loadState]);
 
   return (
-    <PageLayout
-      heading="API Explorer"
-      description="Explore the authoritative Sport Analytics OpenAPI contract and try implemented endpoints directly from the browser."
-    >
+    <>
       <section className="api-explorer__intro" aria-labelledby="api-explorer-version">
         <div>
           <p className="eyebrow">Public developer interface</p>
@@ -358,7 +355,9 @@ export function ApiExplorerPage() {
               OpenAPI {API_MAJOR_VERSION}
             </h2>
             {showInteractiveExplorer ? (
-              <Suspense fallback={<ApiExplorerLoadingIndicator label="Loading interactive API Explorer" />}>
+              <Suspense
+                fallback={<ApiExplorerLoadingIndicator label="Loading interactive API Explorer" />}
+              >
                 <div className="api-explorer__swagger">
                   <SwaggerUI
                     spec={swaggerDocument}
@@ -371,8 +370,14 @@ export function ApiExplorerPage() {
               </Suspense>
             ) : (
               <div className="api-explorer__swagger-placeholder ui-card">
-                <p>The interactive explorer is loaded on demand to keep this public page responsive.</p>
-                <button className="ui-button ui-button--secondary" type="button" onClick={() => setShowInteractiveExplorer(true)}>
+                <p>
+                  The interactive explorer is loaded on demand to keep this public page responsive.
+                </p>
+                <button
+                  className="ui-button ui-button--secondary"
+                  type="button"
+                  onClick={() => setShowInteractiveExplorer(true)}
+                >
                   Load interactive API Explorer
                 </button>
               </div>
@@ -380,6 +385,14 @@ export function ApiExplorerPage() {
           </section>
         </>
       ) : null}
-    </PageLayout>
+    </>
+  );
+}
+
+export function ApiExplorerPage() {
+  return (
+    <ApiExplorerRouteFrame>
+      <ApiExplorerContent />
+    </ApiExplorerRouteFrame>
   );
 }

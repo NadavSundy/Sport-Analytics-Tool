@@ -159,7 +159,16 @@ describe('public application and authentication interface', () => {
     renderApp('/fixtures');
 
     expect(screen.getByRole('status', { name: 'Loading page' })).toBeInTheDocument();
-    expect(screen.getByRole('status', { name: 'Loading page' }).closest('.route-content')).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Loading page' }).closest('.route-content'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the meaningful API Explorer route heading while its interactive content loads', () => {
+    renderApp('/api');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'API Explorer' })).toBeInTheDocument();
+    expect(screen.getByText(/authoritative Sport Analytics OpenAPI contract/i)).toBeInTheDocument();
   });
 
   it('keeps the landing page public and shows signed-out navigation', async () => {

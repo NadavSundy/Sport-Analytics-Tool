@@ -107,6 +107,20 @@ describe('public shell API discovery', () => {
     );
   });
 
+  it('mounts only the active brand wordmark asset', () => {
+    render(
+      <AuthProvider client={createSignedOutAuthClient()}>
+        <MemoryRouter>
+          <PublicShell>
+            <p>Public page</p>
+          </PublicShell>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(screen.getAllByAltText("Stat'sTheGame")).toHaveLength(2);
+  });
+
   it('makes the bottom API entry open the explorer while keeping broader docs distinct', () => {
     render(
       <AuthProvider client={createSignedOutAuthClient()}>

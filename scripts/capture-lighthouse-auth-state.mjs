@@ -4,8 +4,11 @@ import process from 'node:process';
 import { chromium } from 'playwright';
 import { lighthouseStorageStateEnvironment } from './lighthouse-auth-state.mjs';
 
-const role = process.argv.slice(2).find((argument) => argument.startsWith('--role='))?.slice(7)
-  ?? process.argv[process.argv.indexOf('--role') + 1];
+const role =
+  process.argv
+    .slice(2)
+    .find((argument) => argument.startsWith('--role='))
+    ?.slice(7) ?? process.argv[process.argv.indexOf('--role') + 1];
 if (!role || !lighthouseStorageStateEnvironment[role]) {
   throw new Error('Usage: npm run lighthouse:auth -- --role viewer|submitter|admin');
 }
@@ -15,7 +18,11 @@ const outputPath = path.resolve(
   process.env.LIGHTHOUSE_AUTH_OUTPUT_DIR ?? 'artifacts/lighthouse/auth',
   `${role}-storage-state.json`,
 );
-const protectedPath = { viewer: '/account/overview', submitter: '/submissions/batches', admin: '/admin' }[role];
+const protectedPath = {
+  viewer: '/account/overview',
+  submitter: '/submissions/batches',
+  admin: '/admin',
+}[role];
 const browser = await chromium.launch({ headless: false });
 const context = await browser.newContext();
 const page = await context.newPage();
@@ -31,7 +38,9 @@ page.on('response', async (response) => {
   }
 });
 
-console.log(`Complete normal Google OAuth in the opened browser as a ${role}. This helper never reads or prints tokens.`);
+console.log(
+  `Complete normal Google OAuth in the opened browser as a ${role}. This helper never reads or prints tokens.`,
+);
 await page.goto(new URL('/sign-in', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(250);
 await page.waitForFunction(() => location.pathname !== '/sign-in', undefined, { timeout: 600_000 });
@@ -41,7 +50,9 @@ const roleDeadline = Date.now() + 30_000;
 while (!confirmedRole && Date.now() < roleDeadline) await page.waitForTimeout(250);
 if (confirmedRole !== role) {
   await browser.close();
-  throw new Error(`The authenticated profile did not confirm the requested ${role} role (received ${confirmedRole ?? 'no role'}). No storage state was saved.`);
+  throw new Error(
+    `The authenticated profile did not confirm the requested ${role} role (received ${confirmedRole ?? 'no role'}). No storage state was saved.`,
+  );
 }
 if (page.url().includes('/sign-in')) {
   await browser.close();
@@ -51,4 +62,6 @@ await mkdir(path.dirname(outputPath), { recursive: true });
 await context.storageState({ path: outputPath });
 await browser.close();
 console.log(`Saved ${role} storage state to ${outputPath}.`);
-console.log(`PowerShell: $env:${lighthouseStorageStateEnvironment[role]} = (Resolve-Path '${outputPath}')`);
+console.log(
+  `PowerShell: $env:${lighthouseStorageStateEnvironment[role]} = (Resolve-Path '${outputPath}')`,
+);

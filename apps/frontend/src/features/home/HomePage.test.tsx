@@ -71,9 +71,9 @@ describe('homepage', () => {
   it('uses only documented public journeys and API paths', async () => {
     renderHomePage();
 
-    const explore = (await screen.findByRole('heading', { name: 'Start with the cricket.' })).closest(
-      'section',
-    );
+    const explore = (
+      await screen.findByRole('heading', { name: 'Start with the cricket.' })
+    ).closest('section');
     expect(explore).not.toBeNull();
     const exploreLinks = within(explore as HTMLElement).getAllByRole('link');
     expect(exploreLinks.map((link) => link.getAttribute('href'))).toEqual([
