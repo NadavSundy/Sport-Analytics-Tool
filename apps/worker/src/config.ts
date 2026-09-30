@@ -48,6 +48,21 @@ const workerEnvironmentSchema = z
     BATCH_CHUNK_SIZE: z.coerce.number().int().min(10).max(2_000).default(500),
     BATCH_LEASE_MS: z.coerce.number().int().min(10_000).max(600_000).default(120_000),
     DATABASE_URL: z.string().trim().min(1, 'Database URL is required'),
+    /**
+     * The worker's own statement bound, separate from the API's and larger.
+     *
+     * The worker's unit of work is a 10,000-row page rather than a 50-row API
+     * page, no reader is waiting on it, and a cancelled statement inside the
+     * release snapshot transaction costs the whole transaction rather than one
+     * response. Its pool also holds only `WORKER_CONCURRENCY + 1` connections,
+     * so it is under far less exhaustion pressure than the API's ten.
+     *
+     * Every worker statement is already bounded by a page or chunk, and the
+     * longest measured worker *job* is 16.2 s spread across many statements
+     * (`evidence/sprints/sprint-3/issue-599-performance-revalidation.md` §8.6),
+     * so no worker statement approaches this default.
+     */
+    DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(60_000),
     DATABASE_SSL_MODE: z.enum(['disable', 'verify-full']).default('verify-full'),
     DATABASE_CA_CERT_PATH: optionalNonEmptyString,
     SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE: z
