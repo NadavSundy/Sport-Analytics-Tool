@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-const authStorageKey = 'sb-e2e-auth-token';
+const authStorageKey = 'supabase.auth.token';
 const release = {
   releaseId: 'ba756ad4-4b1e-4b80-81f2-09a66ed6c854',
   version: '2026.09.14v1',

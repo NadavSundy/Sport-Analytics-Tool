@@ -47,6 +47,13 @@ async function stubOpenApi(page: Page) {
   });
 }
 
+async function loadInteractiveExplorer(page: Page) {
+  const loadButton = page.getByRole('button', { name: 'Load interactive API Explorer' });
+  await expect(loadButton).toBeVisible();
+  await loadButton.click();
+  await expect(page.locator('.swagger-ui')).toBeVisible({ timeout: 15_000 });
+}
+
 test(
   'public navigation reaches the explorer and the page does not overflow',
   { tag: '@mobile' },
@@ -86,6 +93,8 @@ test(
     ).toBeVisible();
     await expect(accessRegion.getByText(/does not grant administrator/)).toBeVisible();
     await expect(accessRegion).not.toContainText('sat_live_');
+
+    await loadInteractiveExplorer(page);
 
     await expect(
       page.locator('.swagger-ui .opblock-summary-path', { hasText: '/api/v1/health' }),
@@ -134,6 +143,8 @@ test('planned operations are explicit, separate from Swagger, and non-executable
   await expect(plannedRegion.locator('.api-explorer__planned-state')).toHaveText('PLANNED');
   await expect(plannedRegion.getByRole('button')).toHaveCount(0);
 
+  await loadInteractiveExplorer(page);
+
   await expect(
     page.locator('.swagger-ui .opblock-summary-path', {
       hasText: '/api/v1/future-statistic',
@@ -152,7 +163,7 @@ test('project-owned explorer shell and controls have no serious accessibility vi
   await page.goto('/api');
 
   await expect(page.getByRole('heading', { level: 1, name: 'API Explorer' })).toBeVisible();
-  await expect(page.locator('.swagger-ui')).toBeVisible();
+  await loadInteractiveExplorer(page);
 
   const results = await new AxeBuilder({ page }).exclude('.swagger-ui').analyze();
   const seriousOrCritical = results.violations.filter(
