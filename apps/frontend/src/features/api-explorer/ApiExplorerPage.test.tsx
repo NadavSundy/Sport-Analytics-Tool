@@ -69,6 +69,8 @@ components:
       name: X-API-Key
 `;
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 function okSpecification(): Response {
   return {
     ok: true,
@@ -108,7 +110,7 @@ describe('ApiExplorerPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'API Explorer' }, { timeout: 5_000 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Supported API major version: v1')).toBeInTheDocument();
+    expect(await screen.findByText('Supported API major version: v1')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'How to access the API' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
@@ -179,7 +181,7 @@ describe('ApiExplorerPage', () => {
     expect(swagger).toHaveAttribute('data-auth-schemes', 'bearerAuth,apiKeyAuth');
 
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3000/openapi.yaml',
+      `${testApiBaseUrl.replace(/\/api\/v1$/, '')}/openapi.yaml`,
       expect.objectContaining({
         cache: 'no-store',
         headers: expect.objectContaining({

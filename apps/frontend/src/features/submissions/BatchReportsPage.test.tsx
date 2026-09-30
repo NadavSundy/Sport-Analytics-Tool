@@ -142,7 +142,7 @@ async function renderReport() {
     </AuthProvider>,
   );
 
-  expect(screen.getByRole('heading', { name: 'Checking access' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Checking access' })).toBeInTheDocument();
 
   await act(async () => {
     deferredSession.resolve({ data: { session: session() } });
