@@ -84,15 +84,25 @@ Container Apps creates Key Vault-backed secrets from versionless secret-referenc
 runtime receives them through `secretRef`. The CI workflow receives only the reference URIs.
 `SUPABASE_SECRET_KEY` must be present because it enables the required authenticated
 account-deletion path; without it the backend starts, but account deletion returns
-`501 ACCOUNT_DELETION_UNAVAILABLE`. `LLM_API_KEY` must be present because the environment schema
-requires it in production, so a deployment cannot ship a permanently unavailable natural-language
-query feature; see ADR-017.
+`501 ACCOUNT_DELETION_UNAVAILABLE`.
+
+`LLM_API_KEY` behaves the same way and is optional to the application in every environment,
+production included: without it the backend starts, logs one startup warning naming the variable,
+and natural-language query translation reports itself unconfigured while every other capability is
+unaffected. See ADR-017.
+
+It is not optional to this deployment, however. **The `llm-api-key` Key Vault secret must exist
+before this template deploys**, because Container Apps resolves the secret reference when the
+revision is created and a missing secret fails the deployment rather than degrading the running
+app. The deployment workflow also fails when `AZURE_BACKEND_LLM_API_KEY_SECRET_URI` is not
+configured, so the reference URI must be provisioned alongside it.
 
 ### Storing the language-model key
 
-An operator with `Key Vault Secrets Officer` on the existing vault stores the value once. The key
-must be the workspace-scoped key from the project Anthropic Console workspace that carries the $10
-monthly spend limit recorded in ADR-017.
+An operator with `Key Vault Secrets Officer` on the existing vault stores the value once, before the
+first deployment that includes the secret reference. The key must be the workspace-scoped key from
+the project Anthropic Console workspace that carries the $10 monthly spend limit recorded in
+ADR-017.
 
 Read the secret value from a prompt rather than passing it on the command line, so it does not enter
 the shell history or the process list:

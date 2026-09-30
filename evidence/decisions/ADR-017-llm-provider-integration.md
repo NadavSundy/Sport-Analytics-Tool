@@ -85,11 +85,11 @@ A dedicated Anthropic Console **workspace for this project, with a $10 monthly s
 API key scoped to that workspace. The limit is the control: it caps the blast radius of a loop, a
 leaked key or a load test at $10 rather than at the account balance.
 
-| Variable         | Default                     | Notes                                                                                      |
-| ---------------- | --------------------------- | ------------------------------------------------------------------------------------------ |
-| `LLM_API_KEY`    | none                        | Server-only. Optional at startup, required in production. Format deliberately unvalidated. |
-| `LLM_MODEL`      | `claude-haiku-4-5-20251001` | Character-set bounded, because it reaches the request body.                                |
-| `LLM_TIMEOUT_MS` | `15000`                     | 2000 to 60000.                                                                             |
+| Variable         | Default                     | Notes                                                                        |
+| ---------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `LLM_API_KEY`    | none                        | Server-only. Optional in every environment. Format deliberately unvalidated. |
+| `LLM_MODEL`      | `claude-haiku-4-5-20251001` | Character-set bounded, because it reaches the request body.                  |
+| `LLM_TIMEOUT_MS` | `15000`                     | 2000 to 60000.                                                               |
 
 The key is held in Key Vault, surfaced to Container Apps as the `llm-api-key` secret reference and
 into the runtime through `secretRef`, exactly as `DATABASE_URL` and `SUPABASE_SECRET_KEY` are. CI
@@ -211,9 +211,16 @@ repository's dependency-hygiene gates.
 - **Spending limit is an operational commitment.** The $10 workspace limit and the workspace-scoped
   key must exist before the feature is enabled in a deployed environment. If the limit is raised or
   the key is issued outside that workspace, this record no longer describes the deployment.
-- **Production will not start without the key.** The environment schema requires `LLM_API_KEY` in
-  production, so a deployment cannot silently ship a permanently unavailable feature. Local
-  development and every test suite run without it.
+- **A missing key disables this feature and nothing else.** `LLM_API_KEY` is optional in every
+  environment, production included. Natural-language querying is one optional capability, so an
+  absent key must not stop the backend from serving the published reads, the submission workflow or
+  anything else. When it is absent the adapter raises `LlmNotConfiguredError`, which issue #815 maps
+  to `503`, and `warnAboutOptionalConfiguration` logs one startup warning naming the variable and no
+  value. An earlier draft of this record required the key in production; that was rejected, because
+  making the whole API refuse to start over an optional feature trades a large outage for a small
+  one. The deployment still supplies the key: the Key Vault secret reference must exist before the
+  template deploys, and the deployment workflow fails without its reference URI, so a deployment
+  cannot reach production having silently forgotten it.
 - **No endpoint, route or interface is added by this decision.** Issue #815 adds the endpoint that
   executes a validated definition and #816 the interface. Until then the adapter is unreachable from
   outside the backend.
@@ -232,6 +239,11 @@ provider**, and no real key exists in the repository or in any test.
 The JSON Schema is verified against the contract by Ajv: every valid definition it admits also
 satisfies `analyticsQueryDefinitionSchema`, every object is closed, no unsupported keyword appears,
 and the branch order, property names and required sets are read off the contract's own shapes.
+
+Environment tests confirm that the backend loads without the key in a production configuration as
+well as a development one, that a blank value counts as absent, that the model identifier and the
+timeout are bounded, and that the startup warning fires exactly once when the key is missing, names
+only the variable, and never carries the configured value.
 
 `scripts/check-frontend-bundle-secrets.mjs` was run against a fresh production frontend build and
 reported no findings, and both new patterns were confirmed to detect a planted leak.

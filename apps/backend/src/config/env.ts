@@ -42,11 +42,12 @@ const environmentSchema = z
     AZURE_STORAGE_INGESTION_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_RELEASE_CONTAINER_NAME: optionalAzureContainerName,
     // Server-only key for the natural-language query adapter (ADR-017). Optional
-    // at startup so local development and the test suites run without it; the
-    // adapter reports the feature as unconfigured rather than failing a request
-    // in a way that looks like a provider fault. Required in production, below.
-    // Its format is deliberately not validated: a shape check would couple the
-    // backend to a credential format the provider may change.
+    // in every environment, production included: natural-language querying is one
+    // optional feature and a missing key must disable it rather than stop the
+    // backend from serving everything else. When it is absent the adapter raises
+    // its not-configured error and `warnAboutOptionalConfiguration` says so once
+    // at startup. Its format is deliberately not validated: a shape check would
+    // couple the backend to a credential format the provider may change.
     LLM_API_KEY: optionalNonEmptyString,
     // Bounded to the character set a model identifier uses, so a stray value
     // cannot become arbitrary content in the outbound request body.
@@ -124,16 +125,6 @@ const environmentSchema = z
         message: 'Production requires a non-local deployment environment',
       });
     }
-
-    // A deployed build must not silently lack the key: the natural-language
-    // query feature would then be advertised and permanently unavailable.
-    if (environment.NODE_ENV === 'production' && !environment.LLM_API_KEY) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['LLM_API_KEY'],
-        message: 'Language-model API key is required in production',
-      });
-    }
   });
 
 export type Environment = z.infer<typeof environmentSchema>;
@@ -150,4 +141,26 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
   }
 
   return result.data;
+}
+
+/**
+ * Reports each optional capability the running configuration leaves switched off,
+ * once, at startup.
+ *
+ * An absent optional value is a valid configuration rather than a fault, so it
+ * must not stop the backend. It must also not be silent: an operator who expected
+ * natural-language querying to work should learn that the key is missing from the
+ * startup log rather than from a reader's failed question.
+ *
+ * Only the variable name is reported. No value is read, logged or echoed.
+ */
+export function warnAboutOptionalConfiguration(
+  environment: Environment,
+  log: (message: string) => void = console.warn,
+): void {
+  if (!environment.LLM_API_KEY) {
+    log(
+      'LLM_API_KEY is not configured; natural-language query translation is disabled. Every other capability is unaffected.',
+    );
+  }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadEnvironment } from '../../src/config/env';
+import { loadEnvironment, warnAboutOptionalConfiguration } from '../../src/config/env';
 
 const requiredEnvironment = {
   NODE_ENV: 'test',
@@ -107,9 +107,6 @@ describe('backend environment', () => {
       AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
       AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
       AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
-      // Production now also requires the language-model key (issue #814), which
-      // this object-storage assertion has to satisfy to reach production at all.
-      LLM_API_KEY: 'test-placeholder-not-a-real-key',
       DEPLOYMENT_ENVIRONMENT: 'dev',
       AZURE_STORAGE_CONNECTION_STRING: 'unsupported',
       AZURE_STORAGE_ACCOUNT_KEY: 'unsupported',
@@ -125,7 +122,7 @@ describe('backend environment', () => {
 });
 
 describe('language-model provider configuration', () => {
-  /** A deployable production environment in every respect except the key. */
+  /** A deployable production environment, carrying no language-model key. */
   const productionEnvironmentWithoutKey = {
     ...requiredEnvironment,
     NODE_ENV: 'production',
@@ -136,7 +133,7 @@ describe('language-model provider configuration', () => {
     AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
   };
 
-  it('starts without a language-model key outside production', () => {
+  it('starts without a language-model key', () => {
     const environment = loadEnvironment(requiredEnvironment);
 
     expect(environment.LLM_API_KEY).toBeUndefined();
@@ -150,13 +147,16 @@ describe('language-model provider configuration', () => {
     ).toBeUndefined();
   });
 
-  it('requires a language-model key in production', () => {
-    expect(() => loadEnvironment(productionEnvironmentWithoutKey)).toThrow(
-      'Invalid environment configuration: LLM_API_KEY: Language-model API key is required in production',
-    );
+  // Natural-language querying is one optional feature. A missing key must disable
+  // it and nothing else, so production must still start without one.
+  it('starts in production without a language-model key', () => {
+    const environment = loadEnvironment(productionEnvironmentWithoutKey);
+
+    expect(environment.LLM_API_KEY).toBeUndefined();
+    expect(environment.NODE_ENV).toBe('production');
   });
 
-  it('accepts a configured production key', () => {
+  it('accepts a configured key', () => {
     expect(
       loadEnvironment({
         ...productionEnvironmentWithoutKey,
@@ -203,5 +203,47 @@ describe('language-model provider configuration', () => {
         'LLM_MODEL',
       );
     }
+  });
+});
+
+describe('optional configuration warnings', () => {
+  it('reports a missing language-model key once, naming only the variable', () => {
+    const messages: string[] = [];
+
+    warnAboutOptionalConfiguration(loadEnvironment(requiredEnvironment), (message) =>
+      messages.push(message),
+    );
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('LLM_API_KEY');
+    expect(messages[0]).toContain('disabled');
+  });
+
+  it('says nothing when the language-model key is configured', () => {
+    const messages: string[] = [];
+
+    warnAboutOptionalConfiguration(
+      loadEnvironment({ ...requiredEnvironment, LLM_API_KEY: 'test-placeholder-not-a-real-key' }),
+      (message) => messages.push(message),
+    );
+
+    expect(messages).toEqual([]);
+  });
+
+  // The warning exists so an operator learns the feature is off. It must never
+  // become a way for key material to reach a log.
+  it('never logs the configured key', () => {
+    const messages: string[] = [];
+    const key = 'test-placeholder-not-a-real-key';
+
+    warnAboutOptionalConfiguration(
+      loadEnvironment({ ...requiredEnvironment, LLM_API_KEY: key }),
+      (message) => messages.push(message),
+    );
+    warnAboutOptionalConfiguration(loadEnvironment(requiredEnvironment), (message) =>
+      messages.push(message),
+    );
+
+    expect(messages.join(' ')).not.toContain(key);
   });
 });
