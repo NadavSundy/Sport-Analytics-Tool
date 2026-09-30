@@ -1,4 +1,4 @@
-# Testing & Quality
+﻿# Testing & Quality
 
 This section groups the project's testing strategy, automated checks, coverage, performance evidence,
 formal user testing and defect workflow. The detailed evidence itself remains under `evidence/` and is
@@ -6,18 +6,19 @@ linked through [Project Process & Evidence](../process/index.md).
 
 ## What do you need to verify?
 
-| Question                                             | Start here                                                                          |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| What test suites exist and how do I run them?        | [Automated testing strategy](../development/testing.md)                             |
-| What does CI require before merge/deployment?        | [CI/CD & quality gates](../development/ci-cd.md)                                    |
-| How is repository-wide coverage calculated?          | [Code coverage](code-coverage.md)                                                   |
-| How is performance measured?                         | [Representative-scale performance baseline](../development/performance-baseline.md) |
-| How is formal user testing run?                      | [User testing overview](user-testing-overview.md)                                   |
-| What rules govern a user-testing session?            | [User testing protocol](user-testing-protocol.md)                                   |
-| What tasks can participants be given?                | [User testing task bank](user-testing-task-bank.md)                                 |
-| What proves Intermediate ingestion works end to end? | [Intermediate ingestion acceptance](intermediate-ingestion-acceptance.md)           |
-| How are defects reported and tracked?                | [Bug tracking](bug-tracking.md)                                                     |
-| Where are retained validation records?               | [Testing & validation evidence](../process/validation-and-user-testing.md)          |
+| Question                                             | Start here                                                                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| What test suites exist and how do I run them?        | [Automated testing strategy](../development/testing.md)                                                       |
+| What does CI require before merge/deployment?        | [CI/CD & quality gates](../development/ci-cd.md)                                                              |
+| How is repository-wide coverage calculated?          | [Code coverage](code-coverage.md)                                                                             |
+| How is performance measured?                         | [Representative-scale performance baseline](../development/performance-baseline.md)                           |
+| How is formal user testing run?                      | [User testing overview](user-testing-overview.md)                                                             |
+| What rules govern a user-testing session?            | [User testing protocol](user-testing-protocol.md)                                                             |
+| What tasks can participants be given?                | [User testing task bank](user-testing-task-bank.md)                                                           |
+| What did formal user testing find?                   | [Sprint 2 summary](user-testing-sprint-2-summary.md) and [Sprint 3 summary](user-testing-sprint-3-summary.md) |
+| What proves Intermediate ingestion works end to end? | [Intermediate ingestion acceptance](intermediate-ingestion-acceptance.md)                                     |
+| How are defects reported and tracked?                | [Bug tracking](bug-tracking.md)                                                                               |
+| Where are retained validation records?               | [Testing & validation evidence](../process/validation-and-user-testing.md)                                    |
 
 ## Fast local checks
 

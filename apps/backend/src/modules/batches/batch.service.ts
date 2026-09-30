@@ -629,6 +629,7 @@ export function createBatchService(
 
     async downloadReport(account, reference) {
       const batch = await findAuthorizedBatch(account, reference);
+      const onboardingTasks = await repository.listParticipantOnboardingTasks(batch.batchId);
       const items: BatchReportItem[] = [];
       let afterOrdinal: number | undefined;
       for (;;) {
@@ -644,21 +645,14 @@ export function createBatchService(
         if (page.length < 1000) break;
         afterOrdinal = page.at(-1)!.ordinal;
       }
-      const [
-        batchStatus,
-        errorGroups,
-        blockingValidationErrors,
-        resolution,
-        fixtureSummaries,
-        onboardingTasks,
-      ] = await Promise.all([
-        status(batch),
-        repository.listBatchRuleGroups(batch.batchId),
-        repository.countBlockingValidationErrors(batch.batchId),
-        repository.getBatchResolutionCounts(batch.batchId),
-        repository.listBatchFixtureSummaries(batch.batchId),
-        repository.listParticipantOnboardingTasks(batch.batchId),
-      ]);
+      const [batchStatus, errorGroups, blockingValidationErrors, resolution, fixtureSummaries] =
+        await Promise.all([
+          status(batch),
+          repository.listBatchRuleGroups(batch.batchId),
+          repository.countBlockingValidationErrors(batch.batchId),
+          repository.getBatchResolutionCounts(batch.batchId),
+          repository.listBatchFixtureSummaries(batch.batchId),
+        ]);
       const blockingReasons = [
         ...(blockingValidationErrors > 0 ? ['Blocking validation errors remain.'] : []),
         ...(batchStatus.counts.conflicting > 0 ? ['Conflicting records remain.'] : []),

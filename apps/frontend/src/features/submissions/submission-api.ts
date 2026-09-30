@@ -30,7 +30,13 @@ export class SubmissionInputError extends Error {
   }
 }
 
-async function listCompetitionFixtures(
+/**
+ * Every fixture in one competition. The submission selectors load a competition
+ * at a time rather than the whole table: an administrator is scoped to nothing,
+ * so an unfiltered sweep is one request per hundred fixtures in the database
+ * before the page can be used at all (#779).
+ */
+export async function listCompetitionFixtures(
   competitionId: string,
   signal?: AbortSignal,
 ): Promise<Fixture[]> {
@@ -49,52 +55,6 @@ async function listCompetitionFixtures(
   } while (cursor);
 
   return fixtures;
-}
-
-export async function listAllFixtures(signal?: AbortSignal): Promise<Fixture[]> {
-  const fixtures: Fixture[] = [];
-  let cursor: string | null = null;
-
-  do {
-    const parameters = new URLSearchParams({ limit: '100' });
-    if (cursor) {
-      parameters.set('cursor', cursor);
-    }
-
-    const response = await publicReadApi.listFixtures(`?${parameters.toString()}`, signal);
-    fixtures.push(...response.data);
-    cursor = response.pagination.nextCursor;
-  } while (cursor);
-
-  return fixtures
-    .filter((fixture) => fixture.competitionId !== null)
-    .sort(
-      (left, right) =>
-        left.startDate.localeCompare(right.startDate) ||
-        left.fixtureId.localeCompare(right.fixtureId),
-    );
-}
-
-export async function listScopedFixtures(
-  competitionIds: string[],
-  signal?: AbortSignal,
-): Promise<Fixture[]> {
-  const fixtureGroups = await Promise.all(
-    competitionIds.map((competitionId) => listCompetitionFixtures(competitionId, signal)),
-  );
-  const fixturesById = new Map<string, Fixture>();
-
-  for (const fixture of fixtureGroups.flat()) {
-    if (fixture.competitionId && competitionIds.includes(fixture.competitionId)) {
-      fixturesById.set(fixture.fixtureId, fixture);
-    }
-  }
-
-  return [...fixturesById.values()].sort(
-    (left, right) =>
-      left.startDate.localeCompare(right.startDate) ||
-      left.fixtureId.localeCompare(right.fixtureId),
-  );
 }
 
 export function createTechnicalBatchFile(

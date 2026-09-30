@@ -2,21 +2,21 @@
 
 ## Session metadata
 
-| Field                        | Value                                                                                                                                                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Start                        | 2026-09-27 16:00 SAST (UTC+2)                                                                                                                                                                                  |
-| Tester                       | Dean Feldman                                                                                                                                                                                                   |
-| Environment                  | Deployed Sprint 3 environment                                                                                                                                                                                  |
-| Frontend                     | https://sport-analytics-tool-web.pages.dev                                                                                                                                                                     |
-| API base                     | https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1                                                                                                                 |
-| Browser / OS                 | Google Chrome / Windows                                                                                                                                                                                        |
-| Local candidate commit       | `1091ad097abb6435199a4686a9779640ed7b0d8f`                                                                                                                                                                     |
-| Deployed build identity      | Pending: health and frontend returned HTTP 200 but expose no commit/version metadata.                                                                                                                          |
-| Source                       | `1552923.json` — SHA-256 `db4ae07fc60df288ac66d4510212930813df495d0c012aa7533cb3d086614559`                                                                                                                    |
-| Generated package            | `packages/1552923-v1.1.json` — SHA-256 `c560b41bce5ca40f53b7bb65410e57c5f3238d0179854d4f2dc36720143ff678`; `seasonUploadPackageSchema` validation passed locally (v1.1; 1 fixture; 2 innings; 251 deliveries). |
-| Direct database intervention | Not permitted for the accepted path; outcome pending.                                                                                                                                                          |
+| Field                        | Value                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start                        | 2026-09-27 16:00 SAST (UTC+2)                                                                                                                                                                                                                                           |
+| Tester                       | Dean Feldman                                                                                                                                                                                                                                                            |
+| Environment                  | Deployed Sprint 3 environment                                                                                                                                                                                                                                           |
+| Frontend                     | https://sport-analytics-tool-web.pages.dev                                                                                                                                                                                                                              |
+| API base                     | https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io/api/v1                                                                                                                                                                          |
+| Browser / OS                 | Google Chrome / Windows                                                                                                                                                                                                                                                 |
+| Local candidate commit       | `1091ad097abb6435199a4686a9779640ed7b0d8f`                                                                                                                                                                                                                              |
+| Deployed build identity      | API revision `statsthegame-dev-api--0000015` and worker revision `statsthegame-dev-batch-worker--0000055` were observed during the recorded run. No frontend commit SHA/version was exposed or retained; this limitation is carried explicitly in the closure addendum. |
+| Source                       | `1552923.json` — SHA-256 `db4ae07fc60df288ac66d4510212930813df495d0c012aa7533cb3d086614559`                                                                                                                                                                             |
+| Generated package            | `packages/1552923-v1.1.json` — SHA-256 `c560b41bce5ca40f53b7bb65410e57c5f3238d0179854d4f2dc36720143ff678`; `seasonUploadPackageSchema` validation passed locally (v1.1; 1 fixture; 2 innings; 251 deliveries).                                                          |
+| Direct database intervention | None used in the accepted path.                                                                                                                                                                                                                                         |
 
-## Scenario ledger
+## Historical scenario ledger
 
 | Scenario                           | Required evidence                                                                    | Status                                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
@@ -175,6 +175,61 @@ as sufficient acceptance evidence; each such checkpoint is explicitly marked bel
 | Multi-season ingestion; partial failure/recovery                                    | PASS via linked evidence                      | #589 receipts `318bc663-ab36-4f01-8e83-717c4885b0b7` and `aa579b2c-0dd3-4375-92f4-090af3ceffcf`                                                                          |
 | API consumer controls; release/schema/checksum/snapshot; scale; user-feedback gates | PASS via linked Sprint 3 evidence             | Existing issue-level acceptance and user-feedback evidence                                                                                                               |
 | Direct database intervention                                                        | PASS                                          | None used in the accepted workflow                                                                                                                                       |
+
+## Authoritative closure addendum (2026-09-28)
+
+This is the single final evidence record for #598 and may be referenced by #613.
+It reconciles the historical, in-progress ledger above with the final result below.
+
+**Final result: PASS.** The issue owner accepted the retained deployed evidence and
+manual deployed verification as the final acceptance basis. The limitations and
+non-blocking follow-up are stated explicitly below.
+
+### Deployed build and evidence boundary
+
+The worker revision observed for the authoritative 251-event validation was
+`statsthegame-dev-batch-worker--0000055`; the API revision observed during the
+onboarding request was `statsthegame-dev-api--0000015`. The frontend served the
+recorded pages successfully but did not expose a commit SHA or immutable version
+metadata, so no frontend SHA is claimed. The retained receipts, checksums, worker
+revision, API revision, supplied PDFs, and tester/issue-owner manual verification
+are the evidence basis for this PASS.
+
+### Basic and Intermediate workflows exercised
+
+| Area tested                                   | Result                   | Evidence / note                                                                                                                      |
+| --------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Public fixture, event and statistics reads    | PASS                     | Manual deployed verification; corrected scorecard values are retained in the final acceptance matrix.                                |
+| Submission validation and useful rejection    | PASS                     | #754 fixed the initial missing-winner rejection; receipt `ed797e8a-9645-4a39-b1b1-228250e00e43` then accepted the 251-event package. |
+| Review before publication                     | PASS                     | Fixture proposal, 23 onboarding tasks, revalidation and zero unresolved references were completed before publication.                |
+| Published statistics derived from events      | PASS                     | Tester manual verification confirmed `ballsPerOver: 6` and the corrected fixture statistics.                                         |
+| Correction updates dependent statistics       | PASS                     | Tester manual verification confirmed corrected publication and resolvable correction history.                                        |
+| Traceability and provenance                   | PASS                     | Receipts, package/source checksums, review evidence and resolvable correction workflow link the result to the submitted events.      |
+| Season/back-catalogue staging                 | PASS via linked evidence | #589 receipts `318bc663-ab36-4f01-8e83-717c4885b0b7` and `aa579b2c-0dd3-4375-92f4-090af3ceffcf`.                                     |
+| Idempotent resubmission / no double counting  | PASS                     | Tester manual verification confirmed unchanged replay did not duplicate fixture/events or alter statistics.                          |
+| Resume and recovery behaviour                 | PASS via linked evidence | #589 recovery evidence; #757 preserved reviewer-actionable state after its fix.                                                      |
+| Season, career and competition aggregates     | PASS via linked evidence | Existing Sprint 3 aggregate/provenance acceptance evidence, as referenced by the final matrix.                                       |
+| API versioning, keys, limits and quotas       | PASS via linked evidence | Existing Sprint 3 API-consumer acceptance evidence, as referenced by the final matrix.                                               |
+| Dataset release, download and reproducibility | PASS via linked evidence | Existing Sprint 3 release/schema/checksum/snapshot acceptance evidence, as referenced by the final matrix.                           |
+
+### Defects, fixes and retests
+
+| Defect                                                                     | Owning issue | Deployed retest outcome                                                                                            |
+| -------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Winning team omitted from a `won` new-fixture proposal                     | #754         | Fixed and rerun; authoritative package retained `winner: Kenya`.                                                   |
+| Reviewer-actionable work terminally failed before review                   | #757         | Fixed and smoke-verified; authoritative batch reached `awaiting_review`.                                           |
+| Repeated source delivery positions collided during first-chunk persistence | #763         | Fixed and rerun; 251-event authoritative validation completed with `sourceFaultCount: 0`.                          |
+| Frontend accepted a plain participant name instead of a durable ID         | #770         | Open non-blocking follow-up; backend correctly rejected it and the valid durable ID completed the normal workflow. |
+
+### Explicit carried-forward items
+
+- #770 remains open and is not represented as passed product behaviour.
+- A frontend immutable commit SHA was not exposed or retained. This is an evidence
+  limitation, not a claim that a SHA was verified.
+- The final publication, replay and correction checkpoints are supported by the
+  tester/issue-owner's manual deployed verification; the supplied PDFs independently
+  support the preceding publishing-stage evidence but do not themselves show every
+  terminal screen.
 
 ### Non-blocking acceptance finding: #770
 

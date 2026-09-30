@@ -311,6 +311,51 @@ describe('batch result reporting service', () => {
     expect(response.data.lineage).toEqual(lineage);
   });
 
+  test('downloads a complete report when it contains report items', async () => {
+    const item = {
+      batchItemId: '41',
+      ordinal: 0,
+      inningsId: '8',
+      overNumber: 1,
+      positionInOver: 1,
+      sourceIdentity: 'event-1',
+      sourceLocation: { filePath: 'season.json', rowNumber: 2 },
+      referenceResolutionState: 'resolved' as const,
+      resolvedReferences: {},
+      state: 'accepted' as const,
+      rejectionCode: null,
+      publishedEventId: '91',
+      operation: 'upsert' as const,
+      correctsSourceIdentity: null,
+      correctionTargetDeliveryId: null,
+      errors: [],
+    };
+    const listBatchReportItems = vi.fn().mockResolvedValue([item]);
+    const batches = repository({
+      findBatchByReference: vi.fn().mockResolvedValue(persistedBatch),
+      getBatchProgress: vi
+        .fn()
+        .mockResolvedValue({ total: 1, processed: 1, accepted: 1, rejected: 0 }),
+      getBatchCounts: vi.fn().mockResolvedValue({
+        accepted: 1,
+        rejected: 0,
+        unresolved: 0,
+        duplicate: 0,
+        conflicting: 0,
+      }),
+      listBatchReportItems,
+    });
+
+    const response = await createBatchService(
+      {} as BatchPayloadStorageService,
+      batches,
+    ).downloadReport(createTestAccount({ role: 'submitter' }), persistedBatch.batchReference);
+
+    expect(response.data.items).toMatchObject([{ ordinal: 0, outcome: 'accepted' }]);
+    expect(response.data.acceptedSamples).toMatchObject([{ ordinal: 0, outcome: 'accepted' }]);
+    expect(listBatchReportItems).toHaveBeenCalledWith('20', { limit: 1000 });
+  });
+
   test('reports legacy published conflicts as correction-capable via lazy lineage bootstrap', async () => {
     const baseItem = {
       batchItemId: '41',

@@ -53,6 +53,14 @@ The Explorer is discoverable from the Stat'sTheGame primary public navigation as
 bottom-of-page API entry opens the in-app Explorer, while a separate **API Documentation** link
 continues to expose the extended MkDocs documentation.
 
+Before the operation list, the Explorer distinguishes anonymous public reads, API-key-authenticated
+consumer operations and bearer-authenticated application/administrator operations. It explains that
+consumer keys are administrator-issued, tells prospective external consumers to request access from
+a Stat'sTheGame administrator or project administrator under the current access model, identifies
+the `X-API-Key` request header and consumer limits, and links directly to the
+[consumer-key guidance](consumer-keys.md). A consumer key authorizes only documented consumer
+operations and never grants administrator, submission or batch access.
+
 The Explorer makes both deferred stages visible: the route-level lazy module and the backend
 OpenAPI specification request each show the same labelled progress indicator until their associated
 content is ready. A specification failure replaces that indicator with an explicit retryable error
@@ -60,9 +68,11 @@ state, so an unfinished or failed Explorer is not presented as a blank page.
 
 Signed-in administrators manage external API consumers through `/admin/api-consumers`. That
 frontend uses the existing handwritten list, issue, rotate and individual-key revoke operations and
-links back to the API Explorer; it complements rather than duplicates the API documentation. The
-current administrator API has no per-consumer usage operation, so usage remains available only to
-the authenticated consumer through `GET /api/v1/consumer/usage`.
+links back to the API Explorer; it complements rather than duplicates the API documentation. A
+selected consumer's detail view uses the owner-scoped, bearer-authenticated `GET
+/api/v1/admin/api-consumers/{consumerId}/usage` operation for safe historical aggregates. The
+consumer-self `GET /api/v1/consumer/usage` operation remains API-key authenticated and scoped to
+the calling consumer.
 
 ## Current endpoints
 
@@ -402,3 +412,7 @@ The Issue #726 API Explorer loading-feedback guidance was updated with the assis
 The documentation reading-path links were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 The issue #775 administrator consumer-management frontend boundary was documented with the
 assistance of Codex[GPT-5.6 Sol].
+The issue #776 administrator per-consumer usage workflow was documented with the assistance of
+Codex[GPT-5.6 Sol].
+The issue #783 public API consumer-onboarding guidance was documented with the assistance of
+Codex[GPT-5].
