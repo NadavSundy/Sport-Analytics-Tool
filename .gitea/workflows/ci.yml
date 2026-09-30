@@ -321,6 +321,10 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          export CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")"
+          echo "Using Chromium: $CHROME_PATH"
+          test -x "$CHROME_PATH"
+
           npm run test:lighthouse
 
       - name: Upload Lighthouse reports
