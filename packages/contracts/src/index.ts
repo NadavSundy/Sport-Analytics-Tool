@@ -10,3 +10,4 @@ export * from './season-upload';
 export * from './cricket-delivery-comparison';
 export * from './dataset-releases';
 export * from './provenance';
+export * from './analytics-query';
