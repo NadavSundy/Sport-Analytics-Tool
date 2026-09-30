@@ -1,6 +1,6 @@
 # Stat’sTheGame Terms of Use
 
-**Effective date:** 29 September 2026  
+**Effective date:** 29 September 2026
 **Last updated:** 29 September 2026
 
 ## 1. About Stat’sTheGame
@@ -9,7 +9,7 @@ Stat’sTheGame is a student-built T20 cricket analytics platform developed as p
 
 The service is operated by the **Stat’sTheGame Student Project Team**. It is not a commercial service of the University of the Witwatersrand, and the University does not operate the application or control its stored data.
 
-**Contact:** statsthegame@gmail.com  
+**Contact:** statsthegame@gmail.com
 **Correspondence address:** Private Bag 3, Wits, 2050, South Africa
 
 The Wits postal address is used only as a correspondence address for the student project.
@@ -238,8 +238,8 @@ Subject to any mandatory legal rights or procedures that apply, disputes relatin
 
 ## 18. Contact
 
-**Stat’sTheGame Student Project Team**  
-**Email:** statsthegame@gmail.com  
+**Stat’sTheGame Student Project Team**
+**Email:** statsthegame@gmail.com
 **Correspondence address:** Private Bag 3, Wits, 2050, South Africa
 
 For privacy matters, refer to the Stat’sTheGame Privacy Notice.

@@ -1,6 +1,6 @@
 # Stat’sTheGame Privacy Notice
 
-**Effective date:** 29 September 2026  
+**Effective date:** 29 September 2026
 **Last updated:** 29 September 2026
 
 ## 1. Who we are
@@ -11,7 +11,7 @@ The service is operated by the **Stat’sTheGame Student Project Team**. The stu
 
 For purposes of the Protection of Personal Information Act 4 of 2013 (“POPIA”), the Stat’sTheGame Student Project Team acts as the responsible party for the personal information described in this notice.
 
-**Privacy contact:** statsthegame@gmail.com  
+**Privacy contact:** statsthegame@gmail.com
 **Correspondence address:** Private Bag 3, Wits, 2050, South Africa
 
 The Wits postal address above is used only as a correspondence address for this student project. Its use does not make the University of the Witwatersrand the operator or responsible party for Stat’sTheGame.
@@ -236,16 +236,16 @@ If you believe that your personal information has been processed in breach of PO
 
 You also have the right to lodge a complaint with the **Information Regulator (South Africa)**.
 
-**Information Regulator (South Africa)**  
-Woodmead North Office Park  
-54 Maxwell Drive  
-Woodmead, Johannesburg, 2191  
+**Information Regulator (South Africa)**
+Woodmead North Office Park
+54 Maxwell Drive
+Woodmead, Johannesburg, 2191
 South Africa
 
-**POPIA complaints:** POPIAComplaints@inforegulator.org.za  
-**General enquiries:** enquiries@inforegulator.org.za  
-**Telephone:** 010 023 5200  
-**Toll free:** 0800 017 160  
+**POPIA complaints:** POPIAComplaints@inforegulator.org.za
+**General enquiries:** enquiries@inforegulator.org.za
+**Telephone:** 010 023 5200
+**Toll free:** 0800 017 160
 **Website:** https://inforegulator.org.za/
 
 ## 15. Changes to this notice
@@ -258,8 +258,8 @@ The current version will be published with an updated effective or last-updated 
 
 For privacy questions, access or correction requests, account-deletion assistance or other concerns:
 
-**Stat’sTheGame Student Project Team**  
-**Email:** statsthegame@gmail.com  
+**Stat’sTheGame Student Project Team**
+**Email:** statsthegame@gmail.com
 **Correspondence address:** Private Bag 3, Wits, 2050, South Africa
 
 ---

@@ -1,6 +1,6 @@
 # Stat’sTheGame Accessibility Statement
 
-**Effective date:** 29 September 2026  
+**Effective date:** 29 September 2026
 **Last updated:** 29 September 2026
 
 ## 1. Our commitment
@@ -157,8 +157,8 @@ Future accessibility work may include broader assistive-technology testing and a
 
 ## 15. Contact
 
-**Stat’sTheGame Student Project Team**  
-**Email:** statsthegame@gmail.com  
+**Stat’sTheGame Student Project Team**
+**Email:** statsthegame@gmail.com
 **Correspondence address:** Private Bag 3, Wits, 2050, South Africa
 
 The Wits postal address is used only as a correspondence address for this student project. The University of the Witwatersrand does not operate Stat’sTheGame.
