@@ -107,6 +107,9 @@ describe('backend environment', () => {
       AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
       AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
       AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+      // Production now also requires the language-model key (issue #814), which
+      // this object-storage assertion has to satisfy to reach production at all.
+      LLM_API_KEY: 'test-placeholder-not-a-real-key',
       DEPLOYMENT_ENVIRONMENT: 'dev',
       AZURE_STORAGE_CONNECTION_STRING: 'unsupported',
       AZURE_STORAGE_ACCOUNT_KEY: 'unsupported',
@@ -118,5 +121,87 @@ describe('backend environment', () => {
     expect(environment).not.toHaveProperty('AZURE_STORAGE_CONNECTION_STRING');
     expect(environment).not.toHaveProperty('AZURE_STORAGE_ACCOUNT_KEY');
     expect(environment).not.toHaveProperty('AZURE_STORAGE_SAS_TOKEN');
+  });
+});
+
+describe('language-model provider configuration', () => {
+  /** A deployable production environment in every respect except the key. */
+  const productionEnvironmentWithoutKey = {
+    ...requiredEnvironment,
+    NODE_ENV: 'production',
+    DEPLOYMENT_ENVIRONMENT: 'dev',
+    OBJECT_STORAGE_PROVIDER: 'azure',
+    AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+    AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+    AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+  };
+
+  it('starts without a language-model key outside production', () => {
+    const environment = loadEnvironment(requiredEnvironment);
+
+    expect(environment.LLM_API_KEY).toBeUndefined();
+    expect(environment.LLM_MODEL).toBe('claude-haiku-4-5-20251001');
+    expect(environment.LLM_TIMEOUT_MS).toBe(15_000);
+  });
+
+  it('treats a blank language-model key as unconfigured', () => {
+    expect(
+      loadEnvironment({ ...requiredEnvironment, LLM_API_KEY: '   ' }).LLM_API_KEY,
+    ).toBeUndefined();
+  });
+
+  it('requires a language-model key in production', () => {
+    expect(() => loadEnvironment(productionEnvironmentWithoutKey)).toThrow(
+      'Invalid environment configuration: LLM_API_KEY: Language-model API key is required in production',
+    );
+  });
+
+  it('accepts a configured production key', () => {
+    expect(
+      loadEnvironment({
+        ...productionEnvironmentWithoutKey,
+        LLM_API_KEY: 'test-placeholder-not-a-real-key',
+      }).LLM_API_KEY,
+    ).toBe('test-placeholder-not-a-real-key');
+  });
+
+  it('accepts a configured model and timeout', () => {
+    const environment = loadEnvironment({
+      ...requiredEnvironment,
+      LLM_MODEL: 'claude-sonnet-5-5',
+      LLM_TIMEOUT_MS: '30000',
+    });
+
+    expect(environment.LLM_MODEL).toBe('claude-sonnet-5-5');
+    expect(environment.LLM_TIMEOUT_MS).toBe(30_000);
+  });
+
+  it('accepts the declared timeout bounds', () => {
+    for (const [value, expected] of [
+      ['2000', 2_000],
+      ['60000', 60_000],
+    ] as const) {
+      expect(
+        loadEnvironment({ ...requiredEnvironment, LLM_TIMEOUT_MS: value }).LLM_TIMEOUT_MS,
+      ).toBe(expected);
+    }
+  });
+
+  it('rejects a timeout outside the declared bounds or not a whole number', () => {
+    for (const value of ['0', '1999', '60001', '1500.5', 'soon']) {
+      expect(() => loadEnvironment({ ...requiredEnvironment, LLM_TIMEOUT_MS: value })).toThrow(
+        'LLM_TIMEOUT_MS',
+      );
+    }
+  });
+
+  // The identifier reaches the outbound request body, so it may only be a model
+  // identifier and never arbitrary content.
+  it('rejects a model identifier outside the permitted character set', () => {
+    for (const value of ['Claude Haiku', 'claude/haiku', '../etc/passwd', '']) {
+      expect(() => loadEnvironment({ ...requiredEnvironment, LLM_MODEL: value })).toThrow(
+        'LLM_MODEL',
+      );
+    }
   });
 });

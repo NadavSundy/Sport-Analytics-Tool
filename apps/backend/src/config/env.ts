@@ -41,6 +41,26 @@ const environmentSchema = z
     AZURE_STORAGE_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_INGESTION_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_RELEASE_CONTAINER_NAME: optionalAzureContainerName,
+    // Server-only key for the natural-language query adapter (ADR-017). Optional
+    // at startup so local development and the test suites run without it; the
+    // adapter reports the feature as unconfigured rather than failing a request
+    // in a way that looks like a provider fault. Required in production, below.
+    // Its format is deliberately not validated: a shape check would couple the
+    // backend to a credential format the provider may change.
+    LLM_API_KEY: optionalNonEmptyString,
+    // Bounded to the character set a model identifier uses, so a stray value
+    // cannot become arbitrary content in the outbound request body.
+    LLM_MODEL: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9.-]{0,63}$/, 'Model identifier must be lowercase alphanumeric')
+      .default('claude-haiku-4-5-20251001'),
+    // A warm request is a second or two, but the first request carrying a new
+    // response schema pays a one-time compilation cost, so a five-second bound
+    // of the kind the weather adapter uses is too tight. Fifteen seconds covers
+    // both, and with exactly one retry the worst case stays near thirty. The
+    // ceiling keeps that worst case inside what a person will wait for.
+    LLM_TIMEOUT_MS: z.coerce.number().int().min(2_000).max(60_000).default(15_000),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === 'production') {
@@ -102,6 +122,16 @@ const environmentSchema = z
         code: z.ZodIssueCode.custom,
         path: ['DEPLOYMENT_ENVIRONMENT'],
         message: 'Production requires a non-local deployment environment',
+      });
+    }
+
+    // A deployed build must not silently lack the key: the natural-language
+    // query feature would then be advertised and permanently unavailable.
+    if (environment.NODE_ENV === 'production' && !environment.LLM_API_KEY) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['LLM_API_KEY'],
+        message: 'Language-model API key is required in production',
       });
     }
   });
