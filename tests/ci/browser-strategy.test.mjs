@@ -103,7 +103,7 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
     return matches.map(() => path);
   });
 
-  assert.equal(tagged.length, 14);
+  assert.equal(tagged.length, 15);
   for (const required of [
     'tests/e2e/accessibility.spec.ts',
     'tests/e2e/api-explorer.spec.ts',
@@ -123,10 +123,18 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
 test('mobile accessibility matrix stays focused while desktop includes core and policy routes', () => {
   const accessibility = read('tests/e2e/accessibility.spec.ts');
 
-  assert.match(
-    accessibility,
-    /isMobile\s*\?\s*\['\/', '\/sign-in'\]\s*:\s*\['\/', '\/sign-in', '\/account', '\/privacy', '\/terms', '\/accessibility'\]/,
-  );
+  for (const fragment of [
+    "const routes = ['/', '/sign-in', '/account', '/privacy', '/terms', '/accessibility'] as const;",
+    "const themes = ['day', 'night'] as const;",
+    'for (const route of routes)',
+    'for (const theme of themes)',
+    "const runsOnMobile = theme === 'day' && (route === '/' || route === '/sign-in');",
+    "${runsOnMobile ? ' @mobile' : ''}",
+    'new AxeBuilder({ page }).analyze()',
+    "violation.impact === 'serious' || violation.impact === 'critical'",
+  ]) {
+    assert.ok(accessibility.includes(fragment), `Missing accessibility check: ${fragment}`);
+  }
   assert.match(
     accessibility,
     /isMobile \? \(\['day'\] as const\) : \(\['day', 'night'\] as const\)/,
