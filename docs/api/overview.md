@@ -21,6 +21,11 @@ The API is a primary product. It must be designed and implemented by the team as
 The version-controlled API contract is published in the
 [OpenAPI specification](openapi.md).
 
+[ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
+accepts one canonical cricket-resource hierarchy with optional API-key identification as the future
+access model. The endpoint descriptions below remain the implemented behaviour until follow-up
+issues #821 and #822 change it.
+
 ## Live development API
 
 The deployed development backend is hosted on Azure Container Apps:
@@ -416,3 +421,5 @@ The issue #776 administrator per-consumer usage workflow was documented with the
 Codex[GPT-5.6 Sol].
 The issue #783 public API consumer-onboarding guidance was documented with the assistance of
 Codex[GPT-5].
+The issue #820 accepted API consumer access-model link and current/future boundary were documented
+with the assistance of Codex[GPT-5].

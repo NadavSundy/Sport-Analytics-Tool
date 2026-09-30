@@ -316,12 +316,17 @@ export function PublicShell({ children }: PublicShellProps) {
       <main id="main-content">{children}</main>
       <footer className="site-footer">
         <div className="site-footer__inner">
-          <BrandWordmark />
-          <nav aria-label="API resources" className="site-footer__navigation">
+          <div className="site-footer__brand">
+            <BrandWordmark />
+            <p>The game, measured ball by ball.</p>
+          </div>
+          <nav aria-label="Footer navigation" className="site-footer__navigation">
             <Link to="/api">API Explorer</Link>
             <a href="https://sports-analytics-tool.pages.dev/api/overview/">API Documentation</a>
+            <Link to="/privacy">Privacy Notice</Link>
+            <Link to="/terms">Terms of Use</Link>
+            <Link to="/accessibility">Accessibility</Link>
           </nav>
-          <p>The game, measured ball by ball.</p>
         </div>
       </footer>
     </div>

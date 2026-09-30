@@ -1,5 +1,14 @@
 # Consumer API keys, rate limits and quotas
 
+!!! note "Current behaviour and accepted future model"
+
+    This page documents the currently implemented administrator-issued `/api/v1/consumer/*`
+    contract. [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
+    accepts a future canonical read hierarchy with optional consumer identification and
+    requester-owned access. No production behaviour changes under issue #820; implementation is
+    tracked by [#821](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/821) and
+    [#822](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/822).
+
 External integrations use the consumer surface rather than the anonymous public-read surface. An administrator issues and manages keys through the handwritten management API; a raw secret is returned only by the issue and rotation responses. Store it in the consumer's secret manager immediately.
 
 ## Requesting consumer access
@@ -168,3 +177,5 @@ The issue #776 administrator per-consumer usage authorization, aggregation and p
 were documented with the assistance of Codex[GPT-5.6 Sol].
 The issue #783 external-consumer access-request and credential-handling guidance was documented with
 the assistance of Codex[GPT-5].
+The issue #820 current/future access-model boundary was documented with the assistance of
+Codex[GPT-5].

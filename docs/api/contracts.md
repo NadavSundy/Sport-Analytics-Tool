@@ -124,6 +124,87 @@ lifecycle changes return `409`. Invalid lifecycle changes use the stable
 `INVALID_SUBMITTER_ACCESS_TRANSITION` code and do not change role, request state, scopes, or audit
 fields.
 
+Analytics query definitions
+---------------------------
+
+A question asked in natural language is answered by translating it into exactly one _query
+definition_ and validating that definition against `analyticsQueryDefinitionSchema` in
+`@sport-analytics/contracts`. A validated definition is then answered from the statistics the
+platform already publishes.
+
+This contract covers natural-language querying over published statistics only. It is not the
+analyst-defined statistic engine: it defines no calculation, no expression language and no stored
+definition, and every kind it admits names a result an existing endpoint already produces.
+
+`QUERY_DEFINITION_VERSION` names the version of this contract, currently `1.0`.
+
+The schema is the validation boundary a translated question must cross, and is therefore closed
+rather than expressive:
+
+- every object is strict, so a definition carrying an unrecognised property must be rejected rather
+  than accepted with the property ignored;
+- every value must be an enumerated choice, a whole number within a published bound, or a bounded
+  name hint, so no part of a definition may be free text; and
+- a name hint may only be resolved to an identifier by an ordinary server-side lookup, and may only
+  ever reach the database as a bound query parameter.
+
+A definition names what is being asked for in `kind`. Four kinds are defined.
+
+| `kind`                   | Answers                                              | Properties                                      |
+| ------------------------ | ---------------------------------------------------- | ----------------------------------------------- |
+| `leaderboard`            | A ranking within one season or competition           | `metric`, `scope`, the scope reference, `limit` |
+| `participant_statistics` | One player's published figures at one scope          | `participant`, `scope`, the scope reference     |
+| `participant_comparison` | Two players' published figures at the same scope     | `participants`, `scope`, the scope reference    |
+| `unsupported`            | That the published statistics do not hold the answer | `reason`                                        |
+
+`metric` may only be one of the metrics the published leaderboard ranks, and `scope` may only be one
+of the scopes the published participant aggregates expose. Both are taken from the existing schemas
+rather than restated, so the vocabularies cannot drift apart. A `leaderboard` may only be scoped to a
+season or a competition, because the published leaderboard ranks no career. `limit` is an optional
+whole number from 1 to 50 and defaults to 10; a definition may not request an unbounded ranking.
+`participants` must contain exactly two references.
+
+`scope` and its reference are tied together. A `season` scope must carry a `season` reference, a
+`competition` scope must carry a `competition` reference, and a `career` scope must carry neither. A
+definition carrying a reference its scope would not use must be rejected, so a reference can never be
+silently discarded.
+
+A reference is a name hint, never an identifier. A participant or competition reference carries a
+`name`; a season reference carries a `competitionName` and a `seasonLabel`, because a season has no
+name of its own and is identified by its competition together with its label. Every name must be
+between 1 and 100 characters once surrounding whitespace is removed, and must not contain control,
+formatting, surrogate or private-use characters. Names are not restricted to ASCII: apostrophes,
+hyphens, spaces and accented characters all appear in cricket names and must be accepted.
+
+```json
+{
+  "kind": "leaderboard",
+  "metric": "most_runs",
+  "scope": "season",
+  "season": { "competitionName": "Indian Premier League", "seasonLabel": "2026" },
+  "limit": 10
+}
+```
+
+```json
+{
+  "kind": "participant_comparison",
+  "participants": [{ "name": "Quinton de Kock" }, { "name": "D'Arcy Short" }],
+  "scope": "career"
+}
+```
+
+A question the published statistics cannot answer must be represented by the `unsupported` kind
+rather than by an approximation. Its `reason` names why: `bowler_type`, `batting_hand`,
+`match_phase`, `venue` and `super_over` name dimensions the platform does not publish;
+`outside_cricket_statistics` covers a question that is not about published cricket statistics at all;
+`ambiguous` covers a question that does not say which player, competition or season it means; and
+`other` covers any remaining case.
+
+`ANALYTICS_QUERY_PROMPT_DESCRIPTION` states this contract in prose for a translation step. Its
+metric, scope and reason lists are built from the schemas, so the description and the schema cannot
+disagree.
+
 Errors
 ──────
 {
@@ -145,4 +226,5 @@ Errors
 
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol]. The competition-scoped submitter access contract and issue #256
-re-request lifecycle were updated with the assistance of Codex[GPT-5].
+re-request lifecycle were updated with the assistance of Codex[GPT-5]. The issue #811 analytics
+query-definition contract was added with the assistance of Claude-Code[Claude Opus 5 (1M context)].

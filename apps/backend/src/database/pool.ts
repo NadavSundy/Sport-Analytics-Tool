@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import { Pool, type PoolConfig } from 'pg';
 
+import { loadDatabaseStatementTimeoutMs } from '../config/env';
 import { DatabaseAccessError, translateDatabaseError } from './errors';
 
 let applicationPool: Pool | undefined;
@@ -11,6 +12,7 @@ interface DatabasePoolOptions {
   connectionString: string;
   ssl?: PoolConfig['ssl'];
   max?: number;
+  statementTimeoutMs: number;
 }
 
 function createDatabasePool(options: DatabasePoolOptions): Pool {
@@ -19,6 +21,12 @@ function createDatabasePool(options: DatabasePoolOptions): Pool {
     ssl: options.ssl,
     max: options.max ?? 10,
     min: 1,
+    // Sent as a PostgreSQL startup parameter, so every connection this pool
+    // opens carries the bound and no per-checkout statement is needed. A
+    // statement that exceeds it is cancelled by the server with SQLSTATE 57014,
+    // which `translateDatabaseError` reports as DATABASE_STATEMENT_TIMEOUT. The
+    // connection stays usable afterwards; only the statement is lost.
+    statement_timeout: options.statementTimeoutMs,
     // A request that cannot obtain a connection must fail rather than wait
     // forever: an unbounded wait never rejects, so the interface never leaves
     // its loading state and the reader is given no error and no retry.
@@ -67,6 +75,7 @@ export function getDatabasePool(): Pool {
     applicationPool = createDatabasePool({
       connectionString,
       ssl: loadApplicationTlsConfiguration(connectionString),
+      statementTimeoutMs: loadDatabaseStatementTimeoutMs(),
     });
   }
 

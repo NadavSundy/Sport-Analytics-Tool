@@ -4,6 +4,11 @@ import { PublicShell } from './components/PublicShell';
 import { HomePage } from './features/home/HomePage';
 import { ApiExplorerLoadingIndicator } from './features/api-explorer/ApiExplorerLoadingIndicator';
 import { ApiExplorerRouteFrame } from './features/api-explorer/ApiExplorerRouteFrame';
+import {
+  AccessibilityStatementPage,
+  PrivacyNoticePage,
+  TermsOfUsePage,
+} from './features/policies/PolicyPages';
 
 function lazyNamed<T, K extends keyof T>(load: () => Promise<T>, component: K) {
   return lazy(() => load().then((module) => ({ default: module[component] as ComponentType })));
@@ -144,6 +149,28 @@ export function PublicApp() {
             <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
             <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
             <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
+        <Route path="/privacy" element={<PrivacyNoticePage />} />
+        <Route path="/terms" element={<TermsOfUsePage />} />
+        <Route path="/accessibility" element={<AccessibilityStatementPage />} />
+
+        <Route path="/sign-in" element={<AuthenticationPage />} />
+        <Route path="/auth/callback" element={<AuthenticationCallbackPage />} />
+        <Route path="/account" element={<Navigate to="/account/overview" replace />} />
+        <Route path="/account/:section" element={<AccountPage />} />
+        <Route path="/submissions/new" element={<SubmissionPage />} />
+        <Route
+          path="/submissions/batches/new"
+          element={<Navigate to="/submissions/new" replace />}
+        />
+        <Route path="/submissions/batches" element={<BatchReportsPage />} />
+        <Route path="/submissions/batches/:batchReference" element={<BatchReportsPage />} />
+        <Route path="/admin" element={<AdministrationPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/api-consumers" element={<AdminApiConsumersPage />} />
+        <Route path="/admin/api-consumers/:consumerId" element={<AdminApiConsumersPage />} />
+        <Route path="/admin/dataset-releases/new" element={<AdminDatasetReleasePage />} />
+        <Route path="/reviews/batches" element={<BatchReviewWorkspacePage />} />
+        <Route path="/reviews/batches/:batchReference" element={<BatchReviewWorkspacePage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

@@ -39,6 +39,27 @@ describe('database error translation', () => {
     expect(translated.message).toBe('The database is currently unavailable.');
   });
 
+  test('translates a cancelled statement into a distinct timeout code', () => {
+    const translated = translateDatabaseError(
+      postgresError('57014', 'canceling statement due to statement timeout'),
+    );
+
+    expect(translated).toBeInstanceOf(DatabaseAccessError);
+    expect(translated.code).toBe('DATABASE_STATEMENT_TIMEOUT');
+    expect(translated.message).toBe(
+      'The database statement exceeded its time limit and was cancelled.',
+    );
+  });
+
+  test('retains the cancelled statement as the cause without exposing it in the message', () => {
+    const rawError = postgresError('57014', 'canceling statement due to statement timeout');
+
+    const translated = translateDatabaseError(rawError);
+
+    expect(translated.cause).toBe(rawError);
+    expect(translated.message).not.toContain('canceling statement');
+  });
+
   test('uses a safe fallback for unknown database failures', () => {
     const translated = translateDatabaseError(
       postgresError('XX000', 'internal PostgreSQL implementation detail'),

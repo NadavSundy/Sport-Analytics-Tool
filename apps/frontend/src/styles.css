@@ -6043,3 +6043,85 @@ h3 {
     text-transform: uppercase;
   }
 }
+
+/* Issue #798: public policy pages and footer policy navigation. */
+.site-footer__brand {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.policy-document {
+  max-width: 52rem;
+  color: var(--colour-text);
+}
+
+.policy-document > :first-child {
+  margin-top: 0;
+}
+
+.policy-document h2,
+.policy-document h3 {
+  font-family: var(--font-display);
+  color: var(--colour-text);
+}
+
+.policy-document h2 {
+  margin: var(--space-10) 0 var(--space-4);
+  padding-top: var(--space-2);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.policy-document h3 {
+  margin: var(--space-7) 0 var(--space-3);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.policy-document p,
+.policy-document li {
+  line-height: 1.7;
+}
+
+.policy-document p {
+  margin: 0 0 var(--space-4);
+}
+
+.policy-document ul,
+.policy-document ol {
+  margin: 0 0 var(--space-5);
+  padding-left: 1.5rem;
+}
+
+.policy-document li + li {
+  margin-top: var(--space-2);
+}
+
+.policy-document hr {
+  margin: var(--space-10) 0;
+  border: 0;
+  border-top: 1px solid var(--colour-border);
+}
+
+.policy-document a,
+.policy-document code {
+  overflow-wrap: anywhere;
+}
+
+.policy-document code {
+  padding: 0.1rem 0.25rem;
+  border-radius: 4px;
+  background: var(--colour-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+@media (max-width: 39.9375rem) {
+  .site-footer__navigation {
+    justify-content: flex-start;
+  }
+
+  .policy-document h2 {
+    margin-top: var(--space-8);
+  }
+}

@@ -23,6 +23,7 @@ rather than duplicating its content. New decisions should be added to this table
 | [ADR-013](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-013-task-based-user-testing-evidence.md)        | Task-based formal user testing with repository-retained evidence                 | Accepted                    |
 | [ADR-014](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-014-byes-and-leg-byes-on-a-wide.md)             | Byes and leg byes recorded on a wide are wide runs charged to the bowler         | Accepted, pending PR review |
 | [ADR-015](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-015-stored-participant-aggregate-snapshots.md)  | Stored participant aggregates, served while current and refreshed on a read miss | Accepted, pending PR review |
+| [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)               | One canonical read API with optional consumer identification                     | Accepted, pending PR review |
 
 ## Supporting decisions
 
@@ -37,3 +38,4 @@ The issue #356 ADR statuses were updated with the assistance of Codex[GPT-5].
 ADR-013 and its index entry were added with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 ADR-014 and its index entry were added with the assistance of Claude-Code[Claude Opus 5].
 ADR-015 and its index entry were added with the assistance of Claude-Code[Claude Opus 5].
+ADR-016 and its index entry were added with the assistance of Codex[GPT-5].
