@@ -273,6 +273,25 @@ The player heading remains usable while match history loads or fails. The embedd
 its own loading, empty, error, retry, and cursor-pagination behavior, and its named fixture links
 open the complete match overview.
 
+## Public policy pages
+
+The public application exposes three unauthenticated policy routes:
+
+- `/privacy` — Privacy Notice, including POPIA disclosures and cookie/browser-storage information;
+- `/terms` — Terms of Use, including API use, public dataset reuse and responsible disclosure; and
+- `/accessibility` — Accessibility Statement, targeting WCAG 2.2 Level AA without claiming completed
+  conformance before a complete conformance assessment exists.
+
+The reviewed policy source is stored under `src/content/policies/` and rendered by the shared
+policy-page component. The global footer links to all three routes and publishes
+`statsthegame@gmail.com` as the project contact.
+
+The current frontend uses browser local storage for the theme preference and managed Supabase Auth
+session persistence. It does not introduce a separate cookie policy or cookie-consent banner while
+the application has no non-essential advertising or analytics tracking. If tracking, authentication,
+hosting, retention, contact information or the application's data practices change, the policy text
+must be reviewed together with the implementation.
+
 ## Checks
 
 From the repository root:
@@ -397,3 +416,5 @@ behavior were documented with the assistance of Codex[GPT-5.6 Sol].
 The Issue #660 public API Explorer implementation and documentation were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
 
 The Issue #661 public navigation, Swagger UX refinement, production verification and accessibility coverage were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Issue #798 public policy pages, footer policy navigation and policy-maintenance guidance were planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].

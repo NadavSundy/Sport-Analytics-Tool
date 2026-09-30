@@ -103,12 +103,13 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
     return matches.map(() => path);
   });
 
-  assert.equal(tagged.length, 13);
+  assert.equal(tagged.length, 14);
   for (const required of [
     'tests/e2e/accessibility.spec.ts',
     'tests/e2e/api-explorer.spec.ts',
     'tests/e2e/authentication.spec.ts',
     'tests/e2e/homepage.spec.ts',
+    'tests/e2e/policies.spec.ts',
     'tests/e2e/public-browsing.spec.ts',
     'tests/e2e/player-overview.spec.ts',
     'tests/e2e/statistics.spec.ts',
@@ -119,12 +120,12 @@ test('mobile Chromium runs only the representative tagged journey subset', () =>
   }
 });
 
-test('mobile accessibility matrix is focused while desktop keeps both themes and all core routes', () => {
+test('mobile accessibility matrix stays focused while desktop includes core and policy routes', () => {
   const accessibility = read('tests/e2e/accessibility.spec.ts');
 
   assert.match(
     accessibility,
-    /isMobile \? \['\/', '\/sign-in'\] : \['\/', '\/sign-in', '\/account'\]/,
+    /isMobile\s*\?\s*\['\/', '\/sign-in'\]\s*:\s*\['\/', '\/sign-in', '\/account', '\/privacy', '\/terms', '\/accessibility'\]/,
   );
   assert.match(
     accessibility,
