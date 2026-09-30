@@ -30,8 +30,12 @@ const DISALLOWED_PATTERNS = [
   /AZURE_BACKEND_PUBLISH_PROFILE/,
   /CLOUDFLARE_API_TOKEN/,
   /CORS_ORIGINS/,
+  /LLM_API_KEY/,
   /postgres(?:ql)?:\/\/[^\s"'`]*:[^\s"'`]*@/i,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  // Shape of a language-model provider key. Matching the shape as well as the
+  // variable name catches a key pasted into frontend source without it.
+  /sk-ant-[A-Za-z0-9_-]{16,}/,
 ];
 
 function listFilesRecursively(dir) {
