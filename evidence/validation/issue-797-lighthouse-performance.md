@@ -76,7 +76,7 @@ LCP element is text; Lighthouse attributes approximately 84% of home LCP and 88%
 render delay. No further safe first-paint candidate was identified. No fabricated post-change
 metrics are recorded for that non-experiment.
 
-## CI implementation and remote verification
+## Merged CI regression gate
 
 The `lighthouse` Gitea Actions job:
 
@@ -84,13 +84,21 @@ The `lighthouse` Gitea Actions job:
 - builds contracts and the production frontend, then serves a local production Vite preview;
 - runs the nine public static routes for desktop and mobile, three times each, and records medians;
 - writes `artifacts/lighthouse-ci/summary.md`, `summary.json` and individual JSON reports;
-- uploads that directory as a 30-day artifact; and
-- uses `LIGHTHOUSE_GATE_MODE=report`, which only treats median Performance below 40 as a
-  catastrophic regression. It is not >=90 enforcement and is not part of the deployment gate.
+- uploads that directory as a 30-day artifact using `if: always()`; and
+- uses `LIGHTHOUSE_GATE_MODE=baseline`, not the production-style `strict` gate.
 
-Local runner, profile, aggregation, timeout/cleanup and CI-routing tests have passed during this
-branch's work. Remote Gitea execution and artifact upload are still **pending**: no remote result
-is claimed here.
+`scripts/lighthouse-ci-baseline.mjs` persists a Performance floor for every representative
+route/profile pair. The floors came from approved hosted Gitea CI run 1563, Lighthouse job 3,
+commit `32d05c8cf2c42b6d3fc520da3441464a1df5fe6f`: each is the lowest observed score from that
+job's three runs for the pair. This uses no production result and introduces no separate tolerance
+algorithm; the existing runner compares each new three-run median to its persisted floor.
+
+Missing baseline entries fail closed. The gate is therefore a stable shared-runner regression
+signal, while production Performance >=90 remains the separate Issue #797 acceptance criterion.
+`strict` and `report` modes remain available for their existing local/diagnostic uses. The
+Lighthouse unit tests cover median aggregation, baseline acceptance/rejection, missing-floor
+failure, route/profile coverage and the retained strict/report modes; the CI-routing test confirms
+baseline mode, three runs and unconditional report upload.
 
 ## Current root-cause remediation run
 
@@ -290,6 +298,22 @@ Suggested follow-up issues, if the team chooses to split the work, are: (a) inve
 remediate shared simulated-mobile text-LCP render delay; (b) establish repeatable legitimate
 OAuth/representative-data Lighthouse coverage; and (c) enable a strict Lighthouse CI gate after
 all required profiles pass.
+
+## Closeout verification status
+
+The baseline gate is present in merged `main` at `21283cd4` (PR #829). This document records the
+repository implementation and locally reproducible automated checks only. The final hosted `main`
+Lighthouse job and its uploaded artifact are not available in this checkout and remain the one
+manual verification item before closing the issue. No deployed-production result is claimed here.
+
+Closeout checks run on 1 October 2026:
+
+- `node --test tests/ci/*.test.mjs`: 68 passed; 0 failed.
+- `node --test scripts/lighthouse-*.test.mjs`: 17 passed; 0 failed.
+- `git diff --check`: passed.
+- `npx --no-install prettier --check evidence/validation/issue-797-lighthouse-performance.md`:
+  could not run because this checkout has no local Prettier package; the command deliberately did
+  not download one. No formatting-pass claim is made.
 
 ## AI assistance and review status
 
