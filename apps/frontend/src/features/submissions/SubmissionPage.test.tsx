@@ -1015,6 +1015,36 @@ describe('role-gated event submission page', () => {
     ).toBeInTheDocument();
   });
 
+  it('links a contract-valid example and explains required and optional event fields (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    await screen.findByLabelText('Delivery events JSON');
+
+    expect(screen.getByRole('link', { name: 'Download technical JSON example' })).toHaveAttribute(
+      'href',
+      '/technical-events-example.json',
+    );
+    const fields = screen.getByRole('region', { name: 'Event fields' });
+    expect(within(fields).getByText(/^Required:/)).toHaveTextContent(
+      /eventId.*inningsId.*sequenceNumber.*overNumber.*positionInOver.*strikerId.*nonStrikerId.*bowlerId.*runs/,
+    );
+    expect(within(fields).getByText(/^Optional:/)).toHaveTextContent(/ballNumber.*extras.*wickets/);
+  });
+
   it('lists every local technical schema failure with its event number (#801)', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);

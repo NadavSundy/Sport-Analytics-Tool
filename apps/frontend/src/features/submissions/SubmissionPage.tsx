@@ -1283,6 +1283,28 @@ function SubmissionForm({
                   : 'This technical input is staged and must pass review before publication.'}
               </p>
 
+              <section className="field-help" aria-label="Event fields">
+                <p>
+                  Required: <code>eventId</code> (a UUID), <code>inningsId</code>,{' '}
+                  <code>sequenceNumber</code>, <code>overNumber</code>, <code>positionInOver</code>,{' '}
+                  <code>strikerId</code>, <code>nonStrikerId</code>, <code>bowlerId</code> and{' '}
+                  <code>runs</code> (<code>offBat</code>, <code>extras</code> and <code>total</code>
+                  ).
+                </p>
+                <p>
+                  Optional: <code>ballNumber</code> (display label such as 0.1), <code>extras</code>{' '}
+                  (wides, noBalls, byes, legByes, penalty) and <code>wickets</code> (each with{' '}
+                  <code>kind</code>, <code>playerOutId</code> and any <code>fielders</code>). Run
+                  extras must equal the extras breakdown, and total runs must equal off-bat runs
+                  plus extras.
+                </p>
+                <p>
+                  <a href="/technical-events-example.json" download>
+                    Download technical JSON example
+                  </a>
+                </p>
+              </section>
+
               <textarea
                 id="submission-events"
                 value={eventJson}

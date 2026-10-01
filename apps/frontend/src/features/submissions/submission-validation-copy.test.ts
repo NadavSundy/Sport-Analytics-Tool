@@ -126,8 +126,12 @@ describe('schema issue reporting (#801)', () => {
 
   it('does not invent an event number for package-level paths', () => {
     expect(
-      schemaIssuesToDetails([{ path: ['fixtures', 0, 'context', 'date'], message: 'Invalid date' }]),
-    ).toEqual([{ code: 'INVALID_FIELD', message: 'Invalid date', field: 'fixtures.0.context.date' }]);
+      schemaIssuesToDetails([
+        { path: ['fixtures', 0, 'context', 'date'], message: 'Invalid date' },
+      ]),
+    ).toEqual([
+      { code: 'INVALID_FIELD', message: 'Invalid date', field: 'fixtures.0.context.date' },
+    ]);
   });
 
   it('summarises one issue exactly as before and several issues by count', () => {
