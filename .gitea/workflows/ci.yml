@@ -147,7 +147,7 @@ jobs:
         run: |
           npm run lint --workspace=@sport-analytics/frontend
           npm run typecheck --workspace=@sport-analytics/frontend
-          npm run test:frontend
+          npm run test:frontend -- -- --maxWorkers=2
 
       - name: Run PostgreSQL database integration tests
         if: needs.plan.outputs.database == 'true'

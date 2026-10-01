@@ -59,39 +59,42 @@ test('keeps strict 90 thresholds independent from a temporary baseline floor', (
 });
 
 test('approved hosted-CI floors cover every representative route and profile', () => {
-  assert.deepEqual(Object.keys(lighthouseCiBaselineFloors).sort(), [
-    '/',
-    '/api',
-    '/competitions',
-    '/competitors',
-    '/dataset-releases',
-    '/fixtures',
-    '/participants',
-    '/seasons',
-    '/sign-in',
-  ]);
-  for (const floors of Object.values(lighthouseCiBaselineFloors)) {
-    assert.deepEqual(Object.keys(floors).sort(), ['desktop', 'mobile']);
-  }
+  assert.deepEqual(lighthouseCiBaselineFloors, {
+    '/': { desktop: 97, mobile: 90 },
+    '/api': { desktop: 96, mobile: 89 },
+    '/competitions': { desktop: 96, mobile: 87 },
+    '/seasons': { desktop: 96, mobile: 86 },
+    '/fixtures': { desktop: 96, mobile: 86 },
+    '/competitors': { desktop: 96, mobile: 87 },
+    '/participants': { desktop: 96, mobile: 87 },
+    '/dataset-releases': { desktop: 96, mobile: 88 },
+    '/sign-in': { desktop: 96, mobile: 87 },
+  });
 });
 
-test('baseline mode accepts an aggregate at its route/profile floor and blocks one below it', () => {
-  const result = { route: '/api', profile: 'mobile', lcpMs: null, tbtMs: null, cls: null };
+test('baseline mode accepts every aggregate at its route/profile floor and blocks one below it', () => {
+  for (const [route, profiles] of Object.entries(lighthouseCiBaselineFloors)) {
+    for (const [profile, floor] of Object.entries(profiles)) {
+      const result = { route, profile, lcpMs: null, tbtMs: null, cls: null };
 
-  assert.equal(
-    evaluateLighthouseGate(
-      { ...result, performance: 84 },
-      { mode: 'baseline', floors: lighthouseCiBaselineFloors },
-    ).passes,
-    true,
-  );
-  assert.equal(
-    evaluateLighthouseGate(
-      { ...result, performance: 83 },
-      { mode: 'baseline', floors: lighthouseCiBaselineFloors },
-    ).passes,
-    false,
-  );
+      assert.equal(
+        evaluateLighthouseGate(
+          { ...result, performance: floor },
+          { mode: 'baseline', floors: lighthouseCiBaselineFloors },
+        ).passes,
+        true,
+        `${route} ${profile} must pass at its floor`,
+      );
+      assert.equal(
+        evaluateLighthouseGate(
+          { ...result, performance: floor - 1 },
+          { mode: 'baseline', floors: lighthouseCiBaselineFloors },
+        ).passes,
+        false,
+        `${route} ${profile} must fail below its floor`,
+      );
+    }
+  }
 });
 
 test('baseline mode fails safely when a route/profile floor is missing', () => {
