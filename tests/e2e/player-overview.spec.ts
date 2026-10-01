@@ -249,123 +249,126 @@ const careerAggregates = {
   ],
 };
 
+async function mockPlayerOverviewApi(page: Page, requestedUrls: string[]) {
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    requestedUrls.push(url.toString());
+
+    if (url.pathname.endsWith('/participants/player-1/fixtures')) {
+      await route.fulfill({
+        json: participantFixtureCollectionResponseSchema.parse({
+          data: matchHistory,
+          pagination: { nextCursor: null },
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/participants/player-1/statistics')) {
+      await route.fulfill({
+        json: participantAggregatesResponseSchema.parse({ data: careerAggregates }),
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/participants/player-1')) {
+      await route.fulfill({
+        json: { data: { participantId: 'player-1', displayName: 'A Player' } },
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/statistics/stat-innings-1')) {
+      await route.fulfill({
+        json: fixtureStatisticResponseSchema.parse({
+          data: {
+            ...inningsStatistic,
+            contributingEvents: [
+              {
+                eventId: 'event-1',
+                fixtureId: 'fixture-1',
+                inningsId: 'innings-1',
+                inningsOrdinal: 0,
+                sequenceNumber: 1,
+                strikerParticipantId: 'player-1',
+                strikerParticipantName: 'A Player',
+                nonStrikerParticipantId: 'player-2',
+                nonStrikerParticipantName: 'B Player',
+                bowlerParticipantId: 'bowler-1',
+                bowlerParticipantName: 'Opening Bowler',
+                runs: { offBat: 4, extras: 0, total: 4 },
+                extras: {
+                  wides: null,
+                  noBalls: null,
+                  byes: null,
+                  legByes: null,
+                  penalty: null,
+                },
+                nonBoundary: false,
+                bowlerWickets: 0,
+                wicketsLost: 0,
+              },
+            ],
+          },
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
+      await route.fulfill({
+        json: fixtureStatisticsResponseSchema.parse({
+          data: {
+            fixtureId: 'fixture-1',
+            status: 'complete',
+            scope: { superOversIncluded: false },
+            outcome: {
+              kind: 'won',
+              winnerCompetitorId: 'team-1',
+              winnerCompetitorName: 'Wanderers',
+              eliminatorCompetitorId: null,
+              eliminatorCompetitorName: null,
+              margin: { type: 'runs', value: 12 },
+              method: null,
+              decidedByBowlOut: false,
+            },
+            highestScorers: [],
+            warnings: [],
+            statistics: [inningsStatistic, playerStatistic],
+          },
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname.endsWith('/fixtures/fixture-1')) {
+      await route.fulfill({ json: { data: fixture } });
+      return;
+    }
+
+    if (url.pathname.endsWith('/participants')) {
+      await route.fulfill({
+        json: {
+          data: [{ participantId: 'player-1', displayName: 'A Player' }],
+          pagination: { nextCursor: null },
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: 'NOT_FOUND', message: 'Not found.' } },
+    });
+  });
+}
+
 test(
-  'player overview presents multiple matches, partial data, and unavailable statistics',
+  'player directory and overview present multiple matches, partial data, and unavailable statistics',
   { tag: '@mobile' },
   async ({ page }) => {
     const requestedUrls: string[] = [];
-
-    await page.route('**/api/v1/**', async (route) => {
-      const url = new URL(route.request().url());
-      requestedUrls.push(url.toString());
-
-      if (url.pathname.endsWith('/participants/player-1/fixtures')) {
-        await route.fulfill({
-          json: participantFixtureCollectionResponseSchema.parse({
-            data: matchHistory,
-            pagination: { nextCursor: null },
-          }),
-        });
-        return;
-      }
-
-      if (url.pathname.endsWith('/participants/player-1/statistics')) {
-        await route.fulfill({
-          json: participantAggregatesResponseSchema.parse({ data: careerAggregates }),
-        });
-        return;
-      }
-
-      if (url.pathname.endsWith('/participants/player-1')) {
-        await route.fulfill({
-          json: { data: { participantId: 'player-1', displayName: 'A Player' } },
-        });
-        return;
-      }
-
-      if (url.pathname.endsWith('/statistics/stat-innings-1')) {
-        await route.fulfill({
-          json: fixtureStatisticResponseSchema.parse({
-            data: {
-              ...inningsStatistic,
-              contributingEvents: [
-                {
-                  eventId: 'event-1',
-                  fixtureId: 'fixture-1',
-                  inningsId: 'innings-1',
-                  inningsOrdinal: 0,
-                  sequenceNumber: 1,
-                  strikerParticipantId: 'player-1',
-                  strikerParticipantName: 'A Player',
-                  nonStrikerParticipantId: 'player-2',
-                  nonStrikerParticipantName: 'B Player',
-                  bowlerParticipantId: 'bowler-1',
-                  bowlerParticipantName: 'Opening Bowler',
-                  runs: { offBat: 4, extras: 0, total: 4 },
-                  extras: {
-                    wides: null,
-                    noBalls: null,
-                    byes: null,
-                    legByes: null,
-                    penalty: null,
-                  },
-                  nonBoundary: false,
-                  bowlerWickets: 0,
-                  wicketsLost: 0,
-                },
-              ],
-            },
-          }),
-        });
-        return;
-      }
-
-      if (url.pathname.endsWith('/fixtures/fixture-1/statistics')) {
-        await route.fulfill({
-          json: fixtureStatisticsResponseSchema.parse({
-            data: {
-              fixtureId: 'fixture-1',
-              status: 'complete',
-              scope: { superOversIncluded: false },
-              outcome: {
-                kind: 'won',
-                winnerCompetitorId: 'team-1',
-                winnerCompetitorName: 'Wanderers',
-                eliminatorCompetitorId: null,
-                eliminatorCompetitorName: null,
-                margin: { type: 'runs', value: 12 },
-                method: null,
-                decidedByBowlOut: false,
-              },
-              highestScorers: [],
-              warnings: [],
-              statistics: [inningsStatistic, playerStatistic],
-            },
-          }),
-        });
-        return;
-      }
-
-      if (url.pathname.endsWith('/fixtures/fixture-1')) {
-        await route.fulfill({ json: { data: fixture } });
-        return;
-      }
-
-      if (url.pathname.endsWith('/participants')) {
-        await route.fulfill({
-          json: {
-            data: [{ participantId: 'player-1', displayName: 'A Player' }],
-            pagination: { nextCursor: null },
-          },
-        });
-        return;
-      }
-
-      await route.fulfill({
-        status: 404,
-        json: { error: { code: 'NOT_FOUND', message: 'Not found.' } },
-      });
-    });
+    await mockPlayerOverviewApi(page, requestedUrls);
 
     let purposefulInteractions = 0;
     await page.goto('/participants');
@@ -432,6 +435,40 @@ test(
       });
     }
 
+    expect(purposefulInteractions).toBe(1);
+  },
+);
+
+test(
+  'player overview links to match statistics in both themes',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    const requestedUrls: string[] = [];
+    await mockPlayerOverviewApi(page, requestedUrls);
+    let purposefulInteractions = 0;
+    const internalValues = [
+      'stat-career-1',
+      'player-1',
+      'fixture-1',
+      'fixture-2',
+      'fixture-3',
+      'competition-1',
+      'season-1',
+      'team-1',
+      'team-2',
+      'team-3',
+      'team-4',
+      'stat-innings-1',
+      'stat-player-1',
+      'innings-1',
+      'event-1',
+      'bowler-1',
+    ];
+
+    await page.goto('/participants/player-1');
+    await expect(page.getByRole('heading', { level: 1, name: 'A Player' })).toBeVisible();
+    await selectTheme(page, 'day');
+
     const matchLink = page.getByRole('link', { name: 'Wanderers vs Strikers' });
     await matchLink.focus();
     await expect(matchLink).toBeFocused();
@@ -452,6 +489,40 @@ test(
     await expect(page.getByText('Wanderers won by 12 runs.')).toBeVisible();
     await expectReadableAccessibleView(page, internalValues);
 
+    expect(purposefulInteractions).toBe(1);
+  },
+);
+
+test(
+  'player match statistics link to calculation trace and stay responsive',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    const requestedUrls: string[] = [];
+    await mockPlayerOverviewApi(page, requestedUrls);
+    let purposefulInteractions = 0;
+    const internalValues = [
+      'stat-career-1',
+      'player-1',
+      'fixture-1',
+      'fixture-2',
+      'fixture-3',
+      'competition-1',
+      'season-1',
+      'team-1',
+      'team-2',
+      'team-3',
+      'team-4',
+      'stat-innings-1',
+      'stat-player-1',
+      'innings-1',
+      'event-1',
+      'bowler-1',
+    ];
+    const isMobile = (page.viewportSize()?.width ?? 0) < 900;
+    await page.goto('/fixtures/fixture-1/statistics');
+    await expect(page.getByRole('heading', { level: 1, name: 'Match statistics' })).toBeVisible();
+    await selectTheme(page, 'night');
+
     await page.getByText('How these match statistics are calculated', { exact: true }).click();
     const calculationLink = page.getByRole('link', { name: 'View calculation trace' }).first();
     await calculationLink.focus();
@@ -467,7 +538,7 @@ test(
     await expect(page.getByRole('link', { name: 'A Player' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Opening Bowler' })).toBeVisible();
     expect(requestedUrls.some((url) => url.includes('includeContributors=true'))).toBe(true);
-    expect(purposefulInteractions).toBe(3);
+    expect(purposefulInteractions).toBe(1);
     await expectReadableAccessibleView(page, internalValues);
     if (process.env.CAPTURE_ISSUE_199_EVIDENCE && isMobile) {
       await page.screenshot({

@@ -1,5 +1,5 @@
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
-import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/auth-js';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -106,7 +106,7 @@ describe('guided batch upload', () => {
     await act(async () => {
       renderLegacyRoute(null);
     });
-    expect(screen.getByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

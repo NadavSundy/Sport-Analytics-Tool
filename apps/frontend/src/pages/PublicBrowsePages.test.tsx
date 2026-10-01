@@ -1,8 +1,8 @@
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session } from '@supabase/auth-js';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicApp } from '../App';
 import { AuthProvider } from '../features/auth/AuthProvider';
 
@@ -233,6 +233,12 @@ function renderRoute(route: string) {
   );
 }
 
+beforeAll(async () => {
+  // PublicBrowsePages is one production lazy chunk. Preload it once so the
+  // first collection test does not race Vite/Vitest transform latency in CI.
+  await import('./PublicBrowsePages');
+});
+
 describe('public browsing pages', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -254,11 +260,14 @@ describe('public browsing pages', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    renderRoute('/competitions');
+    const { container } = renderRoute('/competitions');
 
     expect(
-      screen.getByRole('heading', { level: 3, name: 'Loading competitions' }).parentElement,
+      (await screen.findByRole('heading', { level: 3, name: 'Loading competitions' }))
+        .parentElement,
     ).toHaveAttribute('role', 'status');
+    expect(container.querySelector('.record-list--skeleton')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.record-list__item')).toHaveLength(0);
 
     resolveRequest(
       collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }]),

@@ -14,6 +14,7 @@ export function ThemeToggle() {
     const nextTheme: Theme = isNightMatch ? 'day' : 'night';
     persistTheme(nextTheme);
     setTheme(nextTheme);
+    window.dispatchEvent(new Event('statsthegame-theme-change'));
   }
 
   return (

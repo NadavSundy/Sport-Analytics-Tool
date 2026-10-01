@@ -14,10 +14,45 @@ const optionalAzureContainerName = optionalNonEmptyString.pipe(
     .optional(),
 );
 
+/**
+ * The bound on how long one PostgreSQL statement may run before the server
+ * cancels it.
+ *
+ * The API pool holds ten connections, so an unbounded statement is not a slow
+ * request but an exhausted pool. A participant aggregate planned before
+ * `ANALYZE` reached its tables took minutes
+ * (`docs/development/performance-baseline.md`,
+ * `evidence/validation/issue-592-first-read-plans/`), which is the failure this
+ * bound exists to convert into a fast, retryable error.
+ *
+ * The default is roughly 2.7 times the slowest response the platform has been
+ * measured producing: 5,588 ms for a deployed participant aggregate P95
+ * (`evidence/sprints/sprint-3/issue-599-performance-revalidation.md` §10.2).
+ * That request issues more than one statement, so the bound cannot cancel any
+ * measured statement. It is also three times the 5,000 ms maximum already
+ * stated for a single request, so it can never fire before the request budget
+ * is spent.
+ *
+ * The floor keeps the bound above ordinary work: one warm round trip to the
+ * hosted database is about 183 ms and a request makes several. It also keeps
+ * the bound from being disabled by accident, because `pg` omits a falsy
+ * `statement_timeout` from the connection handshake and the session then
+ * inherits the server default of no timeout at all. The ceiling is above the
+ * pathological case this protects against, so the protection cannot be
+ * configured away.
+ */
+const databaseStatementTimeoutMsSchema = z.coerce
+  .number()
+  .int()
+  .min(1_000)
+  .max(120_000)
+  .default(15_000);
+
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().max(65_535).default(3000),
+    DATABASE_STATEMENT_TIMEOUT_MS: databaseStatementTimeoutMsSchema,
     CORS_ORIGINS: z.string().default('http://localhost:5173'),
     SUPABASE_URL: z.string().trim().url('Supabase URL must be a valid URL'),
     SUPABASE_PUBLISHABLE_KEY: z.string().trim().min(1, 'Supabase publishable key is required'),
@@ -45,6 +80,27 @@ const environmentSchema = z
     AZURE_STORAGE_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_INGESTION_CONTAINER_NAME: optionalAzureContainerName,
     AZURE_STORAGE_RELEASE_CONTAINER_NAME: optionalAzureContainerName,
+    // Server-only key for the natural-language query adapter (ADR-017). Optional
+    // in every environment, production included: natural-language querying is one
+    // optional feature and a missing key must disable it rather than stop the
+    // backend from serving everything else. When it is absent the adapter raises
+    // its not-configured error and `warnAboutOptionalConfiguration` says so once
+    // at startup. Its format is deliberately not validated: a shape check would
+    // couple the backend to a credential format the provider may change.
+    LLM_API_KEY: optionalNonEmptyString,
+    // Bounded to the character set a model identifier uses, so a stray value
+    // cannot become arbitrary content in the outbound request body.
+    LLM_MODEL: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9.-]{0,63}$/, 'Model identifier must be lowercase alphanumeric')
+      .default('claude-haiku-4-5-20251001'),
+    // A warm request is a second or two, but the first request carrying a new
+    // response schema pays a one-time compilation cost, so a five-second bound
+    // of the kind the weather adapter uses is too tight. Fifteen seconds covers
+    // both, and with exactly one retry the worst case stays near thirty. The
+    // ceiling keeps that worst case inside what a person will wait for.
+    LLM_TIMEOUT_MS: z.coerce.number().int().min(2_000).max(60_000).default(15_000),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === 'production') {
@@ -119,6 +175,29 @@ const environmentSchema = z
 
 export type Environment = z.infer<typeof environmentSchema>;
 
+/**
+ * Resolves the statement bound on its own, through the same schema the whole
+ * environment uses.
+ *
+ * The application pool is a lazy singleton reached as a default argument from
+ * every repository, so it is built wherever the first query happens rather than
+ * where the environment is loaded. Parsing the whole environment there would
+ * require the Supabase variables to be set in contexts that only ever needed a
+ * database connection. Sharing the one schema constant instead keeps the
+ * declared type, default and bounds identical on both paths.
+ */
+export function loadDatabaseStatementTimeoutMs(source: NodeJS.ProcessEnv = process.env): number {
+  const result = databaseStatementTimeoutMsSchema.safeParse(source.DATABASE_STATEMENT_TIMEOUT_MS);
+
+  if (!result.success) {
+    const details = result.error.issues.map((issue) => issue.message).join('; ');
+
+    throw new Error(`Invalid environment configuration: DATABASE_STATEMENT_TIMEOUT_MS: ${details}`);
+  }
+
+  return result.data;
+}
+
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
   const result = environmentSchema.safeParse(source);
 
@@ -131,4 +210,26 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
   }
 
   return result.data;
+}
+
+/**
+ * Reports each optional capability the running configuration leaves switched off,
+ * once, at startup.
+ *
+ * An absent optional value is a valid configuration rather than a fault, so it
+ * must not stop the backend. It must also not be silent: an operator who expected
+ * natural-language querying to work should learn that the key is missing from the
+ * startup log rather than from a reader's failed question.
+ *
+ * Only the variable name is reported. No value is read, logged or echoed.
+ */
+export function warnAboutOptionalConfiguration(
+  environment: Environment,
+  log: (message: string) => void = console.warn,
+): void {
+  if (!environment.LLM_API_KEY) {
+    log(
+      'LLM_API_KEY is not configured; natural-language query translation is disabled. Every other capability is unaffected.',
+    );
+  }
 }

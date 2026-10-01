@@ -1,4 +1,4 @@
-import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/auth-js';
 import type { AdministratorManagedUser } from '@sport-analytics/contracts';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';

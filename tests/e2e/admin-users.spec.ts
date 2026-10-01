@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-const authStorageKey = 'sb-e2e-auth-token';
+const authStorageKey = 'supabase.auth.token';
 const accessTime = '2026-08-16T12:00:00.000Z';
 const availableScopes = [
   { competitionId: '7', name: 'Premier T20' },

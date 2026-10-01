@@ -1103,6 +1103,50 @@ At Sprint 3 close-out, the planned Final Submission backlog will be reviewed aga
 | F-09 | Prepare the group report, individual report and peer-review evidence packs                        | Common | Normal   |
 | F-10 | Publish release notes, create the final version tag and assemble the submission package           | Common | High     |
 
+### Sprint 4 Refinement — 30 September 2026
+
+The Final Submission backlog above was intentionally created before detailed
+final issues existed.
+
+Following Sprint 3 close-out, that roadmap has now been refined into the active
+Sprint 4 milestone.
+
+The current planning baseline is recorded in
+`evidence/sprints/sprint-4/2026-09-30-planning.md` under Issue #799.
+
+The refined Sprint 4 work includes:
+
+- frontend performance and release hardening (#797);
+- public privacy, terms and accessibility material (#798);
+- Sprint 4 planning and methodology evidence (#799, #804);
+- final UX, accessibility and responsive polish (#800);
+- submission usability and validation feedback (#801, #827);
+- bounded authenticated-user personalisation (#802);
+- final structured user testing (#803);
+- final testing and coverage regression verification (#805);
+- final API and database audits (#806, #807);
+- final documentation, tooling and methodology audit (#808);
+- final requirements and rubric traceability (#809);
+- final production deployment and project close-out (#810);
+- analytics query-definition contract and query execution (#811, #813);
+- bounded database statement execution (#812);
+- server-side LLM-provider integration (#814);
+- natural-language query API, frontend and documentation (#815, #816, #817);
+- consumer API-access model (#820); and
+- API-consumer read-flow and user-requested key-management work (#821, #822).
+
+Several of these issues were refined and completed immediately after the Sprint
+4 planning discussion. They remain part of the final milestone history even
+where Gitea now records them as closed.
+
+This refinement does not rewrite the historical roadmap.
+
+It records how the previously planned Final Submission work was converted into
+actionable issues after Sprint 3 and how selected late enhancements were
+accepted into the final milestone.
+
+Gitea remains authoritative for current issue state and formal dependencies.
+
 ### Final Submission Expected Outcome
 
 The final submission should provide:

@@ -237,6 +237,9 @@ resource worker 'Microsoft.App/containerApps@2025-02-02-preview' = if (deployWor
             { name: 'BATCH_CHUNK_SIZE', value: '500' }
             { name: 'BATCH_LEASE_MS', value: '120000' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
+            // A bound, not a credential. Larger than the API's because the
+            // worker's unit of work is a page of ten thousand rows.
+            { name: 'DATABASE_STATEMENT_TIMEOUT_MS', value: '60000' }
             { name: 'DATABASE_SSL_MODE', value: 'verify-full' }
             { name: 'AZURE_CLIENT_ID', value: runtimeIdentity.properties.clientId }
             { name: 'SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE', value: '${serviceBus.name}.servicebus.windows.net' }

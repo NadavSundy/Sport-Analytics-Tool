@@ -9,7 +9,12 @@
         "docs/javascripts/external-links.js",
         "evidence/user-testing/sprint-3/cor-01-correction-package/validate.js"
       ],
-      "ignoreDependencies": ["wrangler"]
+      "ignoreDependencies": [
+        "wrangler",
+        "@fontsource/barlow-condensed",
+        "@fontsource/ibm-plex-mono",
+        "@fontsource/ibm-plex-sans"
+      ]
     }
   }
 }

@@ -1,4 +1,4 @@
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session } from '@supabase/auth-js';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -368,7 +368,7 @@ describe('public fixture statistics pages', () => {
     renderFixtureStatistics([inningsStatistic, participantStatistic]);
 
     expect(
-      await screen.findByRole('link', { name: 'Compare player performances' }),
+      await screen.findByRole('link', { name: 'Compare player performances' }, { timeout: 5000 }),
     ).toHaveAttribute('href', '/participants/compare?fixtureId=fixture-1');
   });
 

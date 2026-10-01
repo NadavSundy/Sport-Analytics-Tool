@@ -43,6 +43,46 @@ apps/backend/src/database/pool.ts
 
 Pool creation is lazy so importing a module does not itself establish a database connection.
 
+### Statement execution bound
+
+`DATABASE_STATEMENT_TIMEOUT_MS` bounds how long one PostgreSQL statement may run before the server
+cancels it. It must be between 1000 and 120000 milliseconds. The backend defaults to 15000 and the
+asynchronous worker declares the same variable in its own configuration with a default of 60000.
+
+The bound is applied as a `pg` pool option, which the driver sends as a PostgreSQL startup
+parameter, so every connection a pool opens carries it and no per-statement configuration is
+required. It may only be configured through the pool: it must not be placed in `DATABASE_URL` or in
+`PGOPTIONS`, because committed migrations, operator scripts and the PostgreSQL integration tests
+legitimately run longer than any application statement and must remain unbounded.
+
+A statement that exceeds the bound is cancelled by PostgreSQL with SQLSTATE `57014`. The driver
+reports it as a rejected query, `translateDatabaseError` reports it as `DATABASE_STATEMENT_TIMEOUT`,
+and the API returns `503` with that code. The condition is temporary, so a caller may retry with
+bounded backoff. The connection itself remains usable; only the statement is lost. A cancellation
+inside a transaction aborts that transaction, and `withTransaction()` rolls it back.
+
+The floor exists because the bound must stay above ordinary work: one warm round trip to the hosted
+database is approximately 183 ms and a request makes several. A value of zero is rejected because
+`pg` omits a falsy `statement_timeout` from the connection handshake, which would leave the session
+inheriting the server default of no bound at all. The ceiling exists so the protection may not be
+configured away.
+
+The backend default is approximately 2.7 times the slowest response the platform has been measured
+producing, a deployed participant-aggregate P95 of 5,588 ms recorded in
+`evidence/sprints/sprint-3/issue-599-performance-revalidation.md` (§10.2). That response comprises
+more than one statement, so the bound does not cancel any measured statement. The condition the
+bound exists to contain is also measured: a participant aggregate planned before `ANALYZE` reached
+its tables took minutes, which against a ten-connection pool is an exhausted pool rather than a slow
+request.
+
+Batch ingestion and the asynchronous worker are confirmed unaffected and require no per-session
+override. Every worker statement is already bounded by a page or a chunk: release snapshot
+materialisation and release page reads process 10,000 rows per statement behind a keyset cursor,
+batch publication defaults to 100 items per chunk with `BATCH_CHUNK_SIZE` capped at 2,000, and the
+outbox relay is capped at 100 rows by `OUTBOX_BATCH_SIZE`. The longest measured worker job is 16.2 s
+of wall clock spread across many such statements (§8.6 of the same record), so no worker statement
+approaches the 60000 ms worker default.
+
 ## Database-access boundaries
 
 SQL used by application features belongs behind repository boundaries.

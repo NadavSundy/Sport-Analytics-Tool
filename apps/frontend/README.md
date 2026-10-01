@@ -323,6 +323,65 @@ npm run build --workspace=@sport-analytics/frontend
 
 creates `apps/frontend/dist/`. Generated build output must not be committed.
 
+## Performance verification
+
+Issue #797 keeps the static homepage and its accessible hero fallback in the initial
+route. All other page modules are loaded on demand, including the large Swagger
+explorer. The optional Three.js hero scene is deferred until the initial load has
+settled and the browser has idle time; reduced-motion and unavailable-WebGL users
+retain the same fallback without loading it. The application emits WOFF2-only Latin
+font assets with `font-display: swap`.
+
+Run Lighthouse only against a production preview, never `vite` development mode:
+
+```powershell
+npm.cmd run build --workspace=@sport-analytics/frontend
+npm.cmd run preview --workspace=@sport-analytics/frontend -- --host 127.0.0.1 --port 4173
+npm.cmd run test:lighthouse
+```
+
+`test:lighthouse` audits both desktop and mobile profiles, writes one JSON report
+per requested route under `artifacts/lighthouse/`, and fails if a score is below 90.
+Supply a comma-separated `LIGHTHOUSE_ROUTES` list and a production-equivalent
+`LIGHTHOUSE_BASE_URL` to audit the complete public route inventory. Protected routes require a
+real Supabase session created through the normal Google OAuth flow. Save each Playwright storage
+state outside the repository and set the applicable path before auditing:
+
+Start the production preview, then capture each legitimate role state in a visible browser:
+
+```powershell
+npm.cmd run lighthouse:auth -- --role viewer
+npm.cmd run lighthouse:auth -- --role submitter
+npm.cmd run lighthouse:auth -- --role admin
+$env:LIGHTHOUSE_VIEWER_STORAGE_STATE = (Resolve-Path artifacts/lighthouse/auth/viewer-storage-state.json)
+$env:LIGHTHOUSE_SUBMITTER_STORAGE_STATE = (Resolve-Path artifacts/lighthouse/auth/submitter-storage-state.json)
+$env:LIGHTHOUSE_ADMIN_STORAGE_STATE = (Resolve-Path artifacts/lighthouse/auth/admin-storage-state.json)
+```
+
+The helper verifies the server-owned role returned from `/auth/me` and a role-protected route before
+saving an ignored `artifacts/lighthouse/auth/*-storage-state.json` file. It prints no tokens. The
+runner discovers public representative IDs once from `LIGHTHOUSE_API_BASE_URL` (or `VITE_API_BASE_URL`)
+and accepts explicit protected/detail overrides such as `LIGHTHOUSE_SUBMISSION_BATCH_ID`,
+`LIGHTHOUSE_REVIEW_BATCH_ID` and `LIGHTHOUSE_API_CONSUMER_ID`; its preflight table shows what is ready.
+
+The runner fails rather than silently auditing a protected route anonymously when required state is
+missing. Do not use mocked E2E storage state, record credentials, or commit session files.
+
+### CI baseline and strict modes
+
+Gitea Actions runs the public static route inventory against a production Vite preview after frontend
+changes. It runs each desktop/mobile route three times, reports median metrics in
+`artifacts/lighthouse-ci/summary.md`, and uploads the JSON reports and summary as a 30-day CI artifact.
+The current CI job uses `LIGHTHOUSE_GATE_MODE=report`: it records the evidence and fails only on a
+catastrophic median Performance regression below 40. This is a temporary migration mode, not a lower
+issue target. Once the complete legitimate route matrix is stable, use `LIGHTHOUSE_GATE_MODE=strict`
+to enforce Performance >=90, CLS <=0.1, LCP <=2.5s and TBT <=200ms from the same median evidence.
+
+CI does not receive OAuth storage states, so authenticated routes are explicitly deferred/unverified;
+they are never treated as passing. Parameterised routes remain skipped until deterministic API data is
+available in that environment. Local runs retain the default strict mode and can use legitimate states
+and `LIGHTHOUSE_API_BASE_URL` when those inputs are available.
+
 ## Deployment
 
 The frontend application is hosted on Cloudflare Pages:

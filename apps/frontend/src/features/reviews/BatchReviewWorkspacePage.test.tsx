@@ -1,12 +1,16 @@
-import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/auth-js';
 import type { BatchReportResponse } from '@sport-analytics/contracts';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
+
+beforeAll(async () => {
+  await import('./BatchReviewWorkspacePage');
+});
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
 const reference = '123e4567-e89b-42d3-a456-426614174000';

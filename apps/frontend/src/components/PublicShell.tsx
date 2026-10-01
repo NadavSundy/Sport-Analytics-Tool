@@ -2,9 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthProvider';
-import { getCurrentUserProfile } from '../features/auth/current-user-api';
-import { useAuthenticatedApiClient } from '../features/auth/useAuthenticatedApiClient';
 import { ThemeToggle } from './ThemeToggle';
+import { getInitialTheme, type Theme } from '../theme';
 
 interface PublicShellProps {
   children: ReactNode;
@@ -23,25 +22,32 @@ const exploreItems: MenuItem[] = [
 ];
 
 function BrandWordmark() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  useEffect(() => {
+    const updateTheme = () => setTheme(getInitialTheme());
+    window.addEventListener('statsthegame-theme-change', updateTheme);
+    return () => window.removeEventListener('statsthegame-theme-change', updateTheme);
+  }, []);
+
   return (
     <span className="brand-wordmark">
       <img
-        className="brand-wordmark__image brand-asset--day"
-        src="/brand/statsthegame-wordmark-light.svg"
+        className="brand-wordmark__image"
+        src={
+          theme === 'night'
+            ? '/brand/statsthegame-wordmark-dark.svg'
+            : '/brand/statsthegame-wordmark-light.svg'
+        }
         alt="Stat'sTheGame"
-      />
-      <img
-        className="brand-wordmark__image brand-asset--night"
-        src="/brand/statsthegame-wordmark-dark.svg"
-        alt="Stat'sTheGame"
+        width={176}
+        height={35}
       />
     </span>
   );
 }
 
 function useNavigationProfile() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const client = useAuthenticatedApiClient();
+  const { isAuthenticated, isLoading, session } = useAuth();
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
 
   useEffect(() => {
@@ -50,13 +56,22 @@ function useNavigationProfile() {
       return;
     }
     const controller = new AbortController();
-    void getCurrentUserProfile(client, controller.signal)
-      .then(setProfile)
+    const accessToken = session?.access_token ?? null;
+    void Promise.all([import('../api/client'), import('../features/auth/current-user-api')])
+      .then(([{ createAuthenticatedApiClient }, { getCurrentUserProfile }]) =>
+        getCurrentUserProfile(
+          createAuthenticatedApiClient(() => accessToken),
+          controller.signal,
+        ),
+      )
+      .then((nextProfile) => {
+        if (!controller.signal.aborted) setProfile(nextProfile);
+      })
       .catch(() => {
         if (!controller.signal.aborted) setProfile(null);
       });
     return () => controller.abort();
-  }, [client, isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, session?.access_token]);
 
   return profile;
 }

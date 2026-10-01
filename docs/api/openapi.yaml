@@ -3412,6 +3412,17 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
 
+    DatabaseStatementTimeout:
+      description: >-
+        A database statement exceeded the configured execution bound and was
+        cancelled, so the request produced no result. The error code is
+        `DATABASE_STATEMENT_TIMEOUT`. The condition is temporary and the same
+        request may succeed on retry with bounded backoff. No operation
+        references this response yet; it is declared for the endpoints that will.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
   schemas:
     DatasetReleaseVersion:
       type: string

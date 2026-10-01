@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
-import { ApiFeature } from './ApiFeature';
-import { BrandPrinciples } from './BrandPrinciples';
-import { EventDerivationStory } from './EventDerivationStory';
-import { ExploreGateway } from './ExploreGateway';
-import { HomeCallToAction } from './HomeCallToAction';
+import { lazy, Suspense, useEffect } from 'react';
 import { HomeHero } from './HomeHero';
+
+const HomePageContent = lazy(async () => {
+  const module = await import('./HomePageContent');
+  return { default: module.HomePageContent };
+});
 
 export function HomePage() {
   useEffect(() => {
@@ -14,11 +14,9 @@ export function HomePage() {
   return (
     <div className="home-page">
       <HomeHero />
-      <BrandPrinciples />
-      <EventDerivationStory />
-      <ExploreGateway />
-      <ApiFeature />
-      <HomeCallToAction />
+      <Suspense fallback={null}>
+        <HomePageContent />
+      </Suspense>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-const authStorageKey = 'sb-e2e-auth-token';
+const authStorageKey = 'supabase.auth.token';
 const createdAt = '2026-09-27T08:30:00.000Z';
 const issuedKey = 'sat_live_e2e-created-secret-never-commit-a-real-key';
 const rotatedKey = 'sat_live_e2e-rotated-secret-never-commit-a-real-key';
