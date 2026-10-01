@@ -296,17 +296,17 @@ PR #829's hosted Lighthouse run is the final CI evidence for the accepted regres
 The runner performed three runs for each representative public route/profile and applied its
 existing median aggregation. The final hosted aggregate Performance results were:
 
-| Route | Desktop | Mobile | Baseline gate |
-| --- | ---: | ---: | --- |
-| `/` | 100 | 93 | pass |
-| `/api` | 99 | 92 | pass |
-| `/competitions` | 99 | 90 | pass |
-| `/seasons` | 99 | 89 | pass |
-| `/fixtures` | 99 | 90 | pass |
-| `/competitors` | 99 | 90 | pass |
-| `/participants` | 99 | 90 | pass |
-| `/dataset-releases` | 99 | 91 | pass |
-| `/sign-in` | 99 | 91 | pass |
+| Route               | Desktop | Mobile | Baseline gate |
+| ------------------- | ------: | -----: | ------------- |
+| `/`                 |     100 |     93 | pass          |
+| `/api`              |      99 |     92 | pass          |
+| `/competitions`     |      99 |     90 | pass          |
+| `/seasons`          |      99 |     89 | pass          |
+| `/fixtures`         |      99 |     90 | pass          |
+| `/competitors`      |      99 |     90 | pass          |
+| `/participants`     |      99 |     90 | pass          |
+| `/dataset-releases` |      99 |     91 | pass          |
+| `/sign-in`          |      99 |     91 | pass          |
 
 The final summary's `Strict >=90 failures: 9` is diagnostic output only. It is not a CI failure:
 the configured shared-runner gate is `LIGHTHOUSE_GATE_MODE=baseline`. Strict absolute thresholds
@@ -330,19 +330,19 @@ Local automated verification completed on 1 October 2026:
 
 ## Acceptance closeout
 
-| Acceptance item | Status | Evidence |
-| --- | --- | --- |
-| Production Performance >=90 evidence | PASS | Recorded separately from hosted CI in this evidence record. |
-| Representative public-route CI gate | PASS | Nine routes in PR #829 run 19132. |
-| Desktop and mobile profiles | PASS | 18 public route/profile audits. |
-| Three-run median aggregation | PASS | Final runner execution and implementation evidence. |
-| Persisted baseline regression floors | PASS | `scripts/lighthouse-ci-baseline.mjs`. |
-| Missing-baseline fail-closed behaviour | PASS | Lighthouse unit coverage and merged implementation. |
-| Final hosted Lighthouse execution | PASS | Run 19132; Lighthouse job SUCCESS. |
-| Zero baseline regression failures | PASS | Final runner summary: 0. |
-| Retained JSON-report artifact | PASS | Artifact ID 225910. |
-| Automated Lighthouse and CI tests | PASS | 68 CI tests and 17 Lighthouse tests passed. |
-| Evidence documentation | PASS | This record. |
+| Acceptance item                        | Status | Evidence                                                    |
+| -------------------------------------- | ------ | ----------------------------------------------------------- |
+| Production Performance >=90 evidence   | PASS   | Recorded separately from hosted CI in this evidence record. |
+| Representative public-route CI gate    | PASS   | Nine routes in PR #829 run 19132.                           |
+| Desktop and mobile profiles            | PASS   | 18 public route/profile audits.                             |
+| Three-run median aggregation           | PASS   | Final runner execution and implementation evidence.         |
+| Persisted baseline regression floors   | PASS   | `scripts/lighthouse-ci-baseline.mjs`.                       |
+| Missing-baseline fail-closed behaviour | PASS   | Lighthouse unit coverage and merged implementation.         |
+| Final hosted Lighthouse execution      | PASS   | Run 19132; Lighthouse job SUCCESS.                          |
+| Zero baseline regression failures      | PASS   | Final runner summary: 0.                                    |
+| Retained JSON-report artifact          | PASS   | Artifact ID 225910.                                         |
+| Automated Lighthouse and CI tests      | PASS   | 68 CI tests and 17 Lighthouse tests passed.                 |
+| Evidence documentation                 | PASS   | This record.                                                |
 
 ## AI assistance and review status
 
