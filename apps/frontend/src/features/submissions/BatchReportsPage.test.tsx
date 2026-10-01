@@ -613,6 +613,37 @@ describe('unresolved fixture errors (#827)', () => {
     return screen.findByRole('region', { name: 'Match could not be found' });
   }
 
+  test('tells a submitter how to resubmit a fully rejected batch (#801)', async () => {
+    vi.stubGlobal('fetch', reportFetch(report(0, 3)));
+    await renderReport();
+    const summary = (await screen.findByRole('heading', { name: 'Status summary' })).parentElement!;
+    expect(summary).toHaveTextContent(/nothing was published/i);
+    expect(summary).toHaveTextContent(/upload the corrected file as a new submission/i);
+  });
+
+  test('gives an actionable next step for a reference with no safe match (#801)', async () => {
+    const body = unresolvedFixtureReport();
+    body.data.items[0]!.referenceResolutions = [
+      {
+        referencePath: 'competition',
+        entityType: 'competition',
+        state: 'unresolved',
+        submittedReference: { context: { name: 'Premeir T20' } },
+        reason: 'No competition in scope has this name.',
+        requiredAction: 'contact_reviewer',
+        candidates: [],
+      },
+    ];
+    vi.stubGlobal('fetch', reportFetch(body));
+    await renderReport();
+
+    const control = await screen.findByRole('group', { name: /competition needs a match/i });
+    expect(control).toHaveTextContent('Premeir T20');
+    expect(control).toHaveTextContent('No competition in scope has this name.');
+    expect(control).toHaveTextContent(/check the spelling/i);
+    expect(control).toHaveTextContent(/contact a reviewer/i);
+  });
+
   test('renders a plain-language fixture error with match context and a next step', async () => {
     const notice = await renderUnresolved();
     expect(notice).toHaveTextContent('Thailand Women vs United Arab Emirates Women');

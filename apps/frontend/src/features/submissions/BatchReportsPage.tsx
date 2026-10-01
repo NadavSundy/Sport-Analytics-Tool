@@ -52,7 +52,8 @@ const stateDescriptions: Record<BatchStatus['status'], string> = {
   received: 'The package receipt is durable and storage is being confirmed.',
   stored: 'The package is stored safely and waiting for background validation.',
   validating: 'Fixtures and deliveries are being checked in the background.',
-  rejected: 'Nothing was published. Open the item results to correct the reported problems.',
+  rejected:
+    'Nothing was published. Correct the problems in the item results below, then upload the corrected file as a new submission.',
   awaiting_review: 'Automated checks passed and an administrator can review the staged records.',
   correction_requested: 'A reviewer requested changes. Upload a corrected replacement package.',
   publishing: 'Approved records are being published.',
@@ -277,8 +278,9 @@ function ReferenceControl({
       )}
       {resolution.requiredAction === 'contact_reviewer' || resolution.candidates.length === 0 ? (
         <p role="status">
-          No safe existing match is available. Contact a reviewer; the system will not guess or
-          create a record silently.
+          No safe existing match is available. Check the spelling of the submitted value against the
+          existing record and upload a corrected file, or contact a reviewer if the record does not
+          exist yet; the system will not guess or create a record silently.
         </p>
       ) : (
         <>
