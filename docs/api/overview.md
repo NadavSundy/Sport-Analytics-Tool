@@ -363,7 +363,7 @@ are `highest_batting_average`, `highest_strike_rate`, `best_bowling_average`,
 returns stable participant identifiers and readable names, and carries the applicable qualification
 rule. See [Participant aggregate calculations](../statistics/participant-aggregates.md#leaderboards).
 
-### Analytics query evaluation
+### Analytics query evaluation and natural-language questions
 
 `POST /api/v1/query-definitions/evaluate` answers a structured query definition from the statistics
 above. It requires no authentication, computes nothing of its own, and returns the published
@@ -371,7 +371,13 @@ leaderboard or participant-aggregate resource unchanged, together with the endpo
 identifiers the answer came from. A name that matches nothing or more than one entity is reported as
 an outcome rather than an error.
 
-See [Analytics query evaluation](analytics-query.md) for the outcomes, the name-resolution rules and
+`POST /api/v1/natural-language-queries` answers the same questions written in words. It translates
+the question into a definition with a server-side language-model adapter, evaluates that definition
+through the operation above, and returns what was interpreted alongside the answer. It is anonymous
+too, and is protected instead by a durable per-client rate limit and daily quota, a global daily cap
+and a 300-character question bound.
+
+See [Analytics query](analytics-query.md) for the outcomes, the name-resolution rules, the limits and
 the recorded limitations.
 
 ### Dataset releases
@@ -435,4 +441,6 @@ Codex[GPT-5].
 The issue #820 accepted API consumer access-model link and current/future boundary were documented
 with the assistance of Codex[GPT-5].
 The issue #813 analytics query evaluation endpoint was documented with the assistance of
+Claude-Code[Claude Opus 5 (1M context)].
+The issue #815 natural-language query endpoint was documented with the assistance of
 Claude-Code[Claude Opus 5 (1M context)].
