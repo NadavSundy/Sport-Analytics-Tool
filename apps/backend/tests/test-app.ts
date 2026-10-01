@@ -1,5 +1,6 @@
 import type { VerifyAccessToken } from '../src/auth/supabase-auth';
 import { createApp } from '../src/app';
+import type { AppDependencies } from '../src/app';
 import type { QueryDefinitionNameResolver } from '../src/modules/analytics-query/query-definition.evaluator';
 import type { Environment } from '../src/config/env';
 import type { ApplicationAccount } from '../src/modules/accounts/account';
@@ -27,6 +28,10 @@ const testEnvironment: Environment = {
   SUPABASE_URL: 'https://test-project.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
   DEPLOYMENT_ENVIRONMENT: 'test',
+  TRUSTED_PROXY_HOP_COUNT: 0,
+  NL_QUERY_RATE_LIMIT_PER_MINUTE: 10,
+  NL_QUERY_DAILY_QUOTA_PER_CLIENT: 100,
+  NL_QUERY_GLOBAL_DAILY_LIMIT: 300,
 };
 
 const acceptTestIdentity: VerifyAccessToken = async () => ({
@@ -98,6 +103,14 @@ const testAdminService: AdminService = {
   },
 };
 
+export interface TestAppOptions {
+  llmClient?: AppDependencies['llmClient'];
+  naturalLanguageQueryLimiter?: AppDependencies['naturalLanguageQueryLimiter'];
+  logger?: AppDependencies['logger'];
+  /** Overrides on the test environment, for limits a test needs to differ. */
+  environment?: Partial<Environment>;
+}
+
 export function createTestApp(
   verifyAccessToken: VerifyAccessToken = acceptTestIdentity,
   publicReadService?: PublicReadService,
@@ -117,9 +130,15 @@ export function createTestApp(
   provenanceService?: ProvenanceService,
   leaderboardsService?: LeaderboardsService,
   queryDefinitionNames?: { names: QueryDefinitionNameResolver },
+  /**
+   * Everything added from issue #815 onwards goes here. The positional list above
+   * already needs seventeen `undefined`s to reach its end, so extending it again
+   * would make every call site less readable than the thing it configures.
+   */
+  options: TestAppOptions = {},
 ) {
   return createApp({
-    environment: testEnvironment,
+    environment: { ...testEnvironment, ...options.environment },
     verifyAccessToken,
     synchronizeAccount,
     ...(publicReadService !== undefined ? { publicReadService } : {}),
@@ -138,6 +157,11 @@ export function createTestApp(
     ...(provenanceService !== undefined ? { provenanceService } : {}),
     ...(leaderboardsService !== undefined ? { leaderboardsService } : {}),
     ...(queryDefinitionNames !== undefined ? { queryDefinitionNames } : {}),
+    ...(options.llmClient !== undefined ? { llmClient: options.llmClient } : {}),
+    ...(options.naturalLanguageQueryLimiter !== undefined
+      ? { naturalLanguageQueryLimiter: options.naturalLanguageQueryLimiter }
+      : {}),
+    ...(options.logger !== undefined ? { logger: options.logger } : {}),
   });
 }
 

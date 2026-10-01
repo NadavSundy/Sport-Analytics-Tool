@@ -2270,6 +2270,92 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '503': { $ref: '#/components/responses/DatabaseStatementTimeout' }
 
+  /api/v1/natural-language-queries:
+    post:
+      tags:
+        - Analytics Query
+      summary: Ask a question in natural language
+      description: |
+        Answers a reader's question from the statistics the platform already
+        publishes.
+
+        The question is translated into a query definition by a server-side
+        language-model adapter, and that definition is then evaluated exactly as
+        `POST /api/v1/query-definitions/evaluate` evaluates one. Nothing new is
+        calculated: a figure returned here is the figure the corresponding public
+        endpoint returns. This is not the analyst-defined statistic engine; it
+        admits no expression and stores no definition.
+
+        Model output can never become data. The adapter validates what the model
+        returns against the query-definition contract, so output that does not
+        satisfy it is reported as `422 QUERY_NOT_UNDERSTOOD` rather than answered.
+
+        The operation requires no authentication, because it returns only
+        resources the public statistics reads already serve anonymously. What
+        stands in place of a credential is a durable limiter: a per-client rate
+        limit and daily quota keyed on a salted hash of the caller's address, a
+        global daily cap across all callers, and the 300-character bound on the
+        question. Every limit counts attempts rather than successes, so a failing
+        request cannot be used to bypass the budget.
+      operationId: askNaturalLanguageQuery
+      x-implementation-status: implemented
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NaturalLanguageQuery'
+      responses:
+        '200':
+          description: >-
+            The question was translated and evaluated. The evaluation outcome
+            names the result, including a question the published statistics
+            cannot answer.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            X-Quota-Limit:
+              description: Daily question quota for this client.
+              schema: { type: integer, minimum: 0 }
+            X-Quota-Remaining:
+              description: Questions remaining for this client today.
+              schema: { type: integer, minimum: 0 }
+            X-Quota-Reset:
+              description: Seconds until the daily quota resets.
+              schema: { type: integer, minimum: 0 }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturalLanguageQueryResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: >-
+            The question is missing, empty, or longer than 300 characters
+            (`VALIDATION_FAILED`), or the model returned something the
+            query-definition contract rejects (`QUERY_NOT_UNDERSTOOD`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429': { $ref: '#/components/responses/NaturalLanguageQueryLimitExceeded' }
+        '503':
+          description: >-
+            The language-model provider is unconfigured, unreachable or too slow
+            (`QUERY_SERVICE_UNAVAILABLE`), the limiter could not be read so the
+            request failed closed (`RATE_LIMIT_UNAVAILABLE`), or a database
+            statement exceeded its bound (`DATABASE_STATEMENT_TIMEOUT`). All three
+            are temporary and the request may be retried.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
   /api/v1/provenance/submissions:
     get:
       tags: [Provenance]
@@ -3366,6 +3452,51 @@ components:
       headers:
         WWW-Authenticate:
           schema: { type: string, example: ApiKey }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+
+    NaturalLanguageQueryLimitExceeded:
+      description: >-
+        A natural-language query limit was reached: the per-client rate limit
+        (`RATE_LIMIT_EXCEEDED`), the per-client daily quota (`QUOTA_EXCEEDED`), or
+        the global daily cap across all callers (`GLOBAL_DAILY_LIMIT_REACHED`).
+
+        The per-minute limit carries the `RateLimit-*` headers and `Retry-After`.
+        The daily quota carries the `RateLimit-*` and `X-Quota-*` headers. The
+        global cap carries `Retry-After` alone, because the limit it reports is not
+        the caller's own allowance and reporting it as such would say a caller is
+        exhausted when it is not.
+      headers:
+        RateLimit-Limit:
+          description: >-
+            Requests permitted per minute for this client. Sent for the per-minute
+            limit and the daily quota, not for the global daily cap.
+          schema: { type: integer, minimum: 0 }
+        RateLimit-Remaining:
+          description: >-
+            Requests remaining in the current minute. Sent for the per-minute
+            limit and the daily quota, not for the global daily cap.
+          schema: { type: integer, minimum: 0 }
+        RateLimit-Reset:
+          description: >-
+            Seconds until the current minute window ends. Sent for the per-minute
+            limit and the daily quota, not for the global daily cap.
+          schema: { type: integer, minimum: 1 }
+        X-Quota-Limit:
+          description: Daily question quota. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Remaining:
+          description: Questions remaining today. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        X-Quota-Reset:
+          description: Seconds until the daily quota resets. Sent only when the daily quota is exhausted.
+          schema: { type: integer, minimum: 0 }
+        Retry-After:
+          description: >-
+            Seconds to wait before retrying. Sent for the per-minute limit and for
+            the global daily cap, not for the per-client daily quota.
+          schema: { type: integer, minimum: 1 }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
@@ -5893,6 +6024,48 @@ components:
         - outside_cricket_statistics
         - ambiguous
         - other
+
+    NaturalLanguageQuery:
+      description: A reader's question. It is the only thing a caller may send.
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question:
+          description: >-
+            The question, trimmed before it is measured. The bound is part of the
+            contract rather than configuration, because the text reaches a paid
+            provider.
+          type: string
+          minLength: 1
+          maxLength: 300
+
+    NaturalLanguageQueryResult:
+      type: object
+      additionalProperties: false
+      required: [question, model, evaluation]
+      properties:
+        question:
+          description: The question as it was understood, trimmed.
+          type: string
+          minLength: 1
+          maxLength: 300
+        model:
+          description: >-
+            The model that produced the definition, as the provider reported it.
+            Token counts are deliberately absent: they are metered in the server
+            logs rather than returned.
+          type: string
+          minLength: 1
+          maxLength: 100
+        evaluation: { $ref: '#/components/schemas/QueryDefinitionEvaluation' }
+
+    NaturalLanguageQueryResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/NaturalLanguageQueryResult' }
 
     QueryDefinitionVersion:
       description: >-
