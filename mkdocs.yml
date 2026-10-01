@@ -83,6 +83,7 @@ nav:
           - Batch Ingestion Pipeline: architecture/batch-ingestion-pipeline.md
       - Database:
           - Database Architecture Guide: database/guide.md
+          - Final Database Audit: database/final-audit.md
           - Database Overview: database/overview.md
           - Event Model: database/schema.md
           - Entity Relationships: database/erd.md
