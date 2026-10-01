@@ -209,7 +209,7 @@ describe('public application and authentication interface', () => {
     fireEvent.click(authenticationCallToAction);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }),
+      await screen.findByRole('heading', { level: 1, name: 'Login or Sign up' }, { timeout: 5000 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
   });

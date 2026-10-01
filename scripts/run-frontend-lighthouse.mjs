@@ -4,6 +4,7 @@ import process from 'node:process';
 import * as chromeLauncher from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 import { chromium } from 'playwright';
+import { lighthouseCiBaselineFloors } from './lighthouse-ci-baseline.mjs';
 import { selectableLighthouseRoutes } from './lighthouse-routes.mjs';
 import {
   applyLighthouseStorageState,
@@ -167,7 +168,7 @@ try {
 
 const summary = aggregateLighthouseResults(results).map((result) => ({
   ...result,
-  ...evaluateLighthouseGate(result, { mode: gateMode }),
+  ...evaluateLighthouseGate(result, { mode: gateMode, floors: lighthouseCiBaselineFloors }),
 }));
 await writeFile(
   path.join(outputDirectory, 'summary.json'),
