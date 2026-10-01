@@ -31,6 +31,10 @@ https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainer
 | `SUPABASE_PUBLISHABLE_KEY`               | Yes                                                 | No     | Publishable key used for backend `getUser()` verification.                                   |
 | `SUPABASE_SECRET_KEY`                    | No; required to enable account deletion             | Yes    | Server-only key used by Supabase Auth Admin deletion.                                        |
 | `DATABASE_URL`                           | Required when database access is used               | Yes    | Hosted PostgreSQL session-pooler connection string.                                          |
+| `ANONYMOUS_RATE_LIMIT_SECRET`            | Required in production; optional local fallback     | Yes    | At least 32 characters used to HMAC anonymous client addresses before counter storage.       |
+| `ANONYMOUS_RATE_LIMIT_PER_MINUTE`        | No; defaults to `30`                                | No     | Per-pseudonymous-source canonical-read minute allowance.                                     |
+| `ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE` | No; defaults to `600`                               | No     | Shared anonymous canonical-read minute budget.                                               |
+| `TRUST_PROXY_HOPS`                       | No; defaults to `0`                                 | No     | Exact trusted reverse-proxy hop count used when deriving the client address.                 |
 | `OBJECT_STORAGE_PROVIDER`                | Required in production; explicit for local releases | No     | `filesystem` for local development or `azure` for deployed production.                       |
 | `DEPLOYMENT_ENVIRONMENT`                 | Required as non-`local` in production               | No     | Release namespace such as `local` or `dev`; prevents cross-environment artifact references.  |
 | `OBJECT_STORAGE_FILESYSTEM_ROOT`         | Required when provider is `filesystem`              | No     | Local private-object root; the example resolves to repository-local `.local/object-storage`. |
@@ -67,15 +71,17 @@ The normal deployed API uses the non-secret runtime variables in the preceding t
 `SUPABASE_PUBLISHABLE_KEY` are ordinary runtime configuration values; they are not substituted for
 server secrets.
 
-`DATABASE_URL` and `SUPABASE_SECRET_KEY` are Key Vault secret values. Container Apps receives only
-versionless Key Vault secret-reference URIs, creates Container Apps secrets, and supplies those two
+`DATABASE_URL`, `SUPABASE_SECRET_KEY` and `ANONYMOUS_RATE_LIMIT_SECRET` are Key Vault secret values. Container Apps receives only
+versionless Key Vault secret-reference URIs, creates Container Apps secrets, and supplies them as
 variables through `secretRef`. The deployment CI receives only the URIs, never their values.
 `SUPABASE_SECRET_KEY` is required to preserve authenticated account deletion; process startup and
 unrelated routes remain available without it, but deletion returns `501`.
+The deployed anonymous limits are `30` per source and `600` globally per UTC minute;
+`TRUST_PROXY_HOPS=1` trusts only the Container Apps ingress hop.
 
 Gitea Actions secrets are separate again. The existing `AZURE_WORKER_CREDENTIALS` secret is the
 shared Azure resource-group deployment-principal credential despite its worker-oriented legacy name.
-Backend-specific secrets hold the resource group, two Key Vault secret-reference URIs, CORS origins,
+Backend-specific secrets hold the resource group, three Key Vault secret-reference URIs, CORS origins,
 Supabase URL, and Supabase publishable key used by backend deployment CI. Do not put real values in
 `.env` examples, Docker build arguments, Bicep outputs, workflow logs, or repository documentation.
 
@@ -141,3 +147,5 @@ The explicit local-filesystem and production-Azure provider configuration was do
 assistance of Codex[GPT-5].
 The Issue #563 Container Apps configuration and secret-reference boundary was documented with the
 assistance of Codex[GPT-5].
+The issue #821 anonymous-read limit configuration was documented with the assistance of
+Codex[GPT-5].

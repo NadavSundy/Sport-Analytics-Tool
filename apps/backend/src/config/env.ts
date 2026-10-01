@@ -22,6 +22,10 @@ const environmentSchema = z
     SUPABASE_URL: z.string().trim().url('Supabase URL must be a valid URL'),
     SUPABASE_PUBLISHABLE_KEY: z.string().trim().min(1, 'Supabase publishable key is required'),
     SUPABASE_SECRET_KEY: optionalNonEmptyString,
+    ANONYMOUS_RATE_LIMIT_SECRET: optionalNonEmptyString.pipe(z.string().min(32).optional()),
+    ANONYMOUS_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(59).optional(),
+    ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(100_000).optional(),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).optional(),
     OBJECT_STORAGE_PROVIDER: z.enum(['azure', 'filesystem']).optional(),
     OBJECT_STORAGE_FILESYSTEM_ROOT: optionalNonEmptyString,
     DEPLOYMENT_ENVIRONMENT: z
@@ -44,6 +48,13 @@ const environmentSchema = z
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === 'production') {
+      if (!environment.ANONYMOUS_RATE_LIMIT_SECRET) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['ANONYMOUS_RATE_LIMIT_SECRET'],
+          message: 'Anonymous rate-limit secret is required in production',
+        });
+      }
       if (!environment.OBJECT_STORAGE_PROVIDER) {
         context.addIssue({
           code: z.ZodIssueCode.custom,

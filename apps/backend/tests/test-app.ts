@@ -18,6 +18,7 @@ import type { ApiConsumerService } from '../src/modules/api-consumers/api-consum
 import type { ApiConsumerRepository } from '../src/modules/api-consumers/api-consumer.repository';
 import type { DatasetReleaseService } from '../src/modules/dataset-releases/dataset-release.service';
 import type { ProvenanceService } from '../src/modules/provenance/provenance.service';
+import type { AnonymousAccessRepository } from '../src/modules/api-consumers/anonymous-access.repository';
 
 const testEnvironment: Environment = {
   NODE_ENV: 'test',
@@ -115,6 +116,19 @@ export function createTestApp(
   datasetReleaseService?: DatasetReleaseService,
   provenanceService?: ProvenanceService,
   leaderboardsService?: LeaderboardsService,
+  anonymousAccessRepository: AnonymousAccessRepository = {
+    async consume({ at }) {
+      const windowStart = new Date(at);
+      windowStart.setUTCSeconds(0, 0);
+      return {
+        allowed: true,
+        sourceUsed: 1,
+        globalUsed: 1,
+        exceeded: null,
+        resetAt: new Date(windowStart.getTime() + 60_000),
+      };
+    },
+  },
 ) {
   return createApp({
     environment: testEnvironment,
@@ -135,6 +149,7 @@ export function createTestApp(
     ...(datasetReleaseService !== undefined ? { datasetReleaseService } : {}),
     ...(provenanceService !== undefined ? { provenanceService } : {}),
     ...(leaderboardsService !== undefined ? { leaderboardsService } : {}),
+    anonymousAccessRepository,
   });
 }
 

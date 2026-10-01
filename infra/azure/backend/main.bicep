@@ -41,6 +41,9 @@ param databaseSecretUri string
 @description('Versionless HTTPS Key Vault secret URI for SUPABASE_SECRET_KEY.')
 param supabaseSecretKeySecretUri string
 
+@description('Versionless HTTPS Key Vault secret URI for the anonymous source-key HMAC secret.')
+param anonymousRateLimitSecretUri string
+
 @description('Exact allowed browser origins for credentialed API requests.')
 param corsOrigins string
 
@@ -50,12 +53,12 @@ param supabaseUrl string
 @description('Supabase publishable key used by backend token verification.')
 param supabasePublishableKey string
 
-@description('Minimum continuously available API replicas. Scale to zero while idle; maxReplicas remains one to preserve process-local rate-limit semantics.')
+@description('Minimum continuously available API replicas. Scale to zero while idle.')
 @minValue(0)
 @maxValue(1)
 param minReplicas int = 0
 
-@description('Maximum API replicas. Keep at one until shared rate-limit state is implemented.')
+@description('Maximum API replicas. PostgreSQL-backed consumer and anonymous limits are shared across replicas.')
 @minValue(1)
 @maxValue(1)
 param maxReplicas int = 1
@@ -159,6 +162,11 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
           keyVaultUrl: supabaseSecretKeySecretUri
           identity: runtimeIdentity.id
         }
+        {
+          name: 'anonymous-rate-limit-secret'
+          keyVaultUrl: anonymousRateLimitSecretUri
+          identity: runtimeIdentity.id
+        }
       ]
     }
     template: {
@@ -175,6 +183,10 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             { name: 'SUPABASE_URL', value: supabaseUrl }
             { name: 'SUPABASE_PUBLISHABLE_KEY', value: supabasePublishableKey }
             { name: 'SUPABASE_SECRET_KEY', secretRef: 'supabase-secret-key' }
+            { name: 'ANONYMOUS_RATE_LIMIT_SECRET', secretRef: 'anonymous-rate-limit-secret' }
+            { name: 'ANONYMOUS_RATE_LIMIT_PER_MINUTE', value: '30' }
+            { name: 'ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE', value: '600' }
+            { name: 'TRUST_PROXY_HOPS', value: '1' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'OBJECT_STORAGE_PROVIDER', value: 'azure' }
             { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: existingStorage.name }

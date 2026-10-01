@@ -6,6 +6,7 @@ import {
   createApiConsumerRepository,
   hashApiKey,
 } from '../../src/modules/api-consumers/api-consumer.repository';
+import { createAnonymousAccessRepository } from '../../src/modules/api-consumers/anonymous-access.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 
 const sourcePrefix = `api-consumer-test-${process.pid}`;
@@ -182,5 +183,59 @@ describe.sequential('API consumer key persistence', () => {
       used: 1,
       resetAt: new Date('2026-09-19T10:02:00.000Z'),
     });
+  });
+
+  test('atomically enforces shared per-source and global anonymous minute budgets', async () => {
+    const repository = createAnonymousAccessRepository(pool);
+    const at = new Date('2099-09-30T10:00:20.000Z');
+    await executeQuery(
+      pool,
+      `DELETE FROM api_anonymous_source_minute_usage WHERE window_start = date_trunc('minute', $1::timestamptz)`,
+      [at],
+    );
+    await executeQuery(
+      pool,
+      `DELETE FROM api_anonymous_global_minute_usage WHERE window_start = date_trunc('minute', $1::timestamptz)`,
+      [at],
+    );
+
+    const sourceA = 'a'.repeat(64);
+    const sourceB = 'b'.repeat(64);
+    const firstSourceResults = await Promise.all(
+      Array.from({ length: 3 }, () =>
+        repository.consume({ sourceKey: sourceA, sourceLimit: 2, globalLimit: 3, at }),
+      ),
+    );
+    expect(firstSourceResults.filter((result) => result.allowed)).toHaveLength(2);
+    expect(firstSourceResults.filter((result) => result.exceeded === 'source')).toHaveLength(1);
+
+    await expect(
+      repository.consume({ sourceKey: sourceB, sourceLimit: 2, globalLimit: 3, at }),
+    ).resolves.toMatchObject({ allowed: true, sourceUsed: 1, globalUsed: 3 });
+    await expect(
+      repository.consume({ sourceKey: sourceB, sourceLimit: 2, globalLimit: 3, at }),
+    ).resolves.toMatchObject({ allowed: false, exceeded: 'global', globalUsed: 3 });
+
+    const counters = await executeQuery<{ sourceKey: string; requestCount: number }>(
+      pool,
+      `SELECT source_key AS "sourceKey", request_count AS "requestCount"
+       FROM api_anonymous_source_minute_usage
+       WHERE window_start = date_trunc('minute', $1::timestamptz)
+       ORDER BY source_key`,
+      [at],
+    );
+    expect(counters.rows).toEqual([
+      { sourceKey: sourceA, requestCount: 2 },
+      { sourceKey: sourceB, requestCount: 1 },
+    ]);
+
+    await expect(
+      repository.consume({
+        sourceKey: sourceA,
+        sourceLimit: 2,
+        globalLimit: 3,
+        at: new Date('2099-09-30T10:01:00.000Z'),
+      }),
+    ).resolves.toMatchObject({ allowed: true, sourceUsed: 1, globalUsed: 1 });
   });
 });

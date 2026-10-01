@@ -50,6 +50,21 @@ test('backend Container Apps infrastructure preserves secret and service boundar
     infrastructure,
     /\{ name: 'SUPABASE_SECRET_KEY', secretRef: 'supabase-secret-key' \}/,
   );
+  assert.match(infrastructure, /param anonymousRateLimitSecretUri string/);
+  assert.match(
+    infrastructure,
+    /name: 'anonymous-rate-limit-secret'[\s\S]*keyVaultUrl: anonymousRateLimitSecretUri[\s\S]*identity: runtimeIdentity\.id/,
+  );
+  assert.match(
+    infrastructure,
+    /\{ name: 'ANONYMOUS_RATE_LIMIT_SECRET', secretRef: 'anonymous-rate-limit-secret' \}/,
+  );
+  assert.match(infrastructure, /\{ name: 'ANONYMOUS_RATE_LIMIT_PER_MINUTE', value: '30' \}/);
+  assert.match(
+    infrastructure,
+    /\{ name: 'ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE', value: '600' \}/,
+  );
+  assert.match(infrastructure, /\{ name: 'TRUST_PROXY_HOPS', value: '1' \}/);
   assert.doesNotMatch(
     infrastructure,
     /\{ name: 'SUPABASE_SECRET_KEY', value:/,

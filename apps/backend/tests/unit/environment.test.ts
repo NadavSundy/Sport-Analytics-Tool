@@ -31,11 +31,49 @@ describe('backend environment', () => {
     ).toBeUndefined();
   });
 
+  it('validates bounded anonymous-read policy configuration', () => {
+    const environment = loadEnvironment({
+      ...requiredEnvironment,
+      ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
+      ANONYMOUS_RATE_LIMIT_PER_MINUTE: '30',
+      ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE: '600',
+      TRUST_PROXY_HOPS: '1',
+    });
+
+    expect(environment).toMatchObject({
+      ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
+      ANONYMOUS_RATE_LIMIT_PER_MINUTE: 30,
+      ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE: 600,
+      TRUST_PROXY_HOPS: 1,
+    });
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        ANONYMOUS_RATE_LIMIT_PER_MINUTE: '60',
+      }),
+    ).toThrow(/ANONYMOUS_RATE_LIMIT_PER_MINUTE/);
+  });
+
+  it('requires a server-held anonymous source-key secret in production', () => {
+    expect(() =>
+      loadEnvironment({
+        ...requiredEnvironment,
+        NODE_ENV: 'production',
+        OBJECT_STORAGE_PROVIDER: 'azure',
+        AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
+        AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
+        AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
+        DEPLOYMENT_ENVIRONMENT: 'dev',
+      }),
+    ).toThrow(/ANONYMOUS_RATE_LIMIT_SECRET/);
+  });
+
   it('requires the Azure storage account in production', () => {
     expect(() =>
       loadEnvironment({
         ...requiredEnvironment,
         NODE_ENV: 'production',
+        ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
         OBJECT_STORAGE_PROVIDER: 'azure',
         AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
         AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
@@ -51,6 +89,7 @@ describe('backend environment', () => {
       loadEnvironment({
         ...requiredEnvironment,
         NODE_ENV: 'production',
+        ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
         OBJECT_STORAGE_PROVIDER: 'azure',
         AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
         AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
@@ -66,6 +105,7 @@ describe('backend environment', () => {
       loadEnvironment({
         ...requiredEnvironment,
         NODE_ENV: 'production',
+        ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
         AZURE_STORAGE_ACCOUNT_NAME: 'statsthegameblobdev',
         AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
         DEPLOYMENT_ENVIRONMENT: 'dev',
@@ -80,6 +120,7 @@ describe('backend environment', () => {
       loadEnvironment({
         ...requiredEnvironment,
         NODE_ENV: 'production',
+        ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
         OBJECT_STORAGE_PROVIDER: 'filesystem',
         OBJECT_STORAGE_FILESYSTEM_ROOT: '.local/object-storage',
       }),
@@ -108,6 +149,7 @@ describe('backend environment', () => {
       AZURE_STORAGE_CONTAINER_NAME: 'staged-ingestion',
       AZURE_STORAGE_RELEASE_CONTAINER_NAME: 'dataset-releases',
       DEPLOYMENT_ENVIRONMENT: 'dev',
+      ANONYMOUS_RATE_LIMIT_SECRET: 'a'.repeat(32),
       AZURE_STORAGE_CONNECTION_STRING: 'unsupported',
       AZURE_STORAGE_ACCOUNT_KEY: 'unsupported',
       AZURE_STORAGE_SAS_TOKEN: 'unsupported',
