@@ -37,6 +37,12 @@ import {
   type ParticipantAggregatesService,
 } from './modules/statistics/participant-aggregates.service';
 import { createLeaderboardsRouter } from './modules/statistics/leaderboards.routes';
+import { createQueryDefinitionRouter } from './modules/analytics-query/query-definition.routes';
+import {
+  createQueryDefinitionEvaluator,
+  type QueryDefinitionEvaluator,
+  type QueryDefinitionNameResolver,
+} from './modules/analytics-query/query-definition.evaluator';
 import {
   createLeaderboardsService,
   type LeaderboardsService,
@@ -99,6 +105,9 @@ export interface AppDependencies {
   fixtureStatisticsService?: FixtureStatisticsService;
   participantAggregatesService?: ParticipantAggregatesService;
   leaderboardsService?: LeaderboardsService;
+  queryDefinitionEvaluator?: QueryDefinitionEvaluator;
+  /** Injected by the tests; production resolves names through the repositories. */
+  queryDefinitionNames?: { names: QueryDefinitionNameResolver };
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
@@ -139,6 +148,14 @@ export function createApp(dependencies: AppDependencies = {}) {
   const participantAggregatesService =
     dependencies.participantAggregatesService ?? createParticipantAggregatesService();
   const leaderboardsService = dependencies.leaderboardsService ?? createLeaderboardsService();
+  // Delegates to the two services above rather than reading anything itself.
+  const queryDefinitionEvaluator =
+    dependencies.queryDefinitionEvaluator ??
+    createQueryDefinitionEvaluator({
+      leaderboards: leaderboardsService,
+      participantAggregates: participantAggregatesService,
+      ...(dependencies.queryDefinitionNames ?? {}),
+    });
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
     dependencies.submitterAccessService ?? createSubmitterAccessService();
@@ -250,6 +267,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(API_BASE_PATH, createFixtureStatisticsRouter(fixtureStatisticsService));
   app.use(API_BASE_PATH, createParticipantAggregatesRouter(participantAggregatesService));
   app.use(API_BASE_PATH, createLeaderboardsRouter(leaderboardsService));
+  app.use(API_BASE_PATH, createQueryDefinitionRouter(queryDefinitionEvaluator));
   app.use(
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),

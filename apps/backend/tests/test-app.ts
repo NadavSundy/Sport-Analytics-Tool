@@ -1,5 +1,6 @@
 import type { VerifyAccessToken } from '../src/auth/supabase-auth';
 import { createApp } from '../src/app';
+import type { QueryDefinitionNameResolver } from '../src/modules/analytics-query/query-definition.evaluator';
 import type { Environment } from '../src/config/env';
 import type { ApplicationAccount } from '../src/modules/accounts/account';
 import type { SynchronizeAccount } from '../src/modules/accounts/account.service';
@@ -115,6 +116,7 @@ export function createTestApp(
   datasetReleaseService?: DatasetReleaseService,
   provenanceService?: ProvenanceService,
   leaderboardsService?: LeaderboardsService,
+  queryDefinitionNames?: { names: QueryDefinitionNameResolver },
 ) {
   return createApp({
     environment: testEnvironment,
@@ -135,6 +137,7 @@ export function createTestApp(
     ...(datasetReleaseService !== undefined ? { datasetReleaseService } : {}),
     ...(provenanceService !== undefined ? { provenanceService } : {}),
     ...(leaderboardsService !== undefined ? { leaderboardsService } : {}),
+    ...(queryDefinitionNames !== undefined ? { queryDefinitionNames } : {}),
   });
 }
 

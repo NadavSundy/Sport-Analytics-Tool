@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
+import { apiIdentifierSchema, createResourceResponseSchema } from './api';
 import {
   leaderboardMetricSchema,
+  leaderboardSchema,
   participantAggregateScopeSchema,
+  participantAggregatesSchema,
   type ParticipantAggregateScope,
 } from './public-read';
 
@@ -344,3 +347,151 @@ Answer with "unsupported" rather than guess. If the question needs something the
 statistics do not hold, or if it does not say which player, competition or season it means, return
 the "unsupported" kind with the closest reason. A wrong definition is worse than a named refusal,
 so never approximate the question, widen its scope, or change the metric to one you can express.`;
+
+// ---------------------------------------------------------------------------
+// Evaluation result
+// ---------------------------------------------------------------------------
+
+/**
+ * What the platform answers when a query definition is evaluated (issue #813).
+ *
+ * Evaluation resolves each name hint to an identifier and then delegates to the
+ * statistics the platform already publishes. It computes nothing of its own, so
+ * `result` is the resource the corresponding public endpoint returns, byte for
+ * byte, and `sources` records which endpoint produced it and which statistics
+ * inside it answer the question.
+ *
+ * Every outcome is reported with HTTP 200. A question the platform cannot pin to
+ * one entity, or cannot answer at all, is a result rather than a failure: the
+ * request was valid and the platform answered it correctly by saying so. Only a
+ * body that fails the definition contract is an error, and that is `422`.
+ */
+
+/**
+ * Where in a definition a reference sits. Closed, so a reported reference can
+ * only ever be one of the places the contract defines.
+ */
+export const queryDefinitionReferenceSchema = z.enum([
+  'participant',
+  'participants.0',
+  'participants.1',
+  'competition',
+  'season',
+]);
+
+/**
+ * One entity a name hint could have meant.
+ *
+ * It carries an identifier and a display name and nothing else. The corpus holds
+ * many people who share a display name — `person.source_ref` records that 168
+ * names map to more than one person — so two candidates can look identical here.
+ * Telling them apart needs context this contract does not carry; an interface
+ * resolves that by asking rather than by guessing.
+ */
+export const queryDefinitionCandidateSchema = z
+  .object({
+    id: apiIdentifierSchema,
+    displayName: z.string().min(1).max(200),
+  })
+  .strict();
+
+/** One upstream call the answer came from, and the statistics it answers with. */
+export const queryDefinitionSourceSchema = z
+  .object({
+    /** The published path, query string included, that returns this result. */
+    endpoint: z.string().min(1).max(500),
+    /**
+     * The statistics within that response that answer the question. Empty for a
+     * leaderboard, because the published leaderboard carries no statistic
+     * identifier; its traceability is the endpoint and the resolved scope.
+     */
+    statisticIds: z.array(apiIdentifierSchema).max(50),
+  })
+  .strict();
+
+/** Every identifier the evaluation resolved, with null where a kind has none. */
+export const queryDefinitionResolutionSchema = z
+  .object({
+    participantIds: z.array(apiIdentifierSchema).max(2),
+    competitionId: apiIdentifierSchema.nullable(),
+    seasonId: apiIdentifierSchema.nullable(),
+    season: z.string().min(1).nullable(),
+  })
+  .strict();
+
+/**
+ * A deterministic identifier for the definition that was evaluated: a digest of
+ * the parsed definition under a canonical serialisation, so the same question
+ * asked twice carries the same version and a reordered body does not.
+ */
+export const queryDefinitionVersionSchema = z
+  .string()
+  .regex(/^qdv1_[A-Za-z0-9_-]{43}$/, 'Expected a query-definition version digest.');
+
+/**
+ * The published resource, unmodified. A leaderboard, one participant's
+ * aggregates, or the two being compared in the order the definition named them.
+ */
+export const queryDefinitionResultSchema = z.union([
+  leaderboardSchema,
+  participantAggregatesSchema,
+  z.tuple([participantAggregatesSchema, participantAggregatesSchema]),
+]);
+
+const evaluationCommonShape = {
+  definitionVersion: queryDefinitionVersionSchema,
+  definition: analyticsQueryDefinitionSchema,
+};
+
+export const queryDefinitionEvaluationSchema = z.discriminatedUnion('outcome', [
+  z
+    .object({
+      outcome: z.literal('answered'),
+      ...evaluationCommonShape,
+      resolved: queryDefinitionResolutionSchema,
+      // One entry per upstream call: one for a leaderboard or a single
+      // participant, two for a comparison, in the definition's own order.
+      sources: z.array(queryDefinitionSourceSchema).min(1).max(2),
+      result: queryDefinitionResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      outcome: z.literal('entity_not_found'),
+      ...evaluationCommonShape,
+      reference: queryDefinitionReferenceSchema,
+      nameHint: z.string().min(1).max(100),
+    })
+    .strict(),
+  z
+    .object({
+      outcome: z.literal('entity_ambiguous'),
+      ...evaluationCommonShape,
+      reference: queryDefinitionReferenceSchema,
+      nameHint: z.string().min(1).max(100),
+      candidates: z.array(queryDefinitionCandidateSchema).min(2).max(5),
+    })
+    .strict(),
+  z
+    .object({
+      outcome: z.literal('unsupported'),
+      ...evaluationCommonShape,
+      reason: unsupportedQueryReasonSchema,
+    })
+    .strict(),
+]);
+
+export const queryDefinitionEvaluationResponseSchema = createResourceResponseSchema(
+  queryDefinitionEvaluationSchema,
+);
+
+export type QueryDefinitionReference = z.infer<typeof queryDefinitionReferenceSchema>;
+export type QueryDefinitionCandidate = z.infer<typeof queryDefinitionCandidateSchema>;
+export type QueryDefinitionSource = z.infer<typeof queryDefinitionSourceSchema>;
+export type QueryDefinitionResolution = z.infer<typeof queryDefinitionResolutionSchema>;
+export type QueryDefinitionVersion = z.infer<typeof queryDefinitionVersionSchema>;
+export type QueryDefinitionResult = z.infer<typeof queryDefinitionResultSchema>;
+export type QueryDefinitionEvaluation = z.infer<typeof queryDefinitionEvaluationSchema>;
+export type QueryDefinitionEvaluationResponse = z.infer<
+  typeof queryDefinitionEvaluationResponseSchema
+>;

@@ -1,0 +1,65 @@
+import { createHash } from 'node:crypto';
+
+import {
+  QUERY_DEFINITION_VERSION,
+  type AnalyticsQueryDefinition,
+} from '@sport-analytics/contracts';
+
+/**
+ * A deterministic identifier for the definition an evaluation answered.
+ *
+ * It exists so a caller can tell whether two answers came from the same
+ * question, and so a stored or logged answer can be matched back to its input
+ * without retaining the input. It follows `statistic-id.ts`: a SHA-256 over
+ * NUL-separated parts, `base64url`, behind a prefix naming what it identifies.
+ *
+ * Two properties are deliberate and both are tested.
+ *
+ * The digest is taken over the **parsed** definition rather than the request
+ * body, so it describes the question rather than the text that carried it. A
+ * client that orders its JSON differently gets the same version, and so does one
+ * that leaves `limit` to the contract's default instead of sending the same
+ * value explicitly.
+ *
+ * Object keys are sorted at every level; array order is preserved. Array order
+ * is part of the question — a comparison names a first and a second player — so
+ * sorting it would make two different questions share a version.
+ */
+
+const PART_SEPARATOR = '\u0000';
+
+/**
+ * A canonical JSON serialisation: object keys in sorted order, arrays in their
+ * own order. The repository has no such helper to reuse — the dataset-release
+ * checksum digests streamed artifact bytes rather than a structured value — so
+ * this is the one place it is defined.
+ */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
+
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>)
+      // An absent property and one explicitly set to undefined describe the same
+      // definition, so neither contributes to the digest.
+      .filter(([, property]) => property !== undefined)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, property]) => `${JSON.stringify(key)}:${canonicalJson(property)}`);
+
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(value) ?? 'null';
+}
+
+export function createQueryDefinitionVersion(
+  definition: AnalyticsQueryDefinition,
+  contractVersion: string = QUERY_DEFINITION_VERSION,
+): string {
+  const digest = createHash('sha256')
+    .update([contractVersion, canonicalJson(definition)].join(PART_SEPARATOR))
+    .digest('base64url');
+
+  return `qdv1_${digest}`;
+}

@@ -10,8 +10,3 @@ docs/api/openapi.yaml:
     # The public OpenAPI document accepts no parameters, body, or authentication, so the
     # implemented GET documentation route has no meaningful client-error response to document.
     - '#/paths/~1openapi.yaml/get/responses'
-  no-unused-components:
-    # A cancelled database statement can end any database-backed request, so the response is
-    # declared once rather than repeated across every operation. Issue #812 deliberately wires it
-    # into none of them; the endpoints that document it are later work.
-    - '#/components/responses/DatabaseStatementTimeout'

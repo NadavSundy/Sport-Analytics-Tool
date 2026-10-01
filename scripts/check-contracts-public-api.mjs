@@ -24,6 +24,10 @@ for (const schema of [
   // validation boundary rather than a convenience, so its absence from the
   // built runtime must fail the build rather than silently admit anything.
   'analyticsQueryDefinitionSchema',
+  // The evaluation envelope the evaluate endpoint answers with. Its tests
+  // assert real response bodies against it, so it has to survive the build.
+  'queryDefinitionEvaluationSchema',
+  'queryDefinitionEvaluationResponseSchema',
 ]) {
   if (typeof contracts[schema]?.safeParse !== 'function') {
     throw new Error(`The built contracts runtime does not expose ${schema}.`);
@@ -73,6 +77,13 @@ for (const member of [
   'ANALYTICS_QUERY_KINDS',
   'analyticsQueryDefinitionSchema',
   'ANALYTICS_QUERY_PROMPT_DESCRIPTION',
+  'queryDefinitionReferenceSchema',
+  'queryDefinitionCandidateSchema',
+  'queryDefinitionSourceSchema',
+  'queryDefinitionResolutionSchema',
+  'queryDefinitionVersionSchema',
+  'queryDefinitionEvaluationSchema',
+  'queryDefinitionEvaluationResponseSchema',
 ]) {
   if (!new RegExp(`export declare const ${member}\\b`).test(analyticsQueryDeclarations)) {
     throw new Error(`The built contracts declarations do not expose ${member}.`);

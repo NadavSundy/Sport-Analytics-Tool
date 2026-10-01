@@ -1,0 +1,415 @@
+import {
+  type AnalyticsQueryDefinition,
+  type LeaderboardQuery,
+  type ParticipantAggregate,
+  type ParticipantAggregateScope,
+  type ParticipantAggregates,
+  type QueryDefinitionCandidate,
+  type QueryDefinitionEvaluation,
+  type QueryDefinitionReference,
+  type QueryDefinitionSource,
+} from '@sport-analytics/contracts';
+
+import { listCompetitions } from '../competitions/competition.repository';
+import { listParticipants } from '../participants/participant.repository';
+import { createSeasonId } from '../public-read/season-id';
+import { listSeasons, findSeason } from '../seasons/season.repository';
+import type { LeaderboardsService } from '../statistics/leaderboards.service';
+import type { ParticipantAggregatesService } from '../statistics/participant-aggregates.service';
+import { createQueryDefinitionVersion } from './query-definition-version';
+
+/**
+ * Answers a query definition from the statistics the platform already publishes.
+ *
+ * The evaluator computes nothing. It resolves each name hint to an identifier
+ * through the existing parameterised repository reads, calls the service that
+ * already answers that question, and reports the published resource unchanged
+ * alongside the endpoint that returns it and the statistics inside it that
+ * answer the question. No SQL is added here, and no statistic is recalculated:
+ * a figure this returns is the same figure the public API returns, because it is
+ * the same code path.
+ *
+ * Only a definition that fails the issue #811 contract is an error, and the
+ * controller reports that. Everything else is an outcome: a question the
+ * platform cannot pin to one entity, or cannot answer at all, was still
+ * answered correctly by saying so.
+ */
+
+/** The published paths an evaluation delegates to. */
+const LEADERBOARD_PATH = '/api/v1/statistics/leaderboards';
+
+/**
+ * How many matches one name search reads. Beyond this the matches cannot be
+ * narrowed safely, because a second exact match may sit outside the page, so the
+ * reference is reported ambiguous instead.
+ */
+const SEARCH_LIMIT = 25;
+
+/** How many candidates an ambiguous outcome offers. */
+const CANDIDATE_LIMIT = 5;
+
+export interface QueryDefinitionNameResolver {
+  findParticipantsByName(
+    name: string,
+    limit: number,
+  ): Promise<{ records: { participantId: string; displayName: string }[]; totalRecords: number }>;
+  findCompetitionsByName(
+    name: string,
+    limit: number,
+  ): Promise<{ records: { competitionId: string; name: string }[]; hasMore: boolean }>;
+  findSeasonExact(
+    competitionId: string,
+    label: string,
+  ): Promise<{ competitionId: string; competitionName: string; label: string } | null>;
+  findSeasonsByLabel(
+    competitionId: string,
+    label: string,
+    limit: number,
+  ): Promise<{ records: { competitionId: string; competitionName: string; label: string }[] }>;
+}
+
+export interface QueryDefinitionEvaluator {
+  evaluate(definition: AnalyticsQueryDefinition): Promise<QueryDefinitionEvaluation>;
+}
+
+export interface QueryDefinitionEvaluatorDependencies {
+  leaderboards: Pick<LeaderboardsService, 'getLeaderboard'>;
+  participantAggregates: Pick<ParticipantAggregatesService, 'getParticipantAggregates'>;
+  names?: QueryDefinitionNameResolver;
+}
+
+/** The repository reads the resolver uses, each already parameterised. */
+const databaseNameResolver: QueryDefinitionNameResolver = {
+  findParticipantsByName: (name, limit) => listParticipants({ limit, name }),
+  findCompetitionsByName: (name, limit) => listCompetitions({ limit, name }),
+  findSeasonExact: (competitionId, label) => findSeason(competitionId, label),
+  findSeasonsByLabel: (competitionId, label, limit) =>
+    listSeasons({ limit, competitionId, name: label }),
+};
+
+type Resolution<T> =
+  | { status: 'resolved'; value: T }
+  | { status: 'not_found' }
+  | { status: 'ambiguous'; candidates: QueryDefinitionCandidate[] };
+
+/**
+ * Narrows a set of name matches to one entity.
+ *
+ * An exact case-insensitive match is preferred, so a complete name is not made
+ * ambiguous by every longer name that contains it. Only when nothing matches
+ * exactly do the partial matches decide.
+ */
+function narrow<T>(
+  records: readonly T[],
+  hint: string,
+  displayNameOf: (record: T) => string,
+  candidateOf: (record: T) => QueryDefinitionCandidate,
+): Resolution<T> {
+  const wanted = hint.trim().toLowerCase();
+  const exact = records.filter((record) => displayNameOf(record).toLowerCase() === wanted);
+  const pool = exact.length > 0 ? exact : records;
+
+  if (pool.length === 0) {
+    return { status: 'not_found' };
+  }
+  if (pool.length === 1) {
+    return { status: 'resolved', value: pool[0]! };
+  }
+
+  return { status: 'ambiguous', candidates: pool.slice(0, CANDIDATE_LIMIT).map(candidateOf) };
+}
+
+/** Every match beyond one page is ambiguous; the candidates shown are the first few. */
+function unnarrowable<T>(
+  records: readonly T[],
+  candidateOf: (record: T) => QueryDefinitionCandidate,
+): Resolution<T> {
+  return { status: 'ambiguous', candidates: records.slice(0, CANDIDATE_LIMIT).map(candidateOf) };
+}
+
+export function createQueryDefinitionEvaluator(
+  dependencies: QueryDefinitionEvaluatorDependencies,
+): QueryDefinitionEvaluator {
+  const names = dependencies.names ?? databaseNameResolver;
+
+  async function resolveParticipant(
+    hint: string,
+  ): Promise<Resolution<{ participantId: string; displayName: string }>> {
+    const page = await names.findParticipantsByName(hint, SEARCH_LIMIT);
+    const candidateOf = (record: { participantId: string; displayName: string }) => ({
+      id: record.participantId,
+      displayName: record.displayName,
+    });
+
+    if (page.totalRecords > SEARCH_LIMIT) {
+      return unnarrowable(page.records, candidateOf);
+    }
+
+    return narrow(page.records, hint, (record) => record.displayName, candidateOf);
+  }
+
+  async function resolveCompetition(
+    hint: string,
+  ): Promise<Resolution<{ competitionId: string; name: string }>> {
+    const page = await names.findCompetitionsByName(hint, SEARCH_LIMIT);
+    const candidateOf = (record: { competitionId: string; name: string }) => ({
+      id: record.competitionId,
+      displayName: record.name,
+    });
+
+    // The competition read reports only whether another page exists.
+    if (page.hasMore) {
+      return unnarrowable(page.records, candidateOf);
+    }
+
+    return narrow(page.records, hint, (record) => record.name, candidateOf);
+  }
+
+  /** A season is a resolved competition plus a label the competition actually has. */
+  async function resolveSeason(
+    competitionId: string,
+    label: string,
+  ): Promise<Resolution<{ competitionId: string; label: string }>> {
+    const exact = await names.findSeasonExact(competitionId, label);
+    if (exact) {
+      return { status: 'resolved', value: { competitionId, label: exact.label } };
+    }
+
+    const page = await names.findSeasonsByLabel(competitionId, label, SEARCH_LIMIT);
+    const resolution = narrow(
+      page.records,
+      label,
+      (record) => record.label,
+      (record) => ({ id: createSeasonId(record), displayName: record.label }),
+    );
+
+    return resolution.status === 'resolved'
+      ? {
+          status: 'resolved',
+          value: { competitionId: resolution.value.competitionId, label: resolution.value.label },
+        }
+      : resolution;
+  }
+
+  function leaderboardEndpoint(query: LeaderboardQuery): string {
+    const parameters = new URLSearchParams({
+      scope: query.scope,
+      ...(query.scope === 'season'
+        ? { seasonId: query.seasonId }
+        : { competitionId: query.competitionId }),
+      metric: query.metric,
+      limit: String(query.limit),
+    });
+
+    return `${LEADERBOARD_PATH}?${parameters.toString()}`;
+  }
+
+  function aggregatesEndpoint(participantId: string, scope: ParticipantAggregateScope): string {
+    return `/api/v1/participants/${encodeURIComponent(participantId)}/statistics?scope=${scope}`;
+  }
+
+  /**
+   * The statistics within a published aggregate response that answer the
+   * question. The published endpoint takes no competition or season filter, so
+   * the whole scope level is returned and this names the rows that match.
+   */
+  function answers(
+    statistic: ParticipantAggregate,
+    scope: ParticipantAggregateScope,
+    competitionId: string | null,
+    season: string | null,
+  ): boolean {
+    // Narrowed on the row's own discriminator rather than on the requested
+    // scope, so each branch reads only the fields that level actually carries.
+    if (scope === 'career') {
+      return statistic.scope === 'career';
+    }
+
+    if (scope === 'competition') {
+      return statistic.scope === 'competition' && statistic.competitionId === competitionId;
+    }
+
+    return (
+      statistic.scope === 'season' &&
+      statistic.competitionId === competitionId &&
+      statistic.season === season
+    );
+  }
+
+  function answeringStatisticIds(
+    published: ParticipantAggregates,
+    scope: ParticipantAggregateScope,
+    competitionId: string | null,
+    season: string | null,
+  ): string[] {
+    return published.statistics
+      .filter((statistic) => answers(statistic, scope, competitionId, season))
+      .map((statistic) => statistic.statisticId);
+  }
+
+  return {
+    async evaluate(definition) {
+      const definitionVersion = createQueryDefinitionVersion(definition);
+      const common = { definitionVersion, definition } as const;
+
+      const notFound = (
+        reference: QueryDefinitionReference,
+        nameHint: string,
+      ): QueryDefinitionEvaluation => ({
+        outcome: 'entity_not_found',
+        ...common,
+        reference,
+        nameHint,
+      });
+
+      const ambiguous = (
+        reference: QueryDefinitionReference,
+        nameHint: string,
+        candidates: QueryDefinitionCandidate[],
+      ): QueryDefinitionEvaluation => ({
+        outcome: 'entity_ambiguous',
+        ...common,
+        reference,
+        nameHint,
+        candidates: candidates.slice(0, CANDIDATE_LIMIT) as QueryDefinitionCandidate[],
+      });
+
+      if (definition.kind === 'unsupported') {
+        return { outcome: 'unsupported', ...common, reason: definition.reason };
+      }
+
+      // The scope reference, shared by every answerable kind. The issue #811
+      // contract guarantees the reference the scope names is present.
+      let competitionId: string | null = null;
+      let seasonLabel: string | null = null;
+      let seasonId: string | null = null;
+      let scopeReference: QueryDefinitionReference = 'competition';
+      let scopeHint = '';
+
+      if (definition.scope !== 'career') {
+        const competitionHint =
+          definition.scope === 'season'
+            ? definition.season!.competitionName
+            : definition.competition!.name;
+        scopeReference = definition.scope === 'season' ? 'season' : 'competition';
+        scopeHint =
+          definition.scope === 'season' ? definition.season!.seasonLabel : competitionHint;
+
+        const competition = await resolveCompetition(competitionHint);
+        if (competition.status === 'not_found') return notFound('competition', competitionHint);
+        if (competition.status === 'ambiguous') {
+          return ambiguous('competition', competitionHint, competition.candidates);
+        }
+        competitionId = competition.value.competitionId;
+
+        if (definition.scope === 'season') {
+          const season = await resolveSeason(competitionId, definition.season!.seasonLabel);
+          if (season.status === 'not_found') return notFound('season', scopeHint);
+          if (season.status === 'ambiguous') {
+            return ambiguous('season', scopeHint, season.candidates);
+          }
+          seasonLabel = season.value.label;
+          seasonId = createSeasonId({ competitionId, label: seasonLabel });
+        }
+      }
+
+      const resolvedScope = {
+        competitionId,
+        seasonId,
+        season: seasonLabel,
+      };
+
+      if (definition.kind === 'leaderboard') {
+        const query: LeaderboardQuery =
+          definition.scope === 'season'
+            ? {
+                scope: 'season',
+                seasonId: seasonId!,
+                metric: definition.metric,
+                limit: definition.limit,
+              }
+            : {
+                scope: 'competition',
+                competitionId: competitionId!,
+                metric: definition.metric,
+                limit: definition.limit,
+              };
+
+        const leaderboard = await dependencies.leaderboards.getLeaderboard(query);
+        if (!leaderboard) {
+          // The published endpoint answers 404 for a scope with nothing
+          // published, so the scope is reported as not found rather than as an
+          // empty ranking the platform never produced.
+          return notFound(scopeReference, scopeHint);
+        }
+
+        return {
+          outcome: 'answered',
+          ...common,
+          resolved: { participantIds: [], ...resolvedScope },
+          // A published leaderboard carries no statistic identifier, so its
+          // traceability is the endpoint and the resolved scope.
+          sources: [{ endpoint: leaderboardEndpoint(query), statisticIds: [] }],
+          result: leaderboard,
+        };
+      }
+
+      const participantHints =
+        definition.kind === 'participant_comparison'
+          ? definition.participants.map((participant) => participant.name)
+          : [definition.participant.name];
+      const participantReferences: QueryDefinitionReference[] =
+        definition.kind === 'participant_comparison'
+          ? ['participants.0', 'participants.1']
+          : ['participant'];
+
+      const participantIds: string[] = [];
+      for (const [index, hint] of participantHints.entries()) {
+        const reference = participantReferences[index]!;
+        const participant = await resolveParticipant(hint);
+
+        if (participant.status === 'not_found') return notFound(reference, hint);
+        if (participant.status === 'ambiguous') {
+          return ambiguous(reference, hint, participant.candidates);
+        }
+        participantIds.push(participant.value.participantId);
+      }
+
+      const published: ParticipantAggregates[] = [];
+      const sources: QueryDefinitionSource[] = [];
+
+      for (const [index, participantId] of participantIds.entries()) {
+        const aggregates = await dependencies.participantAggregates.getParticipantAggregates(
+          participantId,
+          { scope: definition.scope },
+        );
+
+        if (!aggregates) {
+          return notFound(participantReferences[index]!, participantHints[index]!);
+        }
+
+        published.push(aggregates);
+        sources.push({
+          endpoint: aggregatesEndpoint(participantId, definition.scope),
+          statisticIds: answeringStatisticIds(
+            aggregates,
+            definition.scope,
+            competitionId,
+            seasonLabel,
+          ),
+        });
+      }
+
+      return {
+        outcome: 'answered',
+        ...common,
+        resolved: { participantIds, ...resolvedScope },
+        sources: sources as QueryDefinitionSource[],
+        result:
+          definition.kind === 'participant_comparison'
+            ? ([published[0]!, published[1]!] as [ParticipantAggregates, ParticipantAggregates])
+            : published[0]!,
+      };
+    },
+  };
+}
