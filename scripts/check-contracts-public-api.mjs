@@ -28,6 +28,12 @@ for (const schema of [
   // assert real response bodies against it, so it has to survive the build.
   'queryDefinitionEvaluationSchema',
   'queryDefinitionEvaluationResponseSchema',
+  // The question bound and the answer envelope the public natural-language
+  // endpoint validates against. The bound is part of the contract rather than
+  // configuration, so losing it in the build must fail the build.
+  'naturalLanguageQuestionSchema',
+  'naturalLanguageQuerySchema',
+  'naturalLanguageQueryResponseSchema',
 ]) {
   if (typeof contracts[schema]?.safeParse !== 'function') {
     throw new Error(`The built contracts runtime does not expose ${schema}.`);
@@ -74,6 +80,11 @@ for (const member of [
 
 for (const member of [
   'QUERY_DEFINITION_VERSION',
+  'NATURAL_LANGUAGE_QUESTION_MAX_LENGTH',
+  'naturalLanguageQuestionSchema',
+  'naturalLanguageQuerySchema',
+  'naturalLanguageQueryResultSchema',
+  'naturalLanguageQueryResponseSchema',
   'ANALYTICS_QUERY_KINDS',
   'analyticsQueryDefinitionSchema',
   'ANALYTICS_QUERY_PROMPT_DESCRIPTION',
