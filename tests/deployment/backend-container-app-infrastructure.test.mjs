@@ -68,3 +68,46 @@ test('backend Container Apps infrastructure preserves secret and service boundar
     /(?:SharedAccessKey|AccountKey|AZURE_STORAGE_CONNECTION_STRING|AZURE_STORAGE_SAS_TOKEN)/,
   );
 });
+
+test('backend Container Apps infrastructure configures the natural-language query limits', async () => {
+  const infrastructure = await readFile(infrastructurePath, 'utf8');
+
+  // One hop: Container Apps appends the caller's address to any X-Forwarded-For
+  // the caller sent, and the count is read from the right. A larger count would
+  // reach into the caller-supplied part of the header, and the per-client limits
+  // would be bypassable by sending one.
+  assert.match(infrastructure, /\{ name: 'TRUSTED_PROXY_HOP_COUNT', value: '1' \}/);
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_RATE_LIMIT_PER_MINUTE', value: string\(nlQueryRateLimitPerMinute\) \}/,
+  );
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_DAILY_QUOTA_PER_CLIENT', value: string\(nlQueryDailyQuotaPerClient\) \}/,
+  );
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_GLOBAL_DAILY_LIMIT', value: string\(nlQueryGlobalDailyLimit\) \}/,
+  );
+});
+
+// Issue #831: a required parameter added without a matching argument in the
+// deployment workflow fails every backend deploy. The limits are therefore
+// declared with defaults, so the template keeps the same required parameters.
+test('backend Container Apps infrastructure requires no parameter the deployment does not pass', async () => {
+  const infrastructure = await readFile(infrastructurePath, 'utf8');
+
+  const withoutDefault = [...infrastructure.matchAll(/^param (\w+) [^=\n]+$/gm)].map(
+    ([, name]) => name,
+  );
+
+  assert.deepEqual(withoutDefault.sort(), [
+    'containerImage',
+    'corsOrigins',
+    'databaseSecretUri',
+    'llmApiKeySecretUri',
+    'supabasePublishableKey',
+    'supabaseSecretKeySecretUri',
+    'supabaseUrl',
+  ]);
+});
