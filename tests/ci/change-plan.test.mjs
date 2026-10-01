@@ -179,14 +179,17 @@ test('CI workflow changes select full validation without redeploying unchanged a
   assert.equal(plan.deployDocs, false);
 });
 
-test('CI runs a production-preview Lighthouse report lane with retained artifacts', () => {
+test('CI runs a three-run strict Lighthouse gate with retained artifacts', () => {
   const workflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
 
   assert.match(workflow, /\n  lighthouse:\n/);
   assert.match(workflow, /LIGHTHOUSE_RUNS: '3'/);
-  assert.match(workflow, /LIGHTHOUSE_GATE_MODE: report/);
+  assert.match(workflow, /LIGHTHOUSE_GATE_MODE: strict/);
   assert.match(workflow, /npm run preview --workspace=@sport-analytics\/frontend/);
-  assert.match(workflow, /actions\/upload-artifact@v4/);
+  assert.match(
+    workflow,
+    /- name: Upload Lighthouse reports\r?\n\s+if: always\(\)\r?\n\s+uses: actions\/upload-artifact@v4/,
+  );
   assert.match(workflow, /artifacts\/lighthouse-ci/);
 });
 
