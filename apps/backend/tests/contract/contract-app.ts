@@ -6,6 +6,9 @@ import type { BatchService } from '../../src/modules/batches/batch.service';
 import type { DatasetReleaseService } from '../../src/modules/dataset-releases/dataset-release.service';
 import type { ProvenanceService } from '../../src/modules/provenance/provenance.service';
 import type { PublicReadService } from '../../src/modules/public-read/public-read.service';
+import type { LeaderboardsService } from '../../src/modules/statistics/leaderboards.service';
+import type { ParticipantAggregatesService } from '../../src/modules/statistics/participant-aggregates.service';
+import type { QueryDefinitionNameResolver } from '../../src/modules/analytics-query/query-definition.evaluator';
 import type { FixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';
 import type { SubmissionService } from '../../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../../src/modules/submitter-access/submitter-access.service';
@@ -27,6 +30,9 @@ interface ContractAppOptions {
   apiConsumerRepository?: Partial<ApiConsumerRepository>;
   datasetReleases?: Partial<DatasetReleaseService>;
   provenance?: Partial<ProvenanceService>;
+  participantAggregates?: Partial<ParticipantAggregatesService>;
+  leaderboards?: Partial<LeaderboardsService>;
+  queryDefinitionNames?: { names: QueryDefinitionNameResolver };
 }
 
 export function contractApp(options: ContractAppOptions = {}) {
@@ -44,11 +50,13 @@ export function contractApp(options: ContractAppOptions = {}) {
     undefined,
     undefined,
     options.batches as BatchService | undefined,
-    undefined,
+    options.participantAggregates as ParticipantAggregatesService | undefined,
     options.apiConsumers as ApiConsumerService | undefined,
     options.apiConsumerRepository as ApiConsumerRepository | undefined,
     options.datasetReleases as DatasetReleaseService | undefined,
     options.provenance as ProvenanceService | undefined,
+    options.leaderboards as LeaderboardsService | undefined,
+    options.queryDefinitionNames,
   );
 }
 

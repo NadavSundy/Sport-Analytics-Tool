@@ -20,6 +20,13 @@ test('profile selection supports an isolated desktop regression audit', () => {
   assert.throws(() => selectLighthouseProfiles('tablet'), /LIGHTHOUSE_PROFILES/);
 });
 
+test('default profile selection includes both desktop and mobile CI audits', () => {
+  assert.deepEqual(
+    selectLighthouseProfiles().map((profile) => profile.name),
+    ['desktop', 'mobile'],
+  );
+});
+
 test('mobile profile retains Lighthouse mobile simulation defaults', () => {
   const mobile = lighthouseProfiles.find((profile) => profile.name === 'mobile').settings;
 

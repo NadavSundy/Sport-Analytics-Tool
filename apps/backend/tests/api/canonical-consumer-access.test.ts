@@ -70,6 +70,7 @@ function createCanonicalApp(
     undefined,
     undefined,
     undefined,
+    undefined,
     anonymous,
   );
 }
