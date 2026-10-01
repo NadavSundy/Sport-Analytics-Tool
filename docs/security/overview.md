@@ -14,7 +14,9 @@ PostgreSQL. Authentication alone never grants or changes those values.
 
 Reusable backend policies protect `admin` routes, `submitter`/`admin` routes, and target
 competition scope. Missing or invalid credentials receive `401`; authenticated accounts that fail
-a policy receive a consistent, non-disclosing `403`. Public read routes do not use authentication.
+a policy receive a consistent, non-disclosing `403`. Canonical cricket reads allow bounded
+anonymous access or optional consumer-key identification. Once `X-API-Key` is supplied, invalid or
+revoked credentials receive the same generic `401` and never fall back to anonymous access.
 
 See:
 
@@ -51,7 +53,9 @@ policy for failure handling and limitations.
 
 - Enforce HTTPS in deployed environments.
 - Apply safe CORS rules rather than allowing arbitrary origins in production.
-- Add rate limits and quotas before issuing public consumer keys.
+- Bound anonymous canonical reads with HMAC-pseudonymised per-source and global durable limits.
+- Apply consumer-specific rate limits, UTC daily quotas and privacy-minimised telemetry to valid keys.
+- Accept API keys only in `X-API-Key`; redact credentials and never persist raw keys or key hashes in telemetry.
 - Use timeouts, retries with limits, and circuit-breaking/fallback behaviour for external APIs.
 - Return safe error messages and structured internal logs.
 
@@ -83,3 +87,5 @@ Security review must include automated dependency scanning, route-level authoris
 
 The authentication and authorization status was updated with the assistance of
 Codex[GPT-5.6 Sol].
+The issue #821 API-key fallback and anonymous-protection guidance was documented with the assistance
+of Codex[GPT-5].

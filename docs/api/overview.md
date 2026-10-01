@@ -22,9 +22,8 @@ The version-controlled API contract is published in the
 [OpenAPI specification](openapi.md).
 
 [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
-accepts one canonical cricket-resource hierarchy with optional API-key identification as the future
-access model. The endpoint descriptions below remain the implemented behaviour until follow-up
-issues #821 and #822 change it.
+defines the implemented canonical cricket-resource hierarchy with optional API-key identification.
+Requester-owned consumer access remains follow-up issue #822.
 
 ## Live development API
 
@@ -312,9 +311,10 @@ and current limitations.
 
 ### Consumer API keys
 
-Administrators can issue, rotate and revoke external-consumer API keys. The keyed consumer surface
-currently provides competition and fixture reads and applies consumer-wide request-rate and UTC daily
-quota controls. See [Consumer API keys, rate limits and quotas](consumer-keys.md).
+Administrators can issue, rotate and revoke external-consumer API keys. Applicable canonical
+cricket reads accept a valid key and apply consumer-wide request-rate, UTC daily quota and usage
+accounting without changing the resource URL or response schema. See
+[Consumer API keys, rate limits and quotas](consumer-keys.md).
 
 ## Intermediate API areas
 
@@ -384,7 +384,8 @@ See [Dataset exports](../data/dataset-exports.md).
 ### API consumer protections
 
 Administrators can issue, rotate and revoke consumer API keys. Keyed consumer requests are protected
-by configurable per-minute rate limits and durable UTC daily quotas.
+by configurable per-minute rate limits and durable UTC daily quotas. Anonymous canonical reads use
+lower per-source and global durable minute limits, so omitting a key is not unrestricted fallback.
 
 See [Consumer API keys, rate limits and quotas](consumer-keys.md).
 
@@ -434,5 +435,7 @@ The issue #783 public API consumer-onboarding guidance was documented with the a
 Codex[GPT-5].
 The issue #820 accepted API consumer access-model link and current/future boundary were documented
 with the assistance of Codex[GPT-5].
+The issue #821 canonical optional-key implementation was documented with the assistance of
+Codex[GPT-5].
 The issue #813 analytics query evaluation endpoint was documented with the assistance of
 Claude-Code[Claude Opus 5 (1M context)].

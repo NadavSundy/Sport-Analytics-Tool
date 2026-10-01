@@ -80,8 +80,11 @@ test(
     const accessRegion = page.getByRole('region', { name: 'How to access the API' });
     await expect(accessRegion.getByRole('heading', { name: 'Public API' })).toBeVisible();
     await expect(accessRegion.getByText(/without authentication/)).toBeVisible();
-    await expect(accessRegion.getByRole('heading', { name: 'Consumer API' })).toBeVisible();
-    await expect(accessRegion.getByText(/administrator-issued API key/)).toBeVisible();
+    await expect(
+      accessRegion.getByRole('heading', { name: 'Identified consumer access' }),
+    ).toBeVisible();
+    await expect(accessRegion.getByText(/same canonical resource paths/)).toBeVisible();
+    await expect(accessRegion.getByText(/valid consumer API key/)).toBeVisible();
     await expect(accessRegion.getByText(/X-API-Key/)).toBeVisible();
     await expect(accessRegion.getByText(/ask a Stat'sTheGame administrator/)).toBeVisible();
     await expect(accessRegion.getByText(/rate limits and daily quotas/)).toBeVisible();

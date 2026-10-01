@@ -225,21 +225,22 @@ export function ApiExplorerContent() {
             <h3>Public API</h3>
             <p>
               Public operations can be used without authentication. They provide browsing and read
-              access to published sports data.
+              access to published sports data under bounded anonymous rate limits.
             </p>
           </article>
 
           <article className="api-explorer__access-card ui-card">
-            <h3>Consumer API</h3>
+            <h3>Identified consumer access</h3>
             <p>
-              External integrations use <code>/api/v1/consumer</code> operations. Every consumer
-              operation requires an administrator-issued API key sent in the <code>X-API-Key</code>{' '}
-              request header.
+              External integrations use the same canonical resource paths as anonymous readers. A
+              valid consumer API key sent in the <code>X-API-Key</code> request header identifies
+              the consumer and applies its configured limits, quota and usage accounting.
             </p>
             <p>
               Under the current access model, ask a Stat&apos;sTheGame administrator or project
               administrator for API consumer access. Consumer requests have per-consumer rate limits
-              and daily quotas.
+              and daily quotas. A supplied malformed, unknown, invalid or revoked key is rejected;
+              it never falls back to anonymous access.
             </p>
             <p>
               Keep the issued key in secure secret storage. Never place it in a URL, query string,
@@ -258,7 +259,8 @@ export function ApiExplorerContent() {
           </article>
         </div>
         <p className="api-explorer__authorize-note">
-          In the explorer, use <strong>Authorize</strong> to supply an issued credential at runtime.
+          In the explorer, use <strong>Authorize</strong> to supply an issued consumer key for
+          applicable canonical reads or a bearer credential for application operations.
         </p>
       </section>
 

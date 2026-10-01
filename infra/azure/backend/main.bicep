@@ -41,6 +41,9 @@ param databaseSecretUri string
 @description('Versionless HTTPS Key Vault secret URI for SUPABASE_SECRET_KEY.')
 param supabaseSecretKeySecretUri string
 
+@description('Versionless HTTPS Key Vault secret URI for the anonymous source-key HMAC secret.')
+param anonymousRateLimitSecretUri string
+
 @description('Versionless HTTPS Key Vault secret URI for LLM_API_KEY.')
 param llmApiKeySecretUri string
 
@@ -59,12 +62,12 @@ param supabaseUrl string
 @description('Supabase publishable key used by backend token verification.')
 param supabasePublishableKey string
 
-@description('Minimum continuously available API replicas. Scale to zero while idle; maxReplicas remains one to preserve process-local rate-limit semantics.')
+@description('Minimum continuously available API replicas. Scale to zero while idle.')
 @minValue(0)
 @maxValue(1)
 param minReplicas int = 0
 
-@description('Maximum API replicas. Keep at one until shared rate-limit state is implemented.')
+@description('Maximum API replicas. PostgreSQL-backed consumer and anonymous limits are shared across replicas.')
 @minValue(1)
 @maxValue(1)
 param maxReplicas int = 1
@@ -169,6 +172,11 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
           identity: runtimeIdentity.id
         }
         {
+          name: 'anonymous-rate-limit-secret'
+          keyVaultUrl: anonymousRateLimitSecretUri
+          identity: runtimeIdentity.id
+        }
+        {
           name: 'llm-api-key'
           keyVaultUrl: llmApiKeySecretUri
           identity: runtimeIdentity.id
@@ -189,6 +197,10 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             { name: 'SUPABASE_URL', value: supabaseUrl }
             { name: 'SUPABASE_PUBLISHABLE_KEY', value: supabasePublishableKey }
             { name: 'SUPABASE_SECRET_KEY', secretRef: 'supabase-secret-key' }
+            { name: 'ANONYMOUS_RATE_LIMIT_SECRET', secretRef: 'anonymous-rate-limit-secret' }
+            { name: 'ANONYMOUS_RATE_LIMIT_PER_MINUTE', value: '30' }
+            { name: 'ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE', value: '600' }
+            { name: 'TRUST_PROXY_HOPS', value: '1' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             // A bound, not a credential: it names how long one statement may run.
             { name: 'DATABASE_STATEMENT_TIMEOUT_MS', value: '15000' }
