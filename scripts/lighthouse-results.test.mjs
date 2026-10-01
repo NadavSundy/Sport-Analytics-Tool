@@ -58,7 +58,14 @@ test('keeps strict 90 thresholds independent from a temporary baseline floor', (
 });
 
 test('report mode is non-blocking for a representative score below 90', () => {
-  const result = { route: '/', profile: 'mobile', performance: 89, lcpMs: 2400, tbtMs: 100, cls: 0.02 };
+  const result = {
+    route: '/',
+    profile: 'mobile',
+    performance: 89,
+    lcpMs: 2400,
+    tbtMs: 100,
+    cls: 0.02,
+  };
 
   assert.equal(evaluateLighthouseGate(result, { mode: 'report' }).passes, true);
 });
@@ -66,6 +73,12 @@ test('report mode is non-blocking for a representative score below 90', () => {
 test('strict mode blocks an aggregate below 90 and accepts one at the threshold', () => {
   const metrics = { route: '/', profile: 'mobile', lcpMs: 2400, tbtMs: 100, cls: 0.02 };
 
-  assert.equal(evaluateLighthouseGate({ ...metrics, performance: 89 }, { mode: 'strict' }).passes, false);
-  assert.equal(evaluateLighthouseGate({ ...metrics, performance: 90 }, { mode: 'strict' }).passes, true);
+  assert.equal(
+    evaluateLighthouseGate({ ...metrics, performance: 89 }, { mode: 'strict' }).passes,
+    false,
+  );
+  assert.equal(
+    evaluateLighthouseGate({ ...metrics, performance: 90 }, { mode: 'strict' }).passes,
+    true,
+  );
 });
