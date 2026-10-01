@@ -91,47 +91,70 @@ test('plan owns cheap lockfile fail-fast while main push skips duplicate applica
   assert.match(quality, /full application quality was enforced before merge/);
 });
 
-test('mobile Chromium runs only the representative tagged journey subset', () => {
-  const config = read('playwright.config.ts');
-  assert.match(config, /name: 'mobile-chromium'[\s\S]*?grep: \/@mobile\//);
+test('mobile Chromium runs only the representative tagged journey subset', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const specDir = new URL('../e2e/', import.meta.url);
+  const config = readFileSync(new URL('../../playwright.config.ts', import.meta.url), 'utf8');
+  assert.match(config, /name:\s*'mobile-chromium'/);
+  assert.match(config, /grep:\s*\/@mobile\//);
 
-  const specs = readdirSync('tests/e2e')
-    .filter((file) => file.endsWith('.spec.ts'))
-    .map((file) => `tests/e2e/${file}`);
-  const tagged = specs.flatMap((path) => {
-    const matches = read(path).match(/tag: '@mobile'/g) ?? [];
-    return matches.map(() => path);
-  });
+  const expectedMobileFiles = [
+    'accessibility.spec.ts',
+    'admin-api-consumers.spec.ts',
+    'admin-dataset-releases.spec.ts',
+    'admin-submitter-rejection.spec.ts',
+    'admin-users.spec.ts',
+    'api-explorer.spec.ts',
+    'authentication.spec.ts',
+    'batch-review-workspace.spec.ts',
+    'homepage.spec.ts',
+    'player-overview.spec.ts',
+    'policies.spec.ts',
+    'public-browsing.spec.ts',
+    'statistics.spec.ts',
+    'submissions.spec.ts',
+    'submitter-access.spec.ts',
+  ];
+  const sourceFiles = readdirSync(specDir).filter((file) => file.endsWith('.spec.ts'));
+  const mobileFiles = sourceFiles
+    .filter((file) => readFileSync(new URL(file, specDir), 'utf8').includes('@mobile'))
+    .sort();
+  assert.deepEqual(mobileFiles, expectedMobileFiles);
+  assert.equal(mobileFiles.length, 15);
 
-  assert.equal(tagged.length, 14);
-  for (const required of [
-    'tests/e2e/accessibility.spec.ts',
-    'tests/e2e/api-explorer.spec.ts',
-    'tests/e2e/authentication.spec.ts',
-    'tests/e2e/homepage.spec.ts',
-    'tests/e2e/policies.spec.ts',
-    'tests/e2e/public-browsing.spec.ts',
-    'tests/e2e/player-overview.spec.ts',
-    'tests/e2e/statistics.spec.ts',
-    'tests/e2e/submissions.spec.ts',
-    'tests/e2e/submitter-access.spec.ts',
-  ]) {
-    assert.ok(tagged.includes(required), `${required} must retain representative mobile coverage`);
+  const accessibility = readFileSync(new URL('accessibility.spec.ts', specDir), 'utf8');
+  assert.match(accessibility, /const runsOnMobile = theme === 'day'/);
+  assert.ok(accessibility.includes("(route === '/' || route === '/sign-in')"));
+  assert.ok(accessibility.includes("${runsOnMobile ? ' @mobile' : ''}"));
+});
+
+test('mobile accessibility matrix stays focused while desktop includes core and policy routes', async () => {
+  const { readFileSync } = await import('node:fs');
+  const accessibility = readFileSync(
+    new URL('../e2e/accessibility.spec.ts', import.meta.url),
+    'utf8',
+  );
+  const required = [
+    "const routes = ['/', '/sign-in', '/account', '/privacy', '/terms', '/accessibility'] as const;",
+    "const themes = ['day', 'night'] as const;",
+    'for (const route of routes)',
+    'for (const theme of themes)',
+    "const runsOnMobile = theme === 'day' && (route === '/' || route === '/sign-in');",
+    "${runsOnMobile ? ' @mobile' : ''}",
+    'await page.goto(route)',
+    'new AxeBuilder({ page }).analyze()',
+    "violation.impact === 'serious' || violation.impact === 'critical'",
+    'seriousOrCriticalViolations',
+    '.toEqual([])',
+  ];
+  for (const fragment of required) {
+    assert.ok(
+      accessibility.includes(fragment),
+      `Missing accessibility coverage/assertion: ${fragment}`,
+    );
   }
 });
 
-test('mobile accessibility matrix stays focused while desktop includes core and policy routes', () => {
-  const accessibility = read('tests/e2e/accessibility.spec.ts');
-
-  assert.match(
-    accessibility,
-    /isMobile\s*\?\s*\['\/', '\/sign-in'\]\s*:\s*\['\/', '\/sign-in', '\/account', '\/privacy', '\/terms', '\/accessibility'\]/,
-  );
-  assert.match(
-    accessibility,
-    /isMobile \? \(\['day'\] as const\) : \(\['day', 'night'\] as const\)/,
-  );
-});
 test('AI transcript exports are excluded from patch whitespace validation', () => {
   const workflow = read('.gitea/workflows/ci.yml');
 

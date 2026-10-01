@@ -69,6 +69,8 @@ components:
       name: X-API-Key
 `;
 
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+
 function okSpecification(): Response {
   return {
     ok: true,
@@ -83,6 +85,11 @@ function renderPage() {
       <ApiExplorerPage />
     </MemoryRouter>,
   );
+}
+
+async function loadInteractiveExplorer() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Load interactive API Explorer' }));
+  return screen.findByTestId('swagger-ui');
 }
 
 afterEach(() => {
@@ -103,7 +110,7 @@ describe('ApiExplorerPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'API Explorer' }, { timeout: 5_000 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Supported API major version: v1')).toBeInTheDocument();
+    expect(await screen.findByText('Supported API major version: v1')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'How to access the API' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
@@ -135,7 +142,7 @@ describe('ApiExplorerPage', () => {
     expect(within(accessRegion).getByText(/does not grant administrator/)).toBeVisible();
     expect(accessRegion).not.toHaveTextContent(/sat_live_/);
 
-    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(await loadInteractiveExplorer()).toBeInTheDocument();
   });
 
   it('keeps a visible accessible loading indicator until the specification is ready', async () => {
@@ -158,7 +165,7 @@ describe('ApiExplorerPage', () => {
 
     resolveSpecification?.(okSpecification());
 
-    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(await loadInteractiveExplorer()).toBeInTheDocument();
     expect(
       screen.queryByRole('progressbar', { name: 'Loading API specification' }),
     ).not.toBeInTheDocument();
@@ -169,12 +176,12 @@ describe('ApiExplorerPage', () => {
 
     renderPage();
 
-    const swagger = await screen.findByTestId('swagger-ui');
+    const swagger = await loadInteractiveExplorer();
     expect(swagger).toHaveAttribute('data-paths', '/api/v1/health');
     expect(swagger).toHaveAttribute('data-auth-schemes', 'bearerAuth,apiKeyAuth');
 
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3000/openapi.yaml',
+      `${testApiBaseUrl.replace(/\/api\/v1$/, '')}/openapi.yaml`,
       expect.objectContaining({
         cache: 'no-store',
         headers: expect.objectContaining({
@@ -190,7 +197,7 @@ describe('ApiExplorerPage', () => {
     renderPage();
 
     const toggle = await screen.findByRole('checkbox', { name: /Show planned operations/ });
-    expect(screen.getByTestId('swagger-ui')).toHaveAttribute('data-paths', '/api/v1/health');
+    expect(await loadInteractiveExplorer()).toHaveAttribute('data-paths', '/api/v1/health');
 
     fireEvent.click(toggle);
 
@@ -225,7 +232,7 @@ describe('ApiExplorerPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading specification' }));
 
-    expect(await screen.findByTestId('swagger-ui')).toBeInTheDocument();
+    expect(await loadInteractiveExplorer()).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 });

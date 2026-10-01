@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const authStorageKey = 'sb-e2e-auth-token';
+const authStorageKey = 'supabase.auth.token';
 
 async function isolateSupabaseClientLock(page: Page) {
   await page.addInitScript(() => {

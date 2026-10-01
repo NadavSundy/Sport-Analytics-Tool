@@ -1,4 +1,4 @@
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session } from '@supabase/auth-js';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -105,6 +105,20 @@ describe('public shell API discovery', () => {
       'href',
       '/api',
     );
+  });
+
+  it('mounts only the active brand wordmark asset', () => {
+    render(
+      <AuthProvider client={createSignedOutAuthClient()}>
+        <MemoryRouter>
+          <PublicShell>
+            <p>Public page</p>
+          </PublicShell>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(screen.getAllByAltText("Stat'sTheGame")).toHaveLength(2);
   });
 
   it('makes the bottom API entry open the explorer while keeping broader docs distinct', () => {

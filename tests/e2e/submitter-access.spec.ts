@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const now = Math.floor(Date.now() / 1_000);
     window.localStorage.setItem(
-      'sb-e2e-auth-token',
+      'supabase.auth.token',
       JSON.stringify({
         access_token: 'requesting-e2e-token',
         refresh_token: 'managed-by-supabase',

@@ -164,6 +164,9 @@ test('Three.js enhancement pauses off-screen and unmounts without page errors', 
     test.skip(true, 'WebGL is unavailable in this browser runtime.');
   }
 
+  // The performance-optimised scene is loaded only after user input.
+  await page.keyboard.press('Shift');
+
   await expect(visual).toHaveAttribute('data-hero-enhancement', 'three');
   await expect(canvas).toHaveCount(1);
   await expect(canvas).toHaveAttribute('data-context-state', 'ready');
@@ -193,6 +196,9 @@ test('Three.js enhancement reveals the fallback during context loss and restores
 
   const webglAvailable = await hasWebGL(page);
   test.skip(!webglAvailable, 'WebGL is unavailable in this browser runtime.');
+
+  // Exercise the intended deferred enhancement before testing context loss.
+  await page.keyboard.press('Shift');
 
   const visual = page.locator('[data-hero-enhancement]');
   const canvas = visual.locator('.hero-scene');
