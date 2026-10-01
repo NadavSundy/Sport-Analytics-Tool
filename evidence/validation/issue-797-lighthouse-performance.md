@@ -8,6 +8,11 @@ Performance >=90 acceptance evidence is deliberately distinct from the shared ho
 the former is recorded in the production-preview evidence below, while the latter detects
 meaningful regressions against approved hosted-CI route/profile floors.
 
+A green hosted baseline run is not, by itself, proof that every production route/profile achieves
+Performance >=90. The production evidence available in this record is stated route by route below;
+unmeasured protected routes and below-90 parameterised mobile results are retained as known
+limitations, not relabelled as baseline-gate passes.
+
 Earlier Lighthouse measurements below used a production Vite preview, corrected Lighthouse
 profiles and three-run median aggregation. Those local report files are retained under
 `artifacts/`; the final hosted evidence is separately recorded in the final execution section.
@@ -331,6 +336,10 @@ were rejected for hosted CI because production-style absolute scores were not st
 environment. Production Performance >=90 remains the separate acceptance evidence; baseline mode
 protects the representative hosted-CI signal without reinterpreting it as production evidence.
 
+Run 19132 therefore proves that the blocking hosted regression gate operated correctly, including
+artifact retention and zero baseline failures. It does not prove production Performance >=90 for every
+route/profile: `/seasons` mobile had a hosted median of 89, and hosted CI audits public routes only.
+
 The baseline architecture covers the nine representative public routes above in both desktop and
 mobile profiles. It uses persisted per-route/profile Performance floors from
 `scripts/lighthouse-ci-baseline.mjs`; a missing entry fails closed. JSON route reports and the
@@ -350,22 +359,33 @@ expected-floor matrix failed against the prior persisted values, then passed aft
 matrix was stored. The tests now pin all 18 route/profile floors and verify that every profile
 rejects a Performance score one point below its configured floor.
 
-## Acceptance closeout
+## Final closeout status
 
-| Acceptance item                        | Status | Evidence                                                    |
-| -------------------------------------- | ------ | ----------------------------------------------------------- |
-| Production Performance >=90 evidence   | PASS   | Recorded separately from hosted CI in this evidence record. |
-| Representative public-route CI gate    | PASS   | Nine routes in PR #829 run 19132.                           |
-| Desktop and mobile profiles            | PASS   | 18 public route/profile audits.                             |
-| Three-run median aggregation           | PASS   | Final runner execution and implementation evidence.         |
-| Persisted baseline regression floors   | PASS   | Final Run 19132 median-minus-3 matrix recorded above.       |
-| Recalibration floor-matrix tests       | PASS   | All 18 floors pass at floor and reject one point below.     |
-| Missing-baseline fail-closed behaviour | PASS   | Lighthouse unit coverage and merged implementation.         |
-| Final hosted Lighthouse execution      | PASS   | Run 19132; Lighthouse job SUCCESS.                          |
-| Zero baseline regression failures      | PASS   | Final runner summary: 0.                                    |
-| Retained JSON-report artifact          | PASS   | Artifact ID 225910.                                         |
-| Automated Lighthouse and CI tests      | PASS   | 68 CI tests and 17 Lighthouse tests passed.                 |
-| Evidence documentation                 | PASS   | This record.                                                |
+| Acceptance item                        | Status    | Evidence                                                                                                                                                |
+| -------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production Performance >=90 evidence   | QUALIFIED | Public static routes: 9/9 desktop and mobile >=90; parameterised mobile: 7/11 >=90; protected routes unverified.                                        |
+| Desktop and mobile production evidence | QUALIFIED | Public static production-preview evidence covers both; parameterised mobile has four <90 results; protected routes have no legitimate session evidence. |
+| Representative public-route CI gate    | PASS      | Nine routes in PR #829 run 19132.                                                                                                                       |
+| Desktop and mobile CI profiles         | PASS      | 18 public route/profile audits.                                                                                                                         |
+| Three-run median aggregation           | PASS      | Final runner execution and implementation evidence.                                                                                                     |
+| Persisted baseline regression floors   | PASS      | Final Run 19132 median-minus-3 matrix recorded above.                                                                                                   |
+| Recalibration floor-matrix tests       | PASS      | All 18 floors pass at floor and reject one point below.                                                                                                 |
+| Missing-baseline fail-closed behaviour | PASS      | Lighthouse unit coverage and merged implementation.                                                                                                     |
+| Final hosted Lighthouse execution      | PASS      | Run 19132; Lighthouse job SUCCESS.                                                                                                                      |
+| Zero baseline regression failures      | PASS      | Final runner summary: 0.                                                                                                                                |
+| Retained JSON-report artifact          | PASS      | Artifact ID 225910.                                                                                                                                     |
+| Automated Lighthouse and CI tests      | PASS      | 68 CI tests and 17 Lighthouse tests passed.                                                                                                             |
+| Evidence documentation                 | PASS      | This record.                                                                                                                                            |
+
+## Known limitations and follow-up
+
+The following retained observations do not change the hosted-CI result and are non-blocking for
+#797 closeout: the historical mobile production-preview medians for `/fixtures/493`,
+`/competitors/985`, `/participants/158` and `/dataset-releases/2026.09.14v1` were respectively
+88, 79, 86 and 84; protected routes were not audited because no legitimate session evidence was
+available. Any further route optimisation or authenticated-route measurement belongs in separately
+scoped follow-up work. This record does not claim those routes were re-tested or that every route
+universally meets Performance >=90.
 
 ## AI assistance and review status
 
