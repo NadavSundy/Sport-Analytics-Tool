@@ -45,14 +45,12 @@ below.
 
 ## Capacity and scaling
 
-The API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=0`, and `maxReplicas=1`. The development deployment scales to zero while idle to reduce Azure consumption cost. The first request after an idle period may incur Container Apps cold-start latency. `maxReplicas=1` preserves process-local rate-limit semantics until rate-limit state is externalised.
+The API allocation is **0.5 vCPU**, **1Gi memory**, `minReplicas=0`, and `maxReplicas=1`. The development deployment scales to zero while idle to reduce Azure consumption cost. The first request after an idle period may incur Container Apps cold-start latency.
 Because the minimum is zero, the API can scale to zero while idle and wake when HTTP traffic arrives.
 
-The single-replica maximum is deliberate and temporary. Current API submitter and API-consumer
-per-minute rate limits use process-local `Map` state. Multiple replicas would weaken those limits by
-giving each process an independent counter. Issue #595 must provide shared rate-limit state before
-horizontal API scaling is safe. This is a correctness constraint, not a claim that the architecture
-is free or costless.
+API-consumer and anonymous canonical-read minute limits use shared PostgreSQL counters, so their
+semantics do not depend on this replica count. Any future scaling change still requires normal
+capacity, database-contention and deployment review.
 
 The revision mode is `Single`. It reduces active-revision ambiguity during normal rollout but does
 not itself guarantee rollback; operators must inspect actual revision state and use the recovery
@@ -70,6 +68,9 @@ Ordinary Container App configuration is supplied as non-secret values:
 | `CORS_ORIGINS`                           | Explicit allowed browser origins supplied to deployment CI |
 | `SUPABASE_URL`                           | Supabase project URL supplied to deployment CI             |
 | `SUPABASE_PUBLISHABLE_KEY`               | Publishable Supabase key supplied to deployment CI         |
+| `ANONYMOUS_RATE_LIMIT_PER_MINUTE`        | `30`                                                       |
+| `ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE` | `600`                                                      |
+| `TRUST_PROXY_HOPS`                       | `1` (Container Apps ingress only)                          |
 | `OBJECT_STORAGE_PROVIDER`                | `azure`                                                    |
 | `AZURE_STORAGE_ACCOUNT_NAME`             | Existing Blob account name                                 |
 | `AZURE_STORAGE_CONTAINER_NAME`           | Existing staged-ingestion container                        |
@@ -79,7 +80,8 @@ Ordinary Container App configuration is supplied as non-secret values:
 | `LLM_MODEL`                              | Bicep parameter, currently `claude-haiku-4-5-20251001`     |
 | `LLM_TIMEOUT_MS`                         | Bicep parameter, currently `15000`                         |
 
-`DATABASE_URL`, `SUPABASE_SECRET_KEY` and `LLM_API_KEY` are different: Key Vault holds their values,
+`DATABASE_URL`, `SUPABASE_SECRET_KEY`, `ANONYMOUS_RATE_LIMIT_SECRET` and `LLM_API_KEY` are different:
+Key Vault holds their values,
 Container Apps creates Key Vault-backed secrets from versionless secret-reference URIs, and the
 runtime receives them through `secretRef`. The CI workflow receives only the reference URIs.
 `SUPABASE_SECRET_KEY` must be present because it enables the required authenticated
@@ -145,16 +147,17 @@ Supabase configuration secrets. No secret value belongs in Bicep parameters, wor
 logs, Docker build context, or documentation. See [Environment variables](../environment.md) for the
 cross-application configuration matrix.
 
-| Gitea Actions secret                           | Purpose                                                                                     |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `AZURE_WORKER_CREDENTIALS`                     | Existing shared Azure resource-group deployment principal credential; legacy name retained. |
-| `AZURE_BACKEND_CONTAINER_RESOURCE_GROUP`       | Backend deployment resource group.                                                          |
-| `AZURE_BACKEND_DATABASE_SECRET_URI`            | Versionless Key Vault reference URI for `DATABASE_URL`.                                     |
-| `AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI` | Versionless Key Vault reference URI for `SUPABASE_SECRET_KEY`.                              |
-| `AZURE_BACKEND_LLM_API_KEY_SECRET_URI`         | Versionless Key Vault reference URI for `LLM_API_KEY`.                                      |
-| `AZURE_BACKEND_CORS_ORIGINS`                   | Allowed API browser origins.                                                                |
-| `AZURE_BACKEND_SUPABASE_URL`                   | Backend Supabase project URL.                                                               |
-| `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY`       | Backend Supabase publishable key.                                                           |
+| Gitea Actions secret                            | Purpose                                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `AZURE_WORKER_CREDENTIALS`                      | Existing shared Azure resource-group deployment principal credential; legacy name retained. |
+| `AZURE_BACKEND_CONTAINER_RESOURCE_GROUP`        | Backend deployment resource group.                                                          |
+| `AZURE_BACKEND_DATABASE_SECRET_URI`             | Versionless Key Vault reference URI for `DATABASE_URL`.                                     |
+| `AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI`  | Versionless Key Vault reference URI for `SUPABASE_SECRET_KEY`.                              |
+| `AZURE_BACKEND_ANONYMOUS_RATE_LIMIT_SECRET_URI` | Versionless Key Vault reference URI for `ANONYMOUS_RATE_LIMIT_SECRET`.                      |
+| `AZURE_BACKEND_LLM_API_KEY_SECRET_URI`          | Versionless Key Vault reference URI for `LLM_API_KEY`.                                      |
+| `AZURE_BACKEND_CORS_ORIGINS`                    | Allowed API browser origins.                                                                |
+| `AZURE_BACKEND_SUPABASE_URL`                    | Backend Supabase project URL.                                                               |
+| `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY`        | Backend Supabase publishable key.                                                           |
 
 ## Networking and service boundaries
 
@@ -285,3 +288,5 @@ is required.
 
 The Container Apps migration documentation for Issue #563 was generated and adapted with the
 assistance of Codex[GPT-5]. It must be reviewed against the first real Azure deployment evidence.
+The issue #821 shared anonymous-limit deployment configuration was documented with the assistance
+of Codex[GPT-5].

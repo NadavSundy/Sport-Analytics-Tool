@@ -318,6 +318,9 @@ Intermediate persistence, so they are no longer future schema concepts.
   asynchronous generation of checksum-backed dataset artifacts in private object storage.
 - **External API consumers.** Consumer/key persistence and usage accounting support administrator
   key management, per-minute rate limits and UTC daily quotas.
+- **Anonymous API limits.** Per-source HMAC pseudonyms and one global row per UTC minute provide
+  durable, replica-safe admission counters for canonical public reads. Raw client addresses are not
+  stored, and global-before-source row locking gives concurrent requests one consistent order.
 - **Participant onboarding tasks.** `batch_participant_onboarding_task` records each participant a
   reviewer-created fixture could not onboard deterministically, the reason it needs a decision, and
   the candidates that make it actionable (issue #708). A row is the unit of outstanding onboarding
@@ -459,3 +462,4 @@ The issue #623 wide-run rule, ADR-014, was documented with the assistance of Cla
 The issue #592 participant statistics data versions and aggregate snapshots were documented with the assistance of Claude-Code[Claude Opus 5].
 The issue #708 `fixture.first_seen_in` description was added with the assistance of
 Claude-Code[Claude Opus 5].
+The issue #821 anonymous-read counter schema was documented with the assistance of Codex[GPT-5].

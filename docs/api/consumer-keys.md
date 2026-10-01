@@ -1,15 +1,16 @@
 # Consumer API keys, rate limits and quotas
 
-!!! note "Current behaviour and accepted future model"
+!!! note "Canonical access model"
 
-    This page documents the currently implemented administrator-issued `/api/v1/consumer/*`
-    contract. [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
-    accepts a future canonical read hierarchy with optional consumer identification and
-    requester-owned access. No production behaviour changes under issue #820; implementation is
-    tracked by [#821](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/821) and
+    [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
+    defines one canonical cricket-read hierarchy. Those reads accept anonymous requests or an
+    optional valid consumer key. Requester-owned consumer access remains tracked by
     [#822](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/822).
 
-External integrations use the consumer surface rather than the anonymous public-read surface. An administrator issues and manages keys through the handwritten management API; a raw secret is returned only by the issue and rotation responses. Store it in the consumer's secret manager immediately.
+External integrations use the canonical `/api/v1/*` resource paths and may identify themselves
+with a consumer key. An administrator issues and manages keys through the handwritten management
+API; a raw secret is returned only by the issue and rotation responses. Store it in the consumer's
+secret manager immediately.
 
 ## Requesting consumer access
 
@@ -21,9 +22,9 @@ administrator-only management workflow.
 
 The raw key is shown only once when it is issued or rotated. The consumer must transfer and store it
 as a secret, send it only in the `X-API-Key` request header, and never place it in a URL, query
-string, browser-visible client bundle or log. Consumer keys authorize only the documented
-`/api/v1/consumer/*` operations; they do not authorize administrator, submission, batch or other
-application-authenticated operations.
+string, browser-visible client bundle or log. Consumer keys identify requests to applicable
+canonical reads and authorize documented consumer-only operations; they do not authorize
+administrator, submission, batch or other application-authenticated operations.
 
 ## Management
 
@@ -56,41 +57,39 @@ storage, logs or analytics.
 
 The API assigns every route to one of these access classes:
 
-| Class                  | Surface                                                                           | Policy                                                                                                                                     |
-| ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Public anonymous       | Health, authentication and weather routes, plus the documented public-read API    | No consumer key, quota or consumer rate-limit accounting. These routes are for the public product surface, not consumer-only capabilities. |
-| Authenticated consumer | Every route below `/api/v1/consumer`                                              | A valid active `X-API-Key`, per-consumer one-minute limit and UTC daily quota are required.                                                |
-| Internal/admin         | `/api/v1/admin/*`, submissions, batches, provenance and account-management routes | Supabase bearer authentication plus the documented application-role check. Consumer keys never authorize these routes.                     |
+| Class                 | Surface                                                                           | Policy                                                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Canonical public read | Documented cricket-resource reads under `/api/v1/*`                               | Missing `X-API-Key` uses the bounded anonymous policy; a valid key selects the consumer policy and telemetry.          |
+| Consumer-only         | `GET /api/v1/consumer/usage`                                                      | A valid active `X-API-Key`, per-consumer one-minute limit and UTC daily quota are required.                            |
+| Internal/admin        | `/api/v1/admin/*`, submissions, batches, provenance and account-management routes | Supabase bearer authentication plus the documented application-role check. Consumer keys never authorize these routes. |
 
-## Consumer requests
+## Canonical requests
 
-Every consumer route is key-protected. The protected analytics surface is:
+Use the canonical analytics paths, including:
 
 ```text
-GET /api/v1/consumer/competitions
-GET /api/v1/consumer/usage
-GET /api/v1/consumer/fixtures
-GET /api/v1/consumer/fixtures/{fixtureId}
-GET /api/v1/consumer/fixtures/{fixtureId}/events
-GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json
-GET /api/v1/consumer/fixtures/{fixtureId}/events/export.csv
-GET /api/v1/consumer/fixtures/{fixtureId}/events/{eventId}
-GET /api/v1/consumer/fixtures/{fixtureId}/statistics
-GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}
-GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json
-GET /api/v1/consumer/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv
-GET /api/v1/consumer/participants/{participantId}/statistics
-GET /api/v1/consumer/participants/{participantId}/statistics/{statisticId}
+GET /api/v1/competitions
+GET /api/v1/fixtures
+GET /api/v1/fixtures/{fixtureId}/events
+GET /api/v1/fixtures/{fixtureId}/events/export.json
+GET /api/v1/fixtures/{fixtureId}/statistics
+GET /api/v1/participants/{participantId}/statistics
 ```
 
-The list routes accept `limit` and `cursor`, and the same filters as their public counterparts: `name` for competitions, and `competitionId`, `seasonId`, `competitorId`, `gender`, `startDateFrom` and `startDateTo` for fixtures. The fixture/event/statistics/export aliases use the same parameters and payloads as their public-read counterparts. An invalid parameter or cursor returns `400`.
+The key does not change filters, pagination, ordering or response schemas. It changes only request
+identification, limits, quota and usage accounting. If `X-API-Key` is absent, an applicable public
+read is anonymous. If the header is supplied but malformed, unknown or revoked, the request returns
+the generic `401 API_KEY_UNAUTHORIZED` response and never falls back to anonymous access.
 
-There is no unprotected alternate route under `/consumer`: all consumer aliases use the same authentication middleware and the same per-consumer rate-limit state. A consumer therefore cannot avoid its limit by changing from a fixture list to an event, statistic or export read.
+The former `/api/v1/consumer/*` cricket-resource aliases remain temporarily available for
+compatibility. They still require a key and return `Deprecation: ?1` plus a `successor-version`
+`Link` to the canonical path while preserving the query string. No retirement date is approved, so
+they do not send `Sunset`. New integrations must not use these aliases.
 
 Send the key only in `X-API-Key`; never place it in a URL, browser-visible client bundle, query string or logs.
 
 ```http
-GET /api/v1/consumer/fixtures
+GET /api/v1/fixtures
 X-API-Key: sat_live_<secret>
 ```
 
@@ -98,7 +97,9 @@ When using the interactive OpenAPI client, select **Authorize** and paste only
 the raw consumer key into the `apiKeyAuth` **Value** field. Do not include
 `X-API-Key:` in the value; the client adds that request header automatically.
 
-Missing, malformed, unknown and revoked secrets return `401`, `WWW-Authenticate: ApiKey`, and no information about the matching consumer or key state.
+On consumer-only operations, a missing key also returns `401`. On canonical public reads, only a
+missing header selects anonymous access. All supplied malformed, unknown and revoked secrets return
+`401`, `WWW-Authenticate: ApiKey`, and no information about the matching consumer or key state.
 
 ## Consumer-self and administrator usage
 
@@ -148,6 +149,15 @@ printf '%s' "$API_KEY" | clip.exe
 
 ## Policy and response metadata
 
+Anonymous canonical reads use durable PostgreSQL fixed-minute counters: **30 requests per source
+per minute** by default and a shared **600 requests per minute** platform budget. The source is a
+server-side HMAC of the trusted client address, never the raw address. Only explicitly configured
+trusted-proxy hops may influence that address. Anonymous limiting fails closed with
+`503 RATE_LIMIT_UNAVAILABLE`; an exceeded source or platform allowance returns `429
+RATE_LIMIT_EXCEEDED`. Anonymous requests expose `RateLimit-*` and, when limited, `Retry-After`, but
+do not receive consumer quota headers or telemetry. Omitting a key therefore provides only a small,
+bounded public allowance rather than an unrestricted way around consumer policy.
+
 Each consumer has a configurable fixed UTC-minute window (default **60 requests per minute**) and a durable UTC daily quota (default **10,000 limit-admitted requests per day**). Per-minute counter rows are held in PostgreSQL and atomically admitted, so one consumer limit applies across all active backend replicas, survives an individual replica restart, and resets at the next UTC minute boundary. Limits apply across all of a consumer's keys, so rotation cannot evade the policy. A request that exceeds either policy returns `429` with the `RateLimit-*` headers. A per-minute limit response (`RATE_LIMIT_EXCEEDED`) also includes `Retry-After`; a daily quota response (`QUOTA_EXCEEDED`) includes the `X-Quota-*` headers instead.
 
 Consumer rate limiting is **fail closed**. If the shared PostgreSQL counter is unavailable, the API returns `503 RATE_LIMIT_UNAVAILABLE` and does not admit the request or consume daily quota. Consumers should retry with bounded backoff; they must not treat this response as an accepted request.
@@ -179,3 +189,5 @@ The issue #783 external-consumer access-request and credential-handling guidance
 the assistance of Codex[GPT-5].
 The issue #820 current/future access-model boundary was documented with the assistance of
 Codex[GPT-5].
+The issue #821 canonical optional-key access model, anonymous protection and alias migration were
+documented with the assistance of Codex[GPT-5].

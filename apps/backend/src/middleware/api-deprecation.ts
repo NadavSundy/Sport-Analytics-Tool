@@ -6,11 +6,71 @@ export interface ApiDeprecation {
   replacementPath: string;
 }
 
-const deprecatedOperations: readonly ApiDeprecation[] = [
+export const deprecatedOperations: readonly ApiDeprecation[] = [
   {
     method: 'GET',
-    path: '/api/v1/fixtures/:fixtureId/events/export.json',
-    replacementPath: '/api/v1/consumer/fixtures/:fixtureId/events/export.json',
+    path: '/api/v1/consumer/competitions',
+    replacementPath: '/api/v1/competitions',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures',
+    replacementPath: '/api/v1/fixtures',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId',
+    replacementPath: '/api/v1/fixtures/:fixtureId',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/events',
+    replacementPath: '/api/v1/fixtures/:fixtureId/events',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/events/export.json',
+    replacementPath: '/api/v1/fixtures/:fixtureId/events/export.json',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/events/export.csv',
+    replacementPath: '/api/v1/fixtures/:fixtureId/events/export.csv',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/events/:eventId',
+    replacementPath: '/api/v1/fixtures/:fixtureId/events/:eventId',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/statistics',
+    replacementPath: '/api/v1/fixtures/:fixtureId/statistics',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/statistics/:statisticId',
+    replacementPath: '/api/v1/fixtures/:fixtureId/statistics/:statisticId',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/statistics/:statisticId/events/export.json',
+    replacementPath: '/api/v1/fixtures/:fixtureId/statistics/:statisticId/events/export.json',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/fixtures/:fixtureId/statistics/:statisticId/events/export.csv',
+    replacementPath: '/api/v1/fixtures/:fixtureId/statistics/:statisticId/events/export.csv',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/participants/:participantId/statistics',
+    replacementPath: '/api/v1/participants/:participantId/statistics',
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/consumer/participants/:participantId/statistics/:statisticId',
+    replacementPath: '/api/v1/participants/:participantId/statistics/:statisticId',
   },
 ];
 

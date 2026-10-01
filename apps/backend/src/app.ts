@@ -86,6 +86,11 @@ import {
 } from './modules/api-consumers/api-consumer.repository';
 import { createConsumerRouter } from './modules/api-consumers/consumer.routes';
 import { createConsumerAuthentication } from './modules/api-consumers/consumer-authentication';
+import {
+  createLazyAnonymousAccessRepository,
+  type AnonymousAccessRepository,
+} from './modules/api-consumers/anonymous-access.repository';
+import { createCanonicalReadAuthentication } from './modules/api-consumers/canonical-read-authentication';
 import { createProvenanceRouter } from './modules/provenance/provenance.routes';
 import {
   createProvenanceService,
@@ -120,6 +125,7 @@ export interface AppDependencies {
   batchService?: BatchService;
   apiConsumerService?: ApiConsumerService;
   apiConsumerRepository?: ApiConsumerRepository;
+  anonymousAccessRepository?: AnonymousAccessRepository;
   datasetReleaseService?: DatasetReleaseService;
   provenanceService?: ProvenanceService;
 }
@@ -195,6 +201,18 @@ export function createApp(dependencies: AppDependencies = {}) {
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
   const consumerAuthentication = createConsumerAuthentication(apiConsumerRepository);
+  const anonymousAccessRepository =
+    dependencies.anonymousAccessRepository ?? createLazyAnonymousAccessRepository();
+  const canonicalReadAuthentication = createCanonicalReadAuthentication(
+    apiConsumerRepository,
+    anonymousAccessRepository,
+    {
+      sourceLimitPerMinute: environment.ANONYMOUS_RATE_LIMIT_PER_MINUTE ?? 30,
+      globalLimitPerMinute: environment.ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE ?? 600,
+      sourceKeySecret:
+        environment.ANONYMOUS_RATE_LIMIT_SECRET ?? 'development-only-anonymous-rate-secret',
+    },
+  );
   const datasetReleaseService =
     dependencies.datasetReleaseService ??
     createDatasetReleaseService(undefined, {
@@ -211,6 +229,10 @@ export function createApp(dependencies: AppDependencies = {}) {
     .filter(Boolean);
 
   const app = express();
+
+  if ((environment.TRUST_PROXY_HOPS ?? 0) > 0) {
+    app.set('trust proxy', environment.TRUST_PROXY_HOPS);
+  }
 
   if (batchPayloadStorageService) {
     app.locals.batchPayloadStorageService = batchPayloadStorageService;
@@ -261,6 +283,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     next();
   });
   app.use(apiDeprecationMiddleware);
+  app.use(API_BASE_PATH, canonicalReadAuthentication);
 
   app.use(`${API_BASE_PATH}/health`, healthRouter);
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));

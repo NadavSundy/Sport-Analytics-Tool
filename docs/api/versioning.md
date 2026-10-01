@@ -76,10 +76,10 @@ Deprecation does not itself remove functionality.
 
 ## Active lifecycle example
 
-`GET /api/v1/fixtures/{fixtureId}/events/export.json` is deprecated and remains
-fully available for existing clients. Its successor is
-`GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json`, which returns
-the same JSON export but requires an `X-API-Key` under the consumer API policy.
+The former `/api/v1/consumer/*` cricket-resource paths are deprecated and remain
+fully available for existing keyed clients. Their successors are the corresponding canonical
+`/api/v1/*` paths, which accept either bounded anonymous access or a valid `X-API-Key` under that
+consumer's policy.
 
 Each successful deprecated response includes `Deprecation: ?1`, the RFC 9745
 Structured Field value for a deprecated resource, and an RFC 8288 `Link` header
@@ -87,12 +87,12 @@ whose `successor-version` relation contains the concrete replacement URL and
 preserves the request query string. For example:
 
 ```http
-GET /api/v1/fixtures/100/events/export.json?overNumber=3
+GET /api/v1/consumer/fixtures/100/events/export.json?overNumber=3
 
 HTTP/1.1 200 OK
 API-Version: v1
 Deprecation: ?1
-Link: </api/v1/consumer/fixtures/100/events/export.json?overNumber=3>; rel="successor-version"
+Link: </api/v1/fixtures/100/events/export.json?overNumber=3>; rel="successor-version"
 ```
 
 No retirement date has been approved, so this lifecycle deliberately omits a
@@ -100,11 +100,9 @@ No retirement date has been approved, so this lifecycle deliberately omits a
 scheduled, the approved HTTP-date `Sunset` value and migration period must be
 added here, in OpenAPI, and in the response middleware together.
 
-This example records current production behaviour. [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
-accepts the anonymous path as the future canonical resource path with optional consumer
-identification. Issue [#821](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/821)
-must reverse this direction through the same compatibility process; issue #820 changes neither the
-current route nor its headers.
+This implements the direction accepted by [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md).
+The canonical public JSON export is no longer deprecated. All retained cricket-resource aliases
+below `/consumer` carry the same metadata and no retirement date has yet been approved.
 
 ## OpenAPI status
 
@@ -144,4 +142,6 @@ The OpenAPI description documents the handwritten Express API. It is not generat
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5].
 The issue #820 current/future deprecation boundary was documented with the assistance of
+Codex[GPT-5].
+The issue #821 consumer-alias deprecation direction was documented with the assistance of
 Codex[GPT-5].
