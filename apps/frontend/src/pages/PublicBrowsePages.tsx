@@ -34,6 +34,7 @@ import {
   getFixtureContextPreference,
   setFixtureContextPreference,
 } from '../features/browse/fixture-context-preference';
+import { PinShortcutButton } from '../features/browse/PinShortcutButton';
 
 function optionSearch(filters: URLSearchParams, name: string): string {
   const params = new URLSearchParams(filters);
@@ -931,6 +932,12 @@ export function CompetitionDetailPage() {
             backLabel="competitions"
             backTo="/competitions"
             eyebrow="Competition"
+            headerAction={
+              <PinShortcutButton
+                label="league"
+                shortcut={{ kind: 'competition', id: competition.competitionId }}
+              />
+            }
             title={competition.name}
             breadcrumbs={[
               { label: 'Explore', to: '/competitions' },
@@ -1234,6 +1241,12 @@ export function CompetitorDetailPage() {
             backLabel="teams"
             backTo="/competitors"
             eyebrow="Team"
+            headerAction={
+              <PinShortcutButton
+                label="team"
+                shortcut={{ kind: 'team', id: competitor.competitorId }}
+              />
+            }
             title={competitor.name}
             breadcrumbs={[
               { label: 'Explore', to: '/competitors' },
