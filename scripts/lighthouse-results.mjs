@@ -35,8 +35,9 @@ export function evaluateLighthouseGate(result, { mode = 'strict', floors = {} } 
   }
   if (mode === 'baseline') {
     const floor = floors[result.route]?.[result.profile];
-    const passes = floor === undefined || result.performance >= floor;
-    return { passes, gate: passes ? 'baseline pass' : `below temporary floor ${floor}` };
+    if (floor === undefined) return { passes: false, gate: 'missing baseline floor' };
+    const passes = result.performance >= floor;
+    return { passes, gate: passes ? 'baseline pass' : `below baseline floor ${floor}` };
   }
   const passes = result.performance >= 40;
   return { passes, gate: passes ? 'report only' : 'catastrophic regression' };

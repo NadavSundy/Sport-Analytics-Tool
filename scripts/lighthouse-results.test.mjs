@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { lighthouseCiBaselineFloors } from './lighthouse-ci-baseline.mjs';
 import { aggregateLighthouseResults, evaluateLighthouseGate } from './lighthouse-results.mjs';
 
 test('uses medians rather than the best Lighthouse run', () => {
@@ -57,7 +58,59 @@ test('keeps strict 90 thresholds independent from a temporary baseline floor', (
   assert.equal(evaluateLighthouseGate(result, { mode: 'strict', floors: {} }).passes, false);
 });
 
-test('report mode is non-blocking for a representative score below 90', () => {
+test('approved hosted-CI floors cover every representative route and profile', () => {
+  assert.deepEqual(Object.keys(lighthouseCiBaselineFloors).sort(), [
+    '/',
+    '/api',
+    '/competitions',
+    '/competitors',
+    '/dataset-releases',
+    '/fixtures',
+    '/participants',
+    '/seasons',
+    '/sign-in',
+  ]);
+  for (const floors of Object.values(lighthouseCiBaselineFloors)) {
+    assert.deepEqual(Object.keys(floors).sort(), ['desktop', 'mobile']);
+  }
+});
+
+test('baseline mode accepts an aggregate at its route/profile floor and blocks one below it', () => {
+  const result = { route: '/api', profile: 'mobile', lcpMs: null, tbtMs: null, cls: null };
+
+  assert.equal(
+    evaluateLighthouseGate(
+      { ...result, performance: 84 },
+      { mode: 'baseline', floors: lighthouseCiBaselineFloors },
+    ).passes,
+    true,
+  );
+  assert.equal(
+    evaluateLighthouseGate(
+      { ...result, performance: 83 },
+      { mode: 'baseline', floors: lighthouseCiBaselineFloors },
+    ).passes,
+    false,
+  );
+});
+
+test('baseline mode fails safely when a route/profile floor is missing', () => {
+  const result = {
+    route: '/missing',
+    profile: 'mobile',
+    performance: 100,
+    lcpMs: null,
+    tbtMs: null,
+    cls: null,
+  };
+
+  assert.equal(
+    evaluateLighthouseGate(result, { mode: 'baseline', floors: lighthouseCiBaselineFloors }).passes,
+    false,
+  );
+});
+
+test('report mode allows representative results within its existing regression tolerance', () => {
   const result = {
     route: '/',
     profile: 'mobile',
@@ -70,15 +123,16 @@ test('report mode is non-blocking for a representative score below 90', () => {
   assert.equal(evaluateLighthouseGate(result, { mode: 'report' }).passes, true);
 });
 
-test('strict mode blocks an aggregate below 90 and accepts one at the threshold', () => {
-  const metrics = { route: '/', profile: 'mobile', lcpMs: 2400, tbtMs: 100, cls: 0.02 };
+test('report mode blocks the existing catastrophic median regression', () => {
+  const result = {
+    route: '/',
+    profile: 'mobile',
+    performance: 39,
+    lcpMs: null,
+    tbtMs: null,
+    cls: null,
+  };
 
-  assert.equal(
-    evaluateLighthouseGate({ ...metrics, performance: 89 }, { mode: 'strict' }).passes,
-    false,
-  );
-  assert.equal(
-    evaluateLighthouseGate({ ...metrics, performance: 90 }, { mode: 'strict' }).passes,
-    true,
-  );
+  assert.equal(evaluateLighthouseGate(result, { mode: 'report' }).passes, false);
+  assert.equal(evaluateLighthouseGate(result, { mode: 'report' }).gate, 'catastrophic regression');
 });

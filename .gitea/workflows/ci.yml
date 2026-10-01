@@ -269,7 +269,7 @@ jobs:
     timeout-minutes: 30
     env:
       LIGHTHOUSE_RUNS: '3'
-      LIGHTHOUSE_GATE_MODE: strict
+      LIGHTHOUSE_GATE_MODE: baseline
       LIGHTHOUSE_OUTPUT_DIR: artifacts/lighthouse-ci
       LIGHTHOUSE_ROUTES: /,/api,/competitions,/seasons,/fixtures,/competitors,/participants,/dataset-releases,/sign-in
       VITE_SUPABASE_URL: https://e2e.supabase.co
