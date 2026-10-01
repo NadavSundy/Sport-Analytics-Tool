@@ -223,9 +223,52 @@ function createSignedOutAuthClient() {
   } as unknown as AuthClient;
 }
 
+function createAuthenticatedAuthClient(accountId: string) {
+  const session = {
+    access_token: 'current-access-token',
+    refresh_token: 'managed-by-supabase',
+    expires_in: 3600,
+    token_type: 'bearer',
+    user: {
+      id: accountId,
+      aud: 'authenticated',
+      role: 'authenticated',
+      app_metadata: {},
+      user_metadata: {},
+      identities: [],
+      created_at: '2026-10-01T00:00:00.000Z',
+    },
+  } as unknown as Session;
+
+  return {
+    getSession: vi.fn().mockResolvedValue({ data: { session } }),
+    onAuthStateChange: vi.fn((listener: AuthStateListener) => ({
+      data: {
+        subscription: {
+          id: 'authenticated-browse-test-subscription',
+          callback: listener,
+          unsubscribe: vi.fn(),
+        },
+      },
+    })),
+    signInWithOAuth: vi.fn(),
+    signOut: vi.fn(),
+  } as unknown as AuthClient;
+}
+
 function renderRoute(route: string) {
   return render(
     <AuthProvider client={createSignedOutAuthClient()}>
+      <MemoryRouter initialEntries={[route]}>
+        <PublicApp />
+      </MemoryRouter>
+    </AuthProvider>,
+  );
+}
+
+function renderAuthenticatedRoute(route: string, accountId: string) {
+  return render(
+    <AuthProvider client={createAuthenticatedAuthClient(accountId)}>
       <MemoryRouter initialEntries={[route]}>
         <PublicApp />
       </MemoryRouter>
@@ -288,6 +331,95 @@ describe('public browsing pages', () => {
 
     expect(await screen.findByText('No fixtures found')).toBeInTheDocument();
     expect(screen.getByText(/No published fixtures match/i)).toBeInTheDocument();
+  });
+
+  it("restores a signed-in user's saved fixture competition and season context", async () => {
+    window.localStorage.setItem(
+      'statsthegame:fixture-context:account-one',
+      JSON.stringify({ competitionId: 'competition-1', seasonId: 'season-2026' }),
+    );
+    const requestedUrls: URL[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = new URL(String(input));
+        requestedUrls.push(url);
+
+        if (url.pathname.endsWith('/competitions')) {
+          return Promise.resolve(
+            collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }]),
+          );
+        }
+        if (url.pathname.endsWith('/seasons')) {
+          return Promise.resolve(
+            collection([
+              {
+                seasonId: 'season-2026',
+                competitionId: 'competition-1',
+                competitionName: 'Premier Cricket League',
+                label: '2026',
+              },
+            ]),
+          );
+        }
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(collection([]));
+        }
+
+        throw new Error(`Unexpected request: ${url.pathname}`);
+      }),
+    );
+
+    renderAuthenticatedRoute('/fixtures', 'account-one');
+
+    await waitFor(() =>
+      expect(
+        requestedUrls.some(
+          (url) =>
+            url.pathname.endsWith('/fixtures') &&
+            url.searchParams.get('competitionId') === 'competition-1' &&
+            url.searchParams.get('seasonId') === 'season-2026',
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it('discards an unavailable saved fixture context and returns to the public default', async () => {
+    window.localStorage.setItem(
+      'statsthegame:fixture-context:account-one',
+      JSON.stringify({ competitionId: 'competition-missing', seasonId: 'season-missing' }),
+    );
+    const requestedUrls: URL[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = new URL(String(input));
+        requestedUrls.push(url);
+
+        if (url.pathname.endsWith('/competitions') || url.pathname.endsWith('/seasons')) {
+          return Promise.resolve(collection([]));
+        }
+        if (url.pathname.endsWith('/fixtures')) {
+          return Promise.resolve(collection([]));
+        }
+
+        throw new Error(`Unexpected request: ${url.pathname}`);
+      }),
+    );
+
+    renderAuthenticatedRoute('/fixtures', 'account-one');
+
+    await waitFor(() =>
+      expect(window.localStorage.getItem('statsthegame:fixture-context:account-one')).toBeNull(),
+    );
+    expect(
+      requestedUrls.some(
+        (url) =>
+          url.pathname.endsWith('/fixtures') &&
+          !url.searchParams.has('competitionId') &&
+          !url.searchParams.has('seasonId'),
+      ),
+    ).toBe(true);
   });
 
   it.each([

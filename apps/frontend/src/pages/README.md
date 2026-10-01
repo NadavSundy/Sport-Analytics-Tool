@@ -41,6 +41,11 @@ string. Competition, season, fixture, team, and player filters share a readable-
 fuzzy-ranked suggestions and direct dropdown selection. Stable relationship identifiers may remain
 in routed query values and API requests, but fields, options, active-filter summaries, and
 validation feedback display readable names only. Parent changes clear invalid dependent selections.
+For a signed-in user, the Fixtures collection also remembers a selected competition and season in
+that user's browser storage and restores it on a later unfiltered visit. The selection remains
+local to the authenticated account; anonymous browsing retains the normal public defaults. If its
+public competition or season no longer resolves, the saved context is discarded and the unfiltered
+fixture list is restored.
 Every route provides explicit loading and error states; collections also provide an empty state.
 Competition, season, and team details render their related records in independent sections using
 the collection loading, empty, error, retry, record-list, and cursor-pagination patterns. Each
@@ -110,3 +115,4 @@ The player career totals behaviour was documented with the assistance of Claude 
 The issue #582 public statistics information architecture was documented with the assistance of
 Codex[GPT-5.6 Sol].
 The issue #634 powerplay presentation was documented with the assistance of Codex[GPT-5].
+The issue #802 saved fixture-context behaviour was documented with the assistance of Codex[GPT-5].

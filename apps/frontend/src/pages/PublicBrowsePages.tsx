@@ -7,8 +7,8 @@ import type {
   ParticipantFixture,
   Season,
 } from '@sport-analytics/contracts';
-import { useCallback, useId, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { publicReadApi } from '../api/public-read';
 import { BrowseCollection, type FilterField } from '../features/browse/BrowseCollection';
 import type { NameComboboxOption } from '../components/NameCombobox';
@@ -28,6 +28,12 @@ import {
   PlayerPerformance,
 } from '../features/statistics/StatisticsPages';
 import { ScopeLeaderboards } from '../features/statistics/ScopeLeaderboards';
+import { useAuth } from '../features/auth/AuthProvider';
+import {
+  clearFixtureContextPreference,
+  getFixtureContextPreference,
+  setFixtureContextPreference,
+} from '../features/browse/fixture-context-preference';
 
 function optionSearch(filters: URLSearchParams, name: string): string {
   const params = new URLSearchParams(filters);
@@ -258,6 +264,91 @@ const participantFilters: FilterField[] = [
     routeValue: 'name',
   },
 ];
+
+function useFixtureContextPreference() {
+  const { identity, isAuthenticated, isLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const restoredAccountId = useRef<string | null>(null);
+  const accountId = isAuthenticated ? (identity?.id ?? null) : null;
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!accountId) {
+      restoredAccountId.current = null;
+      return;
+    }
+
+    if (restoredAccountId.current === accountId) {
+      return;
+    }
+    restoredAccountId.current = accountId;
+
+    if (searchParams.has('competitionId') || searchParams.has('seasonId')) {
+      return;
+    }
+
+    const preference = getFixtureContextPreference(accountId);
+    if (preference) {
+      setSearchParams(
+        new URLSearchParams({
+          competitionId: preference.competitionId,
+          seasonId: preference.seasonId,
+        }),
+        { replace: true },
+      );
+    }
+  }, [accountId, isLoading, searchParams, setSearchParams]);
+
+  const saveFixtureContext = useCallback(
+    (filters: URLSearchParams) => {
+      if (!accountId) {
+        return;
+      }
+
+      const competitionId = filters.get('competitionId');
+      const seasonId = filters.get('seasonId');
+      if (competitionId && seasonId) {
+        setFixtureContextPreference(accountId, { competitionId, seasonId });
+      } else {
+        clearFixtureContextPreference(accountId);
+      }
+    },
+    [accountId],
+  );
+
+  const clearFixtureContext = useCallback(() => {
+    if (accountId) {
+      clearFixtureContextPreference(accountId);
+    }
+  }, [accountId]);
+
+  const discardUnavailableFixtureContext = useCallback(
+    (name: string, value: string) => {
+      if (!accountId || (name !== 'competitionId' && name !== 'seasonId')) {
+        return;
+      }
+
+      const preference = getFixtureContextPreference(accountId);
+      if (
+        !preference ||
+        preference[name] !== value ||
+        searchParams.get('competitionId') !== preference.competitionId ||
+        searchParams.get('seasonId') !== preference.seasonId
+      ) {
+        return;
+      }
+
+      clearFixtureContextPreference(accountId);
+      setSearchParams(new URLSearchParams(), { replace: true });
+    },
+    [accountId, searchParams, setSearchParams],
+  );
+
+  return { clearFixtureContext, discardUnavailableFixtureContext, saveFixtureContext };
+}
 
 function formatDate(date: string): string {
   return new Intl.DateTimeFormat('en-ZA', {
@@ -612,6 +703,9 @@ export function SeasonsPage() {
 }
 
 export function FixturesPage() {
+  const { clearFixtureContext, discardUnavailableFixtureContext, saveFixtureContext } =
+    useFixtureContextPreference();
+
   return (
     <BrowseCollection<Fixture>
       description="Browse published fixtures by competition, season, team, date and gender."
@@ -619,6 +713,9 @@ export function FixturesPage() {
       eyebrow="Match archive"
       filters={fixtureFilters}
       load={publicReadApi.listFixtures}
+      onFiltersApplied={saveFixtureContext}
+      onFiltersCleared={clearFixtureContext}
+      onFilterSelectionUnavailable={discardUnavailableFixtureContext}
       renderItem={(fixture) => <FixtureRecord fixture={fixture} key={fixture.fixtureId} />}
       resourceLabel="fixtures"
       title="Fixtures"
