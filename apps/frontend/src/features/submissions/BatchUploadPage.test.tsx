@@ -352,6 +352,50 @@ describe('guided batch upload', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/seasons?'))).toBe(false);
   });
 
+  test('shows the server message and field details when an upload is rejected (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(response(200, { user: submitterProfile }));
+      if (url.endsWith('/competitions/5'))
+        return Promise.resolve(
+          response(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+        );
+      if (url.endsWith('/batches') && init?.method === 'POST')
+        return Promise.resolve(
+          response(400, {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'The package does not match contract version 1.0.',
+              details: [
+                {
+                  code: 'INVALID_FIELD',
+                  field: 'fixtures.0.context.date',
+                  message: 'Expected a YYYY-MM-DD date.',
+                },
+              ],
+            },
+          }),
+        );
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderUpload('season');
+    const input = await screen.findByLabelText('Season package');
+    const fileBytes = '{"contractVersion":"1.0"}';
+    const file = new File([fileBytes], 'season.json', { type: 'application/json' });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => new TextEncoder().encode(fileBytes).buffer,
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload season package' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('The package does not match contract version 1.0.');
+    expect(alert).toHaveTextContent('Expected a YYYY-MM-DD date.');
+    expect(alert).toHaveTextContent(/fixtures.*date/i);
+  });
+
   test('distinguishes an access-loading failure from an empty scope', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     renderUpload();

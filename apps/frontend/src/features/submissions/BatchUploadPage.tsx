@@ -1,4 +1,5 @@
 import type {
+  ApiErrorDetail,
   BatchReceiptResponse,
   Competition,
   CurrentUserProfile,
@@ -17,6 +18,10 @@ import {
   uploadBatch,
 } from './batch-api';
 import { invalidateBatchCollections } from './batch-collection-state';
+import {
+  formatApiValidationLocation,
+  formatApiValidationMessage,
+} from './submission-validation-copy';
 
 type AccessState =
   | { kind: 'loading' }
@@ -26,7 +31,7 @@ type AccessState =
 type UploadState =
   | { kind: 'idle' }
   | { kind: 'uploading' }
-  | { kind: 'error'; message: string }
+  | { kind: 'error'; message: string; details?: ApiErrorDetail[] }
   | { kind: 'accepted'; receipt: BatchReceiptResponse['data']; context: string };
 
 async function listAllCompetitions(signal: AbortSignal): Promise<Competition[]> {
@@ -163,8 +168,16 @@ export function BatchUploadWorkflow({
               ? 'The server rejected this package because it exceeds the 50 MB limit.'
               : error instanceof ApiResponseError && error.status === 503
                 ? 'Upload storage is temporarily unavailable. Retry this same file to reuse the upload request safely.'
-                : 'The upload could not be completed. Retry this same file safely.';
-      setUpload({ kind: 'error', message });
+                : error instanceof ApiResponseError
+                  ? // Keep the server's explanation: a generic message would hide what
+                    // the submitter must correct (#801).
+                    error.message
+                  : 'The upload could not be completed. Retry this same file safely.';
+      const details =
+        error instanceof ApiResponseError && error.details && error.details.length > 0
+          ? error.details
+          : undefined;
+      setUpload(details ? { kind: 'error', message, details } : { kind: 'error', message });
     }
   }
 
@@ -313,6 +326,25 @@ export function BatchUploadWorkflow({
                   {scope === 'season' ? 'Season' : 'Back catalogue'} upload failed
                 </h2>
                 <p>{upload.message}</p>
+                {upload.details ? (
+                  <>
+                    <p>Correct these problems in your file, then upload it again:</p>
+                    <ul className="submission-errors">
+                      {upload.details.map((detail, index) => (
+                        <li key={`${detail.field ?? 'file'}-${detail.eventIndex ?? 'all'}-${index}`}>
+                          <strong>{formatApiValidationLocation(detail, true)}:</strong>{' '}
+                          {formatApiValidationMessage(detail)}
+                          {detail.field ? (
+                            <>
+                              {' '}
+                              <code>{detail.field}</code>
+                            </>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
               </div>
             ) : upload.kind === 'accepted' ? (
               <div className="submission-result" role="status">
