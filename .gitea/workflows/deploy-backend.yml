@@ -30,10 +30,9 @@ jobs:
           AZURE_BACKEND_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
           AZURE_WORKER_CREDENTIALS: ${{ secrets.AZURE_WORKER_CREDENTIALS }}
           AZURE_BACKEND_DATABASE_SECRET_URI: ${{ secrets.AZURE_BACKEND_DATABASE_SECRET_URI }}
-          AZURE_BACKEND_LLM_API_KEY_SECRET_URI: ${{ secrets.AZURE_BACKEND_LLM_API_KEY_SECRET_URI }}
         run: |
           missing=0
-          for name in AZURE_BACKEND_PUBLISH_PROFILE AZURE_WORKER_CREDENTIALS AZURE_BACKEND_DATABASE_SECRET_URI AZURE_BACKEND_LLM_API_KEY_SECRET_URI; do
+          for name in AZURE_BACKEND_PUBLISH_PROFILE AZURE_WORKER_CREDENTIALS AZURE_BACKEND_DATABASE_SECRET_URI; do
             if [ -z "${!name}" ]; then
               echo "::error::Required Gitea secret $name is not configured."
               missing=1
