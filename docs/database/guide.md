@@ -112,6 +112,8 @@ of test runs while checking migration order and rollback sections.
 
 ## Related reading paths
 
+- [Final database audit](final-audit.md) - Issue #807 acceptance mapping and retained deployment, rebuild and integrity evidence.
+
 - [Architecture & Data](../architecture-and-data.md) — architecture/database/security entry point.
 - [Product & API](../product-and-api.md) — public behaviour built on the database model.
 - [Deployment & Operations](../deployment/overview.md) — hosted database/application deployment boundaries.
