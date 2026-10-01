@@ -71,6 +71,26 @@ Related: [Sprint 3 requirements & rubric traceability](../planning/sprint-3-requ
 
 The 28 September close-out is intentionally pre-finalisation. It must be reconciled against current `main`, reviewed by another team member and updated with the final milestone tag before #613 closes.
 
+## Sprint 4
+
+Sprint 4 is the final project-submission milestone.
+
+| Date        | Record                                                                                                                                                                        |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 30 Sep 2026 | [Sprint 4 planning and final-submission scope](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-4/2026-09-30-planning.md) |
+
+Repository index:
+[`evidence/sprints/sprint-4/README.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/sprints/sprint-4/README.md)
+
+The planning record captures the refined final-submission backlog, early
+completed Sprint 4 work, sequencing, scope decisions, known risks and the
+relationship between the original roadmap and the current Gitea milestone.
+
+Current issue status and formal dependencies remain authoritative in Gitea.
+
+The Issue #799 Sprint 4 planning navigation update was planned, generated and
+edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
 ## How to add future Sprint evidence
 
 Create a new `evidence/sprints/sprint-<n>/` directory, retain concise Markdown records for normal
