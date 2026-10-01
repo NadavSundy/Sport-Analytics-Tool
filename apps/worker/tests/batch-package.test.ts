@@ -275,6 +275,29 @@ describe('shipped guided templates (#500)', () => {
     },
   );
 
+  it('expands the back-catalogue template into fixtures from two seasons (#801)', async () => {
+    const source = shippedTemplateWithReadableNames('season-upload-catalogue-template.json');
+
+    const scan = await scanBatchReferences(async () => Readable.from(source), 'application/json');
+    expect(scan.fatal).toBe(false);
+    expect(scan.sourceFaults).toEqual([]);
+    expect(scan.eventCount).toBe(4);
+
+    const { referencePackage } = await referenceChunkFor(source, 'application/json');
+    const fixtures = referencePackage?.fixtures ?? [];
+    expect(fixtures).toHaveLength(2);
+    expect(referencePackage?.season.context?.name).toBe('2025');
+    expect(fixtures[0]?.season).toBeUndefined();
+    expect(fixtures[1]?.season?.context?.name).toBe('2026');
+    for (const fixture of fixtures) {
+      expect(fixture.sourceId).toBeUndefined();
+      expect(fixture.context?.teams).toEqual([
+        { context: { name: 'Wanderers' } },
+        { context: { name: 'Strikers' } },
+      ]);
+    }
+  });
+
   it('preserves a version 1.1 fixture proposal for reviewer resolution', async () => {
     const value = JSON.parse(
       shippedTemplateWithReadableNames('season-upload-template.json'),

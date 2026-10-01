@@ -396,6 +396,41 @@ describe('guided batch upload', () => {
     expect(alert).toHaveTextContent(/fixtures.*date/i);
   });
 
+  test('offers the multi-season template only for a back catalogue (#801)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/auth/me'))
+          return Promise.resolve(response(200, { user: submitterProfile }));
+        if (url.endsWith('/competitions/5'))
+          return Promise.resolve(
+            response(200, { data: { competitionId: '5', name: 'Premier T20' } }),
+          );
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    const catalogue = renderUpload('catalogue');
+    await screen.findByLabelText('Back catalogue package');
+    expect(
+      screen.getByRole('link', { name: 'Download back-catalogue JSON template' }),
+    ).toHaveAttribute('href', '/season-upload-catalogue-template.json');
+    expect(screen.getByText(/own season object/i)).toBeInTheDocument();
+    expect(screen.getByText(/seasonName column on every row/i)).toBeInTheDocument();
+    catalogue.unmount();
+
+    renderUpload('season');
+    await screen.findByLabelText('Season package');
+    expect(
+      screen.queryByRole('link', { name: 'Download back-catalogue JSON template' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Download JSON template' })).toHaveAttribute(
+      'href',
+      '/season-upload-template.json',
+    );
+  });
+
   test('distinguishes an access-loading failure from an empty scope', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     renderUpload();

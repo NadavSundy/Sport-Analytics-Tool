@@ -208,10 +208,39 @@ export function BatchUploadWorkflow({
         <p>
           Stable provider references are optional when the documented readable context is supplied.
         </p>
+        {scope === 'catalogue' ? (
+          <>
+            <p>
+              A back catalogue may cover several seasons in one file. In JSON, the package-level{' '}
+              <code>season</code> is the default; give any fixture from a different season its own
+              season object, for example{' '}
+              <code>{'"season": { "context": { "name": "2026" } }'}</code>, inside that fixture.
+            </p>
+            <p>
+              In the spreadsheet template, fill in the seasonName column on every row; rows may name
+              different seasons.
+            </p>
+          </>
+        ) : (
+          <p>
+            A season upload uses one season for every fixture. Choose Back catalogue instead if the
+            file covers more than one season.
+          </p>
+        )}
         <div className="batch-guidance__actions">
-          <a className="button button--secondary" href="/season-upload-template.json" download>
-            Download JSON template
-          </a>
+          {scope === 'catalogue' ? (
+            <a
+              className="button button--secondary"
+              href="/season-upload-catalogue-template.json"
+              download
+            >
+              Download back-catalogue JSON template
+            </a>
+          ) : (
+            <a className="button button--secondary" href="/season-upload-template.json" download>
+              Download JSON template
+            </a>
+          )}
           <a className="button button--secondary" href="/season-upload-template.csv" download>
             Download spreadsheet template
           </a>
@@ -331,7 +360,9 @@ export function BatchUploadWorkflow({
                     <p>Correct these problems in your file, then upload it again:</p>
                     <ul className="submission-errors">
                       {upload.details.map((detail, index) => (
-                        <li key={`${detail.field ?? 'file'}-${detail.eventIndex ?? 'all'}-${index}`}>
+                        <li
+                          key={`${detail.field ?? 'file'}-${detail.eventIndex ?? 'all'}-${index}`}
+                        >
                           <strong>{formatApiValidationLocation(detail, true)}:</strong>{' '}
                           {formatApiValidationMessage(detail)}
                           {detail.field ? (
