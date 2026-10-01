@@ -192,6 +192,103 @@ describe('public operations', () => {
   });
 });
 
+describe('analytics query operations', () => {
+  const participantAggregates = {
+    participantId: '56',
+    participantName: 'BB McCullum',
+    status: 'complete' as const,
+    scope: { superOversIncluded: false as const },
+    warnings: [],
+    statistics: [
+      {
+        statisticId: 'stat_career',
+        participantId: '56',
+        participantName: 'BB McCullum',
+        appearances: 14,
+        fixtureCount: 14,
+        sourceEventCount: 300,
+        batting: null,
+        bowling: null,
+        fielding: { catches: 1, stumpings: 0, runOutInvolvements: 0 },
+        scope: 'career' as const,
+        statisticCode: 'participant_career' as const,
+      },
+    ],
+  };
+
+  function analyticsApp() {
+    return contractApp({
+      participantAggregates: {
+        getParticipantAggregates: async () => participantAggregates,
+        getParticipantAggregate: async () => null,
+      },
+      queryDefinitionNames: {
+        names: {
+          findParticipantsByName: async (name: string) => ({
+            records:
+              name === 'BB McCullum'
+                ? [{ participantId: '56', displayName: 'BB McCullum' }]
+                : [
+                    { participantId: '1', displayName: 'KL Rahul' },
+                    { participantId: '2', displayName: 'Rahul Dravid' },
+                  ],
+            totalRecords: name === 'BB McCullum' ? 1 : 2,
+          }),
+          findCompetitionsByName: async () => ({ records: [], hasMore: false }),
+          findSeasonExact: async () => null,
+          findSeasonsByLabel: async () => ({ records: [] }),
+        },
+      },
+    });
+  }
+
+  test('POST /query-definitions/evaluate documents every outcome it can return', async () => {
+    const app = analyticsApp();
+
+    const answered = {
+      kind: 'participant_statistics',
+      participant: { name: 'BB McCullum' },
+      scope: 'career',
+    };
+    const ambiguous = {
+      kind: 'participant_statistics',
+      participant: { name: 'Rahul' },
+      scope: 'career',
+    };
+    const unsupported = { kind: 'unsupported', reason: 'bowler_type' };
+
+    for (const body of [answered, ambiguous, unsupported]) {
+      contract.expectResponse(
+        await request(app).post('/api/v1/query-definitions/evaluate').send(body).expect(200),
+        { requestBody: body },
+      );
+    }
+  });
+
+  test('POST /query-definitions/evaluate documents its 422 for an invalid definition', async () => {
+    const invalid = { kind: 'leaderboard', metric: 'most_maidens', scope: 'season' };
+
+    contract.expectResponse(
+      await request(analyticsApp())
+        .post('/api/v1/query-definitions/evaluate')
+        .send(invalid)
+        .expect(422),
+      { requestBody: invalid, requestIsInvalid: true },
+    );
+  });
+
+  // The operation is offered to anonymous visitors, so it must not be documented
+  // as requiring a credential.
+  test('POST /query-definitions/evaluate is documented as a public operation', () => {
+    const paths = contract.document.paths as Record<
+      string,
+      { post?: { security?: unknown[] } } | undefined
+    >;
+
+    expect(paths['/api/v1/query-definitions/evaluate']?.post?.security).toEqual([]);
+  });
+});
+
 describe('consumer (API key) operations', () => {
   test('GET /consumer/competitions returns a documented page for an active key', async () => {
     const app = contractApp({
