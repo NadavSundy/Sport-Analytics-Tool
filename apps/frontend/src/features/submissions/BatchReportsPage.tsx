@@ -15,6 +15,11 @@ import {
   formatValidationField,
   validationRuleLabel,
 } from './submission-validation-copy';
+import {
+  describeFixtureReference,
+  describeInningsReference,
+  groupReferenceResolutions,
+} from './unresolved-reference-summary';
 
 type ListState =
   | { kind: 'loading' }
@@ -216,10 +221,13 @@ function ReferenceControl({
   batchReference,
   item,
   resolution,
+  embedded = false,
 }: {
   batchReference: string;
   item: BatchReportItem;
   resolution: BatchReportItem['referenceResolutions'][number];
+  /** Rendered inside an explanatory notice that already shows the context and reason. */
+  embedded?: boolean;
 }) {
   const client = useAuthenticatedApiClient();
   const [candidateReference, setCandidateReference] = useState(
@@ -254,11 +262,19 @@ function ReferenceControl({
 
   return (
     <fieldset className="batch-reference-control" disabled={state.kind === 'saving'}>
-      <legend>{resolution.entityType.replaceAll('_', ' ')} needs a match</legend>
-      <p>
-        Submitted value: <code>{JSON.stringify(resolution.submittedReference)}</code>
-      </p>
-      {resolution.reason ? <p>{resolution.reason}</p> : null}
+      <legend>
+        {embedded
+          ? 'Choose the correct match'
+          : `${resolution.entityType.replaceAll('_', ' ')} needs a match`}
+      </legend>
+      {embedded ? null : (
+        <>
+          <p>
+            Submitted value: <code>{JSON.stringify(resolution.submittedReference)}</code>
+          </p>
+          {resolution.reason ? <p>{resolution.reason}</p> : null}
+        </>
+      )}
       {resolution.requiredAction === 'contact_reviewer' || resolution.candidates.length === 0 ? (
         <p role="status">
           No safe existing match is available. Contact a reviewer; the system will not guess or
@@ -304,6 +320,129 @@ function ReferenceControl({
   );
 }
 
+/** Item-level rule codes that only restate an unresolved reference already explained above. */
+const REFERENCE_FAILURE_RULES = new Set(['REFERENCE_RESOLUTION_FAILED', 'UNRESOLVED_REFERENCE']);
+
+function deliveryLabel(context: BatchReportItem['context']) {
+  if (context.overNumber === null) return 'Event';
+  return context.positionInOver === null
+    ? `Over ${context.overNumber}`
+    : `Over ${context.overNumber}, delivery ${context.positionInOver}`;
+}
+
+function UnresolvedFixtureNotice({
+  batchReference,
+  item,
+  fixture,
+  dependents,
+  foldedErrors,
+}: {
+  batchReference: string;
+  item: BatchReportItem;
+  fixture: BatchReportItem['referenceResolutions'][number];
+  dependents: BatchReportItem['referenceResolutions'];
+  foldedErrors: BatchReportItem['errors'];
+}) {
+  const headingId = `batch-item-${item.ordinal}-fixture-error`;
+  const match = describeFixtureReference(fixture.submittedReference);
+  const canChoose = fixture.requiredAction === 'select_candidate' && fixture.candidates.length > 0;
+  const waiting = dependents
+    .map((dependent) =>
+      dependent.entityType === 'innings'
+        ? describeInningsReference(dependent.submittedReference)
+        : null,
+    )
+    .filter((label): label is string => label !== null);
+
+  return (
+    <section className="batch-fixture-error" aria-labelledby={headingId}>
+      <h3 id={headingId}>Match could not be found</h3>
+      <p>We could not match this event to an existing fixture.</p>
+      {match.title || match.date || match.venue ? (
+        <dl className="batch-fixture-error__context">
+          {match.title ? (
+            <div>
+              <dt>Match</dt>
+              <dd>{match.title}</dd>
+            </div>
+          ) : null}
+          {match.date ? (
+            <div>
+              <dt>Date</dt>
+              <dd>{match.date}</dd>
+            </div>
+          ) : null}
+          {match.venue ? (
+            <div>
+              <dt>Venue</dt>
+              <dd>{match.venue}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+      <p>
+        {canChoose
+          ? 'More than one existing fixture could be this match.'
+          : 'This match is not in the system yet, so events from it cannot be accepted.'}
+      </p>
+      {waiting.length > 0 ? <p>Also waiting on this match: {waiting.join('; ')}.</p> : null}
+      <p className="batch-fixture-error__action">
+        <strong>What to do:</strong>{' '}
+        {canChoose
+          ? 'Choose the correct match below, or ask a reviewer if it is not listed.'
+          : 'Ask a reviewer to match or create this fixture before this event can be accepted.'}
+      </p>
+      {canChoose ? (
+        <ReferenceControl
+          batchReference={batchReference}
+          item={item}
+          resolution={fixture}
+          embedded
+        />
+      ) : null}
+      <p>
+        <a href={`#batch-item-${item.ordinal}-source`}>
+          View in {item.location.filePath ?? 'uploaded package'}
+        </a>
+      </p>
+      <details className="validation-technical-details">
+        <summary>Technical details</summary>
+        <p>{item.context.description}</p>
+        {item.stagedRecordId ? <p>Staged record: {item.stagedRecordId}</p> : null}
+        {match.sourceReference ? (
+          <p>
+            Fixture source reference: <code>{match.sourceReference}</code>
+          </p>
+        ) : null}
+        {[fixture, ...dependents].map((resolution) => (
+          <div key={resolution.referencePath}>
+            <p>
+              <code>{resolution.referencePath}</code> ({resolution.entityType}, {resolution.state},{' '}
+              {resolution.requiredAction.replaceAll('_', ' ')})
+            </p>
+            {resolution.reason ? <p>{resolution.reason}</p> : null}
+            <p>
+              Submitted value: <code>{JSON.stringify(resolution.submittedReference)}</code>
+            </p>
+          </div>
+        ))}
+        {foldedErrors.map((error, index) => (
+          <p key={`${error.ruleCode}-${index}`}>
+            <code>{error.ruleCode}</code>
+            {error.location.jsonPath ? (
+              <>
+                {' · '}
+                <code>{error.location.jsonPath}</code>
+              </>
+            ) : null}{' '}
+            {error.message}
+          </p>
+        ))}
+      </details>
+    </section>
+  );
+}
+
 function ReportItems({
   batchReference,
   items,
@@ -314,59 +453,80 @@ function ReportItems({
   if (items.length === 0) return <p>No report items are available yet.</p>;
   return (
     <ol className="batch-report-items">
-      {items.map((item) => (
-        <li key={item.ordinal} id={`batch-item-${item.ordinal}`}>
-          <div className="batch-report-item__heading">
-            <strong>{outcomeLabel(item.outcome)}</strong>
-            <span>{item.context.description}</span>
-          </div>
-          <p id={`batch-item-${item.ordinal}-source`}>Source: {sourceLabel(item.location)}</p>
-          {item.correctionTarget ? (
-            <p>
-              Correction target: <code>{item.correctionTarget.sourceEventId}</code>
-              {item.correctionTarget.resolvedDeliveryId
-                ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
-                : ' (not resolved)'}
-            </p>
-          ) : null}
-          {item.stagedRecordId ? <p>Staged record: {item.stagedRecordId}</p> : null}
-          {item.acceptedRecordId ? <p>Accepted delivery: {item.acceptedRecordId}</p> : null}
-          {item.errors.length > 0 ? (
-            <ul>
-              {item.errors.map((error, index) => (
-                <li key={`${error.ruleCode}-${index}`}>
-                  <strong>{validationRuleLabel(error.ruleCode)}</strong>{' '}
-                  <span>{formatBatchValidationMessage(error.ruleCode, error.message)}</span>{' '}
-                  <a href={`#batch-item-${item.ordinal}-source`}>
-                    Go to {sourceLabel(error.location)} — {error.context.description}
-                  </a>
-                  <details className="validation-technical-details">
-                    <summary>Technical details</summary>
-                    <p>
-                      <code>{error.ruleCode}</code>
-                      {error.location.jsonPath ? (
-                        <>
-                          {' · '}
-                          <code>{error.location.jsonPath}</code>
-                        </>
-                      ) : null}
-                    </p>
-                    <p>{error.message}</p>
-                  </details>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {item.referenceResolutions.map((resolution) => (
-            <ReferenceControl
-              batchReference={batchReference}
-              item={item}
-              resolution={resolution}
-              key={resolution.referencePath}
-            />
-          ))}
-        </li>
-      ))}
+      {items.map((item) => {
+        const grouped = groupReferenceResolutions(item.referenceResolutions);
+        const fixtureRooted = grouped.fixture !== null;
+        const visibleErrors = fixtureRooted
+          ? item.errors.filter((error) => !REFERENCE_FAILURE_RULES.has(error.ruleCode))
+          : item.errors;
+        const foldedErrors = fixtureRooted
+          ? item.errors.filter((error) => REFERENCE_FAILURE_RULES.has(error.ruleCode))
+          : [];
+        return (
+          <li key={item.ordinal} id={`batch-item-${item.ordinal}`}>
+            <div className="batch-report-item__heading">
+              <strong>{outcomeLabel(item.outcome)}</strong>
+              <span>{fixtureRooted ? deliveryLabel(item.context) : item.context.description}</span>
+            </div>
+            <p id={`batch-item-${item.ordinal}-source`}>Source: {sourceLabel(item.location)}</p>
+            {item.correctionTarget ? (
+              <p>
+                Correction target: <code>{item.correctionTarget.sourceEventId}</code>
+                {item.correctionTarget.resolvedDeliveryId
+                  ? ` (published delivery ${item.correctionTarget.resolvedDeliveryId})`
+                  : ' (not resolved)'}
+              </p>
+            ) : null}
+            {item.stagedRecordId && !fixtureRooted ? (
+              <p>Staged record: {item.stagedRecordId}</p>
+            ) : null}
+            {grouped.fixture ? (
+              <UnresolvedFixtureNotice
+                batchReference={batchReference}
+                item={item}
+                fixture={grouped.fixture}
+                dependents={grouped.dependents}
+                foldedErrors={foldedErrors}
+              />
+            ) : null}
+            {item.acceptedRecordId ? <p>Accepted delivery: {item.acceptedRecordId}</p> : null}
+            {visibleErrors.length > 0 ? (
+              <ul>
+                {visibleErrors.map((error, index) => (
+                  <li key={`${error.ruleCode}-${index}`}>
+                    <strong>{validationRuleLabel(error.ruleCode)}</strong>{' '}
+                    <span>{formatBatchValidationMessage(error.ruleCode, error.message)}</span>{' '}
+                    <a href={`#batch-item-${item.ordinal}-source`}>
+                      Go to {sourceLabel(error.location)} — {error.context.description}
+                    </a>
+                    <details className="validation-technical-details">
+                      <summary>Technical details</summary>
+                      <p>
+                        <code>{error.ruleCode}</code>
+                        {error.location.jsonPath ? (
+                          <>
+                            {' · '}
+                            <code>{error.location.jsonPath}</code>
+                          </>
+                        ) : null}
+                      </p>
+                      <p>{error.message}</p>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {grouped.independent.map((resolution) => (
+              <ReferenceControl
+                batchReference={batchReference}
+                item={item}
+                resolution={resolution}
+                key={resolution.referencePath}
+              />
+            ))}
+          </li>
+        );
+      })}
     </ol>
   );
 }
