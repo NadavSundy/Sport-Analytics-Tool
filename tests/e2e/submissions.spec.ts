@@ -779,3 +779,153 @@ test(
     ).toEqual([]);
   },
 );
+
+test(
+  'unresolved fixture errors are readable, actionable and keep technical details (#827)',
+  { tag: '@mobile' },
+  async ({ page }) => {
+    const location = {
+      filePath: 'batch.json',
+      sheetName: null,
+      rowNumber: null,
+      jsonPath: null,
+      ordinal: 0,
+    };
+    const context = {
+      eventReference: 'cricsheet:delivery:acc-wpc-2026-final-1-0-1',
+      fixtureId: null,
+      fixtureLabel: null,
+      inningsId: null,
+      overNumber: 0,
+      positionInOver: 0,
+      description: 'Event cricsheet:delivery:acc-wpc-2026-final-1-0-1 at over 0, delivery 0.',
+    };
+    await page.route(`**/api/v1/batches/${batchReference}/report`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            batch: {
+              batchReference,
+              competitionId: '5',
+              status: 'rejected',
+              statusUrl: `/api/v1/batches/${batchReference}`,
+              receivedAt: '2026-09-08T09:30:00.000Z',
+              updatedAt: '2026-09-08T09:35:00.000Z',
+              source: {
+                fileName: 'batch.json',
+                checksum: 'a'.repeat(64),
+                packageVersion: '1.2',
+                submitter: { accountId: '17', displayName: 'E2E Submitter' },
+              },
+              progress: { total: 1, processed: 1, accepted: 0, rejected: 0 },
+              counts: { accepted: 0, rejected: 0, unresolved: 1, duplicate: 0, conflicting: 0 },
+              lineage: { replacesBatchReference: null, supersededByBatchReference: null },
+              review: null,
+            },
+            errorGroups: [{ ruleCode: 'REFERENCE_RESOLUTION_FAILED', count: 1 }],
+            reviewSummary: {
+              validation: {
+                accepted: 0,
+                rejected: 0,
+                blockingErrors: 1,
+                duplicate: 0,
+                conflicting: 0,
+              },
+              resolution: { resolved: 0, ambiguous: 0, unresolved: 2, invalid: 0, proposed: 0 },
+              approvalBlocked: true,
+              blockingReasons: ['Unresolved references remain.'],
+            },
+            fixtureSummaries: [],
+            participantOnboarding: [],
+            acceptedSamples: [],
+            blockingItems: [],
+            items: [
+              {
+                ordinal: 0,
+                outcome: 'unresolved',
+                location,
+                context,
+                stagedRecordId: '124358',
+                acceptedRecordId: null,
+                errors: [
+                  {
+                    ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+                    message: 'One or more event references are unresolved.',
+                    location,
+                    context,
+                  },
+                ],
+                referenceResolutions: [
+                  {
+                    referencePath: 'fixture',
+                    entityType: 'fixture',
+                    state: 'unresolved',
+                    submittedReference: {
+                      context: {
+                        date: '2026-06-13',
+                        teams: [
+                          { context: { name: 'Thailand Women' } },
+                          { context: { name: 'United Arab Emirates Women' } },
+                        ],
+                        venue: 'Bayuemas Oval, Kuala Lumpur',
+                      },
+                      sourceId: 'cricsheet:fixture:acc-wpc-2026-final',
+                    },
+                    reason: 'No fixture carries the source reference "acc-wpc-2026-final".',
+                    requiredAction: 'contact_reviewer',
+                    candidates: [],
+                  },
+                  {
+                    referencePath: 'innings',
+                    entityType: 'innings',
+                    state: 'unresolved',
+                    submittedReference: {
+                      context: { ordinal: 1, battingTeam: { context: { name: 'Thailand Women' } } },
+                    },
+                    reason:
+                      'The fixture reference did not resolve, so no innings scope is available.',
+                    requiredAction: 'contact_reviewer',
+                    candidates: [],
+                  },
+                ],
+              },
+            ],
+            pagination: { nextCursor: null },
+            downloadUrl: `/api/v1/batches/${batchReference}/report/download`,
+          },
+        }),
+      }),
+    );
+
+    await page.goto(`/submissions/batches/${batchReference}`);
+
+    const notice = page.getByRole('region', { name: 'Match could not be found' });
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('Thailand Women vs United Arab Emirates Women');
+    await expect(notice).toContainText('13 June 2026');
+    await expect(notice).toContainText('Bayuemas Oval, Kuala Lumpur');
+    await expect(notice).toContainText(/What to do:/);
+    await expect(page.getByText('innings needs a match')).toHaveCount(0);
+
+    const rawJson = notice.getByText(/"sourceId"/);
+    await expect(rawJson).toBeHidden();
+    const summary = notice.getByText('Technical details', { exact: true });
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await expect(rawJson).toBeVisible();
+    await expect(notice).toContainText('Staged record: 124358');
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(
+      results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      ),
+    ).toEqual([]);
+  },
+);
