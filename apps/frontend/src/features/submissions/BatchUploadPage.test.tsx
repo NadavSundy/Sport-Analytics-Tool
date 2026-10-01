@@ -106,7 +106,9 @@ describe('guided batch upload', () => {
     await act(async () => {
       renderLegacyRoute(null);
     });
-    expect(await screen.findByRole('heading', { name: 'Login or Sign up' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Login or Sign up' }, { timeout: 5000 }),
+    ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

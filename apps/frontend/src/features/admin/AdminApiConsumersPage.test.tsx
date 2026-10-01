@@ -9,6 +9,7 @@ import { AuthProvider } from '../auth/AuthProvider';
 import { AdminApiConsumersPage } from './AdminApiConsumersPage';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
+const testApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
 const createdAt = '2026-09-27T08:30:00.000Z';
 const rawKey = 'sat_live_test-secret-that-is-only-shown-once';
 
@@ -356,7 +357,7 @@ describe('administrator API consumer management', () => {
     expect(screen.queryByText(rawKey)).not.toBeInTheDocument();
     expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(rawKey);
     expect(fetchMock.mock.calls[2]?.[0]).toBe(
-      'http://localhost:3000/api/v1/admin/api-consumers/12/usage?limit=100',
+      `${testApiBaseUrl}/admin/api-consumers/12/usage?limit=100`,
     );
   });
 
@@ -411,7 +412,7 @@ describe('administrator API consumer management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading usage' }));
     expect(await screen.findByRole('table', { name: /Aggregated usage/ })).toBeInTheDocument();
     expect(fetchMock.mock.calls[3]?.[0]).toBe(
-      'http://localhost:3000/api/v1/admin/api-consumers/12/usage?limit=100',
+      `${testApiBaseUrl}/admin/api-consumers/12/usage?limit=100`,
     );
   });
 });

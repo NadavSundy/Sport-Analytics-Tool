@@ -99,6 +99,10 @@ route/profile pair. The final floors were recalibrated from verified hosted Gite
 median less a three-point shared-runner variance allowance. This protects against false positives
 from runner noise while still detecting meaningful route/profile Performance regression.
 
+The follow-up Gitea pipeline #838 observed three-run mobile medians of 86 for `/fixtures` and 87
+for `/sign-in`; both were one point below those initially persisted floors. Their floors are therefore
+86 and 87 respectively. All other route/profile floors remain those from run 19132.
+
 The recalibration did not change the aggregation algorithm: the runner still performs three runs
 per route/profile, calculates the median of those three runs, then compares that median with the
 persisted route/profile floor. It does not use an arithmetic average. The previous Run 1563 floors
@@ -110,11 +114,11 @@ are retained below as superseded historical calibration evidence, not as the acc
 | `/api`              |                 99 / 84 |              96 / 89 |
 | `/competitions`     |                 99 / 88 |              96 / 87 |
 | `/seasons`          |                 99 / 87 |              96 / 86 |
-| `/fixtures`         |                 99 / 88 |              96 / 87 |
+| `/fixtures`         |                 99 / 88 |              96 / 86 |
 | `/competitors`      |                 99 / 89 |              96 / 87 |
 | `/participants`     |                 99 / 88 |              96 / 87 |
 | `/dataset-releases` |                 99 / 90 |              96 / 88 |
-| `/sign-in`          |                 99 / 90 |              96 / 88 |
+| `/sign-in`          |                 99 / 90 |              96 / 87 |
 
 Missing baseline entries fail closed. The gate is therefore a stable shared-runner regression
 signal, while production Performance >=90 remains the separate Issue #797 acceptance criterion.

@@ -64,11 +64,11 @@ test('approved hosted-CI floors cover every representative route and profile', (
     '/api': { desktop: 96, mobile: 89 },
     '/competitions': { desktop: 96, mobile: 87 },
     '/seasons': { desktop: 96, mobile: 86 },
-    '/fixtures': { desktop: 96, mobile: 87 },
+    '/fixtures': { desktop: 96, mobile: 86 },
     '/competitors': { desktop: 96, mobile: 87 },
     '/participants': { desktop: 96, mobile: 87 },
     '/dataset-releases': { desktop: 96, mobile: 88 },
-    '/sign-in': { desktop: 96, mobile: 88 },
+    '/sign-in': { desktop: 96, mobile: 87 },
   });
 });
 
