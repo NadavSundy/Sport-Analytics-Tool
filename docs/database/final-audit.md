@@ -1,8 +1,8 @@
 # Final database audit
 
-**Issue:** #807  
-**Audit date:** 2026-10-01  
-**Schema authority:** ordered SQL in [`database/migrations/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/)
+- **Issue:** #807
+- **Audit date:** 2026-10-01
+- **Schema authority:** ordered SQL in [`database/migrations/`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/database/migrations/)
 
 This is the final evidence-led audit of the Sport Analytics Tool PostgreSQL design. It indexes the
 executable schema and retained checks rather than becoming a second schema definition. When this
