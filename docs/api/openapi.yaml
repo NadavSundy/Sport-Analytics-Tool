@@ -47,6 +47,12 @@ tags:
   - name: Public Read
     description: Anonymous sport-reference, fixture, accepted-event and statistic reads.
 
+  - name: Analytics Query
+    description: >-
+      Anonymous evaluation of a structured query definition against the
+      statistics the platform already publishes. Evaluation computes nothing of
+      its own; it resolves names and delegates to the published reads.
+
   - name: Dataset Releases
     description: Discoverable immutable published-data snapshots and artefact downloads.
 
@@ -2210,6 +2216,60 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/query-definitions/evaluate:
+    post:
+      tags:
+        - Analytics Query
+      summary: Evaluate a query definition
+      description: |
+        Answers a structured query definition from the statistics the platform
+        already publishes.
+
+        Evaluation calculates nothing. Each name hint is resolved to an
+        identifier through the ordinary parameterised reads, the service that
+        already answers that question is called, and the published resource is
+        returned unchanged alongside the endpoint that returns it and the
+        statistic identifiers inside it that answer the question.
+
+        The operation requires no authentication: it returns only resources the
+        public statistics reads already serve anonymously.
+
+        Every evaluated definition is answered with `200`, including one whose
+        reference resolves to nothing or to more than one entity, and one the
+        published statistics cannot answer. Those are outcomes rather than
+        failures. Only a body that fails the query-definition contract is an
+        error, and that is `422`.
+      operationId: evaluateQueryDefinition
+      x-implementation-status: implemented
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyticsQueryDefinition'
+      responses:
+        '200':
+          description: The definition was evaluated. The outcome names the result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryDefinitionEvaluationResponse'
+        '400': { $ref: '#/components/responses/InvalidJsonBody' }
+        '413':
+          description: The JSON request body exceeds 1 MB (`PAYLOAD_TOO_LARGE`).
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/ApiErrorResponse' } }
+        '422':
+          description: >-
+            The body does not satisfy the query-definition contract
+            (`VALIDATION_FAILED`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503': { $ref: '#/components/responses/DatabaseStatementTimeout' }
+
   /api/v1/provenance/submissions:
     get:
       tags: [Provenance]
@@ -3349,8 +3409,9 @@ components:
         A database statement exceeded the configured execution bound and was
         cancelled, so the request produced no result. The error code is
         `DATABASE_STATEMENT_TIMEOUT`. The condition is temporary and the same
-        request may succeed on retry with bounded backoff. No operation
-        references this response yet; it is declared for the endpoints that will.
+        request may succeed on retry with bounded backoff. Any database-backed
+        operation can end this way; it is documented on the operations whose
+        reads are heavy enough for the bound to be a realistic outcome.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
@@ -5708,6 +5769,284 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/ParticipantAggregate'
+
+    AnalyticsQueryScope:
+      description: >-
+        The level a question is asked at, matching the scopes the published
+        participant aggregates expose.
+      type: string
+      enum: [season, competition, career]
+
+    AnalyticsQueryNameHint:
+      description: >-
+        A name as the reader wrote it, resolved to an identifier server-side. It
+        is never an identifier and never reaches the database as anything but a
+        bound parameter.
+      type: string
+      minLength: 1
+      maxLength: 100
+
+    AnalyticsQueryParticipantReference:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
+
+    AnalyticsQueryCompetitionReference:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
+
+    AnalyticsQuerySeasonReference:
+      description: >-
+        A season is a competition together with a label; it has no name of its
+        own.
+      type: object
+      additionalProperties: false
+      required: [competitionName, seasonLabel]
+      properties:
+        competitionName: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
+        seasonLabel: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
+
+    AnalyticsQueryDefinition:
+      description: >-
+        One structured question over the published statistics. The scope-to-
+        reference rule is part of the contract but cannot be expressed here: a
+        season scope carries a season reference, a competition scope carries a
+        competition reference, and a career scope carries neither. A body that
+        breaks it is rejected with 422.
+      oneOf:
+        - $ref: '#/components/schemas/LeaderboardQueryDefinition'
+        - $ref: '#/components/schemas/ParticipantStatisticsQueryDefinition'
+        - $ref: '#/components/schemas/ParticipantComparisonQueryDefinition'
+        - $ref: '#/components/schemas/UnsupportedQueryDefinition'
+      discriminator:
+        propertyName: kind
+        mapping:
+          leaderboard: '#/components/schemas/LeaderboardQueryDefinition'
+          participant_statistics: '#/components/schemas/ParticipantStatisticsQueryDefinition'
+          participant_comparison: '#/components/schemas/ParticipantComparisonQueryDefinition'
+          unsupported: '#/components/schemas/UnsupportedQueryDefinition'
+
+    LeaderboardQueryDefinition:
+      type: object
+      additionalProperties: false
+      required: [kind, metric, scope]
+      properties:
+        kind: { type: string, const: leaderboard }
+        metric: { $ref: '#/components/schemas/LeaderboardMetric' }
+        scope: { type: string, enum: [season, competition] }
+        season: { $ref: '#/components/schemas/AnalyticsQuerySeasonReference' }
+        competition: { $ref: '#/components/schemas/AnalyticsQueryCompetitionReference' }
+        limit:
+          description: Defaults to 10 when omitted.
+          type: integer
+          minimum: 1
+          maximum: 50
+
+    ParticipantStatisticsQueryDefinition:
+      type: object
+      additionalProperties: false
+      required: [kind, participant, scope]
+      properties:
+        kind: { type: string, const: participant_statistics }
+        participant: { $ref: '#/components/schemas/AnalyticsQueryParticipantReference' }
+        scope: { $ref: '#/components/schemas/AnalyticsQueryScope' }
+        season: { $ref: '#/components/schemas/AnalyticsQuerySeasonReference' }
+        competition: { $ref: '#/components/schemas/AnalyticsQueryCompetitionReference' }
+
+    ParticipantComparisonQueryDefinition:
+      type: object
+      additionalProperties: false
+      required: [kind, participants, scope]
+      properties:
+        kind: { type: string, const: participant_comparison }
+        participants:
+          description: Exactly two references, in the order they are compared.
+          type: array
+          items: { $ref: '#/components/schemas/AnalyticsQueryParticipantReference' }
+          minItems: 2
+          maxItems: 2
+        scope: { $ref: '#/components/schemas/AnalyticsQueryScope' }
+        season: { $ref: '#/components/schemas/AnalyticsQuerySeasonReference' }
+        competition: { $ref: '#/components/schemas/AnalyticsQueryCompetitionReference' }
+
+    UnsupportedQueryDefinition:
+      type: object
+      additionalProperties: false
+      required: [kind, reason]
+      properties:
+        kind: { type: string, const: unsupported }
+        reason: { $ref: '#/components/schemas/UnsupportedQueryReason' }
+
+    UnsupportedQueryReason:
+      type: string
+      enum:
+        - bowler_type
+        - batting_hand
+        - match_phase
+        - venue
+        - super_over
+        - outside_cricket_statistics
+        - ambiguous
+        - other
+
+    QueryDefinitionVersion:
+      description: >-
+        A deterministic digest of the evaluated definition. The same question
+        carries the same version, and reordering the body does not change it.
+      type: string
+      pattern: '^qdv1_[A-Za-z0-9_-]{43}$'
+
+    QueryDefinitionReference:
+      description: Which reference in the definition an outcome is about.
+      type: string
+      enum: [participant, participants.0, participants.1, competition, season]
+
+    QueryDefinitionCandidate:
+      description: >-
+        One entity a name hint could have meant. It carries an identifier and a
+        display name only; many people in the corpus share a display name, so
+        two candidates can look identical here.
+      type: object
+      additionalProperties: false
+      required: [id, displayName]
+      properties:
+        id: { $ref: '#/components/schemas/ApiIdentifier' }
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+
+    QueryDefinitionSource:
+      description: One upstream published call an answer came from.
+      type: object
+      additionalProperties: false
+      required: [endpoint, statisticIds]
+      properties:
+        endpoint:
+          description: The published path, query string included, that returns this result.
+          type: string
+          minLength: 1
+          maxLength: 500
+        statisticIds:
+          description: >-
+            The statistics within that response that answer the question. Empty
+            for a leaderboard, because the published leaderboard carries no
+            statistic identifier.
+          type: array
+          items: { $ref: '#/components/schemas/ApiIdentifier' }
+          maxItems: 50
+
+    QueryDefinitionResolution:
+      description: Every identifier the evaluation resolved, null where a kind has none.
+      type: object
+      additionalProperties: false
+      required: [participantIds, competitionId, seasonId, season]
+      properties:
+        participantIds:
+          type: array
+          items: { $ref: '#/components/schemas/ApiIdentifier' }
+          maxItems: 2
+        competitionId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        seasonId:
+          oneOf:
+            - $ref: '#/components/schemas/ApiIdentifier'
+            - type: 'null'
+        season:
+          type: [string, 'null']
+          minLength: 1
+
+    QueryDefinitionEvaluation:
+      oneOf:
+        - $ref: '#/components/schemas/QueryDefinitionAnswered'
+        - $ref: '#/components/schemas/QueryDefinitionEntityNotFound'
+        - $ref: '#/components/schemas/QueryDefinitionEntityAmbiguous'
+        - $ref: '#/components/schemas/QueryDefinitionUnsupported'
+      discriminator:
+        propertyName: outcome
+        mapping:
+          answered: '#/components/schemas/QueryDefinitionAnswered'
+          entity_not_found: '#/components/schemas/QueryDefinitionEntityNotFound'
+          entity_ambiguous: '#/components/schemas/QueryDefinitionEntityAmbiguous'
+          unsupported: '#/components/schemas/QueryDefinitionUnsupported'
+
+    QueryDefinitionAnswered:
+      type: object
+      additionalProperties: false
+      required: [outcome, definitionVersion, definition, resolved, sources, result]
+      properties:
+        outcome: { type: string, const: answered }
+        definitionVersion: { $ref: '#/components/schemas/QueryDefinitionVersion' }
+        definition: { $ref: '#/components/schemas/AnalyticsQueryDefinition' }
+        resolved: { $ref: '#/components/schemas/QueryDefinitionResolution' }
+        sources:
+          description: >-
+            One entry per upstream call: one for a leaderboard or a single
+            participant, two for a comparison, in the order the definition named
+            them.
+          type: array
+          items: { $ref: '#/components/schemas/QueryDefinitionSource' }
+          minItems: 1
+          maxItems: 2
+        result:
+          description: >-
+            The published resource, unmodified: a leaderboard, one participant's
+            aggregates, or the two being compared in the order named.
+          oneOf:
+            - $ref: '#/components/schemas/Leaderboard'
+            - $ref: '#/components/schemas/ParticipantAggregates'
+            - type: array
+              items: { $ref: '#/components/schemas/ParticipantAggregates' }
+              minItems: 2
+              maxItems: 2
+
+    QueryDefinitionEntityNotFound:
+      type: object
+      additionalProperties: false
+      required: [outcome, definitionVersion, definition, reference, nameHint]
+      properties:
+        outcome: { type: string, const: entity_not_found }
+        definitionVersion: { $ref: '#/components/schemas/QueryDefinitionVersion' }
+        definition: { $ref: '#/components/schemas/AnalyticsQueryDefinition' }
+        reference: { $ref: '#/components/schemas/QueryDefinitionReference' }
+        nameHint: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
+
+    QueryDefinitionEntityAmbiguous:
+      type: object
+      additionalProperties: false
+      required: [outcome, definitionVersion, definition, reference, nameHint, candidates]
+      properties:
+        outcome: { type: string, const: entity_ambiguous }
+        definitionVersion: { $ref: '#/components/schemas/QueryDefinitionVersion' }
+        definition: { $ref: '#/components/schemas/AnalyticsQueryDefinition' }
+        reference: { $ref: '#/components/schemas/QueryDefinitionReference' }
+        nameHint: { $ref: '#/components/schemas/AnalyticsQueryNameHint' }
+        candidates:
+          type: array
+          items: { $ref: '#/components/schemas/QueryDefinitionCandidate' }
+          minItems: 2
+          maxItems: 5
+
+    QueryDefinitionUnsupported:
+      type: object
+      additionalProperties: false
+      required: [outcome, definitionVersion, definition, reason]
+      properties:
+        outcome: { type: string, const: unsupported }
+        definitionVersion: { $ref: '#/components/schemas/QueryDefinitionVersion' }
+        definition: { $ref: '#/components/schemas/AnalyticsQueryDefinition' }
+        reason: { $ref: '#/components/schemas/UnsupportedQueryReason' }
+
+    QueryDefinitionEvaluationResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/QueryDefinitionEvaluation' }
 
     LeaderboardMetric:
       type: string
