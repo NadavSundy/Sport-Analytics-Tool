@@ -17,3 +17,13 @@ test('root frontend test command rebuilds shared contracts before Vitest', () =>
     'the existing frontend Vitest command should remain the test body',
   );
 });
+
+test('frontend CI bounds Vitest workers to avoid runner contention', () => {
+  const workflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
+
+  assert.match(
+    workflow,
+    /npm run test:frontend -- -- --maxWorkers=2/,
+    'frontend CI should use two Vitest workers so slow DOM tests are not starved on shared runners',
+  );
+});
