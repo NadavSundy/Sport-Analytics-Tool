@@ -691,7 +691,7 @@ function SubmissionForm({
         setResult({
           kind: 'rejected',
           message: error.message,
-          details: [],
+          details: error instanceof SubmissionInputError ? error.details : [],
         });
       } else if (error instanceof BatchUploadInputError) {
         setResult({

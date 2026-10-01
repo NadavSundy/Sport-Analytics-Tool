@@ -1,9 +1,14 @@
 import { readFileSync } from 'node:fs';
 
+import type { Fixture } from '@sport-analytics/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { parseCsvRecords, readSingleFixturePackageContext } from './single-fixture-package';
-import { createFixtureProposalBatchFile } from './submission-api';
+import {
+  createFixtureProposalBatchFile,
+  createTechnicalBatchFile,
+  SubmissionInputError,
+} from './submission-api';
 
 const seasonUploadCsvTemplate = readFileSync('public/season-upload-template.csv', 'utf8');
 
@@ -92,5 +97,38 @@ describe('new fixture proposal packages', () => {
     const [header, row] = parseCsvRecords(await readFile(file));
 
     expect(row?.[header?.indexOf('fixtureWinner') ?? -1]).toBe('Wanderers');
+  });
+});
+
+describe('technical JSON validation feedback (#801)', () => {
+  const fixture = {
+    fixtureId: '9',
+    competitionId: '5',
+    competitionName: 'Premier T20',
+    season: '2026',
+  } as Fixture;
+
+  it('reports every invalid field with its event number, not only the first', () => {
+    let caught: unknown;
+    try {
+      createTechnicalBatchFile(fixture, JSON.stringify([{ eventId: 'e1' }]), 'issue-801');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(SubmissionInputError);
+    const error = caught as SubmissionInputError;
+    expect(error.message).toMatch(/problems were found/);
+    expect(error.details.length).toBeGreaterThan(1);
+    expect(error.details.every((detail) => detail.eventIndex === 0)).toBe(true);
+    expect(error.details.map((detail) => detail.field)).toEqual(
+      expect.arrayContaining(['events.0.strikerId', 'events.0.bowlerId']),
+    );
+  });
+
+  it('keeps the single-issue message unchanged', () => {
+    expect(() => createTechnicalBatchFile(fixture, '{ not json', 'issue-801')).toThrow(
+      'Enter valid JSON before submitting.',
+    );
   });
 });

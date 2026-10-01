@@ -1015,6 +1015,39 @@ describe('role-gated event submission page', () => {
     ).toBeInTheDocument();
   });
 
+  it('lists every local technical schema failure with its event number (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    await chooseExistingFixture();
+    const editor = await screen.findByLabelText('Delivery events JSON');
+    const incomplete: Record<string, unknown> = { ...validEvents[0]! };
+    delete incomplete.strikerId;
+    delete incomplete.bowlerId;
+    fireEvent.change(editor, { target: { value: JSON.stringify([validEvents[0], incomplete]) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(screen.getByText(/2 problems were found/)).toBeInTheDocument();
+    const results = within(screen.getByRole('alert')).getAllByRole('listitem');
+    expect(results).toHaveLength(2);
+    expect(results.every((item) => /Event 2/.test(item.textContent ?? ''))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/batches'))).toBe(false);
+  });
+
   it('shows event-specific and field-specific validation results', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);

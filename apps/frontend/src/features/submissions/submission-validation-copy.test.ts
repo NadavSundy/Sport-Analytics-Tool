@@ -6,6 +6,9 @@ import {
   formatBatchValidationMessage,
   formatSchemaValidationFailure,
   formatValidationField,
+  MAX_LISTED_SCHEMA_ISSUES,
+  schemaIssuesToDetails,
+  summariseSchemaIssues,
   validationRuleLabel,
 } from './submission-validation-copy';
 
@@ -97,6 +100,51 @@ describe('submission validation copy', () => {
       ),
     ).toBe(
       'More than one participant is named A. Smith. Choose the correct match before continuing.',
+    );
+  });
+});
+
+describe('schema issue reporting (#801)', () => {
+  const issues = [
+    { path: ['events', 0, 'strikerId'], message: 'Required' },
+    { path: ['events', 0, 'runs', 'total'], message: 'Expected number, received string' },
+    { path: ['events', 2, 'bowlerId'], message: 'Required' },
+  ];
+
+  it('keeps every issue and the event it belongs to', () => {
+    expect(schemaIssuesToDetails(issues)).toEqual([
+      { code: 'INVALID_FIELD', message: 'Required', field: 'events.0.strikerId', eventIndex: 0 },
+      {
+        code: 'INVALID_FIELD',
+        message: 'Expected number, received string',
+        field: 'events.0.runs.total',
+        eventIndex: 0,
+      },
+      { code: 'INVALID_FIELD', message: 'Required', field: 'events.2.bowlerId', eventIndex: 2 },
+    ]);
+  });
+
+  it('does not invent an event number for package-level paths', () => {
+    expect(
+      schemaIssuesToDetails([{ path: ['fixtures', 0, 'context', 'date'], message: 'Invalid date' }]),
+    ).toEqual([{ code: 'INVALID_FIELD', message: 'Invalid date', field: 'fixtures.0.context.date' }]);
+  });
+
+  it('summarises one issue exactly as before and several issues by count', () => {
+    expect(summariseSchemaIssues([issues[0]!])).toBe('Striker: This value is required.');
+    expect(summariseSchemaIssues(issues)).toBe(
+      '3 problems were found. Correct each one listed below, then submit again.',
+    );
+  });
+
+  it('caps very long lists and says how many were left out', () => {
+    const many = Array.from({ length: MAX_LISTED_SCHEMA_ISSUES + 7 }, (_, index) => ({
+      path: ['events', index, 'eventId'],
+      message: 'Required',
+    }));
+    expect(schemaIssuesToDetails(many)).toHaveLength(MAX_LISTED_SCHEMA_ISSUES);
+    expect(summariseSchemaIssues(many)).toBe(
+      `${MAX_LISTED_SCHEMA_ISSUES + 7} problems were found. The first ${MAX_LISTED_SCHEMA_ISSUES} are listed below; correct them, then submit again to see any others.`,
     );
   });
 });
