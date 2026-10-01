@@ -258,6 +258,80 @@ describe('language-model provider configuration', () => {
   });
 });
 
+describe('natural-language query limits', () => {
+  it('defaults to the documented limits', () => {
+    const environment = loadEnvironment(requiredEnvironment);
+
+    expect(environment.NL_QUERY_RATE_LIMIT_PER_MINUTE).toBe(10);
+    expect(environment.NL_QUERY_DAILY_QUOTA_PER_CLIENT).toBe(100);
+    expect(environment.NL_QUERY_GLOBAL_DAILY_LIMIT).toBe(300);
+  });
+
+  it('reads configured limits', () => {
+    const environment = loadEnvironment({
+      ...requiredEnvironment,
+      NL_QUERY_RATE_LIMIT_PER_MINUTE: '30',
+      NL_QUERY_DAILY_QUOTA_PER_CLIENT: '500',
+      NL_QUERY_GLOBAL_DAILY_LIMIT: '1000',
+    });
+
+    expect(environment.NL_QUERY_RATE_LIMIT_PER_MINUTE).toBe(30);
+    expect(environment.NL_QUERY_DAILY_QUOTA_PER_CLIENT).toBe(500);
+    expect(environment.NL_QUERY_GLOBAL_DAILY_LIMIT).toBe(1_000);
+  });
+
+  // A limit of zero would refuse every request and a negative or fractional one
+  // is meaningless, so neither may be configured.
+  it.each([
+    'NL_QUERY_RATE_LIMIT_PER_MINUTE',
+    'NL_QUERY_DAILY_QUOTA_PER_CLIENT',
+    'NL_QUERY_GLOBAL_DAILY_LIMIT',
+  ])('rejects a %s that is not a positive whole number', (variable) => {
+    for (const value of ['0', '-1', '1.5', 'many', '']) {
+      expect(() => loadEnvironment({ ...requiredEnvironment, [variable]: value })).toThrow(
+        variable,
+      );
+    }
+  });
+
+  it('rejects limits above their ceilings', () => {
+    for (const [variable, value] of [
+      ['NL_QUERY_RATE_LIMIT_PER_MINUTE', '121'],
+      ['NL_QUERY_DAILY_QUOTA_PER_CLIENT', '10001'],
+      ['NL_QUERY_GLOBAL_DAILY_LIMIT', '100001'],
+    ] as const) {
+      expect(() => loadEnvironment({ ...requiredEnvironment, [variable]: value })).toThrow(
+        variable,
+      );
+    }
+  });
+});
+
+describe('trusted proxy configuration', () => {
+  // The default trusts nothing, so a deployment that forgets to set the hop count
+  // puts every visitor in one bucket rather than giving each a fresh allowance.
+  it('trusts no proxy hop by default', () => {
+    expect(loadEnvironment(requiredEnvironment).TRUSTED_PROXY_HOP_COUNT).toBe(0);
+  });
+
+  it('reads the configured hop count', () => {
+    expect(
+      loadEnvironment({ ...requiredEnvironment, TRUSTED_PROXY_HOP_COUNT: '1' })
+        .TRUSTED_PROXY_HOP_COUNT,
+    ).toBe(1);
+  });
+
+  // `true` would make Express take the leftmost, caller-supplied address, so the
+  // setting is deliberately a count and cannot be given a boolean.
+  it('rejects a hop count that is not a small whole number', () => {
+    for (const value of ['true', '-1', '4', '1.5', 'all']) {
+      expect(() =>
+        loadEnvironment({ ...requiredEnvironment, TRUSTED_PROXY_HOP_COUNT: value }),
+      ).toThrow('TRUSTED_PROXY_HOP_COUNT');
+    }
+  });
+});
+
 describe('optional configuration warnings', () => {
   it('reports a missing language-model key once, naming only the variable', () => {
     const messages: string[] = [];
