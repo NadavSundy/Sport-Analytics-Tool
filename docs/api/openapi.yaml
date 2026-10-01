@@ -45,7 +45,10 @@ tags:
     description: Managed-authentication identity and profile-related operations.
 
   - name: Public Read
-    description: Anonymous sport-reference, fixture, accepted-event and statistic reads.
+    description: >-
+      Canonical cricket-resource reads. A missing X-API-Key uses bounded anonymous access; a valid
+      key selects that consumer's minute limit, UTC daily quota and safe telemetry. Any supplied
+      invalid or revoked key is rejected rather than downgraded to anonymous access.
 
   - name: Analytics Query
     description: >-
@@ -75,9 +78,9 @@ tags:
 
   - name: Consumer API
     description: >-
-      API-key authenticated external consumer reads with per-consumer protections.
-      The complete protected fixture, event, statistic and export surface is
-      documented in `docs/api/consumer-keys.md`.
+      Consumer-specific operations and deprecated keyed compatibility aliases. New integrations
+      use canonical Public Read paths with optional X-API-Key identification. The access and
+      migration contract is documented in `docs/api/consumer-keys.md`.
 
 paths:
   /openapi.yaml:
@@ -414,6 +417,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: List competitions with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/competitions` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: listConsumerCompetitions
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -448,6 +456,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: List fixtures with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: listConsumerFixtures
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -505,6 +518,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Get a fixture with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: getConsumerFixture
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -526,6 +544,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: List accepted fixture events with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/events` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: listConsumerFixtureEvents
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -580,6 +603,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Export accepted fixture events as JSON with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/events/export.json` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: exportConsumerFixtureEventsJson
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -616,6 +644,15 @@ paths:
       responses:
         '200':
           description: Every matching accepted event in occurrence order.
+          headers:
+            Deprecation: { $ref: '#/components/headers/Deprecation' }
+            Link: { $ref: '#/components/headers/SuccessorLink' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+            X-Quota-Limit: { $ref: '#/components/headers/QuotaLimit' }
+            X-Quota-Remaining: { $ref: '#/components/headers/QuotaRemaining' }
+            X-Quota-Reset: { $ref: '#/components/headers/QuotaReset' }
           content:
             application/json:
               schema:
@@ -631,6 +668,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Export accepted fixture events as CSV with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/events/export.csv` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: exportConsumerFixtureEventsCsv
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -688,6 +730,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Get an accepted fixture event with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/events/{eventId}` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: getConsumerFixtureEvent
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -710,6 +757,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Get fixture statistics with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/statistics` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: getConsumerFixtureStatistics
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -733,6 +785,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Get one fixture statistic with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: getConsumerFixtureStatistic
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -757,6 +814,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Export a fixture statistic trace as JSON with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.json` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: exportConsumerFixtureStatisticEventsJson
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -782,6 +844,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Export a fixture statistic trace as CSV with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/fixtures/{fixtureId}/statistics/{statisticId}/events/export.csv` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: exportConsumerFixtureStatisticEventsCsv
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -813,6 +880,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Get participant aggregates with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/participants/{participantId}/statistics` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: getConsumerParticipantStatistics
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -836,6 +908,11 @@ paths:
     get:
       tags: [Consumer API]
       summary: Get one participant aggregate with a consumer API key
+      deprecated: true
+      description: >-
+        Deprecated compatibility alias. Migrate to `GET /api/v1/participants/{participantId}/statistics/{statisticId}` and send the
+        same `X-API-Key` there for identified-consumer limits, quota and usage accounting.
+        Responses include `Deprecation: ?1` and a successor `Link`; no retirement date is scheduled.
       operationId: getConsumerParticipantStatistic
       x-implementation-status: implemented
       security: [{ apiKeyAuth: [] }]
@@ -1311,7 +1388,7 @@ paths:
       summary: List competitions
       operationId: listCompetitions
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -1338,7 +1415,7 @@ paths:
       summary: Get a competition
       operationId: getCompetition
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/CompetitionId'
       responses:
@@ -1358,7 +1435,7 @@ paths:
       summary: List seasons
       operationId: listSeasons
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -1390,7 +1467,7 @@ paths:
       summary: Get a season
       operationId: getSeason
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/SeasonId'
       responses:
@@ -1410,7 +1487,7 @@ paths:
       summary: List fixtures
       operationId: listFixtures
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -1467,7 +1544,7 @@ paths:
       summary: Get a fixture
       operationId: getFixture
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
       responses:
@@ -1491,7 +1568,7 @@ paths:
         revision history and internal audit fields are not exposed.
       operationId: listFixtureEvents
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - $ref: '#/components/parameters/Limit'
@@ -1545,7 +1622,7 @@ paths:
       summary: Get an accepted fixture event
       operationId: getFixtureEvent
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - $ref: '#/components/parameters/EventId'
@@ -1564,7 +1641,6 @@ paths:
       tags:
         - Public Read
       summary: Export accepted fixture events as JSON
-      deprecated: true
       description: |
         Exports every current accepted fixture event matching the filters, in
         deterministic innings and sequence order. It accepts the same filters as
@@ -1577,16 +1653,9 @@ paths:
         names and represent absent extras categories as zero. Submission
         ownership, revision history and internal audit fields are not exposed.
 
-        This operation is deprecated but remains available for compatibility.
-        Migrate to `GET /api/v1/consumer/fixtures/{fixtureId}/events/export.json`
-        with an `X-API-Key`; it returns the same export representation and
-        supports the same filters. Responses include `Deprecation: ?1` and a
-        `Link` header with `rel="successor-version"` containing the concrete
-        replacement URL. No retirement date is scheduled, so no `Sunset` header
-        is sent.
       operationId: exportFixtureEventsJson
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - name: inningsId
@@ -1620,17 +1689,6 @@ paths:
       responses:
         '200':
           description: Every matching accepted event in occurrence order.
-          headers:
-            Deprecation:
-              description: RFC 9745 Structured Field indicating this operation is deprecated.
-              schema:
-                type: string
-                example: '?1'
-            Link:
-              description: RFC 8288 successor-version link to the concrete consumer export URL.
-              schema:
-                type: string
-                example: '</api/v1/consumer/fixtures/100/events/export.json>; rel="successor-version"'
           content:
             application/json:
               schema:
@@ -1654,7 +1712,7 @@ paths:
         example `fixture-481-player-30-over-4-events.csv`.
       operationId: exportFixtureEventsCsv
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - name: inningsId
@@ -1723,7 +1781,7 @@ paths:
         returning a file that disagrees with the trace.
       operationId: exportFixtureStatisticEventsJson
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - $ref: '#/components/parameters/StatisticId'
@@ -1755,7 +1813,7 @@ paths:
         `fixture-481-player-30-events.csv`.
       operationId: exportFixtureStatisticEventsCsv
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - $ref: '#/components/parameters/StatisticId'
@@ -1792,7 +1850,7 @@ paths:
         innings are excluded from this Basic standard scope.
       operationId: getFixtureStatistics
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - $ref: '#/components/parameters/IncludeStatisticContributors'
@@ -1818,7 +1876,7 @@ paths:
         statistics endpoint. Contributing accepted event records are opt-in.
       operationId: getFixtureStatistic
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/FixtureId'
         - $ref: '#/components/parameters/StatisticId'
@@ -1955,7 +2013,7 @@ paths:
       summary: List competitors
       operationId: listCompetitors
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -1993,7 +2051,7 @@ paths:
       summary: Get a competitor
       operationId: getCompetitor
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/CompetitorId'
       responses:
@@ -2013,7 +2071,7 @@ paths:
       summary: List participants
       operationId: listParticipants
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -2051,7 +2109,7 @@ paths:
       summary: Get a participant
       operationId: getParticipant
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/ParticipantId'
       responses:
@@ -2080,7 +2138,7 @@ paths:
         exposed.
       operationId: listParticipantFixtures
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/ParticipantId'
         - $ref: '#/components/parameters/Limit'
@@ -2117,7 +2175,7 @@ paths:
         leg-byes and innings penalty runs remain team extras.
       operationId: getParticipantAggregates
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/ParticipantId'
         - $ref: '#/components/parameters/ParticipantAggregateScope'
@@ -2143,7 +2201,7 @@ paths:
         aggregates endpoint, at whichever level produced it.
       operationId: getParticipantAggregate
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/ParticipantId'
         - $ref: '#/components/parameters/StatisticId'
@@ -2173,7 +2231,7 @@ paths:
         most 50 entries and expose no submission, account, review or audit data.
       operationId: getStatisticsLeaderboard
       x-implementation-status: implemented
-      security: []
+      security: [{}, { apiKeyAuth: [] }]
       parameters:
         - name: scope
           in: query
@@ -3328,6 +3386,16 @@ components:
           - career
 
   headers:
+    Deprecation:
+      description: RFC 9745 Structured Field indicating a compatibility alias is deprecated.
+      required: true
+      schema: { type: string, example: '?1' }
+    SuccessorLink:
+      description: RFC 8288 successor-version link to the canonical resource path.
+      required: true
+      schema:
+        type: string
+        example: '</api/v1/fixtures/100/events/export.json>; rel="successor-version"'
     RateLimitLimit:
       description: Requests permitted in the current 60-second rate-limit window.
       required: true

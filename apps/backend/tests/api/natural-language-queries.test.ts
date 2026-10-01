@@ -138,6 +138,7 @@ function appWith(options: TestAppOptions = {}) {
     undefined,
     leaderboards,
     { names },
+    undefined,
     { naturalLanguageQueryLimiter: ALWAYS_ADMIT, ...options },
   );
 }

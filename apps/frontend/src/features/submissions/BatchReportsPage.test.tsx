@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/auth-js';
 import type { BatchReportItem, BatchReportResponse } from '@sport-analytics/contracts';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -520,5 +520,167 @@ describe('batch report view', () => {
       'href',
       `/submissions/new?workflow=season&replaces=${reference}&competitionId=5`,
     );
+  });
+});
+
+describe('unresolved fixture errors (#827)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const location = {
+    filePath: 'batch.json',
+    sheetName: null,
+    rowNumber: null,
+    jsonPath: null,
+    ordinal: 0,
+  };
+  const context = {
+    eventReference: 'cricsheet:delivery:acc-wpc-2026-final-1-0-1',
+    fixtureId: null,
+    fixtureLabel: null,
+    inningsId: null,
+    overNumber: 0,
+    positionInOver: 0,
+    description: 'Event cricsheet:delivery:acc-wpc-2026-final-1-0-1 at over 0, delivery 0.',
+  };
+  const submittedFixture = {
+    season: { context: { name: '2026' } },
+    context: {
+      date: '2026-06-13',
+      teams: [
+        { context: { name: 'Thailand Women' } },
+        { context: { name: 'United Arab Emirates Women' } },
+      ],
+      venue: 'Bayuemas Oval, Kuala Lumpur',
+    },
+    sourceId: 'cricsheet:fixture:acc-wpc-2026-final',
+  };
+
+  function unresolvedFixtureReport(fixtureContext: unknown = submittedFixture) {
+    const body = report(0, 0);
+    body.data.batch.counts.unresolved = 1;
+    body.data.items = [
+      {
+        ordinal: 0,
+        outcome: 'unresolved',
+        location,
+        context,
+        stagedRecordId: '124358',
+        acceptedRecordId: null,
+        operation: 'upsert',
+        correctionTarget: null,
+        referenceResolutions: [
+          {
+            referencePath: 'fixture',
+            entityType: 'fixture',
+            state: 'unresolved',
+            submittedReference: fixtureContext,
+            reason: 'No fixture carries the source reference "acc-wpc-2026-final".',
+            requiredAction: 'contact_reviewer',
+            candidates: [],
+          },
+          {
+            referencePath: 'innings',
+            entityType: 'innings',
+            state: 'unresolved',
+            submittedReference: {
+              context: { ordinal: 1, battingTeam: { context: { name: 'Thailand Women' } } },
+            },
+            reason:
+              'The fixture reference did not resolve, so no innings scope is available. An innings is never matched outside its fixture.',
+            requiredAction: 'contact_reviewer',
+            candidates: [],
+          },
+        ],
+        errors: [
+          {
+            ruleCode: 'REFERENCE_RESOLUTION_FAILED',
+            message: 'One or more event references are unresolved.',
+            location,
+            context,
+          },
+        ],
+      },
+    ];
+    return body;
+  }
+
+  async function renderUnresolved(fixtureContext?: unknown) {
+    vi.stubGlobal('fetch', reportFetch(unresolvedFixtureReport(fixtureContext)));
+    await renderReport();
+    return screen.findByRole('region', { name: 'Match could not be found' });
+  }
+
+  test('renders a plain-language fixture error with match context and a next step', async () => {
+    const notice = await renderUnresolved();
+    expect(notice).toHaveTextContent('Thailand Women vs United Arab Emirates Women');
+    expect(notice).toHaveTextContent('13 June 2026');
+    expect(notice).toHaveTextContent('Bayuemas Oval, Kuala Lumpur');
+    expect(notice).toHaveTextContent(/this match is not in the system yet/i);
+    expect(notice).toHaveTextContent(
+      /what to do: ask a reviewer to match or create this fixture before this event can be accepted/i,
+    );
+  });
+
+  test('hides raw JSON, internal ids and source references until technical details are opened', async () => {
+    const notice = await renderUnresolved();
+    const details = within(notice).getByText('Technical details').closest('details')!;
+    expect(details).not.toHaveAttribute('open');
+
+    const summaryText = Array.from(notice.children)
+      .filter((child) => !child.matches('details'))
+      .map((child) => child.textContent)
+      .join(' ');
+    expect(summaryText).not.toMatch(/cricsheet:|\{"|124358|Staged record/);
+    for (const node of screen.queryAllByText(/cricsheet:|Staged record/)) {
+      expect(details).toContainElement(node);
+    }
+  });
+
+  test('technical details expand and keep every diagnostic for reviewers', async () => {
+    const notice = await renderUnresolved();
+    const summary = within(notice).getByText('Technical details');
+    const details = summary.closest('details')!;
+    summary.focus();
+    expect(summary).toHaveFocus();
+    fireEvent.click(summary);
+    expect(details).toHaveAttribute('open');
+
+    expect(details).toHaveTextContent('cricsheet:fixture:acc-wpc-2026-final');
+    expect(details).toHaveTextContent(
+      'No fixture carries the source reference "acc-wpc-2026-final".',
+    );
+    expect(details).toHaveTextContent('"venue":"Bayuemas Oval, Kuala Lumpur"');
+    expect(details).toHaveTextContent('REFERENCE_RESOLUTION_FAILED');
+    expect(details).toHaveTextContent('Staged record: 124358');
+    expect(details).toHaveTextContent('An innings is never matched outside its fixture.');
+  });
+
+  test('does not repeat innings and delivery errors that stem from the unresolved fixture', async () => {
+    const notice = await renderUnresolved();
+    expect(screen.queryByText(/innings needs a match/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fixture needs a match/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Reference could not be matched')).not.toBeInTheDocument();
+    expect(notice).toHaveTextContent(
+      /also waiting on this match: 1st innings, Thailand Women batting/i,
+    );
+    expect(screen.getAllByRole('region', { name: 'Match could not be found' })).toHaveLength(1);
+  });
+
+  test('keeps the link to the source record', async () => {
+    const notice = await renderUnresolved();
+    expect(within(notice).getByRole('link', { name: /view in batch\.json/i })).toHaveAttribute(
+      'href',
+      '#batch-item-0-source',
+    );
+  });
+
+  test('still renders a useful message when optional match context is missing', async () => {
+    const notice = await renderUnresolved({ sourceId: 'cricsheet:fixture:acc-wpc-2026-final' });
+    expect(notice).toHaveTextContent(/this match is not in the system yet/i);
+    expect(notice).toHaveTextContent(/what to do:/i);
+    expect(notice).not.toHaveTextContent(/undefined|null/);
   });
 });

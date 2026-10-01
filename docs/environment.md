@@ -31,6 +31,11 @@ https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainer
 | `SUPABASE_PUBLISHABLE_KEY`               | Yes                                                 | No     | Publishable key used for backend `getUser()` verification.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `SUPABASE_SECRET_KEY`                    | No; required to enable account deletion             | Yes    | Server-only key used by Supabase Auth Admin deletion.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `DATABASE_URL`                           | Required when database access is used               | Yes    | Hosted PostgreSQL session-pooler connection string.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `DATABASE_STATEMENT_TIMEOUT_MS`          | No; defaults to `15000`                             | No     | PostgreSQL statement timeout in milliseconds; must be between 1000 and 120000.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `ANONYMOUS_RATE_LIMIT_SECRET`            | Required in production; optional local fallback     | Yes    | At least 32 characters used to HMAC anonymous client addresses before counter storage.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `ANONYMOUS_RATE_LIMIT_PER_MINUTE`        | No; defaults to `30`                                | No     | Per-pseudonymous-source canonical-read minute allowance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE` | No; defaults to `600`                               | No     | Shared anonymous canonical-read minute budget.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `TRUST_PROXY_HOPS`                       | No; defaults to `0`                                 | No     | Exact trusted reverse-proxy hop count used when deriving the client address.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `OBJECT_STORAGE_PROVIDER`                | Required in production; explicit for local releases | No     | `filesystem` for local development or `azure` for deployed production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `DEPLOYMENT_ENVIRONMENT`                 | Required as non-`local` in production               | No     | Release namespace such as `local` or `dev`; prevents cross-environment artifact references.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `OBJECT_STORAGE_FILESYSTEM_ROOT`         | Required when provider is `filesystem`              | No     | Local private-object root; the example resolves to repository-local `.local/object-storage`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -74,15 +79,20 @@ The normal deployed API uses the non-secret runtime variables in the preceding t
 `SUPABASE_PUBLISHABLE_KEY` are ordinary runtime configuration values; they are not substituted for
 server secrets.
 
-`DATABASE_URL`, `SUPABASE_SECRET_KEY` and `LLM_API_KEY` are Key Vault secret values, held as
-`backend-database-url`, `backend-supabase-secret-key` and `backend-llm-api-key`. Container Apps
+`DATABASE_URL`, `SUPABASE_SECRET_KEY`, `ANONYMOUS_RATE_LIMIT_SECRET` and `LLM_API_KEY` are Key Vault
+secret values. The database, Supabase and language-model values are held as `backend-database-url`,
+`backend-supabase-secret-key` and `backend-llm-api-key`; the anonymous HMAC secret uses its documented
+backend secret reference. Container Apps
 receives only versionless Key Vault secret-reference URIs, creates Container Apps secrets, and
-supplies those three variables through `secretRef`. The Container Apps secret names are local
+supplies those four variables through `secretRef`. The Container Apps secret names are local
 aliases and do not repeat the vault's `backend-` prefix. The deployment CI receives only the URIs,
 never their values. `SUPABASE_SECRET_KEY` is required to preserve authenticated account deletion;
 process startup and unrelated routes remain available without it, but deletion returns `501`.
 `LLM_API_KEY` is optional to the application in every environment, and without it only
 natural-language query translation is disabled.
+
+The deployed anonymous limits are `30` per source and `600` globally per UTC minute;
+`TRUST_PROXY_HOPS=1` trusts only the Container Apps ingress hop.
 
 `TRUSTED_PROXY_HOP_COUNT` and the three `NL_QUERY_*` limits are plain values the template sets, not
 parameters the deployment has to supply. The limits are Bicep parameters with defaults, so they can be
@@ -91,9 +101,15 @@ at `1` because the same template defines the ingress it describes. None of them 
 parameter: a required parameter added without a matching argument in the deployment workflow fails
 every backend deploy, which is what issue #831 records.
 
+`TRUST_PROXY_HOPS` (issue #821) and `TRUSTED_PROXY_HOP_COUNT` (issue #815) both name the same hop
+count, and the application applies it once: an explicit `TRUST_PROXY_HOPS` is honoured, otherwise
+`TRUSTED_PROXY_HOP_COUNT`. Both are set to `1` in the deployed template. Setting them to different
+values is a configuration error rather than two independent settings, because the anonymous read
+limits and the natural-language limits both identify a client from the same derived address.
+
 Gitea Actions secrets are separate again. The existing `AZURE_WORKER_CREDENTIALS` secret is the
 shared Azure resource-group deployment-principal credential despite its worker-oriented legacy name.
-Backend-specific secrets hold the resource group, three Key Vault secret-reference URIs, CORS
+Backend-specific secrets hold the resource group, four Key Vault secret-reference URIs, CORS
 origins, Supabase URL, and Supabase publishable key used by backend deployment CI. Do not put real values in
 `.env` examples, Docker build arguments, Bicep outputs, workflow logs, or repository documentation.
 
@@ -159,5 +175,7 @@ The explicit local-filesystem and production-Azure provider configuration was do
 assistance of Codex[GPT-5].
 The Issue #563 Container Apps configuration and secret-reference boundary was documented with the
 assistance of Codex[GPT-5].
+The issue #821 anonymous-read limit configuration was documented with the assistance of
+Codex[GPT-5].
 The issue #815 natural-language query limits and trusted-proxy hop count were documented with the
 assistance of Claude-Code[Claude Opus 5 (1M context)].

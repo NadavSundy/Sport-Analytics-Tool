@@ -93,6 +93,11 @@ import {
 } from './modules/api-consumers/api-consumer.repository';
 import { createConsumerRouter } from './modules/api-consumers/consumer.routes';
 import { createConsumerAuthentication } from './modules/api-consumers/consumer-authentication';
+import {
+  createLazyAnonymousAccessRepository,
+  type AnonymousAccessRepository,
+} from './modules/api-consumers/anonymous-access.repository';
+import { createCanonicalReadAuthentication } from './modules/api-consumers/canonical-read-authentication';
 import { createProvenanceRouter } from './modules/provenance/provenance.routes';
 import {
   createProvenanceService,
@@ -137,6 +142,7 @@ export interface AppDependencies {
   batchService?: BatchService;
   apiConsumerService?: ApiConsumerService;
   apiConsumerRepository?: ApiConsumerRepository;
+  anonymousAccessRepository?: AnonymousAccessRepository;
   datasetReleaseService?: DatasetReleaseService;
   provenanceService?: ProvenanceService;
 }
@@ -230,6 +236,18 @@ export function createApp(dependencies: AppDependencies = {}) {
   const apiConsumerService =
     dependencies.apiConsumerService ?? createApiConsumerService(apiConsumerRepository);
   const consumerAuthentication = createConsumerAuthentication(apiConsumerRepository);
+  const anonymousAccessRepository =
+    dependencies.anonymousAccessRepository ?? createLazyAnonymousAccessRepository();
+  const canonicalReadAuthentication = createCanonicalReadAuthentication(
+    apiConsumerRepository,
+    anonymousAccessRepository,
+    {
+      sourceLimitPerMinute: environment.ANONYMOUS_RATE_LIMIT_PER_MINUTE ?? 30,
+      globalLimitPerMinute: environment.ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE ?? 600,
+      sourceKeySecret:
+        environment.ANONYMOUS_RATE_LIMIT_SECRET ?? 'development-only-anonymous-rate-secret',
+    },
+  );
   const datasetReleaseService =
     dependencies.datasetReleaseService ??
     createDatasetReleaseService(undefined, {
@@ -254,10 +272,18 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.disable('x-powered-by');
   // The hop count is taken from the right of `X-Forwarded-For`, so `request.ip`
   // is the address the infrastructure added rather than anything the caller put
-  // there. The per-client limits depend on this: with `true` Express would take
-  // the leftmost, client-supplied entry and the limits could be bypassed by
-  // sending a header.
-  app.set('trust proxy', environment.TRUSTED_PROXY_HOP_COUNT);
+  // there. Both the issue #821 anonymous read limits
+  // (`canonical-read-authentication.ts`) and the issue #815 natural-language
+  // limits depend on it: with `true` Express would take the leftmost,
+  // client-supplied entry and either limit could be bypassed by sending a header.
+  //
+  // The two issues each introduced a variable for the same hop count, so this is
+  // applied once. Setting it twice would let the later call silently override the
+  // earlier one, and a deployment that configured only `TRUST_PROXY_HOPS` would
+  // lose its per-client limits without any error. `TRUST_PROXY_HOPS` has no
+  // default, so an explicit value from either variable is honoured and neither
+  // can quietly widen what the other trusts.
+  app.set('trust proxy', environment.TRUST_PROXY_HOPS ?? environment.TRUSTED_PROXY_HOP_COUNT);
   app.use(helmet());
   app.use(
     cors({
@@ -303,6 +329,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     next();
   });
   app.use(apiDeprecationMiddleware);
+  app.use(API_BASE_PATH, canonicalReadAuthentication);
 
   app.use(`${API_BASE_PATH}/health`, healthRouter);
   app.use(`${API_BASE_PATH}/auth`, createAuthRouter(verifyAccessToken, synchronizeAccount));

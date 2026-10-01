@@ -62,6 +62,7 @@ function appLogging(
     undefined,
     undefined,
     undefined,
+    undefined,
     { logger, llmClient, naturalLanguageQueryLimiter: limiter },
   );
 }

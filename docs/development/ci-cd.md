@@ -136,6 +136,41 @@ validation/browser/quality jobs rather than spawning a duplicate acceptance work
 Documentation-only changes still run a strict MkDocs build. OpenAPI-related documentation also runs
 Redocly linting.
 
+## Lighthouse performance regression gate
+
+Issue #797 adds a dedicated `lighthouse` job for representative public frontend routes. The job
+builds the contracts and production frontend, serves the Vite preview, and audits these routes:
+
+```text
+/
+/api
+/competitions
+/seasons
+/fixtures
+/competitors
+/participants
+/dataset-releases
+/sign-in
+```
+
+Every route is audited with desktop and mobile profiles three times. The runner aggregates each
+route/profile result using the median and evaluates the result with
+`LIGHTHOUSE_GATE_MODE=baseline`. The persisted Performance floors live in
+`scripts/lighthouse-ci-baseline.mjs`; a missing route/profile floor fails the gate closed rather
+than silently disabling regression protection.
+
+The shared hosted runner uses this baseline gate because absolute production-style Lighthouse
+thresholds are not stable enough there to be a reliable merge signal. Production Performance >=90
+acceptance evidence is maintained separately from the CI regression gate. `strict` and `report`
+modes remain available for their existing diagnostic uses.
+
+The job retains `summary.md`, `summary.json` and individual JSON reports in the
+`lighthouse-public-baseline-<commit>` artifact. Upload uses `if: always()` so reports remain
+available after a regression failure. The gate covers public routes only; it does not bypass or
+claim automated coverage for authenticated routes. See
+[Issue #797 Lighthouse evidence](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-797-lighthouse-performance.md)
+for the approved baseline source and final hosted-run evidence.
+
 ## Intermediate ingestion merge gate
 
 Issue #364 is integrated into the normal change-aware Pull Request workflow rather than retained as a

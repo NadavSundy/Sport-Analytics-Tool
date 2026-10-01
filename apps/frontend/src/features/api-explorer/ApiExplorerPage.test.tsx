@@ -124,11 +124,15 @@ describe('ApiExplorerPage', () => {
     expect(within(accessRegion).getByRole('heading', { name: 'Public API' })).toBeVisible();
     expect(within(accessRegion).getByText(/without authentication/)).toBeVisible();
 
-    expect(within(accessRegion).getByRole('heading', { name: 'Consumer API' })).toBeVisible();
-    expect(within(accessRegion).getByText(/administrator-issued API key/)).toBeVisible();
+    expect(
+      within(accessRegion).getByRole('heading', { name: 'Identified consumer access' }),
+    ).toBeVisible();
+    expect(within(accessRegion).getByText(/same canonical resource paths/)).toBeVisible();
+    expect(within(accessRegion).getByText(/valid consumer API key/)).toBeVisible();
     expect(within(accessRegion).getByText(/X-API-Key/)).toBeVisible();
     expect(within(accessRegion).getByText(/ask a Stat'sTheGame administrator/)).toBeVisible();
     expect(within(accessRegion).getByText(/rate limits and daily quotas/)).toBeVisible();
+    expect(within(accessRegion).getByText(/invalid or revoked key is rejected/)).toBeVisible();
 
     expect(
       within(accessRegion).getByRole('link', {

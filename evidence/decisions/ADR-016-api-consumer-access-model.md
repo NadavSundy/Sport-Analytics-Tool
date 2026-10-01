@@ -51,7 +51,7 @@ Every current `/api/v1/consumer/*` operation requires a valid active `X-API-Key`
 then consumes the consumer's shared PostgreSQL minute limit and UTC daily quota and records safe
 usage telemetry. Unknown, malformed and revoked keys receive the same generic `401` response.
 
-Fourteen routes are aliases with the same controllers and response contracts as anonymous routes:
+Thirteen routes are aliases with the same controllers and response contracts as anonymous routes:
 
 | Current consumer alias                                                                 | Anonymous equivalent                                                          | Classification       |
 | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------- |

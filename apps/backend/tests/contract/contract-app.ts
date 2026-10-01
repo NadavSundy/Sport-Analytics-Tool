@@ -59,6 +59,7 @@ export function contractApp(options: ContractAppOptions = {}) {
     options.provenance as ProvenanceService | undefined,
     options.leaderboards as LeaderboardsService | undefined,
     options.queryDefinitionNames,
+    undefined,
     {
       ...(options.llmClient !== undefined ? { llmClient: options.llmClient } : {}),
       ...(options.naturalLanguageQueryLimiter !== undefined

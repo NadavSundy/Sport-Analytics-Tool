@@ -1,8 +1,12 @@
 # Public read API
 
-The public read API provides anonymous access to competition and fixture reference data.
+The public read API provides canonical access to cricket reference and analytical data.
 
-No sign-in or bearer token is required for these endpoints.
+No sign-in or bearer token is required. A missing `X-API-Key` uses the bounded anonymous policy;
+supplying a valid active consumer key keeps the same URL and response contract while selecting that
+consumer's rate limit, UTC daily quota and safe usage telemetry. A supplied malformed, unknown or
+revoked key returns `401 API_KEY_UNAUTHORIZED` rather than falling back to anonymous access. See
+[Consumer API keys, rate limits and quotas](consumer-keys.md).
 
 All application data is served through the handwritten Express backend. Supabase-generated Data API or PostgREST endpoints are not used as the public Sport Analytics API.
 
@@ -612,3 +616,5 @@ The machine-readable specification is documented in the [OpenAPI specification](
 The preceding document was planned, generated, reviewed and edited with the assistance of
 ChatGPT-Web[GPT-5.6 Sol] and Codex[GPT-5]. The complete export and calculation-trace export
 documentation for issue #467 was updated with the assistance of Claude Code[Claude Opus 5].
+The issue #821 optional consumer identification boundary was documented with the assistance of
+Codex[GPT-5].

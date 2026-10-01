@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const infrastructurePath = path.join(repositoryRoot, 'infra', 'azure', 'backend', 'main.bicep');
+// The real backend deployment. deploy-backend.yml is a manual App Service
+// rollback workflow and does not deploy this template.
+const workflowPath = path.join(repositoryRoot, '.gitea', 'workflows', 'ci.yml');
 
 test('backend Container Apps infrastructure reuses shared resources and isolates identities', async () => {
   await assert.doesNotReject(access(infrastructurePath), 'backend Bicep must exist');
@@ -50,6 +53,21 @@ test('backend Container Apps infrastructure preserves secret and service boundar
     infrastructure,
     /\{ name: 'SUPABASE_SECRET_KEY', secretRef: 'supabase-secret-key' \}/,
   );
+  assert.match(infrastructure, /param anonymousRateLimitSecretUri string/);
+  assert.match(
+    infrastructure,
+    /name: 'anonymous-rate-limit-secret'[\s\S]*keyVaultUrl: anonymousRateLimitSecretUri[\s\S]*identity: runtimeIdentity\.id/,
+  );
+  assert.match(
+    infrastructure,
+    /\{ name: 'ANONYMOUS_RATE_LIMIT_SECRET', secretRef: 'anonymous-rate-limit-secret' \}/,
+  );
+  assert.match(infrastructure, /\{ name: 'ANONYMOUS_RATE_LIMIT_PER_MINUTE', value: '30' \}/);
+  assert.match(
+    infrastructure,
+    /\{ name: 'ANONYMOUS_GLOBAL_RATE_LIMIT_PER_MINUTE', value: '600' \}/,
+  );
+  assert.match(infrastructure, /\{ name: 'TRUST_PROXY_HOPS', value: '1' \}/);
   assert.doesNotMatch(
     infrastructure,
     /\{ name: 'SUPABASE_SECRET_KEY', value:/,
@@ -92,16 +110,19 @@ test('backend Container Apps infrastructure configures the natural-language quer
 });
 
 // Issue #831: a required parameter added without a matching argument in the
-// deployment workflow fails every backend deploy. The limits are therefore
-// declared with defaults, so the template keeps the same required parameters.
+// deploy_backend job fails every backend deploy, and nothing else catches it. So
+// the required set is asserted against what that job actually passes, rather than
+// against a list someone has to remember to update.
 test('backend Container Apps infrastructure requires no parameter the deployment does not pass', async () => {
   const infrastructure = await readFile(infrastructurePath, 'utf8');
+  const workflow = await readFile(workflowPath, 'utf8');
 
-  const withoutDefault = [...infrastructure.matchAll(/^param (\w+) [^=\n]+$/gm)].map(
-    ([, name]) => name,
-  );
+  const required = [...infrastructure.matchAll(/^param (\w+) [^=\n]+$/gm)]
+    .map(([, name]) => name)
+    .sort();
 
-  assert.deepEqual(withoutDefault.sort(), [
+  assert.deepEqual(required, [
+    'anonymousRateLimitSecretUri',
     'containerImage',
     'corsOrigins',
     'databaseSecretUri',
@@ -110,4 +131,16 @@ test('backend Container Apps infrastructure requires no parameter the deployment
     'supabaseSecretKeySecretUri',
     'supabaseUrl',
   ]);
+
+  const deployment = workflow.slice(
+    workflow.indexOf('--template-file infra/azure/backend/main.bicep'),
+  );
+  const passed = [...deployment.slice(0, 1500).matchAll(/^\s+(\w+)=/gm)].map(([, name]) => name);
+
+  for (const parameter of required) {
+    assert.ok(
+      passed.includes(parameter),
+      `main.bicep requires ${parameter} but the deploy_backend job does not pass it`,
+    );
+  }
 });
