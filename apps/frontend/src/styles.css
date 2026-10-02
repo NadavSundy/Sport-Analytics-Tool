@@ -6161,3 +6161,147 @@ h3 {
 .batch-fixture-error .validation-technical-details code {
   white-space: pre-wrap;
 }
+
+/* Issue #816: the "Ask a stats question" home-page widget.
+   The section reserves its height so arriving with the rest of the lazy home
+   content shifts nothing below it, and the dialog is an overlay so opening it
+   shifts nothing either. */
+.ask-question {
+  border-block: 1px solid var(--colour-border);
+  background: var(--colour-surface-soft);
+}
+
+.ask-question__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+  padding-block: var(--space-12);
+  min-height: 14rem;
+}
+
+.ask-question__summary {
+  color: var(--colour-text-secondary);
+  margin-block-end: 0;
+  max-width: 48rem;
+}
+
+.ask-question__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: start center;
+  padding: var(--space-6);
+  overflow-y: auto;
+  background: rgb(16 32 38 / 55%);
+}
+
+.ask-question__dialog {
+  width: min(100%, 48rem);
+  padding: var(--space-8);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--colour-border);
+  background: var(--colour-surface);
+  box-shadow: var(--shadow-overlay);
+}
+
+.ask-question__dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ask-question__dialog-header h2 {
+  margin: 0;
+}
+
+.ask-question__examples-label {
+  margin-block: var(--space-6) var(--space-2);
+  color: var(--colour-text-secondary);
+}
+
+.ask-question__examples {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.ask-question__examples button {
+  width: 100%;
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface-soft);
+  color: var(--colour-text);
+  cursor: pointer;
+}
+
+.ask-question__dialog textarea {
+  width: 100%;
+  margin-block-start: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.ask-question__count,
+.ask-question__disclosure {
+  color: var(--colour-text-secondary);
+  font-size: 0.875rem;
+  margin-block: var(--space-2);
+}
+
+.ask-question__result {
+  margin-block-start: var(--space-6);
+}
+
+.ask-question__interpretation {
+  padding: var(--space-3);
+  border-inline-start: 3px solid var(--colour-primary);
+  background: var(--colour-surface-soft);
+}
+
+.ask-question__candidates {
+  margin: var(--space-3) 0 0;
+  padding-inline-start: var(--space-5);
+}
+
+.ask-question__sources {
+  color: var(--colour-text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Tables and the comparison can exceed a phone's width, so each scrolls inside
+   its own box rather than making the page scroll sideways. */
+.ask-question__answer {
+  overflow-x: auto;
+}
+
+.ask-question__answer--comparison {
+  display: grid;
+  gap: var(--space-6);
+}
+
+@media (max-width: 47.9375rem) {
+  .ask-question__layout {
+    grid-template-columns: 1fr;
+    min-height: 18rem;
+  }
+
+  .ask-question__overlay {
+    padding: var(--space-3);
+  }
+
+  .ask-question__dialog {
+    padding: var(--space-5);
+  }
+}
