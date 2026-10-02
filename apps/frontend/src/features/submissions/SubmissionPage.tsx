@@ -1294,9 +1294,12 @@ function SubmissionForm({
                 <p>
                   Optional: <code>ballNumber</code> (display label such as 0.1), <code>extras</code>{' '}
                   (wides, noBalls, byes, legByes, penalty) and <code>wickets</code> (each with{' '}
-                  <code>kind</code>, <code>playerOutId</code> and any <code>fielders</code>). Run
-                  extras must equal the extras breakdown, and total runs must equal off-bat runs
-                  plus extras.
+                  <code>kind</code>, <code>playerOutId</code> and any <code>fielders</code>).
+                </p>
+                <p>
+                  Run arithmetic: <code>runs.total</code> is <code>runs.offBat</code> plus{' '}
+                  <code>runs.extras</code>, and <code>runs.extras</code> is the sum of the{' '}
+                  <code>extras</code> breakdown.
                 </p>
                 <p>
                   <a href="/technical-events-example.json" download>
