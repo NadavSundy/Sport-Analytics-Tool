@@ -59,7 +59,7 @@ nav:
           - Batch Ingestion & Review: api/batches.md
           - Consumer API Keys & Limits: api/consumer-keys.md
           - Weather API: api/weather.md
-          - Analytics Query Evaluation: api/analytics-query.md
+          - Analytics Query: api/analytics-query.md
           - Versioning & Deprecation: api/versioning.md
       - Statistics & Exports:
           - Fixture Statistics: statistics/fixture-statistics.md

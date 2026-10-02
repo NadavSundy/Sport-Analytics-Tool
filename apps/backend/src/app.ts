@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
-import pinoHttp from 'pino-http';
+import pinoHttp, { type Options as PinoHttpOptions } from 'pino-http';
 import { API_BASE_PATH, CURRENT_API_VERSION } from '@sport-analytics/contracts';
 import { createWeatherRouter } from './modules/weather/weather.routes';
 import { WeatherService } from './modules/weather/weather.service';
@@ -37,6 +37,13 @@ import {
   type ParticipantAggregatesService,
 } from './modules/statistics/participant-aggregates.service';
 import { createLeaderboardsRouter } from './modules/statistics/leaderboards.routes';
+import { createLlmClient, type LlmClient } from './modules/analytics-query/llm.client';
+import { createNaturalLanguageQueryRouter } from './modules/analytics-query/natural-language-query.routes';
+import {
+  createNaturalLanguageQueryLimiter,
+  type NaturalLanguageQueryLimiter,
+} from './modules/analytics-query/natural-language-query.limiter';
+import { createDatabaseNaturalLanguageQueryUsageRepository } from './modules/analytics-query/natural-language-query.repository';
 import { createQueryDefinitionRouter } from './modules/analytics-query/query-definition.routes';
 import {
   createQueryDefinitionEvaluator,
@@ -113,6 +120,16 @@ export interface AppDependencies {
   queryDefinitionEvaluator?: QueryDefinitionEvaluator;
   /** Injected by the tests; production resolves names through the repositories. */
   queryDefinitionNames?: { names: QueryDefinitionNameResolver };
+  /** Injected by the tests, which never reach the provider. */
+  llmClient?: LlmClient;
+  /** Injected by the tests; production counts in PostgreSQL. */
+  naturalLanguageQueryLimiter?: NaturalLanguageQueryLimiter;
+  /**
+   * Injected so a test can assert on what is logged, which is how the rule that
+   * a question never reaches a log is held. Production builds its own logger,
+   * exactly as before.
+   */
+  logger?: PinoHttpOptions['logger'];
   submissionService?: SubmissionService;
   submitterAccessService?: SubmitterAccessService;
   accountDeletionService?: AccountDeletionService;
@@ -161,6 +178,24 @@ export function createApp(dependencies: AppDependencies = {}) {
       leaderboards: leaderboardsService,
       participantAggregates: participantAggregatesService,
       ...(dependencies.queryDefinitionNames ?? {}),
+    });
+  // The adapter is constructed whether or not a key is configured: with no key
+  // it raises its not-configured error per request, which the endpoint reports as
+  // temporarily unavailable. That keeps one optional feature from deciding
+  // whether the backend starts.
+  const llmClient =
+    dependencies.llmClient ??
+    createLlmClient({
+      apiKey: environment.LLM_API_KEY,
+      model: environment.LLM_MODEL,
+      timeoutMs: environment.LLM_TIMEOUT_MS,
+    });
+  const naturalLanguageQueryLimiter =
+    dependencies.naturalLanguageQueryLimiter ??
+    createNaturalLanguageQueryLimiter(createDatabaseNaturalLanguageQueryUsageRepository(), {
+      rateLimitPerMinute: environment.NL_QUERY_RATE_LIMIT_PER_MINUTE,
+      dailyQuotaPerClient: environment.NL_QUERY_DAILY_QUOTA_PER_CLIENT,
+      globalDailyLimit: environment.NL_QUERY_GLOBAL_DAILY_LIMIT,
     });
   const submissionService = dependencies.submissionService ?? createSubmissionService();
   const submitterAccessService =
@@ -230,15 +265,25 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   const app = express();
 
-  if ((environment.TRUST_PROXY_HOPS ?? 0) > 0) {
-    app.set('trust proxy', environment.TRUST_PROXY_HOPS);
-  }
-
   if (batchPayloadStorageService) {
     app.locals.batchPayloadStorageService = batchPayloadStorageService;
   }
 
   app.disable('x-powered-by');
+  // The hop count is taken from the right of `X-Forwarded-For`, so `request.ip`
+  // is the address the infrastructure added rather than anything the caller put
+  // there. Both the issue #821 anonymous read limits
+  // (`canonical-read-authentication.ts`) and the issue #815 natural-language
+  // limits depend on it: with `true` Express would take the leftmost,
+  // client-supplied entry and either limit could be bypassed by sending a header.
+  //
+  // The two issues each introduced a variable for the same hop count, so this is
+  // applied once. Setting it twice would let the later call silently override the
+  // earlier one, and a deployment that configured only `TRUST_PROXY_HOPS` would
+  // lose its per-client limits without any error. `TRUST_PROXY_HOPS` has no
+  // default, so an explicit value from either variable is honoured and neither
+  // can quietly widen what the other trusts.
+  app.set('trust proxy', environment.TRUST_PROXY_HOPS ?? environment.TRUSTED_PROXY_HOP_COUNT);
   app.use(helmet());
   app.use(
     cors({
@@ -264,6 +309,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     pinoHttp({
       autoLogging: process.env.NODE_ENV !== 'test',
       redact: ['req.headers.authorization', 'req.headers.x-api-key'],
+      ...(dependencies.logger ? { logger: dependencies.logger } : {}),
     }),
   );
 
@@ -291,6 +337,14 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(API_BASE_PATH, createParticipantAggregatesRouter(participantAggregatesService));
   app.use(API_BASE_PATH, createLeaderboardsRouter(leaderboardsService));
   app.use(API_BASE_PATH, createQueryDefinitionRouter(queryDefinitionEvaluator));
+  app.use(
+    API_BASE_PATH,
+    createNaturalLanguageQueryRouter({
+      llmClient,
+      evaluator: queryDefinitionEvaluator,
+      limiter: naturalLanguageQueryLimiter,
+    }),
+  );
   app.use(
     API_BASE_PATH,
     createSubmissionRouter(verifyAccessToken, synchronizeAccount, submissionService),

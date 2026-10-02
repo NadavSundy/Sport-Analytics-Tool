@@ -79,6 +79,10 @@ Ordinary Container App configuration is supplied as non-secret values:
 | `AZURE_CLIENT_ID`                        | Runtime managed identity client ID supplied by Bicep       |
 | `LLM_MODEL`                              | Bicep parameter, currently `claude-haiku-4-5-20251001`     |
 | `LLM_TIMEOUT_MS`                         | Bicep parameter, currently `15000`                         |
+| `TRUSTED_PROXY_HOP_COUNT`                | Fixed `1`: one ingress hop in front of the container       |
+| `NL_QUERY_RATE_LIMIT_PER_MINUTE`         | Bicep parameter, currently `10`                            |
+| `NL_QUERY_DAILY_QUOTA_PER_CLIENT`        | Bicep parameter, currently `100`                           |
+| `NL_QUERY_GLOBAL_DAILY_LIMIT`            | Bicep parameter, currently `300`                           |
 
 `DATABASE_URL`, `SUPABASE_SECRET_KEY`, `ANONYMOUS_RATE_LIMIT_SECRET` and `LLM_API_KEY` are different:
 Key Vault holds their values,
@@ -158,6 +162,33 @@ cross-application configuration matrix.
 | `AZURE_BACKEND_CORS_ORIGINS`                    | Allowed API browser origins.                                                                |
 | `AZURE_BACKEND_SUPABASE_URL`                    | Backend Supabase project URL.                                                               |
 | `AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY`        | Backend Supabase publishable key.                                                           |
+
+## Anonymous natural-language query limits
+
+`POST /api/v1/natural-language-queries` is answered for anonymous visitors and every admitted request
+calls a paid provider, so its limits are the deployment's spending control alongside the ADR-017
+monthly ceiling. The counters live in PostgreSQL, so they hold across restarts and replicas, and they
+fail closed: if a counter cannot be read the endpoint answers `503` rather than admitting an unmetered
+request.
+
+The four values above are set by the template rather than supplied to it. The three limits are Bicep
+parameters with defaults, so one environment can be raised without editing the template body, and
+`TRUSTED_PROXY_HOP_COUNT` is a fixed `1` because the same template defines the ingress it describes.
+None of them is a required parameter, deliberately: issue #831 records that a required parameter added
+without a matching argument in the `deploy_backend` job of `.gitea/workflows/ci.yml` fails every
+backend deploy.
+
+`TRUSTED_PROXY_HOP_COUNT` decides whether the per-client limits work at all. The count is read from
+the right of `X-Forwarded-For`, and Container Apps ingress appends the caller's address to anything
+the caller sent, so `1` selects the entry the platform added and ignores any the caller supplied. A
+higher count would reach into the caller-supplied entries and the limits could be bypassed by sending
+a header; a lower one puts every visitor in a single bucket.
+
+Neither mistake fails a deployment or appears in a log, so **after any deployment that changes this
+value or the ingress in front of the API, run the two-network check** in
+[Analytics query](../api/analytics-query.md#post-deployment-verification): two requests from one
+network must decrease `RateLimit-Remaining`, and a request from a different network must start from
+the full allowance rather than continue the first network's count.
 
 ## Networking and service boundaries
 
@@ -290,3 +321,6 @@ The Container Apps migration documentation for Issue #563 was generated and adap
 assistance of Codex[GPT-5]. It must be reviewed against the first real Azure deployment evidence.
 The issue #821 shared anonymous-limit deployment configuration was documented with the assistance
 of Codex[GPT-5].
+The issue #815 anonymous natural-language query limits, trusted-proxy configuration and
+post-deployment verification were documented with the assistance of
+Claude-Code[Claude Opus 5 (1M context)].

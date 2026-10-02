@@ -53,6 +53,15 @@ param llmModel string = 'claude-haiku-4-5-20251001'
 @description('Millisecond bound on one language-model request; 2000 to 60000.')
 param llmTimeoutMs int = 15000
 
+@description('Natural-language questions one client may ask per minute; 1 to 120.')
+param nlQueryRateLimitPerMinute int = 10
+
+@description('Natural-language questions one client may ask per UTC day; 1 to 10000.')
+param nlQueryDailyQuotaPerClient int = 100
+
+@description('Natural-language questions answered per UTC day across all clients; 1 to 100000.')
+param nlQueryGlobalDailyLimit int = 300
+
 @description('Exact allowed browser origins for credentialed API requests.')
 param corsOrigins string
 
@@ -209,6 +218,18 @@ resource backend 'Microsoft.App/containerApps@2025-02-02-preview' = {
             // request bound are plain values (ADR-017).
             { name: 'LLM_MODEL', value: llmModel }
             { name: 'LLM_TIMEOUT_MS', value: string(llmTimeoutMs) }
+            // One hop, because this template defines the ingress in front of the
+            // container: Container Apps appends the caller's address to any
+            // X-Forwarded-For the caller sent, and the count is read from the
+            // right, so the value Express sees is the one the ingress added. A
+            // larger count would reach into the caller-supplied part of the
+            // header and the per-client limits could be bypassed.
+            { name: 'TRUSTED_PROXY_HOP_COUNT', value: '1' }
+            // Bounds, not credentials: how many questions this deployment will
+            // answer per client and per day (ADR-017).
+            { name: 'NL_QUERY_RATE_LIMIT_PER_MINUTE', value: string(nlQueryRateLimitPerMinute) }
+            { name: 'NL_QUERY_DAILY_QUOTA_PER_CLIENT', value: string(nlQueryDailyQuotaPerClient) }
+            { name: 'NL_QUERY_GLOBAL_DAILY_LIMIT', value: string(nlQueryGlobalDailyLimit) }
             { name: 'OBJECT_STORAGE_PROVIDER', value: 'azure' }
             { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: existingStorage.name }
             { name: 'AZURE_STORAGE_CONTAINER_NAME', value: storageContainerName }

@@ -101,6 +101,27 @@ const environmentSchema = z
     // both, and with exactly one retry the worst case stays near thirty. The
     // ceiling keeps that worst case inside what a person will wait for.
     LLM_TIMEOUT_MS: z.coerce.number().int().min(2_000).max(60_000).default(15_000),
+    // How many reverse-proxy hops in front of the application may be trusted.
+    //
+    // The count is taken from the right of `X-Forwarded-For`, so it names the
+    // hops the infrastructure added and a client can only prepend addresses it
+    // cannot then be identified by. `1` is correct behind Container Apps ingress,
+    // which appends the caller's address to anything the caller sent. `true`
+    // would be wrong: Express would then take the leftmost entry, which the
+    // client controls, and the per-client limits could be bypassed at will.
+    //
+    // The default of `0` trusts nothing and uses the socket address, which is
+    // right for local development and deliberately wrong-but-safe in a
+    // misconfigured deployment: every visitor shares one bucket, so the limits
+    // bind too tightly rather than not at all.
+    TRUSTED_PROXY_HOP_COUNT: z.coerce.number().int().min(0).max(3).default(0),
+    // The anonymous natural-language query allowances. They are generous per
+    // client because a campus or a mobile network can put many readers behind one
+    // address, and bounded globally because every admitted request costs money
+    // against the ADR-017 monthly limit.
+    NL_QUERY_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(10),
+    NL_QUERY_DAILY_QUOTA_PER_CLIENT: z.coerce.number().int().min(1).max(10_000).default(100),
+    NL_QUERY_GLOBAL_DAILY_LIMIT: z.coerce.number().int().min(1).max(100_000).default(300),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === 'production') {
