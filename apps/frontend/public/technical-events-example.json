@@ -1,0 +1,72 @@
+[
+  {
+    "eventId": "123e4567-e89b-42d3-a456-426614174000",
+    "inningsId": "10",
+    "sequenceNumber": 1,
+    "overNumber": 0,
+    "positionInOver": 0,
+    "ballNumber": "0.1",
+    "strikerId": "20",
+    "nonStrikerId": "21",
+    "bowlerId": "22",
+    "runs": {
+      "offBat": 4,
+      "extras": 0,
+      "total": 4,
+      "nonBoundary": false
+    },
+    "extras": {},
+    "wickets": []
+  },
+  {
+    "eventId": "123e4567-e89b-42d3-a456-426614174001",
+    "inningsId": "10",
+    "sequenceNumber": 2,
+    "overNumber": 0,
+    "positionInOver": 1,
+    "ballNumber": "0.2",
+    "strikerId": "20",
+    "nonStrikerId": "21",
+    "bowlerId": "22",
+    "runs": {
+      "offBat": 0,
+      "extras": 1,
+      "total": 1,
+      "nonBoundary": false
+    },
+    "extras": {
+      "wides": 1
+    },
+    "wickets": []
+  },
+  {
+    "eventId": "123e4567-e89b-42d3-a456-426614174002",
+    "inningsId": "10",
+    "sequenceNumber": 3,
+    "overNumber": 0,
+    "positionInOver": 2,
+    "ballNumber": "0.2",
+    "strikerId": "20",
+    "nonStrikerId": "21",
+    "bowlerId": "22",
+    "runs": {
+      "offBat": 0,
+      "extras": 0,
+      "total": 0,
+      "nonBoundary": false
+    },
+    "extras": {},
+    "wickets": [
+      {
+        "kind": "caught",
+        "playerOutId": "20",
+        "fielders": [
+          {
+            "participantId": "23",
+            "substitute": false
+          }
+        ]
+      }
+    ]
+  }
+]

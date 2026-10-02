@@ -691,7 +691,7 @@ function SubmissionForm({
         setResult({
           kind: 'rejected',
           message: error.message,
-          details: [],
+          details: error instanceof SubmissionInputError ? error.details : [],
         });
       } else if (error instanceof BatchUploadInputError) {
         setResult({
@@ -1282,6 +1282,31 @@ function SubmissionForm({
                   ? 'Administrators use the privileged direct-import path; ordinary submitters are staged for review.'
                   : 'This technical input is staged and must pass review before publication.'}
               </p>
+
+              <section className="field-help" aria-label="Event fields">
+                <p>
+                  Required: <code>eventId</code> (a UUID), <code>inningsId</code>,{' '}
+                  <code>sequenceNumber</code>, <code>overNumber</code>, <code>positionInOver</code>,{' '}
+                  <code>strikerId</code>, <code>nonStrikerId</code>, <code>bowlerId</code> and{' '}
+                  <code>runs</code> (<code>offBat</code>, <code>extras</code> and <code>total</code>
+                  ).
+                </p>
+                <p>
+                  Optional: <code>ballNumber</code> (display label such as 0.1), <code>extras</code>{' '}
+                  (wides, noBalls, byes, legByes, penalty) and <code>wickets</code> (each with{' '}
+                  <code>kind</code>, <code>playerOutId</code> and any <code>fielders</code>).
+                </p>
+                <p>
+                  Run arithmetic: <code>runs.total</code> is <code>runs.offBat</code> plus{' '}
+                  <code>runs.extras</code>, and <code>runs.extras</code> is the sum of the{' '}
+                  <code>extras</code> breakdown.
+                </p>
+                <p>
+                  <a href="/technical-events-example.json" download>
+                    Download technical JSON example
+                  </a>
+                </p>
+              </section>
 
               <textarea
                 id="submission-events"

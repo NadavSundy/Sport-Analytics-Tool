@@ -17,6 +17,18 @@ The deployed frontend publishes these downloadable starter files:
 - [Canonical JSON template](https://sport-analytics-tool-web.pages.dev/season-upload-template.json)
 - [Spreadsheet CSV template](https://sport-analytics-tool-web.pages.dev/season-upload-template.csv)
 - [Multi-file manifest template](https://sport-analytics-tool-web.pages.dev/season-upload-manifest-template.json)
+- [Back-catalogue (multi-season) JSON template](https://sport-analytics-tool-web.pages.dev/season-upload-catalogue-template.json)
+- [Advanced technical events example](https://sport-analytics-tool-web.pages.dev/technical-events-example.json)
+  (the `events` array for the identifier-based direct submission contract, not a season package)
+
+Since issue #801 every template above is parsed by
+`packages/contracts/src/tests/shipped-templates.test.ts` with the schema the
+server enforces, and the worker expands the JSON templates in
+`apps/worker/tests/batch-package.test.ts`, so a template that drifts from the
+contract fails CI. The back-catalogue template demonstrates the fixture-level
+`season` described in [Multi-season back catalogues](#multi-season-back-catalogues);
+in the CSV template, `seasonName` is filled on every row and rows may name
+different seasons.
 
 The CSV is a spreadsheet-oriented flat view of the same values. Repeating
 fixture and innings context in each row is intentional: spreadsheet users do
@@ -267,6 +279,20 @@ applicable. All recorded faults are returned instead of only the first fault. Ru
 errors by stable code. The complete report is available as JSON from
 `GET /api/v1/batches/{batchReference}/report/download`.
 
+### Submitter-facing feedback (#801)
+
+- A rejected upload shows the server's message and every returned detail,
+  located by event or row and field, instead of a generic retry message.
+- Client-side schema checks on technical JSON and new-fixture packages list
+  every problem (up to 50, with a count of the rest), not only the first.
+- A reference with no safe match shows the submitted value and the resolver's
+  reason, and tells the submitter to check the spelling and upload a corrected
+  file, or to contact a reviewer if the record does not exist yet.
+- A fully rejected batch tells the submitter to correct the reported problems
+  and upload the corrected file as a new submission. A changed file has a new
+  checksum, so it creates a new receipt rather than conflicting with the
+  rejected one.
+
 ## AI Declaration
 
 This Issue #357 contract and documentation were generated with the assistance
@@ -275,6 +301,8 @@ the assistance of Codex[GPT-5]. The reference-mapping section was generated with
 the assistance of Codex[GPT-5].
 The Issue #587 source-only reference-resolution rules were documented with the
 assistance of Codex[GPT-5].
+The Issue #801 template and submitter-feedback notes were documented with the
+assistance of Claude-Web[Claude Opus 5.5].
 
 ## Multi-season back catalogues
 
