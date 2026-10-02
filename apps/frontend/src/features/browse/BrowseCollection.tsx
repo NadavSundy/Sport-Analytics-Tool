@@ -37,6 +37,9 @@ interface BrowseCollectionProps<Resource> {
   filters: FilterField[];
   headerAction?: ReactNode;
   load: (search: string, signal: AbortSignal) => Promise<CollectionResponse<Resource>>;
+  onFiltersApplied?: (filters: URLSearchParams) => void;
+  onFiltersCleared?: () => void;
+  onFilterSelectionUnavailable?: (name: string, value: string) => void;
   renderItem: (resource: Resource) => ReactNode;
   resourceLabel: string;
   title: string;
@@ -147,7 +150,17 @@ function FilterCombobox({
   );
 }
 
-function FilterForm({ fields }: { fields: FilterField[] }) {
+function FilterForm({
+  fields,
+  onFiltersApplied,
+  onFiltersCleared,
+  onFilterSelectionUnavailable,
+}: {
+  fields: FilterField[];
+  onFiltersApplied?: (filters: URLSearchParams) => void;
+  onFiltersCleared?: () => void;
+  onFilterSelectionUnavailable?: (name: string, value: string) => void;
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialValues = Object.fromEntries(
     fields.map((field) => [field.name, searchParams.get(field.name) ?? '']),
@@ -248,6 +261,7 @@ function FilterForm({ fields }: { fields: FilterField[] }) {
         return next;
       });
     } else {
+      onFilterSelectionUnavailable?.(field.name, values[field.name] ?? '');
       setValidationMessages((current) => ({
         ...current,
         [field.name]: `The selected ${field.entityName} is no longer available. Clear it or choose another.`,
@@ -292,6 +306,7 @@ function FilterForm({ fields }: { fields: FilterField[] }) {
     }
 
     setSearchParams(nextSearch);
+    onFiltersApplied?.(nextSearch);
   }
 
   const activeFilters = fields.flatMap((field) => {
@@ -316,7 +331,7 @@ function FilterForm({ fields }: { fields: FilterField[] }) {
     <form className="filter-panel" onSubmit={applyFilters}>
       <div className="filter-panel__heading">
         <h2>Filter records</h2>
-        <Link className="text-link" to=".">
+        <Link className="text-link" onClick={onFiltersCleared} to=".">
           Clear filters
         </Link>
       </div>
@@ -388,6 +403,9 @@ export function BrowseCollection<Resource>({
   filters,
   headerAction,
   load,
+  onFiltersApplied,
+  onFiltersCleared,
+  onFilterSelectionUnavailable,
   renderItem,
   resourceLabel,
   title,
@@ -409,7 +427,13 @@ export function BrowseCollection<Resource>({
       </header>
 
       <div className="browse-page__content content-boundary">
-        <FilterForm fields={filters} key={searchParams.toString()} />
+        <FilterForm
+          fields={filters}
+          key={searchParams.toString()}
+          {...(onFiltersApplied ? { onFiltersApplied } : {})}
+          {...(onFiltersCleared ? { onFiltersCleared } : {})}
+          {...(onFilterSelectionUnavailable ? { onFilterSelectionUnavailable } : {})}
+        />
 
         <section aria-labelledby="results-heading" className="results-region">
           <div className="results-heading">

@@ -13,6 +13,7 @@ interface DetailLayoutProps {
   eyebrow: string;
   title: string;
   breadcrumbs?: NavigationItem[];
+  headerAction?: ReactNode;
   sections?: NavigationItem[];
 }
 
@@ -21,6 +22,7 @@ export function DetailLayout({
   backTo,
   breadcrumbs,
   children,
+  headerAction,
   eyebrow,
   sections,
   title,
@@ -41,6 +43,7 @@ export function DetailLayout({
       <header className="page-heading page-heading--detail">
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
+        {headerAction ? <div className="page-heading__action">{headerAction}</div> : null}
       </header>
       {sections ? <SectionNavigation items={sections} label={`${title} sections`} /> : null}
       {children}

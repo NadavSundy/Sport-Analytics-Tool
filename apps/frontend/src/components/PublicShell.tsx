@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthProvider';
+import { getPinnedShortcuts, type PinnedShortcut } from '../features/browse/pinned-shortcuts';
 import { ThemeToggle } from './ThemeToggle';
 import { getInitialTheme, type Theme } from '../theme';
 
@@ -90,6 +91,63 @@ function workspaceItems(profile: CurrentUserProfile | null): MenuItem[] {
       { label: 'Review', to: '/reviews/batches' },
     ];
   return [];
+}
+
+function usePinnedNavigationItems(): MenuItem[] {
+  const { identity, isAuthenticated } = useAuth();
+  const accountId = isAuthenticated ? (identity?.id ?? null) : null;
+  const [shortcuts, setShortcuts] = useState<PinnedShortcut[]>([]);
+  const [items, setItems] = useState<MenuItem[]>([]);
+
+  useEffect(() => {
+    function updateShortcuts() {
+      setShortcuts(accountId ? getPinnedShortcuts(accountId) : []);
+    }
+
+    updateShortcuts();
+    window.addEventListener('stats-pinned-change', updateShortcuts);
+    return () => window.removeEventListener('stats-pinned-change', updateShortcuts);
+  }, [accountId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    if (shortcuts.length === 0) {
+      setItems([]);
+      return () => controller.abort();
+    }
+
+    void import('../api/public-read')
+      .then(({ publicReadApi }) =>
+        Promise.all(
+          shortcuts.map(async (shortcut) => {
+            try {
+              const response =
+                shortcut.kind === 'team'
+                  ? await publicReadApi.getCompetitor(shortcut.id, controller.signal)
+                  : await publicReadApi.getCompetition(shortcut.id, controller.signal);
+              return {
+                label: `${shortcut.kind === 'team' ? 'Team' : 'League'}: ${response.data.name}`,
+                to:
+                  shortcut.kind === 'team'
+                    ? `/competitors/${encodeURIComponent(shortcut.id)}`
+                    : `/competitions/${encodeURIComponent(shortcut.id)}`,
+              };
+            } catch {
+              return null;
+            }
+          }),
+        ),
+      )
+      .then((nextItems) => {
+        if (!controller.signal.aborted) {
+          setItems(nextItems.filter((item): item is MenuItem => item !== null));
+        }
+      });
+
+    return () => controller.abort();
+  }, [shortcuts]);
+
+  return items;
 }
 
 function NavigationMenu({ id, items, label }: { id: string; items: MenuItem[]; label: string }) {
@@ -181,7 +239,13 @@ function AuthenticationNavigation({ profile }: { profile: CurrentUserProfile | n
   );
 }
 
-function MobileNavigation({ profile }: { profile: CurrentUserProfile | null }) {
+function MobileNavigation({
+  items,
+  profile,
+}: {
+  items: MenuItem[];
+  profile: CurrentUserProfile | null;
+}) {
   const { isAuthenticated, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -260,6 +324,12 @@ function MobileNavigation({ profile }: { profile: CurrentUserProfile | null }) {
                 <NavLink to="/admin">Administration</NavLink>
               </section>
             ) : null}
+            {items.length > 0 ? (
+              <section>
+                <h2>Pinned</h2>
+                {items.map(link)}
+              </section>
+            ) : null}
             <section>
               <h2>Account</h2>
               {isAuthenticated ? (
@@ -291,6 +361,7 @@ function MobileNavigation({ profile }: { profile: CurrentUserProfile | null }) {
 
 export function PublicShell({ children }: PublicShellProps) {
   const profile = useNavigationProfile();
+  const pinnedItems = usePinnedNavigationItems();
   return (
     <div className="public-shell">
       <a className="skip-link" href="#main-content">
@@ -303,13 +374,16 @@ export function PublicShell({ children }: PublicShellProps) {
           </Link>
           <nav aria-label="Public records" className="site-navigation">
             <NavigationMenu id="explore-menu" items={exploreItems} label="Explore Data" />
+            {pinnedItems.length > 0 ? (
+              <NavigationMenu id="pinned-menu" items={pinnedItems} label="Pinned" />
+            ) : null}
             <NavLink to="/dataset-releases">Downloads</NavLink>
             <NavLink to="/api">API</NavLink>
           </nav>
           <div className="site-header__controls">
             <AuthenticationNavigation profile={profile} />
             <ThemeToggle />
-            <MobileNavigation profile={profile} />
+            <MobileNavigation items={pinnedItems} profile={profile} />
           </div>
         </div>
       </header>

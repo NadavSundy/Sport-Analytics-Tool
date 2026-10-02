@@ -12,7 +12,7 @@ import type { QueryDefinitionNameResolver } from '../../src/modules/analytics-qu
 import type { FixtureStatisticsService } from '../../src/modules/statistics/fixture-statistics.service';
 import type { SubmissionService } from '../../src/modules/submissions/submission.service';
 import type { SubmitterAccessService } from '../../src/modules/submitter-access/submitter-access.service';
-import { createTestAccount, createTestApp } from '../test-app';
+import { createTestAccount, createTestApp, type TestAppOptions } from '../test-app';
 
 /**
  * Named options for the contract tests, mapped onto the positional
@@ -33,6 +33,8 @@ interface ContractAppOptions {
   participantAggregates?: Partial<ParticipantAggregatesService>;
   leaderboards?: Partial<LeaderboardsService>;
   queryDefinitionNames?: { names: QueryDefinitionNameResolver };
+  llmClient?: TestAppOptions['llmClient'];
+  naturalLanguageQueryLimiter?: TestAppOptions['naturalLanguageQueryLimiter'];
 }
 
 export function contractApp(options: ContractAppOptions = {}) {
@@ -57,6 +59,13 @@ export function contractApp(options: ContractAppOptions = {}) {
     options.provenance as ProvenanceService | undefined,
     options.leaderboards as LeaderboardsService | undefined,
     options.queryDefinitionNames,
+    undefined,
+    {
+      ...(options.llmClient !== undefined ? { llmClient: options.llmClient } : {}),
+      ...(options.naturalLanguageQueryLimiter !== undefined
+        ? { naturalLanguageQueryLimiter: options.naturalLanguageQueryLimiter }
+        : {}),
+    },
   );
 }
 

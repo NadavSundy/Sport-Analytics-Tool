@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const infrastructurePath = path.join(repositoryRoot, 'infra', 'azure', 'backend', 'main.bicep');
+// The real backend deployment. deploy-backend.yml is a manual App Service
+// rollback workflow and does not deploy this template.
+const workflowPath = path.join(repositoryRoot, '.gitea', 'workflows', 'ci.yml');
 
 test('backend Container Apps infrastructure reuses shared resources and isolates identities', async () => {
   await assert.doesNotReject(access(infrastructurePath), 'backend Bicep must exist');
@@ -82,4 +85,62 @@ test('backend Container Apps infrastructure preserves secret and service boundar
     infrastructure,
     /(?:SharedAccessKey|AccountKey|AZURE_STORAGE_CONNECTION_STRING|AZURE_STORAGE_SAS_TOKEN)/,
   );
+});
+
+test('backend Container Apps infrastructure configures the natural-language query limits', async () => {
+  const infrastructure = await readFile(infrastructurePath, 'utf8');
+
+  // One hop: Container Apps appends the caller's address to any X-Forwarded-For
+  // the caller sent, and the count is read from the right. A larger count would
+  // reach into the caller-supplied part of the header, and the per-client limits
+  // would be bypassable by sending one.
+  assert.match(infrastructure, /\{ name: 'TRUSTED_PROXY_HOP_COUNT', value: '1' \}/);
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_RATE_LIMIT_PER_MINUTE', value: string\(nlQueryRateLimitPerMinute\) \}/,
+  );
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_DAILY_QUOTA_PER_CLIENT', value: string\(nlQueryDailyQuotaPerClient\) \}/,
+  );
+  assert.match(
+    infrastructure,
+    /\{ name: 'NL_QUERY_GLOBAL_DAILY_LIMIT', value: string\(nlQueryGlobalDailyLimit\) \}/,
+  );
+});
+
+// Issue #831: a required parameter added without a matching argument in the
+// deploy_backend job fails every backend deploy, and nothing else catches it. So
+// the required set is asserted against what that job actually passes, rather than
+// against a list someone has to remember to update.
+test('backend Container Apps infrastructure requires no parameter the deployment does not pass', async () => {
+  const infrastructure = await readFile(infrastructurePath, 'utf8');
+  const workflow = await readFile(workflowPath, 'utf8');
+
+  const required = [...infrastructure.matchAll(/^param (\w+) [^=\n]+$/gm)]
+    .map(([, name]) => name)
+    .sort();
+
+  assert.deepEqual(required, [
+    'anonymousRateLimitSecretUri',
+    'containerImage',
+    'corsOrigins',
+    'databaseSecretUri',
+    'llmApiKeySecretUri',
+    'supabasePublishableKey',
+    'supabaseSecretKeySecretUri',
+    'supabaseUrl',
+  ]);
+
+  const deployment = workflow.slice(
+    workflow.indexOf('--template-file infra/azure/backend/main.bicep'),
+  );
+  const passed = [...deployment.slice(0, 1500).matchAll(/^\s+(\w+)=/gm)].map(([, name]) => name);
+
+  for (const parameter of required) {
+    assert.ok(
+      passed.includes(parameter),
+      `main.bicep requires ${parameter} but the deploy_backend job does not pass it`,
+    );
+  }
 });

@@ -24,7 +24,8 @@ This Privacy Notice applies to personal information processed through:
 - authenticated Stat’sTheGame accounts;
 - submitter and administrator workflows;
 - Stat’sTheGame API-consumer accounts and API credentials where linked to an identifiable person;
-- communications sent to statsthegame@gmail.com; and
+- communications sent to statsthegame@gmail.com;
+- the text of natural-language statistics questions asked through the site; and
 - supporting infrastructure used to operate the service.
 
 Public cricket statistics, fixtures, events, datasets and other information about professional cricket are not necessarily personal information about a user of Stat’sTheGame. This notice focuses on personal information relating to people who use, administer or communicate with the service.
@@ -139,6 +140,8 @@ Additional information and permissions are required if you choose to request sub
 Stat’sTheGame currently uses browser **local storage**, rather than first-party advertising or analytics cookies, for the following purposes:
 
 - **Theme preference:** the application stores your selected Day Match or Night Match theme so that the preference is remembered on later visits.
+- **Saved fixture context:** when you are signed in, the application stores your selected competition and season under your authenticated account's browser-storage key so that fixture browsing can resume in that context. This preference contains only the selected public record identifiers and is not used for advertising or behavioural profiling.
+- **Pinned shortcuts:** when you are signed in, the application stores up to three pinned public team or competition identifiers under your authenticated account's browser-storage key so that those pages can be reached quickly from navigation. These identifiers are not used for advertising or behavioural profiling.
 - **Authentication session:** Supabase Auth uses browser storage to persist the managed authentication session, refresh authentication tokens and recognise a returning signed-in user.
 
 Authentication information stored by the Supabase client is used for account access and is not used by Stat’sTheGame for advertising.
@@ -151,7 +154,7 @@ Third-party services involved in authentication, including Google and Supabase, 
 
 Because Stat’sTheGame does not currently use non-essential advertising or analytics cookies, it does not currently display a cookie-consent banner. If tracking practices change, this notice and any necessary consent controls will be updated.
 
-You can clear local storage and cookies through your browser settings. Clearing authentication storage may sign you out, and clearing the theme preference will cause the application to select a theme again.
+You can clear local storage and cookies through your browser settings. Clearing authentication storage may sign you out, and clearing a theme or saved fixture-context preference will cause the application to use its normal default behaviour again.
 
 ## 8. Service providers and recipients
 
@@ -159,8 +162,16 @@ To operate Stat’sTheGame, the project uses third-party technology providers. P
 
 - **Google**, for Google OAuth authentication and the project’s Gmail inbox;
 - **Supabase**, for managed authentication and hosted PostgreSQL services;
-- **Microsoft Azure**, for backend hosting, private object storage, infrastructure and related services; and
+- **Microsoft Azure**, for backend hosting, private object storage, infrastructure and related services;
+- **Anthropic**, for processing the text of natural-language statistics questions; and
 - **Cloudflare**, for frontend hosting and delivery.
+
+When you ask a statistics question in your own words, the text of that question is sent to Anthropic
+so that it can be turned into a structured query over the statistics published here. Only the
+question text is sent: no account information, no cricket data and no identifier for you accompanies
+it. The question is answered from statistics this project already publishes, and the answer is
+produced by Stat’sTheGame rather than by Anthropic. Asking a question is optional, and every
+statistic a question can reach is also available by browsing the site.
 
 These providers process information according to their own service terms, privacy commitments and the configuration selected by the project team.
 
@@ -272,3 +283,7 @@ For privacy questions, access or correction requests, account-deletion assistanc
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The saved fixture-context browser-storage disclosure was updated with the assistance of Codex[GPT-5].
+The pinned-shortcuts browser-storage disclosure was updated with the assistance of Codex[GPT-5].
+The issue #816 natural-language question disclosure was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)].
