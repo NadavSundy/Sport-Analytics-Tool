@@ -42,10 +42,10 @@ separate pull and runtime managed identities. Its ingress is external HTTPS-only
 `/api/v1/health`, and its normal deployment is an immutable container image. The worker remains a
 separate Container App with the Service Bus boundary; the API has no Service Bus configuration.
 
-The historical backend App Service `statsthegame-api-dev` is retained during acceptance so that it
-can be redeployed manually if revision recovery is insufficient. It must not be removed or treated as
-an automatic rollback guarantee. See [Azure backend deployment](azure-backend.md) for capacity,
-configuration, rollout and rollback detail.
+The historical backend App Service `statsthegame-api-dev` may remain as an Azure resource for
+incident evidence or later decommissioning, but it is not a supported deployment or recovery target.
+Backend manual recovery now redeploys the existing `statsthegame-dev-api` Container App through the
+same Bicep and immutable-image path used by automatic CI.
 
 The frontend is a pre-built static bundle with no server-side runtime, so it does not need App Service
 compute at all: it is now deployed to a Cloudflare Pages project and served from Cloudflare's edge, with

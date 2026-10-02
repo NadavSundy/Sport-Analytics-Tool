@@ -32,14 +32,11 @@ ADR-010 and ADR-011 select these targets for Intermediate implementation. The ve
 Repository definitions are not evidence that a live Azure deployment has succeeded; the deployed
 revision and exact commit-SHA image must still be verified.
 
-Azure App Service was originally accepted in ADR 0003 for the frontend and backend. Both have since
-moved off it: the backend now runs on Azure Container Apps (issue #563), with `statsthegame-api-dev`
-retained as a manual App Service fallback during acceptance; the frontend has moved to Cloudflare Pages
-(issue #564, see `docs/deployment/frontend-cloudflare-pages.md`) because its built output is static and
-does not need continuously running compute, with the Azure frontend deployment retained in parallel
-until Cloudflare Pages acceptance succeeds, then retired. The documentation site was already hosted
-separately on Cloudflare Pages, deployed from the generated MkDocs `site/` directory with Wrangler, and
-both migrations follow that same pattern.
+Azure App Service was originally accepted in ADR 0003 for the frontend and backend. Both normal
+deployment paths have since moved away from App Service: the frontend is on Cloudflare Pages and the
+backend is on Azure Container Apps. Historical App Service resources and incident notes may remain
+for audit/history, but the supported backend manual recovery path now redeploys
+`statsthegame-dev-api` through the same Container Apps/Bicep configuration used by automatic CI.
 
 ## Minimum environments
 
@@ -61,7 +58,7 @@ both migrations follow that same pattern.
   workflow for recovery and deliberate operational redeployment.
 - Automatically deploy backend-affecting main commits to Container Apps only after quality succeeds;
   require the active healthy revision to use the exact commit-SHA image, then run health and
-  database-backed smoke checks. Retain the manual App Service workflow for acceptance rollback.
+  database-backed smoke checks. Use `.gitea/workflows/deploy-backend.yml` for manual Container Apps recovery and verify the healthy revision plus database-backed smoke checks.
 
 See:
 
@@ -91,7 +88,7 @@ Using a fixed runner label provides a more reproducible CI environment than
 university-hosted runners.
 
 The automatic validation and affected-target deployments run through `Sport Analytics CI`. The
-standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Redeploy App Service Backend
+standalone `Sport Analytics - Deploy Frontend`, `Sport Analytics - Manual Backend Recovery
 (Rollback)`, `Sport Analytics - Deploy Docs` and `Sport Analytics - Provision and Deploy Batch Worker`
 workflows use the same runner for manual recovery/redeployment.
 
