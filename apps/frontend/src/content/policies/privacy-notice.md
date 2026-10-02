@@ -139,6 +139,8 @@ Additional information and permissions are required if you choose to request sub
 Stat’sTheGame currently uses browser **local storage**, rather than first-party advertising or analytics cookies, for the following purposes:
 
 - **Theme preference:** the application stores your selected Day Match or Night Match theme so that the preference is remembered on later visits.
+- **Saved fixture context:** when you are signed in, the application stores your selected competition and season under your authenticated account's browser-storage key so that fixture browsing can resume in that context. This preference contains only the selected public record identifiers and is not used for advertising or behavioural profiling.
+- **Pinned shortcuts:** when you are signed in, the application stores up to three pinned public team or competition identifiers under your authenticated account's browser-storage key so that those pages can be reached quickly from navigation. These identifiers are not used for advertising or behavioural profiling.
 - **Authentication session:** Supabase Auth uses browser storage to persist the managed authentication session, refresh authentication tokens and recognise a returning signed-in user.
 
 Authentication information stored by the Supabase client is used for account access and is not used by Stat’sTheGame for advertising.
@@ -151,7 +153,7 @@ Third-party services involved in authentication, including Google and Supabase, 
 
 Because Stat’sTheGame does not currently use non-essential advertising or analytics cookies, it does not currently display a cookie-consent banner. If tracking practices change, this notice and any necessary consent controls will be updated.
 
-You can clear local storage and cookies through your browser settings. Clearing authentication storage may sign you out, and clearing the theme preference will cause the application to select a theme again.
+You can clear local storage and cookies through your browser settings. Clearing authentication storage may sign you out, and clearing a theme or saved fixture-context preference will cause the application to use its normal default behaviour again.
 
 ## 8. Service providers and recipients
 
@@ -272,3 +274,5 @@ For privacy questions, access or correction requests, account-deletion assistanc
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The saved fixture-context browser-storage disclosure was updated with the assistance of Codex[GPT-5].
+The pinned-shortcuts browser-storage disclosure was updated with the assistance of Codex[GPT-5].
