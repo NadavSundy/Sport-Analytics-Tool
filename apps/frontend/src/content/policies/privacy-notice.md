@@ -24,7 +24,8 @@ This Privacy Notice applies to personal information processed through:
 - authenticated Stat’sTheGame accounts;
 - submitter and administrator workflows;
 - Stat’sTheGame API-consumer accounts and API credentials where linked to an identifiable person;
-- communications sent to statsthegame@gmail.com; and
+- communications sent to statsthegame@gmail.com;
+- the text of natural-language statistics questions asked through the site; and
 - supporting infrastructure used to operate the service.
 
 Public cricket statistics, fixtures, events, datasets and other information about professional cricket are not necessarily personal information about a user of Stat’sTheGame. This notice focuses on personal information relating to people who use, administer or communicate with the service.
@@ -159,8 +160,16 @@ To operate Stat’sTheGame, the project uses third-party technology providers. P
 
 - **Google**, for Google OAuth authentication and the project’s Gmail inbox;
 - **Supabase**, for managed authentication and hosted PostgreSQL services;
-- **Microsoft Azure**, for backend hosting, private object storage, infrastructure and related services; and
+- **Microsoft Azure**, for backend hosting, private object storage, infrastructure and related services;
+- **Anthropic**, for processing the text of natural-language statistics questions; and
 - **Cloudflare**, for frontend hosting and delivery.
+
+When you ask a statistics question in your own words, the text of that question is sent to Anthropic
+so that it can be turned into a structured query over the statistics published here. Only the
+question text is sent: no account information, no cricket data and no identifier for you accompanies
+it. The question is answered from statistics this project already publishes, and the answer is
+produced by Stat’sTheGame rather than by Anthropic. Asking a question is optional, and every
+statistic a question can reach is also available by browsing the site.
 
 These providers process information according to their own service terms, privacy commitments and the configuration selected by the project team.
 
@@ -272,3 +281,5 @@ For privacy questions, access or correction requests, account-deletion assistanc
 ## AI Declaration
 
 The preceding document was planned and generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+The issue #816 natural-language question disclosure was added with the assistance of
+Claude-Code[Claude Opus 5 (1M context)].
