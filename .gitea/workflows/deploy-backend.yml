@@ -72,6 +72,8 @@ jobs:
         run: npm run deploy:prepare:backend
 
       - name: Smoke check backend deployment artifact
+        env:
+          ANONYMOUS_RATE_LIMIT_SECRET: ci-smoke-anonymous-rate-limit-secret-value
         run: node scripts/smoke-check-backend-artifact.mjs
 
       - name: Deploy backend artifact to Azure
