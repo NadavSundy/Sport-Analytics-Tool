@@ -1,4 +1,4 @@
-export const FIXTURE_CONTEXT_STORAGE_KEY_PREFIX = 'statsthegame:fixture-context:';
+const FIXTURE_CONTEXT_STORAGE_KEY_PREFIX = 'statsthegame:fixture-context:';
 
 export interface FixtureContextPreference {
   competitionId: string;

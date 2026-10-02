@@ -1,7 +1,7 @@
-export const PINNED_SHORTCUTS_STORAGE_KEY_PREFIX = 'stats_pinned_';
+const PINNED_SHORTCUTS_STORAGE_KEY_PREFIX = 'stats_pinned_';
 export const MAX_PINNED_SHORTCUTS = 3;
 
-export type PinnedShortcutKind = 'competition' | 'team';
+type PinnedShortcutKind = 'competition' | 'team';
 
 export interface PinnedShortcut {
   id: string;
