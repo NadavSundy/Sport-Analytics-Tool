@@ -495,3 +495,62 @@ export type QueryDefinitionEvaluation = z.infer<typeof queryDefinitionEvaluation
 export type QueryDefinitionEvaluationResponse = z.infer<
   typeof queryDefinitionEvaluationResponseSchema
 >;
+
+/**
+ * A question is bounded rather than configurable.
+ *
+ * The bound is part of the published contract and reaches a paid provider, so a
+ * deployment that could widen it would make the documented contract untrue. Three
+ * hundred characters is well beyond any real cricket question and far below a
+ * length worth paying to translate.
+ */
+export const NATURAL_LANGUAGE_QUESTION_MAX_LENGTH = 300;
+
+/**
+ * The reader's question.
+ *
+ * It is trimmed before it is measured, so trailing whitespace can neither buy a
+ * longer question nor stand in for one. It is data and never an instruction: the
+ * adapter frames it as such, and nothing derived from it reaches the database
+ * except as a bound parameter.
+ */
+export const naturalLanguageQuestionSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(NATURAL_LANGUAGE_QUESTION_MAX_LENGTH);
+
+/** The request body. The question is the only thing a caller may send. */
+export const naturalLanguageQuerySchema = z
+  .object({
+    question: naturalLanguageQuestionSchema,
+  })
+  .strict();
+
+/**
+ * What an answered question returns.
+ *
+ * `evaluation` is the issue #813 outcome unchanged, so it already carries the
+ * definition the question was read as, that definition's version, and the
+ * published result. A caller therefore has everything it needs to show both the
+ * answer and the interpretation without a second request.
+ *
+ * Token counts are deliberately absent. They are operator metering data rather
+ * than something an anonymous reader needs, so they are logged and not returned.
+ */
+export const naturalLanguageQueryResultSchema = z
+  .object({
+    question: naturalLanguageQuestionSchema,
+    /** The model that produced the definition, as the provider reported it. */
+    model: z.string().trim().min(1).max(100),
+    evaluation: queryDefinitionEvaluationSchema,
+  })
+  .strict();
+
+export const naturalLanguageQueryResponseSchema = createResourceResponseSchema(
+  naturalLanguageQueryResultSchema,
+);
+
+export type NaturalLanguageQuery = z.infer<typeof naturalLanguageQuerySchema>;
+export type NaturalLanguageQueryResult = z.infer<typeof naturalLanguageQueryResultSchema>;
+export type NaturalLanguageQueryResponse = z.infer<typeof naturalLanguageQueryResponseSchema>;

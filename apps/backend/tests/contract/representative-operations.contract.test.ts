@@ -289,6 +289,148 @@ describe('analytics query operations', () => {
   });
 });
 
+describe('natural-language query operations', () => {
+  const ASK = '/api/v1/natural-language-queries';
+
+  function askingApp(
+    definition: unknown,
+    limiter?: Parameters<typeof contractApp>[0]['naturalLanguageQueryLimiter'],
+  ) {
+    return contractApp({
+      participantAggregates: {
+        getParticipantAggregates: async () => ({
+          participantId: '56',
+          participantName: 'BB McCullum',
+          status: 'complete' as const,
+          scope: { superOversIncluded: false as const },
+          warnings: [],
+          statistics: [],
+        }),
+        getParticipantAggregate: async () => null,
+      },
+      queryDefinitionNames: {
+        names: {
+          findParticipantsByName: async () => ({
+            records: [{ participantId: '56', displayName: 'BB McCullum' }],
+            totalRecords: 1,
+          }),
+          findCompetitionsByName: async () => ({ records: [], hasMore: false }),
+          findSeasonExact: async () => null,
+          findSeasonsByLabel: async () => ({ records: [] }),
+        },
+      },
+      llmClient: {
+        translateQuestion: async () => ({
+          definition: definition as never,
+          model: 'claude-haiku-4-5-20251001',
+          usage: { inputTokens: 100, outputTokens: 30 },
+        }),
+      },
+      ...(limiter ? { naturalLanguageQueryLimiter: limiter } : {}),
+    });
+  }
+
+  const admitting = {
+    admit: async () => ({
+      outcome: 'admitted' as const,
+      headers: {
+        'RateLimit-Limit': 10,
+        'RateLimit-Remaining': 9,
+        'RateLimit-Reset': 30,
+        'X-Quota-Limit': 100,
+        'X-Quota-Remaining': 99,
+        'X-Quota-Reset': 3600,
+      },
+    }),
+  };
+
+  test('POST /natural-language-queries documents an answered and an unsupported question', async () => {
+    const definitions = [
+      { kind: 'participant_statistics', participant: { name: 'BB McCullum' }, scope: 'career' },
+      { kind: 'unsupported', reason: 'venue' },
+    ];
+
+    for (const definition of definitions) {
+      const body = { question: 'a question about the published statistics' };
+      contract.expectResponse(
+        await request(askingApp(definition, admitting)).post(ASK).send(body).expect(200),
+        { requestBody: body },
+      );
+    }
+  });
+
+  test('POST /natural-language-queries documents its 422 for an invalid question', async () => {
+    const invalid = { question: '' };
+
+    contract.expectResponse(
+      await request(askingApp({ kind: 'unsupported', reason: 'venue' }, admitting))
+        .post(ASK)
+        .send(invalid)
+        .expect(422),
+      { requestBody: invalid, requestIsInvalid: true },
+    );
+  });
+
+  test.each([
+    ['rate_limited', { 'RateLimit-Limit': 10, 'RateLimit-Remaining': 0, 'Retry-After': 30 }],
+    ['quota_exceeded', { 'X-Quota-Limit': 100, 'X-Quota-Remaining': 0, 'X-Quota-Reset': 60 }],
+    ['global_limited', { 'Retry-After': 3600 }],
+  ])('POST /natural-language-queries documents its 429 for %s', async (outcome, headers) => {
+    const body = { question: 'a question about the published statistics' };
+
+    contract.expectResponse(
+      await request(
+        askingApp(
+          { kind: 'unsupported', reason: 'venue' },
+          {
+            admit: async () => ({ outcome: outcome as 'rate_limited', headers }),
+          },
+        ),
+      )
+        .post(ASK)
+        .send(body)
+        .expect(429),
+      { requestBody: body },
+    );
+  });
+
+  // The feature is offered to anonymous visitors, so it must not be documented as
+  // requiring a credential.
+  test('POST /natural-language-queries is documented as a public operation', () => {
+    const paths = contract.document.paths as Record<
+      string,
+      { post?: { security?: unknown[] } } | undefined
+    >;
+
+    expect(paths[ASK]?.post?.security).toEqual([]);
+  });
+
+  // The limit headers are useless to a browser unless CORS exposes them, and the
+  // widget in issue #816 is a browser.
+  test('the documented limit headers are exposed to browsers', async () => {
+    const response = await request(askingApp({ kind: 'unsupported', reason: 'venue' }, admitting))
+      .post(ASK)
+      .set('Origin', 'http://localhost:5173')
+      .send({ question: 'a question about the published statistics' })
+      .expect(200);
+
+    const exposed = (response.headers['access-control-expose-headers'] ?? '')
+      .split(',')
+      .map((header) => header.trim());
+    for (const header of [
+      'RateLimit-Limit',
+      'RateLimit-Remaining',
+      'RateLimit-Reset',
+      'X-Quota-Limit',
+      'X-Quota-Remaining',
+      'X-Quota-Reset',
+      'Retry-After',
+    ]) {
+      expect(exposed).toContain(header);
+    }
+  });
+});
+
 describe('consumer (API key) operations', () => {
   test('GET /consumer/competitions returns a documented page for an active key', async () => {
     const app = contractApp({

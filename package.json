@@ -17,6 +17,7 @@
     "dev:worker": "npm run dev --workspace=@sport-analytics/worker",
     "data:performance:generate": "node scripts/generate-representative-corpus.mjs",
     "measure:api-response-times": "node scripts/measure-api-response-times.mjs",
+    "evaluate:natural-language-queries": "tsx scripts/evaluate-natural-language-queries.mjs",
     "verify:production-scale-deployment": "node scripts/production-scale-deployment-acceptance.mjs",
     "measure:performance:local": "npm run measure:performance --workspace=@sport-analytics/backend --",
     "build": "npm run build --workspace=@sport-analytics/contracts && npm run build --workspace=@sport-analytics/batch-processing && npm run build --workspace=@sport-analytics/object-storage && npm run build --workspace=@sport-analytics/backend && npm run build --workspace=@sport-analytics/frontend && npm run build --workspace=@sport-analytics/worker",
@@ -64,6 +65,7 @@
     "test:e2e:api-explorer-live": "cross-env PLAYWRIGHT_API_EXPLORER_LIVE=1 PLAYWRIGHT_API_BASE_URL=https://statsthegame-api-dev-eecff5bbfjbyhbb2.southafricanorth-01.azurewebsites.net/api/v1 node scripts/run-playwright.mjs tests/e2e/api-explorer-live.spec.ts"
   },
   "devDependencies": {
+    "tsx": "^4.23.7",
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.62.1",
     "@redocly/cli": "^2.46.0",
