@@ -12,10 +12,11 @@ The current deployed API is available at
 `https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.azurecontainerapps.io`, with
 business endpoints under `/api/v1`.
 
-The existing Azure App Service `statsthegame-api-dev` remains intact and deployable during the
-Container Apps acceptance period. It is an independent rollback target, not part of the normal
-main-branch deployment. Do not retire, stop, or reconfigure it until the acceptance checklist below
-has been completed and an explicit retirement decision is recorded.
+The supported backend deployment and recovery target is the Azure Container App
+`statsthegame-dev-api` in `rg-statsthegame-dev`. The historical App Service
+`statsthegame-api-dev` is not part of the supported backend deployment or recovery path.
+Manual recovery is performed with `.gitea/workflows/deploy-backend.yml`, using the same
+`infra/azure/backend/main.bicep` configuration and Azure identity as automatic CI.
 
 ## Container Apps architecture
 
@@ -230,7 +231,7 @@ health smoke, database smoke, or dataset-release schema smoke fails the deployme
 ### Migration gate and recovery
 
 Before building or activating backend code, both the automatic Container Apps workflow and the manual
-App Service rollback workflow retrieve `DATABASE_URL` from the existing
+manual Container Apps recovery workflow retrieve `DATABASE_URL` from the existing
 `AZURE_BACKEND_DATABASE_SECRET_URI` Key Vault reference. The value is captured only in the migration
 step's environment and is never printed or passed as a command-line argument. The workflow then runs
 `npm run db:migrate --workspace=@sport-analytics/backend`. This retains the committed
@@ -269,14 +270,32 @@ production secret values in YAML. Changes to backend sources, `apps/backend/Dock
 Record the exact Azure command, revision name, image SHA, outcome, and smoke evidence in the release
 record. This guide intentionally does not prescribe an unverified revision-switch command.
 
-### App Service fallback
+### Manual Container Apps recovery
 
-`statsthegame-api-dev` remains available as the acceptance-period fallback. The manual
-`Sport Analytics - Redeploy App Service Backend (Rollback)` workflow retains the existing
-publish-profile ZIP/Kudu deployment path. If browser traffic has already been cut over to the
-Container App URL, an App Service fallback also requires a deliberate frontend API-base-URL and CORS
-configuration reversal; those settings are not changed by this migration workflow. Verify Supabase
-Auth redirect settings and the restored API endpoint before announcing rollback completion.
+The standalone `Sport Analytics - Manual Backend Recovery` workflow
+(`.gitea/workflows/deploy-backend.yml`) is the supported manual backend recovery path. It is
+started only with `workflow_dispatch` and deliberately follows the same Azure Container Apps
+deployment boundary as the automatic `deploy_backend` job in `.gitea/workflows/ci.yml`.
+
+The workflow:
+
+1. validates the existing backend Container Apps configuration, including the database,
+   Supabase secret-key, anonymous rate-limit and LLM Key Vault secret URIs;
+2. signs in with the existing `AZURE_WORKER_CREDENTIALS` identity;
+3. applies reviewed database migrations before backend activation;
+4. builds and smoke-checks the backend container image, tags it with the selected commit SHA
+   and pushes it to the existing Azure Container Registry;
+5. deploys `infra/azure/backend/main.bicep` to the existing
+   `statsthegame-dev-api` Container App;
+6. waits until an active healthy revision is running the expected commit-addressed image;
+7. resolves the Container App ingress FQDN dynamically rather than using a hard-coded host; and
+8. smoke-checks `/api/v1/health`, `/api/v1/competitions?limit=1` and
+   `/api/v1/dataset-releases`.
+
+The manual recovery workflow does not use `AZURE_BACKEND_PUBLISH_PROFILE`,
+`scripts/deploy-backend-azure.py`, or a hard-coded `azurewebsites.net` endpoint. Historical App
+Service material is retained only as incident/history documentation and is not an operational
+backend recovery procedure.
 
 ## Acceptance checklist
 
@@ -301,9 +320,9 @@ Auth redirect settings and the restored API endpoint before announcing rollback 
 - [ ] Staged-ingestion and dataset-release Blob paths work through managed identity.
 - [ ] Worker/asynchronous integration works where applicable; CPU-intensive release processing remains in the worker.
 - [ ] Container App logs are available to operators.
-- [ ] The App Service fallback workflow and `statsthegame-api-dev` remain usable.
+- [ ] The manual Container Apps recovery workflow successfully redeploys `statsthegame-dev-api`.
 - [ ] Frontend API-base-URL/CORS cutover is tested deliberately, if and when approved.
-- [ ] App Service retirement is explicitly deferred until all acceptance evidence is complete.
+- [ ] Historical App Service resources are not required by the supported backend recovery path.
 
 ## Prerequisites before the first deployment
 

@@ -110,12 +110,15 @@ test('backend deployments apply ordered migrations before activating code and sm
     '- name: Apply pending backend database migrations',
   );
   const manualDeployIndex = manualBackendWorkflow.indexOf(
-    '- name: Deploy backend artifact to Azure',
+    '- name: Deploy backend Container Apps revision',
   );
-  assert.ok(manualMigrationIndex >= 0, 'rollback workflow must check migration compatibility');
+  assert.ok(
+    manualMigrationIndex >= 0,
+    'manual recovery workflow must check migration compatibility',
+  );
   assert.ok(
     manualDeployIndex > manualMigrationIndex,
-    'rollback workflow must not deploy code before migrations succeed',
+    'manual recovery workflow must not deploy code before migrations succeed',
   );
 });
 
@@ -330,14 +333,71 @@ test('automatic backend deployment verifies Docker npm access and uses a cached 
   );
 });
 
-test('manual backend deployment workflow preserves the App Service rollback path', () => {
+test('manual backend recovery workflow redeploys the current Container App through Bicep', () => {
   assert.match(manualBackendWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(manualBackendWorkflow, /\n\s*push:/);
   assert.doesNotMatch(manualBackendWorkflow, /npm run test:unit/);
   assert.doesNotMatch(manualBackendWorkflow, /npm run test:api/);
-  assert.match(manualBackendWorkflow, /python3 scripts\/deploy-backend-azure\.py/);
-  assert.match(manualBackendWorkflow, /AZURE_BACKEND_PUBLISH_PROFILE/);
-  assert.match(manualBackendWorkflow, /statsthegame-api-dev/);
+
+  assert.match(manualBackendWorkflow, /azure\/login@v2/);
+  assert.match(manualBackendWorkflow, /AZURE_WORKER_CREDENTIALS/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_CONTAINER_RESOURCE_GROUP/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_DATABASE_SECRET_URI/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_SUPABASE_SECRET_KEY_SECRET_URI/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_ANONYMOUS_RATE_LIMIT_SECRET_URI/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_LLM_API_KEY_SECRET_URI/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_CORS_ORIGINS/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_SUPABASE_URL/);
+  assert.match(manualBackendWorkflow, /AZURE_BACKEND_SUPABASE_PUBLISHABLE_KEY/);
+
+  assert.match(manualBackendWorkflow, /BACKEND_CONTAINER_APP_NAME: statsthegame-dev-api/);
+  assert.match(manualBackendWorkflow, /infra\/azure\/backend\/main\.bicep/);
+  assert.match(manualBackendWorkflow, /sport-analytics-api:\$\{\{ github\.sha \}\}/);
+  assert.match(manualBackendWorkflow, /az containerapp revision list/);
+  assert.match(manualBackendWorkflow, /properties\.healthState=='Healthy'/);
+  assert.match(manualBackendWorkflow, /properties\.template\.containers\[0\]\.image/);
+  assert.match(manualBackendWorkflow, /properties\.configuration\.ingress\.fqdn/);
+  assert.match(manualBackendWorkflow, /api\/v1\/health/);
+  assert.match(manualBackendWorkflow, /api\/v1\/competitions\?limit=1/);
+  assert.match(manualBackendWorkflow, /api\/v1\/dataset-releases/);
+
+  const migrationIndex = manualBackendWorkflow.indexOf(
+    '- name: Apply pending backend database migrations',
+  );
+  const deployIndex = manualBackendWorkflow.indexOf(
+    '- name: Deploy backend Container Apps revision',
+  );
+  const readinessIndex = manualBackendWorkflow.indexOf(
+    '- name: Wait for the healthy backend Container Apps revision',
+  );
+  const fqdnIndex = manualBackendWorkflow.indexOf(
+    '- name: Resolve backend Container Apps HTTPS endpoint',
+  );
+  const healthSmokeIndex = manualBackendWorkflow.indexOf(
+    '- name: Smoke check deployed backend health',
+  );
+  const databaseSmokeIndex = manualBackendWorkflow.indexOf(
+    '- name: Smoke check deployed database access',
+  );
+  const datasetSmokeIndex = manualBackendWorkflow.indexOf(
+    '- name: Smoke check deployed dataset-release schema access',
+  );
+
+  assert.ok(migrationIndex >= 0, 'manual recovery must apply migrations');
+  assert.ok(deployIndex > migrationIndex, 'deployment must wait for migrations');
+  assert.ok(readinessIndex > deployIndex, 'revision readiness must be checked after deployment');
+  assert.ok(fqdnIndex > readinessIndex, 'FQDN must be resolved after revision readiness');
+  assert.ok(
+    healthSmokeIndex > fqdnIndex,
+    'health smoke must use the resolved Container App endpoint',
+  );
+  assert.ok(databaseSmokeIndex > healthSmokeIndex, 'database smoke must follow health smoke');
+  assert.ok(datasetSmokeIndex > databaseSmokeIndex, 'dataset-release smoke must run last');
+
+  assert.doesNotMatch(manualBackendWorkflow, /AZURE_BACKEND_PUBLISH_PROFILE/);
+  assert.doesNotMatch(manualBackendWorkflow, /deploy-backend-azure\.py/);
+  assert.doesNotMatch(manualBackendWorkflow, /azurewebsites\.net/);
+  assert.doesNotMatch(manualBackendWorkflow, /statsthegame-api-dev/);
 });
 
 test('backend container smoke check uses inert configuration and validates health before image publish', () => {

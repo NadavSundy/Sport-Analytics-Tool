@@ -451,9 +451,12 @@ production builds/artifact preparation, secret validation, publication and live 
 
 ### Frontend
 
-Automatic frontend deployment builds shared contracts and the production Vite bundle with deployment
-secrets, publishes to Azure App Service and smoke checks the public site. It intentionally does not
-re-run `npm run test:frontend`.
+The standalone `.gitea/workflows/deploy-backend.yml` workflow is the manual backend recovery path.
+It authenticates with the existing Azure identity, builds and pushes the selected commit's
+SHA-tagged backend image, deploys `infra/azure/backend/main.bicep` to
+`statsthegame-dev-api`, waits for the matching active healthy revision, resolves the ingress FQDN
+dynamically, and runs the same health, database and dataset-release smoke checks as automatic CI.
+It does not use the retired App Service publish-profile deployment path.
 
 ### Backend
 
@@ -462,8 +465,11 @@ creates and locally smoke checks the deployment artifact, publishes the ZIP to A
 `/api/v1/health` and the read-only database path. It intentionally does not repeat backend lint,
 typecheck, unit or API suites after `quality` has already passed.
 
-The Azure ZIP/Kudu implementation is shared by automatic and manual recovery deployment through
-`scripts/deploy-backend-azure.py`, preventing those paths from drifting.
+Deployment regression tests keep the automatic and manual backend Container Apps paths aligned.
+They assert the shared Bicep deployment boundary, required Key Vault secret URI inputs, immutable
+commit-addressed image, healthy revision verification, dynamic FQDN discovery and deployed smoke
+checks, while also asserting that the manual workflow does not reintroduce the retired App Service
+publish-profile path.
 
 ### Documentation
 
