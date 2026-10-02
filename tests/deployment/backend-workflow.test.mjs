@@ -405,6 +405,10 @@ test('backend container smoke check uses inert configuration and validates healt
   assert.match(backendContainerSmokeCheck, /\/api\/v1\/health/);
   assert.match(backendContainerSmokeCheck, /OBJECT_STORAGE_PROVIDER.*azure/);
   assert.match(backendContainerSmokeCheck, /SUPABASE_URL.*example\.invalid/);
+  assert.match(
+    backendContainerSmokeCheck,
+    /ANONYMOUS_RATE_LIMIT_SECRET.*container-smoke-anonymous-rate-limit-secret-0001/,
+  );
   assert.doesNotMatch(
     backendContainerSmokeCheck,
     /(?:SUPABASE_SECRET_KEY|DATABASE_URL|AZURE_STORAGE_CONNECTION_STRING|AccountKey)/,
