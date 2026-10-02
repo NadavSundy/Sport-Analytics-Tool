@@ -1,15 +1,12 @@
 import type { LeaderboardMetric, LeaderboardQuery } from '@sport-analytics/contracts';
 import { useCallback, useId } from 'react';
-import { Link } from 'react-router-dom';
 import { publicReadApi } from '../../api/public-read';
-import { DataTable } from '../../components/DataTable';
+import { LeaderboardEntriesTable } from './LeaderboardEntriesTable';
 import { SectionError } from '../browse/SectionBoundary';
 import { usePublicData } from '../browse/usePublicData';
 
 type LeaderboardScope =
   { scope: 'season'; seasonId: string } | { scope: 'competition'; competitionId: string };
-
-const leaderboardNumber = new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 2 });
 
 function LeaderboardPanel({
   metric,
@@ -65,34 +62,11 @@ function LeaderboardPanel({
       ) : null}
       {state.status === 'ready' && state.data.data.entries.length > 0 ? (
         <>
-          <DataTable
+          <LeaderboardEntriesTable
             caption={`${title} for ${state.data.data.scope === 'season' ? state.data.data.season : state.data.data.competitionName}`}
-          >
-            <thead>
-              <tr>
-                <th scope="col" data-numeric>
-                  Rank
-                </th>
-                <th scope="col">Player</th>
-                <th scope="col" data-numeric>
-                  {valueLabel}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.data.data.entries.map((entry) => (
-                <tr key={entry.participantId}>
-                  <td data-numeric>{entry.rank}</td>
-                  <th scope="row">
-                    <Link to={`/participants/${encodeURIComponent(entry.participantId)}`}>
-                      {entry.participantName}
-                    </Link>
-                  </th>
-                  <td data-numeric>{leaderboardNumber.format(entry.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </DataTable>
+            entries={state.data.data.entries}
+            valueLabel={valueLabel}
+          />
           {state.data.data.qualification ? (
             <p className="statistics-note">{state.data.data.qualification.rationale}</p>
           ) : null}
