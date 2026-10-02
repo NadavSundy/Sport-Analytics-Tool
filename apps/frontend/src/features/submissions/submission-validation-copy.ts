@@ -219,3 +219,39 @@ export function formatBatchValidationMessage(ruleCode: string, message: string):
   if (plainMessage.endsWith(guidance)) return plainMessage;
   return `${plainMessage}${/[.!?]$/.test(plainMessage) ? '' : '.'} ${guidance}`;
 }
+
+/** The most schema issues listed at once; a large file can produce thousands (#801). */
+export const MAX_LISTED_SCHEMA_ISSUES = 50;
+
+type SchemaIssue = { path: ReadonlyArray<PropertyKey>; message: string };
+
+/**
+ * Converts every schema issue into the same detail shape the API returns, so
+ * client-side and server-side rejections are listed identically. Only a path
+ * rooted at the submitted `events` array carries an event number.
+ */
+export function schemaIssuesToDetails(issues: readonly SchemaIssue[]): ApiErrorDetail[] {
+  return issues.slice(0, MAX_LISTED_SCHEMA_ISSUES).map((issue) => {
+    const field = issue.path.map(String).join('.');
+    const eventIndex =
+      issue.path[0] === 'events' && typeof issue.path[1] === 'number' ? issue.path[1] : undefined;
+    return {
+      code: 'INVALID_FIELD',
+      message: issue.message,
+      ...(field ? { field } : {}),
+      ...(eventIndex === undefined ? {} : { eventIndex }),
+    };
+  });
+}
+
+export function summariseSchemaIssues(issues: readonly SchemaIssue[]): string {
+  const [first] = issues;
+  if (!first) return 'The submitted JSON is invalid.';
+  if (issues.length === 1) {
+    return formatSchemaValidationFailure(first.message, first.path.map(String).join('.'));
+  }
+  if (issues.length > MAX_LISTED_SCHEMA_ISSUES) {
+    return `${issues.length} problems were found. The first ${MAX_LISTED_SCHEMA_ISSUES} are listed below; correct them, then submit again to see any others.`;
+  }
+  return `${issues.length} problems were found. Correct each one listed below, then submit again.`;
+}

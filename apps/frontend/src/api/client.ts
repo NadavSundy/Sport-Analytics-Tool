@@ -9,6 +9,12 @@ export class ApiResponseError extends Error {
   readonly status: number;
   readonly code: string | undefined;
   readonly details: ApiErrorDetail[] | undefined;
+  /**
+   * Whole seconds from the response's `Retry-After`, when it sent one a client can
+   * act on. Absent unless the header carried a non-negative whole number of
+   * seconds, so an interface can say how long to wait only when it really knows.
+   */
+  readonly retryAfterSeconds: number | undefined;
 
   constructor(
     status: number,
@@ -16,6 +22,7 @@ export class ApiResponseError extends Error {
     options: {
       code?: string | undefined;
       details?: ApiErrorDetail[] | undefined;
+      retryAfterSeconds?: number | undefined;
     } = {},
   ) {
     const kind =
@@ -27,6 +34,7 @@ export class ApiResponseError extends Error {
     this.status = status;
     this.code = options.code;
     this.details = options.details;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }
 

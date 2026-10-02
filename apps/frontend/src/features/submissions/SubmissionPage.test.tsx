@@ -1015,6 +1015,101 @@ describe('role-gated event submission page', () => {
     ).toBeInTheDocument();
   });
 
+  it('links a contract-valid example and explains required and optional event fields (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    await screen.findByLabelText('Delivery events JSON');
+
+    expect(screen.getByRole('link', { name: 'Download technical JSON example' })).toHaveAttribute(
+      'href',
+      '/technical-events-example.json',
+    );
+    const fields = screen.getByRole('region', { name: 'Event fields' });
+    expect(within(fields).getByText(/^Required:/)).toHaveTextContent(
+      /eventId.*inningsId.*sequenceNumber.*overNumber.*positionInOver.*strikerId.*nonStrikerId.*bowlerId.*runs/,
+    );
+    expect(within(fields).getByText(/^Optional:/)).toHaveTextContent(/ballNumber.*extras.*wickets/);
+  });
+
+  it('does not repeat a validation message in the field guidance (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    await chooseExistingFixture();
+    const editor = await screen.findByLabelText('Delivery events JSON');
+    const invalid = validEvents.map((event) => ({
+      ...event,
+      runs: { ...event.runs, total: event.runs.total + 1 },
+    }));
+    fireEvent.change(editor, { target: { value: JSON.stringify(invalid) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    // The guidance must not reuse the error's wording, or the rejection is ambiguous
+    // to assistive technology and to the browser acceptance test.
+    expect(screen.getAllByText(/total runs must equal off-bat runs plus extras/i)).toHaveLength(1);
+  });
+
+  it('lists every local technical schema failure with its event number (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) {
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      }
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) {
+        return Promise.resolve(fixtures([fixture]));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSubmissionPage();
+    await selectTechnicalJson();
+    await chooseExistingFixture();
+    const editor = await screen.findByLabelText('Delivery events JSON');
+    const incomplete: Record<string, unknown> = { ...validEvents[0]! };
+    delete incomplete.strikerId;
+    delete incomplete.bowlerId;
+    fireEvent.change(editor, { target: { value: JSON.stringify([validEvents[0], incomplete]) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit events' }));
+
+    expect(await screen.findByRole('heading', { name: 'Submission rejected' })).toHaveFocus();
+    expect(screen.getByText(/2 problems were found/)).toBeInTheDocument();
+    const results = within(screen.getByRole('alert')).getAllByRole('listitem');
+    expect(results).toHaveLength(2);
+    expect(results.every((item) => /Event 2/.test(item.textContent ?? ''))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/batches'))).toBe(false);
+  });
+
   it('shows event-specific and field-specific validation results', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
@@ -1475,6 +1570,39 @@ describe('role-gated event submission page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(originalReference)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Competition' })).toBeDisabled();
+  });
+
+  it('offers only submission modes that map to a supported upload workflow (#801)', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me'))
+        return Promise.resolve(currentUser('submitter', 'approved', ['5']));
+      const competitionResponse = competitionRoute(url);
+      if (competitionResponse) return Promise.resolve(competitionResponse);
+      if (url.includes('/fixtures?')) return Promise.resolve(fixtures([fixture]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSubmissionPage();
+    await screen.findByLabelText('Fixture package');
+
+    const modes = screen
+      .getAllByRole('radio')
+      .filter((radio) => radio.getAttribute('name') === 'submission-workflow')
+      .map((radio) => radio.getAttribute('value'));
+    expect(modes).toEqual(['fixture', 'season', 'catalogue', 'technical']);
+
+    // Each mode must lead to its own upload control: the fixture and package
+    // uploads post to /batches, and technical JSON is staged through the same
+    // pipeline (covered by the tests above and in BatchUploadPage.test.tsx).
+    fireEvent.click(screen.getByRole('radio', { name: /^Season/ }));
+    expect(await screen.findByLabelText('Season package')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /^Back catalogue/ }));
+    expect(await screen.findByLabelText('Back catalogue package')).toBeInTheDocument();
+    await selectTechnicalJson();
+    expect(await screen.findByLabelText('Delivery events JSON')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /^Single fixture/ }));
+    expect(await screen.findByLabelText('Fixture package')).toBeInTheDocument();
   });
 
   it('keeps the guided single-fixture path free of identifiers and advanced mode set apart', async () => {

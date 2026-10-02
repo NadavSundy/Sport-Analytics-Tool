@@ -118,6 +118,74 @@ export async function requestPublicApi<ResponseBody>(
 }
 
 /**
+ * Reads `Retry-After` only when it carries something a caller can act on.
+ *
+ * The header may also be an HTTP-date, which this client deliberately does not
+ * interpret: an interface that cannot say how long to wait should say nothing
+ * rather than guess a duration.
+ */
+function retryAfterSeconds(response: Response): number | undefined {
+  const header = response.headers?.get('Retry-After');
+  if (header === null || header === undefined) {
+    return undefined;
+  }
+
+  const seconds = Number(header.trim());
+  return Number.isInteger(seconds) && seconds >= 0 ? seconds : undefined;
+}
+
+/**
+ * Sends a JSON body to a public endpoint and validates the response against the
+ * shared contract.
+ *
+ * It is the POST counterpart of `requestPublicApi`, with two differences the
+ * natural-language query endpoint needs: the error `code` is carried through, so
+ * a caller can tell its nine outcomes apart, and `Retry-After` is read, so a
+ * rate-limited caller can be told how long to wait. No credential is sent; the
+ * endpoints this reaches are public.
+ */
+export async function postPublicApi<ResponseBody>(
+  path: string,
+  body: unknown,
+  schema: ResponseSchema<ResponseBody>,
+  signal?: AbortSignal,
+): Promise<ResponseBody> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: signal ?? null,
+  });
+  const responseBody = await readResponseBody(response);
+
+  if (!response.ok) {
+    const errorResponse = apiErrorResponseSchema.safeParse(responseBody);
+    throw new ApiResponseError(
+      response.status,
+      errorResponse.success ? errorResponse.data.error.message : undefined,
+      {
+        ...(errorResponse.success ? { code: errorResponse.data.error.code } : {}),
+        ...(errorResponse.success && errorResponse.data.error.details
+          ? { details: errorResponse.data.error.details }
+          : {}),
+        ...(retryAfterSeconds(response) !== undefined
+          ? { retryAfterSeconds: retryAfterSeconds(response) }
+          : {}),
+      },
+    );
+  }
+
+  try {
+    return schema.parse(responseBody);
+  } catch {
+    throw new ApiContractError();
+  }
+}
+
+/**
  * Downloads exactly the accepted events a calculation trace displays. The
  * server derives the event set from the statistic and pages through it in full,
  * so the file cannot be a filtered look-alike of the trace or a single page of

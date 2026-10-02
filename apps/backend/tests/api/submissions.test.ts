@@ -663,6 +663,44 @@ describe('direct event submission API', () => {
     expect(service.submit).not.toHaveBeenCalled();
   });
 
+  test('returns every validation issue across events rather than only the first (#801)', async () => {
+    const service = mockSubmissionService();
+    const incomplete: Record<string, unknown> = { ...validPayload.events[0]! };
+    delete incomplete.strikerId;
+    delete incomplete.bowlerId;
+
+    const response = await request(
+      createTestApp(
+        acceptToken,
+        undefined,
+        synchronizeWith(createTestAccount({ role: 'admin' })),
+        undefined,
+        service,
+      ),
+    )
+      .post('/api/v1/submissions')
+      .set('Authorization', 'Bearer approved-token')
+      .send({
+        ...validPayload,
+        events: [
+          { ...validPayload.events[0], runs: { offBat: 4, extras: 1, total: 4 } },
+          { ...incomplete, eventId: '123e4567-e89b-42d3-a456-426614174099', sequenceNumber: 2 },
+        ],
+      })
+      .expect(422);
+
+    const details = response.body.error.details as { field?: string; eventIndex?: number }[];
+    expect(details.length).toBeGreaterThanOrEqual(3);
+    expect(details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'events.0.runs.total', eventIndex: 0 }),
+        expect.objectContaining({ field: 'events.1.strikerId', eventIndex: 1 }),
+        expect.objectContaining({ field: 'events.1.bowlerId', eventIndex: 1 }),
+      ]),
+    );
+    expect(service.submit).not.toHaveBeenCalled();
+  });
+
   test('enforces the authenticated submission rate limit', async () => {
     const service = mockSubmissionService();
     const app = createTestApp(

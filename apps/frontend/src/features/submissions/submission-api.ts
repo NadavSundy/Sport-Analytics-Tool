@@ -1,4 +1,5 @@
 import {
+  type ApiErrorDetail,
   DIRECT_SUBMISSION_SCHEMA_VERSION,
   FIXTURE_PROPOSAL_CONTRACT_VERSION,
   seasonUploadPackageSchema,
@@ -12,7 +13,7 @@ import {
 import type { AuthenticatedApiClient } from '../../api/client';
 import { publicReadApi } from '../../api/public-read';
 import { parseCsvRecords } from './single-fixture-package';
-import { formatSchemaValidationFailure } from './submission-validation-copy';
+import { schemaIssuesToDetails, summariseSchemaIssues } from './submission-validation-copy';
 
 export type NewFixtureMetadata = {
   competitionName: string;
@@ -24,10 +25,24 @@ export type NewFixtureMetadata = {
 };
 
 export class SubmissionInputError extends Error {
-  constructor(message: string) {
+  /**
+   * Every problem found before upload, in the API's detail shape. Empty when the
+   * message alone says what to correct (#801).
+   */
+  readonly details: ApiErrorDetail[];
+
+  constructor(message: string, details: ApiErrorDetail[] = []) {
     super(message);
     this.name = 'SubmissionInputError';
+    this.details = details;
   }
+}
+
+function schemaFailure(issues: readonly { path: (string | number)[]; message: string }[]) {
+  return new SubmissionInputError(
+    summariseSchemaIssues(issues),
+    issues.length > 1 ? schemaIssuesToDetails(issues) : [],
+  );
 }
 
 /**
@@ -77,12 +92,7 @@ export function createTechnicalBatchFile(
   });
 
   if (!acceptedPayload.success) {
-    const issue = acceptedPayload.error.issues[0];
-    throw new SubmissionInputError(
-      issue
-        ? formatSchemaValidationFailure(issue.message, issue.path.join('.'))
-        : 'The technical JSON is invalid.',
-    );
+    throw schemaFailure(acceptedPayload.error.issues);
   }
 
   if (!fixture.competitionId || !fixture.competitionName) {
@@ -197,12 +207,7 @@ export function createFixtureProposalBatchFile(
   };
   const acceptedPackage = seasonUploadPackageSchema.safeParse(proposedPackage);
   if (!acceptedPackage.success) {
-    const issue = acceptedPackage.error.issues[0];
-    throw new SubmissionInputError(
-      issue
-        ? `The new-fixture package is invalid at ${issue.path.join('.') || 'package'}: ${issue.message}`
-        : 'The new-fixture package is invalid.',
-    );
+    throw schemaFailure(acceptedPackage.error.issues);
   }
 
   return new File([JSON.stringify(acceptedPackage.data)], 'fixture-proposal.json', {
@@ -306,12 +311,7 @@ export async function submitLegacyAdminEvents(
   };
   const acceptedPayload = submissionRequestSchema.safeParse(payload);
   if (!acceptedPayload.success) {
-    const issue = acceptedPayload.error.issues[0];
-    throw new SubmissionInputError(
-      issue
-        ? formatSchemaValidationFailure(issue.message, issue.path.join('.'))
-        : 'The technical JSON is invalid.',
-    );
+    throw schemaFailure(acceptedPayload.error.issues);
   }
 
   const response = await client.request<unknown>('/submissions', {
