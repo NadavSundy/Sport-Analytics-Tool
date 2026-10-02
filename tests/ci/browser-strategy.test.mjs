@@ -108,6 +108,7 @@ test('mobile Chromium runs only the representative tagged journey subset', async
     'authentication.spec.ts',
     'batch-review-workspace.spec.ts',
     'homepage.spec.ts',
+    'natural-language-query.spec.ts',
     'player-overview.spec.ts',
     'policies.spec.ts',
     'public-browsing.spec.ts',
@@ -120,7 +121,7 @@ test('mobile Chromium runs only the representative tagged journey subset', async
     .filter((file) => readFileSync(new URL(file, specDir), 'utf8').includes('@mobile'))
     .sort();
   assert.deepEqual(mobileFiles, expectedMobileFiles);
-  assert.equal(mobileFiles.length, 15);
+  assert.equal(mobileFiles.length, 16);
 
   const accessibility = readFileSync(new URL('accessibility.spec.ts', specDir), 'utf8');
   assert.match(accessibility, /const runsOnMobile = theme === 'day'/);
