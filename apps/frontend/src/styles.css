@@ -4493,6 +4493,10 @@ h3 {
   margin-top: 1rem;
 }
 
+.page-heading__action {
+  margin-top: 1rem;
+}
+
 .player-comparison__controls {
   align-items: end;
   margin-top: 2rem;
