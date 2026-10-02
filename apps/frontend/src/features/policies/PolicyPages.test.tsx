@@ -1,8 +1,21 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AccessibilityStatementPage, PrivacyNoticePage, TermsOfUsePage } from './PolicyPages';
 
 describe('public policy pages', () => {
+  it.each([
+    ['Privacy Notice', PrivacyNoticePage],
+    ['Terms of Use', TermsOfUsePage],
+    ['Accessibility Statement', AccessibilityStatementPage],
+  ])('opens %s at the top inside the shared document container', (_, PolicyPage) => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+
+    render(<PolicyPage />);
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0 });
+    expect(screen.getByRole('article').closest('.policy-page')).toBeInTheDocument();
+  });
+
   it('renders the privacy notice with the current project contact and retention rule', () => {
     render(<PrivacyNoticePage />);
 
