@@ -182,6 +182,34 @@ export const NATURAL_LANGUAGE_QUERY_CASES = [
     ],
   },
 
+  // The four questions the home-page widget offers as buttons, worded exactly as
+  // a visitor sees them. Issue #851 found that the set tested similar wordings
+  // instead: the widget says "the Indian Premier League" where the case said "the
+  // IPL", so a demo button regressed without any case failing.
+  {
+    id: 'example-most-runs-season',
+    question: 'Who scored the most runs in the 2024 Indian Premier League season?',
+    accept: [{ kind: 'leaderboard', metric: 'most_runs', scope: 'season' }],
+  },
+  {
+    id: 'example-most-wickets-competition',
+    question: 'Who has taken the most wickets in the Indian Premier League?',
+    accept: [
+      { kind: 'leaderboard', metric: 'most_wickets', scope: 'competition' },
+      { kind: 'leaderboard', metric: 'most_wickets', scope: 'season' },
+    ],
+  },
+  {
+    id: 'example-career-statistics',
+    question: "What are V Kohli's career statistics?",
+    accept: [{ kind: 'participant_statistics', scope: 'career', participant: { name: 'V Kohli' } }],
+  },
+  {
+    id: 'example-career-comparison',
+    question: 'Compare V Kohli and RD Gaikwad over their careers',
+    accept: [{ kind: 'participant_comparison', scope: 'career' }],
+  },
+
   // Issue #851. Three behaviours the evaluation set did not reach before:
   // season- and competition-scoped figures, a head-to-head, and the subjective
   // questions that should be refused with something to ask instead.

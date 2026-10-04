@@ -251,3 +251,27 @@ test('a wrong definition still fails even when suggestions arrive', () => {
 
   assert.equal(result.pass, false);
 });
+
+/**
+ * Issue #851: the widget offers four questions as buttons, and one of them
+ * regressed without any case failing because the set tested a different wording
+ * of it. A demo button is the first thing anyone tries, so each one is covered
+ * verbatim.
+ */
+test('every question the widget offers is covered verbatim', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const examples = await readFile(
+    new URL('../apps/frontend/src/features/natural-language-query/examples.ts', import.meta.url),
+    'utf8',
+  );
+
+  const offered = [...examples.matchAll(/question:\s*(?:'([^']*)'|"([^"]*)")/g)].map(
+    ([, single, double]) => single ?? double,
+  );
+  assert.equal(offered.length, 4, 'expected the widget to offer four example questions');
+
+  const asked = new Set(NATURAL_LANGUAGE_QUERY_CASES.map((entry) => entry.question));
+  for (const question of offered) {
+    assert.ok(asked.has(question), `the evaluation set does not ask: ${question}`);
+  }
+});
