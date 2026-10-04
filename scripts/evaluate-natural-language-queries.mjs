@@ -20,6 +20,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
+import * as contracts from '@sport-analytics/contracts';
 import { createLlmClient } from '../apps/backend/src/modules/analytics-query/llm.client';
 import {
   NATURAL_LANGUAGE_QUERY_CASES,
@@ -33,7 +34,34 @@ function argument(name, environmentName) {
   return index === -1 ? process.env[environmentName] : process.argv[index + 1];
 }
 
+/**
+ * A stale contracts build is the one failure that looks like a provider problem.
+ * The adapter resolves the built package, so a schema added to the source but not
+ * compiled makes every case fail with "Cannot read properties of undefined", once
+ * per question, after the provider has already been paid for each one. Checking
+ * first turns that into one sentence and no spend.
+ */
+function requireBuiltContracts() {
+  const needed = [
+    'analyticsQueryTranslationSchema',
+    'querySuggestionSchema',
+    'analyticsQueryDefinitionSchema',
+    'ANALYTICS_QUERY_PROMPT_DESCRIPTION',
+    'MAX_QUERY_SUGGESTIONS',
+  ];
+  const missing = needed.filter((name) => contracts[name] === undefined);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `The built @sport-analytics/contracts package is missing ${missing.join(', ')}. ` +
+        'Rebuild it first: npm run build --workspace=@sport-analytics/contracts',
+    );
+  }
+}
+
 async function main() {
+  requireBuiltContracts();
+
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) {
     // Failing before the first call rather than after twenty-eight of them.
