@@ -201,3 +201,53 @@ test('the rendered record contains no credential-shaped text', () => {
   assert.doesNotMatch(rendered, /LLM_API_KEY/);
   assert.doesNotMatch(rendered, /api[_-]?key/i);
 });
+
+test('the issue #851 behaviours each have a case', () => {
+  for (const id of [
+    'scoped-season-average',
+    'scoped-competition-figures',
+    'scoped-comparison-competition',
+    'subjective-best-batter',
+    'subjective-all-time-bowler',
+  ]) {
+    assert.ok(caseById(id), `no case for ${id}`);
+  }
+});
+
+// A refusal that suggests nothing is what issue #851 was raised about, so a case
+// expecting help must fail when none arrives.
+test('a case expecting suggestions fails on a bare refusal', () => {
+  const subjective = caseById('subjective-best-batter');
+
+  const bare = compareTranslation(subjective, { kind: 'unsupported', reason: 'ambiguous' }, []);
+  assert.equal(bare.pass, false);
+  assert.match(bare.detail, /suggested nothing/);
+
+  const helped = compareTranslation(subjective, { kind: 'unsupported', reason: 'ambiguous' }, [
+    { kind: 'leaderboard', metric: 'most_runs', scope: 'competition' },
+  ]);
+  assert.equal(helped.pass, true);
+  assert.match(helped.detail, /1 suggestion/);
+});
+
+test('a case not expecting suggestions is unaffected by them', () => {
+  const scoped = caseById('scoped-season-average');
+  const definition = {
+    kind: 'participant_statistics',
+    scope: 'season',
+    participant: { name: 'V Kohli' },
+  };
+
+  assert.equal(compareTranslation(scoped, definition).pass, true);
+  assert.equal(compareTranslation(scoped, definition, []).pass, true);
+});
+
+test('a wrong definition still fails even when suggestions arrive', () => {
+  const result = compareTranslation(
+    caseById('scoped-season-average'),
+    { kind: 'unsupported', reason: 'ambiguous' },
+    [{ kind: 'leaderboard', metric: 'most_runs', scope: 'competition' }],
+  );
+
+  assert.equal(result.pass, false);
+});

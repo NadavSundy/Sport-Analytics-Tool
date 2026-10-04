@@ -63,7 +63,7 @@ async function main() {
     try {
       const translation = await client.translateQuestion(testCase.question);
       reportedModel = translation.model;
-      results.push(compareTranslation(testCase, translation.definition));
+      results.push(compareTranslation(testCase, translation.definition, translation.suggestions));
     } catch (error) {
       // The adapter's messages are fixed strings carrying neither the question nor
       // the model's output, so recording the name and message leaks nothing.
