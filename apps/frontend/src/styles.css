@@ -6055,8 +6055,12 @@ h3 {
 }
 
 .policy-document {
-  max-width: 52rem;
   color: var(--colour-text);
+}
+
+.policy-page .ui-page-layout {
+  width: min(100% - 3rem, 68.75rem);
+  margin-inline: auto;
 }
 
 .policy-document > :first-child {
@@ -6121,6 +6125,10 @@ h3 {
 }
 
 @media (max-width: 39.9375rem) {
+  .policy-page .ui-page-layout {
+    width: min(100% - 1.5rem, 68.75rem);
+  }
+
   .site-footer__navigation {
     justify-content: flex-start;
   }

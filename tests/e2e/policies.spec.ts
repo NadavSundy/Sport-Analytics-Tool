@@ -78,6 +78,9 @@ test('footer policy links can be activated from the keyboard', async ({ page }) 
     name: 'Privacy Notice',
   });
 
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
   await privacyLink.focus();
   await expect(privacyLink).toBeFocused();
 
@@ -91,4 +94,6 @@ test('footer policy links can be activated from the keyboard', async ({ page }) 
       name: 'Privacy Notice',
     }),
   ).toBeVisible();
+
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
