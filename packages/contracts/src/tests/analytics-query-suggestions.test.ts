@@ -9,6 +9,7 @@ import {
   QUERY_DEFINITION_VERSION,
   querySuggestionSchema,
 } from '../analytics-query';
+import { leaderboardMetricSchema } from '../public-read';
 
 const UNSUPPORTED = { kind: 'unsupported' as const, reason: 'ambiguous' as const };
 const LEADERBOARD = {
@@ -200,5 +201,51 @@ describe('the prompt description', () => {
   it('says a suggestion must be answerable and bounded to three', () => {
     expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(/at most three/i);
     expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(/never "unsupported"|not "unsupported"/i);
+  });
+});
+
+/**
+ * Issue #851 first stated the subjective-question rule without exempting the
+ * published metrics, and "Who took the most wickets in the IPL?" was then refused
+ * as a superlative like "best". The rule has to separate the two.
+ */
+describe('the subjective-question rule', () => {
+  it('exempts every published metric by name, from the contract enum', () => {
+    for (const metric of leaderboardMetricSchema.options) {
+      expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toContain(`"${metric}"`);
+    }
+  });
+
+  it('says a superlative naming a metric is concrete and must be a leaderboard', () => {
+    expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(/NOT subjective/);
+    expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(/most wickets/i);
+    expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(
+      /[Nn]ever return "unsupported" for a question that names one of them/,
+    );
+  });
+
+  it('keeps the subjective case narrowed to superlatives that name no metric', () => {
+    expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(
+      /subjective only when its superlative names no such metric/,
+    );
+    for (const subjective of ['best batter', 'greatest bowler', 'top player', 'most dangerous']) {
+      expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toContain(subjective);
+    }
+  });
+
+  // An all-time question spans every competition, which is a different problem
+  // from a subjective one, and must not swallow a scoped metric question.
+  it('limits the all-time rule to questions that really span everything', () => {
+    expect(ANALYTICS_QUERY_PROMPT_DESCRIPTION).toMatch(
+      /names a competition\s*\n?\s*or a season is scoped, and translates normally/,
+    );
+  });
+
+  it('states the exemption before the refusal, so the exemption is read first', () => {
+    const exemption = ANALYTICS_QUERY_PROMPT_DESCRIPTION.indexOf('NOT subjective');
+    const refusal = ANALYTICS_QUERY_PROMPT_DESCRIPTION.indexOf('subjective only when');
+
+    expect(exemption).toBeGreaterThan(-1);
+    expect(refusal).toBeGreaterThan(exemption);
   });
 });

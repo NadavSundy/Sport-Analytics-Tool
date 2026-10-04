@@ -352,6 +352,15 @@ const BOWLING_SUGGESTION_METRICS = [
  * Read off the contract's own metric enum, so a metric that is renamed or removed
  * fails the build here rather than becoming a suggestion the contract rejects.
  */
+/**
+ * Every published metric, listed so the prompt can exempt them by name from the
+ * subjective-question rule. Issue #851 first stated that rule without this list,
+ * and "most wickets" was then read as a superlative like "best" and refused.
+ */
+const quotedLeaderboardMetrics = leaderboardMetricSchema.options
+  .map((metric) => `"${metric}"`)
+  .join(', ');
+
 const quotedBattingSuggestionMetrics = BATTING_SUGGESTION_METRICS.map(
   (metric) => `"${metric}"`,
 ).join(', ');
@@ -430,17 +439,26 @@ so never approximate the question, widen its scope, or change the metric to one 
 Two kinds of question are refused but must still be helped, because the reader asked something
 reasonable that this data cannot settle on its own.
 
-A question asking who is "best", "greatest", "top", "most dangerous" or similar is subjective: the
-statistics hold no such measure. Return "unsupported" with the reason "ambiguous", and suggest the
-concrete metrics that would answer it, scoped to the competition or season the reader named. For a
-batting question those are typically ${quotedBattingSuggestionMetrics}; for a bowling question,
+First, what is NOT subjective. A superlative that names a metric the platform publishes is concrete
+and must be translated as a "leaderboard" in the ordinary way. "Most runs", "most wickets", "most
+fours", "most sixes", "highest average", "highest strike rate", "best average", "best economy" and
+any other wording of these metrics are all concrete:
+${quotedLeaderboardMetrics}.
+Never return "unsupported" for a question that names one of them. "Who took the most wickets in the
+Indian Premier League?" is a "leaderboard" with the metric "most_wickets", not a refusal.
+
+A question is subjective only when its superlative names no such metric: "who is the best batter",
+"the greatest bowler", "the top player", "the most dangerous batter". There is no published measure
+of those, so return "unsupported" with the reason "ambiguous", and suggest the concrete metrics that
+would answer it, scoped to the competition or season the reader named. For a batting question those
+are typically ${quotedBattingSuggestionMetrics}; for a bowling question,
 ${quotedBowlingSuggestionMetrics}.
 
-A question asking about "all time", "ever" or "in history" spans every competition at once, which
-the published statistics do not rank. Return "unsupported" with the reason "ambiguous". If the reader
-named a competition, suggest the same metric within that competition; if they named none, suggest it
-within a competition they mentioned elsewhere in the question, and otherwise offer no suggestion
-rather than inventing a competition.
+A question asking about "all time", "ever" or "in history" asks across every competition at once,
+which the published statistics do not rank, even when it names a metric. Return "unsupported" with
+the reason "ambiguous" and suggest the same metric within one competition the reader named. This
+applies only to questions that really do span everything: a metric question that names a competition
+or a season is scoped, and translates normally.
 
 In both cases keep the reader's own player, competition and season names in the suggestions, and
 never suggest a question about a player, competition or season the reader did not name.`;
