@@ -88,6 +88,12 @@ The published documentation contains the methodology. Facilitator materials and 
 
 The decision to use task-based, repository-retained evidence and retire the Microsoft Forms / Power Automate / OneDrive ingestion pipeline is recorded in **ADR-013** and indexed through the project Decisions page.
 
+## Sprint 4 final testing
+
+[Sprint 4 preparation and final summary](user-testing-sprint-4-summary.md) tracks Issue #803. At least three genuine final sessions are required. The current pack is preparation only; human outcomes remain pending.
+
 ## AI Declaration
 
 The preceding document was planned, generated, reviewed and edited with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].

@@ -1,0 +1,22 @@
+# Sprint 4 final user testing
+
+**Preparation only. Zero completed Sprint 4 human sessions are retained; Issue #803 remains open.**
+
+Sprint 4 reuses the [protocol](user-testing-protocol.md), [task bank](user-testing-task-bank.md) and ADR-013. Automated checks and facilitator walkthroughs prepare the environment; they do not count as representative-user sessions.
+
+| Planned session            | Exact selected Task IDs                          | Human evidence |
+| -------------------------- | ------------------------------------------------ | -------------- |
+| Public / analyst           | PUB-01; PUB-02; PUB-03; PUB-06                   | Pending        |
+| Approved submitter         | AUTH-01; AUTH-02; SUB-01; SUB-02; SUB-03; SUB-04 | Pending        |
+| Reviewer                   | AUTH-01; REV-01; REV-02; REV-04                  | Pending        |
+| API consumer (recommended) | PUB-05; API-01; API-02                           | Pending        |
+
+Use the version-controlled [Sprint 4 pack](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/graz/test/803-final-structured-user-testing/evidence/user-testing/sprint-4/README.md), including separate facilitator and participant guides, scenario/session templates, capture checklist, feedback decisions, retests and final-summary skeleton. This preparation branch link is available only after push; update to main after an authorised merge.
+
+After at least three genuine sessions, publish the tested environment/build, actual participant/workflow coverage, exact attempted tasks and outcomes, evidence links, severity/decisions/reasons, issues/fixes, retests, cross-session recurring findings, resulting product changes and final conclusion. Until then no findings or completion are claimed. Sprint 2/3 evidence remains separate and intact.
+
+#810 remains the final release gate; this preparation page is not release acceptance.
+
+## AI Declaration
+
+This preparation document was planned and generated with the assistance of Codex[GPT-6]. Human sessions, review and factual sign-off remain pending.

@@ -286,6 +286,8 @@ npx wrangler pages deploy site --project-name=sports-analytics-tool
 
 This repository makes use of AI code generation using the following tools recorded in the AI registers: ChatGPT-Web[GPT-5.6 Sol], Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Earlier planning/documentation sessions also record ChatGPT-Web[GPT-5.5], ChatGPT-Web[GPT-5.6 Thinking] and Claude.ai[Claude Sonnet 5].
 
+Sprint 4 user-testing preparation for #803 also uses Codex[GPT-6] for documentation generation, repository review and browser technical verification. Its member-register entry distinguishes automated preparation from pending human sessions, review and retests.
+
 This repository does not currently use AI in-line editing/autocomplete tools as a repository workflow.
 
 This repository makes use of AI-assisted code review using tools recorded in the task-level registers, including Codex[GPT-5], Codex[GPT-5.6 Sol] and Claude-Web[Claude Opus 5]. Human review, testing and responsibility remain required.

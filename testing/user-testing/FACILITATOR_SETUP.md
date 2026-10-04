@@ -145,6 +145,12 @@ Use `testing/user-testing/SPRINT3_SCENARIOS.md` and copy the chosen scenario int
 - [ ] Schedule retest for accepted S1/S2 findings.
 - [ ] Update the applicable Sprint summary: `evidence/user-testing/sprint-2/sprint-2-user-testing-summary.md` or `evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md`.
 
+## Sprint 4 preflight
+
+Follow [Sprint 4 runbook](SPRINT4_FACILITATOR_RUNBOOK.md), complete the scenario record and resolve role/data/build readiness before a session. Retain evidence under evidence/user-testing/sprint-4/. The Sprint 4 baseline and participant sheets are separate from facilitator setup.
+
 ## AI Declaration
 
 The preceding checklist was generated with the assistance of ChatGPT-Web[GPT-5.6 Sol].
+
+The Sprint 4 preparation links were added with the assistance of Codex[GPT-6].
