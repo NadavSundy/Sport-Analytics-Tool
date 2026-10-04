@@ -1,6 +1,6 @@
 # Issue #805 final automated test and coverage audit
 
-**Date:** 2026-10-04  
+**Date:** 2026-10-04
 **Candidate:** `test/805-final-automated-audit` from `8c932ca58`
 
 ## Inventory and observed results
