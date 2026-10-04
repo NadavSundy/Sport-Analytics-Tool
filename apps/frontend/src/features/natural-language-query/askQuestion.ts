@@ -1,7 +1,10 @@
 import {
   NATURAL_LANGUAGE_QUESTION_MAX_LENGTH,
   naturalLanguageQueryResponseSchema,
+  queryDefinitionEvaluationResponseSchema,
   type NaturalLanguageQueryResult,
+  type QueryDefinitionEvaluation,
+  type QuerySuggestion,
 } from '@sport-analytics/contracts';
 import { ApiResponseError } from '../../api/client';
 import { ApiContractError, postPublicApi } from '../../api/public-read';
@@ -73,6 +76,34 @@ export async function askQuestion(
     // can fix, so it is reported as the service being unavailable rather than as
     // their question being wrong.
     if (error instanceof ApiContractError) {
+      throw new AskQuestionError({ kind: 'unavailable' });
+    }
+    throw new AskQuestionError({ kind: 'network' });
+  }
+}
+
+/**
+ * Answers a suggestion the reader clicked.
+ *
+ * It posts the definition to the public evaluation endpoint, which makes no
+ * language-model call and is not subject to the limits on asking a question. A
+ * suggestion has already passed the definition contract before it was offered, so
+ * this cannot be the first time it is validated.
+ */
+export async function evaluateDefinition(
+  definition: QuerySuggestion,
+  signal?: AbortSignal,
+): Promise<QueryDefinitionEvaluation> {
+  try {
+    const response = await postPublicApi(
+      '/query-definitions/evaluate',
+      definition,
+      queryDefinitionEvaluationResponseSchema,
+      signal,
+    );
+    return response.data;
+  } catch (error) {
+    if (error instanceof ApiResponseError || error instanceof ApiContractError) {
       throw new AskQuestionError({ kind: 'unavailable' });
     }
     throw new AskQuestionError({ kind: 'network' });

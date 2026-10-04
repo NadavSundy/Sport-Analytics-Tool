@@ -586,3 +586,161 @@ describe('asking a question', () => {
     expect(screen.getAllByText(/Read as:/)).toHaveLength(1);
   });
 });
+
+describe('suggestions (issue #851)', () => {
+  const SUGGESTION = {
+    kind: 'leaderboard' as const,
+    metric: 'most_runs' as const,
+    scope: 'competition' as const,
+    competition: { name: 'Indian Premier League' },
+    limit: 10,
+  };
+  const SUGGESTION_LABEL = 'Most runs · Indian Premier League · top 10';
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function unsupportedWithSuggestions(suggestions: unknown[]) {
+    return {
+      data: {
+        question: 'who is the best batter in the IPL?',
+        model: 'claude-haiku-4-5-20251001',
+        evaluation: {
+          outcome: 'unsupported',
+          definitionVersion: VERSION,
+          definition: { kind: 'unsupported', reason: 'ambiguous' },
+          reason: 'ambiguous',
+        },
+        suggestions,
+      },
+    };
+  }
+
+  it('offers the suggestions, worded from the definition rather than the model', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, unsupportedWithSuggestions([SUGGESTION])),
+    );
+    renderDialog();
+
+    await ask('who is the best batter in the IPL?');
+
+    expect(await screen.findByText('Questions this can answer:')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: SUGGESTION_LABEL })).toBeInTheDocument();
+  });
+
+  // The whole point of a suggestion is that it costs no further model call.
+  it('answers a clicked suggestion through the evaluation endpoint, not the question endpoint', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, unsupportedWithSuggestions([SUGGESTION])));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          outcome: 'answered',
+          definitionVersion: VERSION,
+          definition: SUGGESTION,
+          resolved: {
+            participantIds: [],
+            competitionId: '4',
+            seasonId: null,
+            season: null,
+          },
+          sources: [{ endpoint: '/api/v1/statistics/leaderboards', statisticIds: [] }],
+          result: { ...LEADERBOARD, scope: 'competition', season: undefined, seasonId: undefined },
+        },
+      }),
+    );
+    renderDialog();
+
+    await ask('who is the best batter in the IPL?');
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: SUGGESTION_LABEL }));
+    });
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    const paths = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(paths[0]).toContain('/natural-language-queries');
+    expect(paths[1]).toContain('/query-definitions/evaluate');
+    expect(paths).toHaveLength(2);
+  });
+
+  it('reads the answer back as the suggestion that was clicked', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, unsupportedWithSuggestions([SUGGESTION])));
+    // The evaluation endpoint echoes the definition it was given, so the answer
+    // reads back as the suggestion rather than as the original question.
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          outcome: 'entity_not_found',
+          definitionVersion: VERSION,
+          definition: SUGGESTION,
+          reference: 'competition',
+          nameHint: 'Indian Premier League',
+        },
+      }),
+    );
+    renderDialog();
+
+    await ask('who is the best batter in the IPL?');
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: SUGGESTION_LABEL }));
+    });
+
+    expect(await screen.findByText(/Read as:/)).toHaveTextContent(SUGGESTION_LABEL);
+  });
+
+  it('offers nothing when the response carries no suggestions', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(200, unsupportedWithSuggestions([])),
+    );
+    renderDialog();
+
+    await ask('which ground sees most sixes?');
+
+    expect(await screen.findByText(/does not say which player/i)).toBeInTheDocument();
+    expect(screen.queryByText('Questions this can answer:')).not.toBeInTheDocument();
+  });
+
+  // The output that would have carried a suggestion is the thing that failed, so
+  // the examples stand in.
+  it('falls back to the example questions when the model output was unusable', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(422, {
+        error: { code: 'QUERY_NOT_UNDERSTOOD', message: 'Not translatable.' },
+      }),
+    );
+    renderDialog();
+
+    await ask('qwerty asdf');
+
+    expect(await screen.findByText(/Try rephrasing/i)).toBeInTheDocument();
+    expect(screen.getByText('Questions this can answer:')).toBeInTheDocument();
+    const example = screen.getAllByRole('button', {
+      name: 'Who scored the most runs in the 2024 Indian Premier League season?',
+    });
+    fireEvent.click(example[example.length - 1]!);
+    expect(screen.getByLabelText('Your question')).toHaveValue(
+      'Who scored the most runs in the 2024 Indian Premier League season?',
+    );
+  });
+
+  it('offers no fallback for a failure the reader cannot rephrase away', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      jsonResponse(503, {
+        error: { code: 'QUERY_SERVICE_UNAVAILABLE', message: 'Unavailable.' },
+      }),
+    );
+    renderDialog();
+
+    await ask('most runs in the IPL');
+
+    expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByText('Questions this can answer:')).not.toBeInTheDocument();
+  });
+});
