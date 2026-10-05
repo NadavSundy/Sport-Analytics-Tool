@@ -46,6 +46,7 @@
   --shadow-header: 0 8px 28px rgb(16 32 38 / 8%);
   --shadow-card: 0 8px 24px rgb(16 32 38 / 7%);
   --shadow-overlay: 0 18px 45px rgb(16 32 38 / 10%);
+  --shadow-scroll-edge: rgb(16 32 38 / 16%);
   --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --font-interface: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', Consolas, monospace;
@@ -96,7 +97,8 @@
   transition:
     background-color 120ms var(--ease-fast),
     border-color 120ms var(--ease-fast),
-    color 120ms var(--ease-fast);
+    color 120ms var(--ease-fast),
+    transform 160ms var(--ease-hit);
 }
 
 .ui-button--primary {
@@ -115,8 +117,10 @@
   background: var(--colour-error);
   color: #fff;
 }
-.ui-button:hover:not(:disabled) {
-  filter: brightness(0.94);
+@media (hover: hover) and (pointer: fine) {
+  .ui-button:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
 }
 .ui-button:disabled {
   cursor: not-allowed;
@@ -192,12 +196,45 @@
   background: var(--colour-error-soft);
 }
 .ui-message__heading {
+  max-width: none;
   margin: 0 0 var(--space-2);
-  font-size: 1rem;
+  font-size: 1.25rem;
+  line-height: 1.2;
 }
 .ui-message p {
   margin: 0;
   line-height: 1.5;
+}
+
+/*
+ * Wide tables scroll sideways inside their frame. A shadow appears on each edge
+ * that has more columns beyond it: the surface-coloured covers scroll with the
+ * content (local) and hide the fixed edge shadows (scroll) when at that end.
+ */
+.ui-data-table,
+.api-consumer-table-wrap,
+.published-conflict-resolution__table-wrap,
+.local-navigation {
+  --scroll-cover: var(--colour-surface);
+  background:
+    linear-gradient(to right, var(--scroll-cover) 30%, transparent) left center / 2.5rem 100%
+      no-repeat local,
+    linear-gradient(to left, var(--scroll-cover) 30%, transparent) right center / 2.5rem 100%
+      no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--shadow-scroll-edge), transparent) left center /
+      0.875rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--shadow-scroll-edge), transparent) right
+      center / 0.875rem 100% no-repeat scroll,
+    var(--scroll-cover);
+}
+
+/* Tab rows sit on the page canvas, except inside a card. */
+.local-navigation {
+  --scroll-cover: var(--colour-canvas);
+}
+
+.auth-card .local-navigation {
+  --scroll-cover: var(--colour-surface);
 }
 
 .ui-data-table {
@@ -214,7 +251,6 @@
   width: 100%;
   min-width: 34rem;
   border-collapse: collapse;
-  background: var(--colour-surface);
 }
 .ui-data-table__table caption {
   padding: var(--space-3) var(--space-4);
@@ -276,6 +312,7 @@
   --shadow-header: 0 8px 28px rgb(0 0 0 / 24%);
   --shadow-card: 0 10px 30px rgb(0 0 0 / 18%);
   --shadow-overlay: 0 22px 60px rgb(0 0 0 / 28%);
+  --shadow-scroll-edge: rgb(0 0 0 / 55%);
 }
 
 * {
@@ -1107,27 +1144,6 @@ main:focus {
 .auth-card__introduction {
   margin: 1.25rem 0 2rem;
   font-size: 1.0625rem;
-}
-
-.button {
-  min-height: 3rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.25rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.button--primary {
-  background: var(--colour-primary);
-  color: #fff;
-}
-
-:root[data-theme='night'] .button--primary {
-  color: #08121b;
 }
 
 .google-sign-in-button {
@@ -2841,6 +2857,11 @@ main:focus {
   gap: 0.625rem;
 }
 
+.submission-scope > *,
+.submission-field > * {
+  min-width: 0;
+}
+
 .submission-mode,
 .submission-scope {
   display: grid;
@@ -3873,7 +3894,8 @@ h3 {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 24%;
+  /* The crease runs through the gap between heading and button, never the text. */
+  right: clamp(13rem, 24vw, 22rem);
   border-left: 3px solid var(--colour-primary);
   transform: skewX(-18deg);
 }
@@ -3887,8 +3909,8 @@ h3 {
 }
 
 .home-cta h2 {
-  max-width: 14ch;
-  font-size: clamp(2.75rem, 6vw, 5rem);
+  max-width: 20ch;
+  font-size: clamp(2.75rem, 5vw, 4.5rem);
   line-height: 0.95;
 }
 
@@ -4027,6 +4049,7 @@ h3 {
 
 .name-combobox {
   position: relative;
+  min-width: 0;
 }
 
 .name-combobox__control {
@@ -4034,7 +4057,11 @@ h3 {
   display: flex;
 }
 
+/* An input's intrinsic width would otherwise stop every grid above it shrinking. */
 .name-combobox__control input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   padding-right: 4.5rem;
 }
 
@@ -4203,6 +4230,17 @@ h3 {
   cursor: pointer;
   font-weight: 700;
   text-decoration: none;
+  transition:
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    filter var(--motion-fast) ease,
+    transform 160ms var(--ease-hit);
+}
+
+/* Press feedback confirms the click landed; disabled buttons stay still. */
+.button:active:not(:disabled),
+.ui-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .button--primary {
@@ -4220,8 +4258,10 @@ h3 {
   color: var(--colour-text);
 }
 
-.button:hover {
-  filter: brightness(0.94);
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
 }
 
 .results-region {
@@ -4306,6 +4346,10 @@ h3 {
   margin: 0.75rem 0 0;
   color: var(--colour-text-secondary);
   line-height: 1.6;
+}
+
+.state-message > :first-child {
+  margin-top: 0;
 }
 
 .state-message .button {
@@ -5703,7 +5747,7 @@ h3 {
   }
 
   .home-cta::before {
-    left: 82%;
+    display: none;
   }
 
   .home-cta__layout {

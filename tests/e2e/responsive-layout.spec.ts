@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mockPublishedRecord, reviewedRoutes, type MockRole } from './support/published-record-mocks';
+import {
+  mockPublishedRecord,
+  reviewedRoutes,
+  type MockRole,
+} from './support/published-record-mocks';
 
 // Issue #800: the header must never overlap, clip or wrap its controls at any
 // width, and no route may scroll sideways at 320 CSS pixels — the width a
@@ -36,7 +40,9 @@ async function visibleHeaderItems(page: Page): Promise<HeaderBox[]> {
 }
 
 function overlaps(a: HeaderBox, b: HeaderBox) {
-  return a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+  return (
+    a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1
+  );
 }
 
 for (const role of ['signed-out', 'admin'] as MockRole[]) {
@@ -53,14 +59,16 @@ for (const role of ['signed-out', 'admin'] as MockRole[]) {
       const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
 
       for (const item of items) {
-        expect(item.right, `${item.name} ends inside the viewport at ${width}px`).toBeLessThanOrEqual(
-          viewportWidth,
-        );
+        expect(
+          item.right,
+          `${item.name} ends inside the viewport at ${width}px`,
+        ).toBeLessThanOrEqual(viewportWidth);
         expect(item.clipped, `${item.name} is not clipped at ${width}px`).toBe(false);
         // A header control taller than one 44px row has wrapped its label.
-        expect(item.bottom - item.top, `${item.name} stays on one line at ${width}px`).toBeLessThanOrEqual(
-          48,
-        );
+        expect(
+          item.bottom - item.top,
+          `${item.name} stays on one line at ${width}px`,
+        ).toBeLessThanOrEqual(48);
       }
       for (const [index, item] of items.entries()) {
         for (const other of items.slice(index + 1)) {
@@ -82,6 +90,9 @@ test('every reviewed route reflows at 320 CSS pixels without sideways scrolling'
   for (const route of [...reviewedRoutes.public, ...reviewedRoutes.workspace]) {
     await page.goto(route);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+    // Measure once the page's own data has rendered, not just its heading.
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('status', { name: /^Loading/ })).toHaveCount(0);
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     if (scrollWidth > 320) overflowing.push(`${route} (${scrollWidth}px)`);
   }
