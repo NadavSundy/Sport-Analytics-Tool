@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export const SITE_NAME = "Stat'sTheGame";
+const SITE_NAME = "Stat'sTheGame";
 
 /**
  * Names the browser tab after the page's own heading, so tabs, history and

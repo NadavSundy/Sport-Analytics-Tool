@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 // Shared, deliberately small public record used by the route-wide quality audits
 // (issue #800). Workflow-specific specs keep their own richer fixtures.
 
-export const fixture = {
+const fixture = {
   fixtureId: 'fixture-1',
   competitionId: 'competition-1',
   competitionName: 'Premier Cricket League',

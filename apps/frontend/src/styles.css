@@ -747,6 +747,7 @@ select:focus-visible {
 }
 
 .mobile-navigation__panel h2 {
+  max-width: none;
   margin: 0 0 0.5rem;
   color: var(--colour-text-muted);
   font-family: var(--font-interface);
