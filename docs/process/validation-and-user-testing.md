@@ -12,6 +12,7 @@ user-testing evidence. For testing **strategy and procedures**, see
 
 - [Sprint 1 requirements traceability](../planning/sprint-1-requirements-traceability.md)
 - [Sprint 2 requirements and rubric traceability](../planning/sprint-2-requirements-traceability.md)
+- [Final requirements and Milestone 4 rubric traceability](../planning/final-requirements-rubric-traceability.md)
 - [Project backlog and milestone plan](../planning/project-backlog.md)
 
 ## Verification and validation evidence
