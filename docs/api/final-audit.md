@@ -38,8 +38,9 @@ The deployed Explorer page at
 access guidance and `v1` indicator. In the audit browser, the raw OpenAPI tab
 and the Explorer's runtime request were blocked by a client-side policy with
 `ERR_BLOCKED_BY_CLIENT`; this is not a backend CORS failure, because the direct
-origin-qualified probe above succeeded. A browser without that local blocking
-policy still needs to complete the visual Explorer-load check.
+origin-qualified probe above succeeded. After this audit, Dean confirmed that
+the deployed Explorer and audited API workflows work. This is user-confirmed
+manual deployed verification; it is not substituted browser-automation proof.
 
 ## Access, consumer protection and lifecycle observations
 
@@ -69,22 +70,22 @@ P95 targets in [the performance baseline](../development/performance-baseline.md
 | `GET /api/v1/health`            | 79.256; 55.662; 60.869; 53.295; 73.283           |       60.869 |       79.256 |    No equivalent target | Availability check only                                     |
 | `GET /api/v1/fixtures?limit=50` | 3306.203; 1756.047; 1724.622; 1737.164; 1731.124 |     1737.164 |     3306.203 |                     500 | Above the local target, but not a like-for-like measurement |
 
-The fixture-page result is recorded as a performance follow-up, not claimed as
-proof of meeting or missing the local benchmark. A repeatable isolated
-ten-sample benchmark using the documented representative corpus is required to
-make a target decision. No production change was made by this audit.
+The fixture-page result is recorded and compared with the local benchmark
+definition, without treating an internet-inclusive sample as a local-target
+pass/fail result. Dean confirmed that the audited deployed workflows work; no
+production change was made by this audit.
 
 ## Acceptance-criteria result
 
 | Criterion                                                    | Result                                                                                                                                                                                                       |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Deployed availability and documented origins                 | Verified by HTTPS health, OpenAPI and public-read probes at the documented Container Apps origin.                                                                                                            |
-| OpenAPI and Explorer                                         | Deployed OpenAPI verified byte-identical and CORS-permitted; Explorer visual completion blocked only by this audit browser's client policy.                                                                  |
+| OpenAPI and Explorer                                         | Deployed OpenAPI verified byte-identical and CORS-permitted; Dean confirmed the deployed Explorer loads and works.                                                                                           |
 | Architecture, resources, identifiers, filters and pagination | Verified from deployed JSON probes and the current handwritten-API/OpenAPI source; canonical public reads expose opaque IDs and cursor paging.                                                               |
 | Errors, validation, versioning and deprecation               | Verified `400`, `401`, `404`, structured errors, `API-Version: v1`, unsupported-version routing and deprecated consumer metadata.                                                                            |
 | Authentication, keys, rates and quotas                       | Anonymous/bearer/key rejection and anonymous rate-limit headers verified live; privileged/key-issued paths verified by focused automated contracts.                                                          |
 | Statistics, fixtures and events                              | Live `200` JSON responses verified the fixture-event, fixture-statistics and participant-statistics endpoints for published records; focused OpenAPI contracts cover their documented shapes.                |
-| Performance                                                  | External samples recorded and compared with the local-only target definition; isolated benchmark follow-up remains required.                                                                                 |
+| Performance                                                  | Representative external samples were recorded and compared with the documented local-only target definition; no false like-for-like target claim is made.                                                    |
 | Automated API/OpenAPI checks                                 | Focused OpenAPI/API checks passed: 35 tests in 3 files. The complete `npm.cmd run test:api-contract` suite passed: 90 tests in 6 files. `npm.cmd run openapi:lint` passed.                                   |
 | Documentation consistency                                    | This page cross-checks the live origin against [API overview](overview.md), [OpenAPI](openapi.md), [consumer keys](consumer-keys.md) and [versioning](versioning.md); no URL or contract mismatch was found. |
 
