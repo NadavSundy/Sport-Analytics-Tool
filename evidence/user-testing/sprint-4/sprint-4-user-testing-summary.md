@@ -4,13 +4,13 @@
 
 ## Objective and tested environment/build
 
-Final representative workflows under #803 using the existing protocol and task bank. P15 tested the deployed public URL signed out using Chrome desktop on the facilitator PC, reported 2026-10-05 03:26 Africa/Johannesburg and confirmed by Gabriel. Exact frontend/API/worker commits and browser version remain unavailable; remaining workflow environments/scenarios are pending readiness checks. Local preparation base is e4cd199e; this is not claimed as the deployed version.
+Final representative workflows under #803 using the existing protocol and task bank. P15 tested the deployed public URL signed out using Chrome desktop on the facilitator PC, recorded 2026-10-05 15:38 Africa/Johannesburg after user-requested correction; original 03:26 report retained in raw chronology. Exact frontend/API/worker commits and browser version remain unavailable; remaining workflow environments/scenarios are pending readiness checks. Local preparation base is e4cd199e; this is not claimed as the deployed version.
 
 ## Participant and workflow coverage
 
 | Anonymous ID                  | Actual date                                                                                  | Role / experience                                        | Workflow                              | Session / raw evidence                                                                    | Exact tasks attempted                        | Unattempted tasks / blockers                                                                                                                                                      |
 | ----------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P15, allocated by facilitator | Reported 2026-10-05 03:26; client timezone Africa/Johannesburg; exact start/end not supplied | Public / novice; no cricket/project familiarity reported | Public browsing/statistics/comparison | [Reviewed record](2026-10-05-P15-public.md); [source](raw/2026-10-05-P15-public-notes.md) | PUB-01; PUB-02; PUB-03; PUB-06 self-reported | Four attempts reported; Chrome desktop and signed-out confirmed by self-report; exact build/version unavailable; outcomes and decisions approved; separate score counts clarified |
+| P15, allocated by facilitator | Corrected by user to 2026-10-05 15:38 Africa/Johannesburg; exact task start/end not measured | Public / novice; no cricket/project familiarity reported | Public browsing/statistics/comparison | [Reviewed record](2026-10-05-P15-public.md); [source](raw/2026-10-05-P15-public-notes.md) | PUB-01; PUB-02; PUB-03; PUB-06 self-reported | Four attempts reported; Chrome desktop and signed-out confirmed by self-report; exact build/version unavailable; outcomes and decisions approved; separate score counts clarified |
 
 Minimum three real completed sessions; public, submitter and reviewer baseline, API consumer recommended. Public session with facilitator-reviewed outcomes/decisions: 1. Submitter, reviewer and recommended API session not yet conducted in this chat.
 
@@ -77,3 +77,5 @@ Pending sessions, account/data readiness, exact tested build evidence, facilitat
 ## AI Declaration
 
 This preparation document was planned and generated with the assistance of Codex[GPT-6]. P15 outcomes and decisions were approved by Gabriel. Further sessions and overall acceptance remain pending.
+
+Additional follow-up: F04 missing Previous page in fixture 8937 Players list, supported by two participant-supplied screenshots and separate technical reproduction. Proposed S3, decision pending; no original task outcomes changed or additional session counted.

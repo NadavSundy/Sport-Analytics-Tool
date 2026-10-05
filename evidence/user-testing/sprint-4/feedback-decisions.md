@@ -10,6 +10,14 @@
 
 Existing-issue lookup: all-state comparison search, closed #716 and open #800 inspected. #716 concerned comparison discoverability; no recurrence of its original defect is claimed. #800 covers current comparison readability and responsive polish. [Separate technical review](supporting/2026-10-05-technical-PUB-06-comparison-review.md) corroborates F01/F03; no duplicate issue created.
 
+## Additional follow-up awaiting decision
+
+| Finding | Task association                    | Observation                                                                                                                                 | Severity    | Decision | Next action                                                                                                                                                                                                               |
+| ------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F04     | P15 / PUB-01 additional exploration | Fixture 8937 Players list cannot navigate to preceding results slice; participant page 1/2 screenshots plus separate technical reproduction | Proposed S3 | Pending  | Evaluate accepted fix/deferral; retain exact prior cursors and expose accessible Previous control, including from last page; existing #747/#725 position-indicator work is context, not proof this related list was fixed |
+
+See [P15 follow-up](2026-10-05-P15-public.md). Original task outcomes stay approved; F04 is not a retest.
+
 ## Canonical decision mapping
 
 | Issue #803 outcome state                | Canonical decision | Required evidence                                                                                         |

@@ -98,3 +98,21 @@ After the facilitator returned, Codex asked whether the four proposed Success ou
 > 2. yes - maybe for the teams in plauyer names the dropdown have a splitter
 
 This approves the reviewed outcomes and decisions and suggests grouping the dropdown by team. It is facilitator feedback after the session, not a participant quote, observation, product fix or retest.
+
+## Additional feedback and user-requested timestamp correction
+
+Additional report, excluding relationship wording:
+
+> when looking at the players screen with the list of players and you press next page, you cant go back to the previous page, here are page 1 and 2 of the players.
+
+Two attached screenshots are retained unchanged under `supporting/2026-10-05-P15-public-F04-players-page-1.png` and `supporting/2026-10-05-P15-public-F04-players-page-2.png`. Attachment capture times are unknown.
+
+The user requested the PUB time be changed and confirmed:
+
+> just change it to this time
+
+The subsequent clarification reply was:
+
+> change it to this time
+
+The displayed session timestamp was corrected to 2026-10-05 15:38 Africa/Johannesburg, anchored to the actual clock reading 2026-10-05 13:38:36 UTC. Original 03:26 wording above remains the historical participant report; the corrected display is user-specified current time, not an independently measured original task start. No per-task times/durations are invented.
