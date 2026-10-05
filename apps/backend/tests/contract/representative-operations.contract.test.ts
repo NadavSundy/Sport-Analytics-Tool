@@ -514,23 +514,38 @@ describe('authenticated operations', () => {
     );
   });
 
-  test('POST /admin/api-consumers returns 201 to an administrator and 403 to a viewer', async () => {
-    const body = { name: 'Partner dashboard', rateLimitPerMinute: 60, dailyQuota: 10000 };
-    const apiConsumers = {
-      issue: async () => ({ ...apiConsumer, apiKey: CONSUMER_API_KEY }),
+  test('PATCH /admin/api-access-requests/{requestId} records approval only for an administrator', async () => {
+    const body = {
+      decision: 'approved',
+      reviewReason: 'Approved.',
+      rateLimitPerMinute: 60,
+      dailyQuota: 10000,
+    } as const;
+    const apiAccess = {
+      decide: async () => ({
+        id: '4',
+        requesterAccountId: '8',
+        name: 'Partner dashboard',
+        intendedUse: 'Partner match dashboard.',
+        state: 'approved' as const,
+        createdAt: '2026-10-04T10:00:00.000Z',
+        reviewedAt: '2026-10-04T11:00:00.000Z',
+        reviewedBy: { id: '1', displayName: 'Admin' },
+        reviewReason: 'Approved.',
+      }),
     };
 
     contract.expectResponse(
-      await request(contractApp({ account: { role: 'admin' }, apiConsumers }))
-        .post('/api/v1/admin/api-consumers')
+      await request(contractApp({ account: { role: 'admin' }, apiAccess }))
+        .patch('/api/v1/admin/api-access-requests/4')
         .set('Authorization', 'Bearer token')
         .send(body)
-        .expect(201),
+        .expect(200),
       { requestBody: body },
     );
     contract.expectResponse(
-      await request(contractApp({ account: { role: 'viewer' }, apiConsumers }))
-        .post('/api/v1/admin/api-consumers')
+      await request(contractApp({ account: { role: 'viewer' }, apiAccess }))
+        .patch('/api/v1/admin/api-access-requests/4')
         .set('Authorization', 'Bearer token')
         .send(body)
         .expect(403),

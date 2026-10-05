@@ -4,21 +4,26 @@
 
     [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
     defines one canonical cricket-read hierarchy. Those reads accept anonymous requests or an
-    optional valid consumer key. Requester-owned consumer access remains tracked by
-    [#822](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/822).
+    optional valid consumer key. This page documents the requester-owned access lifecycle.
 
 External integrations use the canonical `/api/v1/*` resource paths and may identify themselves
-with a consumer key. An administrator issues and manages keys through the handwritten management
-API; a raw secret is returned only by the issue and rotation responses. Store it in the consumer's
-secret manager immediately.
+with a consumer key. The approved owner generates and manages credentials through the handwritten
+management API. A raw secret is returned only by explicit owner generation or rotation. Store it in
+the consumer's secret manager immediately.
 
 ## Requesting consumer access
 
-Consumer keys are administrator-issued; the project does not provide self-service consumer
-registration or public key issuance. A legitimate external consumer should ask a Stat'sTheGame
-administrator or project administrator for API consumer access through their existing project
-relationship. The administrator can then create the consumer and issue its key through the
-administrator-only management workflow.
+An authenticated active user opens **Account → API access**, enters a consumer/application name and a
+short intended-use description, and submits a request. One pending or approved request blocks
+duplicates. A rejection grants no capability and permits a new request.
+
+An administrator reviews pending requests under `/admin/api-consumers`. The review list resolves the
+requesting account's display name and email for the administrator; the application account ID
+remains backend ownership metadata rather than the primary review label. Approval records the
+reviewer, timestamp and optional reason, creates a consumer owned by the requester, and assigns the
+per-minute and daily limits. Approval does **not** generate a key. Rejection records the same audit
+metadata without creating a consumer. The approved owner must return to **Account → API access** and
+explicitly generate the first credential while present.
 
 The raw key is shown only once when it is issued or rotated. The consumer must transfer and store it
 as a secret, send it only in the `X-API-Key` request header, and never place it in a URL, query
@@ -28,27 +33,36 @@ administrator, submission, batch or other application-authenticated operations.
 
 ## Management
 
-All management operations require an administrator's Supabase bearer token.
+Owner management operations require the owner's Supabase bearer token. Administrators separately
+review requests, set limits, list consumers and revoke credentials; they never receive a raw key.
 
 The frontend Administration area provides the routine workflow at
-`/admin/api-consumers`: administrators can list the consumers they own, create a consumer, inspect
-safe configuration and key metadata, rotate all active keys, and revoke an individual key. It also
-shows safe historical usage aggregates for a selected consumer and links to the API Explorer for
-the complete API product documentation. The management API remains the authorization boundary.
+`/admin/api-consumers`: administrators review requests, inspect all consumers, adjust approved
+limits and revoke an individual key. Owners generate, rotate, revoke and inspect usage from their
+account area. The backend verifies ownership for every owner operation.
 
 ```http
-POST /api/v1/admin/api-consumers
-Authorization: Bearer <admin-token>
+POST /api/v1/account/api-access/requests
+Authorization: Bearer <user-token>
 Content-Type: application/json
 
-{"name":"Partner dashboard","rateLimitPerMinute":60,"dailyQuota":10000}
+{"name":"Partner dashboard","intendedUse":"Power a partner-facing match dashboard."}
 ```
 
-The `201` response contains `data.apiKey` exactly once. Subsequent `GET /api/v1/admin/api-consumers` responses return only safe key metadata (ID, prefix, creation time and revocation time), never the raw secret or its digest.
+After approval, `POST /api/v1/account/api-consumers/{consumerId}/keys` returns `data.apiKey`
+exactly once. Subsequent account and administrator reads return only safe key metadata (ID, prefix,
+creation time and revocation time), never the raw secret or its digest.
 
-Rotate a consumer key with `POST /api/v1/admin/api-consumers/{consumerId}/keys/rotate`. Rotation revokes every active key for that consumer before issuing the replacement. Revoke an individual key immediately with `DELETE /api/v1/admin/api-consumers/{consumerId}/keys/{keyId}`. Both actions make the old key return the same generic `401 API_KEY_UNAUTHORIZED` result as an unknown key.
+Owners rotate with `POST /api/v1/account/api-consumers/{consumerId}/keys/rotate` and revoke with
+`DELETE /api/v1/account/api-consumers/{consumerId}/keys/{keyId}`. Rotation revokes every active key
+before issuing the replacement. Revoked and unknown credentials return the same generic `401
+API_KEY_UNAUTHORIZED` response.
 
-The frontend keeps a raw issue or rotation response only in the current in-memory one-time-key
+The owner account area queries `GET /api/v1/account/api-consumers/{consumerId}/usage` with the
+owner's bearer token. Owners select inclusive `from` and `to` UTC dates; the same 31-day maximum and
+100-group cap used by administrator usage views apply.
+
+The frontend keeps a raw generation or rotation response only in the current in-memory one-time-key
 view. Dismissing or leaving that view discards the raw key; normal list and detail views use only the
 safe metadata returned by the list operation. The frontend does not place keys in URLs, browser
 storage, logs or analytics.
@@ -191,3 +205,4 @@ The issue #820 current/future access-model boundary was documented with the assi
 Codex[GPT-5].
 The issue #821 canonical optional-key access model, anonymous protection and alias migration were
 documented with the assistance of Codex[GPT-5].
+metadata without creating a consumer. The approved owner must return to **Account → API access** and

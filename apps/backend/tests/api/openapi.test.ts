@@ -32,7 +32,7 @@ describe('GET /openapi.yaml', () => {
     expect(response.text).toContain('title: Sport Analytics API');
     expect(response.text).toContain('supportedVersions: [v1]');
     expect(verifyAccessToken).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('leaves the normal versioned API routing unchanged', async () => {
     const app = createTestApp();

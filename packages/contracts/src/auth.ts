@@ -178,6 +178,49 @@ export const administratorRoleUpdateSchema = z
 
 const consumerLimitSchema = z.number().int().min(1).max(10_000);
 
+export const apiAccessRequestStateSchema = z.enum(['pending', 'approved', 'rejected']);
+
+export const apiAccessRequestCreateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    intendedUse: z.string().trim().min(10).max(500),
+  })
+  .strict();
+
+export const apiAccessRequestSchema = z
+  .object({
+    id: apiIdentifierSchema,
+    requesterAccountId: apiIdentifierSchema,
+    name: z.string().min(1),
+    intendedUse: z.string().min(1),
+    state: apiAccessRequestStateSchema,
+    createdAt: apiDateTimeSchema,
+    reviewedAt: apiDateTimeSchema.nullable(),
+    reviewedBy: administratorAuditActorSchema.nullable(),
+    reviewReason: z.string().min(1).nullable(),
+  })
+  .strict();
+
+export const apiAccessDecisionSchema = z
+  .object({
+    decision: z.enum(['approved', 'rejected']),
+    reviewReason: z.string().trim().min(1).max(500).optional(),
+    rateLimitPerMinute: consumerLimitSchema.optional(),
+    dailyQuota: consumerLimitSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.decision === 'approved' &&
+      (value.rateLimitPerMinute === undefined || value.dailyQuota === undefined)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Approved requests require limits.',
+      });
+    }
+  });
+
 export const apiConsumerIssueSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
@@ -214,6 +257,36 @@ export const apiConsumerIssueResponseSchema = z
 
 export const apiConsumerListResponseSchema = z
   .object({ data: z.object({ consumers: z.array(apiConsumerSchema) }).strict() })
+  .strict();
+
+export const apiAccessRequestResponseSchema = z.object({ data: apiAccessRequestSchema }).strict();
+export const administratorApiAccessRequestSchema = apiAccessRequestSchema
+  .extend({
+    requester: z
+      .object({
+        displayName: z.string().min(1).nullable(),
+        email: z.string().email(),
+      })
+      .strict(),
+  })
+  .strict();
+export const apiAccessRequestListResponseSchema = z
+  .object({
+    data: z.object({ requests: z.array(administratorApiAccessRequestSchema) }).strict(),
+  })
+  .strict();
+export const apiAccessOverviewResponseSchema = z
+  .object({
+    data: z
+      .object({
+        request: apiAccessRequestSchema.nullable(),
+        consumer: apiConsumerSchema.nullable(),
+      })
+      .strict(),
+  })
+  .strict();
+export const apiConsumerLimitsSchema = z
+  .object({ rateLimitPerMinute: consumerLimitSchema, dailyQuota: consumerLimitSchema })
   .strict();
 
 export const apiConsumerRotateResponseSchema = z
@@ -307,6 +380,11 @@ export type AdministratorSubmitterAccessResponse = z.infer<
 >;
 export type AdministratorRoleUpdate = z.infer<typeof administratorRoleUpdateSchema>;
 export type ApiConsumerIssue = z.infer<typeof apiConsumerIssueSchema>;
+export type ApiAccessRequestState = z.infer<typeof apiAccessRequestStateSchema>;
+export type ApiAccessRequestCreate = z.infer<typeof apiAccessRequestCreateSchema>;
+export type ApiAccessRequest = z.infer<typeof apiAccessRequestSchema>;
+export type AdministratorApiAccessRequest = z.infer<typeof administratorApiAccessRequestSchema>;
+export type ApiAccessDecision = z.infer<typeof apiAccessDecisionSchema>;
 export type ApiConsumer = z.infer<typeof apiConsumerSchema>;
 export type ApiConsumerIssueResponse = z.infer<typeof apiConsumerIssueResponseSchema>;
 export type ApiConsumerListResponse = z.infer<typeof apiConsumerListResponseSchema>;

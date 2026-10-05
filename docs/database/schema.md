@@ -316,8 +316,10 @@ Intermediate persistence, so they are no longer future schema concepts.
   without replacing accepted events as the source of truth.
 - **Dataset releases.** Immutable release metadata and mutable `dataset_release_job` state support
   asynchronous generation of checksum-backed dataset artifacts in private object storage.
-- **External API consumers.** Consumer/key persistence and usage accounting support administrator
-  key management, per-minute rate limits and UTC daily quotas.
+- **External API consumers.** `api_consumer_access_request` records requester, application name,
+  intended use, pending/approved/rejected state, reviewer, decision time and reason. Approval links
+  to a separately owner-bound `api_consumer`; key rows persist only a digest and safe prefix.
+  Disabled, auth-deleted or application-deleted owners are excluded from active-key lookup.
 - **Anonymous API limits.** Per-source HMAC pseudonyms and one global row per UTC minute provide
   durable, replica-safe admission counters for canonical public reads. Raw client addresses are not
   stored, and global-before-source row locking gives concurrent requests one consistent order.
