@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { mockPublishedRecord, reviewedRoutes, selectTheme } from './support/published-record-mocks';
 
 const routes = ['/', '/sign-in', '/account', '/privacy', '/terms', '/accessibility'] as const;
 const themes = ['day', 'night'] as const;
@@ -29,6 +30,37 @@ for (const route of routes) {
         `${route} ${theme} theme: ${JSON.stringify(seriousOrCriticalViolations, null, 2)}`,
       ).toEqual([]);
     });
+  }
+}
+
+// Issue #800: the final review extends the audit to every normal data and workspace
+// route, in both themes, against one mocked published fixture. Workspace routes are
+// audited signed in as an administrator, the role that can reach all of them.
+for (const [audience, routesForAudience] of Object.entries(reviewedRoutes)) {
+  for (const route of routesForAudience) {
+    if ((routes as readonly string[]).includes(route)) continue;
+    for (const theme of themes) {
+      test(`reviewed ${audience} route has no serious accessibility violations: ${route} (${theme})`, async ({
+        page,
+      }) => {
+        await mockPublishedRecord(page, audience === 'workspace' ? 'admin' : 'signed-out');
+        await selectTheme(page, theme);
+        await page.goto(route);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+        await expect(page.getByRole('status', { name: 'Loading page' })).toHaveCount(0);
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const seriousOrCriticalViolations = results.violations.filter(
+          (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+        );
+
+        expect(
+          seriousOrCriticalViolations,
+          `${route} ${theme} theme: ${JSON.stringify(seriousOrCriticalViolations, null, 2)}`,
+        ).toEqual([]);
+      });
+    }
   }
 }
 
