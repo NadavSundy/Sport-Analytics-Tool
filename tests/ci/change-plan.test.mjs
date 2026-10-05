@@ -194,6 +194,47 @@ test('CI runs a three-run baseline Lighthouse regression gate with retained arti
   assert.match(workflow, /artifacts\/lighthouse-ci/);
 });
 
+test('Lighthouse routing skips documentation and evidence-only changes', () => {
+  for (const file of [
+    'docs/development/ci-cd.md',
+    'evidence/ai/registers/dean-feldman.csv',
+    'evidence/ai/transcripts/dean-feldman/issue-805.md',
+  ]) {
+    assert.equal(
+      classifyChangedFiles([file]).lighthouse,
+      false,
+      `${file} must not require Lighthouse`,
+    );
+  }
+});
+
+test('Lighthouse routing includes every frontend build or runner dependency', () => {
+  for (const file of [
+    'apps/frontend/src/App.tsx',
+    'apps/frontend/vite.config.ts',
+    'packages/contracts/src/api.ts',
+    'package.json',
+    'package-lock.json',
+    'scripts/run-frontend-lighthouse.mjs',
+    '.gitea/workflows/ci.yml',
+  ]) {
+    for (const eventName of ['pull_request', 'push']) {
+      assert.equal(
+        classifyChangedFiles([file], { eventName }).lighthouse,
+        true,
+        `${file} must require Lighthouse for ${eventName}`,
+      );
+    }
+  }
+});
+
+test('CI exposes and uses the dedicated Lighthouse routing decision', () => {
+  const workflow = readFileSync('.gitea/workflows/ci.yml', 'utf8');
+
+  assert.match(workflow, /lighthouse:\s+\$\{\{\s*steps\.plan\.outputs\.lighthouse\s*\}\}/);
+  assert.match(workflow, /needs\.plan\.outputs\.lighthouse == 'true'/);
+});
+
 test('full validation still preserves deployment impacts from other changed files', () => {
   const plan = classifyChangedFiles([
     '.gitea/workflows/ci.yml',

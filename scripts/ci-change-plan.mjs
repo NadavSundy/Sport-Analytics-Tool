@@ -49,6 +49,7 @@ function emptyPlan() {
     evidence: false,
     docs: false,
     frontend: false,
+    lighthouse: false,
     backend: false,
     worker: false,
     contracts: false,
@@ -73,6 +74,7 @@ function markFull(plan) {
   plan.full = true;
   plan.docs = true;
   plan.frontend = true;
+  plan.lighthouse = true;
   plan.backend = true;
   plan.worker = true;
   plan.contracts = true;
@@ -273,6 +275,7 @@ function applyPath(plan, file) {
     plan.deployBackend = true;
     plan.deployWorker = true;
     plan.frontend = true;
+    plan.lighthouse = true;
     plan.backend = true;
     plan.e2e = true;
     if (!intermediateIngestion) plan.e2eFull = true;
@@ -306,6 +309,7 @@ function applyPath(plan, file) {
 
   if (file.startsWith('apps/frontend/')) {
     plan.frontend = true;
+    plan.lighthouse = true;
     plan.contracts = true;
     plan.hygiene = true;
     plan.needsNpm = true;
