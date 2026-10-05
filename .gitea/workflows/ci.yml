@@ -16,6 +16,7 @@ jobs:
       evidence: ${{ steps.plan.outputs.evidence }}
       docs: ${{ steps.plan.outputs.docs }}
       frontend: ${{ steps.plan.outputs.frontend }}
+      lighthouse: ${{ steps.plan.outputs.lighthouse }}
       backend: ${{ steps.plan.outputs.backend }}
       worker: ${{ steps.plan.outputs.worker }}
       contracts: ${{ steps.plan.outputs.contracts }}
@@ -263,8 +264,7 @@ jobs:
   lighthouse:
     needs: plan
     if: >-
-      github.event_name != 'push' &&
-      needs.plan.outputs.frontend == 'true'
+      needs.plan.outputs.lighthouse == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
