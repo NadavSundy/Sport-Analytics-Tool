@@ -79,7 +79,7 @@ describe('dataset release pages', () => {
       await screen.findByRole('heading', { level: 2, name: 'No dataset releases are available' }),
     ).toBeInTheDocument();
     expectNoSkippedHeadingLevels();
-    expect(document.title).toBe("Dataset releases | Stat'sTheGame");
+    await waitFor(() => expect(document.title).toBe("Dataset releases | Stat'sTheGame"));
   });
 
   it('shows schema, checksum, and the exact artefact download', async () => {
@@ -91,7 +91,7 @@ describe('dataset release pages', () => {
     expect(
       await screen.findByRole('heading', { name: 'Dataset 2026.09.14v1' }),
     ).toBeInTheDocument();
-    expect(document.title).toBe("Dataset 2026.09.14v1 | Stat'sTheGame");
+    await waitFor(() => expect(document.title).toBe("Dataset 2026.09.14v1 | Stat'sTheGame"));
     expect(screen.getByText('Snapshot identity')).toBeInTheDocument();
     expect(screen.getByText(release.snapshotId)).toBeInTheDocument();
     expect(screen.getByText(release.checksum)).toBeInTheDocument();

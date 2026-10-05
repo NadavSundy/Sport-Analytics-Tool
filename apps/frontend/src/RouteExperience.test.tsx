@@ -105,7 +105,7 @@ describe('document titles', () => {
     renderAt(path);
 
     expect(await screen.findByRole('heading', { level: 1, name: recordName })).toBeVisible();
-    expect(document.title).toBe(`${recordName} | Stat'sTheGame`);
+    await waitFor(() => expect(document.title).toBe(`${recordName} | Stat'sTheGame`));
   });
 });
 
@@ -121,7 +121,7 @@ describe('embedded loading and error states', () => {
       await screen.findByRole('heading', { level: 2, name: 'Loading fixtures' }),
     ).toBeVisible();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(document.title).toBe("Compare players | Stat'sTheGame");
+    await waitFor(() => expect(document.title).toBe("Compare players | Stat'sTheGame"));
   });
 
   it('keep the page title when comparison fixtures fail to load', async () => {
@@ -137,7 +137,7 @@ describe('embedded loading and error states', () => {
       await screen.findByRole('heading', { level: 2, name: 'Fixtures could not be loaded' }),
     ).toBeVisible();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(document.title).toBe("Compare players | Stat'sTheGame");
+    await waitFor(() => expect(document.title).toBe("Compare players | Stat'sTheGame"));
   });
 });
 

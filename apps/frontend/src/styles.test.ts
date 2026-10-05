@@ -19,7 +19,7 @@ const allCss = stylesheetPaths
   .join('\n');
 
 function declaredTokens(css: string): Set<string> {
-  return new Set([...css.matchAll(/(--colour-[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
+  return new Set([...css.matchAll(/(--colour-[a-z0-9-]+)\s*:/g)].map(([, token]) => token!));
 }
 
 function themeBlock(selector: RegExp): string {
@@ -37,7 +37,7 @@ describe('colour tokens', () => {
   it('declares every colour token the stylesheets consume without a fallback', () => {
     const declared = declaredTokens(allCss);
     const consumed = [...allCss.matchAll(/var\((--colour-[a-z0-9-]+)\s*\)/g)].map(
-      (match) => match[1],
+      ([, token]) => token!,
     );
 
     expect([...new Set(consumed)].filter((token) => !declared.has(token)).sort()).toEqual([]);

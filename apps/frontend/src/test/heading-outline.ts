@@ -14,7 +14,7 @@ export function headingLevels(root: ParentNode = document): number[] {
 export function expectNoSkippedHeadingLevels(root: ParentNode = document): void {
   const levels = headingLevels(root);
   const skips = levels.flatMap((level, index) =>
-    index > 0 && level - levels[index - 1] > 1 ? [`h${levels[index - 1]} -> h${level}`] : [],
+    index > 0 && level - levels[index - 1]! > 1 ? [`h${levels[index - 1]} -> h${level}`] : [],
   );
 
   expect(skips, `heading outline ${levels.map((level) => `h${level}`).join(', ')}`).toEqual([]);

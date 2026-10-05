@@ -4,7 +4,8 @@ import { usePageTitle } from './usePageTitle';
 export interface PageLayoutProps {
   children: ReactNode;
   description?: ReactNode;
-  heading: ReactNode;
+  /** Also names the browser tab, so it is plain text. */
+  heading: string;
 }
 
 export function PageLayout({ children, description, heading }: PageLayoutProps) {

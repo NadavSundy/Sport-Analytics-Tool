@@ -665,7 +665,7 @@ describe('public fixture statistics pages', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Innings 1')).toBeInTheDocument();
     expect(screen.queryByText(/innings 0/i)).not.toBeInTheDocument();
-    expect(document.title).toBe("Wanderers innings 1 total | Stat'sTheGame");
+    await waitFor(() => expect(document.title).toBe("Wanderers innings 1 total | Stat'sTheGame"));
     expect(screen.getByRole('heading', { name: 'Delivery 1' })).toBeInTheDocument();
     expect(screen.queryByText('event-1')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Opening Batter' })).toHaveAttribute(
