@@ -17,6 +17,7 @@ import { usePublicData } from '../browse/usePublicData';
 import { EventExportControls } from './EventExportControls';
 import { FixtureAnalytics } from './FixtureScorecards';
 import { ParticipantAggregateView } from './ParticipantAggregateView';
+import { usePageTitle } from '../../components/usePageTitle';
 
 function recordPath(resource: 'competitors' | 'participants', identifier: string) {
   return `/${resource}/${encodeURIComponent(identifier)}`;
@@ -153,6 +154,7 @@ function StatisticsContent({
   retry(): void;
 }) {
   const fixturePath = `/fixtures/${encodeURIComponent(statistics.fixtureId)}`;
+  usePageTitle(`${fixtureLabel(statistics)} statistics`);
   return (
     <article className="detail-page statistics-page content-boundary">
       <Breadcrumbs
@@ -184,7 +186,10 @@ function StatisticsContent({
           { label: 'Players', to: `${fixturePath}/players` },
         ]}
       />
-      <div className="fixture-statistics-overview">
+      <section aria-labelledby="match-scorecard-heading" className="fixture-statistics-overview">
+        <h2 className="visually-hidden" id="match-scorecard-heading">
+          Scorecard
+        </h2>
         <SectionBoundary
           onRetry={retry}
           renderError={(boundaryRetry) => (
@@ -196,7 +201,7 @@ function StatisticsContent({
         >
           <FixtureAnalytics statistics={statistics} />
         </SectionBoundary>
-      </div>
+      </section>
     </article>
   );
 }
@@ -359,7 +364,7 @@ function EventTrace({ event }: { event: StatisticContributingEvent }) {
   return (
     <li className="event-trace">
       <header>
-        <p className="record-list__meta">Innings {event.inningsOrdinal}</p>
+        <p className="record-list__meta">Innings {event.inningsOrdinal + 1}</p>
         <h3>Delivery {event.sequenceNumber}</h3>
       </header>
       <dl>
@@ -403,8 +408,9 @@ function StatisticDetailContent({ statistic }: { statistic: FixtureStatistic }) 
   const fixtureId = encodeURIComponent(statistic.fixtureId);
   const title =
     statistic.scope === 'innings'
-      ? `${statistic.competitorName} innings ${statistic.inningsOrdinal} total`
+      ? `${statistic.competitorName} innings ${statistic.inningsOrdinal + 1} total`
       : `${statistic.participantName} performance`;
+  usePageTitle(title);
   const contributingEvents = statistic.contributingEvents ?? [];
   const exportFilenameFilters =
     statistic.scope === 'innings'

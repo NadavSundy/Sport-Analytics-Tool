@@ -37,6 +37,10 @@
   --colour-error: #b42318;
   --colour-focus: #007f9e;
   --colour-error-soft: #fce8e8;
+  --colour-success: #1d7442;
+  --colour-success-soft: #e2f1e6;
+  --colour-warning: #8f5400;
+  --colour-warning-soft: #fbf0d9;
   --shadow-header: 0 8px 28px rgb(16 32 38 / 8%);
   --shadow-card: 0 8px 24px rgb(16 32 38 / 7%);
   --shadow-overlay: 0 18px 45px rgb(16 32 38 / 10%);
@@ -263,6 +267,10 @@
   --colour-error: #ff8a7a;
   --colour-focus: #c7ff4a;
   --colour-error-soft: #361b24;
+  --colour-success: #5fd68a;
+  --colour-success-soft: #143022;
+  --colour-warning: #ffc24a;
+  --colour-warning-soft: #332811;
   --shadow-header: 0 8px 28px rgb(0 0 0 / 24%);
   --shadow-card: 0 10px 30px rgb(0 0 0 / 18%);
   --shadow-overlay: 0 22px 60px rgb(0 0 0 / 28%);
@@ -784,7 +792,7 @@ select:focus-visible {
   word-break: break-all;
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-control);
-  background: var(--colour-background);
+  background: var(--colour-canvas);
 }
 
 .brand-asset--night {
@@ -867,6 +875,11 @@ select:focus-visible {
 
 main {
   flex: 1;
+}
+
+/* Focused only by script (skip link, route change); it is never a Tab stop. */
+main:focus {
+  outline: none;
 }
 
 .route-content {
@@ -1832,7 +1845,7 @@ main {
   border: 0;
   border-bottom: 3px solid transparent;
   border-radius: var(--radius-control);
-  color: var(--colour-text-primary);
+  color: var(--colour-text);
   background: transparent;
   font: inherit;
   font-weight: 700;
@@ -1881,7 +1894,7 @@ main {
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-control);
-  color: var(--colour-text-primary);
+  color: var(--colour-text);
   background: var(--colour-surface-raised);
   font: inherit;
 }
@@ -1988,7 +2001,7 @@ main {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-control);
-  color: var(--colour-text-primary);
+  color: var(--colour-text);
   background: var(--colour-surface-raised);
   font: inherit;
 }
@@ -1998,7 +2011,7 @@ main {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-control);
-  color: var(--colour-text-primary);
+  color: var(--colour-text);
   background: var(--colour-surface-raised);
   font: inherit;
 }
@@ -2212,7 +2225,7 @@ main {
   padding: 0.75rem;
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-control);
-  color: var(--colour-text-primary);
+  color: var(--colour-text);
   background: var(--colour-surface);
   font: inherit;
 }
@@ -4082,16 +4095,21 @@ h3 {
   background: var(--colour-error-soft);
 }
 
-.state-message h1,
-.state-message h3,
+.state-message :is(h1, h2, h3),
 .state-message p {
   max-width: 48rem;
 }
 
-.state-message h1,
-.state-message h3 {
+.state-message :is(h1, h2, h3) {
   margin: 0;
   white-space: normal;
+}
+
+/* Embedded states sit beneath a page heading, so match the section-heading scale. */
+.state-message :is(h2, h3) {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.15;
 }
 
 .state-message p {

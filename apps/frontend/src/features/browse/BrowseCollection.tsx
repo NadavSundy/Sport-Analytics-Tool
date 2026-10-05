@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useCallback, useMemo, useState } from '
 import { Link, useSearchParams } from 'react-router-dom';
 import { NameCombobox, type NameComboboxOption } from '../../components/NameCombobox';
 import { usePublicData } from './usePublicData';
+import { usePageTitle } from '../../components/usePageTitle';
 
 interface TextFilterField {
   kind?: 'text';
@@ -416,6 +417,7 @@ export function BrowseCollection<Resource>({
   const state = usePublicData(loadRecords, search);
   const page = currentPage(searchParams);
   const previousCursors = searchParams.getAll('previousCursor');
+  usePageTitle(title);
 
   return (
     <div className="browse-page">

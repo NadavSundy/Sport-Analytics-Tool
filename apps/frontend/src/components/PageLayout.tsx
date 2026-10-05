@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { usePageTitle } from './usePageTitle';
 
 export interface PageLayoutProps {
   children: ReactNode;
@@ -7,6 +8,7 @@ export interface PageLayoutProps {
 }
 
 export function PageLayout({ children, description, heading }: PageLayoutProps) {
+  usePageTitle(heading);
   return (
     <div className="ui-page-layout content-boundary">
       <header className="ui-page-layout__header">

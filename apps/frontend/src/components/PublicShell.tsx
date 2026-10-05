@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthProvider';
 import { getPinnedShortcuts, type PinnedShortcut } from '../features/browse/pinned-shortcuts';
 import { ThemeToggle } from './ThemeToggle';
@@ -359,9 +359,33 @@ function MobileNavigation({
   );
 }
 
+/**
+ * After an in-app move to a different page, start that page at the top and move
+ * focus to its main landmark, so keyboard and screen-reader users are not left on
+ * a link that no longer exists. Back/forward keeps the browser's own restoration,
+ * and a query-string change (filters, pagination) is not a new page.
+ */
+function useRouteChangeFocus() {
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  const mainRef = useRef<HTMLElement>(null);
+  const previousPathname = useRef(pathname);
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    if (navigationType === 'POP') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    mainRef.current?.focus({ preventScroll: true });
+  }, [navigationType, pathname]);
+
+  return mainRef;
+}
+
 export function PublicShell({ children }: PublicShellProps) {
   const profile = useNavigationProfile();
   const pinnedItems = usePinnedNavigationItems();
+  const mainRef = useRouteChangeFocus();
   return (
     <div className="public-shell">
       <a className="skip-link" href="#main-content">
@@ -387,7 +411,9 @@ export function PublicShell({ children }: PublicShellProps) {
           </div>
         </div>
       </header>
-      <main id="main-content">{children}</main>
+      <main id="main-content" ref={mainRef} tabIndex={-1}>
+        {children}
+      </main>
       <footer className="site-footer">
         <div className="site-footer__inner">
           <div className="site-footer__brand">

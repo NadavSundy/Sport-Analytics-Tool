@@ -42,6 +42,7 @@ import {
   formatApiValidationLocation,
   formatApiValidationMessage,
 } from './submission-validation-copy';
+import { usePageTitle } from '../../components/usePageTitle';
 
 const EMPTY_EVENTS = '[]';
 
@@ -109,12 +110,6 @@ type ResultState =
     }
   | { kind: 'rejected'; message: string; details: ApiErrorDetail[] }
   | { kind: 'error'; message: string };
-
-function usePageTitle() {
-  useEffect(() => {
-    document.title = "Submit Events | Stat'sTheGame";
-  }, []);
-}
 
 function formatFixtureOption(fixture: Fixture): string {
   const teams =
@@ -1524,7 +1519,7 @@ export function SubmissionPage() {
       : 'fixture',
   );
 
-  usePageTitle();
+  usePageTitle('Submit data');
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) {

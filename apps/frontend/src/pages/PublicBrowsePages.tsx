@@ -35,6 +35,7 @@ import {
   setFixtureContextPreference,
 } from '../features/browse/fixture-context-preference';
 import { PinShortcutButton } from '../features/browse/PinShortcutButton';
+import { usePageTitle } from '../components/usePageTitle';
 
 function optionSearch(filters: URLSearchParams, name: string): string {
   const params = new URLSearchParams(filters);
@@ -1337,6 +1338,7 @@ export function ParticipantDetailPage() {
 }
 
 export function NotFoundPage() {
+  usePageTitle('Page not found');
   return (
     <div className="detail-page content-boundary">
       <div className="state-message state-message--detail">

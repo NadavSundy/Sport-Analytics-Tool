@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { publicReadApi } from '../../api/public-read';
 import { DetailError, DetailLoading } from '../browse/RecordDetail';
 import { usePublicData } from '../browse/usePublicData';
+import { usePageTitle } from '../../components/usePageTitle';
 
 function fixtureLabel(fixture: Fixture): string {
   const teams = fixture.competitors.map((competitor) => competitor.name);
@@ -90,10 +91,16 @@ function FixtureComparison({
   );
   const state = usePublicData(load, fixtureId);
 
-  if (state.status === 'loading') return <DetailLoading label="fixture player statistics" />;
+  if (state.status === 'loading')
+    return <DetailLoading label="fixture player statistics" level={2} />;
   if (state.status === 'error') {
     return (
-      <DetailError error={state.error} label="Fixture player statistics" reload={state.reload} />
+      <DetailError
+        error={state.error}
+        label="Fixture player statistics"
+        level={2}
+        reload={state.reload}
+      />
     );
   }
 
@@ -172,6 +179,7 @@ export function PlayerComparisonPage() {
   const fixtureId = searchParams.get('fixtureId') ?? '';
   const playerAId = searchParams.get('playerA') ?? '';
   const playerBId = searchParams.get('playerB') ?? '';
+  usePageTitle('Compare players');
   const [comparisonRequested, setComparisonRequested] = useState(false);
   const loadFixtures = useCallback(
     (signal: AbortSignal) => publicReadApi.listFixtures('?limit=100', signal),
@@ -209,9 +217,9 @@ export function PlayerComparisonPage() {
           Select two players in one fixture to compare the published batting and bowling figures.
         </p>
       </header>
-      {fixtures.status === 'loading' ? <DetailLoading label="fixtures" /> : null}
+      {fixtures.status === 'loading' ? <DetailLoading label="fixtures" level={2} /> : null}
       {fixtures.status === 'error' ? (
-        <DetailError error={fixtures.error} label="Fixtures" reload={fixtures.reload} />
+        <DetailError error={fixtures.error} label="Fixtures" level={2} reload={fixtures.reload} />
       ) : null}
       {fixtures.status === 'ready' ? (
         <>

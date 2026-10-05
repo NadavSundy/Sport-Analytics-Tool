@@ -20,6 +20,7 @@ import {
   revokeAdministratorApiConsumerKey,
   rotateAdministratorApiConsumerKey,
 } from './admin-api';
+import { usePageTitle } from '../../components/usePageTitle';
 
 type PageState =
   | { kind: 'loading' }
@@ -312,10 +313,6 @@ export function AdminApiConsumersPage() {
   const confirmationTriggerRef = useRef<HTMLButtonElement | null>(null);
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    document.title = `API Consumers | Stat'sTheGame`;
-  }, []);
-
   const loadConsumers = useCallback(
     async (signal?: AbortSignal) => {
       setPageState({ kind: 'loading' });
@@ -352,6 +349,7 @@ export function AdminApiConsumersPage() {
   const selectedConsumer = consumerId
     ? consumers.find((consumer) => consumer.id === consumerId)
     : undefined;
+  usePageTitle(selectedConsumer?.name ?? 'API consumers');
 
   const loadUsage = useCallback(
     async (

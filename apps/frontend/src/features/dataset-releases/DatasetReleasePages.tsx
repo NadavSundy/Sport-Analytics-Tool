@@ -11,6 +11,7 @@ import {
   RecordFacts,
 } from '../browse/RecordDetail';
 import { usePublicData } from '../browse/usePublicData';
+import { usePageTitle } from '../../components/usePageTitle';
 
 function formatCreationTime(value: string): string {
   return new Intl.DateTimeFormat('en-ZA', {
@@ -26,6 +27,7 @@ function scopeLabel(scope: DatasetRelease['scope']): string {
 export function DatasetReleaseCataloguePage() {
   const load = useCallback((signal: AbortSignal) => publicReadApi.listDatasetReleases(signal), []);
   const state = usePublicData(load, 'dataset-releases');
+  usePageTitle('Dataset releases');
 
   return (
     <section className="release-page content-boundary">
@@ -40,14 +42,14 @@ export function DatasetReleaseCataloguePage() {
 
       {state.status === 'loading' ? (
         <div className="state-message" role="status">
-          <h3>Loading dataset releases</h3>
+          <h2>Loading dataset releases</h2>
           <p>The available snapshots are being requested from the Sport Analytics API.</p>
         </div>
       ) : null}
 
       {state.status === 'error' ? (
         <div className="state-message state-message--error" role="alert">
-          <h3>Dataset releases could not be loaded</h3>
+          <h2>Dataset releases could not be loaded</h2>
           <p>{state.error.message}</p>
           <button className="button button--secondary" onClick={state.reload} type="button">
             Try again
@@ -57,7 +59,7 @@ export function DatasetReleaseCataloguePage() {
 
       {state.status === 'ready' && state.data.data.length === 0 ? (
         <div className="state-message">
-          <h3>No dataset releases are available</h3>
+          <h2>No dataset releases are available</h2>
           <p>Published snapshots will appear here when an administrator creates one.</p>
         </div>
       ) : null}

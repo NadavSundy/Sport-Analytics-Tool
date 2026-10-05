@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicApp } from '../../App';
 import { AuthProvider } from '../auth/AuthProvider';
+import { expectNoSkippedHeadingLevels } from '../../test/heading-outline';
 import { PlayerPerformance } from './StatisticsPages';
 
 type AuthClient = ComponentProps<typeof AuthProvider>['client'];
@@ -434,6 +435,8 @@ describe('public fixture statistics pages', () => {
     expect(await screen.findByText('Complete statistics')).toBeInTheDocument();
     expect(screen.getByText('Wanderers won by 5 wickets.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Match leaders' })).toBeInTheDocument();
+    // Issue #800: the scorecard sections are h3s, so the page needs an h2 above them.
+    expectNoSkippedHeadingLevels(screen.getByRole('main'));
 
     const teamSection = screen.getByRole('table', {
       name: 'Score, progress, run rate and extras for each standard innings',
@@ -655,9 +658,14 @@ describe('public fixture statistics pages', () => {
 
     renderRoute('/fixtures/fixture-1/statistics/stat-innings-1');
 
+    // Issue #800: inningsOrdinal is zero-based; people count innings from one, as the
+    // scorecards already do, so the first innings must never read "innings 0".
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Wanderers innings 0 total' }),
+      await screen.findByRole('heading', { level: 1, name: 'Wanderers innings 1 total' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Innings 1')).toBeInTheDocument();
+    expect(screen.queryByText(/innings 0/i)).not.toBeInTheDocument();
+    expect(document.title).toBe("Wanderers innings 1 total | Stat'sTheGame");
     expect(screen.getByRole('heading', { name: 'Delivery 1' })).toBeInTheDocument();
     expect(screen.queryByText('event-1')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Opening Batter' })).toHaveAttribute(
