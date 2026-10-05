@@ -181,7 +181,7 @@ API base URL: https://statsthegame-dev-api.calmground-aa50efe2.southafricanorth.
 - Environment: Development
 - Deployment: immutable ACR image and Bicep through Gitea Actions
 - Configuration: Container Apps configuration; Key Vault-backed secrets; managed identities for ACR and Blob access
-- Rollback during acceptance: existing App Service `statsthegame-api-dev` remains manually deployable
+- Manual recovery: `.gitea/workflows/deploy-backend.yml` redeploys the selected commit to the existing `statsthegame-dev-api` Azure Container App through the same immutable ACR-image and Bicep path as automatic CI
 
 ### Frontend
 

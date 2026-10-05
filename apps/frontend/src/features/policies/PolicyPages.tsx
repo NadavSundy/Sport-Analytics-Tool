@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, type ReactNode } from 'react';
 import { PageLayout } from '../../components/PageLayout';
 import accessibilityStatement from '../../content/policies/accessibility-statement.md?raw';
 import privacyNotice from '../../content/policies/privacy-notice.md?raw';
@@ -175,10 +175,16 @@ function renderPolicyMarkdown(source: string) {
 }
 
 function PolicyPage({ heading, source }: { heading: string; source: string }) {
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, []);
+
   return (
-    <PageLayout heading={heading}>
-      <article className="policy-document">{renderPolicyMarkdown(source)}</article>
-    </PageLayout>
+    <div className="policy-page">
+      <PageLayout heading={heading}>
+        <article className="policy-document">{renderPolicyMarkdown(source)}</article>
+      </PageLayout>
+    </div>
   );
 }
 

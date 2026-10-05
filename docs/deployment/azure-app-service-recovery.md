@@ -9,11 +9,18 @@
 
 ---
 
+> **Historical incident record:** This document describes the former Azure App Service deployment
+> and the August 2026 recovery work. It is not the current backend recovery procedure. The supported
+> manual backend recovery path is `.gitea/workflows/deploy-backend.yml`, which redeploys the
+> `statsthegame-dev-api` Azure Container App through `infra/azure/backend/main.bicep`. Do not use the
+> historical App Service publish-profile, Kudu/ZIP deployment or `azurewebsites.net` endpoint as the
+> current backend recovery path.
+
 > **Note:** this is a historical incident record from the period when both the frontend and the primary
 > backend were hosted on Azure App Service. The frontend has since migrated to Cloudflare Pages (see
 > `docs/deployment/frontend-cloudflare-pages.md`) and the backend's normal deployment path has moved to
 > Azure Container Apps (see `docs/deployment/azure-backend.md`); `statsthegame-api-dev` App Service is
-> now only a manual rollback target. The App Service recovery procedures below remain useful for that
+> historical only. The App Service recovery procedures below are retained as incident evidence, not as
 > rollback path but no longer describe normal production deployment for either component.
 
 ---

@@ -271,9 +271,11 @@ termination signals directly.
 
 The normal backend target is Azure Container Apps. The runtime uses external HTTPS ingress and
 `/api/v1/health` probes, Key Vault-backed `DATABASE_URL` and `SUPABASE_SECRET_KEY` references, and a
-managed identity for Blob Storage. The existing App Service remains a manual acceptance-period
-fallback. See [Azure backend deployment](../../docs/deployment/azure-backend.md) for deployment,
-scaling, CI, rollback, and acceptance procedures.
+managed identity for Blob Storage. Manual backend recovery uses
+`.gitea/workflows/deploy-backend.yml` to redeploy a reviewed commit through the same Container Apps
+Bicep configuration and immutable ACR-image path as automatic CI. See
+[Azure backend deployment](../../docs/deployment/azure-backend.md) for deployment, scaling, CI,
+recovery, and acceptance procedures.
 
 ## Common problems
 

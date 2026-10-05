@@ -140,6 +140,8 @@ try {
     '--env',
     'SUPABASE_PUBLISHABLE_KEY=container-smoke-key',
     '--env',
+    'ANONYMOUS_RATE_LIMIT_SECRET=container-smoke-anonymous-rate-limit-secret-0001',
+    '--env',
     'OBJECT_STORAGE_PROVIDER=azure',
     '--env',
     'AZURE_STORAGE_ACCOUNT_NAME=containersmoke',
