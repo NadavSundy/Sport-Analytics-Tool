@@ -5,6 +5,7 @@ import {
   accountDeletionResponseSchema,
   APPLICATION_ROLES,
   administratorApiConsumerUsageResponseSchema,
+  apiAccessRequestListResponseSchema,
   administratorSubmitterAccessUpdateSchema,
   administratorRoleUpdateSchema,
   administratorUserManagementResponseSchema,
@@ -15,6 +16,38 @@ import {
   submitterAccessRequestResponseSchema,
   submitterApprovalStateSchema,
 } from '../auth';
+
+describe('administrator API access request contracts', () => {
+  test('requires the safe requester username and email on pending review records', () => {
+    const response = {
+      data: {
+        requests: [
+          {
+            id: '4',
+            requesterAccountId: '11',
+            name: 'Match model',
+            intendedUse: 'Research analysis',
+            state: 'pending',
+            createdAt: '2026-10-04T10:00:00.000Z',
+            reviewedAt: null,
+            reviewedBy: null,
+            reviewReason: null,
+            requester: { displayName: 'Research User', email: 'research@example.com' },
+          },
+        ],
+      },
+    };
+
+    expect(apiAccessRequestListResponseSchema.parse(response)).toEqual(response);
+    expect(
+      apiAccessRequestListResponseSchema.safeParse({
+        data: {
+          requests: response.data.requests.map(({ requester: _requester, ...request }) => request),
+        },
+      }).success,
+    ).toBe(false);
+  });
+});
 
 describe('administrator API consumer usage contracts', () => {
   const response = {

@@ -5,6 +5,11 @@ import {
   apiConsumerIssueResponseSchema,
   apiConsumerListResponseSchema,
   apiConsumerRotateResponseSchema,
+  apiAccessRequestListResponseSchema,
+  apiAccessRequestResponseSchema,
+  type ApiAccessDecision,
+  type ApiAccessRequest,
+  type AdministratorApiAccessRequest,
   type ApiConsumer,
   type ApiConsumerIssue,
   type AdministratorApiConsumerUsageResponse,
@@ -34,10 +39,40 @@ export async function getAdministratorApiConsumers(
   client: AuthenticatedApiClient,
   signal?: AbortSignal,
 ): Promise<ApiConsumer[]> {
-  const response = await client.request<unknown>('/admin/api-consumers', signal ? { signal } : {});
+  const response = await client.request<unknown>(
+    '/admin/api-consumers/all',
+    signal ? { signal } : {},
+  );
   const parsed = apiConsumerListResponseSchema.safeParse(response);
   if (!parsed.success) throw new AdminApiConsumerContractError();
   return parsed.data.data.consumers;
+}
+
+export async function getPendingApiAccessRequests(
+  client: AuthenticatedApiClient,
+  signal?: AbortSignal,
+): Promise<AdministratorApiAccessRequest[]> {
+  const response = await client.request<unknown>(
+    '/admin/api-access-requests',
+    signal ? { signal } : {},
+  );
+  return apiAccessRequestListResponseSchema.parse(response).data.requests;
+}
+
+export async function decideApiAccessRequest(
+  client: AuthenticatedApiClient,
+  requestId: string,
+  decision: ApiAccessDecision,
+): Promise<ApiAccessRequest> {
+  const response = await client.request<unknown>(
+    `/admin/api-access-requests/${encodeURIComponent(requestId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(decision),
+    },
+  );
+  return apiAccessRequestResponseSchema.parse(response).data;
 }
 
 export async function getAdministratorApiConsumerUsage(

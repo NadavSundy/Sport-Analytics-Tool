@@ -2,6 +2,7 @@ import type { VerifyAccessToken } from '../../src/auth/supabase-auth';
 import type { ApplicationAccount } from '../../src/modules/accounts/account';
 import type { ApiConsumerRepository } from '../../src/modules/api-consumers/api-consumer.repository';
 import type { ApiConsumerService } from '../../src/modules/api-consumers/api-consumer.service';
+import type { ApiAccessService } from '../../src/modules/api-consumers/api-access.service';
 import type { BatchService } from '../../src/modules/batches/batch.service';
 import type { DatasetReleaseService } from '../../src/modules/dataset-releases/dataset-release.service';
 import type { ProvenanceService } from '../../src/modules/provenance/provenance.service';
@@ -27,6 +28,7 @@ interface ContractAppOptions {
   submitterAccess?: SubmitterAccessService;
   batches?: Partial<BatchService>;
   apiConsumers?: Partial<ApiConsumerService>;
+  apiAccess?: Partial<ApiAccessService>;
   apiConsumerRepository?: Partial<ApiConsumerRepository>;
   datasetReleases?: Partial<DatasetReleaseService>;
   provenance?: Partial<ProvenanceService>;
@@ -64,6 +66,9 @@ export function contractApp(options: ContractAppOptions = {}) {
       ...(options.llmClient !== undefined ? { llmClient: options.llmClient } : {}),
       ...(options.naturalLanguageQueryLimiter !== undefined
         ? { naturalLanguageQueryLimiter: options.naturalLanguageQueryLimiter }
+        : {}),
+      ...(options.apiAccess !== undefined
+        ? { apiAccessService: options.apiAccess as ApiAccessService }
         : {}),
     },
   );

@@ -20,6 +20,7 @@ import {
   revokeAdministratorApiConsumerKey,
   rotateAdministratorApiConsumerKey,
 } from './admin-api';
+import { AdminApiAccessRequestsPanel } from './AdminApiAccessRequestsPanel';
 
 type PageState =
   | { kind: 'loading' }
@@ -534,7 +535,7 @@ export function AdminApiConsumersPage() {
         <p>
           {consumerId
             ? 'Review safe configuration, aggregated usage, and active keys without handling the consumer’s secret.'
-            : 'Issue and manage credentials, rate limits, and daily quotas for external API integrations.'}
+            : 'Review access requests and administer limits and credentials for external API integrations.'}
         </p>
         <Link to="/api">Open API Explorer</Link>
       </header>
@@ -727,20 +728,10 @@ export function AdminApiConsumersPage() {
             <div className="api-consumer-section-heading">
               <div>
                 <h2 id="consumer-keys-title">Key management</h2>
-                <p>Only safe prefixes and lifecycle dates are shown after issue or rotation.</p>
+                <p>
+                  Only safe prefixes and lifecycle dates are shown. Owners generate and rotate keys.
+                </p>
               </div>
-              <button
-                className="button button--primary"
-                type="button"
-                onClick={(event) =>
-                  requestConfirmation(
-                    { kind: 'rotate', consumer: selectedConsumer },
-                    event.currentTarget,
-                  )
-                }
-              >
-                Rotate key
-              </button>
             </div>
             {selectedConsumer.keys.length === 0 ? (
               <p>No keys have been issued.</p>
@@ -792,90 +783,95 @@ export function AdminApiConsumersPage() {
         </>
       ) : (
         <>
-          <section className="api-consumer-panel" aria-labelledby="create-consumer-title">
-            <h2 id="create-consumer-title">Create consumer</h2>
-            <form
-              className="api-consumer-form"
-              onSubmit={(event) => void submitConsumer(event)}
-              noValidate
-            >
-              <div>
-                <label htmlFor="consumer-name">Consumer name</label>
-                <input
-                  id="consumer-name"
-                  value={name}
-                  maxLength={120}
-                  required
-                  aria-invalid={Boolean(formErrors.name)}
-                  aria-describedby={formErrors.name ? 'consumer-name-error' : undefined}
-                  onChange={(event) => setName(event.target.value)}
-                />
-                {formErrors.name ? (
-                  <p id="consumer-name-error" className="field-error" role="alert">
-                    {formErrors.name}
-                  </p>
-                ) : null}
-              </div>
-              <div>
-                <label htmlFor="consumer-rate-limit">Rate limit (requests per minute)</label>
-                <input
-                  id="consumer-rate-limit"
-                  type="number"
-                  min="1"
-                  max="10000"
-                  required
-                  value={rateLimit}
-                  aria-invalid={Boolean(formErrors.rateLimitPerMinute)}
-                  aria-describedby={
-                    formErrors.rateLimitPerMinute ? 'consumer-rate-limit-error' : undefined
-                  }
-                  onChange={(event) => setRateLimit(event.target.value)}
-                />
-                {formErrors.rateLimitPerMinute ? (
-                  <p id="consumer-rate-limit-error" className="field-error" role="alert">
-                    {formErrors.rateLimitPerMinute}
-                  </p>
-                ) : null}
-              </div>
-              <div>
-                <label htmlFor="consumer-daily-quota">Daily quota (requests per UTC day)</label>
-                <input
-                  id="consumer-daily-quota"
-                  type="number"
-                  min="1"
-                  max="10000"
-                  required
-                  value={dailyQuota}
-                  aria-invalid={Boolean(formErrors.dailyQuota)}
-                  aria-describedby={
-                    formErrors.dailyQuota ? 'consumer-daily-quota-error' : undefined
-                  }
-                  onChange={(event) => setDailyQuota(event.target.value)}
-                />
-                {formErrors.dailyQuota ? (
-                  <p id="consumer-daily-quota-error" className="field-error" role="alert">
-                    {formErrors.dailyQuota}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                ref={createButtonRef}
-                className="button button--primary"
-                type="submit"
-                disabled={creating}
+          <AdminApiAccessRequestsPanel />
+          {false && (
+            <section className="api-consumer-panel" aria-labelledby="create-consumer-title">
+              <h2 id="create-consumer-title">Create consumer</h2>
+              <form
+                className="api-consumer-form"
+                onSubmit={(event) => void submitConsumer(event)}
+                noValidate
               >
-                {creating ? 'Creating consumer...' : 'Create consumer'}
-              </button>
-              {creating ? <p role="status">Creating consumer and issuing its first key.</p> : null}
-              {formError ? <p role="alert">{formError}</p> : null}
-            </form>
-          </section>
+                <div>
+                  <label htmlFor="consumer-name">Consumer name</label>
+                  <input
+                    id="consumer-name"
+                    value={name}
+                    maxLength={120}
+                    required
+                    aria-invalid={Boolean(formErrors.name)}
+                    aria-describedby={formErrors.name ? 'consumer-name-error' : undefined}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                  {formErrors.name ? (
+                    <p id="consumer-name-error" className="field-error" role="alert">
+                      {formErrors.name}
+                    </p>
+                  ) : null}
+                </div>
+                <div>
+                  <label htmlFor="consumer-rate-limit">Rate limit (requests per minute)</label>
+                  <input
+                    id="consumer-rate-limit"
+                    type="number"
+                    min="1"
+                    max="10000"
+                    required
+                    value={rateLimit}
+                    aria-invalid={Boolean(formErrors.rateLimitPerMinute)}
+                    aria-describedby={
+                      formErrors.rateLimitPerMinute ? 'consumer-rate-limit-error' : undefined
+                    }
+                    onChange={(event) => setRateLimit(event.target.value)}
+                  />
+                  {formErrors.rateLimitPerMinute ? (
+                    <p id="consumer-rate-limit-error" className="field-error" role="alert">
+                      {formErrors.rateLimitPerMinute}
+                    </p>
+                  ) : null}
+                </div>
+                <div>
+                  <label htmlFor="consumer-daily-quota">Daily quota (requests per UTC day)</label>
+                  <input
+                    id="consumer-daily-quota"
+                    type="number"
+                    min="1"
+                    max="10000"
+                    required
+                    value={dailyQuota}
+                    aria-invalid={Boolean(formErrors.dailyQuota)}
+                    aria-describedby={
+                      formErrors.dailyQuota ? 'consumer-daily-quota-error' : undefined
+                    }
+                    onChange={(event) => setDailyQuota(event.target.value)}
+                  />
+                  {formErrors.dailyQuota ? (
+                    <p id="consumer-daily-quota-error" className="field-error" role="alert">
+                      {formErrors.dailyQuota}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  ref={createButtonRef}
+                  className="button button--primary"
+                  type="submit"
+                  disabled={creating}
+                >
+                  {creating ? 'Creating consumer...' : 'Create consumer'}
+                </button>
+                {creating ? (
+                  <p role="status">Creating consumer and issuing its first key.</p>
+                ) : null}
+                {formError ? <p role="alert">{formError}</p> : null}
+              </form>
+            </section>
+          )}
           <section className="api-consumer-panel" aria-labelledby="consumer-list-title">
             <h2 id="consumer-list-title">Consumer list</h2>
             {consumers.length === 0 ? (
               <div className="state-message" role="status">
                 <h3>No API consumers</h3>
-                <p>Create a consumer to issue its first one-time API key.</p>
+                <p>Approved access requests will appear here.</p>
               </div>
             ) : (
               <div

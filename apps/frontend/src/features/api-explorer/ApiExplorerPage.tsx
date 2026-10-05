@@ -237,10 +237,10 @@ export function ApiExplorerContent() {
               the consumer and applies its configured limits, quota and usage accounting.
             </p>
             <p>
-              Under the current access model, ask a Stat&apos;sTheGame administrator or project
-              administrator for API consumer access. Consumer requests have per-consumer rate limits
-              and daily quotas. A supplied malformed, unknown, invalid or revoked key is rejected;
-              it never falls back to anonymous access.
+              Sign in and request API access from Account → API access. An administrator reviews the
+              request and sets the per-consumer rate limit and daily quota. After approval, the
+              owner generates the key from the same account section. A malformed, unknown, invalid
+              or revoked key is rejected; it never falls back to anonymous access.
             </p>
             <p>
               Keep the issued key in secure secret storage. Never place it in a URL, query string,

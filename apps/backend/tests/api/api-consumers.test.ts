@@ -66,9 +66,9 @@ function repository(overrides: Partial<ApiConsumerRepository> = {}): ApiConsumer
 }
 
 describe('API consumer key lifecycle and protections', () => {
-  test('only administrators can issue a key and the secret is returned once', async () => {
+  test('does not allow administrators to bypass the request lifecycle by issuing a key', async () => {
     const apiConsumerService = service();
-    const response = await request(
+    await request(
       createTestApp(
         undefined,
         undefined,
@@ -89,34 +89,8 @@ describe('API consumer key lifecycle and protections', () => {
       .post('/api/v1/admin/api-consumers')
       .set('Authorization', 'Bearer admin-token')
       .send({ name: 'Partner dashboard', rateLimitPerMinute: 2, dailyQuota: 3 })
-      .expect(201);
-    expect(response.body.data.apiKey).toMatch(/^sat_live_/);
-    expect(apiConsumerService.issue).toHaveBeenCalledOnce();
-
-    const listed = await request(
-      createTestApp(
-        undefined,
-        undefined,
-        async () => createTestAccount({ role: 'admin' }),
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        apiConsumerService,
-        repository(),
-      ),
-    )
-      .get('/api/v1/admin/api-consumers')
-      .set('Authorization', 'Bearer admin-token')
-      .expect(200);
-    expect(JSON.stringify(listed.body)).not.toContain(
-      'sat_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    );
+      .expect(404);
+    expect(apiConsumerService.issue).not.toHaveBeenCalled();
   });
 
   test('rejects missing, malformed and revoked keys without exposing key details', async () => {
