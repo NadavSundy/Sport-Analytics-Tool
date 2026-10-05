@@ -324,6 +324,7 @@ describe('natural-language query operations', () => {
           definition: definition as never,
           model: 'claude-haiku-4-5-20251001',
           usage: { inputTokens: 100, outputTokens: 30 },
+          suggestions: [],
         }),
       },
       ...(limiter ? { naturalLanguageQueryLimiter: limiter } : {}),
@@ -392,6 +393,36 @@ describe('natural-language query operations', () => {
         .expect(429),
       { requestBody: body },
     );
+  });
+
+  // Issue #851: a suggestion is shown to a reader as something to ask, so the
+  // documented schema has to describe what is actually sent.
+  test('POST /natural-language-queries documents the suggestions it returns', async () => {
+    const body = { question: 'who is the best batter in the Indian Premier League?' };
+    const suggesting = contractApp({
+      llmClient: {
+        translateQuestion: async () => ({
+          definition: { kind: 'unsupported', reason: 'ambiguous' } as never,
+          model: 'claude-haiku-4-5-20251001',
+          usage: { inputTokens: 100, outputTokens: 30 },
+          suggestions: [
+            {
+              kind: 'leaderboard',
+              metric: 'most_runs',
+              scope: 'competition',
+              competition: { name: 'Indian Premier League' },
+              limit: 10,
+            },
+          ] as never,
+        }),
+      },
+      naturalLanguageQueryLimiter: admitting,
+    });
+
+    const response = await request(suggesting).post(ASK).send(body).expect(200);
+
+    expect(response.body.data.suggestions).toHaveLength(1);
+    contract.expectResponse(response, { requestBody: body });
   });
 
   // The feature is offered to anonymous visitors, so it must not be documented as

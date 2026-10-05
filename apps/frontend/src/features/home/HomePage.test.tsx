@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from './HomePage';
 
 function useMotionPreference(reducedMotion: boolean) {
@@ -28,6 +28,10 @@ function renderHomePage() {
 }
 
 describe('homepage', () => {
+  beforeAll(async () => {
+    await import('./HomePageContent');
+  });
+
   beforeEach(() => {
     useMotionPreference(false);
     vi.stubGlobal('WebGLRenderingContext', class WebGLRenderingContext {});

@@ -8,16 +8,18 @@ import {
   unsupportedQueryDefinitionSchema,
 } from '@sport-analytics/contracts';
 
-import { ANALYTICS_QUERY_JSON_SCHEMA } from '../../src/modules/analytics-query/analytics-query.json-schema';
+import {
+  ANALYTICS_QUERY_JSON_SCHEMA,
+  ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA,
+} from '../../src/modules/analytics-query/analytics-query.json-schema';
 
 /**
  * The JSON Schema is the shape the provider is constrained to. It is written by
  * hand because the provider rejects several keywords a generator emits, so these
  * tests are what keep it in step with the issue #811 contract.
  */
-const validate = new Ajv2020({ strict: false, allErrors: true }).compile(
-  ANALYTICS_QUERY_JSON_SCHEMA,
-);
+const ajv = new Ajv2020({ strict: false, allErrors: true });
+const validate = ajv.compile(ANALYTICS_QUERY_JSON_SCHEMA);
 
 const season = { competitionName: 'Indian Premier League', seasonLabel: '2026' };
 const competition = { name: 'Indian Premier League' };
@@ -195,5 +197,70 @@ describe('analytics query JSON Schema agreement with the contract', () => {
 
       expect(required).toEqual(contractRequired);
     });
+  });
+});
+
+describe('analytics query translation JSON Schema', () => {
+  const validateTranslation = ajv.compile(ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA);
+
+  it('requires a definition and admits the definition schema unchanged', () => {
+    expect(
+      validateTranslation({ definition: definitions['season-scoped participant statistics'] }),
+    ).toBe(true);
+    expect(validateTranslation({})).toBe(false);
+    expect(validateTranslation({ suggestions: [] })).toBe(false);
+  });
+
+  it('admits up to three answerable suggestions beside the definition', () => {
+    const leaderboard = { kind: 'leaderboard', metric: 'most_runs', scope: 'season', season };
+
+    expect(
+      validateTranslation({
+        definition: { kind: 'unsupported', reason: 'ambiguous' },
+        suggestions: [leaderboard, leaderboard, leaderboard],
+      }),
+    ).toBe(true);
+  });
+
+  // A suggested refusal would give the reader nothing to ask, so the provider is
+  // constrained away from producing one.
+  it('refuses an unsupported suggestion', () => {
+    expect(
+      validateTranslation({
+        definition: { kind: 'unsupported', reason: 'ambiguous' },
+        suggestions: [{ kind: 'unsupported', reason: 'other' }],
+      }),
+    ).toBe(false);
+  });
+
+  it('refuses a suggestion that is not a definition at all', () => {
+    for (const suggestion of [{ kind: 'season_summary' }, 'most runs', 42]) {
+      expect(
+        validateTranslation({
+          definition: { kind: 'unsupported', reason: 'ambiguous' },
+          suggestions: [suggestion],
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('carries no label, because the application words a suggestion itself', () => {
+    expect(
+      validateTranslation({
+        definition: { kind: 'unsupported', reason: 'ambiguous' },
+        suggestions: [
+          { kind: 'leaderboard', metric: 'most_runs', scope: 'season', season, label: 'Most runs' },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it('closes the wrapper and uses no keyword the provider rejects', () => {
+    for (const node of objectNodes(ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA)) {
+      expect(node.additionalProperties).toBe(false);
+    }
+
+    const used = keywordsIn(ANALYTICS_QUERY_TRANSLATION_JSON_SCHEMA);
+    expect([...used].filter((keyword) => UNSUPPORTED_KEYWORDS.includes(keyword))).toEqual([]);
   });
 });

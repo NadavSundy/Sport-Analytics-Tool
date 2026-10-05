@@ -1,7 +1,8 @@
-import type { NaturalLanguageQueryResult } from '@sport-analytics/contracts';
+import type { NaturalLanguageQueryResult, ParticipantAggregates } from '@sport-analytics/contracts';
 import { Link } from 'react-router-dom';
 import { LeaderboardEntriesTable } from '../statistics/LeaderboardEntriesTable';
-import { ParticipantAggregateView } from '../statistics/ParticipantAggregateView';
+import { ComparisonSummary } from './ComparisonSummary';
+import { ScopedFigures } from './ScopedFigures';
 
 /**
  * Renders an answered question with the components the published statistics pages
@@ -67,9 +68,11 @@ function PublishedLinks({ evaluation }: { evaluation: NaturalLanguageQueryResult
   );
 }
 
-export function AnsweredResult({ result }: { result: NaturalLanguageQueryResult }) {
-  const { evaluation } = result;
-
+export function AnsweredResult({
+  evaluation,
+}: {
+  evaluation: NaturalLanguageQueryResult['evaluation'];
+}) {
   if (evaluation.outcome !== 'answered') {
     return null;
   }
@@ -100,25 +103,32 @@ export function AnsweredResult({ result }: { result: NaturalLanguageQueryResult 
   if (definition.kind === 'participant_statistics') {
     return (
       <div className="ask-question__answer">
-        <ParticipantAggregateView
-          aggregates={
-            evaluation.result as Parameters<typeof ParticipantAggregateView>[0]['aggregates']
-          }
+        <ScopedFigures
+          aggregates={evaluation.result as ParticipantAggregates}
+          statisticIds={evaluation.sources[0]?.statisticIds ?? []}
         />
         <PublishedLinks evaluation={evaluation} />
       </div>
     );
   }
 
-  const [first, second] = evaluation.result as [
-    Parameters<typeof ParticipantAggregateView>[0]['aggregates'],
-    Parameters<typeof ParticipantAggregateView>[0]['aggregates'],
+  const [firstResult, secondResult] = evaluation.result as [
+    ParticipantAggregates,
+    ParticipantAggregates,
   ];
 
   return (
     <div className="ask-question__answer ask-question__answer--comparison">
-      <ParticipantAggregateView aggregates={first} />
-      <ParticipantAggregateView aggregates={second} />
+      <ComparisonSummary
+        first={{
+          aggregates: firstResult,
+          statisticIds: evaluation.sources[0]?.statisticIds ?? [],
+        }}
+        second={{
+          aggregates: secondResult,
+          statisticIds: evaluation.sources[1]?.statisticIds ?? [],
+        }}
+      />
       <PublishedLinks evaluation={evaluation} />
     </div>
   );

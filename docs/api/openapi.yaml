@@ -6455,6 +6455,36 @@ components:
           minLength: 1
           maxLength: 100
         evaluation: { $ref: '#/components/schemas/QueryDefinitionEvaluation' }
+        suggestions:
+          description: >-
+            Questions the platform can answer, offered when this one could not be
+            answered exactly. Each has already passed the query-definition
+            contract, so a client may offer it without validating it again, and
+            each is answered by posting it to
+            `POST /api/v1/query-definitions/evaluate`, which makes no
+            language-model call and is not subject to the limits on this
+            operation.
+
+            Absent when nothing was suggested. A suggestion carries no label: a
+            client words it from the definition itself.
+          type: array
+          items: { $ref: '#/components/schemas/QuerySuggestion' }
+          maxItems: 3
+
+    QuerySuggestion:
+      description: >-
+        An answerable query definition. It is any definition except the
+        `unsupported` kind, because a suggestion is shown as something to ask.
+      oneOf:
+        - $ref: '#/components/schemas/LeaderboardQueryDefinition'
+        - $ref: '#/components/schemas/ParticipantStatisticsQueryDefinition'
+        - $ref: '#/components/schemas/ParticipantComparisonQueryDefinition'
+      discriminator:
+        propertyName: kind
+        mapping:
+          leaderboard: '#/components/schemas/LeaderboardQueryDefinition'
+          participant_statistics: '#/components/schemas/ParticipantStatisticsQueryDefinition'
+          participant_comparison: '#/components/schemas/ParticipantComparisonQueryDefinition'
 
     NaturalLanguageQueryResponse:
       type: object

@@ -312,6 +312,7 @@ describe('public browsing pages', () => {
     expect(container.querySelector('.record-list--skeleton')).not.toBeInTheDocument();
     expect(container.querySelectorAll('.record-list__item')).toHaveLength(0);
 
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     resolveRequest(
       collection([{ competitionId: 'competition-1', name: 'Premier Cricket League' }]),
     );

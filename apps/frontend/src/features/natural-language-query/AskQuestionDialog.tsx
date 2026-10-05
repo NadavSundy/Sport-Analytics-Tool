@@ -1,8 +1,18 @@
-import type { NaturalLanguageQueryResult } from '@sport-analytics/contracts';
+import type {
+  NaturalLanguageQueryResult,
+  QueryDefinitionEvaluation,
+  QuerySuggestion,
+} from '@sport-analytics/contracts';
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AnsweredResult } from './AnsweredResult';
-import { MAX_QUESTION_LENGTH, askQuestion, AskQuestionError, type AskFailure } from './askQuestion';
+import {
+  MAX_QUESTION_LENGTH,
+  askQuestion,
+  AskQuestionError,
+  evaluateDefinition,
+  type AskFailure,
+} from './askQuestion';
 import { EXAMPLE_QUESTIONS } from './examples';
 import { describeDefinition, unsupportedMessage } from './interpretation';
 
@@ -16,10 +26,25 @@ import { describeDefinition, unsupportedMessage } from './interpretation';
  * interpretation before trusting the result.
  */
 
+interface Answer {
+  /** The reader's words, or the wording of the suggestion they clicked. */
+  question: string;
+  evaluation: QueryDefinitionEvaluation;
+  suggestions: QuerySuggestion[];
+}
+
 interface AskState {
   status: 'idle' | 'loading' | 'answered' | 'failed';
-  result?: NaturalLanguageQueryResult;
+  answer?: Answer;
   failure?: AskFailure;
+}
+
+function answerFrom(result: NaturalLanguageQueryResult): Answer {
+  return {
+    question: result.question,
+    evaluation: result.evaluation,
+    suggestions: result.suggestions ?? [],
+  };
 }
 
 function retryWording(seconds: number | undefined): string {
@@ -89,9 +114,7 @@ function FailureMessage({ failure }: { failure: AskFailure }) {
   );
 }
 
-function Outcome({ result }: { result: NaturalLanguageQueryResult }) {
-  const { evaluation } = result;
-
+function Outcome({ evaluation }: { evaluation: QueryDefinitionEvaluation }) {
   if (evaluation.outcome === 'unsupported') {
     return (
       <div className="ask-question__message">
@@ -137,7 +160,66 @@ function Outcome({ result }: { result: NaturalLanguageQueryResult }) {
     );
   }
 
-  return <AnsweredResult result={result} />;
+  return <AnsweredResult evaluation={evaluation} />;
+}
+
+/**
+ * Questions the platform can answer, when the reader's own could not be.
+ *
+ * Each is worded from its definition by `describeDefinition`, not by the model:
+ * a label that does not come over the wire cannot disagree with the definition it
+ * describes. Each has already passed the definition contract before being offered.
+ */
+function Suggestions({
+  onChoose,
+  suggestions,
+}: {
+  onChoose: (suggestion: QuerySuggestion) => void;
+  suggestions: QuerySuggestion[];
+}) {
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="ask-question__suggestions">
+      <p>Questions this can answer:</p>
+      <ul>
+        {suggestions.map((suggestion) => (
+          <li key={describeDefinition(suggestion)}>
+            <button onClick={() => onChoose(suggestion)} type="button">
+              {describeDefinition(suggestion)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The fallback when the model's own output was unusable.
+ *
+ * There is no suggestion to offer in that case — the output that would have
+ * carried one is what failed — so the examples stand in. They fill the field
+ * rather than being answered directly, because they are questions rather than
+ * definitions.
+ */
+function ExampleFallback({ onChoose }: { onChoose: (question: string) => void }) {
+  return (
+    <div className="ask-question__suggestions">
+      <p>Questions this can answer:</p>
+      <ul>
+        {EXAMPLE_QUESTIONS.map((example) => (
+          <li key={example.question}>
+            <button onClick={() => onChoose(example.question)} type="button">
+              {example.question}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export function AskQuestionDialog({ onClose }: { onClose: () => void }) {
@@ -173,12 +255,33 @@ export function AskQuestionDialog({ onClose }: { onClose: () => void }) {
 
     setState({ status: 'loading' });
     void askQuestion(trimmed)
-      .then((result) => setState({ status: 'answered', result }))
-      .catch((error: unknown) => {
-        const failure =
-          error instanceof AskQuestionError ? error.failure : ({ kind: 'network' } as AskFailure);
-        setState({ status: 'failed', failure });
-      });
+      .then((result) => setState({ status: 'answered', answer: answerFrom(result) }))
+      .catch(reportFailure);
+  }
+
+  function reportFailure(error: unknown) {
+    const failure =
+      error instanceof AskQuestionError ? error.failure : ({ kind: 'network' } as AskFailure);
+    setState({ status: 'failed', failure });
+  }
+
+  /**
+   * Answers a suggestion without asking the model again.
+   *
+   * The definition is already known and already validated, so it goes straight to
+   * the evaluation endpoint. That costs nothing against the question limits and
+   * makes no provider call.
+   */
+  function handleSuggestion(suggestion: QuerySuggestion) {
+    setState({ status: 'loading' });
+    void evaluateDefinition(suggestion)
+      .then((evaluation) =>
+        setState({
+          status: 'answered',
+          answer: { question: describeDefinition(suggestion), evaluation, suggestions: [] },
+        }),
+      )
+      .catch(reportFailure);
   }
 
   return (
@@ -235,16 +338,22 @@ export function AskQuestionDialog({ onClose }: { onClose: () => void }) {
 
         <div aria-live="polite" className="ask-question__result" role="region">
           {state.status === 'loading' ? <p>Working out the answer…</p> : null}
-          {state.status === 'answered' && state.result ? (
+          {state.status === 'answered' && state.answer ? (
             <>
               <p className="ask-question__interpretation">
-                Read as: <strong>{describeDefinition(state.result.evaluation.definition)}</strong>
+                Read as: <strong>{describeDefinition(state.answer.evaluation.definition)}</strong>
               </p>
-              <Outcome result={state.result} />
+              <Outcome evaluation={state.answer.evaluation} />
+              <Suggestions suggestions={state.answer.suggestions} onChoose={handleSuggestion} />
             </>
           ) : null}
           {state.status === 'failed' && state.failure ? (
-            <FailureMessage failure={state.failure} />
+            <>
+              <FailureMessage failure={state.failure} />
+              {state.failure.kind === 'not_understood' ? (
+                <ExampleFallback onChoose={setQuestion} />
+              ) : null}
+            </>
           ) : null}
         </div>
       </div>

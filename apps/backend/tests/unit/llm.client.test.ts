@@ -27,12 +27,14 @@ const DEFINITION = {
   limit: 10,
 };
 
+// Since issue #851 the provider returns a definition inside a wrapper that may
+// also carry suggestions, so a definition arrives as `{ definition }`.
 function messageBody(definition: unknown, usage = { input_tokens: 2_000, output_tokens: 150 }) {
   return {
     id: 'msg_test',
     model: MODEL,
     stop_reason: 'end_turn',
-    content: [{ type: 'text', text: JSON.stringify(definition) }],
+    content: [{ type: 'text', text: JSON.stringify({ definition }) }],
     usage,
   };
 }
@@ -366,5 +368,125 @@ describe('analytics query LLM request', () => {
 
     expect(system).toContain(ANALYTICS_QUERY_PROMPT_DESCRIPTION);
     expect(system.replace(ANALYTICS_QUERY_PROMPT_DESCRIPTION, '')).not.toMatch(/\d/);
+  });
+});
+
+describe('suggestions (issue #851)', () => {
+  const LEADERBOARD = {
+    kind: 'leaderboard',
+    metric: 'most_runs',
+    scope: 'competition',
+    competition: { name: 'Indian Premier League' },
+  };
+  const UNSUPPORTED = { kind: 'unsupported', reason: 'ambiguous' };
+
+  function translating(body: unknown) {
+    return vi.fn(async () =>
+      jsonResponse({
+        model: MODEL,
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: JSON.stringify(body) }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }),
+    );
+  }
+
+  it('asks the provider for the translation wrapper, not a bare definition', async () => {
+    const fetchImplementation = translating({ definition: UNSUPPORTED });
+
+    await client(fetchImplementation).translateQuestion('who is the best batter?');
+
+    const [, init] = fetchImplementation.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as {
+      output_config: { format: { schema: { required: string[] } } };
+    };
+    expect(body.output_config.format.schema.required).toEqual(['definition']);
+  });
+
+  it('returns validated suggestions beside the definition', async () => {
+    const translation = await client(
+      translating({ definition: UNSUPPORTED, suggestions: [LEADERBOARD] }),
+    ).translateQuestion('who is the best batter in the IPL?');
+
+    expect(translation.definition).toEqual(UNSUPPORTED);
+    expect(translation.suggestions).toHaveLength(1);
+    expect(translation.suggestions[0]).toMatchObject({ kind: 'leaderboard', metric: 'most_runs' });
+  });
+
+  it('returns no suggestions when the provider offers none', async () => {
+    const translation = await client(translating({ definition: LEADERBOARD })).translateQuestion(
+      'most runs in the IPL?',
+    );
+
+    expect(translation.suggestions).toEqual([]);
+  });
+
+  // One unusable suggestion must not cost the reader the answer.
+  it('drops an invalid suggestion and keeps the valid ones', async () => {
+    const translation = await client(
+      translating({
+        definition: UNSUPPORTED,
+        suggestions: [
+          { kind: 'leaderboard', metric: 'most_sledges', scope: 'competition' },
+          LEADERBOARD,
+          { kind: 'leaderboard', metric: 'most_runs', scope: 'career' },
+        ],
+      }),
+    ).translateQuestion('who is the best batter in the IPL?');
+
+    expect(translation.definition).toEqual(UNSUPPORTED);
+    expect(translation.suggestions).toHaveLength(1);
+  });
+
+  it('drops them all when none is valid, rather than failing the answer', async () => {
+    const translation = await client(
+      translating({
+        definition: UNSUPPORTED,
+        suggestions: [{ kind: 'sql', query: 'SELECT 1' }, 'most runs', 42, null],
+      }),
+    ).translateQuestion('who is the best batter?');
+
+    expect(translation.definition).toEqual(UNSUPPORTED);
+    expect(translation.suggestions).toEqual([]);
+  });
+
+  // A suggested refusal gives the reader nothing to ask.
+  it('drops an unsupported suggestion', async () => {
+    const translation = await client(
+      translating({
+        definition: UNSUPPORTED,
+        suggestions: [{ kind: 'unsupported', reason: 'venue' }],
+      }),
+    ).translateQuestion('who is the best batter?');
+
+    expect(translation.suggestions).toEqual([]);
+  });
+
+  it('keeps at most three suggestions even when more arrive', async () => {
+    const translation = await client(
+      translating({
+        definition: UNSUPPORTED,
+        suggestions: [LEADERBOARD, LEADERBOARD, LEADERBOARD, LEADERBOARD, LEADERBOARD],
+      }),
+    ).translateQuestion('who is the best batter in the IPL?');
+
+    expect(translation.suggestions).toHaveLength(3);
+  });
+
+  it('still rejects a definition the contract refuses, suggestions or not', async () => {
+    await expect(
+      client(
+        translating({
+          definition: { kind: 'leaderboard', metric: 'most_sledges', scope: 'competition' },
+          suggestions: [LEADERBOARD],
+        }),
+      ).translateQuestion('a question'),
+    ).rejects.toBeInstanceOf(LlmInvalidOutputError);
+  });
+
+  it('rejects output that is not the wrapper at all', async () => {
+    await expect(
+      client(translating(LEADERBOARD)).translateQuestion('most runs in the IPL?'),
+    ).rejects.toBeInstanceOf(LlmInvalidOutputError);
   });
 });

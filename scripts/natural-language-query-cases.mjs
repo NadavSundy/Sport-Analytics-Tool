@@ -182,6 +182,70 @@ export const NATURAL_LANGUAGE_QUERY_CASES = [
     ],
   },
 
+  // The four questions the home-page widget offers as buttons, worded exactly as
+  // a visitor sees them. Issue #851 found that the set tested similar wordings
+  // instead: the widget says "the Indian Premier League" where the case said "the
+  // IPL", so a demo button regressed without any case failing.
+  {
+    id: 'example-most-runs-season',
+    question: 'Who scored the most runs in the 2024 Indian Premier League season?',
+    accept: [{ kind: 'leaderboard', metric: 'most_runs', scope: 'season' }],
+  },
+  {
+    id: 'example-most-wickets-competition',
+    question: 'Who has taken the most wickets in the Indian Premier League?',
+    accept: [
+      { kind: 'leaderboard', metric: 'most_wickets', scope: 'competition' },
+      { kind: 'leaderboard', metric: 'most_wickets', scope: 'season' },
+    ],
+  },
+  {
+    id: 'example-career-statistics',
+    question: "What are V Kohli's career statistics?",
+    accept: [{ kind: 'participant_statistics', scope: 'career', participant: { name: 'V Kohli' } }],
+  },
+  {
+    id: 'example-career-comparison',
+    question: 'Compare V Kohli and RD Gaikwad over their careers',
+    accept: [{ kind: 'participant_comparison', scope: 'career' }],
+  },
+
+  // Issue #851. Three behaviours the evaluation set did not reach before:
+  // season- and competition-scoped figures, a head-to-head, and the subjective
+  // questions that should be refused with something to ask instead.
+  {
+    id: 'scoped-season-average',
+    question: "What was V Kohli's average in the 2024 Indian Premier League season?",
+    accept: [{ kind: 'participant_statistics', scope: 'season', participant: { name: 'V Kohli' } }],
+  },
+  {
+    id: 'scoped-competition-figures',
+    question: "What are V Kohli's Indian Premier League figures?",
+    accept: [
+      { kind: 'participant_statistics', scope: 'competition', participant: { name: 'V Kohli' } },
+      { kind: 'participant_statistics', scope: 'career', participant: { name: 'V Kohli' } },
+    ],
+  },
+  {
+    id: 'scoped-comparison-competition',
+    question: 'Compare V Kohli and RD Gaikwad in the Indian Premier League',
+    accept: [{ kind: 'participant_comparison', scope: 'competition' }],
+  },
+  {
+    id: 'subjective-best-batter',
+    question: 'Who is the best batter in the Indian Premier League?',
+    accept: [{ kind: 'unsupported', reason: 'ambiguous' }],
+    // A refusal on its own was the complaint behind issue #851, so this case also
+    // expects something the reader can ask instead.
+    expectSuggestions: true,
+  },
+  {
+    id: 'subjective-all-time-bowler',
+    question: 'Who is the greatest T20 bowler of all time?',
+    accept: [{ kind: 'unsupported', reason: 'ambiguous' }],
+    expectSuggestions: true,
+  },
+
   // Attempts to make the question an instruction. The question is data, and the
   // only acceptable answers refuse it; a leaked prompt or an obeyed instruction
   // would both show as a failure here.
@@ -234,19 +298,32 @@ function matches(matcher, actual) {
  * A failure says which matcher was expected and what arrived, so a run can be
  * read without the provider in front of you.
  */
-export function compareTranslation(testCase, definition) {
+export function compareTranslation(testCase, definition, suggestions = []) {
   if (definition === undefined || definition === null) {
     return { id: testCase.id, pass: false, detail: 'no definition was returned' };
   }
 
-  const pass = testCase.accept.some((matcher) => matches(matcher, definition));
-  return {
-    id: testCase.id,
-    pass,
-    detail: pass
-      ? describe(definition)
-      : `expected one of ${testCase.accept.map(describe).join(' | ')}; got ${describe(definition)}`,
-  };
+  const matched = testCase.accept.some((matcher) => matches(matcher, definition));
+  if (!matched) {
+    return {
+      id: testCase.id,
+      pass: false,
+      detail: `expected one of ${testCase.accept.map(describe).join(' | ')}; got ${describe(definition)}`,
+    };
+  }
+
+  // A case that expects help is not satisfied by a bare refusal, however correct
+  // the refusal is.
+  if (testCase.expectSuggestions && suggestions.length === 0) {
+    return {
+      id: testCase.id,
+      pass: false,
+      detail: `${describe(definition)} but suggested nothing to ask instead`,
+    };
+  }
+
+  const offered = suggestions.length > 0 ? ` + ${suggestions.length} suggestion(s)` : '';
+  return { id: testCase.id, pass: true, detail: `${describe(definition)}${offered}` };
 }
 
 function describe(definition) {
