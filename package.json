@@ -17,6 +17,7 @@
     "dev:worker": "npm run dev --workspace=@sport-analytics/worker",
     "data:performance:generate": "node scripts/generate-representative-corpus.mjs",
     "measure:api-response-times": "node scripts/measure-api-response-times.mjs",
+    "preevaluate:natural-language-queries": "npm run build --workspace=@sport-analytics/contracts",
     "evaluate:natural-language-queries": "tsx scripts/evaluate-natural-language-queries.mjs",
     "verify:production-scale-deployment": "node scripts/production-scale-deployment-acceptance.mjs",
     "measure:performance:local": "npm run measure:performance --workspace=@sport-analytics/backend --",

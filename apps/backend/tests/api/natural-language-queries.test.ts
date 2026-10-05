@@ -92,6 +92,7 @@ function translatingTo(definition: AnalyticsQueryDefinition): LlmClient {
       definition,
       model: 'claude-haiku-4-5-20251001',
       usage: { inputTokens: 120, outputTokens: 40 },
+      suggestions: [],
     })),
   };
 }
@@ -482,5 +483,63 @@ describe('natural-language query endpoint', () => {
 
       expect(calls).toEqual(['limiter', 'provider']);
     });
+  });
+});
+
+describe('suggestions (issue #851)', () => {
+  const SUGGESTION = {
+    kind: 'leaderboard' as const,
+    metric: 'most_runs' as const,
+    scope: 'competition' as const,
+    competition: { name: 'Indian Premier League' },
+    limit: 10,
+  };
+
+  function suggesting(suggestions: AnalyticsQueryDefinition[]): LlmClient {
+    return {
+      translateQuestion: vi.fn(async () => ({
+        definition: { kind: 'unsupported' as const, reason: 'ambiguous' as const },
+        model: 'claude-haiku-4-5-20251001',
+        usage: { inputTokens: 120, outputTokens: 40 },
+        suggestions,
+      })),
+    };
+  }
+
+  it('returns the suggestions the adapter validated', async () => {
+    const response = await request(appWith({ llmClient: suggesting([SUGGESTION]) }))
+      .post(ASK)
+      .send({ question: 'who is the best batter in the IPL?' })
+      .expect(200);
+
+    expect(naturalLanguageQueryResponseSchema.safeParse(response.body).success).toBe(true);
+    expect(response.body.data.suggestions).toHaveLength(1);
+    expect(response.body.data.suggestions[0]).toMatchObject({ metric: 'most_runs' });
+    expect(response.body.data.evaluation.outcome).toBe('unsupported');
+  });
+
+  // An empty array would say "we looked and found none", which is not the same as
+  // an endpoint that was not asked to suggest anything.
+  it('omits the field entirely when there are none', async () => {
+    const response = await request(appWith({ llmClient: suggesting([]) }))
+      .post(ASK)
+      .send({ question: 'which ground sees most sixes?' })
+      .expect(200);
+
+    expect(naturalLanguageQueryResponseSchema.safeParse(response.body).success).toBe(true);
+    expect(response.body.data).not.toHaveProperty('suggestions');
+  });
+
+  it('answers a suggestion through the evaluation endpoint without a model call', async () => {
+    const llmClient = suggesting([SUGGESTION]);
+    const app = appWith({ llmClient });
+
+    const evaluated = await request(app)
+      .post('/api/v1/query-definitions/evaluate')
+      .send(SUGGESTION)
+      .expect(200);
+
+    expect(evaluated.body.data.outcome).toBe('answered');
+    expect(llmClient.translateQuestion).not.toHaveBeenCalled();
   });
 });

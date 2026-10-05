@@ -182,6 +182,68 @@ every run spends money against the ADR-017 monthly limit:
 npm run evaluate:natural-language-queries
 ```
 
+### Suggestions
+
+A question the platform cannot answer exactly may come back with up to three
+questions it can answer:
+
+```json
+{
+  "data": {
+    "question": "Who is the best batter in the IPL?",
+    "model": "claude-haiku-4-5-20251001",
+    "evaluation": { "outcome": "unsupported", "reason": "ambiguous" },
+    "suggestions": [
+      {
+        "kind": "leaderboard",
+        "metric": "most_runs",
+        "scope": "competition",
+        "competition": { "name": "Indian Premier League" },
+        "limit": 10
+      }
+    ]
+  }
+}
+```
+
+Each suggestion is a query definition that has **already passed the
+query-definition contract**, so a client may offer it without validating it again,
+and none that failed validation is ever returned. A suggestion is never the
+`unsupported` kind: it is shown as something to ask.
+
+**A suggestion is answered by posting it to
+`POST /api/v1/query-definitions/evaluate`.** That makes no language-model call and
+is not counted against the limits below, so following a suggestion costs a reader
+nothing.
+
+**Suggestions carry no label.** A client words one from the definition itself, so
+the wording cannot disagree with what it describes. They sit beside the definition
+rather than inside it, because `definitionVersion` is a digest of the definition
+alone: a suggestion within it would make the same question carry different versions
+whenever a different suggestion was offered. For the same reason, adding them did
+not change the definition shape and `QUERY_DEFINITION_VERSION` remains `1.0`.
+
+The field is absent rather than empty when nothing was suggested. When the model's
+own output could not be used at all — the `422 QUERY_NOT_UNDERSTOOD` case — there
+is nothing to suggest, because the output that would have carried a suggestion is
+what failed; an interface should fall back to its own examples.
+
+### Scoped answers
+
+The published participant-aggregates endpoint accepts no competition or season
+filter, so a season- or competition-scoped question is answered with the player's
+entire aggregate and `sources[].statisticIds` names the row that answers it. One
+player's season aggregate can carry **more than sixty rows across twenty-odd
+competitions**.
+
+A client must therefore narrow the result to the rows `statisticIds` points at. It
+is not enough to hand the whole aggregate to a player-page component: those open on
+a career view, so a season row stays hidden behind a tab and the reader sees "no
+career totals" for a question that was answered correctly.
+
+An empty `statisticIds` for a participant question means nothing is published at
+that scope, which is an answer rather than an error.
+
 ### Limits
 
 The operation is anonymous and every admitted request calls a paid provider, so the limits are its
@@ -287,4 +349,6 @@ it.
 
 This page was drafted with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue
 #813. The natural-language query endpoint, its limits and the post-deployment verification were
-documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #815.
+documented with the assistance of Claude-Code[Claude Opus 5 (1M context)] under issue #815. The
+suggestions and scoped answers were documented with the assistance of
+Claude-Code[Claude Opus 5 (1M context)] under issue #851.

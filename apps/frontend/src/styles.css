@@ -6317,3 +6317,51 @@ h3 {
     padding: var(--space-5);
   }
 }
+
+/* Issue #851: suggestions, the compact comparison and the scoped-answer note. */
+.ask-question__suggestions {
+  margin-block-start: var(--space-5);
+}
+
+.ask-question__suggestions p {
+  margin-block-end: var(--space-2);
+  color: var(--colour-text-secondary);
+}
+
+.ask-question__suggestions ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-question__suggestions button {
+  width: 100%;
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface-soft);
+  color: var(--colour-text);
+  cursor: pointer;
+}
+
+.ask-question__note {
+  color: var(--colour-text-secondary);
+}
+
+/* The leader is named in words as well; the marker is decoration on top of that,
+   so that the indication does not depend on seeing it. */
+.comparison-summary__marker {
+  color: var(--colour-primary);
+}
+
+.comparison-summary__full {
+  margin-block-start: var(--space-5);
+}
+
+.comparison-summary__full summary {
+  cursor: pointer;
+  color: var(--colour-text-secondary);
+}

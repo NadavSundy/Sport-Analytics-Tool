@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiIdentifierSchema, createResourceResponseSchema } from './api';
 import {
   leaderboardMetricSchema,
+  type LeaderboardMetric,
   leaderboardSchema,
   participantAggregateScopeSchema,
   participantAggregatesSchema,
@@ -239,6 +240,48 @@ export const analyticsQueryDefinitionSchema = z
     checkScopeReference(definition, context);
   });
 
+/**
+ * A question the platform can answer, offered when the reader's own question
+ * could not be.
+ *
+ * It is any definition except `unsupported`: suggesting a refusal would give the
+ * reader nothing to act on. It is validated by the same contract as a definition,
+ * because a suggestion is shown as something to click and must therefore already
+ * be answerable before it is offered.
+ */
+export const querySuggestionSchema = z
+  .discriminatedUnion('kind', [
+    leaderboardQueryDefinitionSchema,
+    participantStatisticsQueryDefinitionSchema,
+    participantComparisonQueryDefinitionSchema,
+  ])
+  .superRefine(checkScopeReference);
+
+/** Three is enough to help and few enough to read without scrolling. */
+export const MAX_QUERY_SUGGESTIONS = 3;
+
+/**
+ * What the model is asked to return: one definition, and optionally a few
+ * questions the platform could answer instead.
+ *
+ * Suggestions sit beside the definition rather than inside it, and that placement
+ * is load-bearing. `definitionVersion` is a digest of the definition alone, so a
+ * suggestion inside it would make the same question carry different versions
+ * whenever the model suggested something different. `analyticsQueryDefinitionSchema`
+ * is therefore untouched by this, and `QUERY_DEFINITION_VERSION` does not change.
+ *
+ * `suggestions` is deliberately unvalidated here. One unusable suggestion must not
+ * cost the reader their answer, so the adapter validates each against
+ * `querySuggestionSchema` and drops the ones that fail; validating them in this
+ * schema would reject the whole wrapper instead.
+ */
+export const analyticsQueryTranslationSchema = z
+  .object({
+    definition: analyticsQueryDefinitionSchema,
+    suggestions: z.array(z.unknown()).optional(),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // Derived types
 // ---------------------------------------------------------------------------
@@ -293,12 +336,57 @@ const quotedScopes = participantAggregateScopeSchema.options
  * wording a model is shown and the schema it has to satisfy cannot drift apart.
  * The metric, scope and reason lists are built from the schemas themselves.
  */
+const BATTING_SUGGESTION_METRICS = [
+  'most_runs',
+  'highest_batting_average',
+  'highest_strike_rate',
+] satisfies LeaderboardMetric[];
+
+const BOWLING_SUGGESTION_METRICS = [
+  'most_wickets',
+  'best_bowling_average',
+  'best_economy_rate',
+] satisfies LeaderboardMetric[];
+
+/**
+ * Read off the contract's own metric enum, so a metric that is renamed or removed
+ * fails the build here rather than becoming a suggestion the contract rejects.
+ */
+/**
+ * Every published metric, listed so the prompt can exempt them by name from the
+ * subjective-question rule. Issue #851 first stated that rule without this list,
+ * and "most wickets" was then read as a superlative like "best" and refused.
+ */
+const quotedLeaderboardMetrics = leaderboardMetricSchema.options
+  .map((metric) => `"${metric}"`)
+  .join(', ');
+
+const quotedBattingSuggestionMetrics = BATTING_SUGGESTION_METRICS.map(
+  (metric) => `"${metric}"`,
+).join(', ');
+const quotedBowlingSuggestionMetrics = BOWLING_SUGGESTION_METRICS.map(
+  (metric) => `"${metric}"`,
+).join(', ');
+
 export const ANALYTICS_QUERY_PROMPT_DESCRIPTION = `Analytics query definition, version ${QUERY_DEFINITION_VERSION}.
 
-Translate the reader's cricket question into exactly one query definition. Reply with only the JSON
-definition: no prose, no explanation and no code fence. The JSON must match one of the kinds below
-exactly. A definition carrying any property that is not listed for its kind is rejected, so never add
-a property to explain yourself.
+Translate the reader's cricket question into exactly one query definition. Reply with only JSON: no
+prose, no explanation and no code fence.
+
+Reply with an object of exactly this shape:
+
+  { "definition": <one definition>, "suggestions": [ <definition>, ... ] }
+
+"definition" is required and holds the single definition the question translates to. It must match one
+of the kinds below exactly; a definition carrying any property that is not listed for its kind is
+rejected, so never add a property to explain yourself.
+
+"suggestions" is optional and holds at most three definitions naming questions the platform could
+answer instead. Offer them when "definition" is the "unsupported" kind, and leave them out otherwise.
+A suggestion is never "unsupported": it must be a "leaderboard", "participant_statistics" or
+"participant_comparison" definition, obeying every rule below, because the reader is shown it as
+something to ask. Suggestions carry no label; the application words them from the definition itself,
+so do not add any text to them.
 
 Every definition has a "kind" property naming what is being asked for. There are four kinds.
 
@@ -346,7 +434,34 @@ name belongs.
 Answer with "unsupported" rather than guess. If the question needs something the published
 statistics do not hold, or if it does not say which player, competition or season it means, return
 the "unsupported" kind with the closest reason. A wrong definition is worse than a named refusal,
-so never approximate the question, widen its scope, or change the metric to one you can express.`;
+so never approximate the question, widen its scope, or change the metric to one you can express.
+
+Two kinds of question are refused but must still be helped, because the reader asked something
+reasonable that this data cannot settle on its own.
+
+First, what is NOT subjective. A superlative that names a metric the platform publishes is concrete
+and must be translated as a "leaderboard" in the ordinary way. "Most runs", "most wickets", "most
+fours", "most sixes", "highest average", "highest strike rate", "best average", "best economy" and
+any other wording of these metrics are all concrete:
+${quotedLeaderboardMetrics}.
+Never return "unsupported" for a question that names one of them. "Who took the most wickets in the
+Indian Premier League?" is a "leaderboard" with the metric "most_wickets", not a refusal.
+
+A question is subjective only when its superlative names no such metric: "who is the best batter",
+"the greatest bowler", "the top player", "the most dangerous batter". There is no published measure
+of those, so return "unsupported" with the reason "ambiguous", and suggest the concrete metrics that
+would answer it, scoped to the competition or season the reader named. For a batting question those
+are typically ${quotedBattingSuggestionMetrics}; for a bowling question,
+${quotedBowlingSuggestionMetrics}.
+
+A question asking about "all time", "ever" or "in history" asks across every competition at once,
+which the published statistics do not rank, even when it names a metric. Return "unsupported" with
+the reason "ambiguous" and suggest the same metric within one competition the reader named. This
+applies only to questions that really do span everything: a metric question that names a competition
+or a season is scoped, and translates normally.
+
+In both cases keep the reader's own player, competition and season names in the suggestions, and
+never suggest a question about a player, competition or season the reader did not name.`;
 
 // ---------------------------------------------------------------------------
 // Evaluation result
@@ -544,6 +659,16 @@ export const naturalLanguageQueryResultSchema = z
     /** The model that produced the definition, as the provider reported it. */
     model: z.string().trim().min(1).max(100),
     evaluation: queryDefinitionEvaluationSchema,
+    /**
+     * Questions the platform can answer, when this one could not be answered
+     * exactly. Each has already passed the definition contract, so an interface
+     * may offer it without validating it again, and each is answered through the
+     * public evaluation endpoint without a further model call.
+     *
+     * Optional rather than always present, so a frontend released ahead of this
+     * field still validates a response that does not carry it.
+     */
+    suggestions: z.array(querySuggestionSchema).max(MAX_QUERY_SUGGESTIONS).optional(),
   })
   .strict();
 
@@ -552,5 +677,7 @@ export const naturalLanguageQueryResponseSchema = createResourceResponseSchema(
 );
 
 export type NaturalLanguageQuery = z.infer<typeof naturalLanguageQuerySchema>;
+export type QuerySuggestion = z.infer<typeof querySuggestionSchema>;
+export type AnalyticsQueryTranslationEnvelope = z.infer<typeof analyticsQueryTranslationSchema>;
 export type NaturalLanguageQueryResult = z.infer<typeof naturalLanguageQueryResultSchema>;
 export type NaturalLanguageQueryResponse = z.infer<typeof naturalLanguageQueryResponseSchema>;

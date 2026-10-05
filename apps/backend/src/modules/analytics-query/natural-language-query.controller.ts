@@ -124,12 +124,20 @@ export function createNaturalLanguageQueryController(
           outputTokens: translation.usage.outputTokens,
           translationMs,
           totalMs: elapsedMs(startedAt),
+          suggestionCount: translation.suggestions.length,
         },
         'Natural-language query answered',
       );
 
       response.status(200).json({
-        data: { question, model: translation.model, evaluation },
+        data: {
+          question,
+          model: translation.model,
+          evaluation,
+          // Omitted rather than sent empty: an absent field says nothing was
+          // suggested, which is what an interface needs to know.
+          ...(translation.suggestions.length > 0 ? { suggestions: translation.suggestions } : {}),
+        },
       });
     })().catch((error: unknown) => {
       if (!reportTranslationFailure(error, request, response)) {
