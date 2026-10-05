@@ -48,7 +48,7 @@ describe('undocumented JSON body errors', () => {
       path: '/api/v1/submitter-scope-requests',
       account: { role: 'submitter', approvalState: 'approved' },
     },
-    { method: 'post', path: '/api/v1/admin/api-consumers', account: { role: 'admin' } },
+    { method: 'post', path: '/api/v1/account/api-access/requests', account: {} },
     { method: 'delete', path: '/api/v1/account', account: {} },
     { method: 'patch', path: '/api/v1/admin/users/2/role', account: { role: 'admin' } },
     { method: 'patch', path: '/api/v1/admin/users/2/submitter-access', account: { role: 'admin' } },
@@ -108,17 +108,17 @@ describe('undocumented access and identifier errors', () => {
   );
 
   test('API key rotation and revocation return the documented 422 for a non-numeric identifier', async () => {
-    const app = contractApp({ account: { role: 'admin' } });
+    const app = contractApp();
 
     contract.expectResponse(
       await request(app)
-        .post('/api/v1/admin/api-consumers/abc/keys/rotate')
+        .post('/api/v1/account/api-consumers/abc/keys/rotate')
         .set('Authorization', token)
         .expect(422),
       { requestIsInvalid: true },
     );
     contract.expectResponse(
-      await request(app)
+      await request(contractApp({ account: { role: 'admin' } }))
         .delete('/api/v1/admin/api-consumers/7/keys/abc')
         .set('Authorization', token)
         .expect(422),
@@ -128,12 +128,13 @@ describe('undocumented access and identifier errors', () => {
 
   test('API key rotation returns the documented replacement key', async () => {
     const app = contractApp({
-      account: { role: 'admin' },
-      apiConsumers: { rotate: async () => ({ ...apiConsumer, apiKey: CONSUMER_API_KEY }) },
+      apiAccess: {
+        rotateKey: async () => ({ consumer: apiConsumer, apiKey: CONSUMER_API_KEY }),
+      },
     });
 
     const response = await request(app)
-      .post('/api/v1/admin/api-consumers/7/keys/rotate')
+      .post('/api/v1/account/api-consumers/7/keys/rotate')
       .set('Authorization', token)
       .expect(200);
 

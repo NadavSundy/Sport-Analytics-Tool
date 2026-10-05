@@ -6,16 +6,16 @@ Authoritative evidence remains under `evidence/` and is linked rather than copie
 
 ## Start by evidence type
 
-| Need                                                           | Start here                                                                                                                                              |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sprint planning, stand-ups, stakeholder records and close-outs | [Sprint Evidence](sprint-evidence.md)                                                                                                                   |
-| Original Teams meeting transcripts and readable PDF copies     | [Team Meeting Transcripts](team-meeting-transcripts.md)                                                                                                 |
-| Requirements/rubric traceability                               | [Sprint 1 traceability](../planning/sprint-1-requirements-traceability.md) / [Sprint 2 traceability](../planning/sprint-2-requirements-traceability.md) |
-| Testing, validation and formal user-testing evidence           | [Testing & Validation Evidence](validation-and-user-testing.md)                                                                                         |
-| Architecture and project decisions                             | [Decisions Index](decisions.md)                                                                                                                         |
-| AI registers and AI transcript evidence                        | [AI Use & Evidence](ai-use-evidence.md)                                                                                                                 |
-| Project workflow and ceremonies                                | [Project Methodology](../project_methodology.md)                                                                                                        |
-| Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                      |
+| Need                                                           | Start here                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sprint planning, stand-ups, stakeholder records and close-outs | [Sprint Evidence](sprint-evidence.md)                                                                                                                                                                                                 |
+| Original Teams meeting transcripts and readable PDF copies     | [Team Meeting Transcripts](team-meeting-transcripts.md)                                                                                                                                                                               |
+| Requirements/rubric traceability                               | [Sprint 1 traceability](../planning/sprint-1-requirements-traceability.md) / [Sprint 2 traceability](../planning/sprint-2-requirements-traceability.md) / [final traceability](../planning/final-requirements-rubric-traceability.md) |
+| Testing, validation and formal user-testing evidence           | [Testing & Validation Evidence](validation-and-user-testing.md)                                                                                                                                                                       |
+| Architecture and project decisions                             | [Decisions Index](decisions.md)                                                                                                                                                                                                       |
+| AI registers and AI transcript evidence                        | [AI Use & Evidence](ai-use-evidence.md)                                                                                                                                                                                               |
+| Project workflow and ceremonies                                | [Project Methodology](../project_methodology.md)                                                                                                                                                                                      |
+| Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                                                                                                    |
 
 ## Methodology
 

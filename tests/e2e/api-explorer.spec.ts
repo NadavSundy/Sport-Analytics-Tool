@@ -86,8 +86,8 @@ test(
     await expect(accessRegion.getByText(/same canonical resource paths/)).toBeVisible();
     await expect(accessRegion.getByText(/valid consumer API key/)).toBeVisible();
     await expect(accessRegion.getByText(/X-API-Key/)).toBeVisible();
-    await expect(accessRegion.getByText(/ask a Stat'sTheGame administrator/)).toBeVisible();
-    await expect(accessRegion.getByText(/rate limits and daily quotas/)).toBeVisible();
+    await expect(accessRegion.getByText(/request API access from Account/)).toBeVisible();
+    await expect(accessRegion.getByText(/rate limit and daily quota/)).toBeVisible();
     await expect(
       accessRegion.getByRole('link', { name: 'Consumer API access and key guidance' }),
     ).toHaveAttribute('href', 'https://sports-analytics-tool.pages.dev/api/consumer-keys/');

@@ -17,6 +17,7 @@ import type { WeatherService } from '../src/modules/weather/weather.service';
 import type { FixtureWeatherService } from '../src/modules/weather/fixture-weather.service';
 import type { BatchService } from '../src/modules/batches/batch.service';
 import type { ApiConsumerService } from '../src/modules/api-consumers/api-consumer.service';
+import type { ApiAccessService } from '../src/modules/api-consumers/api-access.service';
 import type { ApiConsumerRepository } from '../src/modules/api-consumers/api-consumer.repository';
 import type { DatasetReleaseService } from '../src/modules/dataset-releases/dataset-release.service';
 import type { ProvenanceService } from '../src/modules/provenance/provenance.service';
@@ -105,6 +106,7 @@ const testAdminService: AdminService = {
 };
 
 export interface TestAppOptions {
+  apiAccessService?: ApiAccessService;
   llmClient?: AppDependencies['llmClient'];
   naturalLanguageQueryLimiter?: AppDependencies['naturalLanguageQueryLimiter'];
   logger?: AppDependencies['logger'];
@@ -166,6 +168,9 @@ export function createTestApp(
     ...(batchService !== undefined ? { batchService } : {}),
     ...(participantAggregatesService !== undefined ? { participantAggregatesService } : {}),
     ...(apiConsumerService !== undefined ? { apiConsumerService } : {}),
+    ...(options.apiAccessService !== undefined
+      ? { apiAccessService: options.apiAccessService }
+      : {}),
     ...(apiConsumerRepository !== undefined ? { apiConsumerRepository } : {}),
     ...(datasetReleaseService !== undefined ? { datasetReleaseService } : {}),
     ...(provenanceService !== undefined ? { provenanceService } : {}),

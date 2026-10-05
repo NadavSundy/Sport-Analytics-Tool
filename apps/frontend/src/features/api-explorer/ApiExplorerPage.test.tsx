@@ -130,8 +130,9 @@ describe('ApiExplorerPage', () => {
     expect(within(accessRegion).getByText(/same canonical resource paths/)).toBeVisible();
     expect(within(accessRegion).getByText(/valid consumer API key/)).toBeVisible();
     expect(within(accessRegion).getByText(/X-API-Key/)).toBeVisible();
-    expect(within(accessRegion).getByText(/ask a Stat'sTheGame administrator/)).toBeVisible();
-    expect(within(accessRegion).getByText(/rate limits and daily quotas/)).toBeVisible();
+    expect(within(accessRegion).getByText(/request API access from Account/)).toBeVisible();
+    expect(within(accessRegion).getByText(/owner generates the key/)).toBeVisible();
+    expect(within(accessRegion).getByText(/rate limit and daily quota/)).toBeVisible();
     expect(within(accessRegion).getByText(/invalid or revoked key is rejected/)).toBeVisible();
 
     expect(
