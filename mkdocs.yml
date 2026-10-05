@@ -52,6 +52,7 @@ nav:
       - Overview: product-and-api.md
       - API:
           - API Overview: api/overview.md
+          - Final API Audit: api/final-audit.md
           - OpenAPI Specification: api/openapi.md
           - OpenAPI Contract Testing: api/contract-testing.md
           - Public Read API: api/public-read.md

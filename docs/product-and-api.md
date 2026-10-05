@@ -6,18 +6,18 @@ work with dataset outputs.
 
 ## Product capabilities
 
-| Goal                                  | Start here                                                                 | Detailed reference                                                 |
-| ------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Understand the API surface            | [API overview](api/overview.md)                                            | [OpenAPI specification](api/openapi.md)                            |
-| Browse public cricket records         | [Public read API](api/public-read.md)                                      | [Sport domain definition](requirements/sport-domain-definition.md) |
-| Submit accepted event data            | [Direct event submissions](api/submissions.md)                             | [Submission field mapping](api/submission-field-mapping.md)        |
-| Upload season/back-catalogue data     | [Batch ingestion receipt API](api/batches.md)                              | [Season-upload contract](api/season-upload-contract.md)            |
-| Understand derived fixture statistics | [Fixture statistic calculations](statistics/fixture-statistics.md)         | [Event-to-statistic mapping](api/event-statistic-mapping.md)       |
-| Understand participant aggregates     | [Participant aggregate calculations](statistics/participant-aggregates.md) | [Event model](database/schema.md)                                  |
-| Export data or retrieve releases      | [Dataset exports](data/dataset-exports.md)                                 | [Batch submission packages](data/batch-submission-packages.md)     |
-| Use consumer API controls             | [Consumer API keys, limits and quotas](api/consumer-keys.md)               | [API versioning](api/versioning.md)                                |
-| Inspect weather integration           | [Weather API](api/weather.md)                                              | [Security overview](security/overview.md)                          |
-| Trace accepted data and revisions     | [Provenance and audit API](api/provenance.md)                              | [Database architecture guide](database/guide.md)                   |
+| Goal                                  | Start here                                                                 | Detailed reference                                                                |
+| ------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Understand the API surface            | [API overview](api/overview.md)                                            | [Final API audit](api/final-audit.md) and [OpenAPI specification](api/openapi.md) |
+| Browse public cricket records         | [Public read API](api/public-read.md)                                      | [Sport domain definition](requirements/sport-domain-definition.md)                |
+| Submit accepted event data            | [Direct event submissions](api/submissions.md)                             | [Submission field mapping](api/submission-field-mapping.md)                       |
+| Upload season/back-catalogue data     | [Batch ingestion receipt API](api/batches.md)                              | [Season-upload contract](api/season-upload-contract.md)                           |
+| Understand derived fixture statistics | [Fixture statistic calculations](statistics/fixture-statistics.md)         | [Event-to-statistic mapping](api/event-statistic-mapping.md)                      |
+| Understand participant aggregates     | [Participant aggregate calculations](statistics/participant-aggregates.md) | [Event model](database/schema.md)                                                 |
+| Export data or retrieve releases      | [Dataset exports](data/dataset-exports.md)                                 | [Batch submission packages](data/batch-submission-packages.md)                    |
+| Use consumer API controls             | [Consumer API keys, limits and quotas](api/consumer-keys.md)               | [API versioning](api/versioning.md)                                               |
+| Inspect weather integration           | [Weather API](api/weather.md)                                              | [Security overview](security/overview.md)                                         |
+| Trace accepted data and revisions     | [Provenance and audit API](api/provenance.md)                              | [Database architecture guide](database/guide.md)                                  |
 
 ## Public API path
 
