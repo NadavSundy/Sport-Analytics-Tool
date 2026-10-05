@@ -1,6 +1,8 @@
 # Sprint 4 final structured user testing - Issue #803
 
-**Status: preparation only; zero retained Sprint 4 human sessions. Issue #803 remains open.**
+**Status: one real public session reviewed by Gabriel; all four tasks Success, feedback decisions evaluated. Submitter/reviewer sessions and final acceptance remain outstanding. Issue #803 remains open.**
+
+The [public session record](2026-10-05-P15-public.md) and [source excerpts](raw/2026-10-05-P15-public-notes.md) retain four reported task attempts and all six post-test answers. P15 allocation, reported date/time and independence are confirmed by Gabriel; all four outcomes and finding decisions are approved. Exact deployed build/browser version and original export remain unavailable.
 
 Use the existing [protocol](../../../docs/testing/user-testing-protocol.md), [task bank](../../../docs/testing/user-testing-task-bank.md), [session template](../session-template.md) and ADR-013. No survey pipeline or parallel testing site is introduced.
 
@@ -45,4 +47,4 @@ AI register: Gabriel Raz's member CSV. Transcript import is pending; follow [AI 
 
 ## AI Declaration
 
-This preparation document was planned and generated with the assistance of Codex[GPT-6]. Human sessions, review and factual sign-off remain pending.
+This preparation document was planned and generated with the assistance of Codex[GPT-6]. P15 outcomes and decisions were reviewed by Gabriel; further sessions and overall acceptance remain pending.
