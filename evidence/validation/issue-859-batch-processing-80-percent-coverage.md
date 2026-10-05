@@ -1,7 +1,7 @@
 # Issue #859 — Batch-processing Direct Coverage Above 80 Percent
 
-**Date:** 2026-10-05  
-**Issue:** #859  
+**Date:** 2026-10-05
+**Issue:** #859
 **Status:** IMPLEMENTATION READY; broad coverage/check limitation recorded below
 
 ## Purpose
