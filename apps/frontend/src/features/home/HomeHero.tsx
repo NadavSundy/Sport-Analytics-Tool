@@ -130,12 +130,34 @@ export function HomeHero() {
           <Link className="home-hero__player-link" to="/participants">
             Browse players <span aria-hidden="true">&#8594;</span>
           </Link>
+          <ul
+            className="home-hero__signals"
+            aria-label="What you can expect from the public record"
+          >
+            <li>
+              <strong>Public</strong>
+              <span>No account required</span>
+            </li>
+            <li>
+              <strong>Event-level</strong>
+              <span>Delivery detail included</span>
+            </li>
+            <li>
+              <strong>Traceable</strong>
+              <span>Values link to their source</span>
+            </li>
+          </ul>
         </div>
 
         <div
           className={`home-hero__visual${sceneReady ? ' home-hero__visual--enhanced' : ''}`}
           data-hero-enhancement={sceneReady ? 'three' : 'fallback'}
         >
+          <img
+            className="home-hero__lead-image"
+            src="/images/cricket-match-john-oswald-unsplash.jpg"
+            alt="Cricket match in progress"
+          />
           <HeroSceneFallback />
           {Scene && !reducedMotion ? (
             <Scene onReady={handleSceneReady} onUnavailable={handleSceneUnavailable} />
@@ -144,6 +166,14 @@ export function HomeHero() {
             <span>Illustrative delivery</span>
             <strong>Event &#8594; derived values</strong>
           </div>
+          <a
+            className="home-hero__image-credit"
+            href="https://unsplash.com/photos/2-men-playing-cricket-on-green-grass-field-during-daytime-7r6cX6FYNz0"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Photo: John Oswald / Unsplash
+          </a>
         </div>
       </div>
     </section>
