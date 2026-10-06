@@ -1,4 +1,4 @@
-﻿site_name: Sport Analytics Tool
+site_name: Sport Analytics Tool
 site_description: Public documentation for the COMS3011A Sport Analytics Tool
 repo_name: Git Push Pray / Sport Analytics Tool
 repo_url: https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool
@@ -130,6 +130,7 @@ nav:
       - Overview: testing/index.md
       - Automated Testing Strategy: development/testing.md
       - Repository-wide Code Coverage: testing/code-coverage.md
+      - Final System Verification: testing/final-system-verification.md
       - Representative-scale Performance: development/performance-baseline.md
       - User Testing:
           - User Testing Overview: testing/user-testing-overview.md
