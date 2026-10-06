@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { AccessibilityStatementPage, PrivacyNoticePage, TermsOfUsePage } from './PolicyPages';
 
 describe('public policy pages', () => {
@@ -7,12 +7,11 @@ describe('public policy pages', () => {
     ['Privacy Notice', PrivacyNoticePage],
     ['Terms of Use', TermsOfUsePage],
     ['Accessibility Statement', AccessibilityStatementPage],
-  ])('opens %s at the top inside the shared document container', (_, PolicyPage) => {
-    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
-
+  ])('renders %s inside the shared document container', (_, PolicyPage) => {
+    // Opening at the top after a footer link is the shell's job for every route
+    // (issue #800); see RouteExperience.test.tsx and the footer e2e journey.
     render(<PolicyPage />);
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0 });
     expect(screen.getByRole('article').closest('.policy-page')).toBeInTheDocument();
   });
 

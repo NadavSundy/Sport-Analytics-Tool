@@ -1,9 +1,17 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import type { CurrentUserProfile } from '@sport-analytics/contracts';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthProvider';
 import { getPinnedShortcuts, type PinnedShortcut } from '../features/browse/pinned-shortcuts';
 import { ThemeToggle } from './ThemeToggle';
+import { useHeaderLayout } from './useHeaderLayout';
 import { getInitialTheme, type Theme } from '../theme';
 
 interface PublicShellProps {
@@ -200,7 +208,9 @@ function NavigationMenu({ id, items, label }: { id: string; items: MenuItem[]; l
         onClick={() => setOpen((value) => !value)}
       >
         {label}
-        <span aria-hidden="true"> &#9662;</span>
+        <span className="navigation-menu__caret" aria-hidden="true">
+          &#9662;
+        </span>
       </button>
       {open ? (
         <div className="navigation-menu__panel" id={id}>
@@ -299,6 +309,13 @@ function MobileNavigation({
         aria-controls="mobile-navigation-panel"
         onClick={() => setOpen((value) => !value)}
       >
+        <svg className="mobile-navigation__icon" viewBox="0 0 18 18" aria-hidden="true">
+          {open ? (
+            <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.75" />
+          ) : (
+            <path d="M2.5 5h13M2.5 9h13M2.5 13h13" stroke="currentColor" strokeWidth="1.75" />
+          )}
+        </svg>
         Menu
       </button>
       {open ? (
@@ -359,15 +376,46 @@ function MobileNavigation({
   );
 }
 
+/**
+ * After an in-app move to a different page, start that page at the top and move
+ * focus to its main landmark, so keyboard and screen-reader users are not left on
+ * a link that no longer exists. Back/forward keeps the browser's own restoration,
+ * and a query-string change (filters, pagination) is not a new page.
+ */
+function useRouteChangeFocus() {
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  const mainRef = useRef<HTMLElement>(null);
+  const previousPathname = useRef(pathname);
+
+  // A layout effect, so the new page is never painted at the old scroll position.
+  useLayoutEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    if (navigationType === 'POP') return;
+    const scrollToTop = () => window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    scrollToTop();
+    mainRef.current?.focus({ preventScroll: true });
+    // A smooth or momentum scroll still running from the previous page applies one
+    // more step after an instant scroll, leaving the new page a few pixels down.
+    const frame = window.requestAnimationFrame(scrollToTop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [navigationType, pathname]);
+
+  return mainRef;
+}
+
 export function PublicShell({ children }: PublicShellProps) {
   const profile = useNavigationProfile();
   const pinnedItems = usePinnedNavigationItems();
+  const mainRef = useRouteChangeFocus();
+  const headerLayout = useHeaderLayout(workspaceItems(profile).length > 0);
   return (
     <div className="public-shell">
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <header className="site-header">
+      <header className="site-header" data-layout={headerLayout}>
         <div className="site-header__inner">
           <Link className="brand-link" to="/" aria-label="Stat'sTheGame home">
             <BrandWordmark />
@@ -387,7 +435,9 @@ export function PublicShell({ children }: PublicShellProps) {
           </div>
         </div>
       </header>
-      <main id="main-content">{children}</main>
+      <main id="main-content" ref={mainRef} tabIndex={-1}>
+        {children}
+      </main>
       <footer className="site-footer">
         <div className="site-footer__inner">
           <div className="site-footer__brand">

@@ -19,6 +19,7 @@ import {
   updateAdministratorSubmitterAccess,
   updateAdministratorUserRole,
 } from './admin-api';
+import { usePageTitle } from '../../components/usePageTitle';
 
 interface ManagementData {
   users: AdministratorManagedUser[];
@@ -47,12 +48,6 @@ const approvalLabels: Record<AdministratorManagedUser['approvalState'], string> 
   approved: 'Approved',
   rejected: 'Rejected',
 };
-
-function usePageTitle() {
-  useEffect(() => {
-    document.title = "Manage Users | Stat'sTheGame";
-  }, []);
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiResponseError && error.kind === 'unauthenticated') {
@@ -497,7 +492,7 @@ export function AdminUsersPage() {
   const [feedback, setFeedback] = useState<Feedback>();
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  usePageTitle();
+  usePageTitle('Manage users');
 
   const loadUsers = useCallback(
     async (signal?: AbortSignal) => {

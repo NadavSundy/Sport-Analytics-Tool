@@ -20,6 +20,7 @@ import {
   describeInningsReference,
   groupReferenceResolutions,
 } from './unresolved-reference-summary';
+import { usePageTitle } from '../../components/usePageTitle';
 
 type ListState =
   | { kind: 'loading' }
@@ -757,9 +758,7 @@ export function BatchReportsPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { batchReference } = useParams();
   const location = useLocation();
-  useEffect(() => {
-    document.title = `${batchReference ? 'Submission report' : 'My submissions'} | Stat'sTheGame`;
-  }, [batchReference]);
+  usePageTitle(batchReference ? 'Submission report' : 'My submissions');
   if (!isLoading && !isAuthenticated)
     return <Navigate to={signInPathFor(`${location.pathname}${location.search}`)} replace />;
   return (

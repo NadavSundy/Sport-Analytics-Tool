@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useCallback, useMemo, useState } from '
 import { Link, useSearchParams } from 'react-router-dom';
 import { NameCombobox, type NameComboboxOption } from '../../components/NameCombobox';
 import { usePublicData } from './usePublicData';
+import { usePageTitle } from '../../components/usePageTitle';
 
 interface TextFilterField {
   kind?: 'text';
@@ -28,7 +29,16 @@ interface NameComboboxFilterField {
   routeValue: 'name' | 'reference';
 }
 
-export type FilterField = TextFilterField | NameComboboxFilterField;
+/** A closed set of values; an unlisted value from the address stays selectable. */
+interface SelectFilterField {
+  anyLabel: string;
+  kind: 'select';
+  label: string;
+  name: string;
+  options: { label: string; value: string }[];
+}
+
+export type FilterField = TextFilterField | NameComboboxFilterField | SelectFilterField;
 
 interface BrowseCollectionProps<Resource> {
   description: string;
@@ -57,6 +67,10 @@ function replacePreviousCursors(search: URLSearchParams, cursors: string[]): voi
   for (const cursor of cursors) {
     search.append('previousCursor', cursor);
   }
+}
+
+function labelFromValue(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1).replace(/[_-]+/g, ' ');
 }
 
 function isComboboxField(field: FilterField): field is NameComboboxFilterField {
@@ -315,6 +329,11 @@ function FilterForm({
       return [];
     }
 
+    if (field.kind === 'select') {
+      const option = field.options.find((candidate) => candidate.value === value);
+      return [{ label: field.label, value: option?.label ?? labelFromValue(value) }];
+    }
+
     if (!isComboboxField(field)) {
       return [{ label: field.label, value }];
     }
@@ -350,6 +369,27 @@ function FilterForm({
                 validationMessage={validationMessages[field.name]}
                 values={values}
               />
+            );
+          }
+
+          if (field.kind === 'select') {
+            const current = searchParams.get(field.name) ?? '';
+            const options =
+              current && !field.options.some((option) => option.value === current)
+                ? [...field.options, { label: labelFromValue(current), value: current }]
+                : field.options;
+            return (
+              <label className="field" key={field.name}>
+                <span>{field.label}</span>
+                <select defaultValue={current} name={field.name}>
+                  <option value="">{field.anyLabel}</option>
+                  {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             );
           }
 
@@ -416,6 +456,7 @@ export function BrowseCollection<Resource>({
   const state = usePublicData(loadRecords, search);
   const page = currentPage(searchParams);
   const previousCursors = searchParams.getAll('previousCursor');
+  usePageTitle(title);
 
   return (
     <div className="browse-page">

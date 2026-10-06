@@ -11,14 +11,9 @@ import { safeInternalReturnPath } from './auth-return';
 import { LocalNavigation } from '../../components/NavigationPrimitives';
 import type { Competition, CurrentUserProfile } from '@sport-analytics/contracts';
 import { competitionOptions } from '../submissions/BatchUploadPage';
+import { usePageTitle } from '../../components/usePageTitle';
 
 type OAuthCallbackError = 'cancelled' | 'provider-error';
-
-function usePageTitle(title: string) {
-  useEffect(() => {
-    document.title = `${title} | Stat'sTheGame`;
-  }, [title]);
-}
 
 function getOAuthCallbackError(search: string, hash: string): OAuthCallbackError | null {
   const searchParameters = new URLSearchParams(search);

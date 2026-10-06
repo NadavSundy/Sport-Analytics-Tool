@@ -23,6 +23,13 @@ const journeys = [
     to: '/participants',
     action: 'Browse players',
   },
+  {
+    number: '04',
+    title: 'Teams',
+    description: 'Compare the sides behind each published fixture and competition season.',
+    to: '/competitors',
+    action: 'Browse teams',
+  },
 ];
 
 export function ExploreGateway() {
@@ -36,23 +43,22 @@ export function ExploreGateway() {
             <p>No account is required to browse published public records.</p>
           </div>
         </header>
-        <ol className="explore-gateway__list">
-          {journeys.map((journey) => (
-            <li key={journey.title}>
-              <span aria-hidden="true">{journey.number}</span>
-              <div>
-                <h3>{journey.title}</h3>
-                <p>{journey.description}</p>
-              </div>
-              <Link to={journey.to}>
-                {journey.action} <span aria-hidden="true">&#8594;</span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-        <p className="explore-gateway__teams">
-          Looking for a side? <Link to="/competitors">Browse teams</Link>.
-        </p>
+        <nav aria-label="Open a public view">
+          <ol className="explore-gateway__list">
+            {journeys.map((journey) => (
+              <li key={journey.title}>
+                <span aria-hidden="true">{journey.number}</span>
+                <div>
+                  <h3>{journey.title}</h3>
+                  <p>{journey.description}</p>
+                </div>
+                <Link to={journey.to}>
+                  {journey.action} <span aria-hidden="true">&#8594;</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </nav>
       </div>
     </section>
   );

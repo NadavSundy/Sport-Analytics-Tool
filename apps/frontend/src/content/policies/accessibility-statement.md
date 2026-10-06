@@ -1,7 +1,7 @@
 # Stat’sTheGame Accessibility Statement
 
 **Effective date:** 29 September 2026
-**Last updated:** 29 September 2026
+**Last updated:** 5 October 2026
 
 ## 1. Our commitment
 
@@ -76,7 +76,7 @@ The application is designed for both desktop and mobile layouts.
 
 Representative interfaces are tested at mobile and desktop widths, including checks intended to prevent content from being lost through unintended horizontal scrolling.
 
-The project also tests representative desktop content at increased browser zoom/reflow.
+Every normal public and signed-in page is tested at a width of 320 CSS pixels, which is what a 1280-pixel-wide browser window shows at 400% zoom. The site header is tested from 320 to 1440 pixels so that its links never overlap, wrap or become cut off; on narrower screens they move into a **Menu** panel.
 
 If zooming or changing text size prevents access to content or controls, please report the affected page and what happened.
 
@@ -111,6 +111,8 @@ However, because a complete independent WCAG 2.2 Level AA conformance audit has 
 - less severe accessibility issues may still exist;
 - particular combinations of browser and assistive technology may behave differently from tested environments; and
 - future features may introduce new accessibility defects before they are identified and corrected.
+
+One known, deliberate limitation is that wide data tables, such as batting and bowling scorecards, can scroll sideways inside their own frame on narrow screens rather than reflowing into a single column, because their rows and columns must stay aligned to be understood. A shadow on the table edge shows that more columns are available, and the table can be scrolled with the keyboard once it has focus.
 
 This statement will be updated if the project identifies material accessibility limitations that users should know about.
 
