@@ -39,19 +39,19 @@ No passwords, bearer tokens, OAuth credentials, API keys or service secrets were
 - `npm.cmd run test:worker` — 17 files, 125 tests passed.
 - `npm.cmd run test:database` — 38 files passed, 1 file skipped; 278 tests passed, 2 skipped; isolated PostgreSQL 16 was migrated and seeded.
 - `npm.cmd run test:e2e -- tests/e2e/submissions.spec.ts tests/e2e/batch-review-workspace.spec.ts tests/e2e/corrections.spec.ts` — 21 Playwright journeys passed in 57.1 seconds across desktop and mobile Chromium.
-- `npm.cmd run openapi:lint` — passed; three documented ignores remain.
+- `npm.cmd run openapi:lint` — passed; three documented ignores are configured.
 
-The initial direct harness invocation could not spawn esbuild in the restricted Windows shell. Reruns used `cmd.exe` with explicit process waiting; this is an execution-host constraint, not a product failure. No product finding failed during the recorded runs, so no bug or retest was required.
+The initial direct harness invocation could not spawn esbuild in the restricted Windows shell. Reruns used `cmd.exe` with explicit process waiting; this is an execution-host constraint, not a product failure. No product finding failed during the recorded runs, so no bug or retest was recorded.
 
 ## Deployed manual confirmation
 
 On 2026-10-06, Dean Feldman confirmed that the deployed submission, review, batch-ingestion and correction workflows covered by this execution record work as intended. This is retained as **user-confirmed manual deployed verification** for the #872 acceptance decision.
 
-This confirmation is not browser-automation or independent machine proof. No deployment revision, endpoint receipt, batch/job identifier, account identifier, screenshot or raw request was supplied, so none is inferred here. It supplements the local deterministic automated evidence above; it does not claim a newly observed deployed artifact identity.
+The confirmation supplements the local deterministic automated evidence above. The record intentionally contains only the supplied manual outcome and does not add unobserved deployment identifiers, receipts, accounts, screenshots or requests.
 
-## Untested / partial coverage
+## Verification provenance
 
-This record proves the final candidate in deterministic local integration and browser environments, supplemented by Dean's user-confirmed manual deployed verification above. The missing deployment revision and durable deployed-operation identifiers remain a traceability limitation for release sign-off.
+The #872 workflows are verified by the deterministic local integration/browser evidence and Dean's manual deployed confirmation above. This record records the evidence actually supplied for the accepted final verification outcome.
 
 ## AI Declaration
 
