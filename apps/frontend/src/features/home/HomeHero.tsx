@@ -111,6 +111,11 @@ export function HomeHero() {
   return (
     <section className="home-hero" aria-labelledby="home-title">
       <div className="home-hero__crease" aria-hidden="true" />
+      <img
+        className="home-hero__lead-image"
+        src="/images/cricket-match-john-oswald-unsplash.jpg"
+        alt="Cricket match in progress"
+      />
       <div className="content-boundary home-hero__layout">
         <div className="home-hero__content">
           <p className="eyebrow">T20 cricket analytics</p>
@@ -153,11 +158,6 @@ export function HomeHero() {
           className={`home-hero__visual${sceneReady ? ' home-hero__visual--enhanced' : ''}`}
           data-hero-enhancement={sceneReady ? 'three' : 'fallback'}
         >
-          <img
-            className="home-hero__lead-image"
-            src="/images/cricket-match-john-oswald-unsplash.jpg"
-            alt="Cricket match in progress"
-          />
           <HeroSceneFallback />
           {Scene && !reducedMotion ? (
             <Scene onReady={handleSceneReady} onUnavailable={handleSceneUnavailable} />
