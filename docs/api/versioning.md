@@ -100,7 +100,7 @@ No retirement date has been approved, so this lifecycle deliberately omits a
 scheduled, the approved HTTP-date `Sunset` value and migration period must be
 added here, in OpenAPI, and in the response middleware together.
 
-This implements the direction accepted by [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md).
+This implements the direction accepted by [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md){ target="_blank" rel="noopener" }.
 The canonical public JSON export is no longer deprecated. All retained cricket-resource aliases
 below `/consumer` carry the same metadata and no retirement date has yet been approved.
 

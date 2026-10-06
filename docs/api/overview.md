@@ -21,7 +21,7 @@ The API is a primary product. It must be designed and implemented by the team as
 The version-controlled API contract is published in the
 [OpenAPI specification](openapi.md).
 
-[ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
+[ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md){ target="_blank" rel="noopener" }
 defines the implemented canonical cricket-resource hierarchy with optional API-key identification.
 Requester-owned consumer access follows the request, administrator-decision and owner-generated
 credential lifecycle documented in [Consumer API keys](consumer-keys.md).

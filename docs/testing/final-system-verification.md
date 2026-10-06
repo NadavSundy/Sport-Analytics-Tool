@@ -1,6 +1,6 @@
 # Final Non-User System Verification Bank
 
-> **Owner issue:** [#870 — establish final non-user verification bank and execution matrix](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/870)
+> **Owner issue:** [#870 — establish final non-user verification bank and execution matrix](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/870){ target="_blank" rel="noopener" }
 > **Milestone:** Milestone 4 — Submission
 > **Purpose:** technical/system verification of the final release candidate
 > **Initial state:** every case is `NOT RUN` until evidence is produced
@@ -21,17 +21,17 @@ as the release candidate is tested.
 
 ## 2. Execution ownership
 
-| Execution issue                                                                 | Technical-verification scope                                | Primary case families                                |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------- |
-| [#871](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/871) | Frontend, authentication and roles                          | `AUTH-*`, `PUB-*`                                    |
-| [#872](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/872) | Submission, review, batch ingestion and corrections         | `SUB-*`, `REV-*`, `BAT-*`, `COR-*`, selected `ADM-*` |
-| [#873](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/873) | Statistics, aggregates, provenance and dataset releases     | `STAT-*`, `DATA-*`, selected `COR-*`, `ADM-*`        |
-| [#874](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/874) | External API, contracts, consumer controls and integrations | `API-*`, `INT-*`, selected `SEC-*`                   |
-| [#875](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/875) | Database, worker and asynchronous reliability               | `DB-*`, `WRK-*`                                      |
-| [#876](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/876) | Performance, load, accessibility and responsiveness         | `PERF-*`, `A11Y-*`, `RESP-*`                         |
-| [#877](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/877) | Automated suites, coverage, CI/CD and quality gates         | `AUTO-*`, `COV-*`, `CI-*`, `DEP-*`                   |
+| Execution issue                                                                                                   | Technical-verification scope                                | Primary case families                                |
+| ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------- |
+| [#871](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/871){ target="_blank" rel="noopener" } | Frontend, authentication and roles                          | `AUTH-*`, `PUB-*`                                    |
+| [#872](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/872){ target="_blank" rel="noopener" } | Submission, review, batch ingestion and corrections         | `SUB-*`, `REV-*`, `BAT-*`, `COR-*`, selected `ADM-*` |
+| [#873](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/873){ target="_blank" rel="noopener" } | Statistics, aggregates, provenance and dataset releases     | `STAT-*`, `DATA-*`, selected `COR-*`, `ADM-*`        |
+| [#874](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/874){ target="_blank" rel="noopener" } | External API, contracts, consumer controls and integrations | `API-*`, `INT-*`, selected `SEC-*`                   |
+| [#875](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/875){ target="_blank" rel="noopener" } | Database, worker and asynchronous reliability               | `DB-*`, `WRK-*`                                      |
+| [#876](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/876){ target="_blank" rel="noopener" } | Performance, load, accessibility and responsiveness         | `PERF-*`, `A11Y-*`, `RESP-*`                         |
+| [#877](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/877){ target="_blank" rel="noopener" } | Automated suites, coverage, CI/CD and quality gates         | `AUTO-*`, `COV-*`, `CI-*`, `DEP-*`                   |
 
-The bank must exist before #871–#877 execute. [#810](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/810)
+The bank must exist before #871–#877 execute. [#810](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/issues/810){ target="_blank" rel="noopener" }
 owns final production deployment and release close-out after the execution lanes are complete.
 
 ## 3. Result vocabulary and evidence rule

@@ -50,7 +50,7 @@ separate from the Microsoft Teams meeting transcripts indexed under
 
 ## Repository evidence root
 
-The repository-level [evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md)
+The repository-level [evidence README](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/README.md){ target="_blank" rel="noopener" }
 explains the evidence directories and integrity rules. Normal product documentation should not be
 used as a substitute for retained evidence, and retained evidence should not be duplicated into the
 public docs merely to make it visible.
