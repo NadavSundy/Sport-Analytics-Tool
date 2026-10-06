@@ -1,10 +1,14 @@
-# Project Process & Evidence
+# Project Records & Evidence
 
-This section is the assessment/evidence entry point. Product and developer documentation explain how
-the system works; this section shows how the team planned, reviewed, tested and documented the work.
-Authoritative evidence remains under `evidence/` and is linked rather than copied into MkDocs.
+This section is the entry point for retained project records and evidence. It brings together decisions,
+stakeholder and meeting records, testing and validation evidence, AI-use records and historical
+material without duplicating the detailed source artefacts.
 
-## Start by evidence type
+The development approach itself is documented separately under
+[Methodology](methodology-overview.md). Authoritative retained evidence remains under `evidence/`
+and is linked from these pages rather than copied into the documentation site.
+
+## Evidence and record routes
 
 | Need                                                           | Start here                                                                                                                                                                                                                            |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -14,7 +18,8 @@ Authoritative evidence remains under `evidence/` and is linked rather than copie
 | Testing, validation and formal user-testing evidence           | [Testing & Validation Evidence](validation-and-user-testing.md)                                                                                                                                                                       |
 | Architecture and project decisions                             | [Decisions Index](decisions.md)                                                                                                                                                                                                       |
 | AI registers and AI transcript evidence                        | [AI Use & Evidence](ai-use-evidence.md)                                                                                                                                                                                               |
-| Project workflow and ceremonies                                | [Project Methodology](../project_methodology.md)                                                                                                                                                                                      |
+| Project workflow, Sprint structure and ceremonies              | [Project Methodology](../project_methodology.md)                                                                                                                                                                                      |
+| Source-control and Pull Request methodology                    | [Git Methodology](../git-methodology.md)                                                                                                                                                                                              |
 | Backlog and milestone planning                                 | [Project Backlog & Milestone Plan](../planning/project-backlog.md)                                                                                                                                                                    |
 
 ## Methodology

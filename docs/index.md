@@ -14,7 +14,8 @@ versioned handwritten HTTP API.
 | Contribute code or documentation                                | [Development](development/index.md)               |
 | Understand hosting, recovery or deployment                      | [Deployment & Operations](deployment/overview.md) |
 | Review automated testing, coverage, performance or user testing | [Testing & Quality](testing/index.md)             |
-| Review Sprint, stakeholder, decision or AI-use evidence         | [Project Process & Evidence](process/index.md)    |
+| Understand the project and Git methodology                      | [Methodology](process/methodology-overview.md)    |
+| Review decisions, stakeholder records and retained evidence     | [Project Records & Evidence](process/index.md)    |
 
 ## What is implemented
 
@@ -42,7 +43,7 @@ under `evidence/` demonstrates planning, stakeholder interaction, testing, decis
 Evidence is linked from the documentation rather than copied into normal pages so the retained source
 remains authoritative.
 
-Start with [Project Process & Evidence](process/index.md) when reviewing assessment evidence.
+Use [Methodology](process/methodology-overview.md) to understand how the team worked, and [Project Records & Evidence](process/index.md) to review retained decisions, stakeholder records, validation evidence and project history.
 
 ## AI Declaration
 

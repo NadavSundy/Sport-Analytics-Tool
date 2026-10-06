@@ -17,7 +17,7 @@
 | **Not implemented** | The final product does not claim this capability.                                                                                 |
 | **Not applicable**  | The capability is outside the chosen final product scope; the reason is recorded rather than silently treating it as complete.    |
 
-Start with the [final automated audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-805-final-automated-audit-2026-10-04.md), the [final database audit](../database/final-audit.md), [Testing & Validation Evidence](../process/validation-and-user-testing.md), and [Project Process & Evidence](../process/index.md). They identify the commands, evidence records, methodology and limitations behind the compact references below.
+Start with the [final automated audit](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation/issue-805-final-automated-audit-2026-10-04.md), the [final database audit](../database/final-audit.md), [Testing & Validation Evidence](../process/validation-and-user-testing.md), and [Project Records & Evidence](../process/index.md). They identify the commands, evidence records, methodology and limitations behind the compact references below.
 
 ## Course-wide requirements
 

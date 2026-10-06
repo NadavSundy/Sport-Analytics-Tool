@@ -45,7 +45,7 @@ rather than being duplicated into MkDocs.
 - To review quality gates, coverage, performance or user testing, continue to
   [Testing & Quality](testing/index.md).
 - To inspect Sprint, stakeholder, decision and AI-use evidence, continue to
-  [Project Process & Evidence](process/index.md).
+  [Project Records & Evidence](process/index.md).
 
 ## AI Declaration
 
