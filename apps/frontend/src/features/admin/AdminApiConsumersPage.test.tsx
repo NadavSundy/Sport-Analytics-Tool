@@ -189,117 +189,48 @@ describe('administrator API consumer management', () => {
     expect(await screen.findByRole('table')).toBeInTheDocument();
   });
 
-  it('validates create fields and presents backend validation without losing entered values', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(currentUser())
-      .mockResolvedValueOnce(listResponse([]))
-      .mockResolvedValueOnce(
-        response(422, {
-          error: { code: 'VALIDATION_FAILED', message: 'The API consumer request is invalid.' },
-        }),
-      );
+  it('reviews and approves a pending request without receiving a secret', async () => {
+    const pending = {
+      id: '4',
+      requesterAccountId: '17',
+      name: 'Mobile scorer',
+      intendedUse: 'Score university matches for a research dashboard.',
+      state: 'pending',
+      createdAt,
+      reviewedAt: null,
+      reviewedBy: null,
+      reviewReason: null,
+      requester: { displayName: 'Mobile User', email: 'mobile.user@example.com' },
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) return currentUser();
+      if (url.endsWith('/admin/api-consumers/all')) return listResponse([]);
+      if (url.endsWith('/admin/api-access-requests') && !init?.method)
+        return response(200, { data: { requests: [pending] } });
+      return response(200, {
+        data: {
+          id: pending.id,
+          requesterAccountId: pending.requesterAccountId,
+          name: pending.name,
+          intendedUse: pending.intendedUse,
+          state: 'approved',
+          createdAt: pending.createdAt,
+          reviewedAt: createdAt,
+          reviewedBy: { id: '1', displayName: 'Administrator' },
+          reviewReason: null,
+        },
+      });
+    });
     vi.stubGlobal('fetch', fetchMock);
     renderPage();
-    await screen.findByRole('heading', { name: 'No API consumers' });
-    fireEvent.change(screen.getByLabelText('Consumer name'), { target: { value: ' ' } });
-    fireEvent.change(screen.getByLabelText('Rate limit (requests per minute)'), {
-      target: { value: '0' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create consumer' }));
-    expect(screen.getByText('Enter a consumer name.')).toBeInTheDocument();
-    expect(screen.getByText('Enter 1 to 10,000 requests per minute.')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-
-    fireEvent.change(screen.getByLabelText('Consumer name'), {
-      target: { value: 'Mobile scorer' },
-    });
-    fireEvent.change(screen.getByLabelText('Rate limit (requests per minute)'), {
-      target: { value: '20' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create consumer' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('request is invalid');
-    expect(screen.getByLabelText('Consumer name')).toHaveValue('Mobile scorer');
-  });
-
-  it('creates a consumer, copies its one-time key, and discards it on dismissal', async () => {
-    const created = consumer({ id: '13', name: 'Mobile scorer' });
-    const writeText = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('clipboard unavailable'))
-      .mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(currentUser())
-      .mockResolvedValueOnce(listResponse([]))
-      .mockResolvedValueOnce(response(201, { data: { ...created, apiKey: rawKey } }));
-    vi.stubGlobal('fetch', fetchMock);
-    renderPage();
-    await screen.findByRole('heading', { name: 'No API consumers' });
-    fireEvent.change(screen.getByLabelText('Consumer name'), {
-      target: { value: 'Mobile scorer' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create consumer' }));
-    const dialog = await screen.findByRole('dialog', { name: 'API key created' });
-    expect(within(dialog).getByLabelText('New API key')).toHaveTextContent(rawKey);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy API key' }));
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('could not be copied');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy API key' }));
-    expect(await within(dialog).findByRole('status')).toHaveTextContent('API key copied');
-    expect(writeText).toHaveBeenCalledWith(rawKey);
-    expect(window.localStorage.length).toBe(0);
-    expect(window.sessionStorage.length).toBe(0);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Dismiss key' }));
-    expect(screen.queryByText(rawKey)).not.toBeInTheDocument();
-    expect(await screen.findByText('Mobile scorer')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Create consumer' })).toHaveFocus(),
-    );
-  });
-
-  it('confirms rotation, shows only the replacement once, and preserves errors for retry', async () => {
-    const rotated = consumer({
-      keys: [
-        { id: '33', prefix: 'sat_live_test-sa', createdAt, revokedAt: createdAt },
-        { id: '34', prefix: 'sat_live_replace', createdAt, revokedAt: null },
-      ],
-    });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(currentUser())
-      .mockResolvedValueOnce(listResponse())
-      .mockResolvedValueOnce(usageResponse())
-      .mockResolvedValueOnce(
-        response(503, { error: { code: 'FAILED', message: 'Rotation is unavailable.' } }),
-      )
-      .mockResolvedValueOnce(response(200, { data: { ...rotated, apiKey: rawKey } }))
-      .mockResolvedValueOnce(usageResponse());
-    vi.stubGlobal('fetch', fetchMock);
-    renderPage('/admin/api-consumers/12');
-    const rotate = await screen.findByRole('button', { name: 'Rotate key' });
-    fireEvent.click(rotate);
-    expect(screen.getByRole('dialog', { name: 'Rotate API key?' })).toHaveTextContent(
-      'stop every previous active key',
-    );
-    fireEvent.click(
-      within(screen.getByRole('dialog', { name: 'Rotate API key?' })).getByRole('button', {
-        name: 'Rotate key',
-      }),
-    );
-    expect(await screen.findByRole('alert')).toHaveTextContent('Rotation is unavailable.');
-    fireEvent.click(
-      within(screen.getByRole('dialog', { name: 'Rotate API key?' })).getByRole('button', {
-        name: 'Rotate key',
-      }),
-    );
-    expect(await screen.findByRole('dialog', { name: 'API key rotated' })).toHaveTextContent(
-      rawKey,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Dismiss key' }));
-    expect(screen.queryByText(rawKey)).not.toBeInTheDocument();
-    expect(screen.getByText('sat_live_replace')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Rotate key' })).toHaveFocus());
+    fireEvent.click(await screen.findByRole('button', { name: 'Review pending requests' }));
+    expect(
+      await screen.findByText('Score university matches for a research dashboard.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Approve request' }));
+    await waitFor(() => expect(screen.queryByText('Mobile scorer')).not.toBeInTheDocument());
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('sat_live_');
   });
 
   it('confirms key revocation, reports failure, and refreshes safe key state after success', async () => {

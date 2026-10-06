@@ -7,6 +7,10 @@ import {
   hashApiKey,
 } from '../../src/modules/api-consumers/api-consumer.repository';
 import { createAnonymousAccessRepository } from '../../src/modules/api-consumers/anonymous-access.repository';
+import {
+  createApiAccessRepository,
+  ApiAccessConflictError,
+} from '../../src/modules/api-consumers/api-access.repository';
 import { assertSafeTestDatabase } from '../../scripts/test-database-safety';
 
 const sourcePrefix = `api-consumer-test-${process.pid}`;
@@ -15,6 +19,7 @@ describe.sequential('API consumer key persistence', () => {
   let pool: Pool;
   let accountId: string;
   let otherAccountId: string;
+  let requesterAccountId: string;
 
   beforeAll(async () => {
     const url = assertSafeTestDatabase(
@@ -37,6 +42,84 @@ describe.sequential('API consumer key persistence', () => {
       [`${sourcePrefix}-other`],
     );
     otherAccountId = otherAccount.rows[0]!.id;
+    const requester = await executeQuery<{ id: string }>(
+      pool,
+      `INSERT INTO app_user (auth_provider, auth_subject, display_name, application_role, submitter_approval_state)
+       VALUES ('test', $1, 'API Access Requester', 'viewer', 'not_requested') RETURNING app_user_id::text AS id`,
+      [`${sourcePrefix}-requester`],
+    );
+    requesterAccountId = requester.rows[0]!.id;
+  });
+
+  test('persists request decisions, rejects invalid transitions, and assigns approval to the requester without a key', async () => {
+    const repository = createApiAccessRepository(pool);
+    const rejected = await repository.createRequest(requesterAccountId, {
+      name: 'Rejected app',
+      intendedUse: 'Evaluate a short-lived research prototype.',
+    });
+    expect(await repository.listPending()).toContainEqual(
+      expect.objectContaining({
+        id: rejected.id,
+        requesterDisplayName: 'API Access Requester',
+        requesterAuthSubject: `${sourcePrefix}-requester`,
+      }),
+    );
+    await expect(
+      repository.createRequest(requesterAccountId, {
+        name: 'Duplicate',
+        intendedUse: 'This duplicate must never be persisted.',
+      }),
+    ).rejects.toBeInstanceOf(ApiAccessConflictError);
+    await repository.decide(accountId, rejected.id, {
+      decision: 'rejected',
+      reviewReason: 'Please provide a production use case.',
+    });
+    await expect(
+      repository.decide(accountId, rejected.id, {
+        decision: 'approved',
+        rateLimitPerMinute: 10,
+        dailyQuota: 100,
+      }),
+    ).rejects.toBeInstanceOf(ApiAccessConflictError);
+
+    const retry = await repository.createRequest(requesterAccountId, {
+      name: 'Research dashboard',
+      intendedUse: 'Publish approved university match research.',
+    });
+    const approved = await repository.decide(accountId, retry.id, {
+      decision: 'approved',
+      reviewReason: 'Research use accepted.',
+      rateLimitPerMinute: 30,
+      dailyQuota: 2000,
+    });
+    expect(approved).toMatchObject({ state: 'approved', reviewedBy: { id: accountId } });
+    const overview = await repository.getOwn(requesterAccountId);
+    expect(overview.consumer).toMatchObject({
+      name: 'Research dashboard',
+      rateLimitPerMinute: 30,
+      dailyQuota: 2000,
+      keys: [],
+    });
+    const owner = await executeQuery<{ ownerId: string; keyCount: number }>(
+      pool,
+      `SELECT consumer.owner_app_user_id::text AS "ownerId", count(key.api_consumer_key_id)::int AS "keyCount"
+       FROM api_consumer consumer LEFT JOIN api_consumer_key key ON key.api_consumer_id = consumer.api_consumer_id
+       WHERE consumer.api_consumer_id = $1 GROUP BY consumer.owner_app_user_id`,
+      [overview.consumer!.id],
+    );
+    expect(owner.rows[0]).toEqual({ ownerId: requesterAccountId, keyCount: 0 });
+    const raw = 'sat_live_disabled_owner_key_aaaaaaaaaaaaaaaaaaaaaaaa';
+    const consumers = createApiConsumerRepository(pool);
+    await consumers.rotate(requesterAccountId, overview.consumer!.id, {
+      raw,
+      prefix: raw.slice(0, 17),
+      hash: hashApiKey(raw),
+    });
+    expect(await consumers.findActiveConsumer(hashApiKey(raw))).not.toBeNull();
+    await executeQuery(pool, `UPDATE app_user SET disabled_at = now() WHERE app_user_id = $1`, [
+      requesterAccountId,
+    ]);
+    expect(await consumers.findActiveConsumer(hashApiKey(raw))).toBeNull();
   });
 
   afterAll(async () => {

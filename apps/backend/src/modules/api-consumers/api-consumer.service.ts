@@ -45,7 +45,10 @@ export function createApiConsumerService(
       return repository.list(owner.accountId);
     },
     async usage(owner, consumerId, query) {
-      const consumer = await repository.findOwned(owner.accountId, consumerId);
+      const consumer =
+        owner.role === 'admin' && repository.findAny
+          ? await repository.findAny(consumerId)
+          : await repository.findOwned(owner.accountId, consumerId);
       if (!consumer) throw new ApiConsumerNotFoundError();
       if (!repository.listUsage) throw new Error('Consumer usage repository is unavailable.');
       const usage = await repository.listUsage(consumerId, query);

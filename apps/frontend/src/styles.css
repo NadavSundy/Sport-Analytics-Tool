@@ -336,7 +336,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -347,7 +348,8 @@ a {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid var(--colour-focus);
   outline-offset: 4px;
 }
@@ -896,6 +898,7 @@ select:focus-visible {
 
 .account-page .auth-card {
   width: 100%;
+  min-width: 0;
   max-width: none;
 }
 
@@ -939,6 +942,273 @@ select:focus-visible {
 .api-consumer-panel > h2,
 .api-consumer-section-heading h2 {
   margin-top: 0;
+}
+
+.api-access-flow {
+  width: min(100%, 47.5rem);
+}
+
+.api-access-flow__header {
+  margin-bottom: var(--space-6);
+}
+
+.api-access-flow__header h2,
+.api-access-review__header h2,
+.api-access-review__card h3,
+.api-access-review__card h4,
+.api-access-consumer h3,
+.api-access-secret-dialog h3 {
+  font-family: var(--font-display);
+}
+
+.api-access-flow__header h2,
+.api-access-review__header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  line-height: 1.1;
+}
+
+.api-access-flow__header p,
+.api-access-review__header p {
+  max-width: 40rem;
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-secondary);
+  line-height: 1.55;
+}
+
+.api-access-request-form {
+  display: grid;
+  gap: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.api-access-request-form__textarea,
+.api-access-review__reason {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.api-access-request-form__textarea {
+  min-height: 9rem;
+}
+
+.api-access-request-form__actions {
+  padding-top: var(--space-2);
+}
+
+.api-access-flow .ui-message {
+  max-width: 47.5rem;
+}
+
+.api-access-flow .ui-message .ui-button {
+  margin-top: var(--space-4);
+}
+
+.api-access-consumer,
+.api-access-secret-dialog {
+  box-shadow: var(--shadow-card);
+}
+
+.api-access-consumer h3,
+.api-access-secret-dialog h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.api-access-consumer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.api-access-usage {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--colour-border);
+}
+
+.api-access-usage h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+}
+
+.api-access-usage > p {
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-secondary);
+}
+
+.api-access-usage__result {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-left: 3px solid var(--colour-data-accent);
+  background: var(--colour-surface-raised);
+}
+
+.api-access-usage__result p {
+  margin: 0;
+}
+
+.api-access-usage__result p + p {
+  margin-top: var(--space-1);
+}
+
+.api-access-secret-dialog {
+  margin-top: var(--space-5);
+}
+
+.api-access-secret-dialog code {
+  display: block;
+  margin-block: var(--space-4);
+  padding: var(--space-3);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-control);
+  background: var(--colour-surface-soft);
+  font-family: var(--font-mono);
+}
+
+.api-access-secret-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.api-access-review {
+  width: min(100%, 64rem);
+}
+
+.api-access-review__header {
+  margin-bottom: var(--space-6);
+}
+
+.api-access-review__list {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.api-access-review__card {
+  min-width: 0;
+  box-shadow: var(--shadow-card);
+}
+
+.api-access-review__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.api-access-review__card h3 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.15;
+}
+
+.api-access-review__metadata {
+  margin: var(--space-1) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: 0.875rem;
+}
+
+.api-access-review__metadata code {
+  color: var(--colour-text);
+  font-family: var(--font-mono);
+}
+
+.api-access-review__status {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-primary);
+  border-radius: var(--radius-control);
+  background: var(--colour-primary-soft);
+  color: var(--colour-label);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+:root[data-theme='night'] .api-access-review__status {
+  color: var(--colour-canvas);
+}
+
+.api-access-review__intended-use {
+  padding-block: var(--space-5);
+}
+
+.api-access-review__intended-use h4,
+.api-access-review__capacity legend {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.api-access-review__intended-use p {
+  max-width: 44rem;
+  margin: var(--space-2) 0 0;
+  line-height: 1.55;
+}
+
+.api-access-review__form {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.api-access-review__capacity {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-5) 0 0;
+  border: 0;
+  border-top: 1px solid var(--colour-border);
+}
+
+.api-access-review__capacity legend {
+  padding: 0;
+  font-family: var(--font-display);
+}
+
+.api-access-review__capacity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 14rem));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.api-access-review__reason {
+  min-height: 6.5rem;
+}
+
+.api-access-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--colour-border);
+}
+
+.api-access-review__reject {
+  border-color: var(--colour-error);
+  background: var(--colour-error-soft);
+  color: var(--colour-error);
+}
+
+.api-access-review__confirmation {
+  margin-top: var(--space-5);
+}
+
+.api-access-review__confirmation h4,
+.api-access-review__confirmation p {
+  margin-top: 0;
+}
+
+.api-access-review__confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .api-consumer-form {
@@ -6127,6 +6397,27 @@ h3 {
 
   .api-consumer-form {
     grid-template-columns: 1fr;
+  }
+
+  .api-access-review__card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .api-access-review__status {
+    align-self: flex-start;
+  }
+
+  .api-access-review__capacity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .api-access-review__actions,
+  .api-access-review__confirmation-actions,
+  .api-access-consumer__actions,
+  .api-access-secret-dialog__actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .api-consumer-usage-form,

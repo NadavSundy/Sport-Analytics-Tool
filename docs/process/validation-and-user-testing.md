@@ -3,6 +3,7 @@
 This page indexes requirements traceability, verification/validation evidence and formal
 user-testing evidence. For testing **strategy and procedures**, see
 [Automated & end-to-end testing](../development/testing.md),
+[Final system verification bank](../testing/final-system-verification.md),
 [User testing protocol](../testing/user-testing-protocol.md),
 [User testing task bank](../testing/user-testing-task-bank.md) and
 [Bug tracking](../testing/bug-tracking.md) and the
@@ -12,6 +13,7 @@ user-testing evidence. For testing **strategy and procedures**, see
 
 - [Sprint 1 requirements traceability](../planning/sprint-1-requirements-traceability.md)
 - [Sprint 2 requirements and rubric traceability](../planning/sprint-2-requirements-traceability.md)
+- [Final requirements and Milestone 4 rubric traceability](../planning/final-requirements-rubric-traceability.md)
 - [Project backlog and milestone plan](../planning/project-backlog.md)
 
 ## Verification and validation evidence
@@ -35,6 +37,10 @@ screenshots); they are not duplicated here. Notable examples include:
 
 Browse the [full validation folder](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/validation)
 for a record tied to a specific issue number.
+
+### Final Milestone 4 technical verification
+
+Issue #870 establishes the [final non-user system verification bank](../testing/final-system-verification.md). Execution is split across #871–#877, with sanitised records retained under `evidence/validation/final-system-verification/`. This technical verification is intentionally separate from the formal participant-based user-testing evidence below.
 
 ## Formal user testing
 

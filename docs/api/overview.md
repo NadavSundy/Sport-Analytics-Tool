@@ -23,7 +23,8 @@ The version-controlled API contract is published in the
 
 [ADR-016](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/decisions/ADR-016-api-consumer-access-model.md)
 defines the implemented canonical cricket-resource hierarchy with optional API-key identification.
-Requester-owned consumer access remains follow-up issue #822.
+Requester-owned consumer access follows the request, administrator-decision and owner-generated
+credential lifecycle documented in [Consumer API keys](consumer-keys.md).
 
 ## Live development API
 
