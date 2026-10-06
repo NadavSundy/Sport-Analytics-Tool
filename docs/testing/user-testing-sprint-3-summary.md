@@ -109,7 +109,10 @@ S2 finding. A smaller selector-clearing usability issue was also retained as a d
 The #604 gate was therefore accepted with documented limitations rather than treated as having no
 remaining concerns.
 
-## Remaining concerns
+## Remaining concerns at Sprint 3 close-out
+
+The concerns below record the state at Sprint 3 close-out. Later implementation
+work does not rewrite the original participant outcomes or finding decisions.
 
 The most consequential retained issues at Sprint 3 close-out include:
 
@@ -130,6 +133,24 @@ The complete Sprint 3 evidence is retained under
 
 The canonical consolidated record is
 [`sprint-3-user-testing-summary.md`](https://sdp.ms.wits.ac.za/git-push-pray/Sport-Analytics-Tool/src/branch/main/evidence/user-testing/sprint-3/sprint-3-user-testing-summary.md){ target="_blank" rel="noopener" }.
+
+## Post-Sprint 3 disposition
+
+Later repository work changed the implementation state of two retained findings
+without changing their original Sprint 3 testing outcomes:
+
+- **P08-F01 / #716:** the player-comparison workflow was subsequently implemented
+  and merged. Repository evidence includes the implementation and automated
+  regression coverage. No retained participant rerun of `PUB-06` on the corrected
+  build was found, so the original Partial outcome remains the historical
+  user-testing result.
+- **P11-F01 / #770:** the durable-identifier validation defect was subsequently
+  fixed and merged in PR #773 with frontend regression coverage for valid and
+  invalid identifiers. No independent participant rerun of `REV-06` is retained,
+  so the original Partial/deferred Sprint 3 outcome is not rewritten.
+
+Issue closure or later implementation therefore does not, by itself, replace the
+recorded participant-session result.
 
 ## AI Declaration
 

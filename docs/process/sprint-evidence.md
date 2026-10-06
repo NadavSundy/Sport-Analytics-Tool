@@ -71,7 +71,7 @@ Additional Sprint 3 records:
 
 Related: [Sprint 3 requirements & rubric traceability](../planning/sprint-3-requirements-traceability.md).
 
-The 28 September close-out is intentionally pre-finalisation. It must be reconciled against current `main`, reviewed by another team member and updated with the final milestone tag before #613 closes.
+The 28 September record began as the pre-finalisation close-out. The final #613 close-out and retrospective were subsequently merged to `main` in PR #790. The record therefore remains useful as Sprint 3 evidence, while #612 is treated as explicit carry-forward into the final-submission period.
 
 ## Sprint 4
 
