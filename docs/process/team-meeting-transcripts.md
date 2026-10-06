@@ -33,7 +33,7 @@ The PDF conversion must not rewrite, summarise or silently correct transcript co
 The concise Markdown planning/stand-up/stakeholder records remain the normal evidence index because they are quick to scan and link to issues, decisions and outcomes. The Word/PDF transcript pairs are retained as supporting raw meeting evidence rather than being reproduced as normal MkDocs pages.
 
 - [Sprint evidence](sprint-evidence.md)
-- [Project Process & Evidence](index.md)
+- [Project Records & Evidence](index.md)
 
 ## AI Declaration
 
