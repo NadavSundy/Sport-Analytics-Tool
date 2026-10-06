@@ -43,9 +43,15 @@ No passwords, bearer tokens, OAuth credentials, API keys or service secrets were
 
 The initial direct harness invocation could not spawn esbuild in the restricted Windows shell. Reruns used `cmd.exe` with explicit process waiting; this is an execution-host constraint, not a product failure. No product finding failed during the recorded runs, so no bug or retest was required.
 
+## Deployed manual confirmation
+
+On 2026-10-06, Dean Feldman confirmed that the deployed submission, review, batch-ingestion and correction workflows covered by this execution record work as intended. This is retained as **user-confirmed manual deployed verification** for the #872 acceptance decision.
+
+This confirmation is not browser-automation or independent machine proof. No deployment revision, endpoint receipt, batch/job identifier, account identifier, screenshot or raw request was supplied, so none is inferred here. It supplements the local deterministic automated evidence above; it does not claim a newly observed deployed artifact identity.
+
 ## Untested / partial coverage
 
-This record proves the final candidate in deterministic local integration and browser environments. It does not replace a final deployed-environment run using a real submitter/reviewer account, worker deployment, or representative live multi-season data. Those operational checks remain required before release sign-off and must retain their own candidate-specific evidence.
+This record proves the final candidate in deterministic local integration and browser environments, supplemented by Dean's user-confirmed manual deployed verification above. The missing deployment revision and durable deployed-operation identifiers remain a traceability limitation for release sign-off.
 
 ## AI Declaration
 
