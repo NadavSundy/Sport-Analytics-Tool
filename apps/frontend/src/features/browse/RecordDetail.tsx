@@ -5,6 +5,7 @@ import {
   SectionNavigation,
   type NavigationItem,
 } from '../../components/NavigationPrimitives';
+import { usePageTitle } from '../../components/usePageTitle';
 
 interface DetailLayoutProps {
   backLabel: string;
@@ -27,6 +28,7 @@ export function DetailLayout({
   sections,
   title,
 }: DetailLayoutProps) {
+  usePageTitle(title);
   return (
     <article className="detail-page content-boundary">
       <Breadcrumbs
@@ -51,10 +53,18 @@ export function DetailLayout({
   );
 }
 
-export function DetailLoading({ label }: { label: string }) {
+/**
+ * Level 1 (the default) stands in for a whole page and names the browser tab.
+ * Level 2 sits beneath a page's own h1 and leaves its title alone.
+ */
+type StateHeadingLevel = 1 | 2;
+
+export function DetailLoading({ label, level = 1 }: { label: string; level?: StateHeadingLevel }) {
+  const Heading = `h${level}` as const;
+  usePageTitle(level === 1 ? `Loading ${label}` : null);
   return (
     <div className="state-message state-message--detail" role="status">
-      <h1>Loading {label}</h1>
+      <Heading>Loading {label}</Heading>
       <p>The published record is being requested from the Sport Analytics API.</p>
     </div>
   );
@@ -63,15 +73,19 @@ export function DetailLoading({ label }: { label: string }) {
 export function DetailError({
   error,
   label,
+  level = 1,
   reload,
 }: {
   error: Error;
   label: string;
+  level?: StateHeadingLevel;
   reload(): void;
 }) {
+  const Heading = `h${level}` as const;
+  usePageTitle(level === 1 ? `${label} could not be loaded` : null);
   return (
     <div className="state-message state-message--detail state-message--error" role="alert">
-      <h1>{label} could not be loaded</h1>
+      <Heading>{label} could not be loaded</Heading>
       <p>{error.message}</p>
       <button className="button button--secondary" onClick={reload} type="button">
         Try again

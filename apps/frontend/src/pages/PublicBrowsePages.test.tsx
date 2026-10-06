@@ -559,6 +559,32 @@ describe('public browsing pages', () => {
     expect(fetchMock.mock.calls[3]?.[0]).not.toContain('cursor=');
   });
 
+  // Issue #800: a free-text gender box made people guess the stored value.
+  it('offers the recorded genders as choices and keeps an unlisted value from the address', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(collection([])));
+
+    const { unmount } = renderRoute('/fixtures');
+    const gender = await screen.findByRole('combobox', { name: 'Gender' });
+    expect(gender.tagName).toBe('SELECT');
+    expect(
+      within(gender)
+        .getAllByRole('option')
+        .map((option) => [option.getAttribute('value'), option.textContent]),
+    ).toEqual([
+      ['', 'Any'],
+      ['female', 'Female'],
+      ['male', 'Male'],
+    ]);
+    expect(gender).toHaveValue('');
+    unmount();
+
+    renderRoute('/fixtures?gender=mixed');
+    expect(await screen.findByRole('combobox', { name: 'Gender' })).toHaveValue('mixed');
+    expect(screen.getByRole('option', { name: 'Mixed' })).toBeInTheDocument();
+    // The active-filter summary names the choice as the list does.
+    expect(screen.getByText('Gender:').parentElement).toHaveTextContent(/^Gender: Mixed$/);
+  });
+
   it('routes internal relationship filters while displaying only readable names', async () => {
     const requestedUrls: string[] = [];
     vi.stubGlobal(

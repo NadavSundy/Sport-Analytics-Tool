@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { signInPathFor } from '../auth/auth-return';
 import { getCurrentUserProfile } from '../auth/current-user-api';
 import { useAuthenticatedApiClient } from '../auth/useAuthenticatedApiClient';
+import { usePageTitle } from '../../components/usePageTitle';
 
 export function AdministrationPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -13,6 +14,7 @@ export function AdministrationPage() {
   const client = useAuthenticatedApiClient();
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [failed, setFailed] = useState(false);
+  usePageTitle('Administration');
 
   useEffect(() => {
     if (!isAuthenticated) return;

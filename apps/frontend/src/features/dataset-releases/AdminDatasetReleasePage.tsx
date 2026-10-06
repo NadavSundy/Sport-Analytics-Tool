@@ -18,6 +18,7 @@ import {
   createAdministratorDatasetRelease,
   getAdministratorDatasetReleaseJob,
 } from './admin-dataset-release-api';
+import { usePageTitle } from '../../components/usePageTitle';
 
 type AccessState =
   | { kind: 'loading' }
@@ -61,9 +62,7 @@ export function AdminDatasetReleasePage() {
   const [job, setJob] = useState<DatasetReleaseJob>();
   const feedbackRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    document.title = "Publish Dataset Release | Stat'sTheGame";
-  }, []);
+  usePageTitle('Publish dataset release');
 
   const checkAccess = useCallback(
     async (signal?: AbortSignal) => {

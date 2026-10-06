@@ -71,7 +71,26 @@ $env:CAPTURE_ISSUE_199_EVIDENCE='1'
 npm run test:e2e -- tests/e2e/public-browsing.spec.ts tests/e2e/player-overview.spec.ts --workers=1
 ```
 
+## Route-wide quality review (issue #800)
+
+Three checks run across every normal user-facing route rather than one journey:
+
+- `responsive-layout.spec.ts` asserts that header controls never overlap, clip or wrap at twelve
+  widths from 320px to 1440px, both signed out and as an administrator (the widest header), and
+  that every reviewed route reflows at 320px without sideways scrolling. 320px is the reflow width
+  for a 1280px window at 400% zoom.
+- `accessibility.spec.ts` audits every reviewed data and workspace route with Axe in both themes,
+  in addition to its original public and authentication matrix.
+- Both use `support/published-record-mocks.ts`, which serves one published fixture with statistics
+  and empty collections for everything else, so workspace empty states are exercised too. The
+  route list there (`reviewedRoutes`) is the review's scope: add a route to it when you add one.
+
+```text
+npm run test:e2e -- tests/e2e/responsive-layout.spec.ts tests/e2e/accessibility.spec.ts
+```
+
 ## AI Declaration
 
 The connected public-data and hosted browser-matrix guidance was documented with the assistance of
-ChatGPT-Web[GPT-5.6 Sol].
+ChatGPT-Web[GPT-5.6 Sol]. The route-wide quality review section was documented with the assistance
+of Claude Code[Opus 5.5].
